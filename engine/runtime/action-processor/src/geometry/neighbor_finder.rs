@@ -22,6 +22,9 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
+/// Minimum number of base features to trigger parallel processing
+const PARALLEL_THRESHOLD: usize = 100;
+
 static BASE_PORT: Lazy<Port> = Lazy::new(|| Port::new("base"));
 static CANDIDATE_PORT: Lazy<Port> = Lazy::new(|| Port::new("candidate"));
 static MATCHED_PORT: Lazy<Port> = Lazy::new(|| Port::new("matched"));
@@ -218,10 +221,14 @@ fn default_attribute_prefix() -> String {
 struct CandidateIndex {
     point: [f64; 2],
     point_z: Option<f64>,
-    /// Byte offset in the JSONL file where this candidate's JSON starts
+    /// Byte offset in the JSONL file where this candidate's JSON starts.
+    /// For in-memory candidates, this is `u64::MAX` and `in_memory_index` is used instead.
     offset: u64,
-    /// Length of the JSON line in bytes
+    /// Length of the JSON line in bytes (0 for in-memory candidates).
     length: u32,
+    /// Index into `in_memory_candidates` when `offset == u64::MAX`.
+    /// For disk-based candidates, this is `u32::MAX`.
+    in_memory_index: u32,
 }
 
 impl RTreeObject for CandidateIndex {
@@ -246,6 +253,15 @@ struct NeighborMatch {
     candidate_index: CandidateIndex,
     distance: f64,
     index: usize, // 0-based rank
+}
+
+/// Result of processing a single base feature for parallel execution.
+/// Contains the output feature(s) and the destination port.
+#[derive(Debug)]
+enum BaseProcessResult {
+    Rejected(Feature),
+    Unmatched(Feature),
+    Matched(Vec<Feature>), // One or more enriched features
 }
 
 /// Full candidate entry stored on disk and in memory.
@@ -416,9 +432,14 @@ impl Processor for NeighborFinder {
         // Build R-tree index from lightweight candidate index (point + disk location only)
         let rtree: RTree<CandidateIndex> = RTree::bulk_load(self.candidate_index.clone());
 
-        // Process in-memory base features first
-        for entry in &self.base_features {
-            self.process_single_base(&ctx, fw, &rtree, &entry.feature)?;
+        // Process in-memory base features (parallelize if above threshold)
+        if self.base_features.len() >= PARALLEL_THRESHOLD {
+            self.process_base_features_parallel(&ctx, fw, &rtree)?;
+        } else {
+            // Sequential processing for small batches
+            for entry in &self.base_features {
+                self.process_single_base(&ctx, fw, &rtree, &entry.feature)?;
+            }
         }
 
         // Process disk-based base features sequentially without loading all into memory
@@ -509,6 +530,7 @@ impl NeighborFinder {
                 point_z: entry.point_z,
                 offset,
                 length,
+                in_memory_index: u32::MAX, // Not in memory
             });
         }
 
@@ -532,13 +554,14 @@ impl NeighborFinder {
             } else {
                 // No temp_dir (e.g., in tests) - keep candidates in memory
                 // Store the full entries and create index entries pointing to them
-                for entry in self.candidates.iter() {
+                for (idx, entry) in self.candidates.iter().enumerate() {
                     self.in_memory_candidates.push(entry.clone());
                     self.candidate_index.push(CandidateIndex {
                         point: entry.point,
                         point_z: entry.point_z,
                         offset: u64::MAX, // Marks in-memory
                         length: 0,
+                        in_memory_index: idx as u32,
                     });
                 }
                 self.candidates.clear();
@@ -587,8 +610,8 @@ impl NeighborFinder {
 
         for idx in indices {
             if idx.offset == IN_MEMORY_MARKER {
-                // In-memory candidate - use position in in_memory_candidates
-                let in_memory_idx = result.len();
+                // In-memory candidate - use stored index for correct lookup
+                let in_memory_idx = idx.in_memory_index as usize;
                 let candidate = self
                     .in_memory_candidates
                     .get(in_memory_idx)
@@ -778,6 +801,107 @@ impl NeighborFinder {
             }
         }
         Ok(())
+    }
+
+    /// Process base features in parallel using rayon.
+    /// Performs neighbor matching in parallel, then sends results sequentially.
+    fn process_base_features_parallel(
+        &self,
+        ctx: &NodeContext,
+        fw: &ProcessorChannelForwarder,
+        rtree: &RTree<CandidateIndex>,
+    ) -> Result<(), BoxedError> {
+        use rayon::prelude::*;
+
+        // Process all base features in parallel to find matches
+        let results: Vec<BaseProcessResult> = self
+            .base_features
+            .par_iter()
+            .map(|entry| self.process_base_feature_to_result(rtree, &entry.feature))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Send results sequentially to maintain order
+        for result in results {
+            match result {
+                BaseProcessResult::Rejected(feature) => {
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        ctx,
+                        feature,
+                        REJECTED_PORT.clone(),
+                    ));
+                }
+                BaseProcessResult::Unmatched(feature) => {
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        ctx,
+                        feature,
+                        UNMATCHED_PORT.clone(),
+                    ));
+                }
+                BaseProcessResult::Matched(features) => {
+                    for feature in features {
+                        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                            ctx,
+                            feature,
+                            MATCHED_PORT.clone(),
+                        ));
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Process a single base feature and return the result (for parallel execution).
+    /// This is a pure computation function that doesn't interact with the forwarder.
+    fn process_base_feature_to_result(
+        &self,
+        rtree: &RTree<CandidateIndex>,
+        base: &Feature,
+    ) -> Result<BaseProcessResult, BoxedError> {
+        let Some((base_point, base_z)) = extract_representative_point(base) else {
+            return Ok(BaseProcessResult::Rejected(base.clone()));
+        };
+
+        let neighbor_matches = find_k_nearest_neighbors(
+            rtree,
+            &base_point,
+            base_z,
+            self.params.num_closest,
+            &self.params.distance_metric,
+        );
+
+        // Filter by max_distance
+        let filtered_matches: Vec<NeighborMatch> = neighbor_matches
+            .into_iter()
+            .filter(|m| {
+                if let Some(max_dist) = self.params.max_distance {
+                    m.distance <= max_dist
+                } else {
+                    true
+                }
+            })
+            .collect();
+
+        if filtered_matches.is_empty() {
+            return Ok(BaseProcessResult::Unmatched(base.clone()));
+        }
+
+        // Generate enriched feature(s) based on merge strategy
+        let enriched_features = match self.params.merge_strategy {
+            MergeStrategy::Closest => {
+                vec![self.create_enriched_feature(base, &filtered_matches[0], false)?]
+            }
+            MergeStrategy::RepeatBase => filtered_matches
+                .iter()
+                .map(|m| self.create_enriched_feature(base, m, true))
+                .collect::<Result<Vec<_>, _>>()?,
+            MergeStrategy::ArrayAttributes => {
+                vec![self.create_array_enriched_feature(base, &filtered_matches)?]
+            }
+        };
+
+        Ok(BaseProcessResult::Matched(enriched_features))
     }
 
     /// Create an enriched feature with distance and transferred attributes.
@@ -1214,9 +1338,43 @@ mod tests {
         ctx.port = BASE_PORT.clone();
         finder.process(ctx, &fw).unwrap();
 
-        // Verify buffering
-        assert_eq!(finder.candidates.len(), 2);
-        assert_eq!(finder.base_features.len(), 1);
+        // Finish processing to trigger matching
+        let ctx = NodeContext::default();
+        finder.finish(ctx, &fw).unwrap();
+
+        // Verify the output was sent to matched port
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let ports = noop.send_ports.lock().unwrap();
+            // Should have 1 matched feature
+            assert_eq!(ports.len(), 1, "Should have one matched output");
+            assert_eq!(ports[0], *MATCHED_PORT, "Should be sent to matched port");
+
+            // Verify the sent features have expected attributes
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1, "Should have one feature");
+            let feature = &features[0];
+
+            // Verify distance is correct (distance from (1,0) to (0,0) is 1.0)
+            let distance = feature
+                .attributes
+                .get(&Attribute::new("_neighbor_distance"));
+            assert!(distance.is_some(), "Should have distance attribute");
+            if let Some(AttributeValue::Number(d)) = distance {
+                assert!(
+                    (d.as_f64().unwrap() - 1.0).abs() < 0.001,
+                    "Distance should be 1.0"
+                );
+            }
+
+            // Verify transferred attribute from closest candidate (A)
+            let neighbor_name = feature.attributes.get(&Attribute::new("_neighbor_name"));
+            assert!(neighbor_name.is_some(), "Should have transferred attribute");
+            assert_eq!(
+                neighbor_name,
+                Some(&AttributeValue::String("A".to_string())),
+                "Should match closest candidate (A at distance 1, not B at distance 9)"
+            );
+        }
     }
 
     #[test]
@@ -1266,6 +1424,19 @@ mod tests {
             let ports = noop.send_ports.lock().unwrap();
             assert_eq!(ports.len(), 1);
             assert_eq!(ports[0], *UNMATCHED_PORT);
+
+            // Verify base feature is preserved (emitted to unmatched without distance attribute)
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1, "Should have one unmatched feature");
+            let feature = &features[0];
+            // No distance attribute since no match within max_distance
+            assert!(
+                feature
+                    .attributes
+                    .get(&Attribute::new("_neighbor_distance"))
+                    .is_none(),
+                "Unmatched feature should not have distance attribute"
+            );
         }
     }
 
@@ -1302,6 +1473,10 @@ mod tests {
             let ports = noop.send_ports.lock().unwrap();
             assert_eq!(ports.len(), 1);
             assert_eq!(ports[0], *UNMATCHED_PORT);
+
+            // Verify base feature is preserved when no candidates
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1, "Should have one unmatched feature");
         }
     }
 
@@ -1424,6 +1599,36 @@ mod tests {
             // With closest strategy, we get 1 output feature
             assert_eq!(ports.len(), 1);
             assert_eq!(ports[0], *MATCHED_PORT);
+
+            // Verify the closest neighbor is at index 1 (position 10, distance 5 from base at 15)
+            // or index 2 (position 20, distance 5 from base at 15) - tie-breaking either is fine
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1, "Should have one matched feature");
+            let feature = &features[0];
+
+            // Verify distance is 5.0 (closest candidate distance)
+            let distance = feature
+                .attributes
+                .get(&Attribute::new("_neighbor_distance"));
+            assert!(distance.is_some(), "Should have distance attribute");
+            if let Some(AttributeValue::Number(d)) = distance {
+                assert!(
+                    (d.as_f64().unwrap() - 5.0).abs() < 0.001,
+                    "Distance should be 5.0"
+                );
+            }
+
+            // Verify the transferred id is either 1 or 2 (both at distance 5)
+            let neighbor_id = feature.attributes.get(&Attribute::new("_neighbor_id"));
+            assert!(neighbor_id.is_some(), "Should have transferred id");
+            if let Some(AttributeValue::Number(id)) = neighbor_id {
+                let id_val = id.as_u64().unwrap();
+                assert!(
+                    id_val == 1 || id_val == 2,
+                    "Should match candidate 1 or 2 (both distance 5), got {}",
+                    id_val
+                );
+            }
         }
     }
 
@@ -1492,6 +1697,47 @@ mod tests {
             for port in ports.iter() {
                 assert_eq!(*port, *MATCHED_PORT);
             }
+
+            // Verify features have correct neighbor indices (0, 1, 2) and names in order
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 3, "Should have 3 features");
+
+            // Extract names and indices to verify ordering
+            let mut names = Vec::new();
+            let mut indices = Vec::new();
+            for feature in features.iter() {
+                if let Some(AttributeValue::String(name)) =
+                    feature.attributes.get(&Attribute::new("_neighbor_name"))
+                {
+                    names.push(name.clone());
+                }
+                if let Some(AttributeValue::Number(idx)) =
+                    feature.attributes.get(&Attribute::new("_neighbor_index"))
+                {
+                    indices.push(idx.as_u64().unwrap() as u32);
+                }
+            }
+
+            // Verify indices are 0, 1, 2 in order
+            assert_eq!(indices, vec![0, 1, 2], "Indices should be 0, 1, 2");
+
+            // Verify distances increase with index (sorted by distance)
+            let mut distances = Vec::new();
+            for feature in features.iter() {
+                if let Some(AttributeValue::Number(d)) = feature
+                    .attributes
+                    .get(&Attribute::new("_neighbor_distance"))
+                {
+                    distances.push(d.as_f64().unwrap());
+                }
+            }
+            // Verify sorted by ascending distance
+            for i in 1..distances.len() {
+                assert!(
+                    distances[i - 1] <= distances[i],
+                    "Distances should be sorted ascending"
+                );
+            }
         }
     }
 
@@ -1558,6 +1804,38 @@ mod tests {
                 "Expected 1 output feature with array_attributes strategy"
             );
             assert_eq!(ports[0], *MATCHED_PORT);
+
+            // Verify the feature has array attributes with 3 values
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1, "Should have 1 feature");
+            let feature = &features[0];
+
+            // Verify distances is an array
+            let distances = feature
+                .attributes
+                .get(&Attribute::new("_neighbor_distance"));
+            assert!(distances.is_some(), "Should have distance attribute");
+            if let Some(AttributeValue::Array(arr)) = distances {
+                assert_eq!(arr.len(), 3, "Should have 3 distances in array");
+                // Verify sorted ascending
+                for i in 1..arr.len() {
+                    if let (AttributeValue::Number(d1), AttributeValue::Number(d2)) =
+                        (&arr[i - 1], &arr[i])
+                    {
+                        assert!(
+                            d1.as_f64().unwrap() <= d2.as_f64().unwrap(),
+                            "Distances should be sorted"
+                        );
+                    }
+                }
+            }
+
+            // Verify names is an array with 3 values
+            let names = feature.attributes.get(&Attribute::new("_neighbor_name"));
+            assert!(names.is_some(), "Should have names array");
+            if let Some(AttributeValue::Array(arr)) = names {
+                assert_eq!(arr.len(), 3, "Should have 3 names in array");
+            }
         }
     }
 
@@ -1620,6 +1898,23 @@ mod tests {
                 3,
                 "Should emit only available candidates when num_closest > available"
             );
+
+            // Verify all 3 features have correct indices
+            let features = noop.send_features.lock().unwrap();
+            let mut indices: Vec<u32> = features
+                .iter()
+                .filter_map(|f| {
+                    if let Some(AttributeValue::Number(idx)) =
+                        f.attributes.get(&Attribute::new("_neighbor_index"))
+                    {
+                        Some(idx.as_u64().unwrap() as u32)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            indices.sort();
+            assert_eq!(indices, vec![0, 1, 2], "Should have indices 0, 1, 2");
         }
     }
 
@@ -1627,7 +1922,7 @@ mod tests {
     fn test_partial_matches_with_max_distance() {
         let mut finder = NeighborFinder {
             params: NeighborFinderParams {
-                num_closest: 3,
+                num_closest: 5,           // Request up to 5 neighbors
                 max_distance: Some(15.0), // Only candidates within 15 units
                 merge_strategy: MergeStrategy::RepeatBase,
                 ..Default::default()
@@ -1645,19 +1940,27 @@ mod tests {
             executor_id: None,
         };
 
-        // Candidates at 0, 10, 20, 30 from base at 15
-        // Distances: 15, 5, 5, 15
-        // With max_distance=15, only 3 are within range (0, 10, 20)
+        // Candidates at 0, 10, 20, 30, 100 from base at 15
+        // Distances: 15, 5, 5, 15, 85
+        // With max_distance=15, only 4 are within range (0, 10, 20, 30)
+        // Candidate at 100 (distance 85) is beyond max_distance
         let candidates: Vec<_> = (0..4)
             .map(|i| {
                 create_point_feature_with_attr(
-                    i as f64 * 10.0,
+                    i as f64 * 10.0, // 0, 10, 20, 30
                     0.0,
                     "id",
                     AttributeValue::Number(serde_json::Number::from(i)),
                 )
             })
             .collect();
+        // Add one more candidate far away
+        let far_candidate = create_point_feature_with_attr(
+            100.0,
+            0.0,
+            "id",
+            AttributeValue::Number(serde_json::Number::from(4)),
+        );
 
         let base = create_point_feature(15.0, 0.0);
 
@@ -1669,6 +1972,10 @@ mod tests {
             ctx.port = CANDIDATE_PORT.clone();
             finder.process(ctx, &fw).unwrap();
         }
+        // Process far candidate
+        let mut ctx = create_default_execute_context(&far_candidate);
+        ctx.port = CANDIDATE_PORT.clone();
+        finder.process(ctx, &fw).unwrap();
 
         let mut ctx = create_default_execute_context(&base);
         ctx.port = BASE_PORT.clone();
@@ -1679,7 +1986,65 @@ mod tests {
 
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(ports.len(), 3);
+            // Should get only 4 features (within max_distance), not 5 (num_closest)
+            // This proves max_distance is actually filtering, not just num_closest limiting
+            assert_eq!(
+                ports.len(),
+                4,
+                "Should have 4 features within max_distance, not 5 (num_closest)"
+            );
+
+            // Verify we got the correct 4 candidates (ids 0, 1, 2, 3 within max_distance=15)
+            // Candidate 4 at distance 85 is excluded
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(
+                features.len(),
+                4,
+                "Should have 4 features within max_distance"
+            );
+
+            // Extract ids to verify which candidates were matched
+            let mut ids: Vec<u64> = features
+                .iter()
+                .filter_map(|f| {
+                    if let Some(AttributeValue::Number(id)) =
+                        f.attributes.get(&Attribute::new("_neighbor_id"))
+                    {
+                        Some(id.as_u64().unwrap())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            ids.sort();
+            // Should match candidates 0, 1, 2, 3 (at positions 0, 10, 20, 30, distances 15, 5, 5, 15)
+            // Candidate 4 at position 100 has distance 85, which exceeds max_distance
+            assert_eq!(
+                ids,
+                vec![0, 1, 2, 3],
+                "Should match candidates 0, 1, 2, 3 within max_distance=15, not 4"
+            );
+
+            // Verify all distances are <= max_distance
+            for feature in features.iter() {
+                if let Some(AttributeValue::Number(d)) = feature
+                    .attributes
+                    .get(&Attribute::new("_neighbor_distance"))
+                {
+                    let dist = d.as_f64().unwrap();
+                    assert!(
+                        dist <= 15.0,
+                        "Distance {} should be <= max_distance 15",
+                        dist
+                    );
+                }
+            }
+
+            // Specifically verify candidate 4 (far) is NOT in results
+            assert!(
+                !ids.contains(&4),
+                "Far candidate (id=4, distance=85) should be filtered by max_distance"
+            );
         }
     }
 

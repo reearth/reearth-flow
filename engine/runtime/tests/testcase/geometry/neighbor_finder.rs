@@ -95,6 +95,9 @@ fn test_proximity_search_with_geojson() {
         .unwrap();
 
     // Set up dependencies
+    // Note: FLOW_RUNTIME_ACTION_LOG_DISABLE controls action logging via a Lazy static in
+    // action-log. Tests should set this consistently; mixing tests with different values
+    // can cause order-dependent failures due to the cached Lazy initialization.
     std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
     let logger_factory = Arc::new(LoggerFactory::new(
         ActionLogger::root(
@@ -109,7 +112,7 @@ fn test_proximity_search_with_geojson() {
         Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
 
     // Run the workflow
-    match Runner::run(
+    Runner::run(
         uuid::Uuid::new_v4(),
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),
@@ -118,19 +121,8 @@ fn test_proximity_search_with_geojson() {
         ingress_state,
         feature_state,
         None,
-    ) {
-        Ok(_) => eprintln!("Workflow completed successfully"),
-        Err(e) => {
-            eprintln!("Workflow failed: {:?}", e);
-            panic!("Workflow execution failed: {:?}", e);
-        }
-    }
-
-    // Debug: List temp directory contents
-    eprintln!("Temp directory: {:?}", temp_dir.path());
-    for entry in std::fs::read_dir(temp_dir.path()).unwrap() {
-        eprintln!("  File: {:?}", entry.unwrap().path());
-    }
+    )
+    .expect("Workflow execution should succeed");
 
     // Read the result
     let output_uri = Uri::for_test(&output_uri_str);
@@ -138,11 +130,7 @@ fn test_proximity_search_with_geojson() {
     let result = storage
         .get_sync(output_uri.path().as_path())
         .expect("Result file should exist after workflow execution");
-    let result_str = String::from_utf8(result.to_vec()).unwrap();
-    eprintln!(
-        "Result content: {}",
-        &result_str[..result_str.len().min(1000)]
-    );
+    let result_str = String::from_utf8(result.to_vec()).expect("Result should be valid UTF-8");
 
     // Parse the result
     let results: Vec<serde_json::Value> = serde_json::from_str(&result_str).unwrap();
@@ -178,6 +166,4 @@ fn test_proximity_search_with_geojson() {
 
     // Verify distance calculation is correct (1.0 = distance from (1,0) to (0,0))
     assert_eq!(feature["_distance"], 1.0, "Distance should be 1.0");
-
-    eprintln!("NeighborFinder integration test passed!");
 }
