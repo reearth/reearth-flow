@@ -1585,10 +1585,13 @@ mod tests {
 
     #[test]
     fn test_num_closest_3() {
+        // Test that num_closest actually limits the number of neighbors returned.
+        // Use RepeatBase strategy so we can observe the effect of num_closest
+        // (Closest strategy would always emit only 1 regardless of num_closest).
         let mut finder = NeighborFinder {
             params: NeighborFinderParams {
                 num_closest: 3,
-                merge_strategy: MergeStrategy::Closest,
+                merge_strategy: MergeStrategy::RepeatBase,
                 ..Default::default()
             },
             candidates: Vec::new(),
@@ -1644,39 +1647,70 @@ mod tests {
 
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             let ports = noop.send_ports.lock().unwrap();
-            // With closest strategy, we get 1 output feature
-            assert_eq!(ports.len(), 1);
-            assert_eq!(ports[0], *MATCHED_PORT);
+            // With RepeatBase strategy and num_closest=3, we get 3 output features
+            // This proves num_closest is actually working (not just defaulting to 1)
+            assert_eq!(
+                ports.len(),
+                3,
+                "Should have 3 output features with num_closest=3"
+            );
+            for port in ports.iter() {
+                assert_eq!(*port, *MATCHED_PORT);
+            }
 
-            // Verify the closest neighbor is at index 1 (position 10, distance 5 from base at 15)
-            // or index 2 (position 20, distance 5 from base at 15) - tie-breaking either is fine
+            // Verify we got exactly 3 features (num_closest limits the output)
             let features = noop.send_features.lock().unwrap();
-            assert_eq!(features.len(), 1, "Should have one matched feature");
-            let feature = &features[0];
+            assert_eq!(features.len(), 3, "Should have 3 matched features");
 
-            // Verify distance is 5.0 (closest candidate distance)
-            let distance = feature
-                .attributes
-                .get(&Attribute::new("_neighbor_distance"));
-            assert!(distance.is_some(), "Should have distance attribute");
-            if let Some(AttributeValue::Number(d)) = distance {
-                assert!(
-                    (d.as_f64().unwrap() - 5.0).abs() < 0.001,
-                    "Distance should be 5.0"
-                );
-            }
+            // Extract ids and verify they are the 3 closest candidates
+            // Base at 15, candidates at 0(dist 15), 10(dist 5), 20(dist 5), 30(dist 15), 40(dist 25)
+            // Closest 3: 10(id=1), 20(id=2), 0(id=0) - distances 5, 5, 15
+            let mut ids: Vec<u64> = features
+                .iter()
+                .filter_map(|f| {
+                    if let Some(AttributeValue::Number(id)) =
+                        f.attributes.get(&Attribute::new("_neighbor_id"))
+                    {
+                        Some(id.as_u64().unwrap())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            ids.sort();
+            assert_eq!(
+                ids,
+                vec![0, 1, 2],
+                "Should match 3 closest candidates (ids 0, 1, 2)"
+            );
 
-            // Verify the transferred id is either 1 or 2 (both at distance 5)
-            let neighbor_id = feature.attributes.get(&Attribute::new("_neighbor_id"));
-            assert!(neighbor_id.is_some(), "Should have transferred id");
-            if let Some(AttributeValue::Number(id)) = neighbor_id {
-                let id_val = id.as_u64().unwrap();
-                assert!(
-                    id_val == 1 || id_val == 2,
-                    "Should match candidate 1 or 2 (both distance 5), got {}",
-                    id_val
-                );
-            }
+            // Verify distances are sorted ascending
+            let mut distances: Vec<f64> = features
+                .iter()
+                .filter_map(|f| {
+                    if let Some(AttributeValue::Number(d)) =
+                        f.attributes.get(&Attribute::new("_neighbor_distance"))
+                    {
+                        Some(d.as_f64().unwrap())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            // Should be 5.0, 5.0, 15.0 (closest 3)
+            assert!(
+                (distances[0] - 5.0).abs() < 0.001,
+                "First distance should be 5.0"
+            );
+            assert!(
+                (distances[1] - 5.0).abs() < 0.001,
+                "Second distance should be 5.0"
+            );
+            assert!(
+                (distances[2] - 15.0).abs() < 0.001,
+                "Third distance should be 15.0"
+            );
         }
     }
 
@@ -2177,12 +2211,18 @@ mod tests {
             for feature in features.iter() {
                 // Should have distance attribute
                 assert!(
-                    feature.attributes.get(&Attribute::new("_neighbor_distance")).is_some(),
+                    feature
+                        .attributes
+                        .get(&Attribute::new("_neighbor_distance"))
+                        .is_some(),
                     "Should have distance attribute"
                 );
                 // Should NOT have index attribute (empty string suppresses it)
                 assert!(
-                    feature.attributes.get(&Attribute::new("_neighbor_index")).is_none(),
+                    feature
+                        .attributes
+                        .get(&Attribute::new("_neighbor_index"))
+                        .is_none(),
                     "Index attribute should be suppressed when set to empty string"
                 );
             }
@@ -2294,10 +2334,15 @@ mod tests {
             let feature = &features[0];
 
             // Verify distance is correct (base at 15, closest candidate at 10 or 20, distance 5)
-            let distance = feature.attributes.get(&Attribute::new("_neighbor_distance"));
+            let distance = feature
+                .attributes
+                .get(&Attribute::new("_neighbor_distance"));
             assert!(distance.is_some(), "Should have distance attribute");
             if let Some(AttributeValue::Number(d)) = distance {
-                assert!((d.as_f64().unwrap() - 5.0).abs() < 0.001, "Distance should be 5.0");
+                assert!(
+                    (d.as_f64().unwrap() - 5.0).abs() < 0.001,
+                    "Distance should be 5.0"
+                );
             }
 
             // Verify transferred name from candidate
