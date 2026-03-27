@@ -67,7 +67,7 @@ pub struct ExecutionDag {
     event_hub: EventHub,
     ingress_state: Arc<State>,
     /// Port-based feature writers: one writer per (node, output_port) pair.
-    port_writers: HashMap<NodeIndex, HashMap<Port, SharedFeatureWriter>>,
+    port_writers: HashMap<NodeIndex, HashMap<Port, Box<dyn FeatureWriter>>>,
 }
 
 impl ExecutionDag {
@@ -183,11 +183,11 @@ impl ExecutionDag {
                     Some(prefix) => format!("{}.{}.{}", prefix, node.handle.id, port),
                     None => format!("{}.{}", node.handle.id, port),
                 };
-                let writer = Arc::new(Mutex::new(create_feature_writer(
+                let writer = create_feature_writer(
                     EdgeId::new(file_id),
                     Arc::clone(&feature_state),
                     feature_flush_threshold,
-                )));
+                );
                 node_port_writers.insert(port.clone(), writer);
             }
             if !node_port_writers.is_empty() {
@@ -301,18 +301,14 @@ impl ExecutionDag {
         feature_writers
     }
 
-    pub async fn collect_port_writers(
+    pub fn collect_port_writers(
         &self,
         node_index: petgraph::graph::NodeIndex,
     ) -> HashMap<Port, Box<dyn FeatureWriter>> {
-        let mut result = HashMap::new();
-        if let Some(writers) = self.port_writers.get(&node_index) {
-            for (port, writer) in writers {
-                let guard = writer.lock().await;
-                result.insert(port.clone(), guard.clone());
-            }
-        }
-        result
+        self.port_writers
+            .get(&node_index)
+            .cloned()
+            .unwrap_or_default()
     }
 
     pub fn collect_receivers(

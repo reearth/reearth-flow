@@ -362,7 +362,7 @@ pub async fn create_source_node<F>(
 
         let senders = dag.collect_senders(node_index);
         let record_writers = dag.collect_record_writers(node_index).await;
-        let port_writers = dag.collect_port_writers(node_index).await;
+        let port_writers = dag.collect_port_writers(node_index);
         let channel_manager = ChannelManager::new(
             node_handle,
             record_writers,

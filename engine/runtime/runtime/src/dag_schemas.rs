@@ -73,6 +73,16 @@ impl SchemaNodeType {
     }
 }
 
+/// Prepend `parent_id` to every node's `subgraph_prefix` inside a subgraph.
+fn prepend_subgraph_prefix(graph: &mut DiGraph<SchemaNodeType, SchemaEdgeType>, parent_id: &str) {
+    for node_weight in graph.node_weights_mut() {
+        node_weight.subgraph_prefix = Some(match &node_weight.subgraph_prefix {
+            Some(existing) => format!("{}.{}", parent_id, existing),
+            None => parent_id.to_string(),
+        });
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SchemaEdgeType {
     pub id: EdgeId,
@@ -165,12 +175,7 @@ impl DagSchemas {
                 for edge in subgraph.graph.edge_weights_mut() {
                     edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
                 }
-                for node_weight in subgraph.graph.node_weights_mut() {
-                    node_weight.subgraph_prefix = Some(match &node_weight.subgraph_prefix {
-                        Some(existing) => format!("{}.{}", entity.id, existing),
-                        None => entity.id.to_string(),
-                    });
-                }
+                prepend_subgraph_prefix(&mut subgraph.graph, &entity.id.to_string());
                 graph_schema.add_subgraph_after_node(node.handle.id.clone(), &params, &subgraph);
                 let Some(target_node) = graph_schema.node_index_by_node_id(node.handle.id.clone())
                 else {
@@ -207,12 +212,7 @@ impl DagSchemas {
             for edge in subgraph.graph.edge_weights_mut() {
                 edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
             }
-            for node_weight in subgraph.graph.node_weights_mut() {
-                node_weight.subgraph_prefix = Some(match &node_weight.subgraph_prefix {
-                    Some(existing) => format!("{}.{}", entity.id, existing),
-                    None => entity.id.to_string(),
-                });
-            }
+            prepend_subgraph_prefix(&mut subgraph.graph, &entity.id.to_string());
             entry_graph.add_subgraph_after_node(node.handle.id.clone(), &params, subgraph);
             let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id.clone())
             else {
