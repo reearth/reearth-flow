@@ -72,4 +72,4 @@ Each component uses environment variables with consistent prefixes:
 - `REEARTH_*` - Platform-level configuration
 - `GOOGLE_*` - Google Cloud Platform credentials
 
-Component-specific details are documented in each component's CLAUDE.md.
+Component-specific details are documented in each component's documentation (AGENTS.md or CLAUDE.md).
