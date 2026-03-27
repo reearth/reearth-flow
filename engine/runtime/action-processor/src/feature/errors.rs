@@ -19,6 +19,10 @@ pub(super) enum FeatureProcessorError {
     FilterV2Factory(String),
     #[error("Feature Filter V2 error: {0}")]
     FilterV2(String),
+    #[error("JavaScriptCaller Factory error: {0}")]
+    JavaScriptCallerFactory(String),
+    #[error("JavaScriptCaller error: {0}")]
+    JavaScriptCaller(String),
     #[error("Feature Transformer Factory error: {0}")]
     TransformerFactory(String),
     #[error("Feature Transformer error: {0}")]
