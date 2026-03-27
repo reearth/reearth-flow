@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::{BufRead, BufReader, BufWriter, Read, Seek, Write};
 use std::path::PathBuf;
 
 use once_cell::sync::Lazy;
@@ -102,7 +102,8 @@ impl ProcessorFactory for NeighborFinderFactory {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-            candidate_file_count: 0,
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
             executor_id: None,
         }))
@@ -211,14 +212,16 @@ fn default_attribute_prefix() -> String {
 }
 
 /// A lightweight spatial index entry for candidates.
-/// Contains only point location and file index - the feature data stays in individual JSON files.
-/// Each candidate is stored as a separate .json file for true random access.
+/// Contains only point location and byte offset - the feature data stays in a single JSONL file.
+/// Uses byte offsets for O(1) random access into the consolidated file.
 #[derive(Debug, Clone)]
 struct CandidateIndex {
     point: [f64; 2],
     point_z: Option<f64>,
-    /// Index of the candidate file (e.g., 0 -> "00000000.json", 1 -> "00000001.json")
-    file_index: usize,
+    /// Byte offset in the JSONL file where this candidate's JSON starts
+    offset: u64,
+    /// Length of the JSON line in bytes
+    length: u32,
 }
 
 impl RTreeObject for CandidateIndex {
@@ -279,8 +282,10 @@ struct NeighborFinder {
     base_buffer_bytes: usize,
     candidate_buffer_bytes: usize,
     temp_dir: Option<PathBuf>,
-    /// Counter for candidate files written to disk
-    candidate_file_count: usize,
+    /// Path to the consolidated candidates JSONL file
+    candidates_file_path: Option<PathBuf>,
+    /// Current byte offset in the candidates JSONL file for next write
+    candidates_file_offset: u64,
     base_chunk_count: usize,
     executor_id: Option<uuid::Uuid>,
 }
@@ -463,8 +468,8 @@ impl NeighborFinder {
         Ok(())
     }
 
-    /// Flush candidates to disk as individual JSON files.
-    /// Each candidate gets its own .json file for true O(1) random access.
+    /// Flush candidates to disk as a single consolidated JSONL file.
+    /// Uses byte offsets for O(1) random access. Each line is one candidate JSON.
     fn flush_candidates(&mut self) -> Result<(), BoxedError> {
         if self.candidates.is_empty() {
             return Ok(());
@@ -473,24 +478,41 @@ impl NeighborFinder {
         let temp_dir = self.temp_dir.as_ref().unwrap();
         std::fs::create_dir_all(temp_dir)?;
 
+        // Initialize the candidates file path if not set
+        if self.candidates_file_path.is_none() {
+            self.candidates_file_path = Some(temp_dir.join("candidates.jsonl"));
+        }
+
+        // Open file for appending (create if doesn't exist)
+        let file_path = self.candidates_file_path.as_ref().unwrap();
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(file_path)?;
+        let mut writer = BufWriter::new(file);
+
         for entry in &self.candidates {
-            let file_name = format!("{:08}.json", self.candidate_file_count);
-            let file_path = temp_dir.join(&file_name);
+            let offset = self.candidates_file_offset;
+            let serialized = &entry.serialized;
+            let length = serialized.len() as u32;
 
-            // Write candidate to individual JSON file
-            let mut file = File::create(&file_path)?;
-            file.write_all(&entry.serialized)?;
+            // Write candidate JSON line
+            writer.write_all(serialized)?;
+            writer.write_all(b"\n")?;
 
-            // Create index entry pointing to this candidate file
+            // Update file offset for next entry
+            self.candidates_file_offset += length as u64 + 1; // +1 for newline
+
+            // Create index entry with byte offset
             self.candidate_index.push(CandidateIndex {
                 point: entry.point,
                 point_z: entry.point_z,
-                file_index: self.candidate_file_count,
+                offset,
+                length,
             });
-
-            self.candidate_file_count += 1;
         }
 
+        writer.flush()?;
         self.candidates.clear();
         self.candidate_buffer_bytes = 0;
         Ok(())
@@ -515,7 +537,8 @@ impl NeighborFinder {
                     self.candidate_index.push(CandidateIndex {
                         point: entry.point,
                         point_z: entry.point_z,
-                        file_index: usize::MAX, // Marks in-memory
+                        offset: u64::MAX, // Marks in-memory
+                        length: 0,
                     });
                 }
                 self.candidates.clear();
@@ -533,8 +556,8 @@ impl NeighborFinder {
     }
 
     /// Read candidates from disk or memory using their indices.
-    /// Each disk-based candidate is stored as an individual JSON file for true O(1) random access.
-    /// For in-memory candidates (file_index == usize::MAX), retrieves from in_memory_candidates.
+    /// Disk-based candidates are stored in a single JSONL file with byte offsets for O(1) random access.
+    /// For in-memory candidates (offset == u64::MAX), retrieves from in_memory_candidates.
     fn read_candidates_from_disk(
         &self,
         indices: &[&CandidateIndex],
@@ -544,9 +567,26 @@ impl NeighborFinder {
         }
 
         let mut result = Vec::with_capacity(indices.len());
+        const IN_MEMORY_MARKER: u64 = u64::MAX;
+
+        // Check if we need to read from disk
+        let needs_disk_read = indices.iter().any(|idx| idx.offset != IN_MEMORY_MARKER);
+
+        // Open file once if needed
+        let mut file = if needs_disk_read {
+            let file_path = self.candidates_file_path.as_ref().ok_or_else(|| {
+                Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Candidates file path not set",
+                )) as BoxedError
+            })?;
+            Some(File::open(file_path)?)
+        } else {
+            None
+        };
 
         for idx in indices {
-            if idx.file_index == usize::MAX {
+            if idx.offset == IN_MEMORY_MARKER {
                 // In-memory candidate - use position in in_memory_candidates
                 let in_memory_idx = result.len();
                 let candidate = self
@@ -561,17 +601,14 @@ impl NeighborFinder {
                     })?;
                 result.push(candidate);
             } else {
-                // Read from disk
-                let temp_dir = self.temp_dir.as_ref().ok_or_else(|| {
-                    Box::new(std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        "Temp directory not set",
-                    )) as BoxedError
-                })?;
-                let file_name = format!("{:08}.json", idx.file_index);
-                let file_path = temp_dir.join(&file_name);
-                let content = std::fs::read(&file_path)?;
-                let candidate: CandidateEntry = serde_json::from_slice(&content)?;
+                // Read from disk using byte offset
+                let file = file.as_mut().unwrap();
+                file.seek(std::io::SeekFrom::Start(idx.offset))?;
+
+                let mut buffer = vec![0u8; idx.length as usize];
+                file.read_exact(&mut buffer)?;
+
+                let candidate: CandidateEntry = serde_json::from_slice(&buffer)?;
                 result.push(candidate);
             }
         }
@@ -579,16 +616,14 @@ impl NeighborFinder {
         Ok(result)
     }
 
-    /// Clean up the temporary directory and candidate files after processing.
+    /// Clean up the temporary directory and candidate file after processing.
     fn cleanup_temp_dir(&mut self) {
         if let Some(ref temp_dir) = self.temp_dir {
-            // Remove all candidate files
-            for i in 0..self.candidate_file_count {
-                let file_name = format!("{:08}.json", i);
-                let file_path = temp_dir.join(&file_name);
+            // Remove the consolidated candidates JSONL file
+            if let Some(ref file_path) = self.candidates_file_path {
                 let _ = std::fs::remove_file(file_path);
             }
-            // Then remove the directory itself (recursively, in case files remain)
+            // Then remove the directory itself (recursively, in case other files remain)
             let _ = std::fs::remove_dir_all(temp_dir);
         }
     }
@@ -1139,9 +1174,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1198,9 +1233,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1245,9 +1280,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1340,9 +1375,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1407,9 +1442,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1475,9 +1510,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1541,9 +1576,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1604,9 +1639,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1682,9 +1717,9 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: None,
-
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
-            candidate_file_count: 0,
             executor_id: None,
         };
 
@@ -1759,7 +1794,8 @@ mod tests {
             base_buffer_bytes: 0,
             candidate_buffer_bytes: 0,
             temp_dir: Some(temp_path.clone()),
-            candidate_file_count: 0,
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             base_chunk_count: 0,
             executor_id: Some(Uuid::new_v4()),
         };
@@ -1794,11 +1830,11 @@ mod tests {
         // Flush candidates to disk
         finder.flush_candidates().unwrap();
 
-        // Verify that candidate JSON file was created
-        let candidate_file_path = temp_path.join("00000000.json");
+        // Verify that candidates JSONL file was created
+        let candidates_file_path = temp_path.join("candidates.jsonl");
         assert!(
-            candidate_file_path.exists(),
-            "Candidate JSON file should exist"
+            candidates_file_path.exists(),
+            "Candidates JSONL file should exist"
         );
 
         // Process base feature
@@ -1810,10 +1846,10 @@ mod tests {
         let ctx = NodeContext::default();
         finder.finish(ctx, &fw).unwrap();
 
-        // Verify that the candidate JSON file was cleaned up
+        // Verify that the candidates JSONL file was cleaned up
         assert!(
-            !candidate_file_path.exists(),
-            "Candidate JSON file should be deleted after processing"
+            !candidates_file_path.exists(),
+            "Candidates JSONL file should be deleted after processing"
         );
 
         // Verify output
@@ -1845,7 +1881,8 @@ mod tests {
             temp_dir: Some(temp_path.clone()),
 
             base_chunk_count: 0,
-            candidate_file_count: 0,
+            candidates_file_path: None,
+            candidates_file_offset: 0,
             executor_id: Some(Uuid::new_v4()),
         };
 
@@ -1870,7 +1907,7 @@ mod tests {
 
         // Verify the index was created
         assert_eq!(finder.candidate_index.len(), 1);
-        assert_eq!(finder.candidate_index[0].file_index, 0);
+        assert_eq!(finder.candidate_index[0].offset, 0); // First candidate at offset 0
         assert_eq!(finder.candidate_index[0].point, [10.0, 20.0]);
 
         // Read the candidate back from disk using batch API
