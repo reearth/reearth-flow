@@ -189,6 +189,7 @@ reqwest = { version = "0.12.28", default-features = false, features = [
   "multipart",
   "rustls-tls-native-roots",
 ] }
+rquickjs = { version = "0.11.0", features = ["bindgen", "classes", "loader", "macro", "parallel"] }
 rhai = { version = "1.24.0", features = [
   "internals",
   "metadata",

@@ -15,6 +15,10 @@ pub(super) enum FeatureProcessorError {
     FilterFactory(String),
     #[error("Feature Filter error: {0}")]
     Filter(String),
+    #[error("Feature Filter V2 Factory error: {0}")]
+    FilterV2Factory(String),
+    #[error("Feature Filter V2 error: {0}")]
+    FilterV2(String),
     #[error("Feature Transformer Factory error: {0}")]
     TransformerFactory(String),
     #[error("Feature Transformer error: {0}")]
