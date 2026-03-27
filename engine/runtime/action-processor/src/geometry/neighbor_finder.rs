@@ -892,10 +892,10 @@ impl NeighborFinder {
             MergeStrategy::Closest => {
                 vec![self.create_enriched_feature(base, &filtered_matches[0], false)?]
             }
-            MergeStrategy::RepeatBase => filtered_matches
-                .iter()
-                .map(|m| self.create_enriched_feature(base, m, true))
-                .collect::<Result<Vec<_>, _>>()?,
+            MergeStrategy::RepeatBase => {
+                // Batch read all candidates at once for efficiency
+                self.create_repeat_base_features(base, &filtered_matches)?
+            }
             MergeStrategy::ArrayAttributes => {
                 vec![self.create_array_enriched_feature(base, &filtered_matches)?]
             }
@@ -936,6 +936,54 @@ impl NeighborFinder {
         self.transfer_attributes(&mut enriched, &candidates[0]);
 
         Ok(enriched)
+    }
+
+    /// Create multiple enriched features for RepeatBase strategy with batched candidate reads.
+    /// This is more efficient than calling create_enriched_feature for each neighbor separately
+    /// because it opens the candidate file only once.
+    fn create_repeat_base_features(
+        &self,
+        base: &Feature,
+        neighbor_matches: &[NeighborMatch],
+    ) -> Result<Vec<Feature>, BoxedError> {
+        if neighbor_matches.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Batch read all candidates at once
+        let indices: Vec<_> = neighbor_matches
+            .iter()
+            .map(|m| &m.candidate_index)
+            .collect();
+        let candidates = self.read_candidates_from_disk(&indices)?;
+
+        // Create enriched feature for each neighbor
+        let mut enriched_features = Vec::with_capacity(neighbor_matches.len());
+        for (i, neighbor_match) in neighbor_matches.iter().enumerate() {
+            let mut enriched = base.clone();
+
+            // Add distance attribute
+            enriched.attributes_mut().insert(
+                self.params.distance_attribute.clone(),
+                f64_to_attribute_value(neighbor_match.distance),
+            );
+
+            // Add neighbor index attribute (if not suppressed)
+            let index_attr = &self.params.neighbor_index_attribute;
+            if !index_attr.as_ref().is_empty() {
+                enriched.attributes_mut().insert(
+                    index_attr.clone(),
+                    AttributeValue::Number(serde_json::Number::from(neighbor_match.index as u64)),
+                );
+            }
+
+            // Transfer attributes from the corresponding candidate
+            self.transfer_attributes(&mut enriched, &candidates[i]);
+
+            enriched_features.push(enriched);
+        }
+
+        Ok(enriched_features)
     }
 
     /// Create an enriched feature with array-valued attributes for all neighbors.
@@ -2121,6 +2169,23 @@ mod tests {
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             let ports = noop.send_ports.lock().unwrap();
             assert_eq!(ports.len(), 2);
+
+            // Verify features have distance but no index attribute (since it's suppressed)
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 2, "Should have 2 features");
+
+            for feature in features.iter() {
+                // Should have distance attribute
+                assert!(
+                    feature.attributes.get(&Attribute::new("_neighbor_distance")).is_some(),
+                    "Should have distance attribute"
+                );
+                // Should NOT have index attribute (empty string suppresses it)
+                assert!(
+                    feature.attributes.get(&Attribute::new("_neighbor_index")).is_none(),
+                    "Index attribute should be suppressed when set to empty string"
+                );
+            }
         }
     }
 
@@ -2222,6 +2287,30 @@ mod tests {
             let ports = noop.send_ports.lock().unwrap();
             assert_eq!(ports.len(), 1);
             assert_eq!(ports[0], *MATCHED_PORT);
+
+            // Verify matched feature has correct neighbor from disk
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1, "Should have 1 matched feature");
+            let feature = &features[0];
+
+            // Verify distance is correct (base at 15, closest candidate at 10 or 20, distance 5)
+            let distance = feature.attributes.get(&Attribute::new("_neighbor_distance"));
+            assert!(distance.is_some(), "Should have distance attribute");
+            if let Some(AttributeValue::Number(d)) = distance {
+                assert!((d.as_f64().unwrap() - 5.0).abs() < 0.001, "Distance should be 5.0");
+            }
+
+            // Verify transferred name from candidate
+            let name = feature.attributes.get(&Attribute::new("_neighbor_name"));
+            assert!(name.is_some(), "Should have transferred name attribute");
+            // Should be Candidate1 or Candidate2 (both at distance 5)
+            if let Some(AttributeValue::String(n)) = name {
+                assert!(
+                    n == "Candidate1" || n == "Candidate2",
+                    "Should match Candidate1 or Candidate2, got {}",
+                    n
+                );
+            }
         }
     }
 

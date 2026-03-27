@@ -1,8 +1,19 @@
-use std::{collections::HashMap, env, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, env, path::PathBuf, sync::Arc, sync::Once};
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::NodeKind;
 use rust_embed::RustEmbed;
+
+/// Initialize test environment once before any test runs.
+/// This sets FLOW_RUNTIME_ACTION_LOG_DISABLE to prevent order-dependent failures
+/// in parallel test runs due to action-log's Lazy static caching.
+static INIT: Once = Once::new();
+
+pub(crate) fn init_test_env() {
+    INIT.call_once(|| {
+        env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+    })
+}
 
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
@@ -36,7 +47,7 @@ pub(crate) struct Fixtures;
 struct WorkflowFiles;
 
 pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir, Error> {
-    env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+    init_test_env();
     let storage_resolver = Arc::new(StorageResolver::new());
     let storage = storage_resolver
         .resolve(&Uri::for_test("ram:///fixture/"))

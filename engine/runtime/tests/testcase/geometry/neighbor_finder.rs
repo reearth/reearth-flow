@@ -95,10 +95,8 @@ fn test_proximity_search_with_geojson() {
         .unwrap();
 
     // Set up dependencies
-    // Note: FLOW_RUNTIME_ACTION_LOG_DISABLE controls action logging via a Lazy static in
-    // action-log. Tests should set this consistently; mixing tests with different values
-    // can cause order-dependent failures due to the cached Lazy initialization.
-    std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+    // Initialize test environment (sets FLOW_RUNTIME_ACTION_LOG_DISABLE before any logger is created)
+    crate::helper::init_test_env();
     let logger_factory = Arc::new(LoggerFactory::new(
         ActionLogger::root(
             reearth_flow_action_log::Discard,
