@@ -27,7 +27,10 @@ type Props = {
   variable: TriggerVariableConfig | AnyWorkflowVariable;
   index: number;
   showVariableDialog?: boolean;
-  onVariableDialogOpen?: (variableIndex: number, arrayItemIndex?: number) => void;
+  onVariableDialogOpen?: (
+    variableIndex: number,
+    arrayItemIndex?: number,
+  ) => void;
   onVariableDialogClose?: () => void;
   onDefaultValueChange: (index: number, newValue: any) => void;
   onAssetDialogOpen: (dialog: "assets" | "cms") => void;
