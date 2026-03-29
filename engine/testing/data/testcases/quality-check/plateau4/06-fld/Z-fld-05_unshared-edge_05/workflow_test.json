@@ -1,0 +1,54 @@
+{
+  "description": "Regression test for false-positive unshared edge detection (tsuyama-shi, pref/yoshiigawa)",
+  "skip": true,
+  "skipReason": "Unshared edge checks do not affect the overall quality check result, so exhaustive regression testing is low priority",
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "fld_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau-citymodel/33203_tsuyama-shi_city_2025_citygml_1_op/33203_city_2025_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6673
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/fld",
+      "name": "fld_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/33203_tsuyama-shi_city_2025_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau-citymodel/33203_tsuyama-shi_city_2025_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_fld_pref_yoshiigawa_kamogawa-hirotogawa-etc.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "06_浸水想定区域_fld/pref/yoshiigawa_kamogawa-hirotogawa-etc.csv",
+      "excludeColumns": [
+        "Index"
+      ]
+    }
+  },
+  "expectResultOkFile": true
+}

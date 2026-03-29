@@ -1755,7 +1755,7 @@ graphs:
     type: action
     action: PLATEAU4.UnsharedEdgeDetector
     with:
-      tolerance: 1.0
+      tolerance: 0.1
       groupBy:
       - _fld_scale
       - udxDirs
@@ -1855,9 +1855,6 @@ graphs:
       - attribute: 線状・点状の三角形
         expr: |
           env.get("__value")._num_degenerate_triangles ?? 0
-      - attribute: 共有先のない辺
-        expr: |
-          env.get("__value")._num_unshared_edges ?? 0
       - attribute: _json_filename
         expr: |
           env.get("__value")._json_filename
@@ -1890,27 +1887,34 @@ graphs:
         if env.get("__features").is_empty() {
           []
         } else {
-          let feature = env.get("__features")[0];
+          let features = env.get("__features");
+          let sum_incorrect = 0;
+          let sum_not_closed = 0;
+          let sum_wrong_orientation = 0;
+          let sum_degenerate = 0;
+          for f in features {
+            sum_incorrect += f["頂点数が不正な三角形"] ?? 0;
+            sum_not_closed += f["閉じていない三角形"] ?? 0;
+            sum_wrong_orientation += f["向きが不正な三角形"] ?? 0;
+            sum_degenerate += f["線状・点状の三角形"] ?? 0;
+          }
+          // Note: "共有先のない辺" is excluded from JSON summary and totalErrorCount to match FME behavior
           [
             #{
               name: "頂点数が不正な三角形",
-              count: feature["頂点数が不正な三角形"],
+              count: sum_incorrect,
             },
             #{
               name: "閉じていない三角形",
-              count: feature["閉じていない三角形"],
+              count: sum_not_closed,
             },
             #{
               name: "向きが不正な三角形",
-              count: feature["向きが不正な三角形"],
+              count: sum_wrong_orientation,
             },
             #{
               name: "線状・点状の三角形",
-              count: feature["線状・点状の三角形"],
-            },
-            #{
-              name: "共有先のない辺",
-              count: feature["共有先のない辺"],
+              count: sum_degenerate,
             }
           ]
         }
@@ -1930,9 +1934,8 @@ graphs:
           let v2 = env.get("__value")["閉じていない三角形"] ?? 0;
           let v3 = env.get("__value")["向きが不正な三角形"] ?? 0;
           let v4 = env.get("__value")["線状・点状の三角形"] ?? 0;
-          let v5 = env.get("__value")["共有先のない辺"] ?? 0;
           let common = env.get("__value")["totalErrorCount"] ?? 0;
-          v1 + v2 + v3 + v4 + v5 + common
+          v1 + v2 + v3 + v4 + common
   - id: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     name: FeatureFilterNoErrors
     type: action

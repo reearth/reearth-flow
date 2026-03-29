@@ -92,6 +92,7 @@ export default function Editor({
     handlePointerDown,
     handleConnectStart,
     handleConnectEnd,
+    handleParamFieldFocus,
     awarenessSelectionsMap,
     setShowSearchPanel,
     selectedNodeIds,
@@ -207,10 +208,13 @@ export default function Editor({
 
           {openNode && (
             <ParamsDialog
+              yDoc={yDoc}
+              users={users}
               openNode={openNode}
               onOpenNode={handleOpenNode}
               onDataSubmit={handleNodesDataUpdate}
               onWorkflowRename={handleWorkflowRename}
+              onParamFieldFocus={handleParamFieldFocus}
             />
           )}
           {showBeforeDeleteDialog && (

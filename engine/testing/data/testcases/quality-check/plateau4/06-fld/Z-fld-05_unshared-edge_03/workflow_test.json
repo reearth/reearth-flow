@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check for unshared edges #3 - threshold boundary cases",
+  "description": "Only unshared edges detected (reported in CSV but excluded from error count) — passes as OK",
   "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {
@@ -45,5 +45,5 @@
       "expectedFile": "06_浸水想定区域_fld/natl/1_1_kikuchigawa_kikuchigawa.csv"
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": true
 }

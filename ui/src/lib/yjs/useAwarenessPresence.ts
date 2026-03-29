@@ -4,13 +4,15 @@ import { MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 
-import type { AwarenessSelectionsMap, AwarenessUser } from "@flow/types";
+import type { AwarenessSelectionsMap, AwarenessUser, Node } from "@flow/types";
 
 export default function useAwarenessPresence({
   yAwareness,
+  openNode,
   selectedNodeIds,
 }: {
   yAwareness: Awareness;
+  openNode: Node | undefined;
   selectedNodeIds: string[];
 }) {
   const rawSelf = useSelf(yAwareness);
@@ -170,6 +172,13 @@ export default function useAwarenessPresence({
     return map;
   }, [rawUsers, yAwareness.clientID]);
 
+  const handleParamFieldFocus = useCallback(
+    (fieldId: string | null) => {
+      yAwareness.setLocalStateField("focusedParamField", fieldId);
+    },
+    [yAwareness],
+  );
+
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
       throttledPresenceUpdate(event.clientX, event.clientY);
@@ -215,14 +224,26 @@ export default function useAwarenessPresence({
     );
   }, [selectedNodeIds, yAwareness]);
 
+  useEffect(() => {
+    const openNodeId = openNode?.id ?? null;
+
+    const localOpenNodeId = yAwareness.getLocalState()?.openNodeId;
+
+    if (openNodeId === localOpenNodeId) {
+      return;
+    }
+
+    yAwareness.setLocalStateField("openNodeId", openNodeId);
+    yAwareness.setLocalStateField("focusedParamField", null);
+  }, [openNode, yAwareness]);
+
   return {
     self,
     users,
+    awarenessSelectionsMap,
     handlePointerDown,
-    isSelectingRef,
-    selectionStartRef,
+    handleParamFieldFocus,
     setDraggingEdge,
     clearDraggingEdge,
-    awarenessSelectionsMap,
   };
 }

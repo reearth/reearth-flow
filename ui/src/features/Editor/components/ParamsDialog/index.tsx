@@ -1,6 +1,8 @@
 import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useY } from "react-yjs";
+import { Doc, Map as YMap } from "yjs";
 
 import {
   Dialog,
@@ -9,17 +11,25 @@ import {
   DialogTitle,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { Node } from "@flow/types";
+import type { AwarenessUser, Node } from "@flow/types";
 
 import {
   ParamEditor,
   ValueEditorDialog,
   PythonEditorDialog,
 } from "./components";
-import { FieldContext, setValueAtPath } from "./utils/fieldUtils";
+import { FieldContext, getValueAtPath } from "./utils/fieldUtils";
+import {
+  applyMergedPatch,
+  DraftPatch,
+  DraftStore,
+  rjsfIdToPath,
+} from "./utils/paramsAwareness";
 
 type Props = {
   readonly?: boolean;
+  yDoc?: Doc | null;
+  users?: Record<string, AwarenessUser>;
   openNode?: Node;
   onOpenNode: (nodeId?: string) => void;
   onDataSubmit?: (
@@ -30,16 +40,21 @@ type Props = {
     }[],
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
+  onParamFieldFocus?: (fieldId: string | null) => void;
 };
 
 const ParamsDialog: React.FC<Props> = ({
   readonly,
+  yDoc,
+  users = {},
   openNode,
   onOpenNode,
   onDataSubmit,
   onWorkflowRename,
+  onParamFieldFocus,
 }) => {
   const t = useT();
+  const clientId = String(yDoc?.clientID ?? "local");
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
   const [openPythonEditor, setOpenPythonEditor] = useState(false);
@@ -47,14 +62,102 @@ const ParamsDialog: React.FC<Props> = ({
     FieldContext | undefined
   >(undefined);
 
+  const yDrafts = useMemo(() => yDoc?.getMap<any>("paramDrafts"), [yDoc]);
+  const rawDrafts = useY(yDrafts ?? new YMap()) as DraftStore;
+
+  const nodeDrafts = openNode?.id ? rawDrafts[openNode.id] : undefined;
+
+  const currentParams = useMemo(() => {
+    if (!openNode) return undefined;
+    return applyMergedPatch(openNode.data.params, nodeDrafts, "paramsPatch");
+  }, [openNode, nodeDrafts]);
+
+  const currentCustomizations = useMemo(() => {
+    if (!openNode) return undefined;
+    return applyMergedPatch(
+      openNode.data.customizations,
+      nodeDrafts,
+      "customizationsPatch",
+    );
+  }, [openNode, nodeDrafts]);
+
+  const setMyDraft = useCallback(
+    (nodeId: string, updater: (existing: DraftPatch) => DraftPatch) => {
+      const existingNodeDrafts = rawDrafts[nodeId] ?? {};
+      const existingMyDraft = existingNodeDrafts[clientId] ?? {};
+      const nextMyDraft = updater(existingMyDraft);
+
+      yDrafts?.set(nodeId, {
+        ...existingNodeDrafts,
+        [clientId]: nextMyDraft,
+      });
+    },
+    [rawDrafts, yDrafts, clientId],
+  );
+
+  const removeMyDraft = useCallback(
+    (nodeId: string) => {
+      const existingNodeDrafts = rawDrafts[nodeId];
+      if (!existingNodeDrafts) return;
+
+      const { [clientId]: _removed, ...remainingDrafts } = existingNodeDrafts;
+
+      if (Object.keys(remainingDrafts).length === 0) {
+        yDrafts?.delete(nodeId);
+      } else {
+        yDrafts?.set(nodeId, remainingDrafts);
+      }
+    },
+    [rawDrafts, yDrafts, clientId],
+  );
+
+  const updateMyFieldPatch = useCallback(
+    (
+      nodeId: string,
+      patchKey: "paramsPatch" | "customizationsPatch",
+      path: string,
+      value: any,
+    ) => {
+      setMyDraft(nodeId, (existing) => ({
+        ...existing,
+        [patchKey]: {
+          ...(existing[patchKey] ?? {}),
+          [path]: {
+            value,
+            updatedAt: Date.now(),
+          },
+        },
+      }));
+    },
+    [setMyDraft],
+  );
+
   const handleUpdate = useCallback(
-    async (nodeId: string, updatedParams: any, updatedCustomizations: any) => {
-      await Promise.resolve(
-        onDataSubmit?.([{ nodeId, updatedParams, updatedCustomizations }]),
+    async (id: string, _updatedParams: any, _updatedCustomizations: any) => {
+      if (!openNode || openNode.id !== id) return;
+
+      const latestNodeDrafts = rawDrafts[id] ?? {};
+
+      const updatedParams = applyMergedPatch(
+        openNode.data.params,
+        latestNodeDrafts,
+        "paramsPatch",
       );
+
+      const updatedCustomizations = applyMergedPatch(
+        openNode.data.customizations,
+        latestNodeDrafts,
+        "customizationsPatch",
+      );
+
+      yDoc?.transact(() => {
+        onDataSubmit?.([{ nodeId: id, updatedParams, updatedCustomizations }]);
+      }, "params");
+
+      removeMyDraft(id);
       onOpenNode();
     },
-    [onDataSubmit, onOpenNode],
+    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -75,28 +178,86 @@ const ParamsDialog: React.FC<Props> = ({
     }
   }, [setViewport, getViewport, openNode]);
 
-  const [updatedParams, setUpdatedParams] = useState(openNode?.data.params);
+  const previousNodeIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (openNode && !updatedParams) {
-      setUpdatedParams(openNode.data.params);
-    }
-  }, [openNode, updatedParams]);
+    const previousNodeId = previousNodeIdRef.current;
+    const currentNodeId = openNode?.id;
 
-  const handleParamChange = (data: any) => {
-    setUpdatedParams(data);
-  };
+    if (previousNodeId && !currentNodeId) {
+      removeMyDraft(previousNodeId);
+    }
+
+    previousNodeIdRef.current = currentNodeId;
+  }, [openNode?.id, removeMyDraft]);
+
+  const nodeIdRef = useRef<string | undefined>(openNode?.id);
+  nodeIdRef.current = openNode?.id;
+  const removeMyDraftRef = useRef(removeMyDraft);
+  removeMyDraftRef.current = removeMyDraft;
+
+  useEffect(() => {
+    return () => {
+      const nodeId = nodeIdRef.current;
+      if (!nodeId) return;
+      removeMyDraftRef.current(nodeId);
+    };
+  }, []);
+
+  const fieldFocusMap = useMemo(() => {
+    const map: Record<string, AwarenessUser[]> = {};
+    if (!openNode) return map;
+    Object.values(users).forEach((user) => {
+      if (user.openNodeId === openNode.id && user.focusedParamField) {
+        const fieldId = user.focusedParamField;
+        if (!map[fieldId]) map[fieldId] = [];
+
+        map[fieldId].push({
+          clientId: user.clientId,
+          color: user.color,
+          userName: user.userName,
+        });
+      }
+    });
+    return map;
+  }, [users, openNode]);
+
+  const handleParamChange = useCallback(
+    (data: any, changedFieldId?: string) => {
+      if (!openNode) return;
+
+      const path = rjsfIdToPath(changedFieldId);
+      if (!path) return;
+
+      const value = getValueAtPath(data, path.split("."));
+
+      updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
+    },
+    [openNode, updateMyFieldPatch],
+  );
+
+  const handleCustomizationChange = useCallback(
+    (data: any, changedFieldId?: string) => {
+      if (!openNode) return;
+
+      const path = rjsfIdToPath(changedFieldId);
+      if (!path) return;
+
+      const value = getValueAtPath(data, path.split("."));
+
+      updateMyFieldPatch(openNode.id, "customizationsPatch", path, value);
+    },
+    [openNode, updateMyFieldPatch],
+  );
 
   const handleValueChange = (value: any) => {
-    if (currentFieldContext) {
-      const currentParams = updatedParams || {};
-      const newParams = setValueAtPath(
-        currentParams,
-        currentFieldContext.path,
-        value,
-      );
-      handleParamChange(newParams);
-    }
+    if (!currentFieldContext || !openNode) return;
+
+    const path = Array.isArray(currentFieldContext.path)
+      ? currentFieldContext.path.join(".")
+      : currentFieldContext.path;
+
+    updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
   };
 
   return (
@@ -108,6 +269,38 @@ const ParamsDialog: React.FC<Props> = ({
               <div className="flex items-center gap-2">
                 <GearFineIcon weight="thin" />
                 {t("Action Editor")}
+                <div className="flex items-center -space-x-4">
+                  {(() => {
+                    const nodeUsers = Object.values(users).filter(
+                      (user) => user.openNodeId === openNode?.id,
+                    );
+                    return (
+                      <>
+                        {nodeUsers.slice(0, 2).map((user) => (
+                          <div key={user.clientId}>
+                            <div
+                              className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                              style={{
+                                backgroundColor: user.color || undefined,
+                              }}>
+                              <span className="text-xs font-medium text-white select-none">
+                                {user.userName.charAt(0).toUpperCase()}
+                                {user.userName.charAt(1)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {nodeUsers.length > 2 && (
+                          <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
+                            <span className="text-[10px] font-medium text-white">
+                              + {nodeUsers.length - 2}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </DialogTitle>
           </DialogHeader>
@@ -117,10 +310,14 @@ const ParamsDialog: React.FC<Props> = ({
               nodeId={openNode.id}
               nodeMeta={openNode.data}
               nodeType={openNode.type}
-              nodeParams={updatedParams}
+              nodeParams={currentParams}
+              nodeCustomizations={currentCustomizations}
+              fieldFocusMap={fieldFocusMap}
               onParamsUpdate={handleParamChange}
+              onCustomizationsUpdate={handleCustomizationChange}
               onUpdate={handleUpdate}
               onWorkflowRename={onWorkflowRename}
+              onParamFieldFocus={onParamFieldFocus}
               onValueEditorOpen={(fieldContext) => {
                 setCurrentFieldContext(fieldContext);
                 setOpenValueEditor(true);
