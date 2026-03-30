@@ -70,6 +70,7 @@ const CityGmlData: React.FC<Props> = ({
           remove();
         }
       });
+      viewer.scene.requestRender();
     },
     [viewer],
   );
@@ -79,6 +80,7 @@ const CityGmlData: React.FC<Props> = ({
       if (entry.lodPrimitiveCollection && viewer) {
         viewer.scene.primitives.remove(entry.lodPrimitiveCollection);
         entry.lodPrimitiveCollection = null;
+        viewer.scene.requestRender();
       }
       waitForPrimitive(absolutePrimitiveRef.current, () => {
         entry.absoluteInstanceIds.forEach((id) => {
@@ -132,6 +134,7 @@ const CityGmlData: React.FC<Props> = ({
           if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(false);
         });
       });
+      viewer.scene.requestRender();
     },
     [viewer, waitForPrimitive, buildLodGeometry],
   );
@@ -252,6 +255,7 @@ const CityGmlData: React.FC<Props> = ({
         });
       });
     });
+    viewer.scene.requestRender();
   }, [viewer, showSelectedFeatureOnly, selectedFeatureId, waitForPrimitive]);
 
   return null;
