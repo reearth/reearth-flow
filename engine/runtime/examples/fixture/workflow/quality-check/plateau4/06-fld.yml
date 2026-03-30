@@ -1855,9 +1855,6 @@ graphs:
       - attribute: 線状・点状の三角形
         expr: |
           env.get("__value")._num_degenerate_triangles ?? 0
-      - attribute: 共有先のない辺
-        expr: |
-          env.get("__value")._num_unshared_edges ?? 0
       - attribute: _json_filename
         expr: |
           env.get("__value")._json_filename
@@ -1895,14 +1892,13 @@ graphs:
           let sum_not_closed = 0;
           let sum_wrong_orientation = 0;
           let sum_degenerate = 0;
-          let sum_unshared = 0;
           for f in features {
             sum_incorrect += f["頂点数が不正な三角形"] ?? 0;
             sum_not_closed += f["閉じていない三角形"] ?? 0;
             sum_wrong_orientation += f["向きが不正な三角形"] ?? 0;
             sum_degenerate += f["線状・点状の三角形"] ?? 0;
-            sum_unshared += f["共有先のない辺"] ?? 0;
           }
+          // Note: "共有先のない辺" is excluded from JSON summary and totalErrorCount to match FME behavior
           [
             #{
               name: "頂点数が不正な三角形",
@@ -1919,10 +1915,6 @@ graphs:
             #{
               name: "線状・点状の三角形",
               count: sum_degenerate,
-            },
-            #{
-              name: "共有先のない辺",
-              count: sum_unshared,
             }
           ]
         }
@@ -1942,9 +1934,8 @@ graphs:
           let v2 = env.get("__value")["閉じていない三角形"] ?? 0;
           let v3 = env.get("__value")["向きが不正な三角形"] ?? 0;
           let v4 = env.get("__value")["線状・点状の三角形"] ?? 0;
-          let v5 = env.get("__value")["共有先のない辺"] ?? 0;
           let common = env.get("__value")["totalErrorCount"] ?? 0;
-          v1 + v2 + v3 + v4 + v5 + common
+          v1 + v2 + v3 + v4 + common
   - id: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     name: FeatureFilterNoErrors
     type: action
