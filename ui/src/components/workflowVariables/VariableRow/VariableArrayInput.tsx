@@ -111,7 +111,7 @@ export default function VariableArrayInput({
           ) : (
             <Input
               id={`default-${index}`}
-              type="number"
+              type={typeof item === "number" ? "number" : "text"}
               value={item}
               onChange={(e) => {
                 handleUpdateItem(index, parseFloat(e.target.value));
