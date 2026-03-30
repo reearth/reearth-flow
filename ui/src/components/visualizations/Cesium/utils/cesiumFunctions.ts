@@ -63,39 +63,8 @@ export const zoomToBoundingSphere = (
 ) => {
   const gmlGeometries =
     geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
-  const positions: Cartesian3[] = [];
+
   if (!Array.isArray(gmlGeometries)) return;
-  for (const geom of gmlGeometries) {
-    if (!Array.isArray(geom.polygons)) continue;
-
-    for (const polygon of geom.polygons) {
-      const rings = [
-        ...(polygon.exterior ? [polygon.exterior] : []),
-        ...(Array.isArray(polygon.interiors) ? polygon.interiors : []),
-      ];
-
-      for (const ring of rings) {
-        if (!Array.isArray(ring)) continue;
-        for (const coord of ring || []) {
-          if (
-            coord &&
-            typeof coord.x === "number" &&
-            typeof coord.y === "number"
-          ) {
-            positions.push(
-              Cartesian3.fromDegrees(
-                coord.x,
-                coord.y,
-                typeof coord.z === "number" ? coord.z : 0,
-              ),
-            );
-          }
-        }
-      }
-    }
-  }
-
-  if (positions.length === 0) return;
 
   const sphere = getFeatureBoundingSphereFromBounds(gmlGeometries);
   if (!sphere) return;

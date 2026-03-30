@@ -70,8 +70,8 @@ const CityGmlData: React.FC<Props> = ({
         if (Date.now() - startTime > WAIT_FOR_PRIMITIVE_TIMEOUT_MS) {
           remove();
         }
+        viewer.scene.requestRender();
       });
-      viewer.scene.requestRender();
     },
     [viewer],
   );
@@ -182,13 +182,7 @@ const CityGmlData: React.FC<Props> = ({
       hasInitializedRef.current = true;
     }
     viewer.scene.requestRender();
-  }, [
-    cityGmlData,
-    viewer,
-    setCityGmlBoundingSphere,
-    selectedFeatureId,
-    cancelPending,
-  ]);
+  }, [cityGmlData, viewer, setCityGmlBoundingSphere, cancelPending]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {
