@@ -6892,7 +6892,7 @@ Finds the closest candidate features for each base feature based on spatial prox
           ]
         },
         {
-          "description": "Great-circle distance treating X as longitude (degrees) and Y as latitude (degrees). Output is in meters. Intended for WGS-84 inputs.",
+          "description": "Great-circle distance treating X as longitude (degrees) and Y as latitude (degrees). Output is in meters. Intended for WGS-84 inputs.\n\nNote: Distance is computed between representative points (centroids). For accurate results, input features should be relatively small (e.g., buildings, local roads). Large geometries (e.g., countries, large water bodies) may produce inaccurate distances because their centroids may not represent their spatial extent well.",
           "type": "string",
           "enum": [
             "haversine"
