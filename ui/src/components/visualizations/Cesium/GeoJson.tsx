@@ -106,53 +106,61 @@ const GeoJsonData: React.FC<Props> = ({
     });
   }, [selectedFeatureId, showSelectedFeatureOnly]);
 
-  const handleDeselectFeature = useCallback((prevId: string) => {
-    const records = featureMapRef.current.get(prevId);
-    if (!records) return;
+  const handleDeselectFeature = useCallback(
+    (prevId: string) => {
+      const records = featureMapRef.current.get(prevId);
+      if (!records || !viewer) return;
 
-    records.forEach(
-      ({
-        entity,
-        origPolygonMaterial,
-        origPolygonOutlineColor,
-        origPolylineMaterial,
-        origBillboardColor,
-      }) => {
+      records.forEach(
+        ({
+          entity,
+          origPolygonMaterial,
+          origPolygonOutlineColor,
+          origPolylineMaterial,
+          origBillboardColor,
+        }) => {
+          if (entity.polygon) {
+            if (origPolygonMaterial !== undefined)
+              entity.polygon.material = origPolygonMaterial;
+            if (origPolygonOutlineColor !== undefined)
+              entity.polygon.outlineColor = origPolygonOutlineColor;
+          }
+
+          if (entity.polyline && origPolylineMaterial !== undefined) {
+            entity.polyline.material = origPolylineMaterial;
+          }
+
+          if (entity.billboard) {
+            entity.billboard.color = origBillboardColor;
+          }
+        },
+      );
+      viewer?.scene.requestRender();
+    },
+    [viewer],
+  );
+
+  const handleHighlightSelectedFeature = useCallback(
+    (featureId: string) => {
+      const records = featureMapRef.current.get(featureId);
+      if (!records || !viewer) return;
+
+      records.forEach(({ entity }) => {
         if (entity.polygon) {
-          if (origPolygonMaterial !== undefined)
-            entity.polygon.material = origPolygonMaterial;
-          if (origPolygonOutlineColor !== undefined)
-            entity.polygon.outlineColor = origPolygonOutlineColor;
+          entity.polygon.material = new ColorMaterialProperty(HIGHLIGHT_FILL);
+          entity.polygon.outlineColor = new ConstantProperty(HIGHLIGHT_COLOR);
         }
-
-        if (entity.polyline && origPolylineMaterial !== undefined) {
-          entity.polyline.material = origPolylineMaterial;
-        }
-
         if (entity.billboard) {
-          entity.billboard.color = origBillboardColor;
+          entity.billboard.color = new ConstantProperty(HIGHLIGHT_COLOR);
         }
-      },
-    );
-  }, []);
-
-  const handleHighlightSelectedFeature = useCallback((featureId: string) => {
-    const records = featureMapRef.current.get(featureId);
-    if (!records) return;
-
-    records.forEach(({ entity }) => {
-      if (entity.polygon) {
-        entity.polygon.material = new ColorMaterialProperty(HIGHLIGHT_FILL);
-        entity.polygon.outlineColor = new ConstantProperty(HIGHLIGHT_COLOR);
-      }
-      if (entity.billboard) {
-        entity.billboard.color = new ConstantProperty(HIGHLIGHT_COLOR);
-      }
-      if (entity.polyline) {
-        entity.polyline.material = new ColorMaterialProperty(HIGHLIGHT_COLOR);
-      }
-    });
-  }, []);
+        if (entity.polyline) {
+          entity.polyline.material = new ColorMaterialProperty(HIGHLIGHT_COLOR);
+        }
+      });
+      viewer?.scene.requestRender();
+    },
+    [viewer],
+  );
 
   const flyTo = useCallback(
     async (isInitial?: boolean) => {
@@ -174,6 +182,7 @@ const GeoJsonData: React.FC<Props> = ({
           duration: isInitial ? 0 : 1.2,
         });
       }
+      viewer.scene.requestRender();
     },
     [viewer, selectedFeatureId],
   );
