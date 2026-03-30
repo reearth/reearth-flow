@@ -9,13 +9,12 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::Expr;
-use rquickjs::{Context, Function, Runtime};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
-use super::quickjs_helper::{make_env_js, make_value_fn};
+use super::quickjs_helper::JsEngine;
 
 static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
@@ -72,48 +71,43 @@ impl ProcessorFactory for FeatureFilterV2Factory {
             .into());
         };
 
-        // Validate that all expressions are valid JS by doing a trial compile
-        let rt = Runtime::new().map_err(|e| {
-            FeatureProcessorError::FilterV2Factory(format!("Failed to create JS runtime: {e}"))
+        let mut engine = JsEngine::new().map_err(|e| {
+            FeatureProcessorError::FilterV2Factory(e)
         })?;
-        let js_ctx = Context::full(&rt).map_err(|e| {
-            FeatureProcessorError::FilterV2Factory(format!("Failed to create JS context: {e}"))
-        })?;
+
+        let mut conditions = Vec::with_capacity(params.conditions.len());
         for condition in &params.conditions {
-            let expr = condition.expr.as_ref().to_string();
-            js_ctx.with(|ctx| {
-                let wrapper = format!("(function(value, env) {{ return ({expr}); }})");
-                ctx.eval::<rquickjs::Value, _>(wrapper.into_bytes())
-                    .map_err(|e| {
-                        FeatureProcessorError::FilterV2Factory(format!(
-                            "Invalid JS expression '{expr}': {e}"
-                        ))
-                    })?;
-                Ok::<(), FeatureProcessorError>(())
+            let name = engine.compile_expr(condition.expr.as_ref()).map_err(|e| {
+                FeatureProcessorError::FilterV2Factory(format!(
+                    "Invalid expression '{}': {e}",
+                    condition.expr.as_ref()
+                ))
             })?;
+            conditions.push(CompiledCondition {
+                fn_name: name,
+                output_port: condition.output_port.clone(),
+            });
         }
 
-        let conditions: Vec<JsCondition> = params
-            .conditions
-            .into_iter()
-            .map(|c| JsCondition {
-                expr: c.expr.as_ref().to_string(),
-                output_port: c.output_port,
-            })
-            .collect();
-
-        let process = FeatureFilterV2 {
+        Ok(Box::new(FeatureFilterV2 {
+            engine,
             global_params: with,
             conditions,
-        };
-        Ok(Box::new(process))
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
 struct FeatureFilterV2 {
+    engine: JsEngine,
     global_params: Option<HashMap<String, serde_json::Value>>,
-    conditions: Vec<JsCondition>,
+    conditions: Vec<CompiledCondition>,
+}
+
+#[derive(Debug, Clone)]
+struct CompiledCondition {
+    fn_name: String,
+    output_port: Port,
 }
 
 /// # Feature Filter V2 Parameters
@@ -135,12 +129,6 @@ struct ConditionV2 {
     output_port: Port,
 }
 
-#[derive(Debug, Clone)]
-struct JsCondition {
-    expr: String,
-    output_port: Port,
-}
-
 impl Processor for FeatureFilterV2 {
     fn process(
         &mut self,
@@ -148,50 +136,21 @@ impl Processor for FeatureFilterV2 {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
+        let attrs = Arc::clone(&feature.attributes);
         let mut routing = false;
 
-        let attrs = Arc::clone(&feature.attributes);
-
-        let rt = Runtime::new().map_err(|e| {
-            FeatureProcessorError::FilterV2(format!("Failed to create JS runtime: {e}"))
-        })?;
-        let js_ctx = Context::full(&rt).map_err(|e| {
-            FeatureProcessorError::FilterV2(format!("Failed to create JS context: {e}"))
-        })?;
-
         for condition in &self.conditions {
-            let expr = &condition.expr;
-            let attrs_clone = Arc::clone(&attrs);
-            let eval_result: Result<bool, BoxedError> = js_ctx.with(|js| {
-                let value_fn = make_value_fn(&js, attrs_clone).map_err(|e| -> BoxedError {
-                    FeatureProcessorError::FilterV2(format!(
-                        "Failed to create value() function: {e}"
-                    ))
-                    .into()
-                })?;
-                let js_env = make_env_js(&js, &self.global_params).map_err(|e| -> BoxedError {
-                    FeatureProcessorError::FilterV2(format!("Failed to convert env: {e}")).into()
-                })?;
+            let result = self.engine.call(&condition.fn_name, &attrs, &self.global_params);
 
-                let code = format!("(function(value, env) {{ return ({expr}); }})");
-                let func: Function = js.eval(code.into_bytes()).map_err(|e| -> BoxedError {
-                    FeatureProcessorError::FilterV2(format!("Failed to compile expr: {e}")).into()
-                })?;
-                let result: bool = func.call((value_fn, js_env)).map_err(|e| -> BoxedError {
-                    FeatureProcessorError::FilterV2(format!("Failed to eval expr: {e}")).into()
-                })?;
-                Ok(result)
-            });
-
-            match eval_result {
-                Ok(true) => {
+            match result {
+                Ok(serde_json::Value::Bool(true)) => {
                     fw.send(ctx.new_with_feature_and_port(
                         feature.clone(),
                         condition.output_port.clone(),
                     ));
                     routing = true;
                 }
-                Ok(false) => {}
+                Ok(_) => {}
                 Err(err) => {
                     ctx.event_hub.error_log(
                         Some(ctx.error_span()),

@@ -8,13 +8,12 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr};
-use rquickjs::{Context, Function, Runtime};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
-use super::quickjs_helper::{js_to_json, make_env_js, make_value_fn};
+use super::quickjs_helper::{js_to_json, JsEngine};
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct JavaScriptCallerFactory;
@@ -69,41 +68,29 @@ impl ProcessorFactory for JavaScriptCallerFactory {
             .into());
         };
 
-        let process_str = params.process.as_ref().to_string();
+        let mut engine = JsEngine::new().map_err(|e| {
+            FeatureProcessorError::JavaScriptCallerFactory(e)
+        })?;
 
-        // Validate syntax at build time
-        let rt = Runtime::new().map_err(|e| {
+        let fn_name = engine.compile_body(params.process.as_ref()).map_err(|e| {
             FeatureProcessorError::JavaScriptCallerFactory(format!(
-                "Failed to create JS runtime: {e}"
+                "Invalid process expression: {e}"
             ))
-        })?;
-        let js_ctx = Context::full(&rt).map_err(|e| {
-            FeatureProcessorError::JavaScriptCallerFactory(format!(
-                "Failed to create JS context: {e}"
-            ))
-        })?;
-        js_ctx.with(|ctx| {
-            let wrapper = format!("(function(value, env) {{ {process_str} }})");
-            ctx.eval::<rquickjs::Value, _>(wrapper.into_bytes())
-                .map_err(|e| {
-                    FeatureProcessorError::JavaScriptCallerFactory(format!(
-                        "Invalid process expression: {e}"
-                    ))
-                })?;
-            Ok::<(), FeatureProcessorError>(())
         })?;
 
         Ok(Box::new(JavaScriptCaller {
+            engine,
+            fn_name,
             global_params: with,
-            process: process_str,
         }))
     }
 }
 
 #[derive(Debug, Clone)]
 struct JavaScriptCaller {
+    engine: JsEngine,
+    fn_name: String,
     global_params: Option<HashMap<String, serde_json::Value>>,
-    process: String,
 }
 
 /// # JavaScriptCaller Parameters
@@ -142,53 +129,37 @@ impl Processor for JavaScriptCaller {
         let feature = &ctx.feature;
         let attrs = Arc::clone(&feature.attributes);
 
-        let rt = Runtime::new().map_err(|e| {
-            FeatureProcessorError::JavaScriptCaller(format!("Failed to create JS runtime: {e}"))
-        })?;
-        let js_ctx = Context::full(&rt).map_err(|e| {
-            FeatureProcessorError::JavaScriptCaller(format!("Failed to create JS context: {e}"))
-        })?;
-
-        let process_str = &self.process;
-        let result: Result<(), BoxedError> = js_ctx.with(|js| {
-            let value_fn =
-                make_value_fn(&js, attrs).map_err(|e| -> BoxedError { e.into() })?;
-            let js_env =
-                make_env_js(&js, &self.global_params).map_err(|e| -> BoxedError { e.into() })?;
-
-            let code = format!("(function(value, env) {{ {process_str} }})");
-            let func: Function = js
-                .eval(code.into_bytes())
-                .map_err(|e| -> BoxedError { e.into() })?;
-            let result: rquickjs::Value = func
-                .call((value_fn, js_env))
-                .map_err(|e| -> BoxedError { e.into() })?;
-
-            if let Some(arr) = result.as_array() {
-                for item in arr.iter::<rquickjs::Value>() {
-                    let item = item.map_err(|e| -> BoxedError { e.into() })?;
-                    if let Some(obj) = item.as_object() {
-                        if let Some(new_attrs) = js_object_to_attributes(obj) {
-                            let mut new_feature = feature.clone();
-                            new_feature.refresh_id();
-                            new_feature.attributes = Arc::new(new_attrs);
-                            fw.send(ctx.new_with_feature_and_port(
-                                new_feature,
-                                DEFAULT_PORT.clone(),
-                            ));
+        let result = self.engine.call_raw(
+            &self.fn_name,
+            &attrs,
+            &self.global_params,
+            |_js_ctx, result| {
+                if let Some(arr) = result.as_array() {
+                    for item in arr.iter::<rquickjs::Value>() {
+                        let item = item.map_err(|e| format!("{e}"))?;
+                        if let Some(obj) = item.as_object() {
+                            if let Some(new_attrs) = js_object_to_attributes(obj) {
+                                let mut new_feature = feature.clone();
+                                new_feature.refresh_id();
+                                new_feature.attributes = Arc::new(new_attrs);
+                                fw.send(ctx.new_with_feature_and_port(
+                                    new_feature,
+                                    DEFAULT_PORT.clone(),
+                                ));
+                            }
                         }
                     }
+                } else if let Some(obj) = result.as_object() {
+                    if let Some(new_attrs) = js_object_to_attributes(obj) {
+                        let new_feature = feature.clone().into_with_attributes(new_attrs);
+                        fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    }
+                } else {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
                 }
-            } else if let Some(obj) = result.as_object() {
-                if let Some(new_attrs) = js_object_to_attributes(obj) {
-                    let new_feature = feature.clone().into_with_attributes(new_attrs);
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
-                }
-            } else {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            }
-            Ok(())
-        });
+                Ok(())
+            },
+        );
 
         result.map_err(|e| {
             FeatureProcessorError::JavaScriptCaller(format!("process eval error: {e}"))
