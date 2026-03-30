@@ -31,7 +31,8 @@ Runtime behavior controlled by `FLOW_RUNTIME_*` variables.
 
 ### Data Handling & Debugging
 
-- `FLOW_RUNTIME_WORKING_DIRECTORY` - Override default cache directory location. Default: macOS `$HOME/Library/Caches/<project_path>`, Linux `$HOME/.cache/<project_path>`
+- `FLOW_RUNTIME_WORKING_DIRECTORY` - Override the base directory for engine caches and artifacts. By default this is a platform-specific cache directory resolved via [`directories::ProjectDirs`](../runtime/common/src/dir.rs) and depends on the project key.
+- `FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY` - Optional override for the directory where job-scoped temporary artifacts are written. Defaults to a subdirectory under the working directory derived from `FLOW_RUNTIME_WORKING_DIRECTORY` and the project key.
 - `FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD` - Buffer size before writing features to disk (default: 512)
 - `FLOW_RUNTIME_FEATURE_WRITER_DISABLE` - Set to `"true"` to disable intermediate data capture (impacts debugging)
 
