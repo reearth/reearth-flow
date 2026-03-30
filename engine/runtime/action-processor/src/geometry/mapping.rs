@@ -32,6 +32,7 @@ use super::{
     image_rasterizer::ImageRasterizerFactory,
     jp_standard_grid_accumulator::JPStandardGridAccumulatorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory,
+    neighbor_finder::NeighborFinderFactory,
     offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory,
     planarity_filter::PlanarityFilterFactory,
@@ -110,6 +111,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<GridDividerFactory>::default(),
         Box::<Rotator3DFactory>::default(),
         Box::<CoordinateExtractorFactory>::default(),
+        Box::<NeighborFinderFactory>::default(),
     ];
     factories
         .into_iter()

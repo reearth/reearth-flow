@@ -1,0 +1,58 @@
+{
+  "type": "FeatureCollection",
+  "name": "NeighborFinderTestPoints",
+  "description": "Test data for NeighborFinder proximity search. Points are arranged on a line for predictable distance calculations.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "candidate_close",
+        "name": "Close Candidate",
+        "type": "candidate",
+        "expected_distance_from_base": 1.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [0, 0]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "candidate_mid",
+        "name": "Mid Distance Candidate",
+        "type": "candidate",
+        "expected_distance_from_base": 5.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [4, 3]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "candidate_far",
+        "name": "Far Candidate",
+        "type": "candidate",
+        "expected_distance_from_base": 10.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10, 0]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "base_feature",
+        "name": "Base Feature",
+        "type": "base"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [1, 0]
+      }
+    }
+  ]
+}
