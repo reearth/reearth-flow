@@ -61,6 +61,7 @@ impl SchemaNodeType {
         node: Node,
         kind: Option<NodeKind>,
         with: Option<HashMap<String, serde_json::Value>>,
+        subgraph_prefix: Option<String>,
     ) -> Self {
         Self {
             handle: NodeHandle::new(id),
@@ -68,7 +69,7 @@ impl SchemaNodeType {
             node,
             kind,
             with,
-            subgraph_prefix: None,
+            subgraph_prefix,
         }
     }
 }
@@ -263,6 +264,7 @@ impl DagSchemas {
                 node.clone(),
                 kind.clone(),
                 Some(with),
+                None,
             ));
             if let Some(kind) = kind {
                 node_mappings.insert(index, kind.clone());
@@ -505,15 +507,14 @@ impl DagSchemas {
                 }
                 let node_params = node_type.with.clone();
                 let node_type_action = node_type.node.action();
-                let subgraph_prefix = node_type.subgraph_prefix.clone();
-                let mut node_type = SchemaNodeType::new(
+                let node_type = SchemaNodeType::new(
                     node_type.handle.id.clone(),
                     node_type.name.clone(),
                     node_type.node.clone(),
                     node_type.kind.clone(),
                     Some(with),
+                    node_type.subgraph_prefix.clone(),
                 );
-                node_type.subgraph_prefix = subgraph_prefix;
                 let new_node = main_graph.add_node(node_type);
                 new_node_map.push((node, new_node));
                 if node_type_action != INPUT_ROUTING_ACTION {

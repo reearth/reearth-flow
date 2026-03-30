@@ -22,10 +22,15 @@ pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
     pub kind: NodeKind,
-    /// Factory-declared output ports for this node.
+    /// Output ports for this node: factory-declared ports merged with
+    /// dynamically-derived ports (e.g. FeatureFilter conditions, OutputRouter routingPort).
     pub output_ports: Vec<Port>,
     /// Accumulated subgraph prefix, propagated from SchemaNodeType.
     pub subgraph_prefix: Option<String>,
+    /// True when this node is an OutputRouter inside a subgraph, meaning its
+    /// port-based intermediate data should be named `<prefix>.<port>` (the
+    /// subgraph's output port) rather than `<prefix>.<node_id>.<port>`.
+    pub is_subgraph_output: bool,
 }
 
 impl Eq for NodeType {}
@@ -44,6 +49,7 @@ impl NodeType {
             kind,
             output_ports: vec![],
             subgraph_prefix: None,
+            is_subgraph_output: false,
         }
     }
 }
@@ -179,6 +185,7 @@ impl BuilderDag {
                     kind: NodeKind::Sink(sink),
                     output_ports: vec![],
                     subgraph_prefix: node.subgraph_prefix.clone(),
+                    is_subgraph_output: false,
                 });
                 node_index_map.insert(node_index, new_node_index);
                 source_id_to_sinks
@@ -241,6 +248,7 @@ impl BuilderDag {
                         kind: NodeKind::Source(source),
                         output_ports,
                         subgraph_prefix: node.subgraph_prefix,
+                        is_subgraph_output: false,
                     }
                 }
                 DagNodeKind::Processor(processor) => {
@@ -305,12 +313,15 @@ impl BuilderDag {
                             node_name: node.name.clone(),
                             error: e,
                         })?;
+                    let is_subgraph_output = node.subgraph_prefix.is_some()
+                        && node.node.action() == OUTPUT_ROUTING_ACTION;
                     NodeType {
                         handle: node.handle,
                         name: node.name,
                         kind: NodeKind::Processor(processor),
                         output_ports,
                         subgraph_prefix: node.subgraph_prefix,
+                        is_subgraph_output,
                     }
                 }
                 DagNodeKind::Sink(_) => continue,

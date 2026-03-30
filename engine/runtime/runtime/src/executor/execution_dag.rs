@@ -36,6 +36,9 @@ pub struct NodeType {
     pub output_ports: Vec<Port>,
     /// Accumulated subgraph prefix, propagated from BuilderDag.
     pub subgraph_prefix: Option<String>,
+    /// True for OutputRouter nodes inside subgraphs: port-based intermediate
+    /// data is named `<prefix>.<port>` rather than `<prefix>.<node_id>.<port>`.
+    pub is_subgraph_output: bool,
 }
 
 type SharedFeatureWriter = Arc<Mutex<Box<dyn FeatureWriter>>>;
@@ -166,6 +169,7 @@ impl ExecutionDag {
                 },
                 output_ports: node.output_ports.clone(),
                 subgraph_prefix: node.subgraph_prefix.clone(),
+                is_subgraph_output: node.is_subgraph_output,
             },
             |edge_index, _| {
                 edges[edge_index.index()]
@@ -179,9 +183,10 @@ impl ExecutionDag {
             let node = &graph[node_index];
             let mut node_port_writers = HashMap::new();
             for port in &node.output_ports {
-                let file_id = match &node.subgraph_prefix {
-                    Some(prefix) => format!("{}.{}.{}", prefix, node.handle.id, port),
-                    None => format!("{}.{}", node.handle.id, port),
+                let file_id = match (&node.subgraph_prefix, node.is_subgraph_output) {
+                    (Some(prefix), true) => format!("{}.{}", prefix, port),
+                    (Some(prefix), false) => format!("{}.{}.{}", prefix, node.handle.id, port),
+                    (None, _) => format!("{}.{}", node.handle.id, port),
                 };
                 let writer = create_feature_writer(
                     EdgeId::new(file_id),
