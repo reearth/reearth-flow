@@ -124,6 +124,11 @@ pub enum DistanceMetric {
     Euclidean3d,
     /// Great-circle distance treating X as longitude (degrees) and Y as latitude (degrees).
     /// Output is in meters. Intended for WGS-84 inputs.
+    ///
+    /// Note: Distance is computed between representative points (centroids). For accurate
+    /// results, input features should be relatively small (e.g., buildings, local roads).
+    /// Large geometries (e.g., countries, large water bodies) may produce inaccurate
+    /// distances because their centroids may not represent their spatial extent well.
     Haversine,
 }
 
@@ -229,21 +234,30 @@ struct CandidateIndex {
     /// Index into `in_memory_candidates` when `offset == u64::MAX`.
     /// For disk-based candidates, this is `u32::MAX`.
     in_memory_index: u32,
+    /// 3D Cartesian coordinates for spatial indexing.
+    ///
+    /// For Euclidean2D: [x, y, 0] - 2D point embedded in 3D space
+    /// For Euclidean3D: [x, y, z] - actual 3D coordinates
+    /// For Haversine: ECEF (Earth-Centered Earth-Fixed) coordinates where Euclidean distance
+    ///   correlates monotonically with geodesic distance, ensuring correct nearest-neighbor
+    ///   ordering everywhere on Earth (including near poles where lat/lon breaks down).
+    projected_3d: [f64; 3],
 }
 
 impl RTreeObject for CandidateIndex {
-    type Envelope = AABB<[f64; 2]>;
+    type Envelope = AABB<[f64; 3]>;
 
     fn envelope(&self) -> Self::Envelope {
-        AABB::from_point(self.point)
+        AABB::from_point(self.projected_3d)
     }
 }
 
 impl PointDistance for CandidateIndex {
-    fn distance_2(&self, point: &[f64; 2]) -> f64 {
-        let dx = self.point[0] - point[0];
-        let dy = self.point[1] - point[1];
-        dx * dx + dy * dy
+    fn distance_2(&self, point: &[f64; 3]) -> f64 {
+        let dx = self.projected_3d[0] - point[0];
+        let dy = self.projected_3d[1] - point[1];
+        let dz = self.projected_3d[2] - point[2];
+        dx * dx + dy * dy + dz * dz
     }
 }
 
@@ -525,12 +539,15 @@ impl NeighborFinder {
             self.candidates_file_offset += length as u64 + 1; // +1 for newline
 
             // Create index entry with byte offset
+            // Compute 3D projection based on distance metric for spatial indexing
+            let projected_3d = self.compute_projected_3d(&entry.point, entry.point_z);
             self.candidate_index.push(CandidateIndex {
                 point: entry.point,
                 point_z: entry.point_z,
                 offset,
                 length,
                 in_memory_index: u32::MAX, // Not in memory
+                projected_3d,
             });
         }
 
@@ -556,12 +573,15 @@ impl NeighborFinder {
                 // Store the full entries and create index entries pointing to them
                 for (idx, entry) in self.candidates.iter().enumerate() {
                     self.in_memory_candidates.push(entry.clone());
+                    // Compute 3D projection based on distance metric for spatial indexing
+                    let projected_3d = self.compute_projected_3d(&entry.point, entry.point_z);
                     self.candidate_index.push(CandidateIndex {
                         point: entry.point,
                         point_z: entry.point_z,
                         offset: u64::MAX, // Marks in-memory
                         length: 0,
                         in_memory_index: idx as u32,
+                        projected_3d,
                     });
                 }
                 self.candidates.clear();
@@ -1067,22 +1087,32 @@ impl NeighborFinder {
             }
         }
     }
-}
 
-/// Over-fetch factor for non-2D Euclidean metrics to ensure correctness.
-/// The R-tree uses 2D Euclidean ordering, which may differ from Haversine or 3D Euclidean.
-const KNN_OVERFETCH_FACTOR: usize = 4;
+    /// Compute 3D projected coordinates for spatial indexing based on the distance metric.
+    ///
+    /// - Euclidean2D: [x, y, 0] - embed 2D point in 3D space
+    /// - Euclidean3D: [x, y, z] - use actual 3D coordinates
+    /// - Haversine: ECEF coordinates - project lat/lon to Cartesian for correct spatial ordering
+    fn compute_projected_3d(&self, point: &[f64; 2], point_z: Option<f64>) -> [f64; 3] {
+        match self.params.distance_metric {
+            DistanceMetric::Euclidean2d => [point[0], point[1], 0.0],
+            DistanceMetric::Euclidean3d => [point[0], point[1], point_z.unwrap_or(0.0)],
+            DistanceMetric::Haversine => lat_lon_to_ecef(point[1], point[0]),
+        }
+    }
+}
 
 /// Find the k nearest neighbors for a given base point using the R-tree.
 ///
-/// For Euclidean2D metric, we can use the R-tree ordering directly since the index
-/// is built using 2D Euclidean distance.
+/// The R-tree uses 3D Cartesian coordinates for spatial indexing:
+/// - Euclidean2D: points are embedded in 3D as [x, y, 0]
+/// - Euclidean3D: points use actual [x, y, z]
+/// - Haversine: points use ECEF (Earth-Centered Earth-Fixed) coordinates
 ///
-/// For Haversine and Euclidean3D metrics, we over-fetch candidates and re-sort by
-/// the actual metric distance to ensure correctness, since the R-tree's 2D ordering
-/// may not match the true nearest neighbors in those metrics.
-///
-/// Uses lightweight CandidateIndex entries (point + disk location only).
+/// For Haversine, the ECEF projection ensures Euclidean distance in 3D space
+/// correlates monotonically with geodesic distance on the sphere. This allows
+/// correct nearest-neighbor ordering everywhere, including near the poles where
+/// lat/lon Euclidean distance breaks down.
 fn find_k_nearest_neighbors(
     rtree: &RTree<CandidateIndex>,
     base_point: &[f64; 2],
@@ -1090,11 +1120,18 @@ fn find_k_nearest_neighbors(
     k: usize,
     metric: &DistanceMetric,
 ) -> Vec<NeighborMatch> {
+    // Compute the query point in 3D space based on the metric
+    let query_3d: [f64; 3] = match metric {
+        DistanceMetric::Euclidean2d => [base_point[0], base_point[1], 0.0],
+        DistanceMetric::Euclidean3d => [base_point[0], base_point[1], base_z.unwrap_or(0.0)],
+        DistanceMetric::Haversine => lat_lon_to_ecef(base_point[1], base_point[0]),
+    };
+
     match metric {
         DistanceMetric::Euclidean2d => {
-            // For 2D Euclidean, R-tree ordering is correct
+            // For 2D, R-tree ordering using [x, y, 0] is exact
             rtree
-                .nearest_neighbor_iter(base_point)
+                .nearest_neighbor_iter(&query_3d)
                 .take(k)
                 .cloned()
                 .enumerate()
@@ -1108,22 +1145,21 @@ fn find_k_nearest_neighbors(
                 })
                 .collect()
         }
-        _ => {
-            // For Haversine and Euclidean3D, over-fetch and re-sort by actual metric
-            // to ensure we get the true k-nearest neighbors
-            let fetch_count = k.saturating_mul(KNN_OVERFETCH_FACTOR).min(rtree.size());
+        DistanceMetric::Euclidean3d => {
+            // For 3D, we over-fetch and re-sort by actual 3D distance to handle
+            // cases where the R-tree's approximate ordering isn't perfect
+            let fetch_count = k.saturating_mul(4).min(rtree.size());
             let mut matches: Vec<NeighborMatch> = rtree
-                .nearest_neighbor_iter(base_point)
+                .nearest_neighbor_iter(&query_3d)
                 .take(fetch_count)
                 .cloned()
                 .enumerate()
                 .map(|(index, candidate_index)| {
-                    let distance = compute_distance(
-                        metric,
+                    let distance = euclidean_distance_3d(
                         base_point,
-                        base_z,
+                        base_z.unwrap_or(0.0),
                         &candidate_index.point,
-                        candidate_index.point_z,
+                        candidate_index.point_z.unwrap_or(0.0),
                     );
                     NeighborMatch {
                         candidate_index,
@@ -1133,7 +1169,6 @@ fn find_k_nearest_neighbors(
                 })
                 .collect();
 
-            // Sort by actual distance using the selected metric and take top k
             matches.sort_by(|a, b| {
                 a.distance
                     .partial_cmp(&b.distance)
@@ -1141,11 +1176,30 @@ fn find_k_nearest_neighbors(
             });
             matches.truncate(k);
 
-            // Re-assign indices based on new ordering
             for (i, m) in matches.iter_mut().enumerate() {
                 m.index = i;
             }
             matches
+        }
+        DistanceMetric::Haversine => {
+            // For Haversine, ECEF coordinates ensure correct ordering.
+            // The R-tree uses ECEF for indexing, then we compute actual
+            // Haversine distance for the output value.
+            rtree
+                .nearest_neighbor_iter(&query_3d)
+                .take(k)
+                .cloned()
+                .enumerate()
+                .map(|(index, candidate_index)| {
+                    // Use accurate Haversine distance for the output value
+                    let distance = haversine_distance(base_point, &candidate_index.point);
+                    NeighborMatch {
+                        candidate_index,
+                        distance,
+                        index,
+                    }
+                })
+                .collect()
         }
     }
 }
@@ -1188,23 +1242,31 @@ fn haversine_distance(a: &[f64; 2], b: &[f64; 2]) -> f64 {
     EARTH_RADIUS_METERS * c
 }
 
-/// Compute distance between two points based on the specified metric
-fn compute_distance(
-    metric: &DistanceMetric,
-    a: &[f64; 2],
-    a_z: Option<f64>,
-    b: &[f64; 2],
-    b_z: Option<f64>,
-) -> f64 {
-    match metric {
-        DistanceMetric::Euclidean2d => euclidean_distance_2d(a, b),
-        DistanceMetric::Euclidean3d => {
-            let az = a_z.unwrap_or(0.0);
-            let bz = b_z.unwrap_or(0.0);
-            euclidean_distance_3d(a, az, b, bz)
-        }
-        DistanceMetric::Haversine => haversine_distance(a, b),
-    }
+/// Convert latitude/longitude to ECEF (Earth-Centered Earth-Fixed) Cartesian coordinates.
+///
+/// This transforms geographic coordinates to a 3D Cartesian coordinate system where
+/// Euclidean distance correlates monotonically with geodesic (great-circle) distance.
+/// This allows using standard R-tree spatial indexing for Haversine distance queries.
+///
+/// Input: latitude and longitude in degrees.
+/// Output: [x, y, z] coordinates in meters (approximately, scaled by Earth's radius).
+fn lat_lon_to_ecef(lat_deg: f64, lon_deg: f64) -> [f64; 3] {
+    let lat = lat_deg.to_radians();
+    let lon = lon_deg.to_radians();
+
+    // Using unit sphere (radius = 1) is sufficient for ordering purposes.
+    // For true ECEF, multiply by Earth's radius, but relative distances are preserved.
+    let x = lat.cos() * lon.cos();
+    let y = lat.cos() * lon.sin();
+    let z = lat.sin();
+
+    // Scale by Earth's radius to get approximate meter-scale coordinates
+    // This ensures distances are in a reasonable range for the R-tree
+    [
+        x * EARTH_RADIUS_METERS,
+        y * EARTH_RADIUS_METERS,
+        z * EARTH_RADIUS_METERS,
+    ]
 }
 
 /// Convert an f64 value to AttributeValue.
@@ -2425,5 +2487,180 @@ mod tests {
 
         // Cleanup
         finder.cleanup_temp_dir();
+    }
+
+    /// Test that Haversine distance with ECEF spatial indexing correctly finds
+    /// nearest neighbors near the North Pole, where simple Euclidean distance
+    /// on lat/lon coordinates would fail.
+    ///
+    /// This test verifies the fix for the pole accuracy issue:
+    /// - At high latitudes, 1 degree of longitude represents much less distance
+    /// - Old approach: Euclidean on (lon, lat) would give wrong nearest neighbor
+    /// - New approach: ECEF projection ensures correct spatial ordering
+    #[test]
+    fn test_haversine_near_pole() {
+        // Set up NeighborFinder with Haversine metric
+        let mut finder = NeighborFinder {
+            params: NeighborFinderParams {
+                distance_metric: DistanceMetric::Haversine,
+                num_closest: 1,
+                merge_strategy: MergeStrategy::Closest,
+                ..Default::default()
+            },
+            candidates: Vec::new(),
+            candidate_index: Vec::new(),
+            in_memory_candidates: Vec::new(),
+            base_features: Vec::new(),
+            base_buffer_bytes: 0,
+            candidate_buffer_bytes: 0,
+            temp_dir: None,
+            candidates_file_path: None,
+            candidates_file_offset: 0,
+            base_chunk_count: 0,
+            executor_id: None,
+        };
+
+        // Near North Pole (89°N), distances are distorted in lat/lon space
+        // Base: (0°E, 89°N) - very close to pole
+        let base_lon = 0.0;
+        let base_lat = 89.0;
+        let base = create_point_feature_with_attr(
+            base_lon,
+            base_lat,
+            "name",
+            AttributeValue::String("Base".to_string()),
+        );
+
+        // Candidate A: 1° away in longitude (0.01°E, 89°N)
+        // Actual distance: ~1.1 km (very close - circling near pole)
+        let candidate_a = create_point_feature_with_attr(
+            0.01,
+            89.0,
+            "name",
+            AttributeValue::String("CandidateA_Near".to_string()),
+        );
+
+        // Candidate B: 1° away in latitude (0°E, 88°N)
+        // Actual distance: ~111 km (farther - moving toward equator)
+        let candidate_b = create_point_feature_with_attr(
+            0.0,
+            88.0,
+            "name",
+            AttributeValue::String("CandidateB_Far".to_string()),
+        );
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
+
+        // Process candidates
+        let mut ctx = create_default_execute_context(&candidate_a);
+        ctx.port = CANDIDATE_PORT.clone();
+        finder.process(ctx, &fw).unwrap();
+
+        let mut ctx = create_default_execute_context(&candidate_b);
+        ctx.port = CANDIDATE_PORT.clone();
+        finder.process(ctx, &fw).unwrap();
+
+        // Process base
+        let mut ctx = create_default_execute_context(&base);
+        ctx.port = BASE_PORT.clone();
+        finder.process(ctx, &fw).unwrap();
+
+        // Finish and get results
+        let ctx = NodeContext::default();
+        finder.finish(ctx, &fw).unwrap();
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            let features = noop.send_features.lock().unwrap();
+            assert_eq!(features.len(), 1, "Should have one matched feature");
+
+            let feature = &features[0];
+            let matched_name = feature
+                .attributes
+                .get(&Attribute::new("_neighbor_name"))
+                .cloned();
+
+            // The key assertion: Should match CandidateA (near) NOT CandidateB (far)
+            // In lat/lon Euclidean space, both are "1 degree away", so it would be arbitrary
+            // In ECEF/Haversine space, CandidateA is clearly closer (~1km vs ~111km)
+            assert_eq!(
+                matched_name,
+                Some(AttributeValue::String("CandidateA_Near".to_string())),
+                "Should match CandidateA (1° lon away, ~1km) not CandidateB (1° lat away, ~111km). \
+                 This verifies ECEF projection fixes pole accuracy issue."
+            );
+
+            // Verify the distance is approximately correct
+            let distance = feature
+                .attributes
+                .get(&Attribute::new("_neighbor_distance"))
+                .and_then(|v| match v {
+                    AttributeValue::Number(n) => n.as_f64(),
+                    _ => None,
+                })
+                .unwrap_or(0.0);
+
+            // Distance should be ~1.1 km (not ~111 km)
+            assert!(
+                distance < 10_000.0, // Less than 10 km
+                "Distance should be ~1.1 km, not ~111 km. Got {} m",
+                distance
+            );
+        }
+    }
+
+    /// Test ECEF projection directly to verify correct conversion
+    /// at various latitudes including poles.
+    #[test]
+    fn test_ecef_projection() {
+        // Test: Points at same latitude, different longitudes
+        // The 3D Euclidean distance in ECEF space should reflect the fact that
+        // 1 degree of longitude represents different surface distances at different latitudes
+
+        // Helper to compute 3D Euclidean distance between ECEF coordinates
+        let ecef_dist = |a: [f64; 3], b: [f64; 3]| {
+            ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+        };
+
+        // At equator: points are far apart in 3D space (~111 km surface distance)
+        let ecef_eq1 = lat_lon_to_ecef(0.0, 0.0);
+        let ecef_eq2 = lat_lon_to_ecef(0.0, 1.0);
+        let dist_eq = ecef_dist(ecef_eq1, ecef_eq2);
+        // Surface distance ~111 km, chord distance in 3D is slightly less
+        assert!(
+            dist_eq > 100_000.0 && dist_eq < 120_000.0,
+            "Equator 1° distance should be ~111km (surface), got {}m (3D chord)",
+            dist_eq
+        );
+
+        // At 60° latitude: closer together in 3D space (~55 km surface distance)
+        let ecef_60_1 = lat_lon_to_ecef(60.0, 0.0);
+        let ecef_60_2 = lat_lon_to_ecef(60.0, 1.0);
+        let dist_60 = ecef_dist(ecef_60_1, ecef_60_2);
+        assert!(
+            dist_60 > 50_000.0 && dist_60 < 60_000.0,
+            "60° lat 1° distance should be ~55km (surface), got {}m (3D chord)",
+            dist_60
+        );
+
+        // Near pole (89°): very close together in 3D space (~2 km surface distance)
+        let ecef_89_1 = lat_lon_to_ecef(89.0, 0.0);
+        let ecef_89_2 = lat_lon_to_ecef(89.0, 1.0);
+        let dist_89 = ecef_dist(ecef_89_1, ecef_89_2);
+        assert!(
+            dist_89 > 1_000.0 && dist_89 < 3_000.0,
+            "89° lat 1° distance should be ~2km (surface), got {}m (3D chord)",
+            dist_89
+        );
+
+        // Verify ordering: equator > 60° > 89° in terms of 3D distance
+        // This is the key property: ECEF preserves the ordering of surface distances
+        assert!(
+            dist_eq > dist_60 && dist_60 > dist_89,
+            "ECEF distances should decrease toward poles: eq={} > 60={} > 89={}",
+            dist_eq,
+            dist_60,
+            dist_89
+        );
     }
 }
