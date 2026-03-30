@@ -320,6 +320,15 @@ struct NeighborFinder {
     executor_id: Option<uuid::Uuid>,
 }
 
+impl Drop for NeighborFinder {
+    fn drop(&mut self) {
+        // Ensure temporary directory is cleaned up even if finish() panics
+        // or isn't called (e.g., due to an error during processing).
+        // This prevents disk space leaks in production.
+        self.cleanup_temp_dir();
+    }
+}
+
 impl Processor for NeighborFinder {
     fn is_accumulating(&self) -> bool {
         true
