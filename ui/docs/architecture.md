@@ -2,7 +2,7 @@
 
 ## Core Technologies
 
-- **React 19** with TypeScript 5 and Vite 6
+- **React 19** with TypeScript 5 and Vite
 - **@xyflow/react** for the visual workflow editor (node-based canvas)
 - **Yjs + Y-WebSocket** for real-time collaborative editing
 - **TanStack Router** for file-based routing with type safety
