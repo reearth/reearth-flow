@@ -13,7 +13,7 @@ use quick_xml::NsReader;
 use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_types::{
-    geometry::Geometry, lod::LodMask, metadata::Metadata, Attribute, AttributeValue, Feature,
+    geometry::Geometry, lod::LodMask, Attribute, AttributeValue, CitygmlFeatureExt, Feature,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -159,11 +159,9 @@ async fn parse_tree_reader<R: BufRead>(
             ),
         ]);
         let lod = LodMask::find_lods_by_citygml_value(&entity.root);
-        let metadata = Metadata {
-            feature_id: gml_id.map(|id| id.to_string()),
-            feature_type: name.map(|name| name.to_string()),
-            lod: Some(lod),
-        };
+        let citygml_gml_id = gml_id.map(|id| id.to_string());
+        let citygml_feature_type = name.map(|name| name.to_string());
+        let citygml_lod = lod.to_u8();
         let entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
@@ -177,7 +175,13 @@ async fn parse_tree_reader<R: BufRead>(
                 .map_err(|e| crate::errors::SourceError::CityGmlFileReader(format!("{e:?}")))?;
             let mut feature: Feature = geometry.into();
             feature.extend(attributes.clone());
-            feature.metadata = metadata.clone();
+            if let Some(id) = &citygml_gml_id {
+                feature.update_feature_id(id.clone());
+            }
+            if let Some(ft) = &citygml_feature_type {
+                feature.update_feature_type(ft.clone());
+            }
+            feature.update_lod_mask(LodMask::from_u8(citygml_lod));
             sender
                 .send((
                     DEFAULT_PORT.clone(),

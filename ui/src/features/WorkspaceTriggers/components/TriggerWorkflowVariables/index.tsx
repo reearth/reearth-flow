@@ -20,12 +20,14 @@ import {
   VariableRow,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
+import AssetsDialog from "@flow/features/AssetsDialog";
+import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import {
   getDefaultValue,
   inferWorkflowVariableType,
 } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import { useT } from "@flow/lib/i18n";
-import { TriggerVariableConfig } from "@flow/types";
+import { Asset, TriggerVariableConfig } from "@flow/types";
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
 type TriggerWorkflowVariablesMappingDialogProps = {
@@ -37,6 +39,8 @@ type TriggerWorkflowVariablesMappingDialogProps = {
   onConfirm: (workflowVariables: any[]) => void;
   onCancel: () => void;
 };
+
+type DialogOptions = "assets" | "cms" | undefined;
 
 const TriggerWorkflowVariablesMappingDialog: React.FC<
   TriggerWorkflowVariablesMappingDialogProps
@@ -114,6 +118,52 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     onOpenChange(false);
   };
 
+  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
+  const [activeArrayItemIndex, setActiveArrayItemIndex] = useState<number>(0);
+  const [showVariableDialog, setShowVariableDialog] = useState(false);
+
+  const handleDialogOpen = (dialog: DialogOptions) => {
+    setShowDialog(dialog);
+  };
+  const handleDialogClose = () => setShowDialog(undefined);
+  const handleVariableDialogOpen = useCallback(
+    (variableIndex: number, arrayItemIndex = 0) => {
+      setActiveVariableIndex(variableIndex);
+      setActiveArrayItemIndex(arrayItemIndex);
+      setShowVariableDialog(true);
+    },
+    [],
+  );
+  const handleVariableDialogClose = useCallback(
+    () => setShowVariableDialog(false),
+    [],
+  );
+  const handleAssetDoubleClick = (asset: Asset) => {
+    const mapping = variableMappings[activeVariableIndex];
+    if (Array.isArray(mapping?.defaultValue)) {
+      const newArray = [...mapping.defaultValue];
+      newArray[activeArrayItemIndex] = asset.url;
+      handleDefaultValueChange(activeVariableIndex, newArray);
+    } else {
+      handleDefaultValueChange(activeVariableIndex, asset.url);
+    }
+    handleVariableDialogClose();
+  };
+
+  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
+    const mapping = variableMappings[activeVariableIndex];
+    if (Array.isArray(mapping?.defaultValue)) {
+      const newArray = [...mapping.defaultValue];
+      newArray[activeArrayItemIndex] = cmsItemAssetUrl;
+      handleDefaultValueChange(activeVariableIndex, newArray);
+    } else {
+      handleDefaultValueChange(activeVariableIndex, cmsItemAssetUrl);
+    }
+    handleDialogClose();
+    handleVariableDialogClose();
+  };
+
   const columns: ColumnDef<TriggerVariableConfig>[] = useMemo(
     () => [
       {
@@ -132,7 +182,13 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
             <VariableRow
               variable={row.original}
               index={row.index}
+              showVariableDialog={
+                showVariableDialog && activeVariableIndex === row.index
+              }
+              onVariableDialogOpen={handleVariableDialogOpen}
+              onVariableDialogClose={handleVariableDialogClose}
               onDefaultValueChange={handleDefaultValueChange}
+              onAssetDialogOpen={handleDialogOpen}
             />
           );
         },
@@ -165,7 +221,16 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
         size: 100,
       },
     ],
-    [handleDefaultValueChange, handleResetToDefault, isAtDefault, t],
+    [
+      activeVariableIndex,
+      handleDefaultValueChange,
+      handleResetToDefault,
+      handleVariableDialogClose,
+      handleVariableDialogOpen,
+      isAtDefault,
+      showVariableDialog,
+      t,
+    ],
   );
 
   return (
@@ -204,6 +269,19 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
           </DialogFooter>
         </div>
       </DialogContent>
+
+      {showDialog === "assets" && (
+        <AssetsDialog
+          onDialogClose={handleDialogClose}
+          onAssetSelect={handleAssetDoubleClick}
+        />
+      )}
+      {showDialog === "cms" && (
+        <CmsIntegrationDialog
+          onDialogClose={handleDialogClose}
+          onCmsItemValue={handleCmsItemValue}
+        />
+      )}
     </Dialog>
   );
 };

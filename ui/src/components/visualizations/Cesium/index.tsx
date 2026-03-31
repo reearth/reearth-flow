@@ -13,6 +13,8 @@ import {
   ViewerProps,
 } from "resium";
 
+import useDoubleClick from "@flow/hooks/useDoubleClick";
+
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
 
@@ -62,61 +64,63 @@ const CesiumViewer: React.FC<Props> = ({
     setIsLoaded(true);
   }, [isLoaded]);
 
-  const handleSingleClick = useCallback(
+  const pickOriginalId = useCallback(
     (movement: any) => {
-      if (!onSelectedFeature || !viewerRef?.current?.cesiumElement) return;
-
+      if (!viewerRef?.current?.cesiumElement) return null;
       const cesiumViewer = viewerRef.current.cesiumElement;
       const pickedObject = cesiumViewer.scene.pick(movement.position);
-
-      if (defined(pickedObject) && defined(pickedObject.id)) {
-        const pickedId = pickedObject.id;
-        // Support both Entity (PropertyBag) and Primitive (plain object) ids
-        const originalId =
-          pickedId?.properties?.getValue?.()?.["_originalId"] ??
-          pickedId?._originalId;
-        if (originalId) {
-          try {
-            onSelectedFeature(originalId);
-          } catch (e) {
-            console.error("Cesium viewer error:", e);
-          }
-        }
-      } else {
-        onSelectedFeature(null);
-        onShowFeatureDetailsOverlay(false);
-      }
+      if (!defined(pickedObject) || !defined(pickedObject.id)) return null;
+      const pickedId = pickedObject.id;
+      // Support both Entity (PropertyBag) and Primitive (plain object) ids
+      return (
+        pickedId?.properties?.getValue?.()?.["_originalId"] ??
+        pickedId?._originalId ??
+        null
+      );
     },
-    [onSelectedFeature, onShowFeatureDetailsOverlay, viewerRef],
+    [viewerRef],
   );
 
-  const handleDoubleClick = useCallback(
-    (movement: any) => {
-      if (!onSelectedFeature || !viewerRef?.current?.cesiumElement) return;
-
-      const cesiumViewer = viewerRef.current.cesiumElement;
-      const pickedObject = cesiumViewer.scene.pick(movement.position);
-
-      if (defined(pickedObject) && defined(pickedObject.id)) {
-        const pickedId = pickedObject.id;
-        // Support both Entity (PropertyBag) and Primitive (plain object) ids
-        const originalId =
-          pickedId?.properties?.getValue?.()?.["_originalId"] ??
-          pickedId?._originalId;
+  const onSingleClick = useCallback(
+    (movement?: any) => {
+      if (!onSelectedFeature || !movement) return;
+      try {
+        const originalId = pickOriginalId(movement);
         if (originalId) {
-          try {
-            onSelectedFeature(originalId);
-            onShowFeatureDetailsOverlay(true);
-          } catch (e) {
-            console.error("Cesium viewer error:", e);
-          }
+          onSelectedFeature(originalId);
+        } else {
+          onSelectedFeature(null);
+          onShowFeatureDetailsOverlay(false);
         }
-      } else {
-        onSelectedFeature(null);
-        onShowFeatureDetailsOverlay(false);
+      } catch (e) {
+        console.error("Cesium viewer error:", e);
       }
     },
-    [onSelectedFeature, onShowFeatureDetailsOverlay, viewerRef],
+    [onSelectedFeature, onShowFeatureDetailsOverlay, pickOriginalId],
+  );
+
+  const onDoubleClick = useCallback(
+    (movement?: any) => {
+      if (!onSelectedFeature || !movement) return;
+      try {
+        const originalId = pickOriginalId(movement);
+        if (originalId) {
+          onSelectedFeature(originalId);
+          onShowFeatureDetailsOverlay(true);
+        } else {
+          onSelectedFeature(null);
+          onShowFeatureDetailsOverlay(false);
+        }
+      } catch (e) {
+        console.error("Cesium viewer error:", e);
+      }
+    },
+    [onSelectedFeature, onShowFeatureDetailsOverlay, pickOriginalId],
+  );
+
+  const [handleSingleClick, handleDoubleClick] = useDoubleClick(
+    onSingleClick,
+    onDoubleClick,
   );
 
   // Separate features by geometry type

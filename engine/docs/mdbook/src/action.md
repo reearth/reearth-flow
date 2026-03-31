@@ -1385,6 +1385,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -3605,7 +3613,7 @@ Applies transformation expressions to modify feature attributes and properties
 ### Type
 * processor
 ### Description
-Filters features by feature type
+Filter CityGML features by feature type
 ### Parameters
 ```json
 {
@@ -4714,17 +4722,25 @@ Writes 3D features to GLTF format with optional texture attachment
       ]
     },
     "dracoCompression": {
+      "description": "Apply Draco compression to the geometry",
       "type": [
         "boolean",
         "null"
       ]
     },
     "output": {
-      "description": "Output path or expression for the GLTF file to create",
+      "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
       "allOf": [
         {
           "$ref": "#/definitions/Expr"
         }
+      ]
+    },
+    "schemaKey": {
+      "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
+      "type": [
+        "string",
+        "null"
       ]
     }
   },
@@ -6769,6 +6785,14 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         }
       ]
     },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip Unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -6791,6 +6815,153 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
 ### Output Ports
 ### Category
 * File
+
+## NeighborFinder
+### Type
+* processor
+### Description
+Finds the closest candidate features for each base feature based on spatial proximity
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NeighborFinder Parameters",
+  "description": "Configuration for finding spatial neighbors between base and candidate features.",
+  "type": "object",
+  "properties": {
+    "attributePrefix": {
+      "description": "Prefix applied to transferred candidate attributes to avoid collisions.",
+      "default": "_neighbor_",
+      "type": "string"
+    },
+    "attributesToTransfer": {
+      "description": "List of candidate attributes to transfer. Empty list means all attributes are transferred.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "distanceAttribute": {
+      "description": "Name of the attribute to store the computed distance to the nearest neighbor.",
+      "default": "_neighbor_distance",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "distanceMetric": {
+      "description": "Method used to compute distance between two features.",
+      "default": "euclidean2d",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DistanceMetric"
+        }
+      ]
+    },
+    "maxDistance": {
+      "description": "Maximum distance threshold for matching. If None, no distance limit is applied. Units depend on the distanceMetric: native units for Euclidean, meters for Haversine.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "mergeStrategy": {
+      "description": "Controls how multiple neighbors are represented on the output.",
+      "default": "closest",
+      "allOf": [
+        {
+          "$ref": "#/definitions/MergeStrategy"
+        }
+      ]
+    },
+    "neighborIndexAttribute": {
+      "description": "Name of the attribute to store the neighbor index (0-based rank) when num_closest > 1 and merge_strategy is \"repeatBase\". Set to empty string to suppress.",
+      "default": "_neighbor_index",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "numClosest": {
+      "description": "Number of closest neighbors to find per base feature. Must be >= 1.",
+      "default": 1,
+      "type": "integer",
+      "format": "uint",
+      "minimum": 1.0
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "DistanceMetric": {
+      "description": "Distance metric for computing spatial proximity.",
+      "oneOf": [
+        {
+          "description": "2D Euclidean distance using X and Y coordinates. Z is ignored.",
+          "type": "string",
+          "enum": [
+            "euclidean2d"
+          ]
+        },
+        {
+          "description": "3D Euclidean distance using X, Y, and Z coordinates.",
+          "type": "string",
+          "enum": [
+            "euclidean3d"
+          ]
+        },
+        {
+          "description": "Great-circle distance treating X as longitude (degrees) and Y as latitude (degrees). Output is in meters. Intended for WGS-84 inputs.\n\nNote: Distance is computed between representative points (centroids). For accurate results, input features should be relatively small (e.g., buildings, local roads). Large geometries (e.g., countries, large water bodies) may produce inaccurate distances because their centroids may not represent their spatial extent well.",
+          "type": "string",
+          "enum": [
+            "haversine"
+          ]
+        }
+      ]
+    },
+    "MergeStrategy": {
+      "description": "Merge strategy for handling multiple neighbors.",
+      "oneOf": [
+        {
+          "description": "Only the single closest neighbor is merged onto the Base feature.",
+          "type": "string",
+          "enum": [
+            "closest"
+          ]
+        },
+        {
+          "description": "One output feature is emitted per neighbor. Base attributes are duplicated across all rows, mirroring FME's default multi-neighbor output.",
+          "type": "string",
+          "enum": [
+            "repeatBase"
+          ]
+        },
+        {
+          "description": "A single Base feature is emitted; each transferred attribute becomes an ordered array sorted by ascending distance.",
+          "type": "string",
+          "enum": [
+            "arrayAttributes"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* base
+* candidate
+### Output Ports
+* matched
+* unmatched
+* rejected
+### Category
+* Geometry
 
 ## NoopProcessor
 ### Type
@@ -8006,7 +8177,7 @@ Extracts maxLod
 ### Type
 * processor
 ### Description
-Detect missing attributes
+Detect missing attributes in PLATEAU4 features
 ### Parameters
 ```json
 {

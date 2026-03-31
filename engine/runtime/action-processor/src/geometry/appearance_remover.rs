@@ -75,7 +75,6 @@ impl Processor for AppearanceRemover {
                 Feature {
                     geometry: Arc::new(geometry),
                     attributes: feature.attributes.clone(),
-                    metadata: feature.metadata.clone(),
                     id: feature.id,
                 }
             }
