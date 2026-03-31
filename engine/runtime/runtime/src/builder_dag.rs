@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     fmt::{Debug, Display},
     hash::Hash,
 };
@@ -299,6 +299,18 @@ impl BuilderDag {
                                     }
                                 }
                             }
+                        }
+                    }
+                    // Reject duplicate output router ports early so downstream code
+                    // (e.g. per-port writer creation) can assume uniqueness.
+                    let mut seen_ports = HashSet::new();
+                    for port in &output_ports {
+                        if !seen_ports.insert(port.clone()) {
+                            return Err(ExecutionError::DuplicateOutputPort {
+                                node_id: node.handle.id.to_string(),
+                                node_name: node.name.clone(),
+                                port: port.clone(),
+                            });
                         }
                     }
                     let processor = processor
