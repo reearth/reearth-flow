@@ -9,7 +9,10 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(input: &str) -> Self {
-        Self { lexer: Lexer::new(input), peeked: None }
+        Self {
+            lexer: Lexer::new(input),
+            peeked: None,
+        }
     }
 
     fn peek(&mut self) -> Result<&Token> {
@@ -175,20 +178,12 @@ impl Parser {
                 "false" => Ok(Expr::Bool(false)),
                 "null" => Ok(Expr::Null),
                 _ => {
-                    // check for ns::func(args)
-                    if self.peek()? == &Token::ColonColon {
-                        self.consume()?; // ::
-                        let name = match self.consume()? {
-                            Token::Ident(n) => n,
-                            tok => return Err(Error::Parse {
-                                pos: self.lexer.pos(),
-                                msg: format!("expected function name after '::', got {tok:?}"),
-                            }),
-                        };
-                        self.expect(&Token::LParen)?;
+                    // ident followed by '(' is a function call
+                    if self.peek()? == &Token::LParen {
+                        self.consume()?;
                         let args = self.parse_args()?;
                         self.expect(&Token::RParen)?;
-                        Ok(Expr::FuncCall { ns: s, name, args })
+                        Ok(Expr::FuncCall { name: s, args })
                     } else {
                         Ok(Expr::Var(s))
                     }
@@ -206,7 +201,9 @@ impl Parser {
                     items.push(self.parse_or()?);
                     while self.peek()? == &Token::Comma {
                         self.consume()?;
-                        if self.peek()? == &Token::RBracket { break; } // trailing comma
+                        if self.peek()? == &Token::RBracket {
+                            break;
+                        } // trailing comma
                         items.push(self.parse_or()?);
                     }
                 }
@@ -228,7 +225,9 @@ impl Parser {
         args.push(self.parse_or()?);
         while self.peek()? == &Token::Comma {
             self.consume()?;
-            if self.peek()? == &Token::RParen { break; } // trailing comma
+            if self.peek()? == &Token::RParen {
+                break;
+            } // trailing comma
             args.push(self.parse_or()?);
         }
         Ok(args)
@@ -268,7 +267,11 @@ mod tests {
             Expr::Binary(
                 Box::new(Expr::Int(1)),
                 BinOp::Add,
-                Box::new(Expr::Binary(Box::new(Expr::Int(2)), BinOp::Mul, Box::new(Expr::Int(3))))
+                Box::new(Expr::Binary(
+                    Box::new(Expr::Int(2)),
+                    BinOp::Mul,
+                    Box::new(Expr::Int(3))
+                ))
             )
         );
     }
@@ -301,11 +304,10 @@ mod tests {
     #[test]
     fn test_func_call() {
         assert_eq!(
-            parse(r#"file::join_path("a", "b")"#).unwrap(),
+            parse(r#"getattr("package")"#).unwrap(),
             Expr::FuncCall {
-                ns: "file".into(),
-                name: "join_path".into(),
-                args: vec![Expr::Str("a".into()), Expr::Str("b".into())],
+                name: "getattr".into(),
+                args: vec![Expr::Str("package".into())],
             }
         );
     }
@@ -324,14 +326,23 @@ mod tests {
 
     #[test]
     fn test_array_literal() {
-        assert_eq!(parse("[1, 2, 3]").unwrap(), Expr::Array(vec![Expr::Int(1), Expr::Int(2), Expr::Int(3)]));
+        assert_eq!(
+            parse("[1, 2, 3]").unwrap(),
+            Expr::Array(vec![Expr::Int(1), Expr::Int(2), Expr::Int(3)])
+        );
         assert_eq!(parse("[]").unwrap(), Expr::Array(vec![]));
     }
 
     #[test]
     fn test_unary() {
-        assert_eq!(parse("!true").unwrap(), Expr::Unary(UnaryOp::Not, Box::new(Expr::Bool(true))));
-        assert_eq!(parse("-1").unwrap(), Expr::Unary(UnaryOp::Neg, Box::new(Expr::Int(1))));
+        assert_eq!(
+            parse("!true").unwrap(),
+            Expr::Unary(UnaryOp::Not, Box::new(Expr::Bool(true)))
+        );
+        assert_eq!(
+            parse("-1").unwrap(),
+            Expr::Unary(UnaryOp::Neg, Box::new(Expr::Int(1)))
+        );
     }
 
     #[test]
@@ -339,7 +350,11 @@ mod tests {
         assert_eq!(
             parse("(1 + 2) * 3").unwrap(),
             Expr::Binary(
-                Box::new(Expr::Binary(Box::new(Expr::Int(1)), BinOp::Add, Box::new(Expr::Int(2)))),
+                Box::new(Expr::Binary(
+                    Box::new(Expr::Int(1)),
+                    BinOp::Add,
+                    Box::new(Expr::Int(2))
+                )),
                 BinOp::Mul,
                 Box::new(Expr::Int(3))
             )

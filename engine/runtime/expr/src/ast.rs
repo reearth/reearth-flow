@@ -33,8 +33,11 @@ pub enum Expr {
     Var(String),
     /// index access: `expr[expr]`
     Index(Box<Expr>, Box<Expr>),
-    /// namespaced function call: `file::join_path(a, b)`
-    FuncCall { ns: String, name: String, args: Vec<Expr> },
+    /// function call: `getattr("key")`
+    FuncCall {
+        name: String,
+        args: Vec<Expr>,
+    },
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinOp, Box<Expr>),
 }
