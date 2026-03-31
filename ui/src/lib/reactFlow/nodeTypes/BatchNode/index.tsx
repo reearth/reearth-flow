@@ -1,6 +1,6 @@
 import { RectangleDashedIcon } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
 import type { Node } from "@flow/types";
@@ -13,6 +13,23 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
   const { bounds, rgbaColor, handleOnEndResize } = useHooks({ id, data });
   const awarenessSelections = useAwarenessNodeSelections(id);
   const remoteColor = awarenessSelections[0]?.color;
+
+  const gradientStyles = useMemo(() => {
+    if (awarenessSelections.length < 2) return null;
+    const colors = awarenessSelections.map((s) => s.color).join(", ");
+    const gradient = `linear-gradient(135deg, ${colors}) border-box`;
+    const fill = rgbaColor || "var(--secondary)";
+    return {
+      body: {
+        border: "1px solid transparent",
+        background: `linear-gradient(${fill}, ${fill}) padding-box, ${gradient}`,
+      } as React.CSSProperties,
+      header: {
+        border: "1px solid transparent",
+        background: `linear-gradient(var(--secondary), var(--secondary)) padding-box, ${gradient}`,
+      } as React.CSSProperties,
+    };
+  }, [awarenessSelections, rgbaColor]);
 
   return (
     <>
@@ -38,10 +55,13 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
       )}
 
       <div
-        className={`relative z-0 h-full rounded-b-lg border-x border-b bg-orange-400/40 p-2 shadow-md shadow-secondary backdrop-blur-xs dark:bg-orange-400/20 ${selected ? "border-orange-400/50" : "border-transparent"} ${data.isDisabled ? "opacity-70" : ""}`}
-        style={remoteColor ? { outline: `solid ${remoteColor}` } : undefined}
+        className={`relative z-0 h-full rounded-b-lg p-2 shadow-md shadow-secondary backdrop-blur-xs ${gradientStyles ? "" : `border-x border-b bg-orange-400/40 dark:bg-orange-400/20 ${selected ? "border-orange-400/50" : "border-transparent"}`} ${data.isDisabled ? "opacity-70" : ""}`}
+        style={
+          gradientStyles?.body ??
+          (remoteColor ? { outline: `solid ${remoteColor}` } : undefined)
+        }
         ref={(element) => {
-          if (element) {
+          if (element && !gradientStyles) {
             element.style.setProperty(
               "background-color",
               rgbaColor,
@@ -50,8 +70,11 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           }
         }}>
         <div
-          style={remoteColor ? { outline: `solid ${remoteColor}` } : undefined}
-          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-lg border-x border-t bg-secondary p-1 ${selected ? "border-orange-400/50" : "border-transparent"} ${data.isDisabled ? "opacity-70" : ""}`}
+          style={
+            gradientStyles?.header ??
+            (remoteColor ? { outline: `solid ${remoteColor}` } : undefined)
+          }
+          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-lg bg-secondary p-1 ${gradientStyles ? "" : `border-x border-t ${selected ? "border-orange-400/50" : "border-transparent"}`} ${data.isDisabled ? "opacity-70" : ""}`}
           ref={(element) => {
             if (element)
               element.style.setProperty(

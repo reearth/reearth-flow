@@ -1,6 +1,15 @@
+import { GearIcon, PencilIcon } from "@phosphor-icons/react";
+
 import {
   ColorDefaultValueInput,
+  AssetDefaultSelectionInput,
   DateTimeDefaultValueInput,
+  Dialog,
+  DialogContent,
+  DialogContentSection,
+  DialogHeader,
+  DialogTitle,
+  IconButton,
   Input,
   NumberDefaultValueInput,
   Switch,
@@ -15,13 +24,24 @@ import VariableChoiceInput from "./VariableChoiceInput";
 type Props = {
   variable: TriggerVariableConfig | AnyWorkflowVariable;
   index: number;
+  showVariableDialog?: boolean;
+  onVariableDialogOpen?: (
+    variableIndex: number,
+    arrayItemIndex?: number,
+  ) => void;
+  onVariableDialogClose?: () => void;
   onDefaultValueChange: (index: number, newValue: any) => void;
+  onAssetDialogOpen: (dialog: "assets" | "cms") => void;
 };
 
 const VariableRow: React.FC<Props> = ({
   variable,
   index,
+  showVariableDialog,
+  onVariableDialogOpen,
+  onVariableDialogClose,
   onDefaultValueChange,
+  onAssetDialogOpen,
 }) => {
   const t = useT();
 
@@ -33,6 +53,12 @@ const VariableRow: React.FC<Props> = ({
             Array.isArray(variable.defaultValue) ? variable.defaultValue : []
           }
           onChange={(newValue) => onDefaultValueChange(index, newValue)}
+          showVariableDialog={showVariableDialog}
+          onVariableDialogOpen={(arrayItemIndex) =>
+            onVariableDialogOpen?.(index, arrayItemIndex)
+          }
+          onVariableDialogClose={onVariableDialogClose}
+          onAssetDialogOpen={onAssetDialogOpen}
         />
       );
     case "yes_no":
@@ -113,33 +139,74 @@ const VariableRow: React.FC<Props> = ({
           }
         />
       );
+
     case "text":
-      if (
-        typeof variable.defaultValue === "string" &&
-        variable.defaultValue.length > 50
-      ) {
-        return (
-          <TextArea
-            id={`default-${index}`}
-            value={variable.defaultValue}
-            onChange={(e) => {
-              onDefaultValueChange(index, e.target.value);
-            }}
-            className="min-h-[60px]"
-          />
-        );
-      } else {
-        return (
-          <Input
-            id={`default-${index}`}
-            type="text"
-            value={variable.defaultValue}
-            onChange={(e) => {
-              onDefaultValueChange(index, e.target.value);
-            }}
-          />
-        );
-      }
+      return (
+        <div>
+          <div className="flex items-center">
+            {typeof variable.defaultValue === "string" &&
+            variable.defaultValue.length > 50 ? (
+              <TextArea
+                id={`default-${index}`}
+                value={variable.defaultValue}
+                onChange={(e) => {
+                  onDefaultValueChange(index, e.target.value);
+                }}
+                className="min-h-[60px]"
+              />
+            ) : (
+              <Input
+                id={`default-${index}`}
+                type="text"
+                value={variable.defaultValue}
+                onChange={(e) => {
+                  onDefaultValueChange(index, e.target.value);
+                }}
+              />
+            )}
+            <div className="flex items-center gap-0">
+              <IconButton
+                icon={<PencilIcon />}
+                onClick={() => onVariableDialogOpen?.(index, undefined)}
+                className="ml-2"
+              />
+            </div>
+          </div>
+          {showVariableDialog && (
+            <Dialog open onOpenChange={onVariableDialogClose}>
+              <DialogContent
+                size="lg"
+                position="center"
+                className="p-2"
+                onInteractOutside={(e) => e.preventDefault()}>
+                <DialogHeader>
+                  <DialogTitle>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <GearIcon />
+                        {t("Workflow Variables")}
+                      </div>
+                    </div>
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex h-full min-h-0">
+                  <DialogContentSection className="flex-1 overflow-y-auto p-4">
+                    <AssetDefaultSelectionInput
+                      variable={variable}
+                      onDefaultValueChange={(newValue) => {
+                        onDefaultValueChange(index, newValue);
+                        onVariableDialogClose?.();
+                      }}
+                      onDialogOpen={onAssetDialogOpen}
+                    />
+                  </DialogContentSection>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      );
+
     default:
       console.error(
         `Unsupported variable type '${variable.type}' in Variable Row (index: ${index}).`,
