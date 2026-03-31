@@ -1,0 +1,8 @@
+[package]
+name = "reearth-flow-expr"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+serde_json.workspace = true
+thiserror.workspace = true

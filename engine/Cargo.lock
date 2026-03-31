@@ -6641,6 +6641,7 @@ dependencies = [
  "reearth-flow-action-sink",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
+ "reearth-flow-expr",
  "reearth-flow-geometry",
  "reearth-flow-runtime",
  "reearth-flow-sevenz",
@@ -6924,6 +6925,14 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "yaml-include",
+]
+
+[[package]]
+name = "reearth-flow-expr"
+version = "0.0.1"
+dependencies = [
+ "serde_json",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
