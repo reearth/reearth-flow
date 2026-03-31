@@ -31,6 +31,7 @@ use crate::atlas::{
 };
 use crate::errors::SinkError;
 use crate::zip_eq_logged::ZipEqLoggedExt;
+use nusamai_citygml::schema::{FeatureTypeDef, Schema};
 
 #[derive(Debug, Clone, Default)]
 pub struct GltfWriterSinkFactory;
@@ -95,12 +96,13 @@ impl SinkFactory for GltfWriterSinkFactory {
             attach_texture: params.attach_texture.unwrap_or(true),
             classified_features: Default::default(),
             draco_compression: params.draco_compression.unwrap_or(false),
+            schema_key: params.schema_key,
         };
         Ok(Box::new(sink))
     }
 }
 
-type ClassifiedFeatures = HashMap<String, ClassFeatures>;
+type ClassifiedFeatures = HashMap<Option<String>, ClassFeatures>;
 
 #[derive(Debug, Clone)]
 struct ClassFeatures {
@@ -115,14 +117,14 @@ impl AsRef<ClassFeatures> for ClassFeatures {
     }
 }
 
-impl TryFrom<&ClassFeatures> for nusamai_citygml::schema::Schema {
+impl TryFrom<&ClassFeatures> for Schema {
     type Error = crate::errors::SinkError;
 
     fn try_from(v: &ClassFeatures) -> Result<Self, Self::Error> {
         let Some(first) = v.features.first() else {
             return Err(SinkError::GltfWriter("No features".to_string()));
         };
-        let mut schema = nusamai_citygml::schema::Schema::default();
+        let mut schema = Schema::default();
         let feature_type = v.feature_type.clone();
         let mut attributes = nusamai_citygml::schema::Map::default();
         for (k, v) in first
@@ -134,7 +136,7 @@ impl TryFrom<&ClassFeatures> for nusamai_citygml::schema::Schema {
         }
         schema.types.insert(
             feature_type,
-            nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
+            nusamai_citygml::schema::TypeDef::Feature(FeatureTypeDef {
                 attributes,
                 additional_attributes: true,
             }),
@@ -149,6 +151,7 @@ pub struct GltfWriter {
     classified_features: ClassifiedFeatures,
     attach_texture: bool,
     draco_compression: bool,
+    schema_key: Option<String>,
 }
 
 /// # GltfWriter Parameters
@@ -157,11 +160,17 @@ pub struct GltfWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GltfWriterParam {
-    /// Output path or expression for the GLTF file to create
+    /// Output file path. When `schemaKey` is set, treated as a directory and
+    /// each feature type is written to `<output>/<schemaKeyValue>.glb`;
+    /// otherwise all features are written to this single file.
     output: Expr,
     /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
+    /// Apply Draco compression to the geometry
     draco_compression: Option<bool>,
+    /// Features are grouped by this attribute and written to separate files.
+    /// The key is excluded from output attributes.
+    schema_key: Option<String>,
 }
 
 impl Sink for GltfWriter {
@@ -203,7 +212,7 @@ impl Sink for GltfWriter {
         self.classified_features
             .par_iter()
             .try_for_each(|(typename, features)| {
-                let schema: nusamai_citygml::schema::Schema = features.try_into()?;
+                let schema: Schema = features.try_into()?;
 
                 let texture_cache = TextureCache::new(100_000_000);
                 let texture_size_cache = TextureSizeCache::new();
@@ -212,7 +221,7 @@ impl Sink for GltfWriter {
 
                 let binding = tempdir().unwrap();
                 let folder_path = binding.path();
-                let base_name = typename.replace(':', "_");
+                let base_name = typename.as_deref().unwrap_or("").replace(':', "_");
 
                 let texture_folder_name = "textures";
                 let atlas_dir = folder_path.join(texture_folder_name);
@@ -230,8 +239,11 @@ impl Sink for GltfWriter {
                     &ellipsoid,
                 );
 
-                let filtered_features =
-                    encode_metadata(&transformed_features, typename, &mut metadata_encoder);
+                let filtered_features = encode_metadata(
+                    &transformed_features,
+                    &features.feature_type,
+                    &mut metadata_encoder,
+                );
 
                 let (max_width, max_height) = load_textures_into_packer(
                     &filtered_features,
@@ -255,14 +267,17 @@ impl Sink for GltfWriter {
                     |feature_id, poly_count| format!("{base_name}_{feature_id}_{poly_count}"),
                 )?;
 
-                let file_path = {
-                    let filename = format!("{}.glb", typename.replace(':', "_"));
-                    tileset_content_files.lock().unwrap().push(filename.clone());
-                    self.output.join(filename).map_err(|e| {
-                        crate::errors::SinkError::GltfWriter(format!(
-                            "Failed to join uri with {e:?}"
-                        ))
-                    })?
+                let file_path = match typename {
+                    Some(f) => {
+                        let name = format!("{}.glb", f.replace(':', "_"));
+                        tileset_content_files.lock().unwrap().push(name.clone());
+                        self.output.join(name).map_err(|e| {
+                            crate::errors::SinkError::GltfWriter(format!(
+                                "Failed to join uri with {e:?}"
+                            ))
+                        })?
+                    }
+                    None => self.output.clone(),
                 };
 
                 let mut buffer = Vec::new();
@@ -344,11 +359,19 @@ fn transform_features_to_local_enu(
 
 // Helper methods for GltfWriter
 impl GltfWriter {
-    fn entry(&mut self, feature_type: &str) -> &mut ClassFeatures {
+    /// Resolve the schema_key value for the feature, which doubles as the output filename.
+    fn resolve_schema_type(&self, feature: &reearth_flow_types::Feature) -> Option<String> {
+        self.schema_key
+            .as_ref()
+            .and_then(|key| feature.get(key).and_then(|v| v.as_string()))
+    }
+
+    fn entry(&mut self, schema_type: Option<String>) -> &mut ClassFeatures {
+        let feature_type = schema_type.clone().unwrap_or_else(|| "Feature".to_string());
         self.classified_features
-            .entry(feature_type.to_string())
+            .entry(schema_type)
             .or_insert_with(|| ClassFeatures {
-                feature_type: feature_type.to_string(),
+                feature_type,
                 features: Vec::new(),
                 bounding_volume: BoundingVolume::default(),
             })
@@ -367,9 +390,8 @@ impl GltfWriter {
         city_gml: &reearth_flow_types::geometry::CityGmlGeometry,
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
-        let Some(feature_type) = feature.metadata.feature_type.clone() else {
-            return Err(SinkError::GltfWriter("Feature type is missing".to_string()).into());
-        };
+        let schema_type = self.resolve_schema_type(feature);
+
         let mut materials: IndexSet<Material> = IndexSet::new();
         let default_material = reearth_flow_types::material::X3DMaterial::default();
         let mut local_bvol = BoundingVolume::default();
@@ -378,6 +400,7 @@ impl GltfWriter {
             attributes: feature
                 .attributes
                 .iter()
+                .filter(|(k, _)| self.schema_key.as_deref() != Some(k.as_ref()))
                 .map(|(k, v)| (k.to_string(), v.clone()))
                 .collect(),
             polygon_material_ids: Default::default(),
@@ -466,7 +489,7 @@ impl GltfWriter {
         }
         class_feature.materials = materials;
         {
-            let feats = self.entry(&feature_type);
+            let feats = self.entry(schema_type);
             feats.features.push(class_feature);
             feats.bounding_volume.update(&local_bvol);
         }
@@ -512,11 +535,7 @@ impl GltfWriter {
     ) -> Result<(), BoxedError> {
         use flatgeom::Polygon3 as FlatPolygon3;
 
-        let feature_type = feature
-            .metadata
-            .feature_type
-            .clone()
-            .unwrap_or_else(|| "Building".to_string());
+        let schema_type = self.resolve_schema_type(feature);
 
         // Convert Polygon3D to flatgeom::Polygon format [x, y, z, u, v]
         let flat_polygon: FlatPolygon3 = polygon.clone().into();
@@ -576,12 +595,13 @@ impl GltfWriter {
             attributes: feature
                 .attributes
                 .iter()
+                .filter(|(k, _)| self.schema_key.as_deref() != Some(k.as_ref()))
                 .map(|(k, v)| (k.to_string(), v.clone()))
                 .collect(),
         };
 
         // Add to classified features and update bounding volume
-        let feats = self.entry(&feature_type);
+        let feats = self.entry(schema_type);
         feats.features.push(class_feature);
         feats.bounding_volume.update(&local_bvol);
 
@@ -593,11 +613,7 @@ impl GltfWriter {
         solid: &reearth_flow_geometry::types::solid::Solid3D<f64>,
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
-        let feature_type = feature
-            .metadata
-            .feature_type
-            .clone()
-            .unwrap_or_else(|| "Building".to_string());
+        let schema_type = self.resolve_schema_type(feature);
 
         // Extract all faces from the solid
         let faces = solid.all_faces();
@@ -662,12 +678,13 @@ impl GltfWriter {
             attributes: feature
                 .attributes
                 .iter()
+                .filter(|(k, _)| self.schema_key.as_deref() != Some(k.as_ref()))
                 .map(|(k, v)| (k.to_string(), v.clone()))
                 .collect(),
         };
 
         // Add to classified features and update bounding volume
-        let feats = self.entry(&feature_type);
+        let feats = self.entry(schema_type);
         feats.features.push(class_feature);
         feats.bounding_volume.update(&local_bvol);
 
