@@ -8,22 +8,26 @@ use crate::error::{Error, Result};
 pub type NativeFn = Box<dyn Fn(&[Value]) -> Result<Value> + Send + Sync>;
 
 pub struct Context {
-    funcs: HashMap<(String, String), NativeFn>,
+    funcs: HashMap<String, NativeFn>,
 }
 
 impl Context {
     pub fn new() -> Self {
-        Self { funcs: HashMap::new() }
+        Self {
+            funcs: HashMap::new(),
+        }
     }
 
-    pub fn register(&mut self, ns: impl Into<String>, name: impl Into<String>, f: NativeFn) {
-        self.funcs.insert((ns.into(), name.into()), f);
+    pub fn register(&mut self, name: impl Into<String>, f: NativeFn) {
+        self.funcs.insert(name.into(), f);
     }
 
-    fn call(&self, ns: &str, name: &str, args: Vec<Value>) -> Result<Value> {
-        match self.funcs.get(&(ns.to_string(), name.to_string())) {
+    fn call(&self, name: &str, args: Vec<Value>) -> Result<Value> {
+        match self.funcs.get(name) {
             Some(f) => f(&args),
-            None => Err(Error::Eval { msg: format!("unknown function {ns}::{name}") }),
+            None => Err(Error::Eval {
+                msg: format!("unknown function '{name}'"),
+            }),
         }
     }
 }
@@ -47,18 +51,15 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
             let values: Result<Vec<_>> = items.iter().map(|e| eval(e, ctx)).collect();
             Ok(Value::Array(values?))
         }
-        Expr::Var(name) => {
-            // variable lookup is a nullary native call: var::name()
-            ctx.call("var", name, vec![])
-        }
+        Expr::Var(name) => ctx.call("__resolve", vec![Value::String(name.clone())]),
         Expr::Index(target, key) => {
             let target = eval(target, ctx)?;
             let key = eval(key, ctx)?;
             eval_index(target, key)
         }
-        Expr::FuncCall { ns, name, args } => {
+        Expr::FuncCall { name, args } => {
             let args: Result<Vec<_>> = args.iter().map(|e| eval(e, ctx)).collect();
-            ctx.call(ns, name, args?)
+            ctx.call(name, args?)
         }
         Expr::Unary(op, expr) => {
             let val = eval(expr, ctx)?;
@@ -68,13 +69,17 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
             match op {
                 BinOp::And => {
                     let l = eval(left, ctx)?;
-                    if !is_truthy(&l) { return Ok(Value::Bool(false)); }
+                    if !is_truthy(&l) {
+                        return Ok(Value::Bool(false));
+                    }
                     let r = eval(right, ctx)?;
                     return Ok(Value::Bool(is_truthy(&r)));
                 }
                 BinOp::Or => {
                     let l = eval(left, ctx)?;
-                    if is_truthy(&l) { return Ok(Value::Bool(true)); }
+                    if is_truthy(&l) {
+                        return Ok(Value::Bool(true));
+                    }
                     let r = eval(right, ctx)?;
                     return Ok(Value::Bool(is_truthy(&r)));
                 }
@@ -112,12 +117,18 @@ fn eval_unary(op: &UnaryOp, val: Value) -> Result<Value> {
                 if let Some(i) = n.as_i64() {
                     Ok(Value::Number((-i).into()))
                 } else if let Some(f) = n.as_f64() {
-                    Ok(serde_json::Number::from_f64(-f).map(Value::Number).unwrap_or(Value::Null))
+                    Ok(serde_json::Number::from_f64(-f)
+                        .map(Value::Number)
+                        .unwrap_or(Value::Null))
                 } else {
-                    Err(Error::Eval { msg: "cannot negate value".into() })
+                    Err(Error::Eval {
+                        msg: "cannot negate value".into(),
+                    })
                 }
             }
-            v => Err(Error::Eval { msg: format!("cannot negate {v:?}") }),
+            v => Err(Error::Eval {
+                msg: format!("cannot negate {v:?}"),
+            }),
         },
     }
 }
@@ -128,7 +139,9 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
             (Value::Number(a), Value::Number(b)) => add_numbers(a, b),
             (Value::String(a), Value::String(b)) => Ok(Value::String(a + &b)),
             (Value::String(a), b) => Ok(Value::String(a + &json_to_string(&b))),
-            (a, b) => Err(Error::Eval { msg: format!("cannot add {a:?} and {b:?}") }),
+            (a, b) => Err(Error::Eval {
+                msg: format!("cannot add {a:?} and {b:?}"),
+            }),
         },
         BinOp::Sub => numeric_op(left, right, |a, b| a - b, |a, b| a - b),
         BinOp::Mul => numeric_op(left, right, |a, b| a * b, |a, b| a * b),
@@ -136,12 +149,18 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
             (Value::Number(a), Value::Number(b)) => {
                 let b_f = b.as_f64().unwrap_or(0.0);
                 if b_f == 0.0 {
-                    return Err(Error::Eval { msg: "division by zero".into() });
+                    return Err(Error::Eval {
+                        msg: "division by zero".into(),
+                    });
                 }
                 let a_f = a.as_f64().unwrap_or(0.0);
-                Ok(serde_json::Number::from_f64(a_f / b_f).map(Value::Number).unwrap_or(Value::Null))
+                Ok(serde_json::Number::from_f64(a_f / b_f)
+                    .map(Value::Number)
+                    .unwrap_or(Value::Null))
             }
-            (a, b) => Err(Error::Eval { msg: format!("cannot divide {a:?} by {b:?}") }),
+            (a, b) => Err(Error::Eval {
+                msg: format!("cannot divide {a:?} by {b:?}"),
+            }),
         },
         BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
         BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
@@ -152,7 +171,9 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
         BinOp::In => match right {
             Value::Array(arr) => Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left)))),
             Value::Null => Ok(Value::Bool(false)),
-            r => Err(Error::Eval { msg: format!("'in' requires an array, got {r:?}") }),
+            r => Err(Error::Eval {
+                msg: format!("'in' requires an array, got {r:?}"),
+            }),
         },
         BinOp::And | BinOp::Or => unreachable!("handled with short-circuit above"),
     }
@@ -164,7 +185,9 @@ fn add_numbers(a: serde_json::Number, b: serde_json::Number) -> Result<Value> {
     }
     let af = a.as_f64().unwrap_or(0.0);
     let bf = b.as_f64().unwrap_or(0.0);
-    Ok(serde_json::Number::from_f64(af + bf).map(Value::Number).unwrap_or(Value::Null))
+    Ok(serde_json::Number::from_f64(af + bf)
+        .map(Value::Number)
+        .unwrap_or(Value::Null))
 }
 
 fn numeric_op(
@@ -180,19 +203,32 @@ fn numeric_op(
             }
             let af = a.as_f64().unwrap_or(0.0);
             let bf = b.as_f64().unwrap_or(0.0);
-            Ok(serde_json::Number::from_f64(float_op(af, bf)).map(Value::Number).unwrap_or(Value::Null))
+            Ok(serde_json::Number::from_f64(float_op(af, bf))
+                .map(Value::Number)
+                .unwrap_or(Value::Null))
         }
-        (a, b) => Err(Error::Eval { msg: format!("cannot apply numeric op to {a:?} and {b:?}") }),
+        (a, b) => Err(Error::Eval {
+            msg: format!("cannot apply numeric op to {a:?} and {b:?}"),
+        }),
     }
 }
 
-fn compare_values(left: Value, right: Value, pred: impl Fn(std::cmp::Ordering) -> bool) -> Result<Value> {
+fn compare_values(
+    left: Value,
+    right: Value,
+    pred: impl Fn(std::cmp::Ordering) -> bool,
+) -> Result<Value> {
     let ord = match (&left, &right) {
-        (Value::Number(a), Value::Number(b)) => {
-            a.as_f64().partial_cmp(&b.as_f64()).unwrap_or(std::cmp::Ordering::Equal)
-        }
+        (Value::Number(a), Value::Number(b)) => a
+            .as_f64()
+            .partial_cmp(&b.as_f64())
+            .unwrap_or(std::cmp::Ordering::Equal),
         (Value::String(a), Value::String(b)) => a.cmp(b),
-        _ => return Err(Error::Eval { msg: format!("cannot compare {left:?} and {right:?}") }),
+        _ => {
+            return Err(Error::Eval {
+                msg: format!("cannot compare {left:?} and {right:?}"),
+            })
+        }
     };
     Ok(Value::Bool(pred(ord)))
 }
@@ -229,12 +265,20 @@ mod tests {
     use serde_json::json;
 
     fn ctx_with_vars(vars: &[(&str, Value)]) -> Context {
+        use std::sync::Arc;
+        let map: std::collections::HashMap<String, Value> = vars
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect();
+        let map = Arc::new(map);
         let mut ctx = Context::new();
-        for (k, v) in vars {
-            let v = v.clone();
-            let k = k.to_string();
-            ctx.register("var", k, Box::new(move |_| Ok(v.clone())));
-        }
+        ctx.register(
+            "__resolve",
+            Box::new(move |args| {
+                let name = args.first().and_then(|v| v.as_str()).unwrap_or("");
+                Ok(map.get(name).cloned().unwrap_or(Value::Null))
+            }),
+        );
         ctx
     }
 
@@ -273,39 +317,65 @@ mod tests {
     #[test]
     fn test_var_and_index() {
         let feature = json!({"package": "bldg", "extension": "gml"});
-        assert_eq!(run(r#"feature["package"]"#, &[("feature", feature.clone())]), json!("bldg"));
-        assert_eq!(run(r#"feature["extension"] == "gml""#, &[("feature", feature)]), json!(true));
+        assert_eq!(
+            run(r#"feature["package"]"#, &[("feature", feature.clone())]),
+            json!("bldg")
+        );
+        assert_eq!(
+            run(r#"feature["extension"] == "gml""#, &[("feature", feature)]),
+            json!(true)
+        );
     }
 
     #[test]
     fn test_in_operator() {
         let pkgs = json!(["bldg", "tran"]);
-        assert_eq!(run(r#""bldg" in packages"#, &[("packages", pkgs.clone())]), json!(true));
-        assert_eq!(run(r#""fld" in packages"#, &[("packages", pkgs)]), json!(false));
+        assert_eq!(
+            run(r#""bldg" in packages"#, &[("packages", pkgs.clone())]),
+            json!(true)
+        );
+        assert_eq!(
+            run(r#""fld" in packages"#, &[("packages", pkgs)]),
+            json!(false)
+        );
     }
 
     #[test]
     fn test_nested_index() {
         let data = json!({"cityGmlPath": "/data/city.gml"});
-        assert_eq!(run(r#"value["cityGmlPath"]"#, &[("value", data)]), json!("/data/city.gml"));
+        assert_eq!(
+            run(r#"value["cityGmlPath"]"#, &[("value", data)]),
+            json!("/data/city.gml")
+        );
     }
 
     #[test]
     fn test_native_func() {
         let mut ctx = Context::new();
-        ctx.register("file", "join_path", Box::new(|args| {
-            let parts: Vec<&str> = args.iter().map(|v| v.as_str().unwrap_or("")).collect();
-            Ok(Value::String(parts.join("/")))
-        }));
+        ctx.register(
+            "join_path",
+            Box::new(|args| {
+                let parts: Vec<&str> = args.iter().map(|v| v.as_str().unwrap_or("")).collect();
+                Ok(Value::String(parts.join("/")))
+            }),
+        );
         assert_eq!(
-            eval(&parse(r#"file::join_path("base", "file.json")"#).unwrap(), &ctx).unwrap(),
+            eval(&parse(r#"join_path("base", "file.json")"#).unwrap(), &ctx).unwrap(),
             json!("base/file.json")
         );
     }
 
     #[test]
-    fn test_unknown_var_errors() {
-        let ctx = ctx_with_vars(&[]);
+    fn test_unknown_var_returns_null() {
+        // resolver returns Null for unknown names — no silent string fallback,
+        // but missing attributes resolve to Null (consistent with JSON semantics)
+        assert_eq!(run("missing", &[]), Value::Null);
+    }
+
+    #[test]
+    fn test_no_resolver_errors() {
+        // if no var resolver is registered at all, Var access is an error
+        let ctx = Context::new();
         let result = eval(&parse("missing").unwrap(), &ctx);
         assert!(result.is_err());
     }
@@ -315,8 +385,10 @@ mod tests {
         let feature = json!({"extension": "gml", "package": "bldg"});
         let pkgs = json!(["bldg", "tran"]);
         assert_eq!(
-            run(r#"feature["extension"] == "gml" && feature["package"] in packages"#,
-                &[("feature", feature), ("packages", pkgs)]),
+            run(
+                r#"feature["extension"] == "gml" && feature["package"] in packages"#,
+                &[("feature", feature), ("packages", pkgs)]
+            ),
             json!(true)
         );
     }
