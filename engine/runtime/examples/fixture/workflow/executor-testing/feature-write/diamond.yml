@@ -1,0 +1,179 @@
+id: 40000000-0000-0000-0000-000000000001
+name: "feature-write-diamond"
+entryGraphId: 40000000-0000-0000-0000-000000000010
+with:
+  workerArtifactPath:
+
+graphs:
+  - id: 40000000-0000-0000-0000-000000000030
+    name: shared_subgraph
+    nodes:
+      - id: 40000000-0000-0000-0000-000000000031
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+
+      - id: 40000000-0000-0000-0000-000000000032
+        name: FeatureFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").category == "A"
+              outputPort: portA
+            - expr: |
+                env.get("__value").category == "B"
+              outputPort: portB
+
+      - id: 40000000-0000-0000-0000-000000000033
+        name: OutputRouterOut1
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out1
+
+      - id: 40000000-0000-0000-0000-000000000034
+        name: OutputRouterOut2
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out2
+
+    edges:
+      - id: 40000000-0000-0000-0000-000000000081
+        from: 40000000-0000-0000-0000-000000000031
+        to: 40000000-0000-0000-0000-000000000032
+        fromPort: default
+        toPort: default
+      - id: 40000000-0000-0000-0000-000000000082
+        from: 40000000-0000-0000-0000-000000000032
+        to: 40000000-0000-0000-0000-000000000033
+        fromPort: portA
+        toPort: default
+      - id: 40000000-0000-0000-0000-000000000083
+        from: 40000000-0000-0000-0000-000000000032
+        to: 40000000-0000-0000-0000-000000000034
+        fromPort: unfiltered
+        toPort: default
+
+  - id: 40000000-0000-0000-0000-000000000020
+    name: subgraph_a
+    nodes:
+      - id: 40000000-0000-0000-0000-000000000021
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+
+      - id: 40000000-0000-0000-0000-000000000022
+        name: SharedSubGraph
+        type: subGraph
+        subGraphId: 40000000-0000-0000-0000-000000000030
+
+      - id: 40000000-0000-0000-0000-000000000023
+        name: OutputRouterOut1
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out1
+
+    edges:
+      - id: 40000000-0000-0000-0000-000000000061
+        from: 40000000-0000-0000-0000-000000000021
+        to: 40000000-0000-0000-0000-000000000022
+        fromPort: default
+        toPort: default
+      - id: 40000000-0000-0000-0000-000000000062
+        from: 40000000-0000-0000-0000-000000000022
+        to: 40000000-0000-0000-0000-000000000023
+        fromPort: out1
+        toPort: default
+
+  - id: 40000000-0000-0000-0000-000000000040
+    name: subgraph_b
+    nodes:
+      - id: 40000000-0000-0000-0000-000000000041
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+
+      - id: 40000000-0000-0000-0000-000000000042
+        name: SharedSubGraph
+        type: subGraph
+        subGraphId: 40000000-0000-0000-0000-000000000030
+
+      - id: 40000000-0000-0000-0000-000000000043
+        name: OutputRouterOut1
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out1
+
+    edges:
+      - id: 40000000-0000-0000-0000-000000000071
+        from: 40000000-0000-0000-0000-000000000041
+        to: 40000000-0000-0000-0000-000000000042
+        fromPort: default
+        toPort: default
+      - id: 40000000-0000-0000-0000-000000000072
+        from: 40000000-0000-0000-0000-000000000042
+        to: 40000000-0000-0000-0000-000000000043
+        fromPort: out2
+        toPort: default
+
+  - id: 40000000-0000-0000-0000-000000000010
+    name: entry_point
+    nodes:
+      - id: 40000000-0000-0000-0000-000000000011
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ category: "A" },
+              #{ category: "B" },
+              #{ category: "C" },
+            ]
+
+      - id: 40000000-0000-0000-0000-000000000012
+        name: SubGraphA
+        type: subGraph
+        subGraphId: 40000000-0000-0000-0000-000000000020
+
+      - id: 40000000-0000-0000-0000-000000000013
+        name: SubGraphB
+        type: subGraph
+        subGraphId: 40000000-0000-0000-0000-000000000040
+
+      - id: 40000000-0000-0000-0000-000000000014
+        name: CsvWriter
+        type: action
+        action: CsvWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "output.csv")
+          format: csv
+
+    edges:
+      - id: 40000000-0000-0000-0000-000000000051
+        from: 40000000-0000-0000-0000-000000000011
+        to: 40000000-0000-0000-0000-000000000012
+        fromPort: default
+        toPort: default
+      - id: 40000000-0000-0000-0000-000000000052
+        from: 40000000-0000-0000-0000-000000000011
+        to: 40000000-0000-0000-0000-000000000013
+        fromPort: default
+        toPort: default
+      - id: 40000000-0000-0000-0000-000000000053
+        from: 40000000-0000-0000-0000-000000000012
+        to: 40000000-0000-0000-0000-000000000014
+        fromPort: out1
+        toPort: default

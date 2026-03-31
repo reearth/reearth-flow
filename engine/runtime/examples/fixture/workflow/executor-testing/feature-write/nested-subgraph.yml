@@ -1,0 +1,147 @@
+id: 20000000-0000-0000-0000-000000000001
+name: "feature-write-nested-subgraph"
+entryGraphId: 20000000-0000-0000-0000-000000000010
+with:
+  workerArtifactPath:
+
+graphs:
+  - id: 20000000-0000-0000-0000-000000000030
+    name: inner_subgraph
+    nodes:
+      - id: 20000000-0000-0000-0000-000000000031
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+
+      - id: 20000000-0000-0000-0000-000000000032
+        name: FeatureFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").category == "A"
+              outputPort: portA
+            - expr: |
+                env.get("__value").category == "B"
+              outputPort: portB
+
+      - id: 20000000-0000-0000-0000-000000000033
+        name: OutputRouterOut1
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out1
+
+      - id: 20000000-0000-0000-0000-000000000034
+        name: OutputRouterOut2
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out2
+
+    edges:
+      - id: 20000000-0000-0000-0000-000000000061
+        from: 20000000-0000-0000-0000-000000000031
+        to: 20000000-0000-0000-0000-000000000032
+        fromPort: default
+        toPort: default
+      - id: 20000000-0000-0000-0000-000000000062
+        from: 20000000-0000-0000-0000-000000000032
+        to: 20000000-0000-0000-0000-000000000033
+        fromPort: portA
+        toPort: default
+      - id: 20000000-0000-0000-0000-000000000063
+        from: 20000000-0000-0000-0000-000000000032
+        to: 20000000-0000-0000-0000-000000000034
+        fromPort: unfiltered
+        toPort: default
+
+  - id: 20000000-0000-0000-0000-000000000020
+    name: outer_subgraph
+    nodes:
+      - id: 20000000-0000-0000-0000-000000000021
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+
+      - id: 20000000-0000-0000-0000-000000000022
+        name: InnerSubGraph
+        type: subGraph
+        subGraphId: 20000000-0000-0000-0000-000000000030
+
+      - id: 20000000-0000-0000-0000-000000000023
+        name: OutputRouterOut1
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out1
+
+      - id: 20000000-0000-0000-0000-000000000024
+        name: OutputRouterOut2
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out2
+
+    edges:
+      - id: 20000000-0000-0000-0000-000000000051
+        from: 20000000-0000-0000-0000-000000000021
+        to: 20000000-0000-0000-0000-000000000022
+        fromPort: default
+        toPort: default
+      - id: 20000000-0000-0000-0000-000000000052
+        from: 20000000-0000-0000-0000-000000000022
+        to: 20000000-0000-0000-0000-000000000023
+        fromPort: out1
+        toPort: default
+      - id: 20000000-0000-0000-0000-000000000053
+        from: 20000000-0000-0000-0000-000000000022
+        to: 20000000-0000-0000-0000-000000000024
+        fromPort: out2
+        toPort: default
+
+  - id: 20000000-0000-0000-0000-000000000010
+    name: entry_point
+    nodes:
+      - id: 20000000-0000-0000-0000-000000000011
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ category: "A" },
+              #{ category: "B" },
+              #{ category: "C" },
+            ]
+
+      - id: 20000000-0000-0000-0000-000000000012
+        name: OuterSubGraph
+        type: subGraph
+        subGraphId: 20000000-0000-0000-0000-000000000020
+
+      - id: 20000000-0000-0000-0000-000000000013
+        name: CsvWriter
+        type: action
+        action: CsvWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "output.csv")
+          format: csv
+
+    edges:
+      - id: 20000000-0000-0000-0000-000000000041
+        from: 20000000-0000-0000-0000-000000000011
+        to: 20000000-0000-0000-0000-000000000012
+        fromPort: default
+        toPort: default
+      - id: 20000000-0000-0000-0000-000000000042
+        from: 20000000-0000-0000-0000-000000000012
+        to: 20000000-0000-0000-0000-000000000013
+        fromPort: out1
+        toPort: default
