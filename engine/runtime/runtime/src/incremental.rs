@@ -3,8 +3,7 @@ use std::sync::Arc;
 
 use reearth_flow_state::State;
 
-const OUTPUT_ROUTING_ACTION: &str = "OutputRouter";
-const ROUTING_PARAM_KEY: &str = "routingPort";
+use crate::node::{FEATURE_FILTER_ACTION, OUTPUT_ROUTING_ACTION, ROUTING_PARAM_KEY};
 
 #[derive(Clone, Debug)]
 pub struct IncrementalRunConfig {
@@ -258,6 +257,10 @@ fn build_all_prefix_chains(
         .or_default()
         .push(vec![]);
 
+    // Track (graph_id, caller_entity_id) to avoid infinite loops on cyclic subgraph references.
+    let mut visited: HashSet<(uuid::Uuid, Option<uuid::Uuid>)> = HashSet::new();
+    visited.insert((workflow.entry_graph_id, None));
+
     let mut queue: VecDeque<(uuid::Uuid, Vec<uuid::Uuid>)> = VecDeque::new();
     queue.push_back((workflow.entry_graph_id, vec![]));
 
@@ -269,6 +272,9 @@ fn build_all_prefix_chains(
                     sub_graph_id,
                 } = node
                 {
+                    if !visited.insert((*sub_graph_id, Some(entity.id))) {
+                        continue;
+                    }
                     let mut child_chain = current_chain.clone();
                     child_chain.push(entity.id);
                     result
@@ -329,7 +335,8 @@ fn compute_port_file_ids(
 }
 
 /// Determines the output port names for a node by inspecting outgoing edges.
-/// For OutputRouter nodes, also includes the routingPort parameter.
+/// For OutputRouter and FeatureFilter nodes, also includes ports derived from
+/// their configuration parameters (routingPort / conditions[].outputPort).
 fn collect_output_ports(
     graph: &reearth_flow_types::Graph,
     node: &reearth_flow_types::Node,
@@ -343,10 +350,18 @@ fn collect_output_ports(
         .collect();
 
     if let reearth_flow_types::Node::Action { entity, action } = node {
-        if action == OUTPUT_ROUTING_ACTION {
-            if let Some(with) = &entity.with {
+        if let Some(with) = &entity.with {
+            if action == OUTPUT_ROUTING_ACTION {
                 if let Some(serde_json::Value::String(rp)) = with.get(ROUTING_PARAM_KEY) {
                     ports.insert(rp.clone());
+                }
+            } else if action == FEATURE_FILTER_ACTION {
+                if let Some(serde_json::Value::Array(conditions)) = with.get("conditions") {
+                    for condition in conditions {
+                        if let Some(serde_json::Value::String(port)) = condition.get("outputPort") {
+                            ports.insert(port.clone());
+                        }
+                    }
                 }
             }
         }
