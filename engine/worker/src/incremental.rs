@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 use reearth_flow_common::dir::setup_job_directory;
+use reearth_flow_runtime::incremental::collect_reusable_ids;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
@@ -11,12 +12,6 @@ use reearth_flow_types::Workflow;
 use crate::artifact::artifact_job_subdir_root_uri;
 use reearth_flow_worker::errors::{self, Error};
 use reearth_flow_worker::types::metadata::Metadata;
-
-#[derive(Debug, Clone)]
-pub struct ReusableIds {
-    pub edge_ids: Vec<uuid::Uuid>,
-    pub node_ids: HashSet<uuid::Uuid>,
-}
 
 #[derive(Debug, Clone)]
 pub struct DirCopySpec {
@@ -72,7 +67,8 @@ pub async fn prepare_incremental_feature_store(
     let reuse_state =
         State::new(&reuse_feature_store_uri, storage_resolver).map_err(Error::init)?;
 
-    let reusable_ids = collect_reusable_ids(workflow, start_node_id)?;
+    let reusable_ids =
+        collect_reusable_ids(workflow, start_node_id).map_err(Error::init)?;
     let candidate_edge_ids = &reusable_ids.edge_ids;
 
     // Filter candidate edges by checking which ones actually exist in the previous feature store
@@ -131,19 +127,14 @@ pub async fn prepare_incremental_feature_store(
     );
 
     // --- Port-based file copying ---
-    let all_prev_ids = prev_feature_store_state.list_jsonl_ids_async().await;
-    let port_file_ids: Vec<&str> = all_prev_ids
-        .iter()
-        .filter(|stem| is_port_file_for_reusable_node(stem, &reusable_ids.node_ids))
-        .map(|s| s.as_str())
-        .collect();
+    let port_file_ids = &reusable_ids.port_file_ids;
 
     tracing::info!(
-        "Incremental run: found {} port-based files to copy",
+        "Incremental run: {} port-based file IDs to copy",
         port_file_ids.len()
     );
 
-    for file_id in &port_file_ids {
+    for file_id in port_file_ids {
         match reuse_state
             .copy_jsonl_from_state_async(&prev_feature_store_state, file_id)
             .await
@@ -182,248 +173,6 @@ pub async fn prepare_incremental_feature_store(
     }
 
     Ok((Arc::new(reuse_state), actually_copied_edges))
-}
-
-pub fn collect_reusable_ids(
-    workflow: &Workflow,
-    start_node_id: uuid::Uuid,
-) -> errors::Result<ReusableIds> {
-    let graphs: HashMap<uuid::Uuid, &reearth_flow_types::Graph> =
-        workflow.graphs.iter().map(|g| (g.id, g)).collect();
-
-    let mut node_to_graph: HashMap<uuid::Uuid, uuid::Uuid> = HashMap::new();
-    for g in &workflow.graphs {
-        for n in &g.nodes {
-            node_to_graph.insert(n.id(), g.id);
-        }
-    }
-
-    let start_graph_id = node_to_graph.get(&start_node_id).copied().ok_or_else(|| {
-        Error::init(format!(
-            "start_node_id {} not found in any graph",
-            start_node_id
-        ))
-    })?;
-
-    // Build subgraph callsite map: sub_graph_id -> [(parent_graph_id, caller_node_id)]
-    let mut callsites: HashMap<uuid::Uuid, Vec<(uuid::Uuid, uuid::Uuid)>> = HashMap::new();
-    for g in &workflow.graphs {
-        for n in &g.nodes {
-            if let reearth_flow_types::Node::SubGraph {
-                entity,
-                sub_graph_id,
-                ..
-            } = n
-            {
-                callsites
-                    .entry(*sub_graph_id)
-                    .or_default()
-                    .push((g.id, entity.id));
-            }
-        }
-    }
-
-    let mut edge_ids = HashSet::<uuid::Uuid>::new();
-    let mut node_ids = HashSet::<uuid::Uuid>::new();
-
-    // BFS traversal from start node up to parent graphs
-    let mut q: VecDeque<(uuid::Uuid, uuid::Uuid)> = VecDeque::new();
-    let mut visited: HashSet<(uuid::Uuid, uuid::Uuid)> = HashSet::new();
-
-    q.push_back((start_graph_id, start_node_id));
-    visited.insert((start_graph_id, start_node_id));
-
-    while let Some((gid, sid)) = q.pop_front() {
-        collect_reusable_in_graph_and_upstream_subworkflows(
-            &graphs,
-            gid,
-            sid,
-            &mut edge_ids,
-            &mut node_ids,
-        )?;
-
-        // If current graph is a subworkflow, traverse up to parent graphs
-        if let Some(parents) = callsites.get(&gid) {
-            for &(pgid, caller_node_id) in parents {
-                if visited.insert((pgid, caller_node_id)) {
-                    q.push_back((pgid, caller_node_id));
-                }
-            }
-        }
-    }
-
-    let mut v: Vec<_> = edge_ids.into_iter().collect();
-    v.sort();
-    Ok(ReusableIds {
-        edge_ids: v,
-        node_ids,
-    })
-}
-
-/// Collects reusable edges and node IDs in a graph, treating nodes upstream of
-/// `start_node_id` as reusable. Also recursively processes upstream subworkflow nodes.
-fn collect_reusable_in_graph_and_upstream_subworkflows(
-    graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
-    graph_id: uuid::Uuid,
-    start_node_id: uuid::Uuid,
-    edge_ids: &mut HashSet<uuid::Uuid>,
-    node_ids: &mut HashSet<uuid::Uuid>,
-) -> errors::Result<()> {
-    let graph = graphs
-        .get(&graph_id)
-        .ok_or_else(|| Error::init(format!("graph {} not found", graph_id)))?;
-
-    // Build adjacency list for BFS
-    let mut adj: HashMap<uuid::Uuid, Vec<uuid::Uuid>> = HashMap::new();
-    for node in &graph.nodes {
-        adj.entry(node.id()).or_default();
-    }
-    for edge in &graph.edges {
-        adj.entry(edge.from).or_default().push(edge.to);
-    }
-
-    // Find all downstream nodes from start_node via BFS
-    let mut downstream = HashSet::new();
-    let mut q = VecDeque::new();
-    downstream.insert(start_node_id);
-    q.push_back(start_node_id);
-
-    while let Some(n) = q.pop_front() {
-        if let Some(nexts) = adj.get(&n) {
-            for &nx in nexts {
-                if downstream.insert(nx) {
-                    q.push_back(nx);
-                }
-            }
-        }
-    }
-
-    // Collect edges whose source is NOT downstream (i.e., upstream edges)
-    for edge in &graph.edges {
-        if !downstream.contains(&edge.from) {
-            edge_ids.insert(edge.id);
-        }
-    }
-
-    // Track visited subgraphs to prevent infinite recursion in case of cycles
-    let mut visited_subgraphs = HashSet::new();
-
-    // For upstream nodes, collect their IDs and recurse into subworkflows
-    for node in &graph.nodes {
-        let nid = node.id();
-        if downstream.contains(&nid) {
-            tracing::info!(
-                "Skipping node {} in graph {} as it is downstream of start node {}",
-                nid,
-                graph_id,
-                start_node_id
-            );
-            continue;
-        }
-
-        node_ids.insert(nid);
-
-        tracing::info!(
-            "Processing upstream node {} in graph {} for reusable data",
-            nid,
-            graph_id
-        );
-
-        if let Some(sub_graph_id) = extract_subgraph_id_if_subworkflow_node(node) {
-            tracing::info!(
-                "Node {} in graph {} is a subworkflow node calling subgraph {}",
-                nid,
-                graph_id,
-                sub_graph_id
-            );
-            collect_all_in_graph_recursive(
-                graphs,
-                sub_graph_id,
-                edge_ids,
-                node_ids,
-                &mut visited_subgraphs,
-            )?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Recursively collects all edges and node IDs in a graph and its nested subgraphs.
-/// Uses cycle detection to prevent infinite recursion if subgraphs form circular references.
-fn collect_all_in_graph_recursive(
-    graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
-    graph_id: uuid::Uuid,
-    edge_ids: &mut HashSet<uuid::Uuid>,
-    node_ids: &mut HashSet<uuid::Uuid>,
-    visited: &mut HashSet<uuid::Uuid>,
-) -> errors::Result<()> {
-    if !visited.insert(graph_id) {
-        tracing::info!(
-            "Skipping already-visited subgraph {} (cycle detected)",
-            graph_id
-        );
-        return Ok(());
-    }
-
-    let graph = graphs
-        .get(&graph_id)
-        .ok_or_else(|| Error::init(format!("graph {} not found", graph_id)))?;
-
-    for edge in &graph.edges {
-        edge_ids.insert(edge.id);
-    }
-
-    for node in &graph.nodes {
-        node_ids.insert(node.id());
-        if let Some(sub_graph_id) = extract_subgraph_id_if_subworkflow_node(node) {
-            collect_all_in_graph_recursive(graphs, sub_graph_id, edge_ids, node_ids, visited)?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Extracts the subgraph ID from a node if it's a SubGraph node type.
-fn extract_subgraph_id_if_subworkflow_node(node: &reearth_flow_types::Node) -> Option<uuid::Uuid> {
-    match node {
-        reearth_flow_types::Node::SubGraph { sub_graph_id, .. } => Some(*sub_graph_id),
-        _ => None,
-    }
-}
-
-/// Determines if a JSONL file stem represents a port-based file belonging
-/// to one of the given reusable node IDs.
-///
-/// Port-based stems have the form:
-///   - "{node_id}.{port}"           (top-level node)
-///   - "{prefix}.{node_id}.{port}"  (subgraph node, prefix is one or more UUIDs)
-///
-/// Edge-based stems are pure UUIDs (possibly dot-separated for subgraph namespacing)
-/// and contain NO non-UUID final segment.
-fn is_port_file_for_reusable_node(stem: &str, reusable_node_ids: &HashSet<uuid::Uuid>) -> bool {
-    let segments: Vec<&str> = stem.split('.').collect();
-    if segments.len() < 2 {
-        return false;
-    }
-
-    // If the last segment parses as a UUID, this is an edge-based file
-    let last = segments.last().unwrap();
-    if uuid::Uuid::parse_str(last).is_ok() {
-        return false;
-    }
-
-    // Last segment is the port name. Check if any preceding UUID segment
-    // is a reusable node ID.
-    for seg in &segments[..segments.len() - 1] {
-        if let Ok(id) = uuid::Uuid::parse_str(seg) {
-            if reusable_node_ids.contains(&id) {
-                return true;
-            }
-        }
-    }
-
-    false
 }
 
 /// Copy reusable outputs from the previous job into current job workspace.
