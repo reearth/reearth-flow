@@ -1,5 +1,5 @@
 {
-  "description": "Regression test for false-positive detection of `unshared edges` error",
+  "description": "Regression test for false-positive unshared edge detection (ajigasawa-machi, pref/nakamuragawa)",
   "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {

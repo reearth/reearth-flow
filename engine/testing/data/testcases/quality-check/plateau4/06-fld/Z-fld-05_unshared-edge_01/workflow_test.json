@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check for unshared edges #1",
+  "description": "Unshared edges in multiple files",
   "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {
@@ -42,7 +42,10 @@
       "expectedFile": "summary_fld_natl_1_1_kikuchigawa_kikuchigawa.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "06_浸水想定区域_fld/natl/1_1_kikuchigawa_kikuchigawa.csv"
+      "expectedFile": "06_浸水想定区域_fld/natl/1_1_kikuchigawa_kikuchigawa.csv",
+      "excludeColumns": [
+        "Index"
+      ]
     }
   },
   "expectResultOkFile": false

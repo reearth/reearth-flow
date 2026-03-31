@@ -5,9 +5,11 @@ import {
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-import { ChangeEvent, FocusEvent } from "react";
+import { ChangeEvent, useCallback } from "react";
 
 import { TextArea } from "@flow/components";
+
+import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";
 
 type CustomWidgetProps<
   T = any,
@@ -27,6 +29,7 @@ const TextareaWidget = <
   value,
   required,
   disabled,
+  registry,
   autofocus,
   readonly,
   onBlur,
@@ -34,15 +37,25 @@ const TextareaWidget = <
   onChange,
   options,
 }: CustomWidgetProps<T, S, F>) => {
+  const formContext = registry?.formContext;
+  const { fieldFocusMap, onFieldFocus } = formContext ?? {};
+  const focusedUsers = fieldFocusMap?.[id] ?? [];
   const _onChange = ({ target: { value } }: ChangeEvent<HTMLTextAreaElement>) =>
     onChange(value === "" ? options.emptyValue : value);
-  const _onBlur = ({ target }: FocusEvent<HTMLTextAreaElement>) =>
-    onBlur(id, target?.value);
-  const _onFocus = ({ target }: FocusEvent<HTMLTextAreaElement>) =>
-    onFocus(id, target?.value);
+
+  const handleBlur = useCallback(() => {
+    onBlur(id, value);
+
+    onFieldFocus?.(null);
+  }, [onBlur, id, onFieldFocus, value]);
+  const handleFocus = useCallback(() => {
+    onFocus(id, value);
+    onFieldFocus?.(id);
+  }, [onFocus, id, onFieldFocus, value]);
 
   return (
     <TextArea
+      style={paramsAwarenessStyles(focusedUsers)}
       id={id}
       name={id}
       placeholder={placeholder}
@@ -53,8 +66,8 @@ const TextareaWidget = <
       autoFocus={autofocus}
       rows={options.rows || 5}
       onChange={_onChange}
-      onBlur={_onBlur}
-      onFocus={_onFocus}
+      onBlur={handleBlur}
+      onFocus={handleFocus}
       aria-describedby={ariaDescribedByIds(id)}
     />
   );
