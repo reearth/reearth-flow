@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
-use reearth_flow_expr::eval::{Context, NativeFn};
+use reearth_flow_expr::eval::Context;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Feature;
+use reearth_flow_types::{Attribute, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -108,19 +108,33 @@ struct Condition {
     output_port: Port,
 }
 
-/// Build an eval `Context` from a feature, registering each attribute as a
-/// native `var::<name>` function. Conversion from `AttributeValue` to
-/// `serde_json::Value` happens only when the attribute is actually accessed.
+/// Build an eval `Context` from a feature using a single proxy resolver.
+/// Attributes are converted from `AttributeValue` to `serde_json::Value`
+/// only when actually accessed by the expression — zero upfront copy.
 fn context_from_feature(feature: &Feature) -> Context {
+    let attrs = Arc::clone(&feature.attributes);
     let mut ctx = Context::new();
-
-    for (attr, value) in feature.attributes.iter() {
-        let name = attr.clone().into_inner();
-        let value: Value = value.clone().into();
-        let f: NativeFn = Box::new(move |_| Ok(value.clone()));
-        ctx.register("var", name, f);
-    }
-
+    let attrs2 = Arc::clone(&feature.attributes);
+    ctx.register(
+        "__resolve",
+        Box::new(move |args| {
+            let name = args.first().and_then(|v| v.as_str()).unwrap_or("");
+            Ok(attrs
+                .get(&Attribute::new(name))
+                .map(|v| v.clone().into())
+                .unwrap_or(Value::Null))
+        }),
+    );
+    ctx.register(
+        "getattr",
+        Box::new(move |args| {
+            let name = args.first().and_then(|v| v.as_str()).unwrap_or("");
+            Ok(attrs2
+                .get(&Attribute::new(name))
+                .map(|v| v.clone().into())
+                .unwrap_or(Value::Null))
+        }),
+    );
     ctx
 }
 
@@ -137,18 +151,18 @@ impl Processor for FeatureFilter2 {
         for condition in &self.conditions {
             match reearth_flow_expr::eval(&condition.ast, &eval_ctx) {
                 Ok(Value::Bool(true)) => {
-                    fw.send(ctx.new_with_feature_and_port(
-                        feature.clone(),
-                        condition.output_port.clone(),
-                    ));
+                    fw.send(
+                        ctx.new_with_feature_and_port(
+                            feature.clone(),
+                            condition.output_port.clone(),
+                        ),
+                    );
                     routed = true;
                 }
                 Ok(_) => {}
                 Err(e) => {
-                    ctx.event_hub.error_log(
-                        Some(ctx.error_span()),
-                        format!("filter2 eval error: {e}"),
-                    );
+                    ctx.event_hub
+                        .error_log(Some(ctx.error_span()), format!("filter2 eval error: {e}"));
                 }
             }
         }
