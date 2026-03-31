@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     fmt::{Debug, Display},
     hash::Hash,
 };
@@ -12,7 +12,8 @@ use crate::{
     event::EventHub,
     executor_operation::NodeContext,
     node::{
-        EdgeId, GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Port, Processor, Sink, Source,
+        EdgeId, GraphId, NodeHandle, NodeId, NodeKind as DagNodeKind, Port, Processor, Sink,
+        Source, FEATURE_FILTER_ACTION, OUTPUT_ROUTING_ACTION, ROUTING_PARAM_KEY,
     },
 };
 
@@ -21,6 +22,15 @@ pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
     pub kind: NodeKind,
+    /// Output ports for this node: factory-declared ports merged with
+    /// dynamically-derived ports (e.g. FeatureFilter conditions, OutputRouter routingPort).
+    pub output_ports: Vec<Port>,
+    /// Accumulated subgraph prefix, propagated from SchemaNodeType.
+    pub subgraph_prefix: Option<String>,
+    /// True when this node is an OutputRouter inside a subgraph, meaning its
+    /// port-based intermediate data should be named `<prefix>.<port>` (the
+    /// subgraph's output port) rather than `<prefix>.<node_id>.<port>`.
+    pub is_subgraph_output: bool,
 }
 
 impl Eq for NodeType {}
@@ -37,6 +47,9 @@ impl NodeType {
             handle: NodeHandle { id },
             name,
             kind,
+            output_ports: vec![],
+            subgraph_prefix: None,
+            is_subgraph_output: false,
         }
     }
 }
@@ -170,6 +183,9 @@ impl BuilderDag {
                     handle: handle.clone(),
                     name: node.name.clone(),
                     kind: NodeKind::Sink(sink),
+                    output_ports: vec![],
+                    subgraph_prefix: node.subgraph_prefix.clone(),
+                    is_subgraph_output: false,
                 });
                 node_index_map.insert(node_index, new_node_index);
                 source_id_to_sinks
@@ -197,6 +213,7 @@ impl BuilderDag {
                             node.node.action().to_string(),
                         ));
                     }
+                    let output_ports = source.get_output_ports();
                     let source = source
                         .build(
                             ctx.clone(),
@@ -229,6 +246,9 @@ impl BuilderDag {
                         handle: node.handle,
                         name: node.name,
                         kind: NodeKind::Source(source),
+                        output_ports,
+                        subgraph_prefix: node.subgraph_prefix,
+                        is_subgraph_output: false,
                     }
                 }
                 DagNodeKind::Processor(processor) => {
@@ -238,6 +258,60 @@ impl BuilderDag {
                             processor.name().to_string(),
                             node.node.action().to_string(),
                         ));
+                    }
+                    let mut output_ports = processor.get_output_ports();
+                    // IMPORTANT: Dynamic port extraction for actions whose output
+                    // ports are determined by configuration, not by
+                    // get_output_ports(). These are handled as ad-hoc special cases
+                    // here rather than adding a new trait method (e.g.
+                    // `ProcessorFactory::build_output_ports(with)`) because:
+                    //   1. Such a method would require an empty default impl to
+                    //      avoid mechanical changes across ~100 factories, but an
+                    //      empty default lets developers forget to implement it for
+                    //      new dynamic-port actions — silently dropping ports.
+                    //      Such fragile approach should not be committed to the core
+                    //      without a more robust architectural decision.
+                    //   2. The existing get_output_ports() serves schema generation
+                    //      where no `with` is available, and adding a second method
+                    //      with overlapping semantics risks premature commitment.
+                    // An architectural revision of port handling is needed to
+                    // resolve this ad-hoc approach properly.
+                    if let Some(ref with) = node.with {
+                        let action = node.node.action();
+                        if action == OUTPUT_ROUTING_ACTION {
+                            // OutputRouter declares no output ports; the actual
+                            // port is specified via the routingPort parameter.
+                            if let Some(serde_json::Value::String(rp)) = with.get(ROUTING_PARAM_KEY)
+                            {
+                                output_ports.push(Port::new(rp));
+                            }
+                        } else if action == FEATURE_FILTER_ACTION {
+                            // FeatureFilter declares only the static "unfiltered"
+                            // port; dynamic ports come from conditions[].outputPort.
+                            if let Some(serde_json::Value::Array(conditions)) =
+                                with.get("conditions")
+                            {
+                                for condition in conditions {
+                                    if let Some(serde_json::Value::String(port)) =
+                                        condition.get("outputPort")
+                                    {
+                                        output_ports.push(Port::new(port));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Reject duplicate output router ports early so downstream code
+                    // (e.g. per-port writer creation) can assume uniqueness.
+                    let mut seen_ports = HashSet::new();
+                    for port in &output_ports {
+                        if !seen_ports.insert(port.clone()) {
+                            return Err(ExecutionError::DuplicateOutputPort {
+                                node_id: node.handle.id.to_string(),
+                                node_name: node.name.clone(),
+                                port: port.clone(),
+                            });
+                        }
                     }
                     let processor = processor
                         .build(
@@ -251,10 +325,15 @@ impl BuilderDag {
                             node_name: node.name.clone(),
                             error: e,
                         })?;
+                    let is_subgraph_output = node.subgraph_prefix.is_some()
+                        && node.node.action() == OUTPUT_ROUTING_ACTION;
                     NodeType {
                         handle: node.handle,
                         name: node.name,
                         kind: NodeKind::Processor(processor),
+                        output_ports,
+                        subgraph_prefix: node.subgraph_prefix,
+                        is_subgraph_output,
                     }
                 }
                 DagNodeKind::Sink(_) => continue,

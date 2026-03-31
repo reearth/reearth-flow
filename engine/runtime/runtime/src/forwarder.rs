@@ -171,6 +171,8 @@ impl SenderWithPortMapping {
 pub struct ChannelManager {
     owner: NodeHandle,
     feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
+    /// Port-based feature writers: one writer per output port (for port-based intermediate data).
+    port_writers: HashMap<Port, Box<dyn FeatureWriter>>,
     senders: Vec<SenderWithPortMapping>,
     runtime: Arc<Handle>,
     event_hub: EventHub,
@@ -185,6 +187,7 @@ impl Clone for ChannelManager {
         Self {
             owner: self.owner.clone(),
             feature_writers: self.feature_writers.clone(),
+            port_writers: self.port_writers.clone(),
             senders: self.senders.clone(),
             runtime: self.runtime.clone(),
             event_hub: self.event_hub.clone(),
@@ -195,8 +198,29 @@ impl Clone for ChannelManager {
 }
 
 impl ChannelManager {
+    /// Write a feature to the port-based writer for the given port, if one exists.
+    fn write_to_port(&self, port: &Port, feature: &Feature) {
+        if let Some(port_writer) = self.port_writers.get(port) {
+            let mut writer = port_writer.clone();
+            let feature = feature.clone();
+            let event_hub = self.event_hub.clone();
+            let node_handle = self.owner.clone();
+            self.runtime.block_on(async move {
+                if let Err(e) = writer.write(&feature).await {
+                    event_hub.error_log_with_node_handle(
+                        None,
+                        node_handle,
+                        format!("Failed to write feature to port writer: {e}"),
+                    );
+                }
+            });
+        }
+    }
+
     #[inline]
     pub fn send_op(&self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
+        self.write_to_port(&ctx.port, &ctx.feature);
+
         let sender_ports: HashMap<Port, Vec<Port>> = {
             let mut sender_port = HashMap::new();
             for sender in &self.senders {
@@ -274,21 +298,23 @@ impl ChannelManager {
     }
 
     pub fn send_terminate(&self, ctx: NodeContext) -> Result<(), ExecutionError> {
-        let all_writers = self
+        let all_writers: Vec<_> = self
             .feature_writers
             .values()
             .flatten()
+            .chain(self.port_writers.values())
             .cloned()
-            .collect::<Vec<_>>();
+            .collect();
         let node_handle = self.owner.clone();
+        let event_hub = self.event_hub.clone();
         self.runtime.block_on(async {
             let futures = all_writers.iter().map(|writer| {
                 let writer = writer.clone();
                 let node = node_handle.clone();
+                let event_hub = event_hub.clone();
                 async move {
-                    let result = writer.flush().await;
-                    if let Err(e) = result {
-                        self.event_hub.error_log_with_node_handle(
+                    if let Err(e) = writer.flush().await {
+                        event_hub.error_log_with_node_handle(
                             None,
                             node,
                             format!("Failed to flush feature writer: {e}"),
@@ -374,6 +400,7 @@ impl ChannelManager {
     pub fn new(
         owner: NodeHandle,
         feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
+        port_writers: HashMap<Port, Box<dyn FeatureWriter>>,
         senders: Vec<SenderWithPortMapping>,
         runtime: Arc<Handle>,
         event_hub: EventHub,
@@ -382,6 +409,7 @@ impl ChannelManager {
         Self {
             owner,
             feature_writers,
+            port_writers,
             senders,
             runtime,
             event_hub,
@@ -508,6 +536,8 @@ impl ChannelManager {
                 Ok(f) => f,
                 Err(_) => continue,
             };
+
+            self.write_to_port(port, &feature);
 
             let sender_ports: HashMap<Port, Vec<Port>> = {
                 let mut sender_port = HashMap::new();
