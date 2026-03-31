@@ -51,6 +51,7 @@ const CityGmlData: React.FC<Props> = ({
   const featureMapRef = useRef<Map<string, FeatureInstanceData>>(new Map());
   const prevSelectedRef = useRef<string | null>(null);
   const { buildLodGeometry, cancelPending } = useLodWorker();
+  const hasInitializedRef = useRef(false);
 
   const waitForPrimitive = useCallback(
     (primitive: Primitive | null, callback: () => void) => {
@@ -69,6 +70,7 @@ const CityGmlData: React.FC<Props> = ({
         if (Date.now() - startTime > WAIT_FOR_PRIMITIVE_TIMEOUT_MS) {
           remove();
         }
+        viewer.scene.requestRender();
       });
     },
     [viewer],
@@ -79,6 +81,7 @@ const CityGmlData: React.FC<Props> = ({
       if (entry.lodPrimitiveCollection && viewer) {
         viewer.scene.primitives.remove(entry.lodPrimitiveCollection);
         entry.lodPrimitiveCollection = null;
+        viewer.scene.requestRender();
       }
       waitForPrimitive(absolutePrimitiveRef.current, () => {
         entry.absoluteInstanceIds.forEach((id) => {
@@ -132,6 +135,7 @@ const CityGmlData: React.FC<Props> = ({
           if (attrs) attrs.show = ShowGeometryInstanceAttribute.toValue(false);
         });
       });
+      viewer.scene.requestRender();
     },
     [viewer, waitForPrimitive, buildLodGeometry],
   );
@@ -172,9 +176,10 @@ const CityGmlData: React.FC<Props> = ({
     if (absolutePrimitive) viewer.scene.primitives.add(absolutePrimitive);
     if (groundPrimitive) viewer.scene.primitives.add(groundPrimitive);
 
-    if (boundingSphere) {
+    if (!hasInitializedRef.current && boundingSphere) {
       viewer.camera.viewBoundingSphere(boundingSphere);
       setCityGmlBoundingSphere(boundingSphere);
+      hasInitializedRef.current = true;
     }
     viewer.scene.requestRender();
   }, [cityGmlData, viewer, setCityGmlBoundingSphere, cancelPending]);
@@ -227,6 +232,7 @@ const CityGmlData: React.FC<Props> = ({
         });
         viewer.scene.primitives.remove(absolutePrimitiveRef.current);
         viewer.scene.primitives.remove(groundPrimitiveRef.current);
+        hasInitializedRef.current = false;
       }
     };
   }, [viewer, cancelPending]);
@@ -252,6 +258,7 @@ const CityGmlData: React.FC<Props> = ({
         });
       });
     });
+    viewer.scene.requestRender();
   }, [viewer, showSelectedFeatureOnly, selectedFeatureId, waitForPrimitive]);
 
   return null;
