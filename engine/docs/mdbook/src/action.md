@@ -4338,17 +4338,6 @@ Filter Features by Geometry Type
 * unfiltered
 * none
 * contains
-* point
-* line
-* lineString
-* polygon
-* multiPoint
-* multiLineString
-* multiPolygon
-* rect
-* triangle
-* solid
-* geometryCollection
 * solid
 * multiSurface
 * compositeSurface
