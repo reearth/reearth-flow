@@ -67,8 +67,7 @@ pub async fn prepare_incremental_feature_store(
     let reuse_state =
         State::new(&reuse_feature_store_uri, storage_resolver).map_err(Error::init)?;
 
-    let reusable_ids =
-        collect_reusable_ids(workflow, start_node_id).map_err(Error::init)?;
+    let reusable_ids = collect_reusable_ids(workflow, start_node_id).map_err(Error::init)?;
     let candidate_edge_ids = &reusable_ids.edge_ids;
 
     // Filter candidate edges by checking which ones actually exist in the previous feature store

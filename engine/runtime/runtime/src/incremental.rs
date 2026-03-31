@@ -32,9 +32,10 @@ pub fn collect_reusable_ids(
         }
     }
 
-    let start_graph_id = node_to_graph.get(&start_node_id).copied().ok_or_else(|| {
-        format!("start_node_id {} not found in any graph", start_node_id)
-    })?;
+    let start_graph_id = node_to_graph
+        .get(&start_node_id)
+        .copied()
+        .ok_or_else(|| format!("start_node_id {} not found in any graph", start_node_id))?;
 
     // Build subgraph callsite map: sub_graph_id -> [(parent_graph_id, caller_node_id)]
     let mut callsites: HashMap<uuid::Uuid, Vec<(uuid::Uuid, uuid::Uuid)>> = HashMap::new();
