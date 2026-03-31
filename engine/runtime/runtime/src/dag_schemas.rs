@@ -39,6 +39,9 @@ pub struct SchemaNodeType {
     pub node: Node,
     pub kind: Option<NodeKind>,
     pub with: Option<HashMap<String, serde_json::Value>>,
+    /// Accumulated dotted prefix for subgraph nodes, e.g. "G1_id.G2_id".
+    /// `None` for top-level nodes.
+    pub subgraph_prefix: Option<String>,
 }
 
 impl Debug for SchemaNodeType {
@@ -58,6 +61,7 @@ impl SchemaNodeType {
         node: Node,
         kind: Option<NodeKind>,
         with: Option<HashMap<String, serde_json::Value>>,
+        subgraph_prefix: Option<String>,
     ) -> Self {
         Self {
             handle: NodeHandle::new(id),
@@ -65,7 +69,18 @@ impl SchemaNodeType {
             node,
             kind,
             with,
+            subgraph_prefix,
         }
+    }
+}
+
+/// Prepend `parent_id` to every node's `subgraph_prefix` inside a subgraph.
+fn prepend_subgraph_prefix(graph: &mut DiGraph<SchemaNodeType, SchemaEdgeType>, parent_id: &str) {
+    for node_weight in graph.node_weights_mut() {
+        node_weight.subgraph_prefix = Some(match &node_weight.subgraph_prefix {
+            Some(existing) => format!("{}.{}", parent_id, existing),
+            None => parent_id.to_string(),
+        });
     }
 }
 
@@ -104,6 +119,7 @@ impl EdgeHavePorts for SchemaEdgeType {
     }
 }
 
+#[derive(Clone)]
 pub struct DagSchemas {
     pub(crate) id: GraphId,
     graph: DiGraph<SchemaNodeType, SchemaEdgeType>,
@@ -161,6 +177,7 @@ impl DagSchemas {
                 for edge in subgraph.graph.edge_weights_mut() {
                     edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
                 }
+                prepend_subgraph_prefix(&mut subgraph.graph, &entity.id.to_string());
                 graph_schema.add_subgraph_after_node(node.handle.id.clone(), &params, &subgraph);
                 let Some(target_node) = graph_schema.node_index_by_node_id(node.handle.id.clone())
                 else {
@@ -191,13 +208,15 @@ impl DagSchemas {
             } else {
                 global_params.clone()
             };
-            let subgraph = other_graph_schemas
-                .get_mut(sub_graph_id)
-                .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"));
+            let mut subgraph = other_graph_schemas
+                .get(sub_graph_id)
+                .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"))
+                .clone();
             for edge in subgraph.graph.edge_weights_mut() {
                 edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
             }
-            entry_graph.add_subgraph_after_node(node.handle.id.clone(), &params, subgraph);
+            prepend_subgraph_prefix(&mut subgraph.graph, &entity.id.to_string());
+            entry_graph.add_subgraph_after_node(node.handle.id.clone(), &params, &subgraph);
             let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id.clone())
             else {
                 continue;
@@ -245,6 +264,7 @@ impl DagSchemas {
                 node.clone(),
                 kind.clone(),
                 Some(with),
+                None,
             ));
             if let Some(kind) = kind {
                 node_mappings.insert(index, kind.clone());
@@ -493,6 +513,7 @@ impl DagSchemas {
                     node_type.node.clone(),
                     node_type.kind.clone(),
                     Some(with),
+                    node_type.subgraph_prefix.clone(),
                 );
                 let new_node = main_graph.add_node(node_type);
                 new_node_map.push((node, new_node));
