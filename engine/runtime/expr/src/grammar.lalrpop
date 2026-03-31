@@ -1,0 +1,114 @@
+use crate::ast::{BinOp, Expr, UnaryOp};
+
+grammar;
+
+extern {
+    type Location = usize;
+    type Error = crate::error::Error;
+
+    enum crate::lexer::Token {
+        "int"   => crate::lexer::Token::Int(<i64>),
+        "float" => crate::lexer::Token::Float(<f64>),
+        "str"   => crate::lexer::Token::Str(<String>),
+        "ident" => crate::lexer::Token::Ident(<String>),
+        "true"  => crate::lexer::Token::True,
+        "false" => crate::lexer::Token::False,
+        "null"  => crate::lexer::Token::Null,
+        "in"    => crate::lexer::Token::In,
+        "["     => crate::lexer::Token::LBracket,
+        "]"     => crate::lexer::Token::RBracket,
+        "("     => crate::lexer::Token::LParen,
+        ")"     => crate::lexer::Token::RParen,
+        ","     => crate::lexer::Token::Comma,
+        "+"     => crate::lexer::Token::Plus,
+        "-"     => crate::lexer::Token::Minus,
+        "*"     => crate::lexer::Token::Star,
+        "/"     => crate::lexer::Token::Slash,
+        "=="    => crate::lexer::Token::Eq,
+        "!="    => crate::lexer::Token::Ne,
+        "<"     => crate::lexer::Token::Lt,
+        "<="    => crate::lexer::Token::Le,
+        ">"     => crate::lexer::Token::Gt,
+        ">="    => crate::lexer::Token::Ge,
+        "&&"    => crate::lexer::Token::And,
+        "||"    => crate::lexer::Token::Or,
+        "!"     => crate::lexer::Token::Bang,
+    }
+}
+
+// precedence levels (lowest → highest):
+// Or → And → Equality → Comparison → Add → Mul → Unary → Postfix → Primary
+//
+// All binary levels use left recursion — the LALR table-driven stack handles
+// arbitrarily deep nesting without touching the Rust call stack.
+
+pub Expr: Expr = Or;
+
+Or: Expr = {
+    <l:Or> "||" <r:And> => Expr::Binary(Box::new(l), BinOp::Or, Box::new(r)),
+    And,
+};
+
+And: Expr = {
+    <l:And> "&&" <r:Equality> => Expr::Binary(Box::new(l), BinOp::And, Box::new(r)),
+    Equality,
+};
+
+Equality: Expr = {
+    <l:Equality> "==" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::Eq, Box::new(r)),
+    <l:Equality> "!=" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::Ne, Box::new(r)),
+    <l:Equality> "in" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::In, Box::new(r)),
+    Comparison,
+};
+
+Comparison: Expr = {
+    <l:Comparison> "<"  <r:Add> => Expr::Binary(Box::new(l), BinOp::Lt, Box::new(r)),
+    <l:Comparison> "<=" <r:Add> => Expr::Binary(Box::new(l), BinOp::Le, Box::new(r)),
+    <l:Comparison> ">"  <r:Add> => Expr::Binary(Box::new(l), BinOp::Gt, Box::new(r)),
+    <l:Comparison> ">=" <r:Add> => Expr::Binary(Box::new(l), BinOp::Ge, Box::new(r)),
+    Add,
+};
+
+Add: Expr = {
+    <l:Add> "+" <r:Mul> => Expr::Binary(Box::new(l), BinOp::Add, Box::new(r)),
+    <l:Add> "-" <r:Mul> => Expr::Binary(Box::new(l), BinOp::Sub, Box::new(r)),
+    Mul,
+};
+
+Mul: Expr = {
+    <l:Mul> "*" <r:Unary> => Expr::Binary(Box::new(l), BinOp::Mul, Box::new(r)),
+    <l:Mul> "/" <r:Unary> => Expr::Binary(Box::new(l), BinOp::Div, Box::new(r)),
+    Unary,
+};
+
+Unary: Expr = {
+    "!" <e:Unary> => Expr::Unary(UnaryOp::Not, Box::new(e)),
+    "-" <e:Unary> => Expr::Unary(UnaryOp::Neg, Box::new(e)),
+    Postfix,
+};
+
+Postfix: Expr = {
+    <e:Postfix> "[" <k:Or> "]" => Expr::Index(Box::new(e), Box::new(k)),
+    Primary,
+};
+
+Primary: Expr = {
+    "int"   => Expr::Int(<>),
+    "float" => Expr::Float(<>),
+    "str"   => Expr::Str(<>),
+    "true"  => Expr::Bool(true),
+    "false" => Expr::Bool(false),
+    "null"  => Expr::Null,
+    <name:"ident"> "(" <args:Comma<Or>> ")" => Expr::FuncCall { name, args },
+    "ident" => Expr::Var(<>),
+    "(" <Or> ")",
+    "[" <items:Comma<Or>> "]" => Expr::Array(items),
+};
+
+// Comma-separated list with optional trailing comma, allowing empty.
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => {
+        if let Some(e) = e { v.push(e); }
+        v
+    }
+};
