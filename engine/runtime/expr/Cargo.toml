@@ -4,5 +4,10 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
+lalrpop-util = "0.22"
+logos = "0.15"
 serde_json.workspace = true
 thiserror.workspace = true
+
+[build-dependencies]
+lalrpop = "0.22"
