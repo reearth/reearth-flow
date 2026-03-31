@@ -12,10 +12,10 @@ graphs:
         with:
           creator: |
             [
-              #{ package: "bldg", name: "building-A" },
-              #{ package: "tran", name: "road-B" },
-              #{ package: "bldg", name: "building-C" },
-              #{ package: "veg",  name: "tree-D" },
+              #{ pkg: "bldg", label: "building-A" },
+              #{ pkg: "tran", label: "road-B" },
+              #{ pkg: "bldg", label: "building-C" },
+              #{ pkg: "veg",  label: "tree-D" },
             ]
 
       - id: 22222222-2222-2222-2222-222222222222
@@ -24,31 +24,37 @@ graphs:
         action: FeatureFilter2
         with:
           conditions:
-            - expr: 'package == "bldg"'
+            - expr: 'getattr("pkg") == "bldg"'
               outputPort: bldg
-            - expr: 'package == "tran"'
+            - expr: 'getattr("pkg") == "tran"'
               outputPort: tran
 
+      # expects building-A, building-C (2 features)
       - id: 33333333-3333-3333-3333-333333333333
-        name: EchoBldg
+        name: WriterBldg
         type: action
-        action: Echo
+        action: FeatureWriter
         with:
-          message: "bldg feature passed through"
+          format: json
+          output: '"/tmp/filter2-bldg.json"'
 
+      # expects road-B (1 feature)
       - id: 44444444-4444-4444-4444-444444444444
-        name: EchoTran
+        name: WriterTran
         type: action
-        action: Echo
+        action: FeatureWriter
         with:
-          message: "tran feature passed through"
+          format: json
+          output: '"/tmp/filter2-tran.json"'
 
+      # expects tree-D (1 feature, unmatched)
       - id: 55555555-5555-5555-5555-555555555555
-        name: EchoUnfiltered
+        name: WriterUnfiltered
         type: action
-        action: Echo
+        action: FeatureWriter
         with:
-          message: "unfiltered feature (veg) passed through"
+          format: json
+          output: '"/tmp/filter2-unfiltered.json"'
 
     edges:
       - id: e1000001-0000-0000-0000-000000000001
