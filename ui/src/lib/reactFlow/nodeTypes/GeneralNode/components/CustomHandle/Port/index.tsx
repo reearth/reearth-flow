@@ -14,13 +14,15 @@ type Props = {
   nodeId: string;
   nodeData: NodeData;
   portName: string;
+  readonly: boolean;
 };
 
-const Port: React.FC<Props> = ({ nodeId, nodeData, portName }) => {
+const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
   const { hasIntermediateData, isSelected, jobStatus, handleClick } = useHooks({
     nodeId,
     nodeData,
     portName,
+    readonly,
   });
 
   return (
@@ -38,20 +40,20 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName }) => {
             {portName}
           </p>
         </div>
-        {hasIntermediateData ? (
-          <IconButton
-            className={`h-4 w-4 hover:text-success ${
-              jobStatus === "completed" && isSelected
-                ? "text-success"
-                : "text-success/60"
-            } `}
-            icon={<EyeIcon />}
-            onClick={handleClick}
-          />
-        ) : (
-          <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
-        )}
       </div>
+      {hasIntermediateData ? (
+        <IconButton
+          className={`z-10 h-3 w-3 hover:text-success ${
+            jobStatus === "completed" && isSelected
+              ? "text-success"
+              : "text-success/60"
+          } `}
+          icon={<EyeIcon />}
+          onClick={handleClick}
+        />
+      ) : (
+        <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
+      )}
     </div>
   );
 };

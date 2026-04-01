@@ -17,6 +17,7 @@ import { getBreakClass } from "./utils";
 
 type Props = {
   id: string;
+  readonly: boolean;
   nodeType?: string;
   nodeData: NodeData;
   inputs?: string[];
@@ -29,6 +30,7 @@ const MIN_HANDLES_FOR_COLLAPSE = 5;
 
 const Handles: React.FC<Props> = ({
   id,
+  readonly,
   nodeType,
   nodeData,
   inputs,
@@ -68,11 +70,11 @@ const Handles: React.FC<Props> = ({
           )}
 
         {nodeType !== "reader" && inputs && !hasMoreThanFiveInputHandles && (
-          <div className="inset-x-0 mx-auto min-w-0 flex-1">
+          <div className="inset-x-0 mx-auto min-w-0 flex-1 ">
             {inputs.map((input, index) => (
               <div
                 key={input + index}
-                className="relative flex items-center py-0.5">
+                className="relative flex items-center border-b py-0.5 last-of-type:border-none">
                 <CustomHandle
                   type="target"
                   className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
@@ -151,6 +153,7 @@ const Handles: React.FC<Props> = ({
                       nodeId={id}
                       nodeData={nodeData}
                       portName={output}
+                      readonly={readonly}
                     />
                   ))}
                 </div>
@@ -166,6 +169,7 @@ const Handles: React.FC<Props> = ({
                 nodeId={id}
                 nodeData={nodeData}
                 portName={output}
+                readonly={readonly}
               />
             ))}
           </div>

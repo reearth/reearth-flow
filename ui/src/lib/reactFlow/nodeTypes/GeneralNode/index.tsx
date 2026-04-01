@@ -15,6 +15,7 @@ import useHooks from "./hooks";
 
 export type GeneralNodeProps = NodeProps<Node> & {
   className?: string;
+  readonly?: boolean;
 };
 
 const typeIconClasses = "w-[15px] text-white/80";
@@ -24,6 +25,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   type,
   selected,
   id,
+  readonly = false,
 }) => {
   const {
     officialName,
@@ -85,6 +87,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         </div>
         <Handles
           id={id}
+          readonly={readonly}
           nodeType={type}
           nodeData={data}
           inputs={inputs}
