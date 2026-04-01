@@ -138,66 +138,50 @@ impl DagSchemas {
             .iter()
             .find(|dag| dag.id == entry_graph_id)
             .unwrap_or_else(|| panic!("Entry graph not found. with id = {entry_graph_id}"));
-        let other_graphs = graphs
+        let graphs_by_id: HashMap<_, _> = graphs
             .iter()
-            .filter(|graph| graph.id != entry_graph_id)
             .map(|graph| (graph.id, graph))
-            .collect::<HashMap<_, _>>();
+            .collect();
 
-        let mut other_graph_schemas = HashMap::new();
-        for (_, graph) in other_graphs.iter() {
-            let mut graph_schema = DagSchemas::from_graph(graph, &factories, &global_params);
-            let graph_nodes = graph_schema.collect_graph_nodes();
-            for node in graph_nodes.iter() {
-                let Node::SubGraph {
+        let mut dag = DagSchemas::from_graph(entry_graph, &factories, &global_params);
+
+        // Expand subgraphs top-down: repeatedly pick a SubGraph placeholder,
+        // replace it with a fresh (unexpanded) copy of its graph definition,
+        // and loop until no placeholders remain.  Because each substitution
+        // inserts raw definition nodes (not pre-flattened content), terminal
+        // InputRouters / OutputRouters are always the genuine boundary of that
+        // subgraph — never orphaned routers inherited from a deeper level.
+        const MAX_EXPANSION_DEPTH: usize = 1000;
+        for _ in 0..MAX_EXPANSION_DEPTH {
+            // Re-scan each iteration: graph indices shift after remove_node.
+            let found = dag.graph.node_indices().find_map(|idx| {
+                let node = &dag.graph[idx];
+                if let Node::SubGraph {
                     sub_graph_id,
                     entity,
                 } = &node.node
-                else {
-                    continue;
-                };
-                if *sub_graph_id == graph.id {
-                    panic!("Self reference subgraph is not allowed.");
-                }
-                let subgraph = other_graphs
-                    .get(sub_graph_id)
-                    .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"));
-                let params = if let Some(with) = &entity.with {
-                    if let Some(global_params) = &global_params {
-                        let mut global_with = global_params.clone();
-                        global_with.extend(with.clone());
-                        Some(global_with)
-                    } else {
-                        Some(with.clone())
-                    }
+                {
+                    Some((
+                        idx,
+                        *sub_graph_id,
+                        entity.id,
+                        entity.with.clone(),
+                        node.subgraph_prefix.clone(),
+                    ))
                 } else {
-                    global_params.clone()
-                };
-                let mut subgraph = DagSchemas::from_graph(subgraph, &factories, &params);
-                for edge in subgraph.graph.edge_weights_mut() {
-                    edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
+                    None
                 }
-                prepend_subgraph_prefix(&mut subgraph.graph, &entity.id.to_string());
-                graph_schema.add_subgraph_after_node(node.handle.id.clone(), &params, &subgraph);
-                let Some(target_node) = graph_schema.node_index_by_node_id(node.handle.id.clone())
-                else {
-                    continue;
-                };
-                graph_schema.graph.remove_node(*target_node);
-            }
-            other_graph_schemas.insert(graph_schema.id, graph_schema);
-        }
-        let mut entry_graph = DagSchemas::from_graph(entry_graph, &factories, &global_params);
-        let graph_nodes = entry_graph.collect_graph_nodes();
-        for node in graph_nodes.iter() {
-            let Node::SubGraph {
-                sub_graph_id,
-                entity,
-            } = &node.node
+            });
+            let Some((target_idx, sub_graph_id, entity_id, entity_with, parent_prefix)) = found
             else {
-                continue;
+                break;
             };
-            let params = if let Some(with) = &entity.with {
+
+            let subgraph_def = graphs_by_id
+                .get(&sub_graph_id)
+                .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"));
+
+            let params = if let Some(with) = &entity_with {
                 if let Some(global_params) = &global_params {
                     let mut global_with = global_params.clone();
                     global_with.extend(with.clone());
@@ -208,22 +192,24 @@ impl DagSchemas {
             } else {
                 global_params.clone()
             };
-            let mut subgraph = other_graph_schemas
-                .get(sub_graph_id)
-                .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"))
-                .clone();
-            for edge in subgraph.graph.edge_weights_mut() {
-                edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
-            }
-            prepend_subgraph_prefix(&mut subgraph.graph, &entity.id.to_string());
-            entry_graph.add_subgraph_after_node(node.handle.id.clone(), &params, &subgraph);
-            let Some(target_node) = entry_graph.node_index_by_node_id(node.handle.id.clone())
-            else {
-                continue;
+
+            let mut subgraph = DagSchemas::from_graph(subgraph_def, &factories, &params);
+
+            // Accumulated prefix: inherit parent's prefix + this entity's id.
+            let entity_id_str = entity_id.to_string();
+            let full_prefix = match &parent_prefix {
+                Some(p) => format!("{}.{}", p, entity_id_str),
+                None => entity_id_str,
             };
-            entry_graph.graph.remove_node(*target_node);
+
+            for edge in subgraph.graph.edge_weights_mut() {
+                edge.id = EdgeId::new(format!("{}.{}", full_prefix, edge.id));
+            }
+            prepend_subgraph_prefix(&mut subgraph.graph, &full_prefix);
+            dag.add_subgraph_after_node(target_idx, &params, &subgraph);
+            dag.graph.remove_node(target_idx);
         }
-        entry_graph
+        dag
     }
 
     fn from_graph(
@@ -422,22 +408,19 @@ impl DagSchemas {
 
     pub fn add_subgraph_after_node(
         &mut self,
-        node_id: NodeId,
+        target_node: NodeIndex,
         params: &Option<serde_json::Map<String, serde_json::Value>>,
         subgraph: &DagSchemas,
     ) {
-        let Some(target_node) = self.node_index_by_node_id(node_id) else {
-            return;
-        };
         // Find the next node after the target node
         let mut next_nodes = self
             .graph
-            .neighbors_directed(*target_node, Direction::Outgoing)
+            .neighbors_directed(target_node, Direction::Outgoing)
             .detach();
 
         let mut pre_nodes = self
             .graph
-            .neighbors_directed(*target_node, Direction::Incoming)
+            .neighbors_directed(target_node, Direction::Incoming)
             .detach();
 
         // Store the next nodes to reattach later
