@@ -309,14 +309,6 @@ impl DagSchemas {
         sources
     }
 
-    pub fn collect_graph_nodes(&self) -> Vec<SchemaNodeType> {
-        self.graph
-            .node_indices()
-            .map(|idx| self.graph[idx].clone())
-            .filter(|node| matches!(node.node, Node::SubGraph { .. }))
-            .collect()
-    }
-
     pub fn remove_edge(&mut self, edge: petgraph::graph::EdgeIndex) {
         self.graph.remove_edge(edge);
     }
@@ -329,47 +321,11 @@ impl DagSchemas {
         self.node_lookup_table.get(&node_id)
     }
 
-    pub fn node_by_node_id(&self, node_id: NodeId) -> Option<&SchemaNodeType> {
-        self.node_lookup_table
-            .get(&node_id)
-            .map(|node_index| &self.graph[*node_index])
-    }
-
-    pub fn entry_nodes(&self) -> Vec<SchemaNodeType> {
-        self.graph
-            .externals(Direction::Incoming)
-            .map(|node_index| {
-                let node = &self.graph[node_index].clone();
-                node.clone()
-            })
-            .collect()
-    }
-
-    pub fn is_last_node_index(&self, idx: NodeIndex) -> bool {
-        self.graph
-            .edges_directed(idx, Direction::Outgoing)
-            .next()
-            .is_none()
-    }
-
     pub fn add_node(&mut self, node_type: SchemaNodeType) -> NodeIndex {
         let node_id = node_type.handle.id.clone();
         let node_index = self.graph.add_node(node_type);
         self.node_lookup_table.insert(node_id, node_index);
         node_index
-    }
-
-    pub fn is_ready_node(&self, idx: NodeIndex, finish_ports: Vec<Port>) -> bool {
-        let to_all_ports = self
-            .graph
-            .edges_directed(idx, Direction::Incoming)
-            .map(|edge| edge.weight().to_port())
-            .collect::<Vec<_>>();
-        let mut finish_ports = finish_ports.clone();
-        let mut to_all_ports = to_all_ports.clone();
-        finish_ports.sort();
-        to_all_ports.sort();
-        finish_ports == to_all_ports
     }
 
     pub fn connect(
@@ -396,23 +352,6 @@ impl DagSchemas {
             to_node_index,
             SchemaEdgeType::new(id.clone(), from_port.clone(), to_port.clone(), edge_kind),
         )
-    }
-
-    pub fn edges_from_endpoint<'a>(
-        &'a self,
-        node_id: NodeId,
-        port: &'a Port,
-    ) -> impl Iterator<Item = (&'a SchemaNodeType, Port)> {
-        self.graph
-            .edges(*self.node_index_by_node_id(node_id).unwrap())
-            .filter_map(move |edge| {
-                if edge.weight().from_port() == *port {
-                    let node = &self.graph[edge.target()];
-                    Some((node, edge.weight().to_port().clone()))
-                } else {
-                    None
-                }
-            })
     }
 
     pub fn add_subgraph_after_node(
