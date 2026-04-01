@@ -84,7 +84,9 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           {/* <CaretRight weight="fill" /> */}
         </div>
         <Handles
+          id={id}
           nodeType={type}
+          nodeData={data}
           inputs={inputs}
           outputs={outputs}
           isCollapsed={data.isCollapsed}

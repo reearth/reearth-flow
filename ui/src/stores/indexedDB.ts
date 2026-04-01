@@ -6,11 +6,10 @@ export type GeneralState = {
 };
 
 export type SelectedIntermediateData = {
-  edgeId: string;
+  nodeId: string;
   url: string;
+  portName?: string;
   displayName?: string;
-  sourceName?: string;
-  targetName?: string;
 };
 
 export type JobState = {
