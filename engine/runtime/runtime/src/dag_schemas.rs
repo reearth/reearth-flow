@@ -201,7 +201,7 @@ impl DagSchemas {
             dag.graph.remove_node(target_idx);
         }
 
-        // Verify all subgraphs were fully expanded to check for a possible cycle or 
+        // Verify all subgraphs were fully expanded to check for a possible cycle or
         // if the expansion limit was exceeded.
         let remaining: Vec<_> = dag
             .graph
