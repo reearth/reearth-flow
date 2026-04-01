@@ -1,4 +1,5 @@
 pub(crate) mod attribute;
+pub(crate) mod flow_expr_test;
 pub(crate) mod echo;
 pub(crate) mod feature;
 pub(crate) mod file;
