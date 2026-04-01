@@ -60,11 +60,28 @@ export default ({
       return;
     }
     if (hasIntermediateData) return;
-
+    const controller = new AbortController();
+    const { signal } = controller;
+    let isCancelled = false;
     (async () => {
-      const response = await fetch(dataUrl, { method: "HEAD" });
-      setHasIntermediateData(response.ok);
+      try {
+        const response = await fetch(dataUrl, {
+          method: "HEAD",
+          signal,
+        });
+        if (!isCancelled && !signal.aborted) {
+          setHasIntermediateData(response.ok);
+        }
+      } catch (_error) {
+        if (!isCancelled && !signal.aborted) {
+          setHasIntermediateData(false);
+        }
+      }
     })();
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
   }, [
     readonly,
     debugJobState?.status,

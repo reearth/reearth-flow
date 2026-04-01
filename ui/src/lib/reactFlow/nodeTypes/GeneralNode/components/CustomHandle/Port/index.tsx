@@ -33,27 +33,25 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
         position={Position.Right}
         id={portName}
       />
-      <div className="flex w-full -translate-x-0.5 items-center justify-end">
-        <div className="flex items-center gap-1">
-          <p
-            className={`pr-1 text-end text-[10px] ${getBreakClass(portName)} italic dark:font-thin`}>
-            {portName}
-          </p>
-        </div>
+      <div className="flex min-w-0 w-full -translate-x-0.5 items-center justify-end gap-1">
+        <p
+          className={`min-w-0 text-end text-[10px] ${getBreakClass(portName)} italic dark:font-thin`}>
+          {portName}
+        </p>
+        {hasIntermediateData ? (
+          <IconButton
+            className={`z-10 h-3 w-3 shrink-0 hover:text-success ${
+              jobStatus === "completed" && isSelected
+                ? "text-success"
+                : "text-success/60"
+            } `}
+            icon={<EyeIcon />}
+            onClick={handleClick}
+          />
+        ) : (
+          <div className="size-1.5 shrink-0 rounded-full bg-zinc-400 dark:bg-gray-300" />
+        )}
       </div>
-      {hasIntermediateData ? (
-        <IconButton
-          className={`z-10 h-3 w-3 hover:text-success ${
-            jobStatus === "completed" && isSelected
-              ? "text-success"
-              : "text-success/60"
-          } `}
-          icon={<EyeIcon />}
-          onClick={handleClick}
-        />
-      ) : (
-        <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
-      )}
     </div>
   );
 };
