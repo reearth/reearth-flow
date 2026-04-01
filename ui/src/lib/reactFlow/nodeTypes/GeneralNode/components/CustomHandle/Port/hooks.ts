@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
   DebugRunState,
@@ -18,6 +19,7 @@ export default ({
   nodeData: NodeData;
   portName: string;
 }) => {
+  const { readonly } = useEditorContext();
   const [currentProject] = useCurrentProject();
   const { api } = config();
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
@@ -49,6 +51,7 @@ export default ({
 
   useEffect(() => {
     if (
+      readonly ||
       debugJobState?.status !== "completed" ||
       !debugJobState?.jobId ||
       !dataUrl
@@ -63,6 +66,7 @@ export default ({
       setHasIntermediateData(response.ok);
     })();
   }, [
+    readonly,
     debugJobState?.status,
     debugJobState?.jobId,
     dataUrl,

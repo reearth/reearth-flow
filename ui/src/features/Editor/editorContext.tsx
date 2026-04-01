@@ -14,6 +14,7 @@ import {
 } from "@flow/types";
 
 export type EditorContextType = {
+  readonly?: boolean;
   onNodesChange?: (changes: NodeChange[]) => void;
   onNodeSettings?: (_e: MouseEvent | undefined, nodeId: string) => void;
   currentYWorkflow?: YWorkflow;
