@@ -142,15 +142,9 @@ impl DagSchemas {
 
         let mut dag = DagSchemas::from_graph(entry_graph, &factories, &global_params);
 
-        // Expand subgraphs top-down: repeatedly pick a SubGraph placeholder,
-        // replace it with a fresh (unexpanded) copy of its graph definition,
-        // and loop until no placeholders remain.  Because each substitution
-        // inserts raw definition nodes (not pre-flattened content), terminal
-        // InputRouters / OutputRouters are always the genuine boundary of that
-        // subgraph — never orphaned routers inherited from a deeper level.
+        // Expand subgraphs top-down.
         const MAX_EXPANSION_DEPTH: usize = 1000;
         for _ in 0..MAX_EXPANSION_DEPTH {
-            // Re-scan each iteration: graph indices shift after remove_node.
             let found = dag.graph.node_indices().find_map(|idx| {
                 let node = &dag.graph[idx];
                 if let Node::SubGraph {
@@ -207,8 +201,8 @@ impl DagSchemas {
             dag.graph.remove_node(target_idx);
         }
 
-        // Verify all subgraphs were fully expanded — if any remain, the
-        // workflow likely contains a cycle or exceeds the expansion limit.
+        // Verify all subgraphs were fully expanded to check for a possible cycle or 
+        // if the expansion limit was exceeded.
         let remaining: Vec<_> = dag
             .graph
             .node_weights()
