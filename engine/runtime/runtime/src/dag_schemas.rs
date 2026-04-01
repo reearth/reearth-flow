@@ -138,10 +138,7 @@ impl DagSchemas {
             .iter()
             .find(|dag| dag.id == entry_graph_id)
             .unwrap_or_else(|| panic!("Entry graph not found. with id = {entry_graph_id}"));
-        let graphs_by_id: HashMap<_, _> = graphs
-            .iter()
-            .map(|graph| (graph.id, graph))
-            .collect();
+        let graphs_by_id: HashMap<_, _> = graphs.iter().map(|graph| (graph.id, graph)).collect();
 
         let mut dag = DagSchemas::from_graph(entry_graph, &factories, &global_params);
 

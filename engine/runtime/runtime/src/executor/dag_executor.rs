@@ -57,7 +57,8 @@ impl DagExecutor {
         factories: HashMap<String, crate::node::NodeKind>,
         global_params: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self, ExecutionError> {
-        let dag_schemas = DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params)?;
+        let dag_schemas =
+            DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params)?;
         let event_hub = EventHub::new(options.event_hub_capacity);
         let ctx = NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub);
         let builder_dag = BuilderDag::new(ctx, dag_schemas).await?;
