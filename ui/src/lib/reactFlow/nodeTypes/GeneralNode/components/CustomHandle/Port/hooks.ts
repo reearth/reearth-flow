@@ -13,12 +13,10 @@ export default ({
   nodeId,
   nodeData,
   portName,
-  nodeType,
 }: {
   nodeId: string;
   nodeData: NodeData;
   portName: string;
-  nodeType?: string;
 }) => {
   const [currentProject] = useCurrentProject();
   const { api } = config();
@@ -137,29 +135,6 @@ export default ({
     portName,
     nodeData,
     updateValue,
-  ]);
-
-  // Auto-select for writer nodes on first job completion
-  useEffect(() => {
-    const hasNeverBeenTouched =
-      debugJobState?.selectedIntermediateData === undefined;
-
-    if (
-      nodeType === "writer" &&
-      hasIntermediateData &&
-      !isSelected &&
-      hasNeverBeenTouched &&
-      debugJobState?.status === "completed"
-    ) {
-      handleClick();
-    }
-  }, [
-    nodeType,
-    hasIntermediateData,
-    isSelected,
-    debugJobState?.selectedIntermediateData,
-    debugJobState?.status,
-    handleClick,
   ]);
 
   return { hasIntermediateData, isSelected, jobStatus, handleClick };

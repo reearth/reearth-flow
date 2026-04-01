@@ -13,6 +13,7 @@ import { NodeData } from "@flow/types";
 
 import CustomHandle from "./CustomHandle";
 import Port from "./Port";
+import { getBreakClass } from "./utils";
 
 type Props = {
   id: string;
@@ -25,9 +26,6 @@ type Props = {
 };
 
 const MIN_HANDLES_FOR_COLLAPSE = 5;
-
-const getBreakClass = (text: string): string =>
-  /\s/.test(text) ? "break-words" : "break-all";
 
 const Handles: React.FC<Props> = ({
   id,
@@ -153,7 +151,6 @@ const Handles: React.FC<Props> = ({
                       nodeId={id}
                       nodeData={nodeData}
                       portName={output}
-                      nodeType={nodeType}
                     />
                   ))}
                 </div>
@@ -161,7 +158,6 @@ const Handles: React.FC<Props> = ({
             </div>
           </CollapsibleContent>
         )}
-
         {outputs && !hasMoreThanFiveOutputHandles && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
             {outputs.map((output, index) => (
@@ -170,7 +166,6 @@ const Handles: React.FC<Props> = ({
                 nodeId={id}
                 nodeData={nodeData}
                 portName={output}
-                nodeType={nodeType}
               />
             ))}
           </div>
