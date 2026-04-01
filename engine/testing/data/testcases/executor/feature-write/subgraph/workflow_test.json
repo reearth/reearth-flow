@@ -1,0 +1,44 @@
+{
+  "description": "Test feature writing through subgraph with FeatureFilter dynamic ports, OutputRouter, and CsvWriter",
+  "workflowPath": "executor-testing/feature-write/subgraph.yml",
+  "expectedOutput": {
+    "expectedFile": "output.csv"
+  },
+  "intermediateAssertions": [
+    {
+      "outputPort": "10000000-0000-0000-0000-000000000011.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "10000000-0000-0000-0000-000000000012.10000000-0000-0000-0000-000000000021.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "10000000-0000-0000-0000-000000000012.10000000-0000-0000-0000-000000000022.portA",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "10000000-0000-0000-0000-000000000012.10000000-0000-0000-0000-000000000022.portB",
+      "expectedFile": "../expected_b.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "10000000-0000-0000-0000-000000000012.10000000-0000-0000-0000-000000000022.unfiltered",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "10000000-0000-0000-0000-000000000012.out1",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "10000000-0000-0000-0000-000000000012.out2",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ]
+}

@@ -485,26 +485,26 @@ impl TestContext {
                 self.temp_dir.clone()
             };
 
-            let edge_data_path = working_dir
+            let data_path = working_dir
                 .join("feature-store")
-                .join(format!("{}.jsonl", assertion.edge_id));
+                .join(format!("{}.jsonl", assertion.output_port));
 
-            if !edge_data_path.exists() {
+            if !data_path.exists() {
                 tracing::error!(
                     test_name = %self.test_name,
-                    edge_id = %assertion.edge_id,
-                    edge_data_path = ?edge_data_path,
-                    "Intermediate data not found for edge"
+                    output_port = %assertion.output_port,
+                    data_path = ?data_path,
+                    "Intermediate data not found for output port"
                 );
                 anyhow::bail!(
-                    "Intermediate data not found for edge {}: {:?}",
-                    assertion.edge_id,
-                    edge_data_path
+                    "Intermediate data not found for output port {}: {:?}",
+                    assertion.output_port,
+                    data_path
                 );
             }
 
             let mut expected_data = fs::read_to_string(&expected_path)?;
-            let mut actual_data = fs::read_to_string(&edge_data_path)?;
+            let mut actual_data = fs::read_to_string(&data_path)?;
 
             // Apply JSON filter if provided
             if let Some(json_filter) = &assertion.json_filter {
@@ -522,7 +522,7 @@ impl TestContext {
             ) {
                 tracing::error!(
                     test_name = %self.test_name,
-                    edge_id = %assertion.edge_id,
+                    output_port = %assertion.output_port,
                     error = %e,
                     "Failed to compare intermediate data"
                 );
