@@ -3,6 +3,7 @@ import { Position } from "@xyflow/react";
 import { memo } from "react";
 
 import { IconButton } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 import { NodeData } from "@flow/types";
 
 import CustomHandle from "../CustomHandle";
@@ -26,7 +27,7 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, nodeType }) => {
     portName,
     nodeType,
   });
-
+  const t = useT();
   return (
     <div className="relative flex items-center justify-end border-b py-0.5 last-of-type:border-none">
       <CustomHandle
@@ -48,23 +49,38 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, nodeType }) => {
               onClick={handleClick}
             />
           )} */}
-
+          <p
+            className={`pr-1 text-end text-[10px] ${getBreakClass(portName)} italic dark:font-thin`}>
+            {portName}
+          </p>
+        </div>
+        {hasIntermediateData ? (
           <IconButton
             className={`h-4 w-4 ${
               jobStatus === "completed" && isSelected
                 ? "text-success"
                 : "text-success/60"
             }`}
+            tooltipText={t("View Intermediate Data")}
             icon={<EyeIcon />}
             onClick={handleClick}
           />
+        ) : (
+          <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
+        )}
 
-          <p
-            className={` pr-1 text-end text-[10px] ${getBreakClass(portName)} italic dark:font-thin`}>
-            {portName}
-          </p>
-        </div>
-        <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
+        {/* {hasIntermediateData ? (
+          <div
+            onClick={handleClick}
+            className={`size-1.5 rounded-full ${
+              jobStatus === "completed" && isSelected
+                ? "bg-success"
+                : "bg-success/60"
+            }`}
+          />
+        ) : (
+          <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
+        )} */}
       </div>
     </div>
   );

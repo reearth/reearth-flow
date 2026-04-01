@@ -36,7 +36,7 @@ export default ({
 
   const dataUrl = useMemo(() => {
     if (!api || !debugJobState?.jobId) return undefined;
-    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${nodeData.workflowPath ? `${nodeData.workflowPath}.` : ""}${nodeId}/${portName}.jsonl.zst`;
+    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${nodeData.workflowPath ? `${nodeData.workflowPath}.` : ""}${nodeId}.${portName}.jsonl.zst`;
   }, [api, nodeData.workflowPath, debugJobState?.jobId, nodeId, portName]);
 
   const [hasIntermediateData, setHasIntermediateData] = useState(false);
