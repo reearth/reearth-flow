@@ -3,7 +3,6 @@ pub(crate) mod duplicate_filter;
 pub(crate) mod errors;
 pub(crate) mod file_path_extractor;
 pub(crate) mod filter;
-pub(crate) mod filter2;
 pub(crate) mod joiner;
 pub(crate) mod json_fragmenter;
 pub(crate) mod list_concatenator;
