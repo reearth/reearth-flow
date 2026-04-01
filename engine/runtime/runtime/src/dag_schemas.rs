@@ -133,7 +133,7 @@ impl DagSchemas {
         graphs: Vec<Graph>,
         factories: HashMap<String, NodeKind>,
         global_params: Option<serde_json::Map<String, serde_json::Value>>,
-    ) -> Self {
+    ) -> Result<Self, crate::errors::ExecutionError> {
         let entry_graph = graphs
             .iter()
             .find(|dag| dag.id == entry_graph_id)
@@ -209,7 +209,25 @@ impl DagSchemas {
             dag.add_subgraph_after_node(target_idx, &params, &subgraph);
             dag.graph.remove_node(target_idx);
         }
-        dag
+
+        // Verify all subgraphs were fully expanded — if any remain, the
+        // workflow likely contains a cycle or exceeds the expansion limit.
+        let remaining: Vec<_> = dag
+            .graph
+            .node_weights()
+            .filter_map(|n| match &n.node {
+                Node::SubGraph { sub_graph_id, .. } => Some(sub_graph_id.to_string()),
+                _ => None,
+            })
+            .collect();
+        if !remaining.is_empty() {
+            return Err(crate::errors::ExecutionError::SubgraphCycle {
+                max_iterations: MAX_EXPANSION_DEPTH,
+                ids: remaining,
+            });
+        }
+
+        Ok(dag)
     }
 
     fn from_graph(
