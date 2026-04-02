@@ -138,44 +138,15 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 	}
 
 	for _, updateParam := range param.Updates {
-		currentParam, err := i.paramRepo.FindByID(ctx, updateParam.ParamID)
-		if err != nil {
-			return nil, err
-		}
-		if currentParam == nil {
-			return nil, rerror.ErrNotFound
-		}
-
-		completeUpdateParam := interfaces.UpdateParameterParam{
+		_, err = i.UpdateParameter(ctx, interfaces.UpdateParameterParam{
+			DefaultValue:  updateParam.DefaultValue,
+			Config:        updateParam.Config,
+			NameValue:     updateParam.NameValue,
+			TypeValue:     updateParam.TypeValue,
 			ParamID:       updateParam.ParamID,
-			DefaultValue:  currentParam.DefaultValue(),
-			NameValue:     currentParam.Name(),
-			RequiredValue: currentParam.Required(),
-			PublicValue:   currentParam.Public(),
-			TypeValue:     currentParam.Type(),
-			Config:        currentParam.Config(),
-		}
-
-		if updateParam.DefaultValue != nil {
-			completeUpdateParam.DefaultValue = updateParam.DefaultValue
-		}
-		if updateParam.NameValue != nil {
-			completeUpdateParam.NameValue = *updateParam.NameValue
-		}
-		if updateParam.RequiredValue != nil {
-			completeUpdateParam.RequiredValue = *updateParam.RequiredValue
-		}
-		if updateParam.PublicValue != nil {
-			completeUpdateParam.PublicValue = *updateParam.PublicValue
-		}
-		if updateParam.TypeValue != nil {
-			completeUpdateParam.TypeValue = *updateParam.TypeValue
-		}
-		if updateParam.Config != nil {
-			completeUpdateParam.Config = updateParam.Config
-		}
-
-		_, err = i.UpdateParameter(ctx, completeUpdateParam)
+			RequiredValue: updateParam.RequiredValue,
+			PublicValue:   updateParam.PublicValue,
+		})
 		if err != nil {
 			return nil, err
 		}

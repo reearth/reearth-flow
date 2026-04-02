@@ -44,7 +44,7 @@ input DeclareParameterInput {
 }
 
 input UpdateParameterInput {
-  defaultValue: Any!
+  defaultValue: Any
   name: String!
   required: Boolean!
   public: Boolean!
@@ -75,10 +75,10 @@ input ParameterBatchInput {
 
 input ParameterUpdateItem {
   paramId: ID!
-  name: String
-  type: ParameterType
-  required: Boolean
-  public: Boolean
+  name: String!
+  type: ParameterType!
+  required: Boolean!
+  public: Boolean!
   defaultValue: Any
   config: JSON
 }

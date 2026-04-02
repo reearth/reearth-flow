@@ -37,10 +37,10 @@ type UpdateParameterParam struct {
 type UpdateParameterBatchItemParam struct {
 	DefaultValue  any
 	Config        any
-	NameValue     *string
-	RequiredValue *bool
-	PublicValue   *bool
-	TypeValue     *parameter.Type
+	NameValue     string
+	RequiredValue bool
+	PublicValue   bool
+	TypeValue     parameter.Type
 	ParamID       id.ParameterID
 }
 
