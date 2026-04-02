@@ -1,4 +1,4 @@
-import { EyeIcon } from "@phosphor-icons/react";
+import { TableIcon } from "@phosphor-icons/react";
 import { Position } from "@xyflow/react";
 import { memo } from "react";
 
@@ -33,7 +33,7 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
         position={Position.Right}
         id={portName}
       />
-      <div className="flex min-w-0 w-full -translate-x-0.5 items-center justify-end gap-1">
+      <div className="flex w-full min-w-0 -translate-x-0.5 items-center justify-end gap-1">
         <p
           className={`min-w-0 text-end text-[10px] ${getBreakClass(portName)} italic dark:font-thin`}>
           {portName}
@@ -45,7 +45,8 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
                 ? "text-success"
                 : "text-success/60"
             } `}
-            icon={<EyeIcon />}
+            aria-label={`View intermediate data for ${portName}`}
+            icon={<TableIcon />}
             onClick={handleClick}
           />
         ) : (
