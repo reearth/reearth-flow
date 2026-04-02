@@ -45,7 +45,7 @@ def build_workflow(input_path: str, output_path: str) -> dict:
                                     "attribute": "greeting",
                                     "value": {
                                         "type": "expr",
-                                        "value": '"hello, " + getattr("name")',
+                                        "value": '"hello, " + value("name")',
                                     },
                                 },
                                 {

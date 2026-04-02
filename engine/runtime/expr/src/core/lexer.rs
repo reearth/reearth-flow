@@ -1,6 +1,6 @@
 use logos::Logos;
 
-use crate::error::Error;
+use super::error::Error;
 
 fn lex_string<'src>(lex: &mut logos::Lexer<'src, Token>) -> Option<String> {
     let raw = lex.slice();
@@ -185,9 +185,9 @@ mod tests {
     #[test]
     fn test_func_call() {
         assert_eq!(
-            tokenize("getattr(a, b)"),
+            tokenize("value(a, b)"),
             vec![
-                Token::Ident("getattr".into()),
+                Token::Ident("value".into()),
                 Token::LParen,
                 Token::Ident("a".into()),
                 Token::Comma,

@@ -1,10 +1,10 @@
 use lalrpop_util::{lalrpop_mod, ParseError};
 
-use crate::ast::Expr;
-use crate::error::{Error, Result};
-use crate::lexer::Tokens;
+use super::ast::Expr;
+use super::error::{Error, Result};
+use super::lexer::Tokens;
 
-lalrpop_mod!(pub(crate) grammar);
+lalrpop_mod!(pub(crate) grammar, "/core/grammar.rs");
 
 pub fn parse(input: &str) -> Result<Expr> {
     grammar::ExprParser::new()
@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn test_binary_ops() {
-        use crate::ast::BinOp;
+        use super::ast::BinOp;
         assert_eq!(
             parse("1 + 2").unwrap(),
             Expr::Binary(Box::new(Expr::Int(1)), BinOp::Add, Box::new(Expr::Int(2)))
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_precedence() {
-        use crate::ast::BinOp;
+        use super::ast::BinOp;
         // 1 + 2 * 3 should parse as 1 + (2 * 3)
         assert_eq!(
             parse("1 + 2 * 3").unwrap(),
@@ -101,9 +101,9 @@ mod tests {
     #[test]
     fn test_func_call() {
         assert_eq!(
-            parse(r#"getattr("package")"#).unwrap(),
+            parse(r#"value("package")"#).unwrap(),
             Expr::FuncCall {
-                name: "getattr".into(),
+                name: "value".into(),
                 args: vec![Expr::Str("package".into())],
             }
         );
@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_in_operator() {
-        use crate::ast::BinOp;
+        use super::ast::BinOp;
         assert_eq!(
             parse("x in arr").unwrap(),
             Expr::Binary(
@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_unary() {
-        use crate::ast::UnaryOp;
+        use super::ast::UnaryOp;
         assert_eq!(
             parse("!true").unwrap(),
             Expr::Unary(UnaryOp::Not, Box::new(Expr::Bool(true)))
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_grouping() {
-        use crate::ast::BinOp;
+        use super::ast::BinOp;
         assert_eq!(
             parse("(1 + 2) * 3").unwrap(),
             Expr::Binary(
