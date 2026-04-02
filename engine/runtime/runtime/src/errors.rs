@@ -113,24 +113,16 @@ pub enum ExecutionError {
     SerializeRecordWriter(#[source] SerializationError),
     #[error("InValid Sink: {0}")]
     InvalidSink(String),
+    #[error("Subgraph expansion did not complete after {max_iterations} iterations — possible cycle in subgraph references. Unexpanded subgraph ids: {ids:?}")]
+    SubgraphCycle {
+        max_iterations: usize,
+        ids: Vec<String>,
+    },
 }
 
 impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {
     fn from(_: crossbeam::channel::SendError<T>) -> Self {
         ExecutionError::CannotSendToChannel("SendError".to_string())
-    }
-}
-
-impl<T> From<crossbeam::channel::SendTimeoutError<T>> for ExecutionError {
-    fn from(e: crossbeam::channel::SendTimeoutError<T>) -> Self {
-        match e {
-            crossbeam::channel::SendTimeoutError::Timeout(_) => {
-                ExecutionError::CannotSendToChannel("SendTimeoutError: channel full".to_string())
-            }
-            crossbeam::channel::SendTimeoutError::Disconnected(_) => {
-                ExecutionError::CannotSendToChannel("SendTimeoutError: disconnected".to_string())
-            }
-        }
     }
 }
 

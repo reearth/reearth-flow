@@ -71,7 +71,7 @@ pub struct WorkflowTestProfile {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub zip_before_test: Vec<Zipped>,
     
-    /// Intermediate data assertions (edge_id -> expected file)
+    /// Intermediate data assertions (output_port -> expected file)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub intermediate_assertions: Vec<IntermediateAssertion>,
 
@@ -155,8 +155,8 @@ impl ExceptFields {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct IntermediateAssertion {
-    /// Edge ID to check
-    pub edge_id: String,
+    /// Output port ID to check
+    pub output_port: String,
 
     /// Path to expected data file (relative to test folder)
     pub expected_file: String,
