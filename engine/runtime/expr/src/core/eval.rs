@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
+
 use super::ast::{BinOp, Expr, UnaryOp};
 use super::error::{Error, Result};
 use super::value::Value;
@@ -12,9 +14,9 @@ pub struct Context {
 
 impl Context {
     pub fn new() -> Self {
-        Self {
-            funcs: HashMap::new(),
-        }
+        let mut ctx = Self { funcs: HashMap::new() };
+        ctx.register("map", Box::new(builtin_map));
+        ctx
     }
 
     pub fn register(&mut self, name: impl Into<String>, f: NativeFn) {
@@ -98,9 +100,22 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
 
 fn eval_method(recv: Value, method: &str, args: &[Value]) -> Result<Value> {
     match recv {
+        Value::String(s) => eval_string_method(s, method, args),
         Value::Object(obj) => obj.call_method(method, args),
         v => Err(Error::Eval {
             msg: format!("{v:?} has no method '{method}'"),
+        }),
+    }
+}
+
+fn eval_string_method(s: String, method: &str, args: &[Value]) -> Result<Value> {
+    match method {
+        "trim" => {
+            let _ = args;
+            Ok(Value::String(s.trim().to_string()))
+        }
+        m => Err(Error::Eval {
+            msg: format!("String has no method '{m}'"),
         }),
     }
 }
@@ -272,6 +287,27 @@ fn value_to_string(v: &Value) -> String {
     }
 }
 
+fn builtin_map(args: &[Value]) -> Result<Value> {
+    let pairs = match args.first() {
+        Some(Value::Array(a)) => a,
+        _ => return Err(Error::Eval { msg: "map() expects an array of [key, value] pairs".into() }),
+    };
+    let mut out = IndexMap::new();
+    for (i, pair) in pairs.iter().enumerate() {
+        match pair {
+            Value::Array(kv) if kv.len() == 2 => {
+                let key = match &kv[0] {
+                    Value::String(s) => s.clone(),
+                    v => return Err(Error::Eval { msg: format!("map() key at index {i} must be a string, got {v:?}") }),
+                };
+                out.insert(key, kv[1].clone());
+            }
+            _ => return Err(Error::Eval { msg: format!("map() entry at index {i} must be a 2-element array") }),
+        }
+    }
+    Ok(Value::Map(out))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -400,6 +436,20 @@ mod tests {
         let ctx = Context::new();
         let result = eval(&parse("missing").unwrap(), &ctx);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_map_builtin() {
+        let result = run(r#"map([["a", 1], ["b", 2]])"#, &[]);
+        assert_eq!(result, Value::Map(indexmap::indexmap! {
+            "a".into() => Value::from(1i64),
+            "b".into() => Value::from(2i64),
+        }));
+    }
+
+    #[test]
+    fn test_string_trim() {
+        assert_eq!(run(r#""  hello  ".trim()"#, &[]), Value::from("hello"));
     }
 
     #[test]
