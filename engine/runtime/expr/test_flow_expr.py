@@ -2,6 +2,12 @@
 """
 Smoke test for FlowExprTest processor using the example_main runner.
 Files are preserved in TMP_DIR after the run for inspection.
+
+Covers:
+  - Literal string mapping
+  - value(key)  — feature attribute lookup
+  - env(key)    — workflow variable lookup
+  - Combined expressions (env + value, arithmetic)
 """
 
 import json
@@ -20,6 +26,9 @@ def build_workflow(input_path: str, output_path: str) -> dict:
         "id": "a1b2c3d4-e5f6-0001-abcd-ef1234567890",
         "name": "FlowExprTest smoke test",
         "entryGraphId": "b2c3d4e5-f6a7-0001-bcde-f12345678901",
+        "with": {
+            "prefix": "hello",
+        },
         "graphs": [
             {
                 "id": "b2c3d4e5-f6a7-0001-bcde-f12345678901",
@@ -41,18 +50,44 @@ def build_workflow(input_path: str, output_path: str) -> dict:
                         "action": "FlowExprTest",
                         "with": {
                             "mappings": [
-                                {
-                                    "attribute": "greeting",
-                                    "value": {
-                                        "type": "expr",
-                                        "value": '"hello, " + value("name")',
-                                    },
-                                },
+                                # literal string — no expression engine involved
                                 {
                                     "attribute": "label",
                                     "value": {
                                         "type": "string",
                                         "value": "flow-expr-test",
+                                    },
+                                },
+                                # value(key) — reads from feature attributes
+                                {
+                                    "attribute": "name_copy",
+                                    "value": {
+                                        "type": "expr",
+                                        "value": 'value("name")',
+                                    },
+                                },
+                                # env(key) — reads from workflow with-variables
+                                {
+                                    "attribute": "prefix",
+                                    "value": {
+                                        "type": "expr",
+                                        "value": 'env("prefix")',
+                                    },
+                                },
+                                # combined: env + value
+                                {
+                                    "attribute": "greeting",
+                                    "value": {
+                                        "type": "expr",
+                                        "value": 'env("prefix") + ", " + value("name")',
+                                    },
+                                },
+                                # arithmetic on feature attribute
+                                {
+                                    "attribute": "score_plus_one",
+                                    "value": {
+                                        "type": "expr",
+                                        "value": 'value("score") + 1',
                                     },
                                 },
                             ]
@@ -123,7 +158,25 @@ assert output_path.exists(), f"Output file not created: {output_path}"
 output = json.loads(output_path.read_text())
 
 expected = [
-    {"name": "Alice", "score": 42, "greeting": "hello, Alice", "label": "flow-expr-test"},
-    {"name": "Bob", "score": 7, "greeting": "hello, Bob", "label": "flow-expr-test"},
+    {
+        "name": "Alice",
+        "score": 42,
+        "label": "flow-expr-test",
+        "name_copy": "Alice",
+        "prefix": "hello",
+        "greeting": "hello, Alice",
+        "score_plus_one": 43,
+    },
+    {
+        "name": "Bob",
+        "score": 7,
+        "label": "flow-expr-test",
+        "name_copy": "Bob",
+        "prefix": "hello",
+        "greeting": "hello, Bob",
+        "score_plus_one": 8,
+    },
 ]
-assert output == expected, f"Output mismatch:\n  got:      {output}\n  expected: {expected}"
+assert output == expected, f"Output mismatch:\n  got:      {json.dumps(output, indent=2)}\n  expected: {json.dumps(expected, indent=2)}"
+
+print("OK")

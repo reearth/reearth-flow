@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use serde_json::Value;
-
 use super::ast::{BinOp, Expr, UnaryOp};
 use super::error::{Error, Result};
+use super::value::Value;
 
 pub type NativeFn = Box<dyn Fn(&[Value]) -> Result<Value> + Send + Sync>;
 
@@ -94,7 +93,7 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
 
 fn eval_index(target: Value, key: Value) -> Result<Value> {
     match (target, key) {
-        (Value::Object(map), Value::String(k)) => Ok(map.get(&k).cloned().unwrap_or(Value::Null)),
+        (Value::Map(map), Value::String(k)) => Ok(map.get(&k).cloned().unwrap_or(Value::Null)),
         (Value::Array(arr), Value::Number(n)) => {
             let i = n.as_i64().ok_or_else(|| Error::Eval {
                 msg: "array index must be an integer".into(),
@@ -138,7 +137,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
         BinOp::Add => match (left, right) {
             (Value::Number(a), Value::Number(b)) => add_numbers(a, b),
             (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
-            (Value::String(a), b) => Ok(Value::String(a + json_to_string(&b).as_str())),
+            (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
             (a, b) => Err(Error::Eval {
                 msg: format!("cannot add {a:?} and {b:?}"),
             }),
@@ -244,17 +243,17 @@ fn is_truthy(v: &Value) -> bool {
         Value::Number(n) => n.as_f64().map(|f| f != 0.0).unwrap_or(false),
         Value::String(s) => !s.is_empty(),
         Value::Array(a) => !a.is_empty(),
-        Value::Object(o) => !o.is_empty(),
+        Value::Map(o) => !o.is_empty(),
     }
 }
 
-fn json_to_string(v: &Value) -> String {
+fn value_to_string(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),
         Value::Null => "null".into(),
         Value::Bool(b) => b.to_string(),
         Value::Number(n) => n.to_string(),
-        _ => v.to_string(),
+        Value::Array(_) | Value::Map(_) => format!("{v:?}"),
     }
 }
 
@@ -262,11 +261,10 @@ fn json_to_string(v: &Value) -> String {
 mod tests {
     use super::*;
     use super::super::parser::parse;
-    use serde_json::json;
 
     fn ctx_with_vars(vars: &[(&str, Value)]) -> Context {
         use std::sync::Arc;
-        let map: std::collections::HashMap<String, Value> = vars
+        let map: HashMap<String, Value> = vars
             .iter()
             .map(|(k, v)| (k.to_string(), v.clone()))
             .collect();
@@ -275,7 +273,9 @@ mod tests {
         ctx.register(
             "__resolve",
             Box::new(move |args| {
-                let name = args.first().and_then(|v| v.as_str()).unwrap_or("");
+                let name = args.first().and_then(|v| {
+                    if let Value::String(s) = v { Some(s.as_str()) } else { None }
+                }).unwrap_or("");
                 Ok(map.get(name).cloned().unwrap_or(Value::Null))
             }),
         );
@@ -288,64 +288,67 @@ mod tests {
 
     #[test]
     fn test_arithmetic() {
-        assert_eq!(run("1 + 2", &[]), json!(3));
-        assert_eq!(run("10 - 3", &[]), json!(7));
-        assert_eq!(run("2 * 5", &[]), json!(10));
-        assert_eq!(run("10 / 4", &[]), json!(2.5));
+        assert_eq!(run("1 + 2", &[]), Value::from(3i64));
+        assert_eq!(run("10 - 3", &[]), Value::from(7i64));
+        assert_eq!(run("2 * 5", &[]), Value::from(10i64));
+        assert_eq!(run("10 / 4", &[]), Value::from(2.5f64));
     }
 
     #[test]
     fn test_string_concat() {
-        assert_eq!(run(r#""hello" + "_" + "world""#, &[]), json!("hello_world"));
+        assert_eq!(
+            run(r#""hello" + "_" + "world""#, &[]),
+            Value::from("hello_world")
+        );
     }
 
     #[test]
     fn test_comparison() {
-        assert_eq!(run("1 == 1", &[]), json!(true));
-        assert_eq!(run("1 != 2", &[]), json!(true));
-        assert_eq!(run("2 > 1", &[]), json!(true));
-        assert_eq!(run("1 >= 1", &[]), json!(true));
+        assert_eq!(run("1 == 1", &[]), Value::from(true));
+        assert_eq!(run("1 != 2", &[]), Value::from(true));
+        assert_eq!(run("2 > 1", &[]), Value::from(true));
+        assert_eq!(run("1 >= 1", &[]), Value::from(true));
     }
 
     #[test]
     fn test_logical() {
-        assert_eq!(run("true && false", &[]), json!(false));
-        assert_eq!(run("true || false", &[]), json!(true));
-        assert_eq!(run("!true", &[]), json!(false));
+        assert_eq!(run("true && false", &[]), Value::from(false));
+        assert_eq!(run("true || false", &[]), Value::from(true));
+        assert_eq!(run("!true", &[]), Value::from(false));
     }
 
     #[test]
     fn test_var_and_index() {
-        let feature = json!({"package": "bldg", "extension": "gml"});
+        let feature: Value = Value::from(serde_json::json!({"package": "bldg", "extension": "gml"}));
         assert_eq!(
             run(r#"feature["package"]"#, &[("feature", feature.clone())]),
-            json!("bldg")
+            Value::from("bldg")
         );
         assert_eq!(
             run(r#"feature["extension"] == "gml""#, &[("feature", feature)]),
-            json!(true)
+            Value::from(true)
         );
     }
 
     #[test]
     fn test_in_operator() {
-        let pkgs = json!(["bldg", "tran"]);
+        let pkgs = Value::from(serde_json::json!(["bldg", "tran"]));
         assert_eq!(
             run(r#""bldg" in packages"#, &[("packages", pkgs.clone())]),
-            json!(true)
+            Value::from(true)
         );
         assert_eq!(
             run(r#""fld" in packages"#, &[("packages", pkgs)]),
-            json!(false)
+            Value::from(false)
         );
     }
 
     #[test]
     fn test_nested_index() {
-        let data = json!({"cityGmlPath": "/data/city.gml"});
+        let data = Value::from(serde_json::json!({"cityGmlPath": "/data/city.gml"}));
         assert_eq!(
             run(r#"value["cityGmlPath"]"#, &[("value", data)]),
-            json!("/data/city.gml")
+            Value::from("/data/city.gml")
         );
     }
 
@@ -355,26 +358,25 @@ mod tests {
         ctx.register(
             "join_path",
             Box::new(|args| {
-                let parts: Vec<&str> = args.iter().map(|v| v.as_str().unwrap_or("")).collect();
+                let parts: Vec<&str> = args.iter().map(|v| {
+                    if let Value::String(s) = v { s.as_str() } else { "" }
+                }).collect();
                 Ok(Value::String(parts.join("/")))
             }),
         );
         assert_eq!(
             eval(&parse(r#"join_path("base", "file.json")"#).unwrap(), &ctx).unwrap(),
-            json!("base/file.json")
+            Value::from("base/file.json")
         );
     }
 
     #[test]
     fn test_unknown_var_returns_null() {
-        // resolver returns Null for unknown names — no silent string fallback,
-        // but missing attributes resolve to Null (consistent with JSON semantics)
         assert_eq!(run("missing", &[]), Value::Null);
     }
 
     #[test]
     fn test_no_resolver_errors() {
-        // if no var resolver is registered at all, Var access is an error
         let ctx = Context::new();
         let result = eval(&parse("missing").unwrap(), &ctx);
         assert!(result.is_err());
@@ -382,14 +384,14 @@ mod tests {
 
     #[test]
     fn test_complex_expr() {
-        let feature = json!({"extension": "gml", "package": "bldg"});
-        let pkgs = json!(["bldg", "tran"]);
+        let feature = Value::from(serde_json::json!({"extension": "gml", "package": "bldg"}));
+        let pkgs = Value::from(serde_json::json!(["bldg", "tran"]));
         assert_eq!(
             run(
                 r#"feature["extension"] == "gml" && feature["package"] in packages"#,
                 &[("feature", feature), ("packages", pkgs)]
             ),
-            json!(true)
+            Value::from(true)
         );
     }
 }
