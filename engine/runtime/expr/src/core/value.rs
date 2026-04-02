@@ -43,6 +43,34 @@ pub enum Value {
     Object(Box<dyn ValueObject>),
 }
 
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Null => write!(f, "null"),
+            Value::Bool(b) => write!(f, "{b}"),
+            Value::Number(n) => write!(f, "{n}"),
+            Value::String(s) => write!(f, "{s:?}"),
+            Value::Array(arr) => {
+                write!(f, "[")?;
+                for (i, v) in arr.iter().enumerate() {
+                    if i > 0 { write!(f, ", ")?; }
+                    write!(f, "{v}")?;
+                }
+                write!(f, "]")
+            }
+            Value::Map(map) => {
+                write!(f, "{{")?;
+                for (i, (k, v)) in map.iter().enumerate() {
+                    if i > 0 { write!(f, ", ")?; }
+                    write!(f, "{k:?}: {v}")?;
+                }
+                write!(f, "}}")
+            }
+            Value::Object(obj) => write!(f, "<{}>", obj.type_name()),
+        }
+    }
+}
+
 impl From<bool> for Value {
     fn from(b: bool) -> Self {
         Value::Bool(b)
