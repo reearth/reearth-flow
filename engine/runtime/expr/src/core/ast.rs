@@ -38,6 +38,12 @@ pub enum Expr {
         name: String,
         args: Vec<Expr>,
     },
+    /// method call: `expr.method(args)`
+    MethodCall {
+        receiver: Box<Expr>,
+        method: String,
+        args: Vec<Expr>,
+    },
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinOp, Box<Expr>),
 }
