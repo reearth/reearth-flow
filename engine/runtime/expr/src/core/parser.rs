@@ -36,6 +36,7 @@ pub fn parse(input: &str) -> Result<Expr> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::ast::{BinOp, Expr, UnaryOp};
 
     #[test]
     fn test_literal() {
@@ -48,7 +49,6 @@ mod tests {
 
     #[test]
     fn test_binary_ops() {
-        use super::ast::BinOp;
         assert_eq!(
             parse("1 + 2").unwrap(),
             Expr::Binary(Box::new(Expr::Int(1)), BinOp::Add, Box::new(Expr::Int(2)))
@@ -57,7 +57,6 @@ mod tests {
 
     #[test]
     fn test_precedence() {
-        use super::ast::BinOp;
         // 1 + 2 * 3 should parse as 1 + (2 * 3)
         assert_eq!(
             parse("1 + 2 * 3").unwrap(),
@@ -111,7 +110,6 @@ mod tests {
 
     #[test]
     fn test_in_operator() {
-        use super::ast::BinOp;
         assert_eq!(
             parse("x in arr").unwrap(),
             Expr::Binary(
@@ -133,7 +131,6 @@ mod tests {
 
     #[test]
     fn test_unary() {
-        use super::ast::UnaryOp;
         assert_eq!(
             parse("!true").unwrap(),
             Expr::Unary(UnaryOp::Not, Box::new(Expr::Bool(true)))
@@ -146,7 +143,6 @@ mod tests {
 
     #[test]
     fn test_grouping() {
-        use super::ast::BinOp;
         assert_eq!(
             parse("(1 + 2) * 3").unwrap(),
             Expr::Binary(
