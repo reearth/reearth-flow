@@ -8,6 +8,7 @@
 - bool: `true`, `false`
 - null: `null`
 - array: `[1, "a", true]`
+- map: `map([["key1", "value1"], ["key2", 42]])`
 
 ## Operators
 
