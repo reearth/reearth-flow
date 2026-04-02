@@ -9,26 +9,30 @@ import {
   IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { NodeData } from "@flow/types";
 
 import CustomHandle from "./CustomHandle";
+import Port from "./Port";
+import { getBreakClass } from "./utils";
 
 type Props = {
+  id: string;
+  readonly: boolean;
   nodeType?: string;
+  nodeData: NodeData;
   inputs?: string[];
   outputs?: string[];
   isCollapsed?: boolean;
   onCollapsedToggle?: (isCollapsed: boolean) => void;
 };
+
 const MIN_HANDLES_FOR_COLLAPSE = 5;
 
-// Use break-all for long continuous strings (IDs, hashes, paths)
-// Use break-words for normal text with whitespace
-const getBreakClass = (text: string): string => {
-  return /\s/.test(text) ? "break-words" : "break-all";
-};
-
 const Handles: React.FC<Props> = ({
+  id,
+  readonly,
   nodeType,
+  nodeData,
   inputs,
   outputs,
   isCollapsed,
@@ -39,6 +43,7 @@ const Handles: React.FC<Props> = ({
     inputs && inputs.length >= MIN_HANDLES_FOR_COLLAPSE;
   const hasMoreThanFiveOutputHandles =
     outputs && outputs.length >= MIN_HANDLES_FOR_COLLAPSE;
+
   return (
     <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
@@ -49,16 +54,13 @@ const Handles: React.FC<Props> = ({
               <div className="relative flex items-center py-0.5">
                 <div className="flex w-full translate-x-0.5 items-center">
                   <div className="flex items-center -space-x-0.75">
-                    {Array.from({ length: 3 }).map((_, idx) => {
-                      return (
-                        <div
-                          key={idx}
-                          className="size-1.5 rounded-full bg-zinc-400 ring ring-secondary/20 dark:bg-gray-300"
-                        />
-                      );
-                    })}
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className="size-1.5 rounded-full bg-zinc-400 ring ring-secondary/20 dark:bg-gray-300"
+                      />
+                    ))}
                   </div>
-
                   <p className="w-[90%] pl-1 text-[10px] wrap-break-word italic dark:font-thin">
                     {t("Multiple")}
                   </p>
@@ -66,12 +68,13 @@ const Handles: React.FC<Props> = ({
               </div>
             </div>
           )}
+
         {nodeType !== "reader" && inputs && !hasMoreThanFiveInputHandles && (
-          <div className="inset-x-0 mx-auto min-w-0 flex-1">
+          <div className="inset-x-0 mx-auto min-w-0 flex-1 ">
             {inputs.map((input, index) => (
               <div
                 key={input + index}
-                className="relative flex items-center py-0.5">
+                className="relative flex items-center border-b py-0.5 last-of-type:border-none">
                 <CustomHandle
                   type="target"
                   className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
@@ -100,14 +103,12 @@ const Handles: React.FC<Props> = ({
                   {t("Multiple")}
                 </p>
                 <div className="flex items-center -space-x-0.75">
-                  {Array.from({ length: 3 }).map((_, idx) => {
-                    return (
-                      <div
-                        key={idx}
-                        className="size-1.5 rounded-full bg-zinc-400 ring ring-secondary/20 dark:bg-gray-300"
-                      />
-                    );
-                  })}
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div
+                      key={idx}
+                      className="size-1.5 rounded-full bg-zinc-400 ring ring-secondary/20 dark:bg-gray-300"
+                    />
+                  ))}
                 </div>
               </div>
             </div>
@@ -147,23 +148,13 @@ const Handles: React.FC<Props> = ({
               {outputs && hasMoreThanFiveOutputHandles && (
                 <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
                   {outputs.map((output, index) => (
-                    <div
+                    <Port
                       key={output + index}
-                      className="relative flex items-center justify-end  border-b py-0.5 last-of-type:border-none">
-                      <CustomHandle
-                        type="source"
-                        className="right-1 z-10 w-[8px] rounded-none transition-colors"
-                        position={Position.Right}
-                        id={output}
-                      />
-                      <div className="flex -translate-x-0.5 items-center justify-end">
-                        <p
-                          className={`w-[90%] pr-1 text-end text-[10px] ${getBreakClass(output)} italic dark:font-thin`}>
-                          {output}
-                        </p>
-                        <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
-                      </div>
-                    </div>
+                      nodeId={id}
+                      nodeData={nodeData}
+                      portName={output}
+                      readonly={readonly}
+                    />
                   ))}
                 </div>
               )}
@@ -173,27 +164,18 @@ const Handles: React.FC<Props> = ({
         {outputs && !hasMoreThanFiveOutputHandles && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
             {outputs.map((output, index) => (
-              <div
+              <Port
                 key={output + index}
-                className="relative flex items-center justify-end border-b py-0.5 last-of-type:border-none">
-                <CustomHandle
-                  type="source"
-                  className="right-1 z-10 w-[8px] rounded-none transition-colors"
-                  position={Position.Right}
-                  id={output}
-                />
-                <div className="flex w-full -translate-x-0.5 items-center justify-end">
-                  <p
-                    className={`w-[90%] pr-1 text-end text-[10px] ${getBreakClass(output)} italic dark:font-thin`}>
-                    {output}
-                  </p>
-                  <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
-                </div>
-              </div>
+                nodeId={id}
+                nodeData={nodeData}
+                portName={output}
+                readonly={readonly}
+              />
             ))}
           </div>
         )}
       </div>
+
       {isCollapsed && (
         <>
           {nodeType !== "reader" &&
