@@ -393,13 +393,13 @@ func TestParameter_UpdateParameters(t *testing.T) {
 				Public:       false,
 			},
 		},
-		Updates: []interfaces.UpdateParameterBatchItemParam{
+		Updates: []interfaces.UpdateParameterParam{
 			{
 				ParamID:       p1.ID(),
-				NameValue:     &newName,
-				TypeValue:     &newType,
-				RequiredValue: &newRequired,
-				PublicValue:   &newPublic,
+				NameValue:     newName,
+				TypeValue:     newType,
+				RequiredValue: newRequired,
+				PublicValue:   newPublic,
 				DefaultValue:  "newDefaultValue",
 			},
 		},
@@ -463,10 +463,10 @@ func TestParameter_UpdateParameters_PartialUpdates(t *testing.T) {
 	newName := "updatedName"
 	result, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
 		ProjectID: pid,
-		Updates: []interfaces.UpdateParameterBatchItemParam{
+		Updates: []interfaces.UpdateParameterParam{
 			{
 				ParamID:      p1.ID(),
-				NameValue:    &newName,
+				NameValue:    newName,
 				DefaultValue: "newValue",
 				// Don't provide Type, Required, Public - should preserve original values
 			},

@@ -142,10 +142,10 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 			DefaultValue:  updateParam.DefaultValue,
 			Config:        updateParam.Config,
 			NameValue:     updateParam.NameValue,
-			TypeValue:     updateParam.TypeValue,
-			ParamID:       updateParam.ParamID,
 			RequiredValue: updateParam.RequiredValue,
 			PublicValue:   updateParam.PublicValue,
+			TypeValue:     updateParam.TypeValue,
+			ParamID:       updateParam.ParamID,
 		})
 		if err != nil {
 			return nil, err

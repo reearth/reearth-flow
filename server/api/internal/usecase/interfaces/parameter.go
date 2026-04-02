@@ -34,19 +34,9 @@ type UpdateParameterParam struct {
 	PublicValue   bool
 }
 
-type UpdateParameterBatchItemParam struct {
-	DefaultValue  any
-	Config        any
-	NameValue     string
-	RequiredValue bool
-	PublicValue   bool
-	TypeValue     parameter.Type
-	ParamID       id.ParameterID
-}
-
 type UpdateParametersParam struct {
 	Creates   []DeclareParameterParam
-	Updates   []UpdateParameterBatchItemParam
+	Updates   []UpdateParameterParam
 	Deletes   id.ParameterIDList
 	Reorders  []UpdateParameterOrderParam
 	ProjectID id.ProjectID
