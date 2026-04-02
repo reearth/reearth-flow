@@ -33,7 +33,7 @@ pub enum Expr {
     Var(String),
     /// index access: `expr[expr]`
     Index(Box<Expr>, Box<Expr>),
-    /// function call: `getattr("key")`
+    /// function call: `value("key")`
     FuncCall {
         name: String,
         args: Vec<Expr>,

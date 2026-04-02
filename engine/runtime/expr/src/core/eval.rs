@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use crate::ast::{BinOp, Expr, UnaryOp};
-use crate::error::{Error, Result};
+use super::ast::{BinOp, Expr, UnaryOp};
+use super::error::{Error, Result};
 
 pub type NativeFn = Box<dyn Fn(&[Value]) -> Result<Value> + Send + Sync>;
 
@@ -137,8 +137,8 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
     match op {
         BinOp::Add => match (left, right) {
             (Value::Number(a), Value::Number(b)) => add_numbers(a, b),
-            (Value::String(a), Value::String(b)) => Ok(Value::String(a + &b)),
-            (Value::String(a), b) => Ok(Value::String(a + &json_to_string(&b))),
+            (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
+            (Value::String(a), b) => Ok(Value::String(a + json_to_string(&b).as_str())),
             (a, b) => Err(Error::Eval {
                 msg: format!("cannot add {a:?} and {b:?}"),
             }),
@@ -261,7 +261,7 @@ fn json_to_string(v: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
+    use super::super::parser::parse;
     use serde_json::json;
 
     fn ctx_with_vars(vars: &[(&str, Value)]) -> Context {
