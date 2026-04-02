@@ -15,6 +15,7 @@ extern {
         "false" => crate::core::lexer::Token::False,
         "null"  => crate::core::lexer::Token::Null,
         "in"    => crate::core::lexer::Token::In,
+        "."     => crate::core::lexer::Token::Dot,
         "["     => crate::core::lexer::Token::LBracket,
         "]"     => crate::core::lexer::Token::RBracket,
         "("     => crate::core::lexer::Token::LParen,
@@ -89,6 +90,8 @@ Unary: Expr = {
 
 Postfix: Expr = {
     <e:Postfix> "[" <k:Or> "]" => Expr::Index(Box::new(e), Box::new(k)),
+    <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")"
+        => Expr::MethodCall { receiver: Box::new(e), method: name, args },
     Primary,
 };
 

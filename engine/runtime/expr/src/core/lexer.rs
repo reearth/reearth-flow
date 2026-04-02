@@ -35,7 +35,6 @@ pub enum Token {
     Int(i64),
 
     #[regex(r#""([^"\\]|\\.)*""#, lex_string)]
-    #[regex(r#"'([^'\\]|\\.)*'"#, lex_string)]
     Str(String),
 
     // keywords — must be defined before Ident so logos gives them priority
@@ -52,6 +51,8 @@ pub enum Token {
     Ident(String),
 
     // punctuation
+    #[token(".")]
+    Dot,
     #[token("[")]
     LBracket,
     #[token("]")]
