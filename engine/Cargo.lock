@@ -7020,6 +7020,7 @@ dependencies = [
 name = "reearth-flow-expr"
 version = "0.0.1"
 dependencies = [
+ "indexmap 2.13.0",
  "lalrpop",
  "lalrpop-util",
  "logos",

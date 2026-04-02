@@ -116,13 +116,16 @@ impl Processor for FlowExprTest {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let eval_ctx = reearth_flow_expr::flow::context_from_feature(feature);
+        let eval_ctx = reearth_flow_expr::flow::context_from_feature(
+            feature,
+            std::sync::Arc::new(ctx.expr_engine.vars()),
+        );
         let mut feature = feature.clone();
 
         for mapping in &self.mappings {
             let value = match &mapping.kind {
                 CompiledValue::Expr(ast) => match reearth_flow_expr::eval(ast, &eval_ctx) {
-                    Ok(v) => reearth_flow_expr::flow::attribute_value_from_json(v),
+                    Ok(v) => reearth_flow_expr::flow::attribute_value_from_eval(v),
                     Err(e) => {
                         ctx.event_hub.error_log(
                             Some(ctx.error_span()),
