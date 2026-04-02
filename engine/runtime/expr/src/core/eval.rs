@@ -64,6 +64,11 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
             let val = eval(expr, ctx)?;
             eval_unary(op, val)
         }
+        Expr::MethodCall { receiver, method, args } => {
+            let recv = eval(receiver, ctx)?;
+            let evaled: Result<Vec<_>> = args.iter().map(|e| eval(e, ctx)).collect();
+            eval_method(recv, method, &evaled?)
+        }
         Expr::Binary(left, op, right) => {
             match op {
                 BinOp::And => {
@@ -88,6 +93,15 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
             let right = eval(right, ctx)?;
             eval_binary(op, left, right)
         }
+    }
+}
+
+fn eval_method(recv: Value, method: &str, args: &[Value]) -> Result<Value> {
+    match recv {
+        Value::Object(obj) => obj.call_method(method, args),
+        v => Err(Error::Eval {
+            msg: format!("{v:?} has no method '{method}'"),
+        }),
     }
 }
 
@@ -244,6 +258,7 @@ fn is_truthy(v: &Value) -> bool {
         Value::String(s) => !s.is_empty(),
         Value::Array(a) => !a.is_empty(),
         Value::Map(o) => !o.is_empty(),
+        Value::Object(_) => true,
     }
 }
 
@@ -253,7 +268,7 @@ fn value_to_string(v: &Value) -> String {
         Value::Null => "null".into(),
         Value::Bool(b) => b.to_string(),
         Value::Number(n) => n.to_string(),
-        Value::Array(_) | Value::Map(_) => format!("{v:?}"),
+        Value::Array(_) | Value::Map(_) | Value::Object(_) => format!("{v:?}"),
     }
 }
 
@@ -319,7 +334,10 @@ mod tests {
 
     #[test]
     fn test_var_and_index() {
-        let feature: Value = Value::from(serde_json::json!({"package": "bldg", "extension": "gml"}));
+        let feature = Value::Map(indexmap::indexmap! {
+            "package".into() => Value::from("bldg"),
+            "extension".into() => Value::from("gml"),
+        });
         assert_eq!(
             run(r#"feature["package"]"#, &[("feature", feature.clone())]),
             Value::from("bldg")
@@ -332,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_in_operator() {
-        let pkgs = Value::from(serde_json::json!(["bldg", "tran"]));
+        let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
             run(r#""bldg" in packages"#, &[("packages", pkgs.clone())]),
             Value::from(true)
@@ -345,7 +363,9 @@ mod tests {
 
     #[test]
     fn test_nested_index() {
-        let data = Value::from(serde_json::json!({"cityGmlPath": "/data/city.gml"}));
+        let data = Value::Map(indexmap::indexmap! {
+            "cityGmlPath".into() => Value::from("/data/city.gml"),
+        });
         assert_eq!(
             run(r#"value["cityGmlPath"]"#, &[("value", data)]),
             Value::from("/data/city.gml")
@@ -384,8 +404,11 @@ mod tests {
 
     #[test]
     fn test_complex_expr() {
-        let feature = Value::from(serde_json::json!({"extension": "gml", "package": "bldg"}));
-        let pkgs = Value::from(serde_json::json!(["bldg", "tran"]));
+        let feature = Value::Map(indexmap::indexmap! {
+            "extension".into() => Value::from("gml"),
+            "package".into() => Value::from("bldg"),
+        });
+        let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
             run(
                 r#"feature["extension"] == "gml" && feature["package"] in packages"#,
