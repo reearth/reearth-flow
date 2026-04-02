@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use reearth_flow_expr::eval::Context;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -8,7 +7,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, StringOrExpr, StringOrExprType};
+use reearth_flow_types::{Attribute, AttributeValue, StringOrExpr, StringOrExprType};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -61,7 +60,7 @@ impl ProcessorFactory for FlowExprTestFactory {
         for m in params.mappings {
             let compiled = match m.value.kind {
                 StringOrExprType::Expr => {
-                    let ast = reearth_flow_expr::parse(&m.value.value)
+                    let ast = reearth_flow_expr::compile(&m.value.value)
                         .map_err(|e| format!("Failed to parse expression: {e}"))?;
                     CompiledMapping {
                         attribute: m.attribute,
@@ -95,7 +94,7 @@ struct Mapping {
 
 #[derive(Debug, Clone)]
 enum CompiledValue {
-    Expr(reearth_flow_expr::ast::Expr),
+    Expr(reearth_flow_expr::CompiledExpr),
     Literal(String),
 }
 
@@ -117,13 +116,13 @@ impl Processor for FlowExprTest {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let eval_ctx = context_from_feature(feature);
+        let eval_ctx = reearth_flow_expr::flow::context_from_feature(feature);
         let mut feature = feature.clone();
 
         for mapping in &self.mappings {
             let value = match &mapping.kind {
                 CompiledValue::Expr(ast) => match reearth_flow_expr::eval(ast, &eval_ctx) {
-                    Ok(v) => attribute_value_from_json(v),
+                    Ok(v) => reearth_flow_expr::flow::attribute_value_from_json(v),
                     Err(e) => {
                         ctx.event_hub.error_log(
                             Some(ctx.error_span()),
@@ -154,39 +153,3 @@ impl Processor for FlowExprTest {
     }
 }
 
-fn context_from_feature(feature: &Feature) -> Context {
-    let attrs = std::sync::Arc::clone(&feature.attributes);
-    let attrs2 = std::sync::Arc::clone(&feature.attributes);
-    let mut ctx = Context::new();
-    ctx.register(
-        "__resolve",
-        Box::new(move |args| {
-            let name = args.first().and_then(|v| v.as_str()).unwrap_or("");
-            Ok(attrs
-                .get(&Attribute::new(name))
-                .map(|v| v.clone().into())
-                .unwrap_or(Value::Null))
-        }),
-    );
-    ctx.register(
-        "getattr",
-        Box::new(move |args| {
-            let name = args.first().and_then(|v| v.as_str()).unwrap_or("");
-            Ok(attrs2
-                .get(&Attribute::new(name))
-                .map(|v| v.clone().into())
-                .unwrap_or(Value::Null))
-        }),
-    );
-    ctx
-}
-
-fn attribute_value_from_json(v: Value) -> AttributeValue {
-    match v {
-        Value::Null => AttributeValue::Null,
-        Value::Bool(b) => AttributeValue::Bool(b),
-        Value::Number(n) => AttributeValue::Number(n),
-        Value::String(s) => AttributeValue::String(s),
-        other => AttributeValue::String(other.to_string()),
-    }
-}
