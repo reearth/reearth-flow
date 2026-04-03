@@ -53,6 +53,12 @@ const CityGmlData: React.FC<Props> = ({
   const { buildLodGeometry, cancelPending } = useLodWorker();
   const hasInitializedRef = useRef(false);
 
+  // Refs to read current prop values inside effects without adding them as deps
+  const selectedFeatureIdRef = useRef(selectedFeatureId ?? null);
+  selectedFeatureIdRef.current = selectedFeatureId ?? null;
+  const detailsOverlayOpenRef = useRef(detailsOverlayOpen);
+  detailsOverlayOpenRef.current = detailsOverlayOpen;
+
   const waitForPrimitive = useCallback(
     (primitive: Primitive | null, callback: () => void) => {
       if (!primitive || !viewer) return;
@@ -181,8 +187,23 @@ const CityGmlData: React.FC<Props> = ({
       setCityGmlBoundingSphere(boundingSphere);
       hasInitializedRef.current = true;
     }
+
+    if (selectedFeatureIdRef.current && detailsOverlayOpenRef.current) {
+      const entry = featureMap.get(selectedFeatureIdRef.current);
+      if (entry) {
+        upgradeLod(entry);
+        prevSelectedRef.current = selectedFeatureIdRef.current;
+      }
+    }
+
     viewer.scene.requestRender();
-  }, [cityGmlData, viewer, setCityGmlBoundingSphere, cancelPending]);
+  }, [
+    cityGmlData,
+    viewer,
+    setCityGmlBoundingSphere,
+    cancelPending,
+    upgradeLod,
+  ]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {

@@ -18,8 +18,8 @@ import {
   createFullEdgeTypes,
   simpleEdgeTypes,
   connectionLineStyle,
-  nodeTypes,
 } from "@flow/lib/reactFlow";
+import createFullNodeTypes from "@flow/lib/reactFlow/nodeTypes";
 import type { ActionNodeType, AwarenessUser, Edge, Node } from "@flow/types";
 
 import { CanvasContextMenu } from "./components";
@@ -132,6 +132,10 @@ const Canvas: React.FC<Props> = ({
     [currentWorkflowId],
   );
 
+  const fullNodeTypes = useMemo(() => {
+    return createFullNodeTypes(readonly);
+  }, [readonly]);
+
   return (
     <ReactFlow
       onPointerDown={onPointerDown}
@@ -150,7 +154,7 @@ const Canvas: React.FC<Props> = ({
       snapGrid={snapGrid}
       selectionMode={SelectionMode["Partial"]}
       nodes={nodes}
-      nodeTypes={nodeTypes}
+      nodeTypes={fullNodeTypes}
       edges={edges}
       edgeTypes={readonly ? simpleEdgeTypes : fullEdgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}

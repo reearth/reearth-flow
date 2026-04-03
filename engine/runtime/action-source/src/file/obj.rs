@@ -426,8 +426,7 @@ async fn read_obj(
             AttributeValue::Number(serde_json::Number::from(obj_data.faces.len())),
         );
 
-        let feature =
-            Feature::new_with_attributes_and_geometry(attributes, geometry, Default::default());
+        let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
 
         sender
             .send((
@@ -500,8 +499,7 @@ async fn read_obj(
                 AttributeValue::Number(serde_json::Number::from(face_refs.len())),
             );
 
-            let feature =
-                Feature::new_with_attributes_and_geometry(attributes, geometry, Default::default());
+            let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
 
             sender
                 .send((

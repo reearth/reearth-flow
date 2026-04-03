@@ -514,25 +514,6 @@ fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'stat
     }
 }
 
-pub fn all_type_names() -> Vec<String> {
-    [
-        "Point",
-        "Line",
-        "LineString",
-        "Polygon",
-        "MultiPoint",
-        "MultiLineString",
-        "MultiPolygon",
-        "Rect",
-        "Triangle",
-        "Solid",
-        "GeometryCollection",
-    ]
-    .into_iter()
-    .map(|s| s.to_string())
-    .collect()
-}
-
 impl<T> RelativeEq for Geometry<T, T>
 where
     T: AbsDiffEq<Epsilon = T> + CoordNum + RelativeEq,

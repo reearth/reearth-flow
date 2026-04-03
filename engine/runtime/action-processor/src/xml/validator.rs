@@ -1013,7 +1013,7 @@ mod tests {
             AttributeValue::String(xml_content.to_string()),
         );
 
-        Feature::new_with_attributes_and_geometry(attributes, Geometry::new(), Default::default())
+        Feature::new_with_attributes_and_geometry(attributes, Geometry::new())
     }
 
     fn run_validator_test(
@@ -1096,11 +1096,7 @@ mod tests {
         let file_uri = format!("file://{}", gml_path.display());
         let mut attributes = IndexMap::new();
         attributes.insert(Attribute::new("xml_path"), AttributeValue::String(file_uri));
-        let feature = Feature::new_with_attributes_and_geometry(
-            attributes,
-            Geometry::new(),
-            Default::default(),
-        );
+        let feature = Feature::new_with_attributes_and_geometry(attributes, Geometry::new());
 
         let ctx = utils::create_default_execute_context(&feature);
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());

@@ -466,7 +466,7 @@ mod tests {
             epsg: None,
             value: GeometryValue::CityGmlGeometry(city_gml),
         };
-        Feature::new_with_attributes_and_geometry(Attributes::new(), geometry, Default::default())
+        Feature::new_with_attributes_and_geometry(Attributes::new(), geometry)
     }
 
     fn run_processor_with_mode(
@@ -499,7 +499,7 @@ mod tests {
             epsg: None,
             value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
         };
-        Feature::new_with_attributes_and_geometry(Attributes::new(), geometry, Default::default())
+        Feature::new_with_attributes_and_geometry(Attributes::new(), geometry)
     }
 
     // =========================================================================
@@ -536,11 +536,7 @@ mod tests {
             epsg: None,
             value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
         };
-        let feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            geometry,
-            Default::default(),
-        );
+        let feature = Feature::new_with_attributes_and_geometry(Attributes::new(), geometry);
 
         let (features, ports) = run_processor(&feature);
         assert_eq!(ports.len(), 1);
@@ -652,11 +648,7 @@ mod tests {
             epsg: None,
             value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon)),
         };
-        let feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            geometry,
-            Default::default(),
-        );
+        let feature = Feature::new_with_attributes_and_geometry(Attributes::new(), geometry);
 
         let (features, ports) =
             run_processor_with_mode(&feature, CenterPointMode::BoundingBoxCenter);
@@ -768,11 +760,7 @@ mod tests {
             epsg: None,
             value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(line)),
         };
-        let feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            geometry,
-            Default::default(),
-        );
+        let feature = Feature::new_with_attributes_and_geometry(Attributes::new(), geometry);
 
         let (features, ports) = run_processor_with_mode(&feature, CenterPointMode::AnyInsidePoint);
         assert_eq!(ports.len(), 1);
@@ -792,11 +780,7 @@ mod tests {
             epsg: None,
             value: GeometryValue::FlowGeometry2D(Geometry2D::Point(point)),
         };
-        let feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            geometry,
-            Default::default(),
-        );
+        let feature = Feature::new_with_attributes_and_geometry(Attributes::new(), geometry);
 
         let (_, ports) = run_processor_with_mode(&feature, CenterPointMode::AnyInsidePoint);
         assert_eq!(ports.len(), 1);
@@ -831,11 +815,7 @@ mod tests {
             epsg: None,
             value: GeometryValue::None,
         };
-        let feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            geometry,
-            Default::default(),
-        );
+        let feature = Feature::new_with_attributes_and_geometry(Attributes::new(), geometry);
 
         let (features, ports) = run_processor(&feature);
         assert_eq!(ports.len(), 1);

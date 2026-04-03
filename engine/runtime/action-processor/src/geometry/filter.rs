@@ -104,17 +104,10 @@ impl GeometryFilterParam {
     }
 
     fn all_feature_type_ports() -> Vec<Port> {
-        let mut result = reearth_flow_geometry::types::geometry::all_type_names()
+        GeometryType::all_type_names()
             .iter()
             .map(|name| Port::new(to_camel_case(name)))
-            .collect::<Vec<Port>>();
-        result.extend(
-            GeometryType::all_type_names()
-                .iter()
-                .map(|name| Port::new(to_camel_case(name)))
-                .collect::<Vec<Port>>(),
-        );
-        result
+            .collect()
     }
 
     fn all_ports() -> Vec<Port> {
@@ -301,7 +294,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(Default::default())),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
         filter_multiple_geometry(&ctx, &fw, &feature, &feature.geometry.clone());
@@ -325,7 +317,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
         filter_multiple_geometry(&ctx, &fw, &feature, &feature.geometry.clone());
@@ -347,7 +338,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Default::default())),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
         filter_multiple_geometry(&ctx, &fw, &feature, &feature.geometry.clone());

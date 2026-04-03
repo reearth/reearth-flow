@@ -184,7 +184,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Default::default())),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
 
@@ -217,7 +216,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(line_string)),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
 
@@ -258,7 +256,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
 
@@ -306,7 +303,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
 
@@ -339,7 +335,6 @@ mod tests {
                 value: GeometryValue::None,
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
 

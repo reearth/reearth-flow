@@ -26,6 +26,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false

@@ -19,6 +19,7 @@ use crate::{
     node::{EdgeId, GraphId, NodeHandle, Port},
 };
 use crossbeam::channel::{bounded, Receiver, Sender};
+use petgraph::graph::NodeIndex;
 use petgraph::{visit::EdgeRef, Direction};
 
 #[derive(Debug)]
@@ -31,6 +32,13 @@ pub struct NodeType {
     /// making it unavailable later. Keeping this immutable snapshot avoids timing issues.
     /// TODO: refactor to remove duplication once initialization no longer requires taking `kind`.
     pub is_source: bool,
+    /// Factory-declared output ports, propagated from BuilderDag.
+    pub output_ports: Vec<Port>,
+    /// Accumulated subgraph prefix, propagated from BuilderDag.
+    pub subgraph_prefix: Option<String>,
+    /// True for OutputRouter nodes inside subgraphs: port-based intermediate
+    /// data is named `<prefix>.<port>` rather than `<prefix>.<node_id>.<port>`.
+    pub is_subgraph_output: bool,
 }
 
 type SharedFeatureWriter = Arc<Mutex<Box<dyn FeatureWriter>>>;
@@ -61,6 +69,8 @@ pub struct ExecutionDag {
     graph: petgraph::graph::DiGraph<NodeType, EdgeType>,
     event_hub: EventHub,
     ingress_state: Arc<State>,
+    /// Port-based feature writers: one writer per (node, output_port) pair.
+    port_writers: HashMap<NodeIndex, HashMap<Port, Box<dyn FeatureWriter>>>,
 }
 
 impl ExecutionDag {
@@ -157,6 +167,9 @@ impl ExecutionDag {
                     NodeKind::Processor(processor) => Some(NodeKind::Processor(processor.clone())),
                     NodeKind::Sink(sink) => Some(NodeKind::Sink(sink.clone())),
                 },
+                output_ports: node.output_ports.clone(),
+                subgraph_prefix: node.subgraph_prefix.clone(),
+                is_subgraph_output: node.is_subgraph_output,
             },
             |edge_index, _| {
                 edges[edge_index.index()]
@@ -164,12 +177,36 @@ impl ExecutionDag {
                     .expect("We created all edges")
             },
         );
+        // Create port-based writers: one writer per (node, output_port) pair.
+        let mut port_writers = HashMap::new();
+        for node_index in graph.node_indices() {
+            let node = &graph[node_index];
+            let mut node_port_writers = HashMap::new();
+            for port in &node.output_ports {
+                let file_id = match (&node.subgraph_prefix, node.is_subgraph_output) {
+                    (Some(prefix), true) => format!("{}.{}", prefix, port),
+                    (Some(prefix), false) => format!("{}.{}.{}", prefix, node.handle.id, port),
+                    (None, _) => format!("{}.{}", node.handle.id, port),
+                };
+                let writer = create_feature_writer(
+                    EdgeId::new(file_id),
+                    Arc::clone(&feature_state),
+                    feature_flush_threshold,
+                );
+                node_port_writers.insert(port.clone(), writer);
+            }
+            if !node_port_writers.is_empty() {
+                port_writers.insert(node_index, node_port_writers);
+            }
+        }
+
         Ok(ExecutionDag {
             id: graph_id,
             executor_id,
             graph,
             event_hub,
             ingress_state,
+            port_writers,
         })
     }
 
@@ -267,6 +304,16 @@ impl ExecutionDag {
             }
         }
         feature_writers
+    }
+
+    pub fn collect_port_writers(
+        &self,
+        node_index: petgraph::graph::NodeIndex,
+    ) -> HashMap<Port, Box<dyn FeatureWriter>> {
+        self.port_writers
+            .get(&node_index)
+            .cloned()
+            .unwrap_or_default()
     }
 
     pub fn collect_receivers(

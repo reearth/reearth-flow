@@ -182,7 +182,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Default::default())),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &fw).unwrap();
@@ -205,7 +204,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Default::default())),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &fw).unwrap();
@@ -229,7 +227,6 @@ mod tests {
                 value: GeometryValue::CityGmlGeometry(Default::default()),
                 ..Default::default()
             },
-            Default::default(),
         );
         let ctx = create_default_execute_context(&feature);
         GeometryValueFilter {}.process(ctx, &fw).unwrap();

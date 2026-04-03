@@ -142,14 +142,10 @@ graphs:
               method: create
               value: |
                 file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
-            - attribute: _lod_type
-              method: create
-              value: |
-                env.get("__lod_type")
             - attribute: feature_type
               method: create
               value: |
-                env.get("__feature_type")
+                env.get("__value")["__citygml_feature_type"]
             - attribute: path
               method: rename
               value: "_path"
@@ -226,7 +222,7 @@ graphs:
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
             - attribute: _lod
               method: create
-              value: "1"
+              value: '1'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojectorByLod1
@@ -263,7 +259,8 @@ graphs:
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
             - attribute: _lod
               method: create
-              value: "2"
+              value: '2'
+
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
         name: VerticalReprojectorByLod2
         type: action
@@ -299,7 +296,7 @@ graphs:
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
             - attribute: _lod
               method: create
-              value: "2"
+              value: '2'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
         name: VerticalReprojectorByLod2NoTexture
@@ -336,7 +333,7 @@ graphs:
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
             - attribute: _lod
               method: create
-              value: "3"
+              value: '3'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
         name: VerticalReprojectorByLod3
@@ -373,7 +370,7 @@ graphs:
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
             - attribute: _lod
               method: create
-              value: "3"
+              value: '3'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
         name: VerticalReprojectorByLod3NoTexture
@@ -410,7 +407,7 @@ graphs:
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
             - attribute: _lod
               method: create
-              value: "4"
+              value: '4'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
         name: VerticalReprojectorByLod4
@@ -447,7 +444,7 @@ graphs:
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
             - attribute: _lod
               method: create
-              value: "4"
+              value: '4'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
         name: VerticalReprojectorByLod4NoTexture
@@ -461,6 +458,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -492,6 +490,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -523,6 +522,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -554,6 +554,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -585,6 +586,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -616,6 +618,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -647,6 +650,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
           attachTexture: false

@@ -101,5 +101,10 @@ export const applyMergedPatch = (
 
 export const rjsfIdToPath = (changedFieldId?: string) => {
   if (!changedFieldId) return undefined;
-  return changedFieldId.replace(/^root_/, "").replace(/_/g, ".");
+  const normalized = changedFieldId
+    .replace(/__anyof_select$/, "")
+    .replace(/__oneof_select$/, "")
+    .replace(/^root_?/, "")
+    .replace(/_/g, ".");
+  return normalized === "" ? undefined : normalized;
 };
