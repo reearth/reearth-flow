@@ -46,6 +46,8 @@ pub enum Token {
     Null,
     #[token("in")]
     In,
+    #[token("let")]
+    Let,
 
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Ident(String),
@@ -61,10 +63,16 @@ pub enum Token {
     LParen,
     #[token(")")]
     RParen,
+    #[token("{")]
+    LBrace,
+    #[token("}")]
+    RBrace,
     #[token(",")]
     Comma,
     #[token(":")]
     Colon,
+    #[token(";")]
+    Semi,
 
     // arithmetic
     #[token("+")]
@@ -75,6 +83,10 @@ pub enum Token {
     Star,
     #[token("/")]
     Slash,
+
+    // assignment (single `=`; must come after `==` in logos priority — longer wins)
+    #[token("=")]
+    Assign,
 
     // comparison
     #[token("==")]
