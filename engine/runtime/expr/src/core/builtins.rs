@@ -47,6 +47,10 @@ impl ValueObject for PathObject {
                         .unwrap_or_default(),
                 ))
             }
+            "__str__" => {
+                let _ = args;
+                Ok(Value::String(self.0.clone()))
+            }
             "__div__" => {
                 let rhs = args.first().and_then(|v| {
                     if let Value::String(s) = v { Some(s.as_str()) } else { None }
