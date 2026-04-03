@@ -81,10 +81,8 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
     match expr {
         Expr::Null => Ok(Value::Null),
         Expr::Bool(b) => Ok(Value::Bool(*b)),
-        Expr::Int(n) => Ok(Value::Number((*n).into())),
-        Expr::Float(f) => Ok(serde_json::Number::from_f64(*f)
-            .map(Value::Number)
-            .unwrap_or(Value::Null)),
+        Expr::Int(n) => Ok(Value::Int(*n)),
+        Expr::Float(f) => Ok(Value::Float(*f)),
         Expr::Str(s) => Ok(Value::String(s.clone())),
         Expr::Array(items) => {
             let values: Result<Vec<_>> = items.iter().map(|e| eval_inner(e, ctx, env)).collect();
@@ -185,7 +183,7 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> Result<Value> 
     match method {
         "len" => {
             let _ = args;
-            Ok(Value::Number((s.chars().count() as i64).into()))
+            Ok(Value::Int(s.chars().count() as i64))
         }
         "trim" => {
             let _ = args;
@@ -201,7 +199,7 @@ fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> Result<Valu
     match method {
         "len" => {
             let _ = args;
-            Ok(Value::Number((a.len() as i64).into()))
+            Ok(Value::Int(a.len() as i64))
         }
         m => Err(Error::Eval {
             msg: format!("Array has no method '{m}'"),
@@ -212,10 +210,7 @@ fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> Result<Valu
 fn eval_index(target: Value, key: Value) -> Result<Value> {
     match (target, key) {
         (Value::Map(map), Value::String(k)) => Ok(map.get(&k).cloned().unwrap_or(Value::Null)),
-        (Value::Array(arr), Value::Number(n)) => {
-            let i = n.as_i64().ok_or_else(|| Error::Eval {
-                msg: "array index must be an integer".into(),
-            })?;
+        (Value::Array(arr), Value::Int(i)) => {
             let len = arr.len() as i64;
             let i = if i < 0 { len + i } else { i };
             if i < 0 || i >= len {
@@ -223,10 +218,7 @@ fn eval_index(target: Value, key: Value) -> Result<Value> {
             }
             Ok(arr.into_iter().nth(i as usize).unwrap_or(Value::Null))
         }
-        (Value::String(s), Value::Number(n)) => {
-            let i = n.as_i64().ok_or_else(|| Error::Eval {
-                msg: "string index must be an integer".into(),
-            })?;
+        (Value::String(s), Value::Int(i)) => {
             let chars: Vec<char> = s.chars().collect();
             let len = chars.len() as i64;
             let i = if i < 0 { len + i } else { i };
@@ -244,9 +236,8 @@ fn eval_index(target: Value, key: Value) -> Result<Value> {
 
 fn as_slice_index(v: Value, what: &str) -> Result<i64> {
     match v {
-        Value::Number(n) => n.as_i64().ok_or_else(|| Error::Eval {
-            msg: format!("slice {what} must be an integer"),
-        }),
+        Value::Int(n) => Ok(n),
+        Value::Float(f) if f.fract() == 0.0 => Ok(f as i64),
         v => Err(Error::Eval {
             msg: format!("slice {what} must be an integer, got {v:?}"),
         }),
@@ -316,19 +307,8 @@ fn eval_unary(op: &UnaryOp, val: Value) -> Result<Value> {
     match op {
         UnaryOp::Not => Ok(Value::Bool(!is_truthy(&val))),
         UnaryOp::Neg => match val {
-            Value::Number(n) => {
-                if let Some(i) = n.as_i64() {
-                    Ok(Value::Number((-i).into()))
-                } else if let Some(f) = n.as_f64() {
-                    Ok(serde_json::Number::from_f64(-f)
-                        .map(Value::Number)
-                        .unwrap_or(Value::Null))
-                } else {
-                    Err(Error::Eval {
-                        msg: "cannot negate value".into(),
-                    })
-                }
-            }
+            Value::Int(n) => Ok(Value::Int(-n)),
+            Value::Float(f) => Ok(Value::Float(-f)),
             v => Err(Error::Eval {
                 msg: format!("cannot negate {v:?}"),
             }),
@@ -364,34 +344,68 @@ fn try_object_op(op: &BinOp, left: Value, right: Value) -> Result<Value> {
     })
 }
 
+enum Numeric {
+    Int(i64),
+    Float(f64),
+}
+
+fn coerce_numeric(a: Value, b: Value) -> Result<(Numeric, Numeric)> {
+    match (a, b) {
+        (Value::Int(a),   Value::Int(b))   => Ok((Numeric::Int(a),       Numeric::Int(b))),
+        (Value::Int(a),   Value::Float(b)) => Ok((Numeric::Float(a as f64), Numeric::Float(b))),
+        (Value::Float(a), Value::Int(b))   => Ok((Numeric::Float(a),     Numeric::Float(b as f64))),
+        (Value::Float(a), Value::Float(b)) => Ok((Numeric::Float(a),     Numeric::Float(b))),
+        (a, b) => Err(Error::Eval {
+            msg: format!("cannot apply numeric op to {a:?} and {b:?}"),
+        }),
+    }
+}
+
+fn numeric_op(
+    left: Value,
+    right: Value,
+    int_op: impl Fn(i64, i64) -> i64,
+    float_op: impl Fn(f64, f64) -> f64,
+) -> Result<Value> {
+    match coerce_numeric(left, right)? {
+        (Numeric::Int(a),   Numeric::Int(b))   => Ok(Value::Int(int_op(a, b))),
+        (Numeric::Float(a), Numeric::Float(b)) => Ok(Value::Float(float_op(a, b))),
+        _ => unreachable!(),
+    }
+}
+
 fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
     match op {
         BinOp::Add => match (left, right) {
-            (Value::Number(a), Value::Number(b)) => add_numbers(a, b),
             (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
             (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
             (Value::Array(mut a), Value::Array(b)) => {
                 a.extend(b);
                 Ok(Value::Array(a))
             }
-            (a, b) => try_object_op(op, a, b),
+            (a, b) => match coerce_numeric(a, b) {
+                Ok((Numeric::Int(a),   Numeric::Int(b)))   => Ok(Value::Int(a + b)),
+                Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
+                Ok(_) => unreachable!(),
+                Err(_) => {
+                    // re-construct originals is not possible after move; surface as object op error
+                    Err(Error::Eval { msg: "'+' not supported for these types".into() })
+                }
+            },
         },
         BinOp::Sub => numeric_op(left, right, |a, b| a - b, |a, b| a - b),
         BinOp::Mul => numeric_op(left, right, |a, b| a * b, |a, b| a * b),
-        BinOp::Div => match (left, right) {
-            (Value::Number(a), Value::Number(b)) => {
-                let b_f = b.as_f64().unwrap_or(0.0);
-                if b_f == 0.0 {
-                    return Err(Error::Eval {
-                        msg: "division by zero".into(),
-                    });
-                }
-                let a_f = a.as_f64().unwrap_or(0.0);
-                Ok(serde_json::Number::from_f64(a_f / b_f)
-                    .map(Value::Number)
-                    .unwrap_or(Value::Null))
+        BinOp::Div => match coerce_numeric(left.clone(), right.clone()) {
+            Ok((Numeric::Int(a), Numeric::Int(b))) => {
+                if b == 0 { return Err(Error::Eval { msg: "division by zero".into() }); }
+                if a % b == 0 { Ok(Value::Int(a / b)) } else { Ok(Value::Float(a as f64 / b as f64)) }
             }
-            (a, b) => try_object_op(op, a, b),
+            Ok((Numeric::Float(a), Numeric::Float(b))) => {
+                if b == 0.0 { return Err(Error::Eval { msg: "division by zero".into() }); }
+                Ok(Value::Float(a / b))
+            }
+            Ok(_) => unreachable!(),
+            Err(_) => try_object_op(op, left, right),
         },
         BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
         BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
@@ -412,56 +426,23 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
     }
 }
 
-fn add_numbers(a: serde_json::Number, b: serde_json::Number) -> Result<Value> {
-    if let (Some(ai), Some(bi)) = (a.as_i64(), b.as_i64()) {
-        return Ok(Value::Number((ai + bi).into()));
-    }
-    let af = a.as_f64().unwrap_or(0.0);
-    let bf = b.as_f64().unwrap_or(0.0);
-    Ok(serde_json::Number::from_f64(af + bf)
-        .map(Value::Number)
-        .unwrap_or(Value::Null))
-}
-
-fn numeric_op(
-    left: Value,
-    right: Value,
-    int_op: impl Fn(i64, i64) -> i64,
-    float_op: impl Fn(f64, f64) -> f64,
-) -> Result<Value> {
-    match (left, right) {
-        (Value::Number(a), Value::Number(b)) => {
-            if let (Some(ai), Some(bi)) = (a.as_i64(), b.as_i64()) {
-                return Ok(Value::Number(int_op(ai, bi).into()));
-            }
-            let af = a.as_f64().unwrap_or(0.0);
-            let bf = b.as_f64().unwrap_or(0.0);
-            Ok(serde_json::Number::from_f64(float_op(af, bf))
-                .map(Value::Number)
-                .unwrap_or(Value::Null))
-        }
-        (a, b) => Err(Error::Eval {
-            msg: format!("cannot apply numeric op to {a:?} and {b:?}"),
-        }),
-    }
-}
-
 fn compare_values(
     left: Value,
     right: Value,
     pred: impl Fn(std::cmp::Ordering) -> bool,
 ) -> Result<Value> {
-    let ord = match (&left, &right) {
-        (Value::Number(a), Value::Number(b)) => a
-            .as_f64()
-            .partial_cmp(&b.as_f64())
-            .unwrap_or(std::cmp::Ordering::Equal),
-        (Value::String(a), Value::String(b)) => a.cmp(b),
-        _ => {
-            return Err(Error::Eval {
-                msg: format!("cannot compare {left:?} and {right:?}"),
-            })
+    let ord = match coerce_numeric(left.clone(), right.clone()) {
+        Ok((Numeric::Int(a),   Numeric::Int(b)))   => a.cmp(&b),
+        Ok((Numeric::Float(a), Numeric::Float(b))) => {
+            a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal)
         }
+        Ok(_) => unreachable!(),
+        Err(_) => match (&left, &right) {
+            (Value::String(a), Value::String(b)) => a.as_str().cmp(b.as_str()),
+            _ => return Err(Error::Eval {
+                msg: format!("cannot compare {left:?} and {right:?}"),
+            }),
+        },
     };
     Ok(Value::Bool(pred(ord)))
 }
@@ -474,7 +455,8 @@ fn is_truthy(v: &Value) -> bool {
     match v {
         Value::Null => false,
         Value::Bool(b) => *b,
-        Value::Number(n) => n.as_f64().map(|f| f != 0.0).unwrap_or(false),
+        Value::Int(n) => *n != 0,
+        Value::Float(f) => *f != 0.0,
         Value::String(s) => !s.is_empty(),
         Value::Array(a) => !a.is_empty(),
         Value::Map(o) => !o.is_empty(),
@@ -487,7 +469,8 @@ fn value_to_string(v: &Value) -> String {
         Value::String(s) => s.clone(),
         Value::Null => "null".into(),
         Value::Bool(b) => b.to_string(),
-        Value::Number(n) => n.to_string(),
+        Value::Int(n) => n.to_string(),
+        Value::Float(f) => f.to_string(),
         Value::Array(_) | Value::Map(_) => format!("{v:?}"),
         Value::Object(obj) => obj.display(),
     }
@@ -498,7 +481,8 @@ fn builtin_str(args: &[Value]) -> Result<Value> {
         None | Some(Value::Null) => Ok(Value::String("null".into())),
         Some(Value::String(s)) => Ok(Value::String(s.clone())),
         Some(Value::Bool(b)) => Ok(Value::String(b.to_string())),
-        Some(Value::Number(n)) => Ok(Value::String(n.to_string())),
+        Some(Value::Int(n)) => Ok(Value::String(n.to_string())),
+        Some(Value::Float(f)) => Ok(Value::String(f.to_string())),
         Some(Value::Object(obj)) => obj.call_method("__str__", &[]),
         Some(v) => Err(Error::Eval {
             msg: format!("str() not supported for {v:?}"),
@@ -508,20 +492,13 @@ fn builtin_str(args: &[Value]) -> Result<Value> {
 
 fn builtin_int(args: &[Value]) -> Result<Value> {
     match args.first() {
-        Some(Value::Number(n)) => {
-            if let Some(i) = n.as_i64() {
-                Ok(Value::Number(i.into()))
-            } else {
-                Ok(Value::Number(
-                    (n.as_f64().unwrap_or(0.0).trunc() as i64).into(),
-                ))
-            }
-        }
-        Some(Value::Bool(b)) => Ok(Value::Number((*b as i64).into())),
+        Some(Value::Int(n)) => Ok(Value::Int(*n)),
+        Some(Value::Float(f)) => Ok(Value::Int(f.trunc() as i64)),
+        Some(Value::Bool(b)) => Ok(Value::Int(*b as i64)),
         Some(Value::String(s)) => s
             .trim()
             .parse::<i64>()
-            .map(|i| Value::Number(i.into()))
+            .map(Value::Int)
             .map_err(|_| Error::Eval {
                 msg: format!("int() cannot parse {s:?}"),
             }),
@@ -536,24 +513,15 @@ fn builtin_int(args: &[Value]) -> Result<Value> {
 
 fn builtin_float(args: &[Value]) -> Result<Value> {
     match args.first() {
-        Some(Value::Number(n)) => Ok(serde_json::Number::from_f64(n.as_f64().unwrap_or(0.0))
-            .map(Value::Number)
-            .unwrap_or(Value::Null)),
-        Some(Value::Bool(b)) => Ok(serde_json::Number::from_f64(if *b { 1.0 } else { 0.0 })
-            .map(Value::Number)
-            .unwrap_or(Value::Null)),
+        Some(Value::Float(f)) => Ok(Value::Float(*f)),
+        Some(Value::Int(n)) => Ok(Value::Float(*n as f64)),
+        Some(Value::Bool(b)) => Ok(Value::Float(if *b { 1.0 } else { 0.0 })),
         Some(Value::String(s)) => s
             .trim()
             .parse::<f64>()
+            .map(Value::Float)
             .map_err(|_| Error::Eval {
                 msg: format!("float() cannot parse {s:?}"),
-            })
-            .and_then(|f| {
-                serde_json::Number::from_f64(f)
-                    .map(Value::Number)
-                    .ok_or_else(|| Error::Eval {
-                        msg: format!("float() result is not finite: {f}"),
-                    })
             }),
         Some(v) => Err(Error::Eval {
             msg: format!("float() not supported for {v:?}"),

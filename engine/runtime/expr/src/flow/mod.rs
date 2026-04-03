@@ -12,7 +12,13 @@ pub fn json_to_value(v: serde_json::Value) -> Value {
     match v {
         serde_json::Value::Null => Value::Null,
         serde_json::Value::Bool(b) => Value::Bool(b),
-        serde_json::Value::Number(n) => Value::Number(n),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Value::Int(i)
+            } else {
+                Value::Float(n.as_f64().unwrap_or(0.0))
+            }
+        }
         serde_json::Value::String(s) => Value::String(s),
         serde_json::Value::Array(arr) => Value::Array(arr.into_iter().map(json_to_value).collect()),
         serde_json::Value::Object(map) => {
@@ -25,7 +31,10 @@ pub fn value_to_json(v: Value) -> serde_json::Value {
     match v {
         Value::Null => serde_json::Value::Null,
         Value::Bool(b) => serde_json::Value::Bool(b),
-        Value::Number(n) => serde_json::Value::Number(n),
+        Value::Int(n) => serde_json::Value::Number(n.into()),
+        Value::Float(f) => serde_json::Number::from_f64(f)
+            .map(serde_json::Value::Number)
+            .unwrap_or(serde_json::Value::Null),
         Value::String(s) => serde_json::Value::String(s),
         Value::Array(arr) => {
             serde_json::Value::Array(arr.into_iter().map(value_to_json).collect())
@@ -84,7 +93,10 @@ pub fn attribute_value_from_eval(v: Value) -> AttributeValue {
     match v {
         Value::Null => AttributeValue::Null,
         Value::Bool(b) => AttributeValue::Bool(b),
-        Value::Number(n) => AttributeValue::Number(n),
+        Value::Int(n) => AttributeValue::Number(n.into()),
+        Value::Float(f) => AttributeValue::Number(
+            serde_json::Number::from_f64(f).unwrap_or_else(|| 0i64.into()),
+        ),
         Value::String(s) => AttributeValue::String(s),
         other => AttributeValue::String(value_to_json(other).to_string()),
     }
