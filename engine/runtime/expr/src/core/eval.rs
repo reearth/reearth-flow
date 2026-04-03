@@ -159,6 +159,14 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
             }
             Ok(result)
         }
+        Expr::If { cond, then, else_ } => {
+            let c = eval_inner(cond, ctx, env)?;
+            if is_truthy(&c) {
+                eval_inner(then, ctx, env)
+            } else {
+                eval_inner(else_, ctx, env)
+            }
+        }
     }
 }
 
@@ -969,5 +977,61 @@ mod tests {
         assert_eq!(run("x", &[]), Value::Null);
         // outer let is not affected by inner let of same name
         assert_eq!(run("let x = 10; { let x = 99; x } + x", &[]), Value::from(109i64));
+    }
+
+    #[test]
+    fn test_if_true_branch() {
+        assert_eq!(run("if true { 1 } else { 2 }", &[]), Value::from(1i64));
+    }
+
+    #[test]
+    fn test_if_false_branch() {
+        assert_eq!(run("if false { 1 } else { 2 }", &[]), Value::from(2i64));
+    }
+
+    #[test]
+    fn test_if_condition_expr() {
+        assert_eq!(run("if 1 == 1 { 42 } else { 0 }", &[]), Value::from(42i64));
+        assert_eq!(run("if 1 == 2 { 42 } else { 0 }", &[]), Value::from(0i64));
+    }
+
+    #[test]
+    fn test_if_else_if_chain() {
+        assert_eq!(
+            run("if false { 1 } else if false { 2 } else { 3 }", &[]),
+            Value::from(3i64)
+        );
+        assert_eq!(
+            run("if false { 1 } else if true { 2 } else { 3 }", &[]),
+            Value::from(2i64)
+        );
+    }
+
+    #[test]
+    fn test_if_as_expression_in_binop() {
+        assert_eq!(
+            run("(if true { 10 } else { 0 }) + (if false { 0 } else { 5 })", &[]),
+            Value::from(15i64)
+        );
+    }
+
+    #[test]
+    fn test_if_with_let_body() {
+        assert_eq!(
+            run("if true { let x = 7; x * 2 } else { 0 }", &[]),
+            Value::from(14i64)
+        );
+    }
+
+    #[test]
+    fn test_if_null_false_branch() {
+        // null is falsy
+        assert_eq!(run("if null { 1 } else { 2 }", &[]), Value::from(2i64));
+    }
+
+    #[test]
+    fn test_if_no_else() {
+        assert_eq!(run("if true { 42 }", &[]), Value::from(42i64));
+        assert_eq!(run("if false { 42 }", &[]), Value::Null);
     }
 }

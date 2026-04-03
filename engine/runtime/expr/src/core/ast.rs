@@ -61,4 +61,10 @@ pub enum Expr {
     },
     /// `{ e1; e2; e3 }` — sequence expression; evaluates each, returns last
     Block(Vec<Expr>),
+    /// `if cond { then } else { else_ }` — expression; else branch required
+    If {
+        cond: Box<Expr>,
+        then: Box<Expr>,
+        else_: Box<Expr>,
+    },
 }

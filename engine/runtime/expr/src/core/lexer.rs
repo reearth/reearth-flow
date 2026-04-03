@@ -48,6 +48,10 @@ pub enum Token {
     In,
     #[token("let")]
     Let,
+    #[token("if")]
+    If,
+    #[token("else")]
+    Else,
 
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Ident(String),
@@ -244,6 +248,27 @@ mod tests {
             tokenize("x in arr"),
             vec![Token::Ident("x".into()), Token::In, Token::Ident("arr".into())]
         );
+    }
+
+    #[test]
+    fn test_if_else_keywords() {
+        assert_eq!(
+            tokenize("if x { 1 } else { 2 }"),
+            vec![
+                Token::If,
+                Token::Ident("x".into()),
+                Token::LBrace,
+                Token::Int(1),
+                Token::RBrace,
+                Token::Else,
+                Token::LBrace,
+                Token::Int(2),
+                Token::RBrace,
+            ]
+        );
+        // `iffy` and `elsewhere` must remain identifiers
+        assert_eq!(tokenize("iffy"), vec![Token::Ident("iffy".into())]);
+        assert_eq!(tokenize("elsewhere"), vec![Token::Ident("elsewhere".into())]);
     }
 
     #[test]

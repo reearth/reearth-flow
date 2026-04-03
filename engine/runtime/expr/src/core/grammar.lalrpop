@@ -16,6 +16,8 @@ extern {
         "null"  => crate::core::lexer::Token::Null,
         "in"    => crate::core::lexer::Token::In,
         "let"   => crate::core::lexer::Token::Let,
+        "if"    => crate::core::lexer::Token::If,
+        "else"  => crate::core::lexer::Token::Else,
         "."     => crate::core::lexer::Token::Dot,
         "["     => crate::core::lexer::Token::LBracket,
         "]"     => crate::core::lexer::Token::RBracket,
@@ -129,6 +131,21 @@ Primary: Expr = {
     "(" <Expr> ")",
     "[" <items:Comma<Or>> "]" => Expr::Array(items),
     BlockExpr,
+    IfExpr,
+};
+
+// if <cond> { <then> } else <branch>
+// ElseBranch is either a block or another `if`, enabling natural `else if` chains.
+IfExpr: Expr = {
+    "if" <cond:Or> <then:BlockExpr> "else" <else_:ElseBranch>
+        => Expr::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(else_) },
+    "if" <cond:Or> <then:BlockExpr>
+        => Expr::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(Expr::Null) },
+};
+
+ElseBranch: Expr = {
+    BlockExpr,
+    IfExpr,
 };
 
 // Block expression: { } or { seq_body }
