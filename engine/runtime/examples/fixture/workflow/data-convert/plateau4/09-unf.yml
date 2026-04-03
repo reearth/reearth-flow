@@ -379,7 +379,7 @@ graphs:
       - attribute: gml_id
         method: create
         value: |
-          env.get("__feature_id") ?? env.get("__value")["gmlId"]
+          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
       - attribute: feature_type
         method: create
         value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
@@ -419,6 +419,8 @@ graphs:
         valueAttribute: uro:geometrySrcDescLod1
       - attribute: uro:lodType
         valueAttribute: uro:lodType
+      - attribute: __citygml_feature_type
+        valueAttribute: __citygml_feature_type
   - id: 3713b42c-a3af-489f-91a5-d101c26fcaee
     name: AttributeManagerByLod
     type: action
@@ -448,6 +450,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      schemaKey: __citygml_feature_type
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -536,6 +539,7 @@ graphs:
     type: action
     action: MVTWriter
     with:
+      schemaKey: __citygml_feature_type
       layerName: |
         env.get("__value").feature_type.split(":")[1]
       minZoom: 8

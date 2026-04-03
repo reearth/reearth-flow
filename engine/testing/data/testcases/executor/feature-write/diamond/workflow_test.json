@@ -1,0 +1,94 @@
+{
+  "description": "Test feature writing with diamond dependency: two different subgraphs (A and B) sharing the same child subgraph, with different routing of its outputs",
+  "workflowPath": "executor-testing/feature-write/diamond.yml",
+  "expectedOutput": {
+    "expectedFile": "output.csv"
+  },
+  "intermediateAssertions": [
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000011.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000021.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000022.40000000-0000-0000-0000-000000000031.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000022.40000000-0000-0000-0000-000000000032.portA",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000022.40000000-0000-0000-0000-000000000032.portB",
+      "expectedFile": "../expected_b.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000022.40000000-0000-0000-0000-000000000032.unfiltered",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000022.out1",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000022.out2",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000012.out1",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000041.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000042.40000000-0000-0000-0000-000000000031.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000042.40000000-0000-0000-0000-000000000032.portA",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000042.40000000-0000-0000-0000-000000000032.portB",
+      "expectedFile": "../expected_b.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000042.40000000-0000-0000-0000-000000000032.unfiltered",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000042.out1",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000042.out2",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "40000000-0000-0000-0000-000000000013.out1",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ]
+}

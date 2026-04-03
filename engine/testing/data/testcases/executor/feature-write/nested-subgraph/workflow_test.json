@@ -1,0 +1,59 @@
+{
+  "description": "Test feature writing through nested subgraphs (entry -> outer -> inner, 3 levels deep)",
+  "workflowPath": "executor-testing/feature-write/nested-subgraph.yml",
+  "expectedOutput": {
+    "expectedFile": "output.csv"
+  },
+  "intermediateAssertions": [
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000011.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.20000000-0000-0000-0000-000000000021.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.20000000-0000-0000-0000-000000000022.20000000-0000-0000-0000-000000000031.default",
+      "expectedFile": "../expected_all.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.20000000-0000-0000-0000-000000000022.20000000-0000-0000-0000-000000000032.portA",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.20000000-0000-0000-0000-000000000022.20000000-0000-0000-0000-000000000032.portB",
+      "expectedFile": "../expected_b.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.20000000-0000-0000-0000-000000000022.20000000-0000-0000-0000-000000000032.unfiltered",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.20000000-0000-0000-0000-000000000022.out1",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.20000000-0000-0000-0000-000000000022.out2",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.out1",
+      "expectedFile": "../expected_a.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "outputPort": "20000000-0000-0000-0000-000000000012.out2",
+      "expectedFile": "../expected_c.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ]
+}

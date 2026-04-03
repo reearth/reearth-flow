@@ -1,4 +1,5 @@
 import type { NodeTypes } from "@xyflow/react";
+import { createElement } from "react";
 
 import BatchNode from "./BatchNode";
 import NoteNode from "./NoteNode";
@@ -15,3 +16,16 @@ export const nodeTypes: NodeTypes = {
   note: NoteNode,
   subworkflow: SubworkflowNode,
 };
+
+const createFullNodeTypes = (readonly?: boolean): NodeTypes => ({
+  writer: (props) => createElement(WriterNode, { ...props, readonly }),
+  reader: (props) => createElement(ReaderNode, { ...props, readonly }),
+  transformer: (props) =>
+    createElement(TransformerNode, { ...props, readonly }),
+  subworkflow: (props) =>
+    createElement(SubworkflowNode, { ...props, readonly }),
+  batch: (props) => createElement(BatchNode, { ...props }),
+  note: (props) => createElement(NoteNode, { ...props }),
+});
+
+export default createFullNodeTypes;

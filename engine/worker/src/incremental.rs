@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 use reearth_flow_common::dir::setup_job_directory;
+use reearth_flow_runtime::incremental::collect_reusable_ids;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
@@ -66,12 +67,13 @@ pub async fn prepare_incremental_feature_store(
     let reuse_state =
         State::new(&reuse_feature_store_uri, storage_resolver).map_err(Error::init)?;
 
-    let candidate_edge_ids = collect_reusable_edge_ids(workflow, start_node_id)?;
+    let reusable_ids = collect_reusable_ids(workflow, start_node_id).map_err(Error::init)?;
+    let candidate_edge_ids = &reusable_ids.edge_ids;
 
     // Filter candidate edges by checking which ones actually exist in the previous feature store
     let mut actually_copied_edge_ids = Vec::new();
 
-    for edge_id in &candidate_edge_ids {
+    for edge_id in candidate_edge_ids {
         let edge_id_str = edge_id.to_string();
         match reuse_state
             .copy_jsonl_from_state_async(&prev_feature_store_state, &edge_id_str)
@@ -123,201 +125,53 @@ pub async fn prepare_incremental_feature_store(
         actually_copied_edges
     );
 
+    // --- Port-based file copying ---
+    let port_file_ids = &reusable_ids.port_file_ids;
+
+    tracing::info!(
+        "Incremental run: {} port-based file IDs to copy",
+        port_file_ids.len()
+    );
+
+    for file_id in port_file_ids {
+        match reuse_state
+            .copy_jsonl_from_state_async(&prev_feature_store_state, file_id)
+            .await
+        {
+            Ok(()) => {
+                tracing::info!(
+                    "Incremental run: copied port file {} into {}",
+                    file_id,
+                    reuse_feature_store_uri.path().display()
+                );
+            }
+            Err(e) => {
+                tracing::info!(
+                    "Incremental run: port file {} not found in previous feature-store, skipping: {:?}",
+                    file_id,
+                    e
+                );
+                continue;
+            }
+        }
+
+        match feature_state
+            .copy_jsonl_from_state_async(&reuse_state, file_id)
+            .await
+        {
+            Ok(()) => {
+                tracing::info!("Copied port file {} into feature-store", file_id);
+            }
+            Err(e) => {
+                return Err(Error::init(format!(
+                    "Failed to copy port file {} into feature-store: {:?}",
+                    file_id, e
+                )));
+            }
+        }
+    }
+
     Ok((Arc::new(reuse_state), actually_copied_edges))
-}
-
-pub fn collect_reusable_edge_ids(
-    workflow: &Workflow,
-    start_node_id: uuid::Uuid,
-) -> errors::Result<Vec<uuid::Uuid>> {
-    let graphs: HashMap<uuid::Uuid, &reearth_flow_types::Graph> =
-        workflow.graphs.iter().map(|g| (g.id, g)).collect();
-
-    let mut node_to_graph: HashMap<uuid::Uuid, uuid::Uuid> = HashMap::new();
-    for g in &workflow.graphs {
-        for n in &g.nodes {
-            node_to_graph.insert(n.id(), g.id);
-        }
-    }
-
-    let start_graph_id = node_to_graph.get(&start_node_id).copied().ok_or_else(|| {
-        Error::init(format!(
-            "start_node_id {} not found in any graph",
-            start_node_id
-        ))
-    })?;
-
-    // Build subgraph callsite map: sub_graph_id -> [(parent_graph_id, caller_node_id)]
-    let mut callsites: HashMap<uuid::Uuid, Vec<(uuid::Uuid, uuid::Uuid)>> = HashMap::new();
-    for g in &workflow.graphs {
-        for n in &g.nodes {
-            if let reearth_flow_types::Node::SubGraph {
-                entity,
-                sub_graph_id,
-                ..
-            } = n
-            {
-                callsites
-                    .entry(*sub_graph_id)
-                    .or_default()
-                    .push((g.id, entity.id));
-            }
-        }
-    }
-
-    let mut out = HashSet::<uuid::Uuid>::new();
-
-    // BFS traversal from start node up to parent graphs
-    let mut q: VecDeque<(uuid::Uuid, uuid::Uuid)> = VecDeque::new();
-    let mut visited: HashSet<(uuid::Uuid, uuid::Uuid)> = HashSet::new();
-
-    q.push_back((start_graph_id, start_node_id));
-    visited.insert((start_graph_id, start_node_id));
-
-    while let Some((gid, sid)) = q.pop_front() {
-        // Collect reusable edges in current graph
-        collect_reusable_edges_in_graph_and_upstream_subworkflows(&graphs, gid, sid, &mut out)?;
-
-        // If current graph is a subworkflow, traverse up to parent graphs
-        if let Some(parents) = callsites.get(&gid) {
-            for &(pgid, caller_node_id) in parents {
-                if visited.insert((pgid, caller_node_id)) {
-                    q.push_back((pgid, caller_node_id));
-                }
-            }
-        }
-    }
-
-    let mut v: Vec<_> = out.into_iter().collect();
-    v.sort();
-    Ok(v)
-}
-
-/// Collects reusable edges in a graph, treating nodes upstream of `start_node_id` as reusable.
-/// Also recursively processes any upstream subworkflow nodes to collect all their edges.
-fn collect_reusable_edges_in_graph_and_upstream_subworkflows(
-    graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
-    graph_id: uuid::Uuid,
-    start_node_id: uuid::Uuid,
-    out: &mut HashSet<uuid::Uuid>,
-) -> errors::Result<()> {
-    let graph = graphs
-        .get(&graph_id)
-        .ok_or_else(|| Error::init(format!("graph {} not found", graph_id)))?;
-
-    // Build adjacency list for BFS
-    let mut adj: HashMap<uuid::Uuid, Vec<uuid::Uuid>> = HashMap::new();
-    for node in &graph.nodes {
-        adj.entry(node.id()).or_default();
-    }
-    for edge in &graph.edges {
-        adj.entry(edge.from).or_default().push(edge.to);
-    }
-
-    // Find all downstream nodes from start_node via BFS
-    let mut downstream = HashSet::new();
-    let mut q = VecDeque::new();
-    downstream.insert(start_node_id);
-    q.push_back(start_node_id);
-
-    while let Some(n) = q.pop_front() {
-        if let Some(nexts) = adj.get(&n) {
-            for &nx in nexts {
-                if downstream.insert(nx) {
-                    q.push_back(nx);
-                }
-            }
-        }
-    }
-
-    // Collect edges whose source is NOT downstream (i.e., upstream edges)
-    for edge in &graph.edges {
-        if !downstream.contains(&edge.from) {
-            out.insert(edge.id);
-        }
-    }
-
-    // Track visited subgraphs to prevent infinite recursion in case of cycles
-    let mut visited_subgraphs = HashSet::new();
-
-    // For upstream subworkflow nodes, collect all their edges recursively
-    for node in &graph.nodes {
-        let node_id = node.id();
-        if downstream.contains(&node_id) {
-            tracing::info!(
-                "Skipping node {} in graph {} as it is downstream of start node {}",
-                node_id,
-                graph_id,
-                start_node_id
-            );
-            continue;
-        }
-
-        tracing::info!(
-            "Processing upstream node {} in graph {} for reusable edges",
-            node_id,
-            graph_id
-        );
-
-        if let Some(sub_graph_id) = extract_subgraph_id_if_subworkflow_node(node) {
-            tracing::info!(
-                "Node {} in graph {} is a subworkflow node calling subgraph {}",
-                node_id,
-                graph_id,
-                sub_graph_id
-            );
-            collect_all_edges_in_graph_recursive(
-                graphs,
-                sub_graph_id,
-                out,
-                &mut visited_subgraphs,
-            )?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Recursively collects all edges in a graph and its nested subgraphs.
-/// Uses cycle detection to prevent infinite recursion if subgraphs form circular references.
-fn collect_all_edges_in_graph_recursive(
-    graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
-    graph_id: uuid::Uuid,
-    out: &mut HashSet<uuid::Uuid>,
-    visited: &mut HashSet<uuid::Uuid>,
-) -> errors::Result<()> {
-    if !visited.insert(graph_id) {
-        tracing::info!(
-            "Skipping already-visited subgraph {} (cycle detected)",
-            graph_id
-        );
-        return Ok(());
-    }
-
-    let graph = graphs
-        .get(&graph_id)
-        .ok_or_else(|| Error::init(format!("graph {} not found", graph_id)))?;
-
-    for edge in &graph.edges {
-        out.insert(edge.id);
-    }
-
-    // Recursively collect edges from nested subgraphs
-    for node in &graph.nodes {
-        if let Some(sub_graph_id) = extract_subgraph_id_if_subworkflow_node(node) {
-            collect_all_edges_in_graph_recursive(graphs, sub_graph_id, out, visited)?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Extracts the subgraph ID from a node if it's a SubGraph node type.
-fn extract_subgraph_id_if_subworkflow_node(node: &reearth_flow_types::Node) -> Option<uuid::Uuid> {
-    match node {
-        reearth_flow_types::Node::SubGraph { sub_graph_id, .. } => Some(*sub_graph_id),
-        _ => None,
-    }
 }
 
 /// Copy reusable outputs from the previous job into current job workspace.

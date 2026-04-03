@@ -9,7 +9,7 @@ use std::{
     },
 };
 
-use nusamai_citygml::schema::TypeRef;
+use nusamai_citygml::schema::{Schema, TypeDef, TypeRef};
 
 use atlas_packer::{
     export::WebpAtlasExporter,
@@ -19,7 +19,6 @@ use atlas_packer::{
 use bytemuck::Zeroable;
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
-use nusamai_citygml::schema::Schema;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
 use reearth_flow_common::uri::Uri;
@@ -34,39 +33,41 @@ use crate::atlas::{
 };
 use crate::file::mvt::tileid::TileIdMethod;
 
+type FeatureBuffer<T> = (u64, Option<String>, Vec<T>);
+
 pub(super) fn geometry_slicing_stage(
-    upstream: &[Feature],
+    upstream: &[(Option<String>, Vec<Feature>)],
     tile_id_conv: TileIdMethod,
-    sender_sliced: mpsc::SyncSender<(u64, String, Vec<u8>)>,
+    sender_sliced: mpsc::SyncSender<FeatureBuffer<u8>>,
     min_zoom: u8,
     max_zoom: u8,
     attach_texture: bool,
 ) -> crate::errors::Result<()> {
-    upstream.iter().par_bridge().try_for_each(|parcel| {
-        slice_to_tiles(
-            parcel,
-            min_zoom,
-            max_zoom,
-            attach_texture,
-            |(z, x, y), feature| {
-                let bytes = serde_json::to_vec(&feature)
-                    .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
-                let Some(feature_type) = parcel.feature_type() else {
-                    return Err(crate::errors::SinkError::cesium3dtiles_writer(
-                        "Failed to get feature type",
-                    ));
-                };
-                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                let serialized_feature = (tile_id, feature_type.to_string(), bytes);
-                sender_sliced.send(serialized_feature).map_err(|e| {
-                    crate::errors::SinkError::cesium3dtiles_writer(format!(
-                        "Failed to send sliced feature with error = {e:?}"
-                    ))
-                })?;
-                Ok(())
-            },
-        )
-    })?;
+    upstream
+        .iter()
+        .flat_map(|(filename, features)| features.iter().map(move |f| (filename, f)))
+        .par_bridge()
+        .try_for_each(|(filename, parcel)| {
+            slice_to_tiles(
+                parcel,
+                min_zoom,
+                max_zoom,
+                attach_texture,
+                |(z, x, y), feature| {
+                    let bytes = serde_json::to_vec(&feature).map_err(|e| {
+                        crate::errors::SinkError::cesium3dtiles_writer(e.to_string())
+                    })?;
+                    let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                    let serialized_feature = (tile_id, filename.clone(), bytes);
+                    sender_sliced.send(serialized_feature).map_err(|e| {
+                        crate::errors::SinkError::cesium3dtiles_writer(format!(
+                            "Failed to send sliced feature with error = {e:?}"
+                        ))
+                    })?;
+                    Ok::<(), crate::errors::SinkError>(())
+                },
+            )
+        })?;
 
     Ok(())
 }
@@ -81,10 +82,10 @@ pub(super) struct SortKey {
 }
 
 pub(super) fn feature_sorting_stage(
-    receiver_sliced: mpsc::Receiver<(u64, String, Vec<u8>)>,
-    sender_sorted: mpsc::SyncSender<(u64, String, Vec<Vec<u8>>)>,
+    receiver_sliced: mpsc::Receiver<FeatureBuffer<u8>>,
+    sender_sorted: mpsc::SyncSender<FeatureBuffer<Vec<u8>>>,
 ) -> crate::errors::Result<()> {
-    let mut typename_to_seq: IndexSet<String, ahash::RandomState> = Default::default();
+    let mut typename_to_seq: IndexSet<Option<String>, ahash::RandomState> = Default::default();
 
     let config = kv_extsort::SortConfig::default().max_chunk_bytes(256 * 1024 * 1024); // TODO: Configurable
 
@@ -141,7 +142,7 @@ struct TileContext {
 fn initialize_tile_context(
     tile_id_conv: &TileIdMethod,
     tile_id: u64,
-    typename: &str,
+    typename: Option<&str>,
 ) -> TileContext {
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let (tile_zoom, tile_x, tile_y) = tile_id_conv.id_to_zxy(tile_id);
@@ -164,9 +165,9 @@ fn initialize_tile_context(
         [(tx as f32) as f64, (ty as f32) as f64, (tz as f32) as f64]
     };
 
-    let content_path = {
-        let normalized_typename = typename.replace(':', "_");
-        format!("{tile_zoom}/{tile_x}/{tile_y}_{normalized_typename}.glb")
+    let content_path = match typename {
+        Some(f) => format!("{tile_zoom}/{tile_x}/{tile_y}_{}.glb", f.replace(':', "_")),
+        None => format!("{tile_zoom}/{tile_x}/{tile_y}.glb"),
     };
 
     let content = TileContent {
@@ -274,26 +275,34 @@ impl PropertyMetadata {
 /// Collect property statistics from features based on schema type information
 fn collect_property_stats(
     features: &[&GltfFeature],
-    typename: &str,
     schema: &Schema,
 ) -> IndexMap<String, PropertyMetadata> {
-    use nusamai_citygml::schema::TypeDef;
     use reearth_flow_types::AttributeValue;
+
+    let schema_attrs: std::collections::HashMap<&str, TypeRef> = schema
+        .types
+        .values()
+        .filter_map(|td| {
+            if let TypeDef::Feature(fdef) = td {
+                Some(fdef)
+            } else {
+                None
+            }
+        })
+        .flat_map(|fdef| fdef.attributes.iter())
+        .map(|(k, attr)| (k.as_str(), attr.type_ref.clone()))
+        .collect();
 
     let mut stats: IndexMap<String, PropertyMetadata> = IndexMap::new();
 
-    let Some(TypeDef::Feature(feature_def)) = schema.types.get(typename) else {
-        return stats;
-    };
-
     for feature in features {
         for (key, value) in &feature.attributes {
-            let Some(attr_def) = feature_def.attributes.get(key) else {
+            let Some(type_ref) = schema_attrs.get(key.as_str()) else {
                 continue;
             };
 
             // Only collect stats for numeric types
-            let numeric_value: Option<serde_json::Number> = match attr_def.type_ref {
+            let numeric_value: Option<serde_json::Number> = match type_ref {
                 TypeRef::Integer => match value {
                     AttributeValue::Number(n) => n.as_i64().map(serde_json::Number::from),
                     AttributeValue::String(s) => {
@@ -363,7 +372,7 @@ fn merge_property_stats(
 pub(super) fn tile_writing_stage(
     ctx: Context,
     output_path: Uri,
-    receiver_sorted: mpsc::Receiver<(u64, String, Vec<Vec<u8>>)>,
+    receiver_sorted: mpsc::Receiver<FeatureBuffer<Vec<u8>>>,
     tile_id_conv: TileIdMethod,
     schema: &Schema,
     limit_texture_resolution: Option<bool>,
@@ -375,7 +384,7 @@ pub(super) fn tile_writing_stage(
     let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> = {
         let mut stats = IndexMap::new();
         for typedef in schema.types.values() {
-            if let nusamai_citygml::schema::TypeDef::Feature(fdef) = typedef {
+            if let TypeDef::Feature(fdef) = typedef {
                 for key in fdef.attributes.keys() {
                     stats.insert(key.clone(), PropertyMetadata::default());
                 }
@@ -404,18 +413,19 @@ pub(super) fn tile_writing_stage(
             let (tile_zoom, _tile_x, tile_y) = tile_id_conv.id_to_zxy(tile_id);
 
             // Initialize tile context
-            let mut tile_ctx = initialize_tile_context(&tile_id_conv, tile_id, &typename);
+            let mut tile_ctx = initialize_tile_context(&tile_id_conv, tile_id, typename.as_deref());
 
+            let typename = typename.as_deref().unwrap_or("Feature");
             let mut metadata_encoder = reearth_flow_gltf::MetadataEncoder::new(schema);
 
             // Transform features
             let features = transform_features(feats, &mut tile_ctx.content, tile_ctx.translation)?;
 
             // Encode metadata and filter valid features
-            let valid_features = encode_metadata(&features, &typename, &mut metadata_encoder);
+            let valid_features = encode_metadata(&features, typename, &mut metadata_encoder);
 
             // Collect property stats from valid features only
-            let tile_stats = collect_property_stats(&valid_features, &typename, schema);
+            let tile_stats = collect_property_stats(&valid_features, schema);
             merge_property_stats(&mut property_stats.lock().unwrap(), tile_stats);
 
             // Prepare texture packing

@@ -39,7 +39,7 @@
   ],
   "intermediateAssertions": [
     {
-      "edgeId": "8306cf85-439b-4af1-8a2a-7f0cae0aba81",
+      "outputPort": "38b40d0a-42a8-43e5-8978-898a723fddc8.default",
       "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
       "jsonFilter": "{attributes}"
     }

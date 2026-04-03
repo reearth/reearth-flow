@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.12 - 2026-03-31
+
+### Server
+
+#### 📖 Documentation
+
+- Refactor CLAUDE.md into AGENTS.md and dev-docs ([#2025](https://github.com/reearth/reearth-flow/pull/2025)) [`499640`](https://github.com/reearth/reearth-flow/commit/499640)
+
+### Misc
+
+#### 📖 Documentation
+
+- Refactor CLAUDE.md into AGENTS.md and structured docs ([#2023](https://github.com/reearth/reearth-flow/pull/2023)) [`3cc368`](https://github.com/reearth/reearth-flow/commit/3cc368)
+
+### engine
+
+#### 🚀 Features
+
+- Create neighbor finder action ([#2007](https://github.com/reearth/reearth-flow/pull/2007)) [`845ad1`](https://github.com/reearth/reearth-flow/commit/845ad1)
+
+#### 🔧 Bug Fixes
+
+- Exclude unshared edges from fld quality check error count ([#2018](https://github.com/reearth/reearth-flow/pull/2018)) [`50fc70`](https://github.com/reearth/reearth-flow/commit/50fc70)
+- Fix UnsharedEdgeDetector and fld workflow issues ([#2014](https://github.com/reearth/reearth-flow/pull/2014)) [`5ac15b`](https://github.com/reearth/reearth-flow/commit/5ac15b)
+- Filter only CompositeSurface in continuity check, exclude MultiSurface ([#2012](https://github.com/reearth/reearth-flow/pull/2012)) [`17a1a0`](https://github.com/reearth/reearth-flow/commit/17a1a0)
+- Fixed false positive issues of PLATEAU QC for Okayama and Gifu data ([#2011](https://github.com/reearth/reearth-flow/pull/2011)) [`201372`](https://github.com/reearth/reearth-flow/commit/201372)
+
+#### ⚡️ Performance
+
+- Fix pipeline stalls and optimize geometry overlap detection ([#2016](https://github.com/reearth/reearth-flow/pull/2016)) [`353133`](https://github.com/reearth/reearth-flow/commit/353133)
+
+### ui
+
+#### 🚀 Features
+
+- Add assets and cms integration to debug and trigger workflow variables [FLOW-DEV-27] ([#2020](https://github.com/reearth/reearth-flow/pull/2020)) [`742502`](https://github.com/reearth/reearth-flow/commit/742502)
+- Action Param Awareness and YJS Additions [FLOW-FE-429] ([#1998](https://github.com/reearth/reearth-flow/pull/1998)) [`ca9157`](https://github.com/reearth/reearth-flow/commit/ca9157)
+
+#### 🔧 Bug Fixes
+
+- Cesium default Camera Issues and doubleClick Behaviour Fix [FLOW-DEV-29] ([#2022](https://github.com/reearth/reearth-flow/pull/2022)) [`ec976c`](https://github.com/reearth/reearth-flow/commit/ec976c)
+
+### 
+
+#### 📖 Documentation
+
+- Refactor CLAUDE.md into AGENTS.md and structured docs ([#2023](https://github.com/reearth/reearth-flow/pull/2023)) [`3cc368`](https://github.com/reearth/reearth-flow/commit/3cc368)
+
 ## 0.1.0-alpha.11 - 2026-03-24
 
 ### engine

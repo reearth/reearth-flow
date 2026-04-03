@@ -37,7 +37,7 @@ Re:Earth Flow is a monorepo containing a comprehensive geospatial workflow platf
 ### 4. Results & Visualization
 
 - **UI** retrieves result URLs from completed jobs
-- **UI** visualizes geospatial outputs in Cesium/MapLibre
+- **UI** visualizes geospatial outputs in Cesium
 - **Server** provides access control for results
 - **Engine** data accessible via cloud storage links
 

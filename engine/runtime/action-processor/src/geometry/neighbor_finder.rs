@@ -1379,7 +1379,6 @@ mod tests {
                 ),
                 ..Default::default()
             },
-            Default::default(),
         )
     }
 
@@ -1402,7 +1401,6 @@ mod tests {
                 ),
                 ..Default::default()
             },
-            Default::default(),
         )
     }
 
@@ -1618,7 +1616,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon)),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let (point, _) = extract_representative_point(&feature).unwrap();

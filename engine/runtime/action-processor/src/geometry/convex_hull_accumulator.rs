@@ -15,7 +15,6 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::metadata::Metadata;
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -221,6 +220,6 @@ impl ConvexHullAccumulator {
             value: geom,
             ..Default::default()
         };
-        Feature::new_with_attributes_and_geometry(buffer.common_attr, geom, Metadata::new())
+        Feature::new_with_attributes_and_geometry(buffer.common_attr, geom)
     }
 }

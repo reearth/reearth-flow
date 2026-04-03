@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, collections::HashSet, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
@@ -69,6 +69,23 @@ impl ProcessorFactory for FeatureFilterFactory {
             )
             .into());
         };
+        let mut seen_ports = HashSet::new();
+        for condition in &params.conditions {
+            if condition.output_port == *UNFILTERED_PORT {
+                return Err(FeatureProcessorError::FilterFactory(format!(
+                    "Condition output port '{}' conflicts with the reserved fallback port",
+                    condition.output_port,
+                ))
+                .into());
+            }
+            if !seen_ports.insert(condition.output_port.clone()) {
+                return Err(FeatureProcessorError::FilterFactory(format!(
+                    "Duplicate condition output port '{}'",
+                    condition.output_port,
+                ))
+                .into());
+            }
+        }
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut conditions = Vec::new();
         for condition in &params.conditions {

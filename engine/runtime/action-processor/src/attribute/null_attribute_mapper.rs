@@ -275,7 +275,6 @@ impl Processor for NullAttributeMapper {
         let modified_feature = reearth_flow_types::Feature {
             id: feature.id,
             attributes: std::sync::Arc::new(attributes),
-            metadata: feature.metadata.clone(),
             geometry: feature.geometry.clone(),
         };
 
