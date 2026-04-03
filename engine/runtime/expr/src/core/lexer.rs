@@ -63,6 +63,8 @@ pub enum Token {
     RParen,
     #[token(",")]
     Comma,
+    #[token(":")]
+    Colon,
 
     // arithmetic
     #[token("+")]

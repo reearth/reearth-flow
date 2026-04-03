@@ -2,7 +2,7 @@ use crate::core::error::{Error, Result};
 use crate::core::value::{Value, ValueObject};
 
 #[derive(Debug)]
-pub(super) struct PathObject(pub(super) String);
+pub struct PathObject(pub String);
 
 impl ValueObject for PathObject {
     fn type_name(&self) -> &'static str {
@@ -47,6 +47,16 @@ impl ValueObject for PathObject {
                         .unwrap_or_default(),
                 ))
             }
+            "__div__" => {
+                let rhs = args.first().and_then(|v| {
+                    if let Value::String(s) = v { Some(s.as_str()) } else { None }
+                }).ok_or_else(|| Error::Eval {
+                    msg: "Path / requires a string".into(),
+                })?;
+                Ok(Value::Object(Box::new(PathObject(
+                    std::path::Path::new(&self.0).join(rhs).to_string_lossy().into_owned(),
+                ))))
+            }
             m => Err(Error::Eval {
                 msg: format!("Path has no method '{m}'"),
             }),
@@ -59,5 +69,9 @@ impl ValueObject for PathObject {
 
     fn eq_box(&self, other: &dyn ValueObject) -> bool {
         other.type_name() == "Path" && format!("{other:?}") == format!("{self:?}")
+    }
+
+    fn display(&self) -> String {
+        self.0.clone()
     }
 }
