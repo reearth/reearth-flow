@@ -1,8 +1,8 @@
 pub(crate) mod attribute;
-pub(crate) mod flow_expr_test;
 pub(crate) mod echo;
 pub(crate) mod feature;
 pub(crate) mod file;
+pub(crate) mod flow_expr_test;
 pub(crate) mod geometry;
 pub(crate) mod http;
 pub mod mapping;
