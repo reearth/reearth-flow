@@ -17,16 +17,11 @@ impl Context {
     pub fn new() -> Self {
         let mut ctx = Self { funcs: HashMap::new() };
         ctx.register("map", Box::new(builtin_map));
-        ctx.register("str", Box::new(|args| {
-            match args.first() {
-                Some(Value::String(s)) => Ok(Value::String(s.clone())),
-                Some(Value::Object(obj)) => obj.call_method("__str__", &[]),
-                Some(v) => Err(Error::Eval {
-                    msg: format!("str() not supported for {v:?}"),
-                }),
-                None => Ok(Value::String(String::new())),
-            }
-        }));
+        ctx.register("str", Box::new(builtin_str));
+        ctx.register("int", Box::new(builtin_int));
+        ctx.register("float", Box::new(builtin_float));
+        ctx.register("bool", Box::new(builtin_bool));
+        ctx.register("list", Box::new(builtin_list));
         ctx.register("Path", Box::new(|args| {
             let s = args.first().and_then(|v| {
                 if let Value::String(s) = v { Some(s.clone()) } else { None }
@@ -445,6 +440,97 @@ fn value_to_string(v: &Value) -> String {
     }
 }
 
+fn builtin_str(args: &[Value]) -> Result<Value> {
+    match args.first() {
+        None | Some(Value::Null) => Ok(Value::String("null".into())),
+        Some(Value::String(s)) => Ok(Value::String(s.clone())),
+        Some(Value::Bool(b)) => Ok(Value::String(b.to_string())),
+        Some(Value::Number(n)) => Ok(Value::String(n.to_string())),
+        Some(Value::Object(obj)) => obj.call_method("__str__", &[]),
+        Some(v) => Err(Error::Eval {
+            msg: format!("str() not supported for {v:?}"),
+        }),
+    }
+}
+
+fn builtin_int(args: &[Value]) -> Result<Value> {
+    match args.first() {
+        Some(Value::Number(n)) => {
+            if let Some(i) = n.as_i64() {
+                Ok(Value::Number(i.into()))
+            } else {
+                Ok(Value::Number(
+                    (n.as_f64().unwrap_or(0.0).trunc() as i64).into(),
+                ))
+            }
+        }
+        Some(Value::Bool(b)) => Ok(Value::Number((*b as i64).into())),
+        Some(Value::String(s)) => s
+            .trim()
+            .parse::<i64>()
+            .map(|i| Value::Number(i.into()))
+            .map_err(|_| Error::Eval {
+                msg: format!("int() cannot parse {s:?}"),
+            }),
+        Some(v) => Err(Error::Eval {
+            msg: format!("int() not supported for {v:?}"),
+        }),
+        None => Err(Error::Eval {
+            msg: "int() requires an argument".into(),
+        }),
+    }
+}
+
+fn builtin_float(args: &[Value]) -> Result<Value> {
+    match args.first() {
+        Some(Value::Number(n)) => Ok(serde_json::Number::from_f64(n.as_f64().unwrap_or(0.0))
+            .map(Value::Number)
+            .unwrap_or(Value::Null)),
+        Some(Value::Bool(b)) => Ok(serde_json::Number::from_f64(if *b { 1.0 } else { 0.0 })
+            .map(Value::Number)
+            .unwrap_or(Value::Null)),
+        Some(Value::String(s)) => s
+            .trim()
+            .parse::<f64>()
+            .map_err(|_| Error::Eval {
+                msg: format!("float() cannot parse {s:?}"),
+            })
+            .and_then(|f| {
+                serde_json::Number::from_f64(f)
+                    .map(Value::Number)
+                    .ok_or_else(|| Error::Eval {
+                        msg: format!("float() result is not finite: {f}"),
+                    })
+            }),
+        Some(v) => Err(Error::Eval {
+            msg: format!("float() not supported for {v:?}"),
+        }),
+        None => Err(Error::Eval {
+            msg: "float() requires an argument".into(),
+        }),
+    }
+}
+
+fn builtin_bool(args: &[Value]) -> Result<Value> {
+    Ok(Value::Bool(args.first().map(is_truthy).unwrap_or(false)))
+}
+
+fn builtin_list(args: &[Value]) -> Result<Value> {
+    match args.first() {
+        Some(Value::Array(a)) => Ok(Value::Array(a.clone())),
+        Some(Value::String(s)) => Ok(Value::Array(
+            s.chars().map(|c| Value::String(c.to_string())).collect(),
+        )),
+        Some(Value::Map(m)) => Ok(Value::Array(
+            m.keys().map(|k| Value::String(k.clone())).collect(),
+        )),
+        Some(v) => Err(Error::Eval {
+            msg: format!("list() not supported for {v:?}"),
+        }),
+        None => Ok(Value::Array(vec![])),
+    }
+}
+
 fn builtin_map(args: &[Value]) -> Result<Value> {
     let pairs = match args.first() {
         Some(Value::Array(a)) => a,
@@ -652,6 +738,62 @@ mod tests {
         assert_eq!(
             run("arr[-2:]", &[("arr", arr)]),
             Value::Array(vec![Value::from(3i64), Value::from(4i64)])
+        );
+    }
+
+    #[test]
+    fn test_cast_str() {
+        assert_eq!(run(r#"str("hello")"#, &[]), Value::from("hello"));
+        assert_eq!(run(r#"str(42)"#, &[]), Value::from("42"));
+        assert_eq!(run(r#"str(3.14)"#, &[]), Value::from("3.14"));
+        assert_eq!(run(r#"str(true)"#, &[]), Value::from("true"));
+        assert_eq!(run(r#"str(false)"#, &[]), Value::from("false"));
+        assert_eq!(run(r#"str(null)"#, &[]), Value::from("null"));
+    }
+
+    #[test]
+    fn test_cast_int() {
+        assert_eq!(run(r#"int(42)"#, &[]), Value::from(42i64));
+        assert_eq!(run(r#"int(3.9)"#, &[]), Value::from(3i64));
+        assert_eq!(run(r#"int(-3.9)"#, &[]), Value::from(-3i64));
+        assert_eq!(run(r#"int("42")"#, &[]), Value::from(42i64));
+        assert_eq!(run(r#"int(true)"#, &[]), Value::from(1i64));
+        assert_eq!(run(r#"int(false)"#, &[]), Value::from(0i64));
+    }
+
+    #[test]
+    fn test_cast_float() {
+        assert_eq!(run(r#"float(42)"#, &[]), Value::from(42.0f64));
+        assert_eq!(run(r#"float(3.14)"#, &[]), Value::from(3.14f64));
+        assert_eq!(run(r#"float("3.14")"#, &[]), Value::from(3.14f64));
+        assert_eq!(run(r#"float(true)"#, &[]), Value::from(1.0f64));
+        assert_eq!(run(r#"float(false)"#, &[]), Value::from(0.0f64));
+    }
+
+    #[test]
+    fn test_cast_bool() {
+        assert_eq!(run(r#"bool(1)"#, &[]), Value::from(true));
+        assert_eq!(run(r#"bool(0)"#, &[]), Value::from(false));
+        assert_eq!(run(r#"bool("")"#, &[]), Value::from(false));
+        assert_eq!(run(r#"bool("x")"#, &[]), Value::from(true));
+        assert_eq!(run(r#"bool(null)"#, &[]), Value::from(false));
+    }
+
+    #[test]
+    fn test_cast_list() {
+        assert_eq!(
+            run(r#"list("abc")"#, &[]),
+            Value::Array(vec![Value::from("a"), Value::from("b"), Value::from("c")])
+        );
+        let arr = Value::Array(vec![Value::from(1i64), Value::from(2i64)]);
+        assert_eq!(run("list(arr)", &[("arr", arr.clone())]), arr);
+        let m = Value::Map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eq!(
+            run("list(m)", &[("m", m)]),
+            Value::Array(vec![Value::from("x"), Value::from("y")])
         );
     }
 
