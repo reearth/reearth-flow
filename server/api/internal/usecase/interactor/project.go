@@ -27,11 +27,12 @@ type Project struct {
 	transaction       usecasex.Transaction
 	file              gateway.File
 	batch             gateway.Batch
+	websocket         interfaces.WebsocketClient
 	job               interfaces.Job
 	permissionChecker gateway.PermissionChecker
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo, websocket interfaces.WebsocketClient) interfaces.Project {
 	return &Project{
 		assetRepo:         r.Asset,
 		workflowRepo:      r.Workflow,
@@ -42,6 +43,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		transaction:       r.Transaction,
 		file:              gr.File,
 		batch:             gr.Batch,
+		websocket:         websocket,
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
 	}
@@ -231,6 +233,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	}
 
 	debug := true
+
+	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
+		return nil, fmt.Errorf("failed to flush websocket messages to GCS: %v", err)
+	}
 
 	j, err := job.New().
 		NewID().
