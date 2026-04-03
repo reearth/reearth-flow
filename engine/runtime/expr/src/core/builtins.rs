@@ -14,20 +14,18 @@ impl ValueObject for PathObject {
             "resolve" => {
                 let _ = args;
                 let p = std::path::Path::new(&self.0);
-                Ok(Value::String(
-                    p.canonicalize()
-                        .map(|c| c.to_string_lossy().into_owned())
-                        .unwrap_or_else(|_| self.0.clone()),
-                ))
+                let s = p.canonicalize()
+                    .map(|c| c.to_string_lossy().into_owned())
+                    .unwrap_or_else(|_| self.0.clone());
+                Ok(Value::Object(Box::new(PathObject(s))))
             }
             "parent" => {
                 let _ = args;
-                Ok(Value::String(
-                    std::path::Path::new(&self.0)
-                        .parent()
-                        .map(|p| p.to_string_lossy().into_owned())
-                        .unwrap_or_default(),
-                ))
+                let s = std::path::Path::new(&self.0)
+                    .parent()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                Ok(Value::Object(Box::new(PathObject(s))))
             }
             "extension" => {
                 let _ = args;
@@ -78,4 +76,72 @@ impl ValueObject for PathObject {
     fn display(&self) -> String {
         self.0.clone()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::eval::Context;
+    use crate::core::eval::eval;
+    use crate::core::parser::parse;
+
+    fn run(input: &str) -> Value {
+        eval(&parse(input).unwrap(), &Context::new()).unwrap()
+    }
+
+    #[test]
+    fn test_path_default() {
+        let v = run("Path()");
+        assert!(matches!(&v, Value::Object(obj) if obj.type_name() == "Path" && obj.display() == "."));
+    }
+
+    #[test]
+    fn test_path_from_string() {
+        let v = run(r#"Path("/foo/bar")"#);
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "/foo/bar"));
+    }
+
+    #[test]
+    fn test_path_rewrap() {
+        let v = run(r#"Path(Path("/foo/bar"))"#);
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "/foo/bar"));
+    }
+
+    #[test]
+    fn test_path_str() {
+        assert_eq!(run(r#"str(Path("/foo/bar"))"#), Value::from("/foo/bar"));
+    }
+
+    #[test]
+    fn test_path_div() {
+        assert_eq!(run(r#"str(Path("/foo") / "bar" / "baz")"#), Value::from("/foo/bar/baz"));
+    }
+
+    #[test]
+    fn test_path_parent() {
+        let v = run(r#"Path("/foo/bar").parent()"#);
+        assert!(matches!(&v, Value::Object(obj) if obj.type_name() == "Path" && obj.display() == "/foo"));
+    }
+
+    #[test]
+    fn test_path_extension() {
+        assert_eq!(run(r#"Path("/foo/bar.gml").extension()"#), Value::from("gml"));
+    }
+
+    #[test]
+    fn test_path_filename() {
+        assert_eq!(run(r#"Path("/foo/bar.gml").filename()"#), Value::from("bar.gml"));
+    }
+}
+
+pub fn builtin_path(args: &[Value]) -> Result<Value> {
+    let s = match args.first() {
+        None => ".".to_string(),
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Object(obj)) if obj.type_name() == "Path" => obj.display(),
+        Some(v) => return Err(Error::Eval {
+            msg: format!("Path() expects a string, got {v:?}"),
+        }),
+    };
+    Ok(Value::Object(Box::new(PathObject(s))))
 }
