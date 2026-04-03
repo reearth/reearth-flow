@@ -33,6 +33,13 @@ pub enum Expr {
     Var(String),
     /// index access: `expr[expr]`
     Index(Box<Expr>, Box<Expr>),
+    /// Python-style slice: `expr[start:stop:step]` — all parts optional
+    Slice {
+        target: Box<Expr>,
+        start: Option<Box<Expr>>,
+        stop: Option<Box<Expr>>,
+        step: Option<Box<Expr>>,
+    },
     /// function call: `value("key")`
     FuncCall {
         name: String,
