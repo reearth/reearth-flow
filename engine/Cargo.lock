@@ -7041,6 +7041,7 @@ dependencies = [
  "lalrpop",
  "lalrpop-util",
  "logos",
+ "reearth-flow-common",
  "reearth-flow-types",
  "serde_json",
  "thiserror 2.0.18",
