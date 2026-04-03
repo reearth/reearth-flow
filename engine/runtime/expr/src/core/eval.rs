@@ -17,6 +17,16 @@ impl Context {
     pub fn new() -> Self {
         let mut ctx = Self { funcs: HashMap::new() };
         ctx.register("map", Box::new(builtin_map));
+        ctx.register("str", Box::new(|args| {
+            match args.first() {
+                Some(Value::String(s)) => Ok(Value::String(s.clone())),
+                Some(Value::Object(obj)) => obj.call_method("__str__", &[]),
+                Some(v) => Err(Error::Eval {
+                    msg: format!("str() not supported for {v:?}"),
+                }),
+                None => Ok(Value::String(String::new())),
+            }
+        }));
         ctx.register("Path", Box::new(|args| {
             let s = args.first().and_then(|v| {
                 if let Value::String(s) = v { Some(s.clone()) } else { None }
