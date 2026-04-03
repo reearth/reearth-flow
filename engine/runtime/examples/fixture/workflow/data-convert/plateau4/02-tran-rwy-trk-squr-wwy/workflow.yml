@@ -200,9 +200,9 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            Path(env("workerArtifactPath")) / (__package + "_lod3")
+            Url(env("workerArtifactPath")) / (__package + "_lod3")
           compressOutput: |
-            Path(env("workerArtifactPath")) / (cityGmlStem + "_" + __package + "_3dtiles_lod3.zip")
+            Url(env("workerArtifactPath")) / (cityGmlStem + "_" + __package + "_3dtiles_lod3.zip")
 
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeManagerByLod0-2
