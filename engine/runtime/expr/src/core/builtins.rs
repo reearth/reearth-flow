@@ -1,147 +1,164 @@
+use std::str::FromStr;
+
+use reearth_flow_common::uri::Uri;
+
 use crate::core::error::{Error, Result};
 use crate::core::value::{Value, ValueObject};
 
 #[derive(Debug)]
-pub struct PathObject(pub String);
+pub struct UrlObject(pub Uri);
 
-impl ValueObject for PathObject {
+impl ValueObject for UrlObject {
     fn type_name(&self) -> &'static str {
-        "Path"
+        "Url"
     }
 
     fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
+        let _ = args;
         match method {
-            "resolve" => {
-                let _ = args;
-                let p = std::path::Path::new(&self.0);
-                let s = p.canonicalize()
-                    .map(|c| c.to_string_lossy().into_owned())
-                    .unwrap_or_else(|_| self.0.clone());
-                Ok(Value::Object(Box::new(PathObject(s))))
-            }
             "parent" => {
-                let _ = args;
-                let s = std::path::Path::new(&self.0)
-                    .parent()
-                    .map(|p| p.to_string_lossy().into_owned())
-                    .unwrap_or_default();
-                Ok(Value::Object(Box::new(PathObject(s))))
-            }
-            "extension" => {
-                let _ = args;
-                Ok(Value::String(
-                    std::path::Path::new(&self.0)
-                        .extension()
-                        .map(|e| e.to_string_lossy().into_owned())
-                        .unwrap_or_default(),
-                ))
-            }
-            "filename" => {
-                let _ = args;
-                Ok(Value::String(
-                    std::path::Path::new(&self.0)
-                        .file_name()
-                        .map(|f| f.to_string_lossy().into_owned())
-                        .unwrap_or_default(),
-                ))
-            }
-            "__str__" => {
-                let _ = args;
-                Ok(Value::String(self.0.clone()))
-            }
-            "__div__" => {
-                let rhs = args.first().and_then(|v| {
-                    if let Value::String(s) = v { Some(s.as_str()) } else { None }
-                }).ok_or_else(|| Error::Eval {
-                    msg: "Path / requires a string".into(),
+                let uri = self.0.parent().ok_or_else(|| Error::Eval {
+                    msg: format!("Url has no parent: {}", self.0.as_str()),
                 })?;
-                Ok(Value::Object(Box::new(PathObject(
-                    std::path::Path::new(&self.0).join(rhs).to_string_lossy().into_owned(),
-                ))))
+                Ok(Value::Object(Box::new(UrlObject(uri))))
+            }
+            "extension" => Ok(Value::String(
+                self.0.extension().unwrap_or_default().to_string(),
+            )),
+            "name" => Ok(Value::String(
+                self.0
+                    .file_name()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or_default()
+                    .to_string(),
+            )),
+            "stem" => {
+                let name = self
+                    .0
+                    .file_name()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or_default();
+                let stem = match name.rfind('.') {
+                    Some(i) => &name[..i],
+                    None => name,
+                };
+                Ok(Value::String(stem.to_string()))
+            }
+            "__str__" => Ok(Value::String(self.0.as_str().to_string())),
+            "__div__" => {
+                let rhs = args
+                    .first()
+                    .and_then(|v| {
+                        if let Value::String(s) = v {
+                            Some(s.as_str())
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or_else(|| Error::Eval {
+                        msg: "Url / requires a string".into(),
+                    })?;
+                let joined = self
+                    .0
+                    .join(rhs)
+                    .map_err(|e| Error::Eval { msg: e.to_string() })?;
+                Ok(Value::Object(Box::new(UrlObject(joined))))
             }
             m => Err(Error::Eval {
-                msg: format!("Path has no method '{m}'"),
+                msg: format!("Url has no method '{m}'"),
             }),
         }
     }
 
     fn clone_box(&self) -> Box<dyn ValueObject> {
-        Box::new(PathObject(self.0.clone()))
+        Box::new(UrlObject(self.0.clone()))
     }
 
     fn eq_box(&self, other: &dyn ValueObject) -> bool {
-        other.type_name() == "Path" && format!("{other:?}") == format!("{self:?}")
+        other.type_name() == "Url" && other.display() == self.0.as_str()
     }
 
     fn display(&self) -> String {
-        self.0.clone()
+        self.0.as_str().to_string()
     }
+}
+
+pub fn builtin_url(args: &[Value]) -> Result<Value> {
+    let s = match args.first() {
+        None => return Err(Error::Eval { msg: "Url() requires a string argument".into() }),
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
+        Some(v) => return Err(Error::Eval {
+            msg: format!("Url() expects a string, got {v:?}"),
+        }),
+    };
+    let uri = Uri::from_str(&s).map_err(|e| Error::Eval { msg: e.to_string() })?;
+    Ok(Value::Object(Box::new(UrlObject(uri))))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::eval::Context;
-    use crate::core::eval::eval;
+    use crate::core::eval::{eval, Context};
     use crate::core::parser::parse;
 
     fn run(input: &str) -> Value {
-        eval(&parse(input).unwrap(), &Context::new()).unwrap()
+        let mut ctx = Context::new();
+        ctx.register("Url", Box::new(builtin_url));
+        eval(&parse(input).unwrap(), &ctx).unwrap()
     }
 
     #[test]
-    fn test_path_default() {
-        let v = run("Path()");
-        assert!(matches!(&v, Value::Object(obj) if obj.type_name() == "Path" && obj.display() == "."));
+    fn test_url_from_string() {
+        let v = run(r#"Url("/foo/bar")"#);
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo/bar"));
     }
 
     #[test]
-    fn test_path_from_string() {
-        let v = run(r#"Path("/foo/bar")"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.display() == "/foo/bar"));
+    fn test_url_rewrap() {
+        let v = run(r#"Url(Url("/foo/bar"))"#);
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo/bar"));
     }
 
     #[test]
-    fn test_path_rewrap() {
-        let v = run(r#"Path(Path("/foo/bar"))"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.display() == "/foo/bar"));
+    fn test_url_str() {
+        assert_eq!(run(r#"str(Url("/foo/bar"))"#), Value::from("file:///foo/bar"));
     }
 
     #[test]
-    fn test_path_str() {
-        assert_eq!(run(r#"str(Path("/foo/bar"))"#), Value::from("/foo/bar"));
+    fn test_url_div() {
+        assert_eq!(
+            run(r#"str(Url("/foo") / "bar" / "baz")"#),
+            Value::from("file:///foo/bar/baz")
+        );
     }
 
     #[test]
-    fn test_path_div() {
-        assert_eq!(run(r#"str(Path("/foo") / "bar" / "baz")"#), Value::from("/foo/bar/baz"));
+    fn test_url_div_gs() {
+        assert_eq!(
+            run(r#"str(Url("gs://bucket/artifacts") / "output")"#),
+            Value::from("gs://bucket/artifacts/output")
+        );
     }
 
     #[test]
-    fn test_path_parent() {
-        let v = run(r#"Path("/foo/bar").parent()"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.type_name() == "Path" && obj.display() == "/foo"));
+    fn test_url_parent() {
+        let v = run(r#"Url("/foo/bar").parent()"#);
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo"));
     }
 
     #[test]
-    fn test_path_extension() {
-        assert_eq!(run(r#"Path("/foo/bar.gml").extension()"#), Value::from("gml"));
+    fn test_url_extension() {
+        assert_eq!(run(r#"Url("/foo/bar.gml").extension()"#), Value::from("gml"));
     }
 
     #[test]
-    fn test_path_filename() {
-        assert_eq!(run(r#"Path("/foo/bar.gml").filename()"#), Value::from("bar.gml"));
+    fn test_url_name() {
+        assert_eq!(run(r#"Url("/foo/bar.gml").name()"#), Value::from("bar.gml"));
     }
-}
 
-pub fn builtin_path(args: &[Value]) -> Result<Value> {
-    let s = match args.first() {
-        None => ".".to_string(),
-        Some(Value::String(s)) => s.clone(),
-        Some(Value::Object(obj)) if obj.type_name() == "Path" => obj.display(),
-        Some(v) => return Err(Error::Eval {
-            msg: format!("Path() expects a string, got {v:?}"),
-        }),
-    };
-    Ok(Value::Object(Box::new(PathObject(s))))
+    #[test]
+    fn test_url_stem() {
+        assert_eq!(run(r#"Url("/foo/bar.gml").stem()"#), Value::from("bar"));
+    }
 }
