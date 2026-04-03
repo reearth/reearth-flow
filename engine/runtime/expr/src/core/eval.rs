@@ -94,6 +94,23 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
             let values: Result<Vec<_>> = items.iter().map(|e| eval_inner(e, ctx, env)).collect();
             Ok(Value::Array(values?))
         }
+        Expr::Map(entries) => {
+            let mut map = IndexMap::new();
+            for (k, v) in entries {
+                let key = eval_inner(k, ctx, env)?;
+                let key_str = match key {
+                    Value::String(s) => s,
+                    Value::Int(n) => n.to_string(),
+                    other => {
+                        return Err(Error::Eval {
+                            msg: format!("map key must evaluate to a string, got {other:?}"),
+                        })
+                    }
+                };
+                map.insert(key_str, eval_inner(v, ctx, env)?);
+            }
+            Ok(Value::Map(map))
+        }
         Expr::Var(name) => {
             // Lexical env takes priority; fall through to __resolve for external vars.
             if let Some(v) = env_lookup(env, name) {
@@ -685,13 +702,22 @@ mod tests {
         assert_eq!(run("10 - 3", &[]), Value::from(7i64));
         assert_eq!(run("2 * 5", &[]), Value::from(10i64));
         assert_eq!(run("10 / 4", &[]), Value::from(2.5f64));
-    }
-
-    #[test]
-    fn test_string_concat() {
+        // string concatenation via +
         assert_eq!(
             run(r#""hello" + "_" + "world""#, &[]),
             Value::from("hello_world")
+        );
+        // array concatenation via +
+        let a = Value::Array(vec![Value::from(1i64), Value::from(2i64)]);
+        let b = Value::Array(vec![Value::from(3i64), Value::from(4i64)]);
+        assert_eq!(
+            run("a + b", &[("a", a), ("b", b)]),
+            Value::Array(vec![
+                Value::from(1i64),
+                Value::from(2i64),
+                Value::from(3i64),
+                Value::from(4i64)
+            ])
         );
     }
 
@@ -711,22 +737,6 @@ mod tests {
     }
 
     #[test]
-    fn test_var_and_index() {
-        let feature = Value::Map(indexmap::indexmap! {
-            "package".into() => Value::from("bldg"),
-            "extension".into() => Value::from("gml"),
-        });
-        assert_eq!(
-            run(r#"feature["package"]"#, &[("feature", feature.clone())]),
-            Value::from("bldg")
-        );
-        assert_eq!(
-            run(r#"feature["extension"] == "gml""#, &[("feature", feature)]),
-            Value::from(true)
-        );
-    }
-
-    #[test]
     fn test_in_operator() {
         let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
@@ -740,14 +750,261 @@ mod tests {
     }
 
     #[test]
-    fn test_nested_index() {
-        let data = Value::Map(indexmap::indexmap! {
+    fn test_index() {
+        let feature = Value::Map(indexmap::indexmap! {
+            "package".into() => Value::from("bldg"),
             "cityGmlPath".into() => Value::from("/data/city.gml"),
         });
+        // map index — hit and miss
         assert_eq!(
-            run(r#"value["cityGmlPath"]"#, &[("value", data)]),
+            run(r#"feature["package"]"#, &[("feature", feature.clone())]),
+            Value::from("bldg")
+        );
+        assert_eq!(
+            run(r#"feature["cityGmlPath"]"#, &[("feature", feature.clone())]),
             Value::from("/data/city.gml")
         );
+        assert_eq!(
+            run(r#"feature["missing"]"#, &[("feature", feature)]),
+            Value::Null
+        );
+        // array index — positive and negative
+        let arr = Value::Array(vec![
+            Value::from(1i64),
+            Value::from(2i64),
+            Value::from(3i64),
+        ]);
+        assert_eq!(run("arr[0]", &[("arr", arr.clone())]), Value::from(1i64));
+        assert_eq!(run("arr[-1]", &[("arr", arr)]), Value::from(3i64));
+        // string index — positive and negative
+        assert_eq!(run(r#""hello"[0]"#, &[]), Value::from("h"));
+        assert_eq!(run(r#""hello"[4]"#, &[]), Value::from("o"));
+        assert_eq!(run(r#""hello"[-1]"#, &[]), Value::from("o"));
+    }
+
+    #[test]
+    fn test_slice() {
+        // string
+        assert_eq!(run(r#""abcde"[1:3]"#, &[]), Value::from("bc"));
+        assert_eq!(run(r#""abcde"[:3]"#, &[]), Value::from("abc"));
+        assert_eq!(run(r#""abcde"[2:]"#, &[]), Value::from("cde"));
+        assert_eq!(run(r#""abcde"[:]"#, &[]), Value::from("abcde"));
+        assert_eq!(run(r#""abcde"[::-1]"#, &[]), Value::from("edcba"));
+        assert_eq!(run(r#""abcde"[-1::-2]"#, &[]), Value::from("eca"));
+        assert_eq!(run(r#""abcde"[::2]"#, &[]), Value::from("ace"));
+        // array
+        let arr = Value::Array((0i64..5).map(Value::from).collect());
+        assert_eq!(
+            run("arr[1:3]", &[("arr", arr.clone())]),
+            Value::Array(vec![Value::from(1i64), Value::from(2i64)])
+        );
+        assert_eq!(
+            run("arr[-2:]", &[("arr", arr.clone())]),
+            Value::Array(vec![Value::from(3i64), Value::from(4i64)])
+        );
+        assert_eq!(
+            run("arr[::-1]", &[("arr", arr)]),
+            Value::Array((0i64..5).rev().map(Value::from).collect())
+        );
+    }
+
+    #[test]
+    fn test_method_call() {
+        // string methods
+        assert_eq!(run(r#""  hello  ".trim()"#, &[]), Value::from("hello"));
+        assert_eq!(run(r#""hello".len()"#, &[]), Value::from(5i64));
+        assert_eq!(run(r#""".len()"#, &[]), Value::from(0i64));
+        // array methods
+        let arr = Value::Array(vec![
+            Value::from(1i64),
+            Value::from(2i64),
+            Value::from(3i64),
+        ]);
+        assert_eq!(run("arr.len()", &[("arr", arr)]), Value::from(3i64));
+    }
+
+    #[test]
+    fn test_let() {
+        assert_eq!(run("let x = 42; x", &[]), Value::from(42i64));
+        assert_eq!(run("let x = 3; x * x", &[]), Value::from(9i64));
+        // chain
+        assert_eq!(
+            run("let x = 2; let y = x + 1; x * y", &[]),
+            Value::from(6i64)
+        );
+        // shadow
+        assert_eq!(run("let x = 1; let x = 99; x", &[]), Value::from(99i64));
+        // shadows external var — lexical binding wins over __resolve
+        assert_eq!(
+            run("let x = 7; x", &[("x", Value::from(999i64))]),
+            Value::from(7i64)
+        );
+        // scope does not leak out of parens or blocks
+        assert_eq!(
+            run("let x = 10; (let x = 99; x) + x", &[]),
+            Value::from(109i64)
+        );
+        assert_eq!(
+            run("let x = 10; { let x = 99; x } + x", &[]),
+            Value::from(109i64)
+        );
+        // let in parens
+        assert_eq!(run("(let x = 10; x) * 2", &[]), Value::from(20i64));
+    }
+
+    #[test]
+    fn test_block() {
+        // last expression is the block value
+        assert_eq!(run("{ 1; 2; 3 }", &[]), Value::from(3i64));
+        // trailing semicolon → Null
+        assert_eq!(run("{ 42; }", &[]), Value::Null);
+        // empty block → Null
+        assert_eq!(run("{}", &[]), Value::Null);
+        // let inside block
+        assert_eq!(run("{ let x = 5; x * 2 }", &[]), Value::from(10i64));
+        assert_eq!(
+            run("{ let a = 3; let b = 4; a * a + b * b }", &[]),
+            Value::from(25i64)
+        );
+        assert_eq!(run("{ let x = 1; }", &[]), Value::Null);
+        // block as expression in larger expr
+        assert_eq!(
+            run("{ let x = 3; x } + { let y = 4; y }", &[]),
+            Value::from(7i64)
+        );
+        // nested blocks
+        assert_eq!(
+            run("{ let x = 1; { let y = 2; x + y } }", &[]),
+            Value::from(3i64)
+        );
+    }
+
+    #[test]
+    fn test_if() {
+        assert_eq!(run("if true { 1 } else { 2 }", &[]), Value::from(1i64));
+        assert_eq!(run("if false { 1 } else { 2 }", &[]), Value::from(2i64));
+        // condition expression
+        assert_eq!(run("if 1 == 1 { 42 } else { 0 }", &[]), Value::from(42i64));
+        assert_eq!(run("if 1 == 2 { 42 } else { 0 }", &[]), Value::from(0i64));
+        // null is falsy
+        assert_eq!(run("if null { 1 } else { 2 }", &[]), Value::from(2i64));
+        // else-if chain
+        assert_eq!(
+            run("if false { 1 } else if false { 2 } else { 3 }", &[]),
+            Value::from(3i64)
+        );
+        assert_eq!(
+            run("if false { 1 } else if true { 2 } else { 3 }", &[]),
+            Value::from(2i64)
+        );
+        // as expression in binop
+        assert_eq!(
+            run(
+                "(if true { 10 } else { 0 }) + (if false { 0 } else { 5 })",
+                &[]
+            ),
+            Value::from(15i64)
+        );
+        // let in branch body
+        assert_eq!(
+            run("if true { let x = 7; x * 2 } else { 0 }", &[]),
+            Value::from(14i64)
+        );
+        // no-else: true branch returns value, false branch → Null
+        assert_eq!(run("if true { 42 }", &[]), Value::from(42i64));
+        assert_eq!(run("if false { 42 }", &[]), Value::Null);
+    }
+
+    #[test]
+    fn test_map() {
+        // map() builtin from array of pairs
+        assert_eq!(
+            run(r#"map([["a", 1], ["b", 2]])"#, &[]),
+            Value::Map(indexmap::indexmap! {
+                "a".into() => Value::from(1i64),
+                "b".into() => Value::from(2i64),
+            })
+        );
+        // map literal — basic string keys
+        assert_eq!(
+            run(r#"{"a": 1, "b": 2}"#, &[]),
+            Value::Map(indexmap::indexmap! {
+                "a".into() => Value::from(1i64),
+                "b".into() => Value::from(2i64),
+            })
+        );
+        // trailing comma
+        assert_eq!(
+            run(r#"{"x": true,}"#, &[]),
+            Value::Map(indexmap::indexmap! { "x".into() => Value::Bool(true) })
+        );
+        // expr key
+        assert_eq!(
+            run(r#"{"pre" + "fix": 9}["prefix"]"#, &[]),
+            Value::from(9i64)
+        );
+        // nested
+        assert_eq!(
+            run(r#"{"a": {"b": 2}}"#, &[]),
+            Value::Map(indexmap::indexmap! {
+                "a".into() => Value::Map(indexmap::indexmap! { "b".into() => Value::from(2i64) }),
+            })
+        );
+        // {} is Null, not an empty map
+        assert_eq!(run("{}", &[]), Value::Null);
+    }
+
+    #[test]
+    fn test_cast() {
+        // str()
+        assert_eq!(run(r#"str("hello")"#, &[]), Value::from("hello"));
+        assert_eq!(run(r#"str(42)"#, &[]), Value::from("42"));
+        assert_eq!(run(r#"str(3.14)"#, &[]), Value::from("3.14"));
+        assert_eq!(run(r#"str(true)"#, &[]), Value::from("true"));
+        assert_eq!(run(r#"str(false)"#, &[]), Value::from("false"));
+        assert_eq!(run(r#"str(null)"#, &[]), Value::from("null"));
+        // int()
+        assert_eq!(run(r#"int(42)"#, &[]), Value::from(42i64));
+        assert_eq!(run(r#"int(3.9)"#, &[]), Value::from(3i64));
+        assert_eq!(run(r#"int(-3.9)"#, &[]), Value::from(-3i64));
+        assert_eq!(run(r#"int("42")"#, &[]), Value::from(42i64));
+        assert_eq!(run(r#"int(true)"#, &[]), Value::from(1i64));
+        assert_eq!(run(r#"int(false)"#, &[]), Value::from(0i64));
+        // float()
+        assert_eq!(run(r#"float(42)"#, &[]), Value::from(42.0f64));
+        assert_eq!(run(r#"float(3.14)"#, &[]), Value::from(3.14f64));
+        assert_eq!(run(r#"float("3.14")"#, &[]), Value::from(3.14f64));
+        assert_eq!(run(r#"float(true)"#, &[]), Value::from(1.0f64));
+        assert_eq!(run(r#"float(false)"#, &[]), Value::from(0.0f64));
+        // bool()
+        assert_eq!(run(r#"bool(1)"#, &[]), Value::from(true));
+        assert_eq!(run(r#"bool(0)"#, &[]), Value::from(false));
+        assert_eq!(run(r#"bool("")"#, &[]), Value::from(false));
+        assert_eq!(run(r#"bool("x")"#, &[]), Value::from(true));
+        assert_eq!(run(r#"bool(null)"#, &[]), Value::from(false));
+        // list()
+        assert_eq!(
+            run(r#"list("abc")"#, &[]),
+            Value::Array(vec![Value::from("a"), Value::from("b"), Value::from("c")])
+        );
+        let arr = Value::Array(vec![Value::from(1i64), Value::from(2i64)]);
+        assert_eq!(run("list(arr)", &[("arr", arr.clone())]), arr);
+        let m = Value::Map(
+            indexmap::indexmap! { "x".into() => Value::from(1i64), "y".into() => Value::from(2i64) },
+        );
+        assert_eq!(
+            run("list(m)", &[("m", m)]),
+            Value::Array(vec![Value::from("x"), Value::from("y")])
+        );
+    }
+
+    #[test]
+    fn test_var() {
+        // unknown var with resolver → Null
+        assert_eq!(run("missing", &[]), Value::Null);
+        // no resolver registered → error
+        let ctx = Context::new();
+        assert!(eval(&parse("missing").unwrap(), &ctx).is_err());
     }
 
     #[test]
@@ -776,176 +1033,6 @@ mod tests {
     }
 
     #[test]
-    fn test_unknown_var_returns_null() {
-        assert_eq!(run("missing", &[]), Value::Null);
-    }
-
-    #[test]
-    fn test_no_resolver_errors() {
-        let ctx = Context::new();
-        let result = eval(&parse("missing").unwrap(), &ctx);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_map_builtin() {
-        let result = run(r#"map([["a", 1], ["b", 2]])"#, &[]);
-        assert_eq!(
-            result,
-            Value::Map(indexmap::indexmap! {
-                "a".into() => Value::from(1i64),
-                "b".into() => Value::from(2i64),
-            })
-        );
-    }
-
-    #[test]
-    fn test_string_trim() {
-        assert_eq!(run(r#""  hello  ".trim()"#, &[]), Value::from("hello"));
-    }
-
-    #[test]
-    fn test_negative_index() {
-        assert_eq!(run(r#""abcde"[-1]"#, &[]), Value::from("e"));
-        let arr = Value::Array(vec![
-            Value::from(1i64),
-            Value::from(2i64),
-            Value::from(3i64),
-        ]);
-        assert_eq!(run("arr[-1]", &[("arr", arr)]), Value::from(3i64));
-    }
-
-    #[test]
-    fn test_string_index() {
-        assert_eq!(run(r#""hello"[0]"#, &[]), Value::from("h"));
-        assert_eq!(run(r#""hello"[4]"#, &[]), Value::from("o"));
-        assert_eq!(run(r#""hello"[-1]"#, &[]), Value::from("o"));
-    }
-
-    #[test]
-    fn test_slice_str() {
-        assert_eq!(run(r#""abcde"[1:3]"#, &[]), Value::from("bc"));
-        assert_eq!(run(r#""abcde"[:3]"#, &[]), Value::from("abc"));
-        assert_eq!(run(r#""abcde"[2:]"#, &[]), Value::from("cde"));
-        assert_eq!(run(r#""abcde"[:]"#, &[]), Value::from("abcde"));
-        assert_eq!(run(r#""abcde"[::-1]"#, &[]), Value::from("edcba"));
-        assert_eq!(run(r#""abcde"[-1::-2]"#, &[]), Value::from("eca"));
-        assert_eq!(run(r#""abcde"[::2]"#, &[]), Value::from("ace"));
-    }
-
-    #[test]
-    fn test_slice_array() {
-        let arr = Value::Array(vec![
-            Value::from(0i64),
-            Value::from(1i64),
-            Value::from(2i64),
-            Value::from(3i64),
-            Value::from(4i64),
-        ]);
-        assert_eq!(
-            run("arr[1:3]", &[("arr", arr.clone())]),
-            Value::Array(vec![Value::from(1i64), Value::from(2i64)])
-        );
-        assert_eq!(
-            run("arr[::-1]", &[("arr", arr.clone())]),
-            Value::Array(vec![
-                Value::from(4i64),
-                Value::from(3i64),
-                Value::from(2i64),
-                Value::from(1i64),
-                Value::from(0i64)
-            ])
-        );
-        assert_eq!(
-            run("arr[-2:]", &[("arr", arr)]),
-            Value::Array(vec![Value::from(3i64), Value::from(4i64)])
-        );
-    }
-
-    #[test]
-    fn test_cast_str() {
-        assert_eq!(run(r#"str("hello")"#, &[]), Value::from("hello"));
-        assert_eq!(run(r#"str(42)"#, &[]), Value::from("42"));
-        assert_eq!(run(r#"str(3.14)"#, &[]), Value::from("3.14"));
-        assert_eq!(run(r#"str(true)"#, &[]), Value::from("true"));
-        assert_eq!(run(r#"str(false)"#, &[]), Value::from("false"));
-        assert_eq!(run(r#"str(null)"#, &[]), Value::from("null"));
-    }
-
-    #[test]
-    fn test_cast_int() {
-        assert_eq!(run(r#"int(42)"#, &[]), Value::from(42i64));
-        assert_eq!(run(r#"int(3.9)"#, &[]), Value::from(3i64));
-        assert_eq!(run(r#"int(-3.9)"#, &[]), Value::from(-3i64));
-        assert_eq!(run(r#"int("42")"#, &[]), Value::from(42i64));
-        assert_eq!(run(r#"int(true)"#, &[]), Value::from(1i64));
-        assert_eq!(run(r#"int(false)"#, &[]), Value::from(0i64));
-    }
-
-    #[test]
-    fn test_cast_float() {
-        assert_eq!(run(r#"float(42)"#, &[]), Value::from(42.0f64));
-        assert_eq!(run(r#"float(3.14)"#, &[]), Value::from(3.14f64));
-        assert_eq!(run(r#"float("3.14")"#, &[]), Value::from(3.14f64));
-        assert_eq!(run(r#"float(true)"#, &[]), Value::from(1.0f64));
-        assert_eq!(run(r#"float(false)"#, &[]), Value::from(0.0f64));
-    }
-
-    #[test]
-    fn test_cast_bool() {
-        assert_eq!(run(r#"bool(1)"#, &[]), Value::from(true));
-        assert_eq!(run(r#"bool(0)"#, &[]), Value::from(false));
-        assert_eq!(run(r#"bool("")"#, &[]), Value::from(false));
-        assert_eq!(run(r#"bool("x")"#, &[]), Value::from(true));
-        assert_eq!(run(r#"bool(null)"#, &[]), Value::from(false));
-    }
-
-    #[test]
-    fn test_cast_list() {
-        assert_eq!(
-            run(r#"list("abc")"#, &[]),
-            Value::Array(vec![Value::from("a"), Value::from("b"), Value::from("c")])
-        );
-        let arr = Value::Array(vec![Value::from(1i64), Value::from(2i64)]);
-        assert_eq!(run("list(arr)", &[("arr", arr.clone())]), arr);
-        let m = Value::Map(indexmap::indexmap! {
-            "x".into() => Value::from(1i64),
-            "y".into() => Value::from(2i64),
-        });
-        assert_eq!(
-            run("list(m)", &[("m", m)]),
-            Value::Array(vec![Value::from("x"), Value::from("y")])
-        );
-    }
-
-    #[test]
-    fn test_len_method() {
-        assert_eq!(run(r#""hello".len()"#, &[]), Value::from(5i64));
-        assert_eq!(run(r#""".len()"#, &[]), Value::from(0i64));
-        let arr = Value::Array(vec![
-            Value::from(1i64),
-            Value::from(2i64),
-            Value::from(3i64),
-        ]);
-        assert_eq!(run("arr.len()", &[("arr", arr)]), Value::from(3i64));
-    }
-
-    #[test]
-    fn test_array_concat() {
-        let a = Value::Array(vec![Value::from(1i64), Value::from(2i64)]);
-        let b = Value::Array(vec![Value::from(3i64), Value::from(4i64)]);
-        assert_eq!(
-            run("a + b", &[("a", a), ("b", b)]),
-            Value::Array(vec![
-                Value::from(1i64),
-                Value::from(2i64),
-                Value::from(3i64),
-                Value::from(4i64)
-            ])
-        );
-    }
-
-    #[test]
     fn test_complex_expr() {
         let feature = Value::Map(indexmap::indexmap! {
             "extension".into() => Value::from("gml"),
@@ -959,172 +1046,5 @@ mod tests {
             ),
             Value::from(true)
         );
-    }
-
-    #[test]
-    fn test_let_basic() {
-        assert_eq!(run("let x = 42; x", &[]), Value::from(42i64));
-    }
-
-    #[test]
-    fn test_let_used_in_expr() {
-        assert_eq!(run("let x = 3; x * x", &[]), Value::from(9i64));
-    }
-
-    #[test]
-    fn test_let_chain() {
-        assert_eq!(
-            run("let x = 2; let y = x + 1; x * y", &[]),
-            Value::from(6i64)
-        );
-    }
-
-    #[test]
-    fn test_let_shadow() {
-        assert_eq!(run("let x = 1; let x = 99; x", &[]), Value::from(99i64));
-    }
-
-    #[test]
-    fn test_let_scope_does_not_leak() {
-        // inner let shadows outer; after the paren group, outer x is visible again
-        assert_eq!(
-            run("let x = 10; (let x = 99; x) + x", &[]),
-            Value::from(109i64)
-        );
-    }
-
-    #[test]
-    fn test_let_shadows_external_var() {
-        // lexical binding wins over __resolve
-        assert_eq!(
-            run("let x = 7; x", &[("x", Value::from(999i64))]),
-            Value::from(7i64)
-        );
-    }
-
-    #[test]
-    fn test_block_value() {
-        assert_eq!(run("{ 1; 2; 3 }", &[]), Value::from(3i64));
-    }
-
-    #[test]
-    fn test_block_trailing_semi() {
-        assert_eq!(run("{ 42; }", &[]), Value::Null);
-    }
-
-    #[test]
-    fn test_block_empty() {
-        assert_eq!(run("{}", &[]), Value::Null);
-    }
-
-    #[test]
-    fn test_block_let() {
-        assert_eq!(run("{ let x = 5; x * 2 }", &[]), Value::from(10i64));
-    }
-
-    #[test]
-    fn test_block_multi_let() {
-        assert_eq!(
-            run("{ let a = 3; let b = 4; a * a + b * b }", &[]),
-            Value::from(25i64)
-        );
-    }
-
-    #[test]
-    fn test_block_let_trailing_semi() {
-        assert_eq!(run("{ let x = 1; }", &[]), Value::Null);
-    }
-
-    #[test]
-    fn test_block_as_expr_in_binop() {
-        assert_eq!(
-            run("{ let x = 3; x } + { let y = 4; y }", &[]),
-            Value::from(7i64)
-        );
-    }
-
-    #[test]
-    fn test_nested_blocks() {
-        assert_eq!(
-            run("{ let x = 1; { let y = 2; x + y } }", &[]),
-            Value::from(3i64)
-        );
-    }
-
-    #[test]
-    fn test_let_in_parens() {
-        assert_eq!(run("(let x = 10; x) * 2", &[]), Value::from(20i64));
-    }
-
-    #[test]
-    fn test_block_scope_isolation() {
-        // block returns its let-bound value
-        assert_eq!(run("{ let x = 1; x } + 0", &[]), Value::from(1i64));
-        // x outside the block is unbound (Null via __resolve fallback)
-        assert_eq!(run("x", &[]), Value::Null);
-        // outer let is not affected by inner let of same name
-        assert_eq!(
-            run("let x = 10; { let x = 99; x } + x", &[]),
-            Value::from(109i64)
-        );
-    }
-
-    #[test]
-    fn test_if_true_branch() {
-        assert_eq!(run("if true { 1 } else { 2 }", &[]), Value::from(1i64));
-    }
-
-    #[test]
-    fn test_if_false_branch() {
-        assert_eq!(run("if false { 1 } else { 2 }", &[]), Value::from(2i64));
-    }
-
-    #[test]
-    fn test_if_condition_expr() {
-        assert_eq!(run("if 1 == 1 { 42 } else { 0 }", &[]), Value::from(42i64));
-        assert_eq!(run("if 1 == 2 { 42 } else { 0 }", &[]), Value::from(0i64));
-    }
-
-    #[test]
-    fn test_if_else_if_chain() {
-        assert_eq!(
-            run("if false { 1 } else if false { 2 } else { 3 }", &[]),
-            Value::from(3i64)
-        );
-        assert_eq!(
-            run("if false { 1 } else if true { 2 } else { 3 }", &[]),
-            Value::from(2i64)
-        );
-    }
-
-    #[test]
-    fn test_if_as_expression_in_binop() {
-        assert_eq!(
-            run(
-                "(if true { 10 } else { 0 }) + (if false { 0 } else { 5 })",
-                &[]
-            ),
-            Value::from(15i64)
-        );
-    }
-
-    #[test]
-    fn test_if_with_let_body() {
-        assert_eq!(
-            run("if true { let x = 7; x * 2 } else { 0 }", &[]),
-            Value::from(14i64)
-        );
-    }
-
-    #[test]
-    fn test_if_null_false_branch() {
-        // null is falsy
-        assert_eq!(run("if null { 1 } else { 2 }", &[]), Value::from(2i64));
-    }
-
-    #[test]
-    fn test_if_no_else() {
-        assert_eq!(run("if true { 42 }", &[]), Value::from(42i64));
-        assert_eq!(run("if false { 42 }", &[]), Value::Null);
     }
 }
