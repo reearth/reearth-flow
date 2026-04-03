@@ -91,7 +91,6 @@ graphs:
 
 ### PubSub
 #### Topics
-* flow-edge-pass-through-topic
 * flow-log-stream-topic
 * flow-job-complete-topic
 * flow-worker-user-facing-log-topic
@@ -99,7 +98,6 @@ graphs:
 ### Runtime Environment Variables
 | Name                                      | Description                                                                    | Default                      |
 | ----------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------- |
-| FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC | Topic name for the event that occurs when the Feature passes the edge          | flow-edge-pass-through-topic  |
 | FLOW_WORKER_LOG_STREAM_TOPIC              | Topic name of the event that occurs when the log comes into the log stream     | flow-log-stream-topic         |
 | FLOW_WORKER_JOB_COMPLETE_TOPIC            | Topic name of the event that will occur when the job is completed              | flow-job-complete-topic       |
 | FLOW_WORKER_NODE_STATUS_TOPIC             | Topic name of the event that will occur when each when Feature passes the node | flow-node-status-topic        |

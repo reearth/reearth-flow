@@ -9,7 +9,7 @@ use reearth_flow_types::Feature;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::node::{EdgeId, Port};
+use crate::node::EdgeId;
 
 static FEATURE_WRITER_DISABLE: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_FEATURE_WRITER_DISABLE")
@@ -17,9 +17,6 @@ static FEATURE_WRITER_DISABLE: Lazy<bool> = Lazy::new(|| {
         .map(|s| s.to_lowercase() == "true")
         .unwrap_or(false)
 });
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FeatureWriterKey(pub(crate) Port, pub(crate) Port);
 
 #[derive(Debug, Error)]
 pub enum FeatureWriterError {
