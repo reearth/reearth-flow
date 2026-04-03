@@ -4,7 +4,7 @@ use crate::core::error::Result;
 
 /// Trait for typed objects that can respond to method calls.
 ///
-/// Implement this to introduce new object types (e.g. `Path`, `DateTime`)
+/// Implement this to introduce new object types (e.g. `Url`, `DateTime`)
 /// that expression users can construct and call methods on.
 pub trait ValueObject: std::fmt::Debug + Send + Sync {
     fn type_name(&self) -> &'static str;
@@ -30,16 +30,13 @@ impl PartialEq for Box<dyn ValueObject> {
     }
 }
 
-
 /// Runtime value type for the expression evaluator.
-///
-/// [`Number`] borrows `serde_json::Number` for precision parity, but the type
-/// does not depend on serde_json's container types.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Null,
     Bool(bool),
-    Number(serde_json::Number),
+    Int(i64),
+    Float(f64),
     String(String),
     Array(Vec<Value>),
     Map(IndexMap<String, Value>),
@@ -52,7 +49,8 @@ impl std::fmt::Display for Value {
         match self {
             Value::Null => write!(f, "null"),
             Value::Bool(b) => write!(f, "{b}"),
-            Value::Number(n) => write!(f, "{n}"),
+            Value::Int(n) => write!(f, "{n}"),
+            Value::Float(n) => write!(f, "{n}"),
             Value::String(s) => write!(f, "{s:?}"),
             Value::Array(arr) => {
                 write!(f, "[")?;
@@ -83,15 +81,13 @@ impl From<bool> for Value {
 
 impl From<i64> for Value {
     fn from(n: i64) -> Self {
-        Value::Number(n.into())
+        Value::Int(n)
     }
 }
 
 impl From<f64> for Value {
     fn from(f: f64) -> Self {
-        serde_json::Number::from_f64(f)
-            .map(Value::Number)
-            .unwrap_or(Value::Null)
+        Value::Float(f)
     }
 }
 
