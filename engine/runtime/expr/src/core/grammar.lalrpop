@@ -21,6 +21,7 @@ extern {
         "("     => crate::core::lexer::Token::LParen,
         ")"     => crate::core::lexer::Token::RParen,
         ","     => crate::core::lexer::Token::Comma,
+        ":"     => crate::core::lexer::Token::Colon,
         "+"     => crate::core::lexer::Token::Plus,
         "-"     => crate::core::lexer::Token::Minus,
         "*"     => crate::core::lexer::Token::Star,
@@ -89,10 +90,20 @@ Unary: Expr = {
 };
 
 Postfix: Expr = {
-    <e:Postfix> "[" <k:Or> "]" => Expr::Index(Box::new(e), Box::new(k)),
+    <e:Postfix> "[" <k:Or> "]"
+        => Expr::Index(Box::new(e), Box::new(k)),
+    <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> "]"
+        => Expr::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: None },
+    <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> ":" <step:OptExpr> "]"
+        => Expr::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: step.map(Box::new) },
     <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")"
         => Expr::MethodCall { receiver: Box::new(e), method: name, args },
     Primary,
+};
+
+OptExpr: Option<Expr> = {
+    <e:Or> => Some(e),
+    => None,
 };
 
 Primary: Expr = {

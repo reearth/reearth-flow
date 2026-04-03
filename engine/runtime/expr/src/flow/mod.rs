@@ -1,13 +1,9 @@
-mod builtins;
-
 use std::sync::Arc;
 
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
 use crate::core::eval::Context;
 use crate::core::value::Value;
-
-use builtins::PathObject;
 
 // serde_json <-> Value conversions live here, not in core, to keep core
 // independent of serde_json's container types.
@@ -70,15 +66,6 @@ pub fn context_from_feature(
                 .get(&Attribute::new(name))
                 .map(|v| json_to_value(serde_json::Value::from(v.clone())))
                 .unwrap_or(Value::Null))
-        }),
-    );
-    ctx.register(
-        "Path",
-        Box::new(|args| {
-            let s = args.first().and_then(|v| {
-                if let Value::String(s) = v { Some(s.clone()) } else { None }
-            }).unwrap_or_default();
-            Ok(Value::Object(Box::new(PathObject(s))))
         }),
     );
     ctx.register(

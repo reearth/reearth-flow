@@ -12,6 +12,10 @@ pub trait ValueObject: std::fmt::Debug + Send + Sync {
     fn clone_box(&self) -> Box<dyn ValueObject>;
     /// Object equality — implementations may compare by content or return false.
     fn eq_box(&self, other: &dyn ValueObject) -> bool;
+    /// Human-readable representation. Defaults to `<TypeName>`.
+    fn display(&self) -> String {
+        format!("<{}>", self.type_name())
+    }
 }
 
 impl Clone for Box<dyn ValueObject> {
@@ -66,7 +70,7 @@ impl std::fmt::Display for Value {
                 }
                 write!(f, "}}")
             }
-            Value::Object(obj) => write!(f, "<{}>", obj.type_name()),
+            Value::Object(obj) => write!(f, "{}", obj.display()),
         }
     }
 }

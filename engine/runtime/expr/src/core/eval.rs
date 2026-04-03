@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, UnaryOp};
+use super::builtins::PathObject;
 use super::error::{Error, Result};
 use super::value::Value;
 
@@ -16,6 +17,12 @@ impl Context {
     pub fn new() -> Self {
         let mut ctx = Self { funcs: HashMap::new() };
         ctx.register("map", Box::new(builtin_map));
+        ctx.register("Path", Box::new(|args| {
+            let s = args.first().and_then(|v| {
+                if let Value::String(s) = v { Some(s.clone()) } else { None }
+            }).unwrap_or_default();
+            Ok(Value::Object(Box::new(PathObject(s))))
+        }));
         ctx
     }
 
@@ -57,6 +64,13 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
             let target = eval(target, ctx)?;
             let key = eval(key, ctx)?;
             eval_index(target, key)
+        }
+        Expr::Slice { target, start, stop, step } => {
+            let target = eval(target, ctx)?;
+            let start = start.as_deref().map(|e| eval(e, ctx)).transpose()?;
+            let stop = stop.as_deref().map(|e| eval(e, ctx)).transpose()?;
+            let step = step.as_deref().map(|e| eval(e, ctx)).transpose()?;
+            eval_slice(target, start, stop, step)
         }
         Expr::FuncCall { name, args } => {
             let args: Result<Vec<_>> = args.iter().map(|e| eval(e, ctx)).collect();
@@ -101,6 +115,7 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
 fn eval_method(recv: Value, method: &str, args: &[Value]) -> Result<Value> {
     match recv {
         Value::String(s) => eval_string_method(s, method, args),
+        Value::Array(a) => eval_array_method(a, method, args),
         Value::Object(obj) => obj.call_method(method, args),
         v => Err(Error::Eval {
             msg: format!("{v:?} has no method '{method}'"),
@@ -110,12 +125,28 @@ fn eval_method(recv: Value, method: &str, args: &[Value]) -> Result<Value> {
 
 fn eval_string_method(s: String, method: &str, args: &[Value]) -> Result<Value> {
     match method {
+        "len" => {
+            let _ = args;
+            Ok(Value::Number((s.chars().count() as i64).into()))
+        }
         "trim" => {
             let _ = args;
             Ok(Value::String(s.trim().to_string()))
         }
         m => Err(Error::Eval {
             msg: format!("String has no method '{m}'"),
+        }),
+    }
+}
+
+fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> Result<Value> {
+    match method {
+        "len" => {
+            let _ = args;
+            Ok(Value::Number((a.len() as i64).into()))
+        }
+        m => Err(Error::Eval {
+            msg: format!("Array has no method '{m}'"),
         }),
     }
 }
@@ -127,13 +158,99 @@ fn eval_index(target: Value, key: Value) -> Result<Value> {
             let i = n.as_i64().ok_or_else(|| Error::Eval {
                 msg: "array index must be an integer".into(),
             })?;
-            let i = if i < 0 { arr.len() as i64 + i } else { i } as usize;
-            Ok(arr.into_iter().nth(i).unwrap_or(Value::Null))
+            let len = arr.len() as i64;
+            let i = if i < 0 { len + i } else { i };
+            if i < 0 || i >= len {
+                return Ok(Value::Null);
+            }
+            Ok(arr.into_iter().nth(i as usize).unwrap_or(Value::Null))
+        }
+        (Value::String(s), Value::Number(n)) => {
+            let i = n.as_i64().ok_or_else(|| Error::Eval {
+                msg: "string index must be an integer".into(),
+            })?;
+            let chars: Vec<char> = s.chars().collect();
+            let len = chars.len() as i64;
+            let i = if i < 0 { len + i } else { i };
+            if i < 0 || i >= len {
+                return Ok(Value::Null);
+            }
+            Ok(Value::String(chars[i as usize].to_string()))
         }
         (Value::Null, _) => Ok(Value::Null),
         (target, key) => Err(Error::Eval {
             msg: format!("cannot index {target:?} with {key:?}"),
         }),
+    }
+}
+
+fn as_slice_index(v: Value, what: &str) -> Result<i64> {
+    match v {
+        Value::Number(n) => n.as_i64().ok_or_else(|| Error::Eval {
+            msg: format!("slice {what} must be an integer"),
+        }),
+        v => Err(Error::Eval {
+            msg: format!("slice {what} must be an integer, got {v:?}"),
+        }),
+    }
+}
+
+/// Returns the concrete element indices for `target[start:stop:step]`.
+/// Follows standard slice semantics: negative indices count from the end,
+/// defaults and clamping depend on the sign of `step`.
+fn slice_indices(len: usize, start: Option<i64>, stop: Option<i64>, step: i64) -> Vec<usize> {
+    let n = len as i64;
+    let normalize = |i: i64, clamp_lo: i64, clamp_hi: i64| -> i64 {
+        let i = if i < 0 { i + n } else { i };
+        i.clamp(clamp_lo, clamp_hi)
+    };
+    let (start, stop) = if step > 0 {
+        let s = start.map(|i| normalize(i, 0, n)).unwrap_or(0);
+        let e = stop.map(|i| normalize(i, 0, n)).unwrap_or(n);
+        (s, e)
+    } else {
+        let s = start.map(|i| normalize(i, -1, n - 1)).unwrap_or(n - 1);
+        let e = stop.map(|i| normalize(i, -1, n - 1)).unwrap_or(-1);
+        (s, e)
+    };
+    let mut indices = Vec::new();
+    let mut i = start;
+    if step > 0 {
+        while i < stop {
+            indices.push(i as usize);
+            i += step;
+        }
+    } else {
+        while i > stop {
+            indices.push(i as usize);
+            i += step;
+        }
+    }
+    indices
+}
+
+fn eval_slice(target: Value, start: Option<Value>, stop: Option<Value>, step: Option<Value>) -> Result<Value> {
+    let step = match step {
+        None => 1i64,
+        Some(v) => as_slice_index(v, "step")?,
+    };
+    if step == 0 {
+        return Err(Error::Eval { msg: "slice step cannot be zero".into() });
+    }
+    let start = start.map(|v| as_slice_index(v, "start")).transpose()?;
+    let stop = stop.map(|v| as_slice_index(v, "stop")).transpose()?;
+
+    match target {
+        Value::Array(arr) => {
+            let indices = slice_indices(arr.len(), start, stop, step);
+            Ok(Value::Array(indices.into_iter().map(|i| arr[i].clone()).collect()))
+        }
+        Value::String(s) => {
+            let chars: Vec<char> = s.chars().collect();
+            let indices = slice_indices(chars.len(), start, stop, step);
+            Ok(Value::String(indices.into_iter().map(|i| chars[i]).collect()))
+        }
+        v => Err(Error::Eval { msg: format!("cannot slice {v:?}") }),
     }
 }
 
@@ -161,15 +278,43 @@ fn eval_unary(op: &UnaryOp, val: Value) -> Result<Value> {
     }
 }
 
+fn binop_dunder(op: &BinOp) -> &'static str {
+    match op {
+        BinOp::Add => "__add__",
+        BinOp::Sub => "__sub__",
+        BinOp::Mul => "__mul__",
+        BinOp::Div => "__div__",
+        BinOp::Eq  => "__eq__",
+        BinOp::Ne  => "__ne__",
+        BinOp::Lt  => "__lt__",
+        BinOp::Le  => "__le__",
+        BinOp::Gt  => "__gt__",
+        BinOp::Ge  => "__ge__",
+        BinOp::In | BinOp::And | BinOp::Or => "",
+    }
+}
+
+fn try_object_op(op: &BinOp, left: Value, right: Value) -> Result<Value> {
+    let dunder = binop_dunder(op);
+    if let Value::Object(ref obj) = left {
+        return obj.call_method(dunder, &[right]);
+    }
+    Err(Error::Eval {
+        msg: format!("operator '{}' not supported between {left:?} and {right:?}", dunder),
+    })
+}
+
 fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
     match op {
         BinOp::Add => match (left, right) {
             (Value::Number(a), Value::Number(b)) => add_numbers(a, b),
             (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
             (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
-            (a, b) => Err(Error::Eval {
-                msg: format!("cannot add {a:?} and {b:?}"),
-            }),
+            (Value::Array(mut a), Value::Array(b)) => {
+                a.extend(b);
+                Ok(Value::Array(a))
+            }
+            (a, b) => try_object_op(op, a, b),
         },
         BinOp::Sub => numeric_op(left, right, |a, b| a - b, |a, b| a - b),
         BinOp::Mul => numeric_op(left, right, |a, b| a * b, |a, b| a * b),
@@ -186,9 +331,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
                     .map(Value::Number)
                     .unwrap_or(Value::Null))
             }
-            (a, b) => Err(Error::Eval {
-                msg: format!("cannot divide {a:?} by {b:?}"),
-            }),
+            (a, b) => try_object_op(op, a, b),
         },
         BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
         BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
@@ -283,7 +426,8 @@ fn value_to_string(v: &Value) -> String {
         Value::Null => "null".into(),
         Value::Bool(b) => b.to_string(),
         Value::Number(n) => n.to_string(),
-        Value::Array(_) | Value::Map(_) | Value::Object(_) => format!("{v:?}"),
+        Value::Array(_) | Value::Map(_) => format!("{v:?}"),
+        Value::Object(obj) => obj.display(),
     }
 }
 
@@ -450,6 +594,69 @@ mod tests {
     #[test]
     fn test_string_trim() {
         assert_eq!(run(r#""  hello  ".trim()"#, &[]), Value::from("hello"));
+    }
+
+    #[test]
+    fn test_negative_index() {
+        assert_eq!(run(r#""abcde"[-1]"#, &[]), Value::from("e"));
+        let arr = Value::Array(vec![Value::from(1i64), Value::from(2i64), Value::from(3i64)]);
+        assert_eq!(run("arr[-1]", &[("arr", arr)]), Value::from(3i64));
+    }
+
+    #[test]
+    fn test_string_index() {
+        assert_eq!(run(r#""hello"[0]"#, &[]), Value::from("h"));
+        assert_eq!(run(r#""hello"[4]"#, &[]), Value::from("o"));
+        assert_eq!(run(r#""hello"[-1]"#, &[]), Value::from("o"));
+    }
+
+    #[test]
+    fn test_slice_str() {
+        assert_eq!(run(r#""abcde"[1:3]"#, &[]), Value::from("bc"));
+        assert_eq!(run(r#""abcde"[:3]"#, &[]), Value::from("abc"));
+        assert_eq!(run(r#""abcde"[2:]"#, &[]), Value::from("cde"));
+        assert_eq!(run(r#""abcde"[:]"#, &[]), Value::from("abcde"));
+        assert_eq!(run(r#""abcde"[::-1]"#, &[]), Value::from("edcba"));
+        assert_eq!(run(r#""abcde"[-1::-2]"#, &[]), Value::from("eca"));
+        assert_eq!(run(r#""abcde"[::2]"#, &[]), Value::from("ace"));
+    }
+
+    #[test]
+    fn test_slice_array() {
+        let arr = Value::Array(vec![
+            Value::from(0i64), Value::from(1i64), Value::from(2i64),
+            Value::from(3i64), Value::from(4i64),
+        ]);
+        assert_eq!(
+            run("arr[1:3]", &[("arr", arr.clone())]),
+            Value::Array(vec![Value::from(1i64), Value::from(2i64)])
+        );
+        assert_eq!(
+            run("arr[::-1]", &[("arr", arr.clone())]),
+            Value::Array(vec![Value::from(4i64), Value::from(3i64), Value::from(2i64), Value::from(1i64), Value::from(0i64)])
+        );
+        assert_eq!(
+            run("arr[-2:]", &[("arr", arr)]),
+            Value::Array(vec![Value::from(3i64), Value::from(4i64)])
+        );
+    }
+
+    #[test]
+    fn test_len_method() {
+        assert_eq!(run(r#""hello".len()"#, &[]), Value::from(5i64));
+        assert_eq!(run(r#""".len()"#, &[]), Value::from(0i64));
+        let arr = Value::Array(vec![Value::from(1i64), Value::from(2i64), Value::from(3i64)]);
+        assert_eq!(run("arr.len()", &[("arr", arr)]), Value::from(3i64));
+    }
+
+    #[test]
+    fn test_array_concat() {
+        let a = Value::Array(vec![Value::from(1i64), Value::from(2i64)]);
+        let b = Value::Array(vec![Value::from(3i64), Value::from(4i64)]);
+        assert_eq!(
+            run("a + b", &[("a", a), ("b", b)]),
+            Value::Array(vec![Value::from(1i64), Value::from(2i64), Value::from(3i64), Value::from(4i64)])
+        );
     }
 
     #[test]
