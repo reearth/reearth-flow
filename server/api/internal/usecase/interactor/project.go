@@ -215,6 +215,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, nil
 	}
 
+	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -233,10 +237,6 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	}
 
 	debug := true
-
-	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
-		return nil, err
-	}
 
 	j, err := job.New().
 		NewID().
