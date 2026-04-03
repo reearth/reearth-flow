@@ -25,7 +25,9 @@ pub fn parse(input: &str) -> Result<Expr> {
                 pos,
                 msg: format!("unexpected token {tok:?}"),
             },
-            ParseError::ExtraToken { token: (pos, tok, _) } => Error::Parse {
+            ParseError::ExtraToken {
+                token: (pos, tok, _),
+            } => Error::Parse {
                 pos,
                 msg: format!("extra token {tok:?}"),
             },
@@ -196,10 +198,10 @@ mod parse_smoke {
     #[test]
     fn smoke_let_forms() {
         let cases = [
-            ("let x = 1 + 1; x",      true),
-            ("let x = { 1 + 1 }; x",  true),
-            ("let x = 1 + 1;",         false),  // trailing semi, no body
-            ("let x = { 1 + 1 }",      false),  // no semi, no body
+            ("let x = 1 + 1; x", true),
+            ("let x = { 1 + 1 }; x", true),
+            ("let x = 1 + 1;", false),    // trailing semi, no body
+            ("let x = { 1 + 1 }", false), // no semi, no body
         ];
         for (src, should_ok) in cases {
             let r = parse(src);

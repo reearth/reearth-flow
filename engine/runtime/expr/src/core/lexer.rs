@@ -147,9 +147,7 @@ mod tests {
     use super::*;
 
     fn tokenize(input: &str) -> Vec<Token> {
-        Token::lexer(input)
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap()
+        Token::lexer(input).collect::<Result<Vec<_>, _>>().unwrap()
     }
 
     #[test]
@@ -246,7 +244,11 @@ mod tests {
     fn test_in_keyword() {
         assert_eq!(
             tokenize("x in arr"),
-            vec![Token::Ident("x".into()), Token::In, Token::Ident("arr".into())]
+            vec![
+                Token::Ident("x".into()),
+                Token::In,
+                Token::Ident("arr".into())
+            ]
         );
     }
 
@@ -268,13 +270,22 @@ mod tests {
         );
         // `iffy` and `elsewhere` must remain identifiers
         assert_eq!(tokenize("iffy"), vec![Token::Ident("iffy".into())]);
-        assert_eq!(tokenize("elsewhere"), vec![Token::Ident("elsewhere".into())]);
+        assert_eq!(
+            tokenize("elsewhere"),
+            vec![Token::Ident("elsewhere".into())]
+        );
     }
 
     #[test]
     fn test_string_escapes() {
-        assert_eq!(tokenize(r#""hello\nworld""#), vec![Token::Str("hello\nworld".into())]);
-        assert_eq!(tokenize(r#""tab\there""#), vec![Token::Str("tab\there".into())]);
+        assert_eq!(
+            tokenize(r#""hello\nworld""#),
+            vec![Token::Str("hello\nworld".into())]
+        );
+        assert_eq!(
+            tokenize(r#""tab\there""#),
+            vec![Token::Str("tab\there".into())]
+        );
         assert_eq!(tokenize(r#""quo\"te""#), vec![Token::Str("quo\"te".into())]);
     }
 }

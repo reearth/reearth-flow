@@ -85,12 +85,18 @@ impl ValueObject for UrlObject {
 
 pub fn builtin_url(args: &[Value]) -> Result<Value> {
     let s = match args.first() {
-        None => return Err(Error::Eval { msg: "Url() requires a string argument".into() }),
+        None => {
+            return Err(Error::Eval {
+                msg: "Url() requires a string argument".into(),
+            })
+        }
         Some(Value::String(s)) => s.clone(),
         Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
-        Some(v) => return Err(Error::Eval {
-            msg: format!("Url() expects a string, got {v:?}"),
-        }),
+        Some(v) => {
+            return Err(Error::Eval {
+                msg: format!("Url() expects a string, got {v:?}"),
+            })
+        }
     };
     let uri = Uri::from_str(&s).map_err(|e| Error::Eval { msg: e.to_string() })?;
     Ok(Value::Object(Box::new(UrlObject(uri))))
@@ -122,7 +128,10 @@ mod tests {
 
     #[test]
     fn test_url_str() {
-        assert_eq!(run(r#"str(Url("/foo/bar"))"#), Value::from("file:///foo/bar"));
+        assert_eq!(
+            run(r#"str(Url("/foo/bar"))"#),
+            Value::from("file:///foo/bar")
+        );
     }
 
     #[test]
@@ -149,7 +158,10 @@ mod tests {
 
     #[test]
     fn test_url_extension() {
-        assert_eq!(run(r#"Url("/foo/bar.gml").extension()"#), Value::from("gml"));
+        assert_eq!(
+            run(r#"Url("/foo/bar.gml").extension()"#),
+            Value::from("gml")
+        );
     }
 
     #[test]

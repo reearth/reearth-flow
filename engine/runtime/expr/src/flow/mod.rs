@@ -21,9 +21,11 @@ pub fn json_to_value(v: serde_json::Value) -> Value {
         }
         serde_json::Value::String(s) => Value::String(s),
         serde_json::Value::Array(arr) => Value::Array(arr.into_iter().map(json_to_value).collect()),
-        serde_json::Value::Object(map) => {
-            Value::Map(map.into_iter().map(|(k, v)| (k, json_to_value(v))).collect())
-        }
+        serde_json::Value::Object(map) => Value::Map(
+            map.into_iter()
+                .map(|(k, v)| (k, json_to_value(v)))
+                .collect(),
+        ),
     }
 }
 
@@ -36,11 +38,11 @@ pub fn value_to_json(v: Value) -> serde_json::Value {
             .map(serde_json::Value::Number)
             .unwrap_or(serde_json::Value::Null),
         Value::String(s) => serde_json::Value::String(s),
-        Value::Array(arr) => {
-            serde_json::Value::Array(arr.into_iter().map(value_to_json).collect())
-        }
+        Value::Array(arr) => serde_json::Value::Array(arr.into_iter().map(value_to_json).collect()),
         Value::Map(map) => serde_json::Value::Object(
-            map.into_iter().map(|(k, v)| (k, value_to_json(v))).collect(),
+            map.into_iter()
+                .map(|(k, v)| (k, value_to_json(v)))
+                .collect(),
         ),
         Value::Object(obj) => serde_json::Value::String(format!("<{}>", obj.type_name())),
     }
@@ -56,9 +58,16 @@ pub fn context_from_feature(
     ctx.register(
         "__resolve",
         Box::new(move |args| {
-            let name = args.first().and_then(|v| {
-                if let Value::String(s) = v { Some(s.as_str()) } else { None }
-            }).unwrap_or("");
+            let name = args
+                .first()
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or("");
             Ok(attrs
                 .get(&Attribute::new(name))
                 .map(|v| json_to_value(serde_json::Value::from(v.clone())))
@@ -68,9 +77,16 @@ pub fn context_from_feature(
     ctx.register(
         "value",
         Box::new(move |args| {
-            let name = args.first().and_then(|v| {
-                if let Value::String(s) = v { Some(s.as_str()) } else { None }
-            }).unwrap_or("");
+            let name = args
+                .first()
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or("");
             Ok(attrs2
                 .get(&Attribute::new(name))
                 .map(|v| json_to_value(serde_json::Value::from(v.clone())))
@@ -80,10 +96,21 @@ pub fn context_from_feature(
     ctx.register(
         "env",
         Box::new(move |args| {
-            let name = args.first().and_then(|v| {
-                if let Value::String(s) = v { Some(s.as_str()) } else { None }
-            }).unwrap_or("");
-            Ok(env_vars.get(name).cloned().map(json_to_value).unwrap_or(Value::Null))
+            let name = args
+                .first()
+                .and_then(|v| {
+                    if let Value::String(s) = v {
+                        Some(s.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or("");
+            Ok(env_vars
+                .get(name)
+                .cloned()
+                .map(json_to_value)
+                .unwrap_or(Value::Null))
         }),
     );
     ctx
@@ -94,9 +121,9 @@ pub fn attribute_value_from_eval(v: Value) -> AttributeValue {
         Value::Null => AttributeValue::Null,
         Value::Bool(b) => AttributeValue::Bool(b),
         Value::Int(n) => AttributeValue::Number(n.into()),
-        Value::Float(f) => AttributeValue::Number(
-            serde_json::Number::from_f64(f).unwrap_or_else(|| 0i64.into()),
-        ),
+        Value::Float(f) => {
+            AttributeValue::Number(serde_json::Number::from_f64(f).unwrap_or_else(|| 0i64.into()))
+        }
         Value::String(s) => AttributeValue::String(s),
         other => AttributeValue::String(value_to_json(other).to_string()),
     }

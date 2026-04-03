@@ -203,15 +203,20 @@ impl Cesium3DTilesWriter {
             .as_ref()
             .and_then(|key| ctx.feature.get(key).and_then(|v| v.as_string()));
 
-        let expr_ctx = reearth_flow_expr::flow::context_from_feature(
-            &ctx.feature,
-            Arc::clone(&self.env_vars),
-        );
-        let eval_uri = |expr| reearth_flow_expr::eval_string(expr, &expr_ctx)
-            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
-            .and_then(|s| Uri::from_str(&s).map_err(SinkError::cesium3dtiles_writer));
+        let expr_ctx =
+            reearth_flow_expr::flow::context_from_feature(&ctx.feature, Arc::clone(&self.env_vars));
+        let eval_uri = |expr| {
+            reearth_flow_expr::eval_string(expr, &expr_ctx)
+                .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
+                .and_then(|s| Uri::from_str(&s).map_err(SinkError::cesium3dtiles_writer))
+        };
         let output = eval_uri(&self.params.output)?;
-        let compress_output = self.params.compress_output.as_ref().map(eval_uri).transpose()?;
+        let compress_output = self
+            .params
+            .compress_output
+            .as_ref()
+            .map(eval_uri)
+            .transpose()?;
 
         let feature = {
             let mut attrs = crate::schema::filter_and_cast_attributes(
