@@ -53,4 +53,12 @@ pub enum Expr {
     },
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinOp, Box<Expr>),
+    /// `let name = value; body` — lexically scoped binding; evaluates to body
+    Let {
+        name: String,
+        value: Box<Expr>,
+        body: Box<Expr>,
+    },
+    /// `{ e1; e2; e3 }` — sequence expression; evaluates each, returns last
+    Block(Vec<Expr>),
 }

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use indexmap::IndexMap;
 
@@ -46,7 +47,37 @@ impl Default for Context {
     }
 }
 
+// Lexical environment: immutable linked list via Arc.
+// Each `let` evaluation prepends one frame; lookup walks the chain.
+struct EnvFrame {
+    name: String,
+    value: Value,
+    parent: Env,
+}
+
+type Env = Option<Arc<EnvFrame>>;
+
+fn env_lookup(env: &Env, name: &str) -> Option<Value> {
+    let mut cur = env.as_deref();
+    while let Some(frame) = cur {
+        if frame.name == name {
+            return Some(frame.value.clone());
+        }
+        cur = frame.parent.as_deref();
+    }
+    None
+}
+
+fn env_extend(parent: &Env, name: String, value: Value) -> Env {
+    Some(Arc::new(EnvFrame { name, value, parent: parent.clone() }))
+}
+
+// Public entry point — env starts empty.
 pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
+    eval_inner(expr, ctx, &None)
+}
+
+fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
     match expr {
         Expr::Null => Ok(Value::Null),
         Expr::Bool(b) => Ok(Value::Bool(*b)),
@@ -56,58 +87,77 @@ pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
             .unwrap_or(Value::Null)),
         Expr::Str(s) => Ok(Value::String(s.clone())),
         Expr::Array(items) => {
-            let values: Result<Vec<_>> = items.iter().map(|e| eval(e, ctx)).collect();
+            let values: Result<Vec<_>> = items.iter().map(|e| eval_inner(e, ctx, env)).collect();
             Ok(Value::Array(values?))
         }
-        Expr::Var(name) => ctx.call("__resolve", vec![Value::String(name.clone())]),
+        Expr::Var(name) => {
+            // Lexical env takes priority; fall through to __resolve for external vars.
+            if let Some(v) = env_lookup(env, name) {
+                Ok(v)
+            } else {
+                ctx.call("__resolve", vec![Value::String(name.clone())])
+            }
+        }
         Expr::Index(target, key) => {
-            let target = eval(target, ctx)?;
-            let key = eval(key, ctx)?;
+            let target = eval_inner(target, ctx, env)?;
+            let key = eval_inner(key, ctx, env)?;
             eval_index(target, key)
         }
         Expr::Slice { target, start, stop, step } => {
-            let target = eval(target, ctx)?;
-            let start = start.as_deref().map(|e| eval(e, ctx)).transpose()?;
-            let stop = stop.as_deref().map(|e| eval(e, ctx)).transpose()?;
-            let step = step.as_deref().map(|e| eval(e, ctx)).transpose()?;
+            let target = eval_inner(target, ctx, env)?;
+            let start = start.as_deref().map(|e| eval_inner(e, ctx, env)).transpose()?;
+            let stop = stop.as_deref().map(|e| eval_inner(e, ctx, env)).transpose()?;
+            let step = step.as_deref().map(|e| eval_inner(e, ctx, env)).transpose()?;
             eval_slice(target, start, stop, step)
         }
         Expr::FuncCall { name, args } => {
-            let args: Result<Vec<_>> = args.iter().map(|e| eval(e, ctx)).collect();
+            let args: Result<Vec<_>> = args.iter().map(|e| eval_inner(e, ctx, env)).collect();
             ctx.call(name, args?)
         }
         Expr::Unary(op, expr) => {
-            let val = eval(expr, ctx)?;
+            let val = eval_inner(expr, ctx, env)?;
             eval_unary(op, val)
         }
         Expr::MethodCall { receiver, method, args } => {
-            let recv = eval(receiver, ctx)?;
-            let evaled: Result<Vec<_>> = args.iter().map(|e| eval(e, ctx)).collect();
+            let recv = eval_inner(receiver, ctx, env)?;
+            let evaled: Result<Vec<_>> = args.iter().map(|e| eval_inner(e, ctx, env)).collect();
             eval_method(recv, method, &evaled?)
         }
         Expr::Binary(left, op, right) => {
             match op {
                 BinOp::And => {
-                    let l = eval(left, ctx)?;
+                    let l = eval_inner(left, ctx, env)?;
                     if !is_truthy(&l) {
                         return Ok(Value::Bool(false));
                     }
-                    let r = eval(right, ctx)?;
+                    let r = eval_inner(right, ctx, env)?;
                     return Ok(Value::Bool(is_truthy(&r)));
                 }
                 BinOp::Or => {
-                    let l = eval(left, ctx)?;
+                    let l = eval_inner(left, ctx, env)?;
                     if is_truthy(&l) {
                         return Ok(Value::Bool(true));
                     }
-                    let r = eval(right, ctx)?;
+                    let r = eval_inner(right, ctx, env)?;
                     return Ok(Value::Bool(is_truthy(&r)));
                 }
                 _ => {}
             }
-            let left = eval(left, ctx)?;
-            let right = eval(right, ctx)?;
+            let left = eval_inner(left, ctx, env)?;
+            let right = eval_inner(right, ctx, env)?;
             eval_binary(op, left, right)
+        }
+        Expr::Let { name, value, body } => {
+            let v = eval_inner(value, ctx, env)?;
+            let new_env = env_extend(env, name.clone(), v);
+            eval_inner(body, ctx, &new_env)
+        }
+        Expr::Block(exprs) => {
+            let mut result = Value::Null;
+            for e in exprs {
+                result = eval_inner(e, ctx, env)?;
+            }
+            Ok(result)
         }
     }
 }
@@ -553,7 +603,6 @@ mod tests {
     use super::super::parser::parse;
 
     fn ctx_with_vars(vars: &[(&str, Value)]) -> Context {
-        use std::sync::Arc;
         let map: HashMap<String, Value> = vars
             .iter()
             .map(|(k, v)| (k.to_string(), v.clone()))
@@ -824,5 +873,101 @@ mod tests {
             ),
             Value::from(true)
         );
+    }
+
+    #[test]
+    fn test_let_basic() {
+        assert_eq!(run("let x = 42; x", &[]), Value::from(42i64));
+    }
+
+    #[test]
+    fn test_let_used_in_expr() {
+        assert_eq!(run("let x = 3; x * x", &[]), Value::from(9i64));
+    }
+
+    #[test]
+    fn test_let_chain() {
+        assert_eq!(run("let x = 2; let y = x + 1; x * y", &[]), Value::from(6i64));
+    }
+
+    #[test]
+    fn test_let_shadow() {
+        assert_eq!(run("let x = 1; let x = 99; x", &[]), Value::from(99i64));
+    }
+
+    #[test]
+    fn test_let_scope_does_not_leak() {
+        // inner let shadows outer; after the paren group, outer x is visible again
+        assert_eq!(
+            run("let x = 10; (let x = 99; x) + x", &[]),
+            Value::from(109i64)
+        );
+    }
+
+    #[test]
+    fn test_let_shadows_external_var() {
+        // lexical binding wins over __resolve
+        assert_eq!(run("let x = 7; x", &[("x", Value::from(999i64))]), Value::from(7i64));
+    }
+
+    #[test]
+    fn test_block_value() {
+        assert_eq!(run("{ 1; 2; 3 }", &[]), Value::from(3i64));
+    }
+
+    #[test]
+    fn test_block_trailing_semi() {
+        assert_eq!(run("{ 42; }", &[]), Value::Null);
+    }
+
+    #[test]
+    fn test_block_empty() {
+        assert_eq!(run("{}", &[]), Value::Null);
+    }
+
+    #[test]
+    fn test_block_let() {
+        assert_eq!(run("{ let x = 5; x * 2 }", &[]), Value::from(10i64));
+    }
+
+    #[test]
+    fn test_block_multi_let() {
+        assert_eq!(
+            run("{ let a = 3; let b = 4; a * a + b * b }", &[]),
+            Value::from(25i64)
+        );
+    }
+
+    #[test]
+    fn test_block_let_trailing_semi() {
+        assert_eq!(run("{ let x = 1; }", &[]), Value::Null);
+    }
+
+    #[test]
+    fn test_block_as_expr_in_binop() {
+        assert_eq!(run("{ let x = 3; x } + { let y = 4; y }", &[]), Value::from(7i64));
+    }
+
+    #[test]
+    fn test_nested_blocks() {
+        assert_eq!(
+            run("{ let x = 1; { let y = 2; x + y } }", &[]),
+            Value::from(3i64)
+        );
+    }
+
+    #[test]
+    fn test_let_in_parens() {
+        assert_eq!(run("(let x = 10; x) * 2", &[]), Value::from(20i64));
+    }
+
+    #[test]
+    fn test_block_scope_isolation() {
+        // block returns its let-bound value
+        assert_eq!(run("{ let x = 1; x } + 0", &[]), Value::from(1i64));
+        // x outside the block is unbound (Null via __resolve fallback)
+        assert_eq!(run("x", &[]), Value::Null);
+        // outer let is not affected by inner let of same name
+        assert_eq!(run("let x = 10; { let x = 99; x } + x", &[]), Value::from(109i64));
     }
 }
