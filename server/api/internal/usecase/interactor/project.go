@@ -235,7 +235,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	debug := true
 
 	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
-		return nil, fmt.Errorf("failed to flush websocket messages to GCS: %v", err)
+		return nil, err
 	}
 
 	j, err := job.New().
