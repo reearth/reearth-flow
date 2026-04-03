@@ -121,6 +121,38 @@ mod tests {
     }
 
     #[test]
+    fn test_slice() {
+        use crate::core::ast::Expr;
+        assert_eq!(
+            parse(r#""abc"[1:2]"#).unwrap(),
+            Expr::Slice {
+                target: Box::new(Expr::Str("abc".into())),
+                start: Some(Box::new(Expr::Int(1))),
+                stop: Some(Box::new(Expr::Int(2))),
+                step: None,
+            }
+        );
+        assert_eq!(
+            parse(r#""abc"[::-1]"#).unwrap(),
+            Expr::Slice {
+                target: Box::new(Expr::Str("abc".into())),
+                start: None,
+                stop: None,
+                step: Some(Box::new(Expr::Unary(UnaryOp::Neg, Box::new(Expr::Int(1))))),
+            }
+        );
+        assert_eq!(
+            parse(r#""abc"[:]"#).unwrap(),
+            Expr::Slice {
+                target: Box::new(Expr::Str("abc".into())),
+                start: None,
+                stop: None,
+                step: None,
+            }
+        );
+    }
+
+    #[test]
     fn test_array_literal() {
         assert_eq!(
             parse("[1, 2, 3]").unwrap(),
