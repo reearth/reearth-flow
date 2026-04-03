@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, UnaryOp};
-use super::builtins::PathObject;
+use super::builtins::builtin_path;
 use super::error::{Error, Result};
 use super::value::Value;
 
@@ -22,12 +22,7 @@ impl Context {
         ctx.register("float", Box::new(builtin_float));
         ctx.register("bool", Box::new(builtin_bool));
         ctx.register("list", Box::new(builtin_list));
-        ctx.register("Path", Box::new(|args| {
-            let s = args.first().and_then(|v| {
-                if let Value::String(s) = v { Some(s.clone()) } else { None }
-            }).unwrap_or_default();
-            Ok(Value::Object(Box::new(PathObject(s))))
-        }));
+        ctx.register("Path", Box::new(builtin_path));
         ctx
     }
 
