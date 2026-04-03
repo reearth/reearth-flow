@@ -16,7 +16,9 @@ pub struct Context {
 
 impl Context {
     pub fn new() -> Self {
-        let mut ctx = Self { funcs: HashMap::new() };
+        let mut ctx = Self {
+            funcs: HashMap::new(),
+        };
         ctx.register("map", Box::new(builtin_map));
         ctx.register("str", Box::new(builtin_str));
         ctx.register("int", Box::new(builtin_int));
@@ -69,7 +71,11 @@ fn env_lookup(env: &Env, name: &str) -> Option<Value> {
 }
 
 fn env_extend(parent: &Env, name: String, value: Value) -> Env {
-    Some(Arc::new(EnvFrame { name, value, parent: parent.clone() }))
+    Some(Arc::new(EnvFrame {
+        name,
+        value,
+        parent: parent.clone(),
+    }))
 }
 
 // Public entry point — env starts empty.
@@ -101,11 +107,25 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
             let key = eval_inner(key, ctx, env)?;
             eval_index(target, key)
         }
-        Expr::Slice { target, start, stop, step } => {
+        Expr::Slice {
+            target,
+            start,
+            stop,
+            step,
+        } => {
             let target = eval_inner(target, ctx, env)?;
-            let start = start.as_deref().map(|e| eval_inner(e, ctx, env)).transpose()?;
-            let stop = stop.as_deref().map(|e| eval_inner(e, ctx, env)).transpose()?;
-            let step = step.as_deref().map(|e| eval_inner(e, ctx, env)).transpose()?;
+            let start = start
+                .as_deref()
+                .map(|e| eval_inner(e, ctx, env))
+                .transpose()?;
+            let stop = stop
+                .as_deref()
+                .map(|e| eval_inner(e, ctx, env))
+                .transpose()?;
+            let step = step
+                .as_deref()
+                .map(|e| eval_inner(e, ctx, env))
+                .transpose()?;
             eval_slice(target, start, stop, step)
         }
         Expr::FuncCall { name, args } => {
@@ -116,7 +136,11 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
             let val = eval_inner(expr, ctx, env)?;
             eval_unary(op, val)
         }
-        Expr::MethodCall { receiver, method, args } => {
+        Expr::MethodCall {
+            receiver,
+            method,
+            args,
+        } => {
             let recv = eval_inner(receiver, ctx, env)?;
             let evaled: Result<Vec<_>> = args.iter().map(|e| eval_inner(e, ctx, env)).collect();
             eval_method(recv, method, &evaled?)
@@ -278,13 +302,20 @@ fn slice_indices(len: usize, start: Option<i64>, stop: Option<i64>, step: i64) -
     indices
 }
 
-fn eval_slice(target: Value, start: Option<Value>, stop: Option<Value>, step: Option<Value>) -> Result<Value> {
+fn eval_slice(
+    target: Value,
+    start: Option<Value>,
+    stop: Option<Value>,
+    step: Option<Value>,
+) -> Result<Value> {
     let step = match step {
         None => 1i64,
         Some(v) => as_slice_index(v, "step")?,
     };
     if step == 0 {
-        return Err(Error::Eval { msg: "slice step cannot be zero".into() });
+        return Err(Error::Eval {
+            msg: "slice step cannot be zero".into(),
+        });
     }
     let start = start.map(|v| as_slice_index(v, "start")).transpose()?;
     let stop = stop.map(|v| as_slice_index(v, "stop")).transpose()?;
@@ -292,14 +323,20 @@ fn eval_slice(target: Value, start: Option<Value>, stop: Option<Value>, step: Op
     match target {
         Value::Array(arr) => {
             let indices = slice_indices(arr.len(), start, stop, step);
-            Ok(Value::Array(indices.into_iter().map(|i| arr[i].clone()).collect()))
+            Ok(Value::Array(
+                indices.into_iter().map(|i| arr[i].clone()).collect(),
+            ))
         }
         Value::String(s) => {
             let chars: Vec<char> = s.chars().collect();
             let indices = slice_indices(chars.len(), start, stop, step);
-            Ok(Value::String(indices.into_iter().map(|i| chars[i]).collect()))
+            Ok(Value::String(
+                indices.into_iter().map(|i| chars[i]).collect(),
+            ))
         }
-        v => Err(Error::Eval { msg: format!("cannot slice {v:?}") }),
+        v => Err(Error::Eval {
+            msg: format!("cannot slice {v:?}"),
+        }),
     }
 }
 
@@ -322,12 +359,12 @@ fn binop_dunder(op: &BinOp) -> Option<&'static str> {
         BinOp::Sub => Some("__sub__"),
         BinOp::Mul => Some("__mul__"),
         BinOp::Div => Some("__div__"),
-        BinOp::Eq  => Some("__eq__"),
-        BinOp::Ne  => Some("__ne__"),
-        BinOp::Lt  => Some("__lt__"),
-        BinOp::Le  => Some("__le__"),
-        BinOp::Gt  => Some("__gt__"),
-        BinOp::Ge  => Some("__ge__"),
+        BinOp::Eq => Some("__eq__"),
+        BinOp::Ne => Some("__ne__"),
+        BinOp::Lt => Some("__lt__"),
+        BinOp::Le => Some("__le__"),
+        BinOp::Gt => Some("__gt__"),
+        BinOp::Ge => Some("__ge__"),
         BinOp::In | BinOp::And | BinOp::Or => None,
     }
 }
@@ -351,10 +388,10 @@ enum Numeric {
 
 fn coerce_numeric(a: Value, b: Value) -> Result<(Numeric, Numeric)> {
     match (a, b) {
-        (Value::Int(a),   Value::Int(b))   => Ok((Numeric::Int(a),       Numeric::Int(b))),
-        (Value::Int(a),   Value::Float(b)) => Ok((Numeric::Float(a as f64), Numeric::Float(b))),
-        (Value::Float(a), Value::Int(b))   => Ok((Numeric::Float(a),     Numeric::Float(b as f64))),
-        (Value::Float(a), Value::Float(b)) => Ok((Numeric::Float(a),     Numeric::Float(b))),
+        (Value::Int(a), Value::Int(b)) => Ok((Numeric::Int(a), Numeric::Int(b))),
+        (Value::Int(a), Value::Float(b)) => Ok((Numeric::Float(a as f64), Numeric::Float(b))),
+        (Value::Float(a), Value::Int(b)) => Ok((Numeric::Float(a), Numeric::Float(b as f64))),
+        (Value::Float(a), Value::Float(b)) => Ok((Numeric::Float(a), Numeric::Float(b))),
         (a, b) => Err(Error::Eval {
             msg: format!("cannot apply numeric op to {a:?} and {b:?}"),
         }),
@@ -368,7 +405,7 @@ fn numeric_op(
     float_op: impl Fn(f64, f64) -> f64,
 ) -> Result<Value> {
     match coerce_numeric(left, right)? {
-        (Numeric::Int(a),   Numeric::Int(b))   => Ok(Value::Int(int_op(a, b))),
+        (Numeric::Int(a), Numeric::Int(b)) => Ok(Value::Int(int_op(a, b))),
         (Numeric::Float(a), Numeric::Float(b)) => Ok(Value::Float(float_op(a, b))),
         _ => unreachable!(),
     }
@@ -384,12 +421,14 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
                 Ok(Value::Array(a))
             }
             (a, b) => match coerce_numeric(a, b) {
-                Ok((Numeric::Int(a),   Numeric::Int(b)))   => Ok(Value::Int(a + b)),
+                Ok((Numeric::Int(a), Numeric::Int(b))) => Ok(Value::Int(a + b)),
                 Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
                 Ok(_) => unreachable!(),
                 Err(_) => {
                     // re-construct originals is not possible after move; surface as object op error
-                    Err(Error::Eval { msg: "'+' not supported for these types".into() })
+                    Err(Error::Eval {
+                        msg: "'+' not supported for these types".into(),
+                    })
                 }
             },
         },
@@ -397,11 +436,23 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
         BinOp::Mul => numeric_op(left, right, |a, b| a * b, |a, b| a * b),
         BinOp::Div => match coerce_numeric(left.clone(), right.clone()) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
-                if b == 0 { return Err(Error::Eval { msg: "division by zero".into() }); }
-                if a % b == 0 { Ok(Value::Int(a / b)) } else { Ok(Value::Float(a as f64 / b as f64)) }
+                if b == 0 {
+                    return Err(Error::Eval {
+                        msg: "division by zero".into(),
+                    });
+                }
+                if a % b == 0 {
+                    Ok(Value::Int(a / b))
+                } else {
+                    Ok(Value::Float(a as f64 / b as f64))
+                }
             }
             Ok((Numeric::Float(a), Numeric::Float(b))) => {
-                if b == 0.0 { return Err(Error::Eval { msg: "division by zero".into() }); }
+                if b == 0.0 {
+                    return Err(Error::Eval {
+                        msg: "division by zero".into(),
+                    });
+                }
                 Ok(Value::Float(a / b))
             }
             Ok(_) => unreachable!(),
@@ -414,8 +465,12 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
         BinOp::Gt => compare_values(left, right, |o| o == std::cmp::Ordering::Greater),
         BinOp::Ge => compare_values(left, right, |o| o != std::cmp::Ordering::Less),
         BinOp::In => match (left, right) {
-            (left, Value::Array(arr)) => Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left)))),
-            (Value::String(needle), Value::String(haystack)) => Ok(Value::Bool(haystack.contains(needle.as_str()))),
+            (left, Value::Array(arr)) => {
+                Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left))))
+            }
+            (Value::String(needle), Value::String(haystack)) => {
+                Ok(Value::Bool(haystack.contains(needle.as_str())))
+            }
             (Value::String(key), Value::Map(map)) => Ok(Value::Bool(map.contains_key(&key))),
             (_, Value::Null) => Ok(Value::Bool(false)),
             (l, r) => Err(Error::Eval {
@@ -432,16 +487,18 @@ fn compare_values(
     pred: impl Fn(std::cmp::Ordering) -> bool,
 ) -> Result<Value> {
     let ord = match coerce_numeric(left.clone(), right.clone()) {
-        Ok((Numeric::Int(a),   Numeric::Int(b)))   => a.cmp(&b),
+        Ok((Numeric::Int(a), Numeric::Int(b))) => a.cmp(&b),
         Ok((Numeric::Float(a), Numeric::Float(b))) => {
             a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal)
         }
         Ok(_) => unreachable!(),
         Err(_) => match (&left, &right) {
             (Value::String(a), Value::String(b)) => a.as_str().cmp(b.as_str()),
-            _ => return Err(Error::Eval {
-                msg: format!("cannot compare {left:?} and {right:?}"),
-            }),
+            _ => {
+                return Err(Error::Eval {
+                    msg: format!("cannot compare {left:?} and {right:?}"),
+                })
+            }
         },
     };
     Ok(Value::Bool(pred(ord)))
@@ -495,13 +552,14 @@ fn builtin_int(args: &[Value]) -> Result<Value> {
         Some(Value::Int(n)) => Ok(Value::Int(*n)),
         Some(Value::Float(f)) => Ok(Value::Int(f.trunc() as i64)),
         Some(Value::Bool(b)) => Ok(Value::Int(*b as i64)),
-        Some(Value::String(s)) => s
-            .trim()
-            .parse::<i64>()
-            .map(Value::Int)
-            .map_err(|_| Error::Eval {
-                msg: format!("int() cannot parse {s:?}"),
-            }),
+        Some(Value::String(s)) => {
+            s.trim()
+                .parse::<i64>()
+                .map(Value::Int)
+                .map_err(|_| Error::Eval {
+                    msg: format!("int() cannot parse {s:?}"),
+                })
+        }
         Some(v) => Err(Error::Eval {
             msg: format!("int() not supported for {v:?}"),
         }),
@@ -516,13 +574,14 @@ fn builtin_float(args: &[Value]) -> Result<Value> {
         Some(Value::Float(f)) => Ok(Value::Float(*f)),
         Some(Value::Int(n)) => Ok(Value::Float(*n as f64)),
         Some(Value::Bool(b)) => Ok(Value::Float(if *b { 1.0 } else { 0.0 })),
-        Some(Value::String(s)) => s
-            .trim()
-            .parse::<f64>()
-            .map(Value::Float)
-            .map_err(|_| Error::Eval {
-                msg: format!("float() cannot parse {s:?}"),
-            }),
+        Some(Value::String(s)) => {
+            s.trim()
+                .parse::<f64>()
+                .map(Value::Float)
+                .map_err(|_| Error::Eval {
+                    msg: format!("float() cannot parse {s:?}"),
+                })
+        }
         Some(v) => Err(Error::Eval {
             msg: format!("float() not supported for {v:?}"),
         }),
@@ -555,7 +614,11 @@ fn builtin_list(args: &[Value]) -> Result<Value> {
 fn builtin_map(args: &[Value]) -> Result<Value> {
     let pairs = match args.first() {
         Some(Value::Array(a)) => a,
-        _ => return Err(Error::Eval { msg: "map() expects an array of [key, value] pairs".into() }),
+        _ => {
+            return Err(Error::Eval {
+                msg: "map() expects an array of [key, value] pairs".into(),
+            })
+        }
     };
     let mut out = IndexMap::new();
     for (i, pair) in pairs.iter().enumerate() {
@@ -563,11 +626,19 @@ fn builtin_map(args: &[Value]) -> Result<Value> {
             Value::Array(kv) if kv.len() == 2 => {
                 let key = match &kv[0] {
                     Value::String(s) => s.clone(),
-                    v => return Err(Error::Eval { msg: format!("map() key at index {i} must be a string, got {v:?}") }),
+                    v => {
+                        return Err(Error::Eval {
+                            msg: format!("map() key at index {i} must be a string, got {v:?}"),
+                        })
+                    }
                 };
                 out.insert(key, kv[1].clone());
             }
-            _ => return Err(Error::Eval { msg: format!("map() entry at index {i} must be a 2-element array") }),
+            _ => {
+                return Err(Error::Eval {
+                    msg: format!("map() entry at index {i} must be a 2-element array"),
+                })
+            }
         }
     }
     Ok(Value::Map(out))
@@ -575,8 +646,8 @@ fn builtin_map(args: &[Value]) -> Result<Value> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::parser::parse;
+    use super::*;
 
     fn ctx_with_vars(vars: &[(&str, Value)]) -> Context {
         let map: HashMap<String, Value> = vars
@@ -588,9 +659,16 @@ mod tests {
         ctx.register(
             "__resolve",
             Box::new(move |args| {
-                let name = args.first().and_then(|v| {
-                    if let Value::String(s) = v { Some(s.as_str()) } else { None }
-                }).unwrap_or("");
+                let name = args
+                    .first()
+                    .and_then(|v| {
+                        if let Value::String(s) = v {
+                            Some(s.as_str())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or("");
                 Ok(map.get(name).cloned().unwrap_or(Value::Null))
             }),
         );
@@ -678,9 +756,16 @@ mod tests {
         ctx.register(
             "join_path",
             Box::new(|args| {
-                let parts: Vec<&str> = args.iter().map(|v| {
-                    if let Value::String(s) = v { s.as_str() } else { "" }
-                }).collect();
+                let parts: Vec<&str> = args
+                    .iter()
+                    .map(|v| {
+                        if let Value::String(s) = v {
+                            s.as_str()
+                        } else {
+                            ""
+                        }
+                    })
+                    .collect();
                 Ok(Value::String(parts.join("/")))
             }),
         );
@@ -705,10 +790,13 @@ mod tests {
     #[test]
     fn test_map_builtin() {
         let result = run(r#"map([["a", 1], ["b", 2]])"#, &[]);
-        assert_eq!(result, Value::Map(indexmap::indexmap! {
-            "a".into() => Value::from(1i64),
-            "b".into() => Value::from(2i64),
-        }));
+        assert_eq!(
+            result,
+            Value::Map(indexmap::indexmap! {
+                "a".into() => Value::from(1i64),
+                "b".into() => Value::from(2i64),
+            })
+        );
     }
 
     #[test]
@@ -719,7 +807,11 @@ mod tests {
     #[test]
     fn test_negative_index() {
         assert_eq!(run(r#""abcde"[-1]"#, &[]), Value::from("e"));
-        let arr = Value::Array(vec![Value::from(1i64), Value::from(2i64), Value::from(3i64)]);
+        let arr = Value::Array(vec![
+            Value::from(1i64),
+            Value::from(2i64),
+            Value::from(3i64),
+        ]);
         assert_eq!(run("arr[-1]", &[("arr", arr)]), Value::from(3i64));
     }
 
@@ -744,8 +836,11 @@ mod tests {
     #[test]
     fn test_slice_array() {
         let arr = Value::Array(vec![
-            Value::from(0i64), Value::from(1i64), Value::from(2i64),
-            Value::from(3i64), Value::from(4i64),
+            Value::from(0i64),
+            Value::from(1i64),
+            Value::from(2i64),
+            Value::from(3i64),
+            Value::from(4i64),
         ]);
         assert_eq!(
             run("arr[1:3]", &[("arr", arr.clone())]),
@@ -753,7 +848,13 @@ mod tests {
         );
         assert_eq!(
             run("arr[::-1]", &[("arr", arr.clone())]),
-            Value::Array(vec![Value::from(4i64), Value::from(3i64), Value::from(2i64), Value::from(1i64), Value::from(0i64)])
+            Value::Array(vec![
+                Value::from(4i64),
+                Value::from(3i64),
+                Value::from(2i64),
+                Value::from(1i64),
+                Value::from(0i64)
+            ])
         );
         assert_eq!(
             run("arr[-2:]", &[("arr", arr)]),
@@ -821,7 +922,11 @@ mod tests {
     fn test_len_method() {
         assert_eq!(run(r#""hello".len()"#, &[]), Value::from(5i64));
         assert_eq!(run(r#""".len()"#, &[]), Value::from(0i64));
-        let arr = Value::Array(vec![Value::from(1i64), Value::from(2i64), Value::from(3i64)]);
+        let arr = Value::Array(vec![
+            Value::from(1i64),
+            Value::from(2i64),
+            Value::from(3i64),
+        ]);
         assert_eq!(run("arr.len()", &[("arr", arr)]), Value::from(3i64));
     }
 
@@ -831,7 +936,12 @@ mod tests {
         let b = Value::Array(vec![Value::from(3i64), Value::from(4i64)]);
         assert_eq!(
             run("a + b", &[("a", a), ("b", b)]),
-            Value::Array(vec![Value::from(1i64), Value::from(2i64), Value::from(3i64), Value::from(4i64)])
+            Value::Array(vec![
+                Value::from(1i64),
+                Value::from(2i64),
+                Value::from(3i64),
+                Value::from(4i64)
+            ])
         );
     }
 
@@ -863,7 +973,10 @@ mod tests {
 
     #[test]
     fn test_let_chain() {
-        assert_eq!(run("let x = 2; let y = x + 1; x * y", &[]), Value::from(6i64));
+        assert_eq!(
+            run("let x = 2; let y = x + 1; x * y", &[]),
+            Value::from(6i64)
+        );
     }
 
     #[test]
@@ -883,7 +996,10 @@ mod tests {
     #[test]
     fn test_let_shadows_external_var() {
         // lexical binding wins over __resolve
-        assert_eq!(run("let x = 7; x", &[("x", Value::from(999i64))]), Value::from(7i64));
+        assert_eq!(
+            run("let x = 7; x", &[("x", Value::from(999i64))]),
+            Value::from(7i64)
+        );
     }
 
     #[test]
@@ -921,7 +1037,10 @@ mod tests {
 
     #[test]
     fn test_block_as_expr_in_binop() {
-        assert_eq!(run("{ let x = 3; x } + { let y = 4; y }", &[]), Value::from(7i64));
+        assert_eq!(
+            run("{ let x = 3; x } + { let y = 4; y }", &[]),
+            Value::from(7i64)
+        );
     }
 
     #[test]
@@ -944,7 +1063,10 @@ mod tests {
         // x outside the block is unbound (Null via __resolve fallback)
         assert_eq!(run("x", &[]), Value::Null);
         // outer let is not affected by inner let of same name
-        assert_eq!(run("let x = 10; { let x = 99; x } + x", &[]), Value::from(109i64));
+        assert_eq!(
+            run("let x = 10; { let x = 99; x } + x", &[]),
+            Value::from(109i64)
+        );
     }
 
     #[test]
@@ -978,7 +1100,10 @@ mod tests {
     #[test]
     fn test_if_as_expression_in_binop() {
         assert_eq!(
-            run("(if true { 10 } else { 0 }) + (if false { 0 } else { 5 })", &[]),
+            run(
+                "(if true { 10 } else { 0 }) + (if false { 0 } else { 5 })",
+                &[]
+            ),
             Value::from(15i64)
         );
     }
