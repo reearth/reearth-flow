@@ -278,29 +278,31 @@ fn eval_unary(op: &UnaryOp, val: Value) -> Result<Value> {
     }
 }
 
-fn binop_dunder(op: &BinOp) -> &'static str {
+fn binop_dunder(op: &BinOp) -> Option<&'static str> {
     match op {
-        BinOp::Add => "__add__",
-        BinOp::Sub => "__sub__",
-        BinOp::Mul => "__mul__",
-        BinOp::Div => "__div__",
-        BinOp::Eq  => "__eq__",
-        BinOp::Ne  => "__ne__",
-        BinOp::Lt  => "__lt__",
-        BinOp::Le  => "__le__",
-        BinOp::Gt  => "__gt__",
-        BinOp::Ge  => "__ge__",
-        BinOp::In | BinOp::And | BinOp::Or => "",
+        BinOp::Add => Some("__add__"),
+        BinOp::Sub => Some("__sub__"),
+        BinOp::Mul => Some("__mul__"),
+        BinOp::Div => Some("__div__"),
+        BinOp::Eq  => Some("__eq__"),
+        BinOp::Ne  => Some("__ne__"),
+        BinOp::Lt  => Some("__lt__"),
+        BinOp::Le  => Some("__le__"),
+        BinOp::Gt  => Some("__gt__"),
+        BinOp::Ge  => Some("__ge__"),
+        BinOp::In | BinOp::And | BinOp::Or => None,
     }
 }
 
 fn try_object_op(op: &BinOp, left: Value, right: Value) -> Result<Value> {
-    let dunder = binop_dunder(op);
+    let dunder = binop_dunder(op).ok_or_else(|| Error::Eval {
+        msg: format!("operator not overloadable for {left:?}"),
+    })?;
     if let Value::Object(ref obj) = left {
         return obj.call_method(dunder, &[right]);
     }
     Err(Error::Eval {
-        msg: format!("operator '{}' not supported between {left:?} and {right:?}", dunder),
+        msg: format!("operator '{dunder}' not supported between {left:?} and {right:?}"),
     })
 }
 
@@ -339,11 +341,13 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
         BinOp::Le => compare_values(left, right, |o| o != std::cmp::Ordering::Greater),
         BinOp::Gt => compare_values(left, right, |o| o == std::cmp::Ordering::Greater),
         BinOp::Ge => compare_values(left, right, |o| o != std::cmp::Ordering::Less),
-        BinOp::In => match right {
-            Value::Array(arr) => Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left)))),
-            Value::Null => Ok(Value::Bool(false)),
-            r => Err(Error::Eval {
-                msg: format!("'in' requires an array, got {r:?}"),
+        BinOp::In => match (left, right) {
+            (left, Value::Array(arr)) => Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left)))),
+            (Value::String(needle), Value::String(haystack)) => Ok(Value::Bool(haystack.contains(needle.as_str()))),
+            (Value::String(key), Value::Map(map)) => Ok(Value::Bool(map.contains_key(&key))),
+            (_, Value::Null) => Ok(Value::Bool(false)),
+            (l, r) => Err(Error::Eval {
+                msg: format!("'in' not supported between {l:?} and {r:?}"),
             }),
         },
         BinOp::And | BinOp::Or => unreachable!("handled with short-circuit above"),
