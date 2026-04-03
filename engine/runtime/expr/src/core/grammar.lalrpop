@@ -131,6 +131,7 @@ Primary: Expr = {
     "(" <Expr> ")",
     "[" <items:Comma<Or>> "]" => Expr::Array(items),
     BlockExpr,
+    MapExpr,
     IfExpr,
 };
 
@@ -185,6 +186,26 @@ SeqBody: Expr = {
         Expr::Block(mut items) => { items.insert(0, e); Expr::Block(items) }
         other => Expr::Block(vec![e, other]),
     },
+};
+
+// Map literal: { key: value, ... } — at least one entry so {} stays unambiguous (Null).
+// After reducing the key `Or`, lookahead `:` is never valid in SeqBody context,
+// so LR(1) disambiguates map vs block without any grammar conflict.
+MapExpr: Expr = {
+    "{" <e:MapEntry> <rest:("," <MapEntry>)*> "}" => {
+        let mut entries = vec![e];
+        entries.extend(rest);
+        Expr::Map(entries)
+    },
+    "{" <e:MapEntry> <rest:("," <MapEntry>)*> "," "}" => {
+        let mut entries = vec![e];
+        entries.extend(rest);
+        Expr::Map(entries)
+    },
+};
+
+MapEntry: (Expr, Expr) = {
+    <k:Or> ":" <v:Or> => (k, v),
 };
 
 // Comma-separated list with optional trailing comma, allowing empty.
