@@ -10,7 +10,10 @@ fn main() {
     for line in stdin.lock().lines() {
         let line = match line {
             Ok(l) => l,
-            Err(e) => { eprintln!("error: {e}"); break; }
+            Err(e) => {
+                eprintln!("error: {e}");
+                break;
+            }
         };
         let line = line.trim();
         if !line.is_empty() {
