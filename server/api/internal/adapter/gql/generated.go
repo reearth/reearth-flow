@@ -3793,7 +3793,7 @@ extend type Query {
 	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
   completedAt: DateTime
   deployment: Deployment
-  deploymentId: ID!
+  deploymentId: ID
   debug: Boolean
   id: ID!
   logsURL: String
@@ -8969,9 +8969,9 @@ func (ec *executionContext) _Job_deploymentId(ctx context.Context, field graphql
 			return obj.DeploymentID, nil
 		},
 		nil,
-		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -22821,9 +22821,6 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "deploymentId":
 			out.Values[i] = ec._Job_deploymentId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "debug":
 			out.Values[i] = ec._Job_debug(ctx, field, obj)
 		case "id":

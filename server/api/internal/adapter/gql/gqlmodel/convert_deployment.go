@@ -38,7 +38,7 @@ func ToJob(j *job.Job) *Job {
 	}
 
 	if did := j.Deployment(); did != nil {
-		job.DeploymentID = IDFrom(*did)
+		job.DeploymentID = IDFromRef(did)
 	}
 
 	if urls := j.OutputURLs(); len(urls) > 0 {

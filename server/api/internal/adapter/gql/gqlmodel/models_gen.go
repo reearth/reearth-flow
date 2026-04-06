@@ -308,7 +308,7 @@ type GetHeadInput struct {
 type Job struct {
 	CompletedAt       *time.Time  `json:"completedAt,omitempty"`
 	Deployment        *Deployment `json:"deployment,omitempty"`
-	DeploymentID      ID          `json:"deploymentId"`
+	DeploymentID      *ID         `json:"deploymentId,omitempty"`
 	Debug             *bool       `json:"debug,omitempty"`
 	ID                ID          `json:"id"`
 	LogsURL           *string     `json:"logsURL,omitempty"`

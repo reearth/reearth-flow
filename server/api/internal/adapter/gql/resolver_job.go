@@ -10,7 +10,10 @@ import (
 type jobResolver struct{ *Resolver }
 
 func (r *jobResolver) Deployment(ctx context.Context, obj *gqlmodel.Job) (*gqlmodel.Deployment, error) {
-	return dataloaders(ctx).Deployment.Load(obj.DeploymentID)
+	if obj.DeploymentID == nil {
+		return nil, nil
+	}
+	return dataloaders(ctx).Deployment.Load(*obj.DeploymentID)
 }
 
 func (r *jobResolver) Workspace(ctx context.Context, obj *gqlmodel.Job) (*gqlmodel.Workspace, error) {
