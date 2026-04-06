@@ -9,7 +9,7 @@ use reearth_flow_types::Feature;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::node::{EdgeId, Port};
+use crate::node::EdgeId;
 
 static FEATURE_WRITER_DISABLE: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_FEATURE_WRITER_DISABLE")
@@ -17,9 +17,6 @@ static FEATURE_WRITER_DISABLE: Lazy<bool> = Lazy::new(|| {
         .map(|s| s.to_lowercase() == "true")
         .unwrap_or(false)
 });
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FeatureWriterKey(pub(crate) Port, pub(crate) Port);
 
 #[derive(Debug, Error)]
 pub enum FeatureWriterError {
@@ -52,7 +49,6 @@ impl Clone for Box<dyn FeatureWriter> {
 
 #[async_trait::async_trait]
 pub trait FeatureWriter: Send + Sync + Debug + FeatureWriterClone {
-    fn edge_id(&self) -> EdgeId;
     async fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError>;
     async fn flush(&self) -> Result<(), FeatureWriterError>;
 }
@@ -110,10 +106,6 @@ impl PrimaryKeyLookupFeatureWriter {
 
 #[async_trait::async_trait]
 impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
-    fn edge_id(&self) -> EdgeId {
-        self.edge_id.clone()
-    }
-
     async fn write(&mut self, feature: &Feature) -> Result<(), FeatureWriterError> {
         if *FEATURE_WRITER_DISABLE {
             return Ok(());
