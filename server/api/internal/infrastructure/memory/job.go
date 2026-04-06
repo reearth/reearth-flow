@@ -177,6 +177,41 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 	return nil
 }
 
+func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	var result []*job.Job
+	for _, j := range r.data {
+		pid := j.ProjectID()
+		if pid == nil || *pid != projectID {
+			continue
+		}
+		if debug := j.Debug(); debug == nil || !*debug {
+			continue
+		}
+		result = append(result, j)
+	}
+	return result, nil
+}
+
+func (r *Job) RemoveByProject(ctx context.Context, projectID id.ProjectID) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	for jid, j := range r.data {
+		pid := j.ProjectID()
+		if pid == nil || *pid != projectID {
+			continue
+		}
+		if debug := j.Debug(); debug == nil || !*debug {
+			continue
+		}
+		delete(r.data, jid)
+	}
+	return nil
+}
+
 func (r *Job) Remove(ctx context.Context, id id.JobID) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()

@@ -93,11 +93,17 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 		startNodeUUID = &nid
 	}
 
+	parameters, err := gqlmodel.FromRunParameters(input.Parameters)
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := usecases(ctx).Project.Run(ctx, interfaces.RunProjectParam{
 		ProjectID:     pid,
 		Workflow:      gqlmodel.FromFile(&input.File),
 		PreviousJobID: prevJobID,
 		StartNodeID:   startNodeUUID,
+		Parameters:    parameters,
 	})
 	if err != nil {
 		return nil, err

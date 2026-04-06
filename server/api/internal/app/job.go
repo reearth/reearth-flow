@@ -81,7 +81,7 @@ func (h *JobHandler) CancelJob(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "job not found"})
 	}
 
-	if j.Deployment() != t.Deployment() {
+	if j.Deployment() == nil || *j.Deployment() != t.Deployment() {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "job does not belong to this trigger's deployment"})
 	}
 

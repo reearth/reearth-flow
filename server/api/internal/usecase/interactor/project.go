@@ -202,6 +202,10 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 		return err
 	}
 
+	if err := i.jobRepo.RemoveByProject(ctx, projectID); err != nil {
+		return err
+	}
+
 	tx.Commit()
 	return nil
 }
@@ -236,12 +240,20 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, err
 	}
 
+	doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest project snapshot: %v", err)
+	}
+	projectID := p.ProjectID
+	projectVersion := doc.Version
+
 	debug := true
 
 	j, err := job.New().
 		NewID().
 		Debug(&debug).
-		Deployment(id.NewDeploymentID()). // Using a placeholder deployment ID
+		ProjectID(&projectID).
+		ProjectVersion(&projectVersion).
 		Workspace(prj.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
@@ -262,6 +274,8 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
+
+	j.SetParameters(p.Parameters)
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err

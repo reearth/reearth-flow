@@ -1,6 +1,9 @@
 package gqlmodel
 
 import (
+	"fmt"
+
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -115,6 +118,41 @@ func FromParameterType(t ParameterType) parameter.Type {
 	default:
 		return parameter.TypeText
 	}
+}
+
+func FromRunParameters(inputs []*RunParameterInput) ([]*parameter.Parameter, error) {
+	if len(inputs) == 0 {
+		return nil, nil
+	}
+
+	params := make([]*parameter.Parameter, 0, len(inputs))
+	for _, inp := range inputs {
+		if inp == nil {
+			continue
+		}
+
+		pid, err := id.ParameterIDFrom(string(inp.ID))
+		if err != nil {
+			return nil, fmt.Errorf("invalid parameter id %q: %w", inp.ID, err)
+		}
+
+		p, err := parameter.New().
+			ID(pid).
+			Name(inp.Name).
+			Type(FromParameterType(inp.Type)).
+			Required(inp.Required).
+			Public(inp.Public).
+			DefaultValue(inp.Value).
+			Config(inp.Config).
+			Index(inp.Index).
+			Build()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build parameter %q: %w", inp.ID, err)
+		}
+
+		params = append(params, p)
+	}
+	return params, nil
 }
 
 func convertToJSON(val interface{}) JSON {

@@ -89,3 +89,37 @@ func (d *ParameterDocument) Model() (*parameter.Parameter, error) {
 		UpdatedAt(d.UpdatedAt).
 		Build()
 }
+
+func ParametersFromDocs(docs []ParameterDocument) []*parameter.Parameter {
+	if len(docs) == 0 {
+		return nil
+	}
+
+	params := make([]*parameter.Parameter, 0, len(docs))
+	for _, d := range docs {
+		p, err := d.Model()
+		if err != nil {
+			return nil
+		}
+		params = append(params, p)
+	}
+	return params
+}
+
+func ParametersToDocs(params []*parameter.Parameter) ([]ParameterDocument, []string) {
+	if len(params) == 0 {
+		return nil, nil
+	}
+
+	docs := make([]ParameterDocument, 0, len(params))
+	ids := make([]string, 0, len(params))
+	for _, p := range params {
+		if p == nil {
+			continue
+		}
+		d, id := NewParameter(p)
+		docs = append(docs, *d)
+		ids = append(ids, id)
+	}
+	return docs, ids
+}
