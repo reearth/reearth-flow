@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.13 - 2026-04-07
+
+### engine
+
+#### 🔧 Bug Fixes
+
+- Revert process timeout ([#2028](https://github.com/reearth/reearth-flow/pull/2028)) [`45065a`](https://github.com/reearth/reearth-flow/commit/45065a)
+
+#### ✨ Refactor
+
+- Migrating intermediate data from edges to ports with backward-compatibility ([#2021](https://github.com/reearth/reearth-flow/pull/2021)) [`88817b`](https://github.com/reearth/reearth-flow/commit/88817b)
+- Remove PLATEAU-specific feature.metadata ([#1953](https://github.com/reearth/reearth-flow/pull/1953)) [`5b22d1`](https://github.com/reearth/reearth-flow/commit/5b22d1)
+
+#### Miscellaneous Tasks
+
+- Remove edge-based intermediate data writing ([#2033](https://github.com/reearth/reearth-flow/pull/2033)) [`653ff8`](https://github.com/reearth/reearth-flow/commit/653ff8)
+- Added tests for feature writing ([#2027](https://github.com/reearth/reearth-flow/pull/2027)) [`795491`](https://github.com/reearth/reearth-flow/commit/795491)
+
+### ui
+
+#### 🚀 Features
+
+- Debug Run Intermediate Data move from edge to output port [FLOW-DEV-50] ([#2029](https://github.com/reearth/reearth-flow/pull/2029)) [`79010d`](https://github.com/reearth/reearth-flow/commit/79010d)
+
+#### 🔧 Bug Fixes
+
+- Enhance rjsfIdToPath function to handle additional field ID formats [FLOW-DEV-59] ([#2031](https://github.com/reearth/reearth-flow/pull/2031)) [`b1ee7b`](https://github.com/reearth/reearth-flow/commit/b1ee7b)
+- Enhance LOD handling with refs for selected feature and overlay state ([#2026](https://github.com/reearth/reearth-flow/pull/2026)) [`d9b0f7`](https://github.com/reearth/reearth-flow/commit/d9b0f7)
+
+#### 📖 Documentation
+
+- Refactor CLAUDE.md into AGENTS.md and docs&#x2F; ([#2024](https://github.com/reearth/reearth-flow/pull/2024)) [`73b0e4`](https://github.com/reearth/reearth-flow/commit/73b0e4)
+
 ## 0.1.0-alpha.12 - 2026-03-31
 
 ### Server
