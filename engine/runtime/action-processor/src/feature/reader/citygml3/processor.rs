@@ -14,9 +14,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
+use reearth_flow_types::{Geometry, GeometryValue};
+
 use crate::feature::errors::FeatureProcessorError;
 
-use super::parser::{self, IdRegistry, TopLevelFeature};
+use super::{
+    geometry,
+    parser::{self, IdRegistry, TopLevelFeature},
+};
 
 // ------------------------------------------------------------------
 // Factory
@@ -77,9 +82,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
 
         let dataset_ast = Arc::clone(&ctx.expr_engine)
             .compile(params.dataset.as_ref())
-            .map_err(|e| {
-                FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}"))
-            })?;
+            .map_err(|e| FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}")))?;
 
         Ok(Box::new(FeatureCityGml3Reader {
             global_params: with,
@@ -165,9 +168,7 @@ impl Processor for FeatureCityGml3Reader {
         let uri = Uri::from_str(&path).map_err(|e| {
             FeatureProcessorError::FileCityGml3Reader(format!("Invalid URI `{path}`: {e}"))
         })?;
-        let source_url = Url::from_str(&path).map_err(|e| {
-            FeatureProcessorError::FileCityGml3Reader(format!("Invalid URL `{path}`: {e}"))
-        })?;
+        let source_url: Url = uri.clone().into();
 
         let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
             FeatureProcessorError::FileCityGml3Reader(format!("Storage resolve error: {e}"))
@@ -189,7 +190,19 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         for tlf in &self.pending {
-            let feature = parser::to_feature(tlf, &self.id_registry);
+            // Pass 1: resolve xlinks + build attribute Feature.
+            let mut feature = parser::to_feature(tlf, &self.id_registry);
+
+            // Pass 2: resolve xlinks again for geometry extraction.
+            // TODO: thread a single resolved node through all passes once
+            //       codelist resolution and subfeature extraction are added.
+            let resolved = parser::resolve_xlinks(&tlf.node, &self.id_registry);
+            let citygml_geom = geometry::extract_geometry(&resolved);
+            if !citygml_geom.gml_geometries.is_empty() {
+                *feature.geometry_mut() =
+                    Geometry::with_value(GeometryValue::CityGmlGeometry(citygml_geom));
+            }
+
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature,

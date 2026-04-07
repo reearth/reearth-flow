@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CityGML 3.0: defines geom_template1, referenced by geometry_xlink_referrer.gml.
+  ImplicitGeometry reuse: the geometry template is stored once here; other features
+  may reference it via xlink:href on core:relativeGeometry (the one exception to the
+  rule that geometry XLinks across top-level features are forbidden).
+-->
+<core:CityModel
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:frn="http://www.opengis.net/citygml/cityfurniture/3.0"
+  xmlns:gml="http://www.opengis.net/gml/3.2"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  gml:id="geometry_xlink_definition">
+
+  <core:cityObjectMember>
+    <frn:CityFurniture gml:id="furniture1">
+      <core:lod2ImplicitRepresentation>
+        <core:ImplicitGeometry>
+          <!-- Identity matrix: no rotation/scaling, no translation (origin at referencePoint) -->
+          <core:transformationMatrix>1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</core:transformationMatrix>
+          <core:referencePoint>
+            <gml:Point srsDimension="3">
+              <gml:pos>0 0 0</gml:pos>
+            </gml:Point>
+          </core:referencePoint>
+          <!-- geom_template1: referenced from geometry_xlink_referrer.gml -->
+          <core:relativeGeometry>
+            <gml:MultiSurface gml:id="geom_template1" srsDimension="3">
+              <gml:surfaceMember>
+                <gml:Polygon>
+                  <gml:exterior>
+                    <gml:LinearRing>
+                      <gml:posList>0 0 0 1 0 0 1 1 0 0 1 0 0 0 0</gml:posList>
+                    </gml:LinearRing>
+                  </gml:exterior>
+                </gml:Polygon>
+              </gml:surfaceMember>
+            </gml:MultiSurface>
+          </core:relativeGeometry>
+        </core:ImplicitGeometry>
+      </core:lod2ImplicitRepresentation>
+    </frn:CityFurniture>
+  </core:cityObjectMember>
+
+</core:CityModel>

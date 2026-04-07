@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+name: "CityGML3 Reader Test"
+entryGraphId: b2c3d4e5-f6a7-8901-bcde-f12345678901
+with:
+  cityGmlPath:
+  outputPath:
+graphs:
+  - id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+    name: main
+    nodes:
+      - id: c3d4e5f6-a7b8-9012-cdef-123456789012
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                path: env.get("cityGmlPath"),
+              },
+            ]
+
+      - id: d4e5f6a7-b8c9-0123-def1-234567890123
+        name: CityGml3Reader
+        type: action
+        action: FeatureCityGml3Reader
+        with:
+          dataset: |
+            env.get("__value")["path"]
+
+      - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+        name: JsonWriter
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            env.get("outputPath")
+
+    edges:
+      - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
+        from: c3d4e5f6-a7b8-9012-cdef-123456789012
+        to: d4e5f6a7-b8c9-0123-def1-234567890123
+        fromPort: default
+        toPort: default
+      - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
+        from: d4e5f6a7-b8c9-0123-def1-234567890123
+        to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+        fromPort: default
+        toPort: default

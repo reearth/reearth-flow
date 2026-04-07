@@ -195,7 +195,10 @@ pub fn to_feature(tlf: &TopLevelFeature, id_registry: &IdRegistry) -> Feature {
 pub fn resolve_xlinks(node: &XmlNode, registry: &IdRegistry) -> XmlNode {
     if node.children.is_empty() {
         if let Some(href) = xlink_href_attr(&node.attrs) {
-            if let Some(id) = href.strip_prefix('#') {
+            let id = href
+                .strip_prefix('#')
+                .or_else(|| href.split_once('#').map(|(_, frag)| frag));
+            if let Some(id) = id {
                 if let Some(target) = registry.get(id) {
                     let attrs = node
                         .attrs
@@ -322,9 +325,15 @@ fn build_feature(feature_type: &str, gml_id: Option<&str>, content: AttributeVal
 /// conflict that would arise if we tried to hold a borrowed `Event<'_>` across
 /// a recursive call to `parse_element` (which also mutably borrows the reader).
 enum OwnedEvent {
-    Start { name: String, attrs: Vec<(String, String)> },
+    Start {
+        name: String,
+        attrs: Vec<(String, String)>,
+    },
     End,
-    Empty { name: String, attrs: Vec<(String, String)> },
+    Empty {
+        name: String,
+        attrs: Vec<(String, String)>,
+    },
     Text(String),
     Eof,
     Other,
@@ -345,10 +354,7 @@ fn next_event<R: BufRead>(
             attrs: extract_attrs(&e),
         }),
         Event::Text(t) => Ok(OwnedEvent::Text(
-            t.unescape()
-                .map_err(ParseError::Xml)?
-                .trim()
-                .to_string(),
+            t.unescape().map_err(ParseError::Xml)?.trim().to_string(),
         )),
         Event::CData(c) => Ok(OwnedEvent::Text(
             std::str::from_utf8(&c).unwrap_or("").trim().to_string(),
@@ -377,11 +383,17 @@ fn parse_element<R: BufRead>(
 
     loop {
         match next_event(reader, buf)? {
-            OwnedEvent::Start { name: cn, attrs: ca } => {
+            OwnedEvent::Start {
+                name: cn,
+                attrs: ca,
+            } => {
                 let child = parse_element(reader, buf, cn, ca)?;
                 children.push(XmlChild::Element(Arc::new(child)));
             }
-            OwnedEvent::Empty { name: cn, attrs: ca } => {
+            OwnedEvent::Empty {
+                name: cn,
+                attrs: ca,
+            } => {
                 children.push(XmlChild::Element(Arc::new(XmlNode {
                     name: cn,
                     attrs: ca,
@@ -396,7 +408,11 @@ fn parse_element<R: BufRead>(
         }
     }
 
-    Ok(XmlNode { name, attrs, children })
+    Ok(XmlNode {
+        name,
+        attrs,
+        children,
+    })
 }
 
 /// Skip an already-opened element (its start tag has been consumed).
@@ -442,7 +458,9 @@ fn extract_attrs(e: &quick_xml::events::BytesStart<'_>) -> Vec<(String, String)>
         .filter_map(|a| a.ok())
         .map(|a| {
             let k = qname(a.key.as_ref());
-            let v = std::str::from_utf8(a.value.as_ref()).unwrap_or("").to_string();
+            let v = std::str::from_utf8(a.value.as_ref())
+                .unwrap_or("")
+                .to_string();
             (k, v)
         })
         .collect()
