@@ -1385,6 +1385,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -3605,7 +3613,7 @@ Applies transformation expressions to modify feature attributes and properties
 ### Type
 * processor
 ### Description
-Filters features by feature type
+Filter CityGML features by feature type
 ### Parameters
 ```json
 {
@@ -4330,17 +4338,6 @@ Filter Features by Geometry Type
 * unfiltered
 * none
 * contains
-* point
-* line
-* lineString
-* polygon
-* multiPoint
-* multiLineString
-* multiPolygon
-* rect
-* triangle
-* solid
-* geometryCollection
 * solid
 * multiSurface
 * compositeSurface
@@ -4714,17 +4711,25 @@ Writes 3D features to GLTF format with optional texture attachment
       ]
     },
     "dracoCompression": {
+      "description": "Apply Draco compression to the geometry",
       "type": [
         "boolean",
         "null"
       ]
     },
     "output": {
-      "description": "Output path or expression for the GLTF file to create",
+      "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
       "allOf": [
         {
           "$ref": "#/definitions/Expr"
         }
+      ]
+    },
+    "schemaKey": {
+      "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
+      "type": [
+        "string",
+        "null"
       ]
     }
   },
@@ -6769,6 +6774,14 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         }
       ]
     },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip Unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -8153,7 +8166,7 @@ Extracts maxLod
 ### Type
 * processor
 ### Description
-Detect missing attributes
+Detect missing attributes in PLATEAU4 features
 ### Parameters
 ```json
 {

@@ -1,10 +1,4 @@
-import { TableIcon, XIcon } from "@phosphor-icons/react";
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  EdgeProps,
-  getBezierPath,
-} from "@xyflow/react";
+import { BaseEdge, EdgeProps, getBezierPath } from "@xyflow/react";
 import { memo } from "react";
 
 import { Edge } from "@flow/types";
@@ -17,12 +11,9 @@ export type CustomEdgeProps = EdgeProps<Edge> & {
 
 const DefaultEdge: React.FC<CustomEdgeProps> = ({
   id,
-  source,
-  target,
   sourceX,
   sourceY,
   sourcePosition,
-  sourceHandleId,
   targetX,
   targetY,
   targetPosition,
@@ -31,7 +22,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   // markerEnd,
   // ...props
 }) => {
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const [edgePath] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -43,45 +34,14 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   const {
     // sourceNodeStatus,
     jobStatus,
-    intermediateDataIsSet,
-    hasIntermediateData,
-    handleDoubleClick,
   } = useHooks({
-    id,
     currentWorkflowId,
-    source,
-    sourceHandleId,
-    target,
-    selected,
   });
 
   return (
     <>
       <BaseEdge id={id} path={edgePath} />
-      <EdgeLabelRenderer>
-        {jobStatus === "failed" && (
-          <XIcon
-            className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
-            weight="bold"
-            style={{
-              pointerEvents: "all",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            }}
-          />
-        )}
-        {hasIntermediateData && (
-          <TableIcon
-            className={`nodrag nopan absolute size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
-            style={{
-              pointerEvents: "all",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            }}
-            onDoubleClick={handleDoubleClick}
-          />
-        )}
-      </EdgeLabelRenderer>
       {jobStatus === "completed" &&
-        hasIntermediateData &&
         (selected ? (
           <path
             className="stroke-success"

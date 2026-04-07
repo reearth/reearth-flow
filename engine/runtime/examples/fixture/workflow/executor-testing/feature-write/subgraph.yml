@@ -1,0 +1,101 @@
+id: 10000000-0000-0000-0000-000000000001
+name: "feature-write-1"
+entryGraphId: 10000000-0000-0000-0000-000000000010
+with:
+  workerArtifactPath:
+
+graphs:
+  - id: 10000000-0000-0000-0000-000000000020
+    name: feature_filter_subgraph
+    nodes:
+      - id: 10000000-0000-0000-0000-000000000021
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+
+      - id: 10000000-0000-0000-0000-000000000022
+        name: FeatureFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").category == "A"
+              outputPort: portA
+            - expr: |
+                env.get("__value").category == "B"
+              outputPort: portB
+
+      - id: 10000000-0000-0000-0000-000000000023
+        name: OutputRouterOut1
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out1
+
+      - id: 10000000-0000-0000-0000-000000000024
+        name: OutputRouterOut2
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: out2
+
+    edges:
+      - id: 10000000-0000-0000-0000-000000000031
+        from: 10000000-0000-0000-0000-000000000021
+        to: 10000000-0000-0000-0000-000000000022
+        fromPort: default
+        toPort: default
+      - id: 10000000-0000-0000-0000-000000000032
+        from: 10000000-0000-0000-0000-000000000022
+        to: 10000000-0000-0000-0000-000000000023
+        fromPort: portA
+        toPort: default
+      - id: 10000000-0000-0000-0000-000000000033
+        from: 10000000-0000-0000-0000-000000000022
+        to: 10000000-0000-0000-0000-000000000024
+        fromPort: unfiltered
+        toPort: default
+
+  - id: 10000000-0000-0000-0000-000000000010
+    name: entry_point
+    nodes:
+      - id: 10000000-0000-0000-0000-000000000011
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ category: "A" },
+              #{ category: "B" },
+              #{ category: "C" },
+            ]
+
+      - id: 10000000-0000-0000-0000-000000000012
+        name: FilterSubGraph
+        type: subGraph
+        subGraphId: 10000000-0000-0000-0000-000000000020
+
+      - id: 10000000-0000-0000-0000-000000000013
+        name: CsvWriter
+        type: action
+        action: CsvWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "output.csv")
+          format: csv
+
+    edges:
+      - id: 10000000-0000-0000-0000-000000000041
+        from: 10000000-0000-0000-0000-000000000011
+        to: 10000000-0000-0000-0000-000000000012
+        fromPort: default
+        toPort: default
+      - id: 10000000-0000-0000-0000-000000000042
+        from: 10000000-0000-0000-0000-000000000012
+        to: 10000000-0000-0000-0000-000000000013
+        fromPort: out1
+        toPort: default

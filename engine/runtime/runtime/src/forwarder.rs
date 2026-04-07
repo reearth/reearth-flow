@@ -3,7 +3,6 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use crossbeam::channel::Sender;
 
@@ -11,15 +10,10 @@ use crate::cache::executor_cache_subdir;
 use reearth_flow_types::Feature;
 use tokio::runtime::Handle;
 
-/// Timeout for Terminate message sends during shutdown. If a downstream
-/// channel stays full for this duration, the send fails rather than blocking
-/// forever.
-const CHANNEL_SEND_TIMEOUT: Duration = Duration::from_secs(300);
-
 use crate::errors::ExecutionError;
-use crate::event::{Event, EventHub};
+use crate::event::EventHub;
 use crate::executor_operation::{Context, ExecutorContext, ExecutorOperation, NodeContext};
-use crate::feature_store::{FeatureWriter, FeatureWriterKey};
+use crate::feature_store::FeatureWriter;
 
 use crate::node::{NodeHandle, Port};
 
@@ -170,7 +164,8 @@ impl SenderWithPortMapping {
 #[derive(Debug)]
 pub struct ChannelManager {
     owner: NodeHandle,
-    feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
+    /// Port-based feature writers: one writer per output port (for port-based intermediate data).
+    port_writers: HashMap<Port, Box<dyn FeatureWriter>>,
     senders: Vec<SenderWithPortMapping>,
     runtime: Arc<Handle>,
     event_hub: EventHub,
@@ -184,7 +179,7 @@ impl Clone for ChannelManager {
     fn clone(&self) -> Self {
         Self {
             owner: self.owner.clone(),
-            feature_writers: self.feature_writers.clone(),
+            port_writers: self.port_writers.clone(),
             senders: self.senders.clone(),
             runtime: self.runtime.clone(),
             event_hub: self.event_hub.clone(),
@@ -195,62 +190,28 @@ impl Clone for ChannelManager {
 }
 
 impl ChannelManager {
+    /// Write a feature to the port-based writer for the given port, if one exists.
+    fn write_to_port(&self, port: &Port, feature: &Feature) {
+        if let Some(port_writer) = self.port_writers.get(port) {
+            let mut writer = port_writer.clone();
+            let feature = feature.clone();
+            let event_hub = self.event_hub.clone();
+            let node_handle = self.owner.clone();
+            self.runtime.block_on(async move {
+                if let Err(e) = writer.write(&feature).await {
+                    event_hub.error_log_with_node_handle(
+                        None,
+                        node_handle,
+                        format!("Failed to write feature to port writer: {e}"),
+                    );
+                }
+            });
+        }
+    }
+
     #[inline]
     pub fn send_op(&self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
-        let sender_ports: HashMap<Port, Vec<Port>> = {
-            let mut sender_port = HashMap::new();
-            for sender in &self.senders {
-                for (port, ports) in &sender.port_mapping {
-                    let entry = sender_port.entry(port.clone()).or_insert_with(Vec::new);
-                    for port_item in ports {
-                        if !entry.contains(port_item) {
-                            entry.push(port_item.clone());
-                        }
-                    }
-                }
-            }
-            sender_port
-        };
-        if let Some(sender_ports) = sender_ports.get(&ctx.port) {
-            for port in sender_ports {
-                if let Some(writers) = self
-                    .feature_writers
-                    .get(&FeatureWriterKey(ctx.port.clone(), port.clone()))
-                {
-                    for writer in writers {
-                        let edge_id = writer.edge_id();
-                        let feature_id = ctx.feature.id;
-                        let mut writer = writer.clone();
-                        let feature = ctx.feature.clone();
-                        let event_hub = self.event_hub.clone();
-                        let node_handle = self.owner.clone();
-
-                        let edge_id_clone = edge_id.clone();
-                        self.event_hub.send(Event::EdgePassThrough {
-                            feature_id,
-                            edge_id: edge_id_clone,
-                        });
-
-                        self.runtime.block_on(async move {
-                            let result = writer.write(&feature).await;
-                            let node = node_handle.clone();
-                            if let Err(e) = result {
-                                event_hub.error_log_with_node_handle(
-                                    None,
-                                    node,
-                                    format!("Failed to write feature: {e}"),
-                                );
-                            } else {
-                                event_hub.send(Event::EdgeCompleted {
-                                    feature_id,
-                                    edge_id,
-                                });
-                            }
-                        });
-                    }
-                }
-            }
-        }
+        self.write_to_port(&ctx.port, &ctx.feature);
 
         if let Some((last_sender, senders)) = self.senders.split_last() {
             for sender in senders {
@@ -264,31 +225,25 @@ impl ChannelManager {
     pub fn send_non_op(&self, op: ExecutorOperation) -> Result<(), ExecutionError> {
         if let Some((last_sender, senders)) = self.senders.split_last() {
             for sender in senders {
-                sender
-                    .sender
-                    .send_timeout(op.clone(), CHANNEL_SEND_TIMEOUT)?;
+                sender.sender.send(op.clone())?;
             }
-            last_sender.sender.send_timeout(op, CHANNEL_SEND_TIMEOUT)?;
+            last_sender.sender.send(op)?;
         }
         Ok(())
     }
 
     pub fn send_terminate(&self, ctx: NodeContext) -> Result<(), ExecutionError> {
-        let all_writers = self
-            .feature_writers
-            .values()
-            .flatten()
-            .cloned()
-            .collect::<Vec<_>>();
+        let all_writers: Vec<_> = self.port_writers.values().cloned().collect();
         let node_handle = self.owner.clone();
+        let event_hub = self.event_hub.clone();
         self.runtime.block_on(async {
             let futures = all_writers.iter().map(|writer| {
                 let writer = writer.clone();
                 let node = node_handle.clone();
+                let event_hub = event_hub.clone();
                 async move {
-                    let result = writer.flush().await;
-                    if let Err(e) = result {
-                        self.event_hub.error_log_with_node_handle(
+                    if let Err(e) = writer.flush().await {
+                        event_hub.error_log_with_node_handle(
                             None,
                             node,
                             format!("Failed to flush feature writer: {e}"),
@@ -373,7 +328,7 @@ impl ChannelManager {
 
     pub fn new(
         owner: NodeHandle,
-        feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
+        port_writers: HashMap<Port, Box<dyn FeatureWriter>>,
         senders: Vec<SenderWithPortMapping>,
         runtime: Arc<Handle>,
         event_hub: EventHub,
@@ -381,7 +336,7 @@ impl ChannelManager {
     ) -> Self {
         Self {
             owner,
-            feature_writers,
+            port_writers,
             senders,
             runtime,
             event_hub,
@@ -509,59 +464,7 @@ impl ChannelManager {
                 Err(_) => continue,
             };
 
-            let sender_ports: HashMap<Port, Vec<Port>> = {
-                let mut sender_port = HashMap::new();
-                for sender in &self.senders {
-                    for (p, ports) in &sender.port_mapping {
-                        let entry = sender_port.entry(p.clone()).or_insert_with(Vec::new);
-                        for port_item in ports {
-                            if !entry.contains(port_item) {
-                                entry.push(port_item.clone());
-                            }
-                        }
-                    }
-                }
-                sender_port
-            };
-
-            if let Some(sender_ports) = sender_ports.get(port) {
-                for mapped_port in sender_ports {
-                    if let Some(writers) = self
-                        .feature_writers
-                        .get(&FeatureWriterKey(port.clone(), mapped_port.clone()))
-                    {
-                        for writer in writers {
-                            let edge_id = writer.edge_id();
-                            let feature_id = feature.id;
-                            let mut writer = writer.clone();
-                            let feature = feature.clone();
-                            let event_hub = self.event_hub.clone();
-                            let node_handle = self.owner.clone();
-
-                            self.event_hub.send(Event::EdgePassThrough {
-                                feature_id,
-                                edge_id: edge_id.clone(),
-                            });
-
-                            self.runtime.block_on(async move {
-                                let result = writer.write(&feature).await;
-                                if let Err(e) = result {
-                                    event_hub.error_log_with_node_handle(
-                                        None,
-                                        node_handle,
-                                        format!("Failed to write feature: {e}"),
-                                    );
-                                } else {
-                                    event_hub.send(Event::EdgeCompleted {
-                                        feature_id,
-                                        edge_id,
-                                    });
-                                }
-                            });
-                        }
-                    }
-                }
-            }
+            self.write_to_port(port, &feature);
         }
     }
 
@@ -569,20 +472,12 @@ impl ChannelManager {
         let feature_id = ctx.feature.id;
         let port = ctx.port.clone();
         let node_id = self.owner.id.clone().into_inner();
-        match self.send_op(ctx) {
-            Ok(()) => {
-                self.increment_send_count(1);
-            }
-            Err(e) => {
-                tracing::error!(
-                    ?node_id,
-                    ?feature_id,
-                    ?port,
-                    ?e,
-                    "Failed to send operation, dropping feature",
-                );
-            }
-        }
+        self.send_op(ctx).unwrap_or_else(|e| {
+            panic!(
+                "Failed to send operation: node_id = {node_id:?}, feature_id = {feature_id:?}, port = {port:?}, error = {e:?}"
+            )
+        });
+        self.increment_send_count(1);
     }
 }
 

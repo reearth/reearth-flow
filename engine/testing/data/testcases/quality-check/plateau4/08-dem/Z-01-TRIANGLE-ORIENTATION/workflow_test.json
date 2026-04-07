@@ -39,7 +39,7 @@
   ],
   "intermediateAssertions": [
     {
-      "edgeId": "94146a90-4765-4656-ad45-d81a2fc3fc4f",
+      "outputPort": "17f4fa99-a555-4d8a-b705-8b951c324d8d.default",
       "expectedFile": "intermediate_orientation.jsonl",
       "jsonFilter": "{attributes}"
     }

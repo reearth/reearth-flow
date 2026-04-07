@@ -8,6 +8,14 @@ pub struct LodMask(
 );
 
 impl LodMask {
+    pub fn from_u8(v: u8) -> Self {
+        Self(v)
+    }
+
+    pub fn to_u8(self) -> u8 {
+        self.0
+    }
+
     pub fn all() -> Self {
         Self(0b11111)
     }

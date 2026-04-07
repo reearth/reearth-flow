@@ -3,8 +3,8 @@
 Re:Earth Flow is a monorepo containing a geospatial workflow platform with three components:
 
 - **Engine** (`engine/`) - Rust-based DAG workflow execution engine — See [engine/AGENTS.md](engine/AGENTS.md)
-- **Server** (`server/`) - Go-based GraphQL API backend — See [server/AGENTS.md](server/AGENTS.md)
-- **UI** (`ui/`) - React/TypeScript visual workflow builder — See [ui/CLAUDE.md](ui/CLAUDE.md)
+- **Server** (`server/`) - Go-based GraphQL API backend — See [server/CLAUDE.md](server/CLAUDE.md)
+- **UI** (`ui/`) - React/TypeScript visual workflow builder — See [ui/AGENTS.md](ui/AGENTS.md)
 
 ## Key Constraints
 

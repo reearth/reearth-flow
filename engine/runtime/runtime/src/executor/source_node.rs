@@ -25,7 +25,7 @@ use crate::{
     builder_dag::NodeKind,
     errors::ExecutionError,
     event::{Event, EventHub},
-    executor_operation::{ExecutorContext, ExecutorOperation, ExecutorOptions, NodeContext},
+    executor_operation::{ExecutorContext, ExecutorOptions, NodeContext},
     forwarder::ChannelManager,
     kvs::KvStore,
     node::{IngestionMessage, NodeId, NodeStatus, Port, Source, SourceState},
@@ -192,7 +192,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                     tracing::info!("Waiting for final status to propagate for all source nodes");
                     std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
-                    send_to_all_nodes(&self.sources, ExecutorOperation::Terminate { ctx })?;
+                    send_to_all_nodes(&self.sources, ctx)?;
                     self.event_hub.send(Event::SourceFlushed);
                     return Ok(());
                 }
@@ -227,10 +227,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                     tracing::info!("Waiting for final status to propagate for all source nodes");
                                     std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
-                                    send_to_all_nodes(
-                                        &self.sources,
-                                        ExecutorOperation::Terminate { ctx },
-                                    )?;
+                                    send_to_all_nodes(&self.sources, ctx)?;
                                     self.event_hub.send(Event::SourceFlushed);
                                     return Ok(());
                                 }
@@ -316,13 +313,10 @@ struct SourceRunner {
     node_name: String,
 }
 
-/// Returns if the operation is sent successfully.
-fn send_to_all_nodes(
-    sources: &[RunningSource],
-    op: ExecutorOperation,
-) -> Result<(), ExecutionError> {
+/// Terminates all source nodes by flushing port writers then sending Terminate.
+fn send_to_all_nodes(sources: &[RunningSource], ctx: NodeContext) -> Result<(), ExecutionError> {
     for source in sources {
-        source.channel_manager.send_non_op(op.clone())?;
+        source.channel_manager.send_terminate(ctx.clone())?;
     }
     Ok(())
 }
@@ -367,10 +361,10 @@ pub async fn create_source_node<F>(
         };
 
         let senders = dag.collect_senders(node_index);
-        let record_writers = dag.collect_record_writers(node_index).await;
+        let port_writers = dag.collect_port_writers(node_index);
         let channel_manager = ChannelManager::new(
             node_handle,
-            record_writers,
+            port_writers,
             senders,
             runtime.clone(),
             dag.event_hub().clone(),

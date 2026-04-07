@@ -653,7 +653,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let candidate_feature = Feature::new_with_attributes_and_geometry(
@@ -662,7 +661,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         // Process filter
@@ -706,7 +704,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let candidate_feature = Feature::new_with_attributes_and_geometry(
@@ -717,7 +714,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         // Process filter
@@ -788,7 +784,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let candidate_feature = Feature::new_with_attributes_and_geometry(
@@ -797,7 +792,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let mut spatial_filter = SpatialFilter {
@@ -847,7 +841,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let candidate_feature = Feature::new_with_attributes_and_geometry(
@@ -856,7 +849,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let mut spatial_filter = SpatialFilter {
@@ -909,7 +901,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         // Disjoint candidate: will not intersect the filter, so routed to failed port
@@ -921,7 +912,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let mut spatial_filter = SpatialFilter {
@@ -969,7 +959,6 @@ mod tests {
                 )),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         // Filter 2: also overlaps candidate, has attribute "category"
@@ -994,7 +983,6 @@ mod tests {
                 ))),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let candidate_feature = Feature::new_with_attributes_and_geometry(
@@ -1003,7 +991,6 @@ mod tests {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
                 ..Default::default()
             },
-            Default::default(),
         );
 
         let mut spatial_filter = SpatialFilter {

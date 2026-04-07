@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, CitygmlFeatureExt, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -109,17 +109,9 @@ impl Processor for MaxLodExtractor {
             .ok_or(PlateauProcessorError::MaxLodExtractor(
                 "cityGmlPath attribute empty".to_string(),
             ))?;
-        let lod = feature
-            .metadata
-            .lod
-            .ok_or(PlateauProcessorError::MaxLodExtractor(
-                "lod metadata empty".to_string(),
-            ))?;
-        let highest_lod = lod
-            .highest_lod()
-            .ok_or(PlateauProcessorError::MaxLodExtractor(
-                "highest lod empty".to_string(),
-            ))?;
+        let highest_lod = feature.lod_mask().and_then(|m| m.highest_lod()).ok_or(
+            PlateauProcessorError::MaxLodExtractor("lod metadata empty".to_string()),
+        )?;
 
         if !self.buffer.contains_key(&city_gml_path.to_string()) {
             self.flush_buffer(ctx.as_context(), fw);

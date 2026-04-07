@@ -59,7 +59,8 @@ impl DotCliCommand {
         factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let workflow = Workflow::try_from(json.as_str()).map_err(crate::errors::Error::run)?;
         let dag =
-            DagSchemas::from_graphs(workflow.entry_graph_id, workflow.graphs, factories, None);
+            DagSchemas::from_graphs(workflow.entry_graph_id, workflow.graphs, factories, None)
+                .map_err(crate::errors::Error::run)?;
         println!("{}", dag.to_dot());
         Ok(())
     }
