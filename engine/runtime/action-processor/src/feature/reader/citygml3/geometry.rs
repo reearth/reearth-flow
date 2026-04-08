@@ -232,7 +232,8 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
         }
         "TriangulatedSurface" | "Tin" => {
             for child in element_children(node) {
-                if local_name(&child.name) == "trianglePatches" {
+                let ln = local_name(&child.name);
+                if ln == "patches" || ln == "trianglePatches" {
                     for inner in element_children(child) {
                         collect_polygons(inner, out);
                     }
@@ -358,7 +359,7 @@ fn parse_polygon(node: &XmlNode) -> Option<Polygon3D<f64>> {
     exterior.map(|ext| Polygon3D::new(ext, interiors))
 }
 
-fn parse_linear_ring(node: &XmlNode) -> LineString3D<f64> {
+fn collect_coords(node: &XmlNode) -> Vec<Coordinate3D<f64>> {
     let mut coords: Vec<Coordinate3D<f64>> = Vec::new();
     for child in element_children(node) {
         match local_name(&child.name) {
@@ -371,10 +372,20 @@ fn parse_linear_ring(node: &XmlNode) -> LineString3D<f64> {
                     coords.push(c);
                 }
             }
-            _ => {}
+            other => {
+                tracing::warn!(
+                    element = other,
+                    parent = local_name(&node.name),
+                    "citygml3 geometry: unexpected element in coordinate position, skipped"
+                );
+            }
         }
     }
-    LineString3D::new(coords)
+    coords
+}
+
+fn parse_linear_ring(node: &XmlNode) -> LineString3D<f64> {
+    LineString3D::new(collect_coords(node))
 }
 
 fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
@@ -398,24 +409,30 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
                 }
             }
         }
-        "LineString" | "Curve" => {
-            let mut coords: Vec<Coordinate3D<f64>> = Vec::new();
-            for child in element_children(node) {
-                match local_name(&child.name) {
-                    "posList" => {
-                        coords = parse_pos_list(text_content(child));
-                        break;
-                    }
-                    "pos" => {
-                        if let Some(c) = parse_single_pos(text_content(child)) {
-                            coords.push(c);
-                        }
-                    }
-                    _ => {}
-                }
-            }
+        "LineString" => {
+            let coords = collect_coords(node);
             if !coords.is_empty() {
                 out.push(LineString3D::new(coords));
+            }
+        }
+        "Curve" => {
+            for child in element_children(node) {
+                if local_name(&child.name) == "segments" {
+                    for seg in element_children(child) {
+                        let seg_ln = local_name(&seg.name);
+                        if seg_ln == "LineStringSegment" {
+                            let coords = collect_coords(seg);
+                            if !coords.is_empty() {
+                                out.push(LineString3D::new(coords));
+                            }
+                        } else {
+                            tracing::warn!(
+                                element = seg_ln,
+                                "citygml3 geometry: unsupported curve segment type, skipped"
+                            );
+                        }
+                    }
+                }
             }
         }
         _ => {
