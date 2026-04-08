@@ -5,9 +5,9 @@ use std::io::BufRead;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
-use quick_xml::NsReader;
 use quick_xml::events::Event;
 use quick_xml::name::ResolveResult;
+use quick_xml::NsReader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
@@ -154,9 +154,7 @@ pub fn resolve_xlinks(node: &XmlNode, registry: &IdRegistry) -> XmlNode {
                     let attrs = node
                         .attrs
                         .iter()
-                        .filter(|(qname, ns, _)| {
-                            !(local_name(qname) == "href" && ns == XLINK_NS)
-                        })
+                        .filter(|(qname, ns, _)| !(local_name(qname) == "href" && ns == XLINK_NS))
                         .cloned()
                         .collect();
                     return XmlNode {
@@ -275,7 +273,9 @@ fn next_event<R: BufRead>(
     reader: &mut NsReader<R>,
     buf: &mut Vec<u8>,
 ) -> Result<OwnedEvent, ParseError> {
-    let (_, event) = reader.read_resolved_event_into(buf).map_err(ParseError::Xml)?;
+    let (_, event) = reader
+        .read_resolved_event_into(buf)
+        .map_err(ParseError::Xml)?;
     match event {
         Event::Start(e) => Ok(OwnedEvent::Start {
             name: qname(e.name().as_ref()),
@@ -344,10 +344,7 @@ fn parse_element<R: BufRead>(
 }
 
 /// Skip an already-opened element (its start tag has been consumed).
-fn skip_element<R: BufRead>(
-    reader: &mut NsReader<R>,
-    buf: &mut Vec<u8>,
-) -> Result<(), ParseError> {
+fn skip_element<R: BufRead>(reader: &mut NsReader<R>, buf: &mut Vec<u8>) -> Result<(), ParseError> {
     let mut depth: usize = 1;
     loop {
         match next_event(reader, buf)? {
@@ -385,12 +382,14 @@ fn extract_attrs<R: BufRead>(
         .map(|a| {
             let qname_str = qname(a.key.as_ref());
             let ns_uri = match reader.resolve_attribute(a.key).0 {
-                ResolveResult::Bound(ns) => {
-                    std::str::from_utf8(ns.into_inner()).unwrap_or("").to_string()
-                }
+                ResolveResult::Bound(ns) => std::str::from_utf8(ns.into_inner())
+                    .unwrap_or("")
+                    .to_string(),
                 _ => String::new(),
             };
-            let v = std::str::from_utf8(a.value.as_ref()).unwrap_or("").to_string();
+            let v = std::str::from_utf8(a.value.as_ref())
+                .unwrap_or("")
+                .to_string();
             (qname_str, ns_uri, v)
         })
         .collect()
@@ -428,11 +427,7 @@ mod tests {
         Url::parse("file:///test.gml").unwrap()
     }
 
-    fn make_node(
-        name: &str,
-        attrs: Vec<(&str, &str, &str)>,
-        children: Vec<XmlChild>,
-    ) -> XmlNode {
+    fn make_node(name: &str, attrs: Vec<(&str, &str, &str)>, children: Vec<XmlChild>) -> XmlNode {
         XmlNode {
             name: name.to_string(),
             attrs: attrs
@@ -609,15 +604,20 @@ mod tests {
         } else {
             panic!("expected Element child");
         }
-        assert!(!resolved.attrs.iter().any(|(q, ns, _)| {
-            local_name(q) == "href" && ns == XLINK_NS
-        }));
+        assert!(!resolved
+            .attrs
+            .iter()
+            .any(|(q, ns, _)| { local_name(q) == "href" && ns == XLINK_NS }));
     }
 
     #[test]
     fn resolve_xlinks_non_standard_xlink_prefix() {
         // Uses 'xl:href' instead of 'xlink:href' — must still resolve.
-        let target = Arc::new(make_node("gml:Polygon", vec![("gml:id", GML_NS, "p1")], vec![]));
+        let target = Arc::new(make_node(
+            "gml:Polygon",
+            vec![("gml:id", GML_NS, "p1")],
+            vec![],
+        ));
         let mut reg = IdRegistry::new();
         reg.insert("p1".to_string(), target);
 
@@ -629,11 +629,19 @@ mod tests {
 
     #[test]
     fn resolve_xlinks_handles_cross_file_fragment() {
-        let target = Arc::new(make_node("gml:Polygon", vec![("gml:id", GML_NS, "p1")], vec![]));
+        let target = Arc::new(make_node(
+            "gml:Polygon",
+            vec![("gml:id", GML_NS, "p1")],
+            vec![],
+        ));
         let mut reg = IdRegistry::new();
         reg.insert("p1".to_string(), target);
 
-        let node = make_node("ref", vec![("xlink:href", XLINK_NS, "other.gml#p1")], vec![]);
+        let node = make_node(
+            "ref",
+            vec![("xlink:href", XLINK_NS, "other.gml#p1")],
+            vec![],
+        );
         let resolved = resolve_xlinks(&node, &reg);
 
         assert_eq!(resolved.children.len(), 1);
@@ -646,14 +654,19 @@ mod tests {
         let resolved = resolve_xlinks(&node, &reg);
 
         assert!(resolved.children.is_empty());
-        assert!(resolved.attrs.iter().any(|(q, ns, _)| {
-            local_name(q) == "href" && ns == XLINK_NS
-        }));
+        assert!(resolved
+            .attrs
+            .iter()
+            .any(|(q, ns, _)| { local_name(q) == "href" && ns == XLINK_NS }));
     }
 
     #[test]
     fn resolve_xlinks_recurses_into_children() {
-        let target = Arc::new(make_node("gml:Point", vec![("gml:id", GML_NS, "pt1")], vec![]));
+        let target = Arc::new(make_node(
+            "gml:Point",
+            vec![("gml:id", GML_NS, "pt1")],
+            vec![],
+        ));
         let mut reg = IdRegistry::new();
         reg.insert("pt1".to_string(), target);
 
@@ -681,7 +694,11 @@ mod tests {
 
     #[test]
     fn node_to_attribute_value_attrs_become_map() {
-        let node = make_node("gml:name", vec![("gml:id", GML_NS, "n1")], vec![text("foo")]);
+        let node = make_node(
+            "gml:name",
+            vec![("gml:id", GML_NS, "n1")],
+            vec![text("foo")],
+        );
         let av = node_to_attribute_value(&node);
         let AttributeValue::Map(map) = av else {
             panic!("expected Map");
