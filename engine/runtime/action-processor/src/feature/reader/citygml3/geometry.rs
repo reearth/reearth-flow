@@ -45,6 +45,11 @@ fn collect_gml_geometries(node: &XmlNode, out: &mut Vec<GmlGeometry>) {
                     if let Some(g) = parse_gml_geom(geom_node, ty, lod) {
                         out.push(g);
                     }
+                } else {
+                    tracing::warn!(
+                        element = geom_ln,
+                        "citygml3 geometry: unrecognized geometry element inside lod property, skipped"
+                    );
                 }
             }
         } else {
@@ -152,17 +157,49 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
     match local_name(&node.name) {
         "Solid" => {
             for child in element_children(node) {
-                if local_name(&child.name) == "exterior" {
+                match local_name(&child.name) {
+                    "exterior" => {
+                        for inner in element_children(child) {
+                            collect_polygons(inner, out);
+                        }
+                    }
+                    "interior" => {} // void shells intentionally not extracted
+                    _ => {}
+                }
+            }
+        }
+        "MultiSolid" | "CompositeSolid" => {
+            for child in element_children(node) {
+                let ln = local_name(&child.name);
+                if ln == "solidMember" || ln == "solidMembers" {
                     for inner in element_children(child) {
                         collect_polygons(inner, out);
                     }
                 }
             }
         }
-        "MultiSurface" | "CompositeSurface" => {
+        "Shell" | "MultiSurface" | "CompositeSurface" => {
             for child in element_children(node) {
                 let ln = local_name(&child.name);
                 if ln == "surfaceMember" || ln == "surfaceMembers" {
+                    for inner in element_children(child) {
+                        collect_polygons(inner, out);
+                    }
+                }
+            }
+        }
+        "Surface" | "PolyhedralSurface" => {
+            for child in element_children(node) {
+                if local_name(&child.name) == "patches" {
+                    for inner in element_children(child) {
+                        collect_polygons(inner, out);
+                    }
+                }
+            }
+        }
+        "OrientableSurface" => {
+            for child in element_children(node) {
+                if local_name(&child.name) == "baseSurface" {
                     for inner in element_children(child) {
                         collect_polygons(inner, out);
                     }
@@ -173,24 +210,21 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
             for child in element_children(node) {
                 if local_name(&child.name) == "trianglePatches" {
                     for inner in element_children(child) {
-                        if local_name(&inner.name) == "Triangle" {
-                            if let Some(p) = parse_polygon(inner) {
-                                out.push(p);
-                            }
-                        }
+                        collect_polygons(inner, out);
                     }
                 }
             }
         }
-        "Polygon" | "Rectangle" | "Triangle" => {
+        "Polygon" | "PolygonPatch" | "Rectangle" | "Triangle" => {
             if let Some(p) = parse_polygon(node) {
                 out.push(p);
             }
         }
         _ => {
-            for child in element_children(node) {
-                collect_polygons(child, out);
-            }
+            tracing::warn!(
+                element = local_name(&node.name),
+                "citygml3 geometry: unhandled element in polygon collection"
+            );
         }
     }
 }
@@ -249,6 +283,15 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
                 }
             }
         }
+        "OrientableCurve" => {
+            for child in element_children(node) {
+                if local_name(&child.name) == "baseCurve" {
+                    for inner in element_children(child) {
+                        collect_line_strings(inner, out);
+                    }
+                }
+            }
+        }
         "LineString" | "Curve" => {
             let mut coords: Vec<Coordinate3D<f64>> = Vec::new();
             for child in element_children(node) {
@@ -270,9 +313,10 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
             }
         }
         _ => {
-            for child in element_children(node) {
-                collect_line_strings(child, out);
-            }
+            tracing::warn!(
+                element = local_name(&node.name),
+                "citygml3 geometry: unhandled element in line string collection"
+            );
         }
     }
 }
@@ -298,7 +342,12 @@ fn collect_points(node: &XmlNode, out: &mut Vec<Coordinate3D<f64>>) {
                 }
             }
         }
-        _ => {}
+        _ => {
+            tracing::warn!(
+                element = local_name(&node.name),
+                "citygml3 geometry: unhandled element in point collection"
+            );
+        }
     }
 }
 
@@ -331,10 +380,13 @@ fn extract_lod(local: &str) -> Option<u8> {
 
 fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
     match local {
-        "Solid" => Some(GeometryType::Solid),
-        "MultiSurface" | "CompositeSurface" | "Polygon" | "Rectangle" => Some(GeometryType::Surface),
+        "Solid" | "MultiSolid" | "CompositeSolid" => Some(GeometryType::Solid),
+        "MultiSurface" | "CompositeSurface" | "Surface" | "PolyhedralSurface"
+        | "OrientableSurface" | "Polygon" | "Rectangle" => Some(GeometryType::Surface),
         "TriangulatedSurface" | "Tin" => Some(GeometryType::Triangle),
-        "MultiCurve" | "CompositeCurve" | "LineString" | "Curve" => Some(GeometryType::Curve),
+        "MultiCurve" | "CompositeCurve" | "OrientableCurve" | "LineString" | "Curve" => {
+            Some(GeometryType::Curve)
+        }
         "MultiPoint" | "Point" => Some(GeometryType::Point),
         _ => None,
     }
