@@ -41,6 +41,10 @@ fn collect_gml_geometries(node: &XmlNode, out: &mut Vec<GmlGeometry>) {
                     if let Some(g) = parse_implicit_geom(geom_node, lod) {
                         out.push(g);
                     }
+                } else if geom_ln == "GeometricComplex" {
+                    parse_geometric_complex(geom_node, lod, out);
+                } else if geom_ln == "MultiGeometry" {
+                    parse_multi_geometry(geom_node, lod, out);
                 } else if let Some(ty) = gml_element_geometry_type(geom_ln) {
                     if let Some(g) = parse_gml_geom(geom_node, ty, lod) {
                         out.push(g);
@@ -79,7 +83,11 @@ fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<G
     }
 
     let empty = geom.polygons.is_empty() && geom.line_strings.is_empty() && geom.points.is_empty();
-    if empty { None } else { Some(geom) }
+    if empty {
+        None
+    } else {
+        Some(geom)
+    }
 }
 
 // ImplicitGeometry (OGC 21-006r2 §9.3): apply the 4×4 transformationMatrix to
@@ -87,8 +95,8 @@ fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<G
 // referencePoint is not added — the translation column of the matrix encodes
 // the world-space origin and referencePoint is a redundant spatial index hint.
 fn parse_implicit_geom(node: &XmlNode, lod: Option<u8>) -> Option<GmlGeometry> {
-    let matrix = find_child(node, "transformationMatrix")
-        .and_then(|n| parse_matrix4(text_content(n)))?;
+    let matrix =
+        find_child(node, "transformationMatrix").and_then(|n| parse_matrix4(text_content(n)))?;
     let rel_geom_node = find_child(node, "relativeGeometry")?;
     let geom_node = element_children(rel_geom_node).next()?;
     let ty = gml_element_geometry_type(local_name(&geom_node.name))?;
@@ -100,29 +108,45 @@ fn parse_implicit_geom(node: &XmlNode, lod: Option<u8>) -> Option<GmlGeometry> {
         GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
             let mut polys = Vec::new();
             collect_polygons(geom_node, &mut polys);
-            geom.polygons = polys.into_iter().map(|p| transform_polygon(p, &matrix)).collect();
+            geom.polygons = polys
+                .into_iter()
+                .map(|p| transform_polygon(p, &matrix))
+                .collect();
             geom.len = geom.polygons.len() as u32;
         }
         GeometryType::Curve => {
             let mut ls = Vec::new();
             collect_line_strings(geom_node, &mut ls);
-            geom.line_strings = ls.into_iter().map(|l| transform_line_string(l, &matrix)).collect();
+            geom.line_strings = ls
+                .into_iter()
+                .map(|l| transform_line_string(l, &matrix))
+                .collect();
             geom.len = geom.line_strings.len() as u32;
         }
         GeometryType::Point => {
             let mut pts = Vec::new();
             collect_points(geom_node, &mut pts);
-            geom.points = pts.into_iter().map(|p| transform_coord(p, &matrix)).collect();
+            geom.points = pts
+                .into_iter()
+                .map(|p| transform_coord(p, &matrix))
+                .collect();
             geom.len = geom.points.len() as u32;
         }
     }
 
     let empty = geom.polygons.is_empty() && geom.line_strings.is_empty() && geom.points.is_empty();
-    if empty { None } else { Some(geom) }
+    if empty {
+        None
+    } else {
+        Some(geom)
+    }
 }
 
 fn parse_matrix4(text: &str) -> Option<[f64; 16]> {
-    let vals: Vec<f64> = text.split_whitespace().filter_map(|s| s.parse().ok()).collect();
+    let vals: Vec<f64> = text
+        .split_whitespace()
+        .filter_map(|s| s.parse().ok())
+        .collect();
     if vals.len() == 16 {
         let mut m = [0.0f64; 16];
         m.copy_from_slice(&vals);
@@ -149,7 +173,9 @@ fn transform_polygon(poly: Polygon3D<f64>, m: &[f64; 16]) -> Polygon3D<f64> {
     let (ext, ints) = poly.into_inner();
     Polygon3D::new(
         transform_line_string(ext, m),
-        ints.into_iter().map(|i| transform_line_string(i, m)).collect(),
+        ints.into_iter()
+            .map(|i| transform_line_string(i, m))
+            .collect(),
     )
 }
 
@@ -226,6 +252,88 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
                 "citygml3 geometry: unhandled element in polygon collection"
             );
         }
+    }
+}
+
+// GeometricComplex wraps GeometricPrimitive instances in <gml:element> children.
+// Each element child holds exactly one primitive (Point, Curve, Surface, or Solid).
+fn parse_geometric_complex(node: &XmlNode, lod: Option<u8>, out: &mut Vec<GmlGeometry>) {
+    let mut curves: Vec<LineString3D<f64>> = Vec::new();
+    let mut polys: Vec<Polygon3D<f64>> = Vec::new();
+    let mut points: Vec<Coordinate3D<f64>> = Vec::new();
+
+    for child in element_children(node) {
+        if local_name(&child.name) == "element" {
+            for prim in element_children(child) {
+                dispatch_primitive(prim, &mut curves, &mut polys, &mut points);
+            }
+        }
+    }
+    emit_typed_geoms(lod, curves, polys, points, out);
+}
+
+// MultiGeometry is an unstructured bag of heterogeneous geometry.
+// Members arrive via geometryMember (per-element) or geometryMembers (inline sequence).
+fn parse_multi_geometry(node: &XmlNode, lod: Option<u8>, out: &mut Vec<GmlGeometry>) {
+    let mut curves: Vec<LineString3D<f64>> = Vec::new();
+    let mut polys: Vec<Polygon3D<f64>> = Vec::new();
+    let mut points: Vec<Coordinate3D<f64>> = Vec::new();
+
+    for child in element_children(node) {
+        let ln = local_name(&child.name);
+        if ln == "geometryMember" || ln == "geometryMembers" {
+            for member in element_children(child) {
+                dispatch_primitive(member, &mut curves, &mut polys, &mut points);
+            }
+        }
+    }
+    emit_typed_geoms(lod, curves, polys, points, out);
+}
+
+fn dispatch_primitive(
+    node: &XmlNode,
+    curves: &mut Vec<LineString3D<f64>>,
+    polys: &mut Vec<Polygon3D<f64>>,
+    points: &mut Vec<Coordinate3D<f64>>,
+) {
+    let ln = local_name(&node.name);
+    match gml_element_geometry_type(ln) {
+        Some(GeometryType::Curve) => collect_line_strings(node, curves),
+        Some(GeometryType::Surface | GeometryType::Triangle | GeometryType::Solid) => {
+            collect_polygons(node, polys)
+        }
+        Some(GeometryType::Point) => collect_points(node, points),
+        None => tracing::warn!(
+            element = ln,
+            "citygml3 geometry: unrecognized primitive in aggregate geometry, skipped"
+        ),
+    }
+}
+
+fn emit_typed_geoms(
+    lod: Option<u8>,
+    curves: Vec<LineString3D<f64>>,
+    polys: Vec<Polygon3D<f64>>,
+    points: Vec<Coordinate3D<f64>>,
+    out: &mut Vec<GmlGeometry>,
+) {
+    if !curves.is_empty() {
+        let mut g = GmlGeometry::new(GeometryType::Curve, lod);
+        g.len = curves.len() as u32;
+        g.line_strings = curves;
+        out.push(g);
+    }
+    if !polys.is_empty() {
+        let mut g = GmlGeometry::new(GeometryType::Surface, lod);
+        g.len = polys.len() as u32;
+        g.polygons = polys;
+        out.push(g);
+    }
+    if !points.is_empty() {
+        let mut g = GmlGeometry::new(GeometryType::Point, lod);
+        g.len = points.len() as u32;
+        g.points = points;
+        out.push(g);
     }
 }
 
@@ -352,18 +460,32 @@ fn collect_points(node: &XmlNode, out: &mut Vec<Coordinate3D<f64>>) {
 }
 
 fn parse_pos_list(text: &str) -> Vec<Coordinate3D<f64>> {
-    let values: Vec<f64> = text.split_whitespace().filter_map(|s| s.parse().ok()).collect();
+    let values: Vec<f64> = text
+        .split_whitespace()
+        .filter_map(|s| s.parse().ok())
+        .collect();
     values
         .chunks(3)
         .filter_map(|c| {
-            if c.len() == 3 { Some(Coordinate3D::new__(c[0], c[1], c[2])) } else { None }
+            if c.len() == 3 {
+                Some(Coordinate3D::new__(c[0], c[1], c[2]))
+            } else {
+                None
+            }
         })
         .collect()
 }
 
 fn parse_single_pos(text: &str) -> Option<Coordinate3D<f64>> {
-    let vals: Vec<f64> = text.split_whitespace().filter_map(|s| s.parse().ok()).collect();
-    if vals.len() >= 3 { Some(Coordinate3D::new__(vals[0], vals[1], vals[2])) } else { None }
+    let vals: Vec<f64> = text
+        .split_whitespace()
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    if vals.len() >= 3 {
+        Some(Coordinate3D::new__(vals[0], vals[1], vals[2]))
+    } else {
+        None
+    }
 }
 
 fn local_name(name: &str) -> &str {
@@ -393,7 +515,10 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
 }
 
 fn gml_id(node: &XmlNode) -> Option<String> {
-    node.attrs.iter().find(|(k, _)| k == "gml:id").map(|(_, v)| v.clone())
+    node.attrs
+        .iter()
+        .find(|(k, _)| k == "gml:id")
+        .map(|(_, v)| v.clone())
 }
 
 fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
@@ -402,7 +527,11 @@ fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
 
 fn element_children(node: &XmlNode) -> impl Iterator<Item = &XmlNode> {
     node.children.iter().filter_map(|c| {
-        if let XmlChild::Element(e) = c { Some(e.as_ref()) } else { None }
+        if let XmlChild::Element(e) = c {
+            Some(e.as_ref())
+        } else {
+            None
+        }
     })
 }
 
@@ -429,7 +558,10 @@ mod tests {
     fn elem(name: &str, attrs: Vec<(&str, &str)>, children: Vec<XmlChild>) -> XmlNode {
         XmlNode {
             name: name.to_string(),
-            attrs: attrs.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            attrs: attrs
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
             children,
         }
     }
@@ -439,14 +571,28 @@ mod tests {
     }
 
     fn polygon_node(coords: &[(f64, f64, f64)]) -> XmlNode {
-        let pos_list = coords.iter().map(|(x, y, z)| format!("{x} {y} {z}")).collect::<Vec<_>>().join(" ");
-        elem("gml:Polygon", vec![], vec![elem_child(elem(
-            "gml:exterior", vec![], vec![elem_child(elem(
-                "gml:LinearRing", vec![], vec![elem_child(elem(
-                    "gml:posList", vec![], vec![text_node(&pos_list)],
+        let pos_list = coords
+            .iter()
+            .map(|(x, y, z)| format!("{x} {y} {z}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        elem(
+            "gml:Polygon",
+            vec![],
+            vec![elem_child(elem(
+                "gml:exterior",
+                vec![],
+                vec![elem_child(elem(
+                    "gml:LinearRing",
+                    vec![],
+                    vec![elem_child(elem(
+                        "gml:posList",
+                        vec![],
+                        vec![text_node(&pos_list)],
+                    ))],
                 ))],
             ))],
-        ))])
+        )
     }
 
     #[test]
@@ -482,17 +628,38 @@ mod tests {
 
     #[test]
     fn test_extract_geometries_lod1_solid() {
-        let polygon = polygon_node(&[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 0.0)]);
-        let solid = elem("gml:Solid", vec![("gml:id", "solid01")], vec![elem_child(elem(
-            "gml:exterior", vec![], vec![elem_child(elem(
-                "gml:CompositeSurface", vec![], vec![elem_child(elem(
-                    "gml:surfaceMember", vec![], vec![elem_child(polygon)],
+        let polygon = polygon_node(&[
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (0.0, 0.0, 0.0),
+        ]);
+        let solid = elem(
+            "gml:Solid",
+            vec![("gml:id", "solid01")],
+            vec![elem_child(elem(
+                "gml:exterior",
+                vec![],
+                vec![elem_child(elem(
+                    "gml:CompositeSurface",
+                    vec![],
+                    vec![elem_child(elem(
+                        "gml:surfaceMember",
+                        vec![],
+                        vec![elem_child(polygon)],
+                    ))],
                 ))],
             ))],
-        ))]);
-        let feature = elem("bldg:Building", vec![("gml:id", "BLD001")], vec![
-            elem_child(elem("bldg:lod1Solid", vec![], vec![elem_child(solid)])),
-        ]);
+        );
+        let feature = elem(
+            "bldg:Building",
+            vec![("gml:id", "BLD001")],
+            vec![elem_child(elem(
+                "bldg:lod1Solid",
+                vec![],
+                vec![elem_child(solid)],
+            ))],
+        );
 
         let geoms = extract_geometries(&feature);
         assert_eq!(geoms.len(), 1);
@@ -509,17 +676,33 @@ mod tests {
         // lod1 (2 polygons), lod2 (1 polygon): verify len is correct; pos is assigned by caller.
         let make_prop = |prop_name: &str, gml_name: &str, n_polys: usize| {
             let surf_members: Vec<XmlChild> = (0..n_polys)
-                .map(|_| elem_child(elem("gml:surfaceMember", vec![], vec![
-                    elem_child(polygon_node(&[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)])),
-                ])))
+                .map(|_| {
+                    elem_child(elem(
+                        "gml:surfaceMember",
+                        vec![],
+                        vec![elem_child(polygon_node(&[
+                            (0.0, 0.0, 0.0),
+                            (1.0, 0.0, 0.0),
+                            (0.0, 1.0, 0.0),
+                        ]))],
+                    ))
+                })
                 .collect();
-            elem(prop_name, vec![], vec![elem_child(elem(gml_name, vec![], surf_members))])
+            elem(
+                prop_name,
+                vec![],
+                vec![elem_child(elem(gml_name, vec![], surf_members))],
+            )
         };
 
-        let feature = elem("bldg:Building", vec![], vec![
-            elem_child(make_prop("bldg:lod1MultiSurface", "gml:MultiSurface", 2)),
-            elem_child(make_prop("bldg:lod2MultiSurface", "gml:MultiSurface", 1)),
-        ]);
+        let feature = elem(
+            "bldg:Building",
+            vec![],
+            vec![
+                elem_child(make_prop("bldg:lod1MultiSurface", "gml:MultiSurface", 2)),
+                elem_child(make_prop("bldg:lod2MultiSurface", "gml:MultiSurface", 1)),
+            ],
+        );
 
         let geoms = extract_geometries(&feature);
         assert_eq!(geoms.len(), 2);
@@ -533,26 +716,56 @@ mod tests {
         // relativeGeometry: unit square at local z=0
         // Expected: vertices shifted by (+10, +20, 0).
         let pos_list = "0 0 0 1 0 0 1 1 0 0 1 0 0 0 0";
-        let rel_geom = elem("gml:MultiSurface", vec![("gml:id", "geom_template1")], vec![
-            elem_child(elem("gml:surfaceMember", vec![], vec![elem_child(elem(
-                "gml:Polygon", vec![], vec![elem_child(elem(
-                    "gml:exterior", vec![], vec![elem_child(elem(
-                        "gml:LinearRing", vec![], vec![elem_child(elem(
-                            "gml:posList", vec![], vec![text_node(pos_list)],
+        let rel_geom = elem(
+            "gml:MultiSurface",
+            vec![("gml:id", "geom_template1")],
+            vec![elem_child(elem(
+                "gml:surfaceMember",
+                vec![],
+                vec![elem_child(elem(
+                    "gml:Polygon",
+                    vec![],
+                    vec![elem_child(elem(
+                        "gml:exterior",
+                        vec![],
+                        vec![elem_child(elem(
+                            "gml:LinearRing",
+                            vec![],
+                            vec![elem_child(elem(
+                                "gml:posList",
+                                vec![],
+                                vec![text_node(pos_list)],
+                            ))],
                         ))],
                     ))],
                 ))],
-            ))])),
-        ]);
-        let implicit = elem("core:ImplicitGeometry", vec![], vec![
-            elem_child(elem("core:transformationMatrix", vec![], vec![
-                text_node("1 0 0 10  0 1 0 20  0 0 1 0  0 0 0 1"),
-            ])),
-            elem_child(elem("core:relativeGeometry", vec![], vec![elem_child(rel_geom)])),
-        ]);
-        let feature = elem("frn:CityFurniture", vec![("gml:id", "furniture2")], vec![
-            elem_child(elem("core:lod2ImplicitRepresentation", vec![], vec![elem_child(implicit)])),
-        ]);
+            ))],
+        );
+        let implicit = elem(
+            "core:ImplicitGeometry",
+            vec![],
+            vec![
+                elem_child(elem(
+                    "core:transformationMatrix",
+                    vec![],
+                    vec![text_node("1 0 0 10  0 1 0 20  0 0 1 0  0 0 0 1")],
+                )),
+                elem_child(elem(
+                    "core:relativeGeometry",
+                    vec![],
+                    vec![elem_child(rel_geom)],
+                )),
+            ],
+        );
+        let feature = elem(
+            "frn:CityFurniture",
+            vec![("gml:id", "furniture2")],
+            vec![elem_child(elem(
+                "core:lod2ImplicitRepresentation",
+                vec![],
+                vec![elem_child(implicit)],
+            ))],
+        );
 
         let geoms = extract_geometries(&feature);
         assert_eq!(geoms.len(), 1);
@@ -570,9 +783,15 @@ mod tests {
 
     #[test]
     fn test_extract_geometries_no_geometry_property() {
-        let feature = elem("bldg:Building", vec![], vec![
-            elem_child(elem("gml:description", vec![], vec![text_node("a building")])),
-        ]);
+        let feature = elem(
+            "bldg:Building",
+            vec![],
+            vec![elem_child(elem(
+                "gml:description",
+                vec![],
+                vec![text_node("a building")],
+            ))],
+        );
         let geoms = extract_geometries(&feature);
         assert!(geoms.is_empty());
     }
