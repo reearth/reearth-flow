@@ -14,6 +14,10 @@ jobs:
       ui: ${{ steps.ui.outputs.any_changed }}
       websocket: ${{ steps.websocket.outputs.any_changed }}
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -110,6 +114,10 @@ jobs:
       - ci-websocket
     if: "!failure()"
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - run: echo OK
 
   ci-collect-info:
@@ -123,6 +131,10 @@ jobs:
       new_tag_short: ${{ steps.info.outputs.new_tag_short || 'blank' }}
       sha_short: ${{ steps.info.outputs.sha_short || 'blank' }}
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - name: checkout
         uses: actions/checkout@v4
       - name: Fetch tags
@@ -244,6 +256,10 @@ jobs:
       new_tag_short: ${{ steps.prepare.outputs.new_tag_short }}
       name: ${{ steps.prepare.outputs.name }}
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: reearth/actions/prepare-build@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
         id: prepare
 
@@ -255,6 +271,10 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - uses: reearth/actions/build-docker-image@f9ec7fd6b26255566358e46c0764b367a6d063fb
         with:
           image: ghcr.io/reearth/reearth-flow/reearth-flow-web
@@ -277,6 +297,10 @@ jobs:
       packages: write
       pull-requests: write
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:

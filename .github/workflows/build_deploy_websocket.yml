@@ -24,6 +24,10 @@ jobs:
     name: Build Websocket
     runs-on: ubuntu-latest
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -71,6 +75,10 @@ jobs:
     env:
       IMAGE_NAME: reearth/reearth-flow-websocket
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - name: Checkout Repository
         uses: actions/checkout@v4
 
@@ -158,6 +166,10 @@ jobs:
     env:
       CLOUD_RUN_SERVICE: reearth-flow-websocket
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:

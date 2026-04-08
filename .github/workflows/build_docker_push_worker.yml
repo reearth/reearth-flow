@@ -24,6 +24,10 @@ jobs:
     name: Build Worker
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -72,6 +76,10 @@ jobs:
       IMAGE_NAME: reearth/reearth-flow-worker
       IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-worker
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
       - name: Checkout Repository
         uses: actions/checkout@v4
 
