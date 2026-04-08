@@ -23,10 +23,6 @@ use super::{
     parser::{self, IdRegistry, TopLevelFeature},
 };
 
-// ------------------------------------------------------------------
-// Factory
-// ------------------------------------------------------------------
-
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGml3ReaderFactory;
 
@@ -94,10 +90,6 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
     }
 }
 
-// ------------------------------------------------------------------
-// Parameters
-// ------------------------------------------------------------------
-
 /// # FeatureCityGml3Reader Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -110,10 +102,6 @@ pub struct FeatureCityGml3ReaderParam {
     /// Reserved for future subfeature extraction; currently has no effect.
     flatten: Option<bool>,
 }
-
-// ------------------------------------------------------------------
-// Processor
-// ------------------------------------------------------------------
 
 pub struct FeatureCityGml3Reader {
     global_params: Option<HashMap<String, serde_json::Value>>,
