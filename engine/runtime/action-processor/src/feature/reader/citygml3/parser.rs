@@ -36,8 +36,12 @@ pub enum XmlChild {
     Text(String),
 }
 
-/// Maps `gml:id` values → owning nodes.
-pub type IdRegistry = HashMap<String, Arc<XmlNode>>;
+/// Maps `(canonical-source-url, gml:id)` → owning nodes.
+///
+/// The URL component prevents collisions when multiple files share the same
+/// `gml:id` value, and allows cross-file `xlink:href` resolution to target
+/// the correct document.
+pub type IdRegistry = HashMap<(String, String), Arc<XmlNode>>;
 
 /// A parsed CityGML 3 top-level feature (direct child of `cityObjectMember`
 /// or `featureMember`).
@@ -104,7 +108,7 @@ pub fn parse(
                     let member = parse_element(&mut reader, &mut buf, name, attrs)?;
                     if let Some(XmlChild::Element(feature_node)) = member.children.first() {
                         let feature_node = Arc::clone(feature_node);
-                        collect_ids(&feature_node, id_registry);
+                        collect_ids(&feature_node, source_url.as_str(), id_registry);
                         let gml_id = gml_id_attr(&feature_node);
                         let feature_type = feature_node.name.clone();
                         features.push(TopLevelFeature {
@@ -142,15 +146,27 @@ pub fn to_feature(tlf: &TopLevelFeature, resolved: &XmlNode) -> Feature {
 /// `xlink:href` attribute and no children with the referenced node from
 /// `registry`.
 ///
+/// Both intra-file (`#id`) and cross-file (`other.gml#id`) hrefs are
+/// resolved. Cross-file hrefs are resolved relative to `base_url`.
 /// Unresolvable references are left in place. Resolution is single-pass.
-pub fn resolve_xlinks(node: &XmlNode, registry: &IdRegistry) -> XmlNode {
+pub fn resolve_xlinks(node: &XmlNode, base_url: &Url, registry: &IdRegistry) -> XmlNode {
     if node.children.is_empty() {
         if let Some(href) = xlink_href_attr(&node.attrs) {
-            let id = href
-                .strip_prefix('#')
-                .or_else(|| href.split_once('#').map(|(_, frag)| frag));
-            if let Some(id) = id {
-                if let Some(target) = registry.get(id) {
+            let resolved_key = if let Some(frag) = href.strip_prefix('#') {
+                // Intra-file: use the base document's URL.
+                Some((base_url.as_str().to_string(), frag.to_string()))
+            } else if let Some((file_part, frag)) = href.split_once('#') {
+                // Cross-file: resolve the file path relative to base_url.
+                base_url
+                    .join(file_part)
+                    .ok()
+                    .map(|u| (u.as_str().to_string(), frag.to_string()))
+            } else {
+                None
+            };
+
+            if let Some(key) = resolved_key {
+                if let Some(target) = registry.get(&key) {
                     let attrs = node
                         .attrs
                         .iter()
@@ -162,6 +178,12 @@ pub fn resolve_xlinks(node: &XmlNode, registry: &IdRegistry) -> XmlNode {
                         attrs,
                         children: vec![XmlChild::Element(Arc::clone(target))],
                     };
+                } else {
+                    tracing::warn!(
+                        "citygml3: unresolved xlink:href '{}' in element '{}'",
+                        href,
+                        node.name
+                    );
                 }
             }
         }
@@ -171,7 +193,9 @@ pub fn resolve_xlinks(node: &XmlNode, registry: &IdRegistry) -> XmlNode {
         .children
         .iter()
         .map(|c| match c {
-            XmlChild::Element(e) => XmlChild::Element(Arc::new(resolve_xlinks(e, registry))),
+            XmlChild::Element(e) => {
+                XmlChild::Element(Arc::new(resolve_xlinks(e, base_url, registry)))
+            }
             XmlChild::Text(t) => XmlChild::Text(t.clone()),
         })
         .collect();
@@ -362,13 +386,13 @@ fn skip_element<R: BufRead>(reader: &mut NsReader<R>, buf: &mut Vec<u8>) -> Resu
     Ok(())
 }
 
-fn collect_ids(node: &Arc<XmlNode>, registry: &mut IdRegistry) {
+fn collect_ids(node: &Arc<XmlNode>, source_url: &str, registry: &mut IdRegistry) {
     if let Some(id) = gml_id_attr(node) {
-        registry.insert(id, Arc::clone(node));
+        registry.insert((source_url.to_string(), id), Arc::clone(node));
     }
     for child in &node.children {
         if let XmlChild::Element(e) = child {
-            collect_ids(e, registry);
+            collect_ids(e, source_url, registry);
         }
     }
 }
@@ -446,8 +470,6 @@ mod tests {
         XmlChild::Element(Arc::new(node))
     }
 
-    // ---- parse ----
-
     #[test]
     fn parse_errors_for_non_citygml() {
         let xml = b"<Foo/>";
@@ -500,7 +522,7 @@ mod tests {
         let mut reg = IdRegistry::new();
         let features = parse(xml, &dummy_url(), &mut reg).unwrap();
         assert_eq!(features[0].gml_id.as_deref(), Some("bldg001"));
-        assert!(reg.contains_key("bldg001"));
+        assert!(reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
 
     #[test]
@@ -520,8 +542,43 @@ mod tests {
         let mut reg = IdRegistry::new();
         parse(xml, &dummy_url(), &mut reg).unwrap();
 
-        assert!(reg.contains_key("bldg001"));
-        assert!(reg.contains_key("part001"));
+        let url = dummy_url().to_string();
+        assert!(reg.contains_key(&(url.clone(), "bldg001".to_string())));
+        assert!(reg.contains_key(&(url, "part001".to_string())));
+    }
+
+    #[test]
+    fn parse_cross_file_gml_id_collision() {
+        // Two files share the same gml:id. Both must be kept under their
+        // respective source URLs; neither should overwrite the other.
+        let xml = br#"
+<core:CityModel
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+  xmlns:gml="http://www.opengis.net/gml/3.2">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="shared001"/>
+  </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let url_a = Url::parse("file:///a.gml").unwrap();
+        let url_b = Url::parse("file:///b.gml").unwrap();
+
+        let mut reg = IdRegistry::new();
+        parse(xml, &url_a, &mut reg).unwrap();
+        parse(xml, &url_b, &mut reg).unwrap();
+
+        assert_eq!(reg.len(), 2);
+        assert!(reg.contains_key(&(url_a.to_string(), "shared001".to_string())));
+        assert!(reg.contains_key(&(url_b.to_string(), "shared001".to_string())));
+        // Nodes must be distinct (different source files, same id).
+        let node_a = reg
+            .get(&(url_a.to_string(), "shared001".to_string()))
+            .unwrap();
+        let node_b = reg
+            .get(&(url_b.to_string(), "shared001".to_string()))
+            .unwrap();
+        assert!(!Arc::ptr_eq(node_a, node_b));
     }
 
     #[test]
@@ -578,8 +635,6 @@ mod tests {
         assert_eq!(features.len(), 1);
     }
 
-    // ---- resolve_xlinks ----
-
     #[test]
     fn resolve_xlinks_replaces_href_leaf() {
         let target = Arc::new(make_node(
@@ -588,7 +643,7 @@ mod tests {
             vec![],
         ));
         let mut reg = IdRegistry::new();
-        reg.insert("poly001".to_string(), target);
+        reg.insert((dummy_url().to_string(), "poly001".to_string()), target);
 
         let node = make_node(
             "bldg:lod1Solid",
@@ -596,7 +651,7 @@ mod tests {
             vec![],
         );
 
-        let resolved = resolve_xlinks(&node, &reg);
+        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
 
         assert_eq!(resolved.children.len(), 1);
         if let XmlChild::Element(e) = &resolved.children[0] {
@@ -619,30 +674,32 @@ mod tests {
             vec![],
         ));
         let mut reg = IdRegistry::new();
-        reg.insert("p1".to_string(), target);
+        reg.insert((dummy_url().to_string(), "p1".to_string()), target);
 
         let node = make_node("ref", vec![("xl:href", XLINK_NS, "#p1")], vec![]);
-        let resolved = resolve_xlinks(&node, &reg);
+        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
 
         assert_eq!(resolved.children.len(), 1);
     }
 
     #[test]
     fn resolve_xlinks_handles_cross_file_fragment() {
+        // base_url is file:///test.gml; "other.gml" resolves to file:///other.gml
+        let other_url = Url::parse("file:///other.gml").unwrap();
         let target = Arc::new(make_node(
             "gml:Polygon",
             vec![("gml:id", GML_NS, "p1")],
             vec![],
         ));
         let mut reg = IdRegistry::new();
-        reg.insert("p1".to_string(), target);
+        reg.insert((other_url.to_string(), "p1".to_string()), target);
 
         let node = make_node(
             "ref",
             vec![("xlink:href", XLINK_NS, "other.gml#p1")],
             vec![],
         );
-        let resolved = resolve_xlinks(&node, &reg);
+        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
 
         assert_eq!(resolved.children.len(), 1);
     }
@@ -651,7 +708,7 @@ mod tests {
     fn resolve_xlinks_leaves_unresolvable_in_place() {
         let reg = IdRegistry::new();
         let node = make_node("ref", vec![("xlink:href", XLINK_NS, "#missing")], vec![]);
-        let resolved = resolve_xlinks(&node, &reg);
+        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
 
         assert!(resolved.children.is_empty());
         assert!(resolved
@@ -668,12 +725,12 @@ mod tests {
             vec![],
         ));
         let mut reg = IdRegistry::new();
-        reg.insert("pt1".to_string(), target);
+        reg.insert((dummy_url().to_string(), "pt1".to_string()), target);
 
         let inner = make_node("bldg:pos", vec![("xlink:href", XLINK_NS, "#pt1")], vec![]);
         let node = make_node("bldg:Building", vec![], vec![elem(inner)]);
 
-        let resolved = resolve_xlinks(&node, &reg);
+        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
 
         let child = match &resolved.children[0] {
             XmlChild::Element(e) => e,
@@ -682,8 +739,6 @@ mod tests {
         assert_eq!(child.name, "bldg:pos");
         assert_eq!(child.children.len(), 1);
     }
-
-    // ---- node_to_attribute_value ----
 
     #[test]
     fn node_to_attribute_value_pure_text() {
@@ -759,8 +814,6 @@ mod tests {
         assert!(matches!(map.get("item"), Some(AttributeValue::String(_))));
     }
 
-    // ---- to_feature ----
-
     #[test]
     fn to_feature_sets_feature_type_and_id() {
         let node = Arc::new(make_node(
@@ -775,7 +828,7 @@ mod tests {
             source_url: dummy_url(),
         };
         let reg = IdRegistry::new();
-        let resolved = resolve_xlinks(&tlf.node, &reg);
+        let resolved = resolve_xlinks(&tlf.node, &dummy_url(), &reg);
         let feature = to_feature(&tlf, &resolved);
 
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
