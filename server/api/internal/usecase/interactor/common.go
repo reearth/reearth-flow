@@ -63,13 +63,22 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 }
 
 type ProjectDeleter struct {
-	File    gateway.File
-	Project repo.Project
+	File      gateway.File
+	Project   repo.Project
+	Websocket interfaces.WebsocketClient
 }
 
 func (d ProjectDeleter) Delete(ctx context.Context, prj *project.Project, force bool) error {
 	if prj == nil {
 		return nil
+	}
+
+	// Delete collaborative document data (GCS snapshots + Redis stream)
+	if d.Websocket != nil {
+		if err := d.Websocket.DeleteDocument(ctx, prj.ID().String()); err != nil {
+			log.Printf("WARNING: Failed to delete websocket document for project %s: %v", prj.ID(), err)
+			// Non-fatal: project deletion should proceed even if WS cleanup fails
+		}
 	}
 
 	// Delete project

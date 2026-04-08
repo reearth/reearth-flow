@@ -430,6 +430,34 @@ func (c *Client) CopyDocument(ctx context.Context, docID string, source string) 
 	return nil
 }
 
+func (c *Client) DeleteDocument(ctx context.Context, docID string) error {
+	url := fmt.Sprintf("%s/api/document/%s", c.config.ServerURL, docID)
+
+	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	c.setCommonHeaders(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to delete document: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server returned non-204 status: %d %s", resp.StatusCode, body)
+	}
+
+	return nil
+}
+
 func (c *Client) ImportDocument(ctx context.Context, docID string, data []byte) error {
 	url := fmt.Sprintf("%s/api/document/%s/import", c.config.ServerURL, docID)
 

@@ -9,8 +9,9 @@ use tracing::{error, warn};
 
 use crate::{
     presentation::http::dto::{
-        CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
-        ImportDocumentRequest, RollbackRequest, SnapshotResponse,
+        BatchCleanupResponse, CleanupResponse, CreateSnapshotRequest, DocumentResponse,
+        HistoryMetadataResponse, HistoryResponse, ImportDocumentRequest, RollbackRequest,
+        SnapshotResponse,
     },
     AppState, DocumentUseCaseError,
 };
@@ -182,6 +183,47 @@ impl DocumentHandler {
         {
             Ok(_) => StatusCode::OK.into_response(),
             Err(err) => handle_service_error(&format!("import_document [{}]", doc_id), err),
+        }
+    }
+
+    pub async fn cleanup_updates(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        const MAX_SNAPSHOT_VERSIONS: usize = 10;
+        match state
+            .document_usecase
+            .cleanup_old_updates(&doc_id, MAX_SNAPSHOT_VERSIONS)
+            .await
+        {
+            Ok(deleted) => Json(CleanupResponse { deleted }).into_response(),
+            Err(err) => handle_service_error(&format!("cleanup_updates [{}]", doc_id), err),
+        }
+    }
+
+    pub async fn delete_document(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        match state.document_usecase.delete_document(&doc_id).await {
+            Ok(_) => StatusCode::NO_CONTENT.into_response(),
+            Err(err) => handle_service_error(&format!("delete_document [{}]", doc_id), err),
+        }
+    }
+
+    pub async fn cleanup_all(State(state): State<Arc<AppState>>) -> Response {
+        const MAX_SNAPSHOT_VERSIONS: usize = 10;
+        match state
+            .document_usecase
+            .cleanup_all_documents(MAX_SNAPSHOT_VERSIONS)
+            .await
+        {
+            Ok((docs_processed, total_deleted)) => Json(BatchCleanupResponse {
+                docs_processed,
+                total_deleted,
+            })
+            .into_response(),
+            Err(err) => handle_service_error("cleanup_all", err),
         }
     }
 }

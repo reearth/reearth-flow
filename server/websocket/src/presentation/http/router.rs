@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use std::sync::Arc;
@@ -38,5 +38,17 @@ pub fn document_routes() -> Router<Arc<AppState>> {
         .route(
             "/document/{doc_id}/import",
             post(DocumentHandler::import_document),
+        )
+        .route(
+            "/document/{doc_id}/cleanup",
+            post(DocumentHandler::cleanup_updates),
+        )
+        .route(
+            "/document/{doc_id}",
+            delete(DocumentHandler::delete_document),
+        )
+        .route(
+            "/admin/cleanup",
+            post(DocumentHandler::cleanup_all),
         )
 }
