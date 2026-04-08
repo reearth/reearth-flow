@@ -6,7 +6,7 @@ use tokio::sync::{
 };
 use tracing::{error, info, Level, Span};
 
-use crate::node::{EdgeId, NodeHandle, NodeStatus};
+use crate::node::{NodeHandle, NodeStatus};
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -25,14 +25,6 @@ pub enum Event {
     SinkFinished {
         node: NodeHandle,
         name: String,
-    },
-    EdgeCompleted {
-        feature_id: uuid::Uuid,
-        edge_id: EdgeId,
-    },
-    EdgePassThrough {
-        feature_id: uuid::Uuid,
-        edge_id: EdgeId,
     },
     Log {
         level: Level,

@@ -6,9 +6,6 @@ use reearth_flow_runtime::node::NodeStatus;
 use uuid::Uuid;
 
 use reearth_flow_worker::pubsub::Publisher;
-use reearth_flow_worker::types::edge_pass_through_event::{
-    EdgePassThroughEvent, EventStatus, UpdatedEdge,
-};
 use reearth_flow_worker::types::log_stream_event::LogStreamEvent;
 use reearth_flow_worker::types::node_status_event::{
     NodeStatus as PublishNodeStatus, NodeStatusEvent,
@@ -96,44 +93,6 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 );
                 if let Err(e) = self.publisher.publish(log_stream_event).await {
                     tracing::error!("Failed to publish log stream event: {}", e);
-                }
-            }
-            reearth_flow_runtime::event::Event::EdgePassThrough {
-                edge_id,
-                feature_id,
-            } => {
-                let edge_pass_through_event = EdgePassThroughEvent {
-                    workflow_id: self.workflow_id,
-                    job_id: self.job_id,
-                    status: EventStatus::InProgress,
-                    timestamp: chrono::Utc::now(),
-                    updated_edges: vec![UpdatedEdge {
-                        id: edge_id.to_string(),
-                        status: EventStatus::InProgress,
-                        feature_id: Some(*feature_id),
-                    }],
-                };
-                if let Err(e) = self.publisher.publish(edge_pass_through_event).await {
-                    tracing::error!("Failed to publish edge pass through event: {}", e);
-                }
-            }
-            reearth_flow_runtime::event::Event::EdgeCompleted {
-                edge_id,
-                feature_id,
-            } => {
-                let edge_completed_event = EdgePassThroughEvent {
-                    workflow_id: self.workflow_id,
-                    job_id: self.job_id,
-                    status: EventStatus::Completed,
-                    timestamp: chrono::Utc::now(),
-                    updated_edges: vec![UpdatedEdge {
-                        id: edge_id.to_string(),
-                        status: EventStatus::Completed,
-                        feature_id: Some(*feature_id),
-                    }],
-                };
-                if let Err(e) = self.publisher.publish(edge_completed_event).await {
-                    tracing::error!("Failed to publish edge completed event: {}", e);
                 }
             }
             reearth_flow_runtime::event::Event::NodeStatusChanged {
