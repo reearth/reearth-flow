@@ -29,13 +29,25 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
-      - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
-        name: JsonWriter
+      # PLATEAU CityGML 3 coordinates are in JGD2011 geographic (lat/lon/ellipsoidal-height).
+      # Shift ellipsoidal height → WGS84 orthometric height before tile output.
+      # Horizontal reprojection is not required: JGD2011 lat/lon ≈ WGS84 lat/lon for 3D tiles.
+      - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
+        name: VerticalReprojector
         type: action
-        action: JsonWriter
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+        name: Cesium3DTilesWriter
+        type: action
+        action: Cesium3DTilesWriter
         with:
           output: |
             env.get("outputPath")
+          minZoom: 15
+          maxZoom: 18
 
     edges:
       - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
@@ -45,6 +57,11 @@ graphs:
         toPort: default
       - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
         from: d4e5f6a7-b8c9-0123-def1-234567890123
+        to: b1c2d3e4-f5a6-7890-bcde-f12345678901
+        fromPort: default
+        toPort: default
+      - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
+        from: b1c2d3e4-f5a6-7890-bcde-f12345678901
         to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
         fromPort: default
         toPort: default

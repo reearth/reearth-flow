@@ -3,6 +3,7 @@
   CityGML 3.0: cross-file feature xlink via CityObjectRelation.
   Per OGC 21-006r2 §7.2.3: external reference = "filename.gml#gml:id"
 
+  Coordinates are JGD2011 geographic (lon lat height) — Tokyo area, EPSG:6697.
   floorsurface1.relatedTo -> feature_xlink_definition.gml#trafficarea1
 -->
 <core:CityModel
@@ -24,12 +25,13 @@
             </core:CityObjectRelation>
           </core:relatedTo>
           <core:lod2MultiSurface>
-            <gml:MultiSurface srsDimension="3">
+            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
               <gml:surfaceMember>
                 <gml:Polygon>
                   <gml:exterior>
                     <gml:LinearRing>
-                      <gml:posList>0 0 0 10 0 0 10 5 0 0 5 0 0 0 0</gml:posList>
+                      <!-- lon lat height (degrees, degrees, metres) — small footprint in Tokyo -->
+                      <gml:posList>139.7454 35.6586 10.0 139.7455 35.6586 10.0 139.7455 35.6587 10.0 139.7454 35.6587 10.0 139.7454 35.6586 10.0</gml:posList>
                     </gml:LinearRing>
                   </gml:exterior>
                 </gml:Polygon>
