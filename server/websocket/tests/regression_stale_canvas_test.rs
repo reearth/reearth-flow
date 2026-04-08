@@ -16,7 +16,9 @@ use google_cloud_storage::http::Error as GcsError;
 fn is_not_found(err: &GcsError) -> bool {
     match err {
         GcsError::Response(resp) => resp.code == 404,
-        GcsError::HttpClient(reqwest_err) => reqwest_err.status().is_some_and(|s| s.as_u16() == 404),
+        GcsError::HttpClient(reqwest_err) => {
+            reqwest_err.status().is_some_and(|s| s.as_u16() == 404)
+        }
         _ => false,
     }
 }

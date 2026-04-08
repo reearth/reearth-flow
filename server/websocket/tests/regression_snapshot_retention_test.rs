@@ -11,10 +11,7 @@
 /// Simulates the clock-based retention logic from `cleanup_old_updates`.
 /// Given a list of (clock, object_name) pairs, returns which objects to delete
 /// to keep only `max_keep` most recent.
-fn compute_retention(
-    clock_objects: &[(u32, String)],
-    max_keep: usize,
-) -> Vec<(u32, String)> {
+fn compute_retention(clock_objects: &[(u32, String)], max_keep: usize) -> Vec<(u32, String)> {
     if clock_objects.len() <= max_keep {
         return vec![];
     }
@@ -28,9 +25,7 @@ fn compute_retention(
 
 #[test]
 fn retention_keeps_exactly_max_when_over_limit() {
-    let objects: Vec<(u32, String)> = (1..=15)
-        .map(|i| (i, format!("update_{}", i)))
-        .collect();
+    let objects: Vec<(u32, String)> = (1..=15).map(|i| (i, format!("update_{}", i))).collect();
 
     let to_delete = compute_retention(&objects, 10);
 
@@ -42,22 +37,24 @@ fn retention_keeps_exactly_max_when_over_limit() {
 
 #[test]
 fn retention_no_op_when_under_limit() {
-    let objects: Vec<(u32, String)> = (1..=7)
-        .map(|i| (i, format!("update_{}", i)))
-        .collect();
+    let objects: Vec<(u32, String)> = (1..=7).map(|i| (i, format!("update_{}", i))).collect();
 
     let to_delete = compute_retention(&objects, 10);
-    assert!(to_delete.is_empty(), "Should delete nothing when under limit");
+    assert!(
+        to_delete.is_empty(),
+        "Should delete nothing when under limit"
+    );
 }
 
 #[test]
 fn retention_no_op_when_exactly_at_limit() {
-    let objects: Vec<(u32, String)> = (1..=10)
-        .map(|i| (i, format!("update_{}", i)))
-        .collect();
+    let objects: Vec<(u32, String)> = (1..=10).map(|i| (i, format!("update_{}", i))).collect();
 
     let to_delete = compute_retention(&objects, 10);
-    assert!(to_delete.is_empty(), "Should delete nothing when exactly at limit");
+    assert!(
+        to_delete.is_empty(),
+        "Should delete nothing when exactly at limit"
+    );
 }
 
 /// Projects with hundreds of snapshots: verify the math is correct and
@@ -65,9 +62,7 @@ fn retention_no_op_when_exactly_at_limit() {
 #[test]
 fn retention_handles_hundreds_of_snapshots() {
     let count = 500;
-    let objects: Vec<(u32, String)> = (1..=count)
-        .map(|i| (i, format!("update_{}", i)))
-        .collect();
+    let objects: Vec<(u32, String)> = (1..=count).map(|i| (i, format!("update_{}", i))).collect();
 
     let to_delete = compute_retention(&objects, 10);
     assert_eq!(to_delete.len(), 490, "Should delete 490 to keep 10");
@@ -101,12 +96,10 @@ fn retention_handles_hundreds_of_snapshots() {
 #[test]
 fn retention_handles_non_contiguous_clocks() {
     // Clocks: 5, 10, 15, 100, 200, 300, 400, 500, 600, 700, 800, 900
-    let objects: Vec<(u32, String)> = vec![
-        5, 10, 15, 100, 200, 300, 400, 500, 600, 700, 800, 900,
-    ]
-    .into_iter()
-    .map(|c| (c, format!("update_{}", c)))
-    .collect();
+    let objects: Vec<(u32, String)> = vec![5, 10, 15, 100, 200, 300, 400, 500, 600, 700, 800, 900]
+        .into_iter()
+        .map(|c| (c, format!("update_{}", c)))
+        .collect();
 
     let to_delete = compute_retention(&objects, 10);
     assert_eq!(to_delete.len(), 2);
@@ -125,18 +118,15 @@ fn deletion_covers_all_object_types() {
 
     // These are the key patterns that delete_all_doc_data must clean up:
     let expected_patterns = vec![
-        format!("doc_v2:{}", doc_id_hex),          // compressed v2 snapshot
-        format!("checkpoint:{}", doc_id_hex),        // compaction checkpoint
-        // OID mapping: key_oid(doc_id) → hex encoded
-        // OID-based objects: key_doc, key_state_vector, key_update(s), key_meta(s)
+        format!("doc_v2:{}", doc_id_hex), // compressed v2 snapshot
+        format!("checkpoint:{}", doc_id_hex), // compaction checkpoint
+                                          // OID mapping: key_oid(doc_id) → hex encoded
+                                          // OID-based objects: key_doc, key_state_vector, key_update(s), key_meta(s)
     ];
 
     // Verify the key construction is consistent
     for pattern in &expected_patterns {
-        assert!(
-            !pattern.is_empty(),
-            "Key pattern should not be empty"
-        );
+        assert!(!pattern.is_empty(), "Key pattern should not be empty");
         // The hex-encoded doc_id should appear in the key
         assert!(
             pattern.contains(&doc_id_hex),
@@ -169,8 +159,8 @@ fn hex_encoding_is_deterministic_and_reversible() {
 /// would disconnect and reconnect, potentially loading an outdated snapshot.
 #[tokio::test]
 async fn broadcast_lag_recovery_prevents_stale_reconnects() {
-    use tokio::sync::broadcast;
     use bytes::Bytes;
+    use tokio::sync::broadcast;
 
     // Small channel that will overflow easily
     let (tx, _rx) = broadcast::channel::<Bytes>(4);

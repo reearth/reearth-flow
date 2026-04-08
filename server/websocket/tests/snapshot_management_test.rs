@@ -120,10 +120,7 @@ async fn changed_session_produces_exactly_one_update() {
         || (diff.len() == 2 && diff[0] == 0 && diff[1] == 0)
         || awareness_state == gcs_state;
 
-    assert!(
-        !is_empty,
-        "Changed session should produce non-empty diff"
-    );
+    assert!(!is_empty, "Changed session should produce non-empty diff");
 
     // Push the update and flush
     let diff_bytes = bytes::Bytes::from(diff);
@@ -219,7 +216,10 @@ async fn cleanup_preserves_document_state() {
     let before_doc = Doc::new();
     {
         let mut txn = before_doc.transact_mut();
-        store.load_doc("test-doc", &mut txn).await.expect("load_doc");
+        store
+            .load_doc("test-doc", &mut txn)
+            .await
+            .expect("load_doc");
     }
     let before_text = before_doc.get_or_insert_text("content");
     let before_content = before_text.get_string(&before_doc.transact());
@@ -234,7 +234,10 @@ async fn cleanup_preserves_document_state() {
     let after_doc = Doc::new();
     {
         let mut txn = after_doc.transact_mut();
-        store.load_doc("test-doc", &mut txn).await.expect("load_doc");
+        store
+            .load_doc("test-doc", &mut txn)
+            .await
+            .expect("load_doc");
     }
     let after_text = after_doc.get_or_insert_text("content");
     let after_content = after_text.get_string(&after_doc.transact());

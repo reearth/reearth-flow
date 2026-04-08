@@ -47,8 +47,5 @@ pub fn document_routes() -> Router<Arc<AppState>> {
             "/document/{doc_id}",
             delete(DocumentHandler::delete_document),
         )
-        .route(
-            "/admin/cleanup",
-            post(DocumentHandler::cleanup_all),
-        )
+        .route("/admin/cleanup", post(DocumentHandler::cleanup_all))
 }

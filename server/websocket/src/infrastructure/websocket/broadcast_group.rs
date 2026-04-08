@@ -576,9 +576,7 @@ impl BroadcastGroup {
                     let gcs_doc = Doc::new();
                     let mut gcs_txn = gcs_doc.transact_mut();
 
-                    if let Err(e) =
-                        self.storage.load_doc_v2(&self.doc_name, &mut gcs_txn).await
-                    {
+                    if let Err(e) = self.storage.load_doc_v2(&self.doc_name, &mut gcs_txn).await {
                         warn!("Failed to load current v2 state from GCS: {}", e);
                     }
 

@@ -31,10 +31,7 @@ pub async fn api_auth_layer(
                 }
             }
             None => {
-                warn!(
-                    "API request rejected: missing {} header",
-                    API_SECRET_HEADER
-                );
+                warn!("API request rejected: missing {} header", API_SECRET_HEADER);
                 return Err(StatusCode::UNAUTHORIZED);
             }
         }

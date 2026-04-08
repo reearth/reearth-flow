@@ -197,10 +197,7 @@ impl DocumentUseCase {
             })
     }
 
-    pub async fn delete_document(
-        &self,
-        doc_id: &str,
-    ) -> Result<(), DocumentUseCaseError> {
+    pub async fn delete_document(&self, doc_id: &str) -> Result<(), DocumentUseCaseError> {
         self.repository
             .delete_document(doc_id)
             .await

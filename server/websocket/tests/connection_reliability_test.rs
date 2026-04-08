@@ -31,7 +31,10 @@ async fn lagged_receiver_recovers_and_continues() {
     }
 
     assert!(lagged_count > 0, "Should have detected lag");
-    assert!(!received.is_empty(), "Should have received messages after lag");
+    assert!(
+        !received.is_empty(),
+        "Should have received messages after lag"
+    );
 }
 
 /// Proves the old `while let Ok(msg) = rx.recv().await` pattern exits on lag.

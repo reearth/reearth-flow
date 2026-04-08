@@ -65,13 +65,12 @@ async fn build_state(redis_url: &str, api_secret: Option<String>) -> Arc<AppStat
 
     #[cfg(feature = "auth")]
     let auth_usecase = {
-        let auth_service = websocket::infrastructure::auth::create_auth_service(
-            websocket::conf::AuthConfig {
+        let auth_service =
+            websocket::infrastructure::auth::create_auth_service(websocket::conf::AuthConfig {
                 url: "http://127.0.0.1:1".to_string(), // bogus, never called for these tests
-            },
-        )
-        .await
-        .expect("auth service init should succeed");
+            })
+            .await
+            .expect("auth service init should succeed");
         Arc::new(websocket::application::usecases::auth::VerifyTokenUseCase::new(auth_service))
     };
 
@@ -94,8 +93,7 @@ async fn start_test_server(state: Arc<AppState>) -> (tokio::task::JoinHandle<()>
     let app = Router::new()
         .nest(
             "/api",
-            document_routes()
-                .layer(from_fn_with_state(state.api_secret.clone(), api_auth_layer)),
+            document_routes().layer(from_fn_with_state(state.api_secret.clone(), api_auth_layer)),
         )
         .with_state(state);
 

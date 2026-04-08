@@ -871,11 +871,7 @@ impl GcsStore {
     /// Keep only the most recent `max_keep` individual update objects for a document.
     /// Older updates are merged into the compacted v1 doc state, then deleted.
     /// Operates in batches to handle documents with hundreds of updates.
-    pub async fn cleanup_old_updates(
-        &self,
-        doc_id: &str,
-        max_keep: usize,
-    ) -> Result<usize> {
+    pub async fn cleanup_old_updates(&self, doc_id: &str, max_keep: usize) -> Result<usize> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(0),
@@ -1120,10 +1116,7 @@ impl GcsStore {
     /// Run cleanup on ALL documents in the bucket: for each document with an OID,
     /// run `cleanup_old_updates` to keep at most `max_keep` versions.
     /// Returns (docs_processed, total_updates_deleted).
-    pub async fn cleanup_all_documents(
-        &self,
-        max_keep: usize,
-    ) -> Result<(usize, usize)> {
+    pub async fn cleanup_all_documents(&self, max_keep: usize) -> Result<(usize, usize)> {
         // List all OID entries (prefix "00" in hex = KEYSPACE_OID)
         let oid_prefix = hex::encode([V1, KEYSPACE_OID]);
         let doc_end_prefix = hex::encode([V1, KEYSPACE_DOC]);
@@ -1177,11 +1170,7 @@ impl GcsStore {
                                 total_deleted += deleted;
                             }
                             Err(e) => {
-                                tracing::warn!(
-                                    "Failed to cleanup doc '{}': {}",
-                                    doc_name,
-                                    e
-                                );
+                                tracing::warn!("Failed to cleanup doc '{}': {}", doc_name, e);
                             }
                         }
                         docs_processed += 1;

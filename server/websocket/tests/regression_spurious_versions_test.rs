@@ -92,7 +92,9 @@ fn fix_real_edits_do_trigger_save() {
         let txn = source.transact();
         let update = txn.encode_state_as_update_v1(&StateVector::default());
         let mut gcs_txn = gcs_doc.transact_mut();
-        gcs_txn.apply_update(yrs::Update::decode_v1(&update).unwrap()).unwrap();
+        gcs_txn
+            .apply_update(yrs::Update::decode_v1(&update).unwrap())
+            .unwrap();
     }
 
     // Awareness doc: has additional edits
@@ -101,7 +103,9 @@ fn fix_real_edits_do_trigger_save() {
         let txn = source.transact();
         let update = txn.encode_state_as_update_v1(&StateVector::default());
         let mut awareness_txn = awareness_doc.transact_mut();
-        awareness_txn.apply_update(yrs::Update::decode_v1(&update).unwrap()).unwrap();
+        awareness_txn
+            .apply_update(yrs::Update::decode_v1(&update).unwrap())
+            .unwrap();
     }
     {
         let txt = awareness_doc.get_or_insert_text("content");
@@ -139,7 +143,8 @@ fn fix_empty_diff_encoding_is_caught() {
     let diff_bytes = bytes::Bytes::from(diff);
 
     assert!(
-        diff_bytes.is_empty() || (diff_bytes.len() == 2 && diff_bytes[0] == 0 && diff_bytes[1] == 0),
+        diff_bytes.is_empty()
+            || (diff_bytes.len() == 2 && diff_bytes[0] == 0 && diff_bytes[1] == 0),
         "A self-diff should be recognized as empty by the guard. Got: {:?}",
         diff_bytes.as_ref()
     );

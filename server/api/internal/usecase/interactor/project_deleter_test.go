@@ -42,7 +42,7 @@ func (m *mockWebsocketClient) GetHistoryMetadata(context.Context, string) ([]*ws
 func (m *mockWebsocketClient) Rollback(context.Context, string, int) (*ws.Document, error) {
 	return nil, nil
 }
-func (m *mockWebsocketClient) FlushToGCS(context.Context, string) error    { return nil }
+func (m *mockWebsocketClient) FlushToGCS(context.Context, string) error { return nil }
 func (m *mockWebsocketClient) CreateSnapshot(context.Context, string, int, string) (*ws.Document, error) {
 	return nil, nil
 }

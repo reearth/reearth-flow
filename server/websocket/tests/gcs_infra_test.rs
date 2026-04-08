@@ -17,11 +17,7 @@ async fn test_raw_kv_roundtrip() {
         .await
         .expect("upsert should succeed");
 
-    let result = infra
-        .gcs_store
-        .get(key)
-        .await
-        .expect("get should succeed");
+    let result = infra.gcs_store.get(key).await.expect("get should succeed");
     assert_eq!(result.unwrap(), value.to_vec());
 }
 
