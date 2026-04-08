@@ -28,10 +28,8 @@ fn collect_gml_geometries(node: &XmlNode, out: &mut Vec<GmlGeometry>) {
 
         let lod_opt = if ln == "tin" {
             Some(None)
-        } else if let Some(lod) = extract_lod(ln) {
-            Some(Some(lod))
         } else {
-            None
+            extract_lod(ln).map(Some)
         };
 
         if let Some(lod) = lod_opt {
@@ -517,8 +515,8 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
 fn gml_id(node: &XmlNode) -> Option<String> {
     node.attrs
         .iter()
-        .find(|(k, _)| k == "gml:id")
-        .map(|(_, v)| v.clone())
+        .find(|(qname, ns, _)| local_name(qname) == "id" && ns == super::parser::GML_NS)
+        .map(|(_, _, v)| v.clone())
 }
 
 fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
@@ -555,12 +553,12 @@ mod tests {
         XmlChild::Text(t.to_string())
     }
 
-    fn elem(name: &str, attrs: Vec<(&str, &str)>, children: Vec<XmlChild>) -> XmlNode {
+    fn elem(name: &str, attrs: Vec<(&str, &str, &str)>, children: Vec<XmlChild>) -> XmlNode {
         XmlNode {
             name: name.to_string(),
             attrs: attrs
                 .into_iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .map(|(q, ns, v)| (q.to_string(), ns.to_string(), v.to_string()))
                 .collect(),
             children,
         }
@@ -636,7 +634,7 @@ mod tests {
         ]);
         let solid = elem(
             "gml:Solid",
-            vec![("gml:id", "solid01")],
+            vec![("gml:id", "http://www.opengis.net/gml/3.2", "solid01")],
             vec![elem_child(elem(
                 "gml:exterior",
                 vec![],
@@ -653,7 +651,7 @@ mod tests {
         );
         let feature = elem(
             "bldg:Building",
-            vec![("gml:id", "BLD001")],
+            vec![("gml:id", "http://www.opengis.net/gml/3.2", "BLD001")],
             vec![elem_child(elem(
                 "bldg:lod1Solid",
                 vec![],
@@ -718,7 +716,7 @@ mod tests {
         let pos_list = "0 0 0 1 0 0 1 1 0 0 1 0 0 0 0";
         let rel_geom = elem(
             "gml:MultiSurface",
-            vec![("gml:id", "geom_template1")],
+            vec![("gml:id", "http://www.opengis.net/gml/3.2", "geom_template1")],
             vec![elem_child(elem(
                 "gml:surfaceMember",
                 vec![],
@@ -759,7 +757,7 @@ mod tests {
         );
         let feature = elem(
             "frn:CityFurniture",
-            vec![("gml:id", "furniture2")],
+            vec![("gml:id", "http://www.opengis.net/gml/3.2", "furniture2")],
             vec![elem_child(elem(
                 "core:lod2ImplicitRepresentation",
                 vec![],

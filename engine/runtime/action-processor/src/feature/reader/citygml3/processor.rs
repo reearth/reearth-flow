@@ -181,13 +181,13 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         for tlf in &self.pending {
-            // Pass 1: resolve xlinks + build attribute Feature.
-            let mut feature = parser::to_feature(tlf, &self.id_registry);
-
-            // Pass 2: resolve xlinks again for geometry extraction.
-            // TODO: thread a single resolved node through all passes once
-            //       codelist resolution and subfeature extraction are added.
+            // Resolve xlinks once; share the result across all passes.
             let resolved = parser::resolve_xlinks(&tlf.node, &self.id_registry);
+
+            // Pass 1: build attribute Feature from the resolved node.
+            let mut feature = parser::to_feature(tlf, &resolved);
+
+            // Pass 2: extract geometries from the same resolved node.
             let raw_geoms = geometry::extract_geometries(&resolved);
             if !raw_geoms.is_empty() {
                 *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(

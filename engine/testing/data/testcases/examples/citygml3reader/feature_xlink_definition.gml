@@ -14,6 +14,7 @@
     <tran:Road gml:id="road1">
       <core:boundary>
         <tran:TrafficArea gml:id="trafficarea1">
+          <tran:surfaceMaterial>asphalt</tran:surfaceMaterial>
           <core:lod2MultiSurface>
             <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
               <gml:surfaceMember>
