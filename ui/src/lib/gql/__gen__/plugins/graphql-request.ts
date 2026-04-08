@@ -812,11 +812,11 @@ export enum ParameterType {
 export type ParameterUpdateItem = {
   config?: InputMaybe<Scalars['JSON']['input']>;
   defaultValue?: InputMaybe<Scalars['Any']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
   paramId: Scalars['ID']['input'];
-  public?: InputMaybe<Scalars['Boolean']['input']>;
-  required?: InputMaybe<Scalars['Boolean']['input']>;
-  type?: InputMaybe<ParameterType>;
+  public: Scalars['Boolean']['input'];
+  required: Scalars['Boolean']['input'];
+  type: ParameterType;
 };
 
 export type PreviewSnapshot = {
@@ -1290,7 +1290,7 @@ export type UpdateMemberOfWorkspacePayload = {
 
 export type UpdateParameterInput = {
   config?: InputMaybe<Scalars['JSON']['input']>;
-  defaultValue: Scalars['Any']['input'];
+  defaultValue?: InputMaybe<Scalars['Any']['input']>;
   name: Scalars['String']['input'];
   public: Scalars['Boolean']['input'];
   required: Scalars['Boolean']['input'];

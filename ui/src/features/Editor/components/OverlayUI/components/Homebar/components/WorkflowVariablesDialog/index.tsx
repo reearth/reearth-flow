@@ -50,11 +50,11 @@ type Props = {
     }[];
     updates?: {
       paramId: string;
-      name?: string;
-      defaultValue?: any;
-      type?: VarType;
-      required?: boolean;
-      publicValue?: boolean;
+      name: string;
+      defaultValue: any;
+      type: VarType;
+      required: boolean;
+      publicValue: boolean;
     }[];
     deletes?: string[];
     reorders?: {

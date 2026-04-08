@@ -117,34 +117,23 @@ func (r *mutationResolver) UpdateParameters(ctx context.Context, input gqlmodel.
 		}
 	}
 
-	updates := make([]interfaces.UpdateParameterBatchItemParam, len(input.Updates))
+	updates := make([]interfaces.UpdateParameterParam, len(input.Updates))
 	for i, update := range input.Updates {
 		paramID, err := gqlmodel.ToID[id.Parameter](update.ParamID)
 		if err != nil {
 			return nil, err
 		}
 
-		updateParam := interfaces.UpdateParameterBatchItemParam{
-			ParamID:      paramID,
-			DefaultValue: update.DefaultValue,
-			Config:       convertJSONToInterface(update.Config),
+		paramType := gqlmodel.FromParameterType(update.Type)
+		updates[i] = interfaces.UpdateParameterParam{
+			ParamID:       paramID,
+			DefaultValue:  update.DefaultValue,
+			Config:        convertJSONToInterface(update.Config),
+			NameValue:     update.Name,
+			TypeValue:     paramType,
+			RequiredValue: update.Required,
+			PublicValue:   update.Public,
 		}
-
-		if update.Name != nil {
-			updateParam.NameValue = update.Name
-		}
-		if update.Type != nil {
-			paramType := gqlmodel.FromParameterType(*update.Type)
-			updateParam.TypeValue = &paramType
-		}
-		if update.Required != nil {
-			updateParam.RequiredValue = update.Required
-		}
-		if update.Public != nil {
-			updateParam.PublicValue = update.Public
-		}
-
-		updates[i] = updateParam
 	}
 
 	deletes := make(id.ParameterIDList, len(input.Deletes))
