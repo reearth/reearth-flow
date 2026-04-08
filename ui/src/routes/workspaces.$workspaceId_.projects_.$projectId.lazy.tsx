@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import { Button, FlowLogo, LoadingSplashscreen } from "@flow/components";
@@ -17,10 +17,9 @@ import {
   DEFAULT_ENTRY_GRAPH_ID,
   GLOBAL_HOT_KEYS,
 } from "@flow/global-constants";
-import { useFullscreen, useJobSubscriptionsSetup } from "@flow/hooks";
+import { useFullscreen } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
-import { useIndexedDB } from "@flow/lib/indexedDB";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 import { useCurrentProject } from "@flow/stores";
 
@@ -84,18 +83,6 @@ const EditorComponent = () => {
   const { projectId }: { projectId: string } = useParams({
     strict: false,
   });
-
-  const [currentProject] = useCurrentProject();
-  const { value: debugRunState } = useIndexedDB("debugRun");
-
-  const currentDebugJobId = useMemo(
-    () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
-    [debugRunState, currentProject],
-  );
-
-  useJobSubscriptionsSetup(accessToken, currentDebugJobId, currentProject?.id);
 
   const {
     yWorkflows,

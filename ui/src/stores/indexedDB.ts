@@ -14,6 +14,7 @@ export type SelectedIntermediateData = {
 
 export type JobState = {
   projectId: string;
+  projectSnapshotVersionAtRun?: number;
   jobId: string;
   status: JobStatus;
   nodeExecutions?: NodeExecution[];

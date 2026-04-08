@@ -1,12 +1,9 @@
+import { useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import {
-  DebugRunState,
-  SelectedIntermediateData,
-  useCurrentProject,
-} from "@flow/stores";
+import { DebugRunState, SelectedIntermediateData } from "@flow/stores";
 import { NodeData } from "@flow/types";
 
 export default ({
@@ -20,14 +17,13 @@ export default ({
   portName: string;
   readonly: boolean;
 }) => {
-  const [currentProject] = useCurrentProject();
+  const { debugId } = useParams({ strict: false }) as { debugId?: string };
   const { api } = config();
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
   const debugJobState = useMemo(
-    () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
-    [debugRunState, currentProject],
+    () => debugRunState?.jobs?.find((job) => job.jobId === debugId),
+    [debugRunState, debugId],
   );
   const jobStatus = useMemo(
     () => debugJobState?.status,
@@ -97,7 +93,7 @@ export default ({
       ...debugRunState,
       jobs:
         debugRunState?.jobs?.map((job) => {
-          if (job.projectId !== currentProject?.id) return job;
+          if (job.jobId !== debugId) return job;
 
           const currentData = job.selectedIntermediateData ?? [];
           const isCurrentlySelected = currentData.find(
@@ -151,7 +147,7 @@ export default ({
   }, [
     dataUrl,
     debugRunState,
-    currentProject,
+    debugId,
     nodeId,
     portName,
     nodeData,
