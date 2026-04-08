@@ -1,13 +1,11 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useReactFlow } from "@xyflow/react";
 import { useCallback, useEffect, useState } from "react";
-import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useDebugAwareness } from "@flow/lib/yjs";
 import { JobState, useCurrentProject } from "@flow/stores";
 import type { AnyWorkflowVariable, Node, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
@@ -16,25 +14,15 @@ import { toast } from "../NotificationSystem/useToast";
 
 export default ({
   rawWorkflows,
-  yAwareness,
   onProjectSnapshotSave,
 }: {
   rawWorkflows: Workflow[];
-  yAwareness: Awareness;
   onProjectSnapshotSave: () => Promise<void>;
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
   const navigate = useNavigate();
-
-  const [currentJobId, setCurrentJobId] = useState<string | undefined>(
-    undefined,
-  );
-
-  const { activeUsersDebugRuns, broadcastDebugRun } = useDebugAwareness({
-    yAwareness,
-    projectId: currentProject?.id,
-  });
+  const { debugId } = useParams({ strict: false }) as { debugId?: string };
 
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables, refetch: refetchWorkflowVariables } =
@@ -92,7 +80,6 @@ export default ({
 
       if (data.job?.id) {
         const newJobId = data.job.id;
-        setCurrentJobId(newJobId);
 
         // Write to IndexedDB so the debug route can find intermediate data etc.
         const existing = debugRunState?.jobs || [];
@@ -132,19 +119,16 @@ export default ({
   const handleFromSelectedNodeDebugRunStart = useCallback(
     async (node?: Node, nodes?: Node[]) => {
       const selectedNode = node ?? nodes?.[0];
-      if (!selectedNode || !currentJobId) return;
-      await runDebugWorkflow(currentJobId, selectedNode.id);
+      if (!selectedNode || !debugId) return;
+      await runDebugWorkflow(debugId, selectedNode.id);
     },
-    [runDebugWorkflow, currentJobId],
+    [runDebugWorkflow, debugId],
   );
 
   const handleDebugRunStop = useCallback(async () => {
-    if (!currentJobId) return;
-    const data = await useJobCancel(currentJobId);
-    if (data.isSuccess) {
-      setCurrentJobId(undefined);
-    }
-  }, [currentJobId, useJobCancel]);
+    if (!debugId) return;
+    await useJobCancel(debugId);
+  }, [debugId, useJobCancel]);
 
   const loadExternalDebugJob = useCallback(
     (jobId: string, userName: string) => {
@@ -173,12 +157,7 @@ export default ({
     [],
   );
 
-  useEffect(() => {
-    broadcastDebugRun(currentJobId ?? null, undefined);
-  }, [currentJobId, broadcastDebugRun]);
-
   return {
-    activeUsersDebugRuns,
     customDebugRunWorkflowVariables,
     refetchWorkflowVariables,
     handleDebugRunStart,

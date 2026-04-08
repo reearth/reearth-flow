@@ -23,10 +23,9 @@ import {
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { AnyWorkflowVariable, AwarenessUser, Edge, Node } from "@flow/types";
+import { AnyWorkflowVariable, Edge, Node } from "@flow/types";
 
 import {
-  DebugActiveRunsPopover,
   DebugStartPopover,
   DebugStopPopover,
   DebugWorkflowVariablesDialog,
@@ -36,11 +35,9 @@ import useHooks from "./hooks";
 const tooltipOffset = 6;
 
 type Props = {
-  activeUsersDebugRuns?: AwarenessUser[];
   selectedNodeIds: string[];
   edges?: Edge[];
   isSaving: boolean;
-  onDebugRunJoin?: (jobId: string, userName: string) => void;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStartFromSelectedNode?: (
     node?: Node,
@@ -53,12 +50,10 @@ type Props = {
 };
 
 const DebugActionBar: React.FC<Props> = ({
-  activeUsersDebugRuns,
   selectedNodeIds,
   edges,
   isSaving,
   customDebugRunWorkflowVariables,
-  onDebugRunJoin,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
   onDebugRunStop,
@@ -75,7 +70,6 @@ const DebugActionBar: React.FC<Props> = ({
     handleDebugRunStop,
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
-    handleShowDebugActiveRunsPopover,
     handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,
@@ -120,14 +114,6 @@ const DebugActionBar: React.FC<Props> = ({
         }
         icon={<BroomIcon weight="thin" size={18} />}
         onClick={handleDebugRunReset}
-      />
-      <DebugActiveRunsPopover
-        activeUsersDebugRuns={activeUsersDebugRuns}
-        showPopover={showOverlayElement}
-        onDebugRunJoin={onDebugRunJoin}
-        onShowDebugRunsPopover={handleShowDebugActiveRunsPopover}
-        onPopoverClose={handlePopoverClose}
-        onDebugRunStart={onDebugRunStart}
       />
       {showOverlayElement === "debugWorkflowVariables" && (
         <DebugWorkflowVariablesDialog

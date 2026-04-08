@@ -5,26 +5,18 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  ScrollArea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { AwarenessUser } from "@flow/types";
-
-import CollaborationCard from "../../Collaboration/CollaborationCard";
 
 type Props = {
-  activeUsersDebugRuns?: AwarenessUser[];
   showPopover: string | undefined;
-  onDebugRunJoin?: (jobId: string, userName: string) => void;
   onShowDebugRunsPopover: () => void;
   onDebugRunStart: () => Promise<void>;
   onPopoverClose: () => void;
 };
 
 const DebugActiveRunsPopover: React.FC<Props> = ({
-  activeUsersDebugRuns,
   showPopover,
-  onDebugRunJoin,
   onShowDebugRunsPopover,
   onPopoverClose,
 }) => {
@@ -38,12 +30,9 @@ const DebugActiveRunsPopover: React.FC<Props> = ({
       }}>
       <PopoverTrigger asChild>
         <div className="relative">
-          {activeUsersDebugRuns && activeUsersDebugRuns.length >= 1 && (
-            <div className="absolute top-1.5 right-0.5 h-2 w-2 shrink-0 items-center justify-center rounded-full bg-green-400 " />
-          )}
           <IconButton
             className="shrink-0"
-            disabled={activeUsersDebugRuns && activeUsersDebugRuns.length === 0}
+            disabled={true}
             tooltipText={t("Active Debug Runs")}
             tooltipOffset={6}
             icon={<BinocularsIcon weight="thin" size={18} />}
@@ -63,7 +52,7 @@ const DebugActiveRunsPopover: React.FC<Props> = ({
                 {t("Active Debug Runs")}
               </h4>
             </div>
-            {activeUsersDebugRuns && activeUsersDebugRuns.length >= 1 && (
+            {/* {activeUsersDebugRuns && activeUsersDebugRuns.length >= 1 && (
               <ScrollArea>
                 <div className="flex max-h-[250px] flex-col gap-2">
                   <div className="flex flex-col gap-2">
@@ -94,22 +83,13 @@ const DebugActiveRunsPopover: React.FC<Props> = ({
                           userName={user.userName}
                           color={user.color}
                           time={timeAgo}
-                          onDebugRunJoin={() => {
-                            onPopoverClose();
-                            if (user?.debugRun?.jobId && onDebugRunJoin) {
-                              onDebugRunJoin(
-                                user.debugRun.jobId,
-                                user.userName,
-                              );
-                            }
-                          }}
                         />
                       );
                     })}
                   </div>
                 </div>
               </ScrollArea>
-            )}
+            )} */}
           </div>
         )}
       </PopoverContent>

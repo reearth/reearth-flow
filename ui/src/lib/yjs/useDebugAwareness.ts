@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
 import { AwarenessUser, UserDebugRun } from "@flow/types";
@@ -10,10 +10,6 @@ export default ({
   yAwareness: Awareness;
   projectId?: string;
 }) => {
-  const [activeUsersDebugRuns, setActiveUsersDebugRuns] = useState<
-    AwarenessUser[]
-  >([]);
-
   // Track last known debugRun per client (after project filter)
   const prevDebugRunsByClientRef = useRef<Map<number, any>>(new Map());
   const broadcastDebugRun = useCallback(
@@ -121,8 +117,6 @@ export default ({
           debugRun,
         });
       }
-
-      setActiveUsersDebugRuns(nextActiveUsers);
     };
 
     // Initial call to populate state – treat all current clients as "added"
@@ -149,7 +143,6 @@ export default ({
   }, []);
 
   return {
-    activeUsersDebugRuns,
     broadcastDebugRun,
   };
 };

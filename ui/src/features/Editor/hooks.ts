@@ -261,10 +261,8 @@ export default ({
     handleDebugRunStop,
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
-    activeUsersDebugRuns,
   } = useDebugRun({
     rawWorkflows,
-    yAwareness,
     onProjectSnapshotSave: handleProjectSnapshotSave,
   });
 
@@ -448,7 +446,6 @@ export default ({
     showBeforeDeleteDialog,
     spotlightUserClientId,
     spotlightUser,
-    activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
     refetchWorkflowVariables,

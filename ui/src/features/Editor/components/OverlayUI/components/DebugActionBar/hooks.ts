@@ -27,8 +27,6 @@ export default ({
 
   const handleShowDebugStartPopover = () => setshowOverlayElement("debugStart");
   const handleShowDebugStopPopover = () => setshowOverlayElement("debugStop");
-  const handleShowDebugActiveRunsPopover = () =>
-    setshowOverlayElement("debugRuns");
   const handleShowDebugWorkflowVariablesDialog = () => {
     refetchWorkflowVariables();
     setshowOverlayElement("debugWorkflowVariables");
@@ -126,7 +124,6 @@ export default ({
     handleDebugRunStop,
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
-    handleShowDebugActiveRunsPopover,
     handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,

@@ -1,20 +1,18 @@
+import { useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useCurrentProject } from "@flow/stores";
 
 export default ({
   currentWorkflowId: _currentWorkflowId,
 }: {
   currentWorkflowId?: string;
 }) => {
-  const [currentProject] = useCurrentProject();
   const { value: debugRunState } = useIndexedDB("debugRun");
-
+  const { debugId } = useParams({ strict: false }) as { debugId?: string };
   const debugJobState = useMemo(
-    () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
-    [debugRunState, currentProject],
+    () => debugRunState?.jobs?.find((job) => job.jobId === debugId),
+    [debugRunState, debugId],
   );
 
   const jobStatus = useMemo(
