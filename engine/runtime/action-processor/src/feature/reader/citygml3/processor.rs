@@ -14,7 +14,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use reearth_flow_types::{Geometry, GeometryValue};
+use reearth_flow_geometry::types::line_string::LineString2D;
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+use reearth_flow_types::{CityGmlGeometry, Geometry, GeometryType, GeometryValue, GmlGeometry};
 
 use crate::feature::errors::FeatureProcessorError;
 
@@ -185,10 +188,11 @@ impl Processor for FeatureCityGml3Reader {
             // TODO: thread a single resolved node through all passes once
             //       codelist resolution and subfeature extraction are added.
             let resolved = parser::resolve_xlinks(&tlf.node, &self.id_registry);
-            let citygml_geom = geometry::extract_geometry(&resolved);
-            if !citygml_geom.gml_geometries.is_empty() {
-                *feature.geometry_mut() =
-                    Geometry::with_value(GeometryValue::CityGmlGeometry(citygml_geom));
+            let raw_geoms = geometry::extract_geometries(&resolved);
+            if !raw_geoms.is_empty() {
+                *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
+                    build_citygml_geometry(raw_geoms),
+                ));
             }
 
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -203,4 +207,51 @@ impl Processor for FeatureCityGml3Reader {
     fn name(&self) -> &str {
         "FeatureCityGml3Reader"
     }
+}
+
+/// Assigns `pos` to each polygon-type geometry and builds neutral appearance arrays
+/// so downstream consumers can index into them without panicking.
+fn build_citygml_geometry(raw: Vec<GmlGeometry>) -> CityGmlGeometry {
+    let mut polygon_materials: Vec<Option<u32>> = Vec::new();
+    let mut polygon_textures: Vec<Option<u32>> = Vec::new();
+    let mut polygon_uvs: Vec<Polygon2D<f64>> = Vec::new();
+    let mut current_pos: u32 = 0;
+    let mut gml_geometries: Vec<GmlGeometry> = Vec::with_capacity(raw.len());
+
+    for mut g in raw {
+        if matches!(
+            g.ty,
+            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
+        ) {
+            g.pos = current_pos;
+            current_pos += g.len;
+            for poly in &g.polygons {
+                polygon_materials.push(None);
+                polygon_textures.push(None);
+                polygon_uvs.push(neutral_uv_polygon(poly));
+            }
+        }
+        gml_geometries.push(g);
+    }
+
+    CityGmlGeometry {
+        gml_geometries,
+        materials: Vec::new(),
+        textures: Vec::new(),
+        polygon_materials,
+        polygon_textures,
+        polygon_uvs: MultiPolygon2D::new(polygon_uvs),
+    }
+}
+
+/// Zero-UV polygon matching the ring structure of a 3D polygon.
+/// Each vertex maps to `(0.0, 0.0)` so texturing is a no-op.
+fn neutral_uv_polygon(poly: &Polygon3D<f64>) -> Polygon2D<f64> {
+    let ext = LineString2D::new(vec![[0.0f64, 0.0f64].into(); poly.exterior().0.len()]);
+    let ints = poly
+        .interiors()
+        .iter()
+        .map(|ring| LineString2D::new(vec![[0.0f64, 0.0f64].into(); ring.0.len()]))
+        .collect();
+    Polygon2D::new(ext, ints)
 }
