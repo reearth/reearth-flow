@@ -24,6 +24,8 @@ import { Route as WorkspacesWorkspaceIdTriggersTriggerIdRouteImport } from './ro
 import { Route as WorkspacesWorkspaceIdSettingsTabRouteImport } from './routes/workspaces.$workspaceId.settings.$tab'
 import { Route as WorkspacesWorkspaceIdJobsJobIdRouteImport } from './routes/workspaces.$workspaceId.jobs_.$jobId'
 import { Route as WorkspacesWorkspaceIdDeploymentsDeploymentIdRouteImport } from './routes/workspaces.$workspaceId.deployments_.$deploymentId'
+import { Route as WorkspacesWorkspaceIdProjectsProjectIdDebugRouteImport } from './routes/workspaces.$workspaceId_.projects_.$projectId_.debug'
+import { Route as WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRouteImport } from './routes/workspaces.$workspaceId_.projects_.$projectId_.debug_.$debugId'
 
 const SharedSharedTokenLazyRouteImport = createFileRoute(
   '/shared/$sharedToken',
@@ -123,6 +125,18 @@ const WorkspacesWorkspaceIdDeploymentsDeploymentIdRoute =
     path: '/deployments/$deploymentId',
     getParentRoute: () => WorkspacesWorkspaceIdRoute,
   } as any)
+const WorkspacesWorkspaceIdProjectsProjectIdDebugRoute =
+  WorkspacesWorkspaceIdProjectsProjectIdDebugRouteImport.update({
+    id: '/$workspaceId_/projects_/$projectId_/debug',
+    path: '/$workspaceId/projects/$projectId/debug',
+    getParentRoute: () => WorkspacesRoute,
+  } as any)
+const WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRoute =
+  WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRouteImport.update({
+    id: '/$workspaceId_/projects_/$projectId_/debug_/$debugId',
+    path: '/$workspaceId/projects/$projectId/debug/$debugId',
+    getParentRoute: () => WorkspacesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -140,6 +154,8 @@ export interface FileRoutesByFullPath {
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId/triggers/$triggerId': typeof WorkspacesWorkspaceIdTriggersTriggerIdRoute
   '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces/$workspaceId/projects/$projectId/debug': typeof WorkspacesWorkspaceIdProjectsProjectIdDebugRoute
+  '/workspaces/$workspaceId/projects/$projectId/debug/$debugId': typeof WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -157,6 +173,8 @@ export interface FileRoutesByTo {
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId/triggers/$triggerId': typeof WorkspacesWorkspaceIdTriggersTriggerIdRoute
   '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces/$workspaceId/projects/$projectId/debug': typeof WorkspacesWorkspaceIdProjectsProjectIdDebugRoute
+  '/workspaces/$workspaceId/projects/$projectId/debug/$debugId': typeof WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -175,6 +193,8 @@ export interface FileRoutesById {
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId/triggers_/$triggerId': typeof WorkspacesWorkspaceIdTriggersTriggerIdRoute
   '/workspaces/$workspaceId_/projects_/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces/$workspaceId_/projects_/$projectId_/debug': typeof WorkspacesWorkspaceIdProjectsProjectIdDebugRoute
+  '/workspaces/$workspaceId_/projects_/$projectId_/debug_/$debugId': typeof WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -194,6 +214,8 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/triggers/$triggerId'
     | '/workspaces/$workspaceId/projects/$projectId'
+    | '/workspaces/$workspaceId/projects/$projectId/debug'
+    | '/workspaces/$workspaceId/projects/$projectId/debug/$debugId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -211,6 +233,8 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/triggers/$triggerId'
     | '/workspaces/$workspaceId/projects/$projectId'
+    | '/workspaces/$workspaceId/projects/$projectId/debug'
+    | '/workspaces/$workspaceId/projects/$projectId/debug/$debugId'
   id:
     | '__root__'
     | '/'
@@ -228,6 +252,8 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/triggers_/$triggerId'
     | '/workspaces/$workspaceId_/projects_/$projectId'
+    | '/workspaces/$workspaceId_/projects_/$projectId_/debug'
+    | '/workspaces/$workspaceId_/projects_/$projectId_/debug_/$debugId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -344,6 +370,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesWorkspaceIdDeploymentsDeploymentIdRouteImport
       parentRoute: typeof WorkspacesWorkspaceIdRoute
     }
+    '/workspaces/$workspaceId_/projects_/$projectId_/debug': {
+      id: '/workspaces/$workspaceId_/projects_/$projectId_/debug'
+      path: '/$workspaceId/projects/$projectId/debug'
+      fullPath: '/workspaces/$workspaceId/projects/$projectId/debug'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdDebugRouteImport
+      parentRoute: typeof WorkspacesRoute
+    }
+    '/workspaces/$workspaceId_/projects_/$projectId_/debug_/$debugId': {
+      id: '/workspaces/$workspaceId_/projects_/$projectId_/debug_/$debugId'
+      path: '/$workspaceId/projects/$projectId/debug/$debugId'
+      fullPath: '/workspaces/$workspaceId/projects/$projectId/debug/$debugId'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRouteImport
+      parentRoute: typeof WorkspacesRoute
+    }
   }
 }
 
@@ -381,12 +421,18 @@ const WorkspacesWorkspaceIdRouteWithChildren =
 interface WorkspacesRouteChildren {
   WorkspacesWorkspaceIdRoute: typeof WorkspacesWorkspaceIdRouteWithChildren
   WorkspacesWorkspaceIdProjectsProjectIdLazyRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  WorkspacesWorkspaceIdProjectsProjectIdDebugRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdDebugRoute
+  WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRoute
 }
 
 const WorkspacesRouteChildren: WorkspacesRouteChildren = {
   WorkspacesWorkspaceIdRoute: WorkspacesWorkspaceIdRouteWithChildren,
   WorkspacesWorkspaceIdProjectsProjectIdLazyRoute:
     WorkspacesWorkspaceIdProjectsProjectIdLazyRoute,
+  WorkspacesWorkspaceIdProjectsProjectIdDebugRoute:
+    WorkspacesWorkspaceIdProjectsProjectIdDebugRoute,
+  WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRoute:
+    WorkspacesWorkspaceIdProjectsProjectIdDebugDebugIdRoute,
 }
 
 const WorkspacesRouteWithChildren = WorkspacesRoute._addFileChildren(

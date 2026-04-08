@@ -1,16 +1,15 @@
+import { useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useCurrentProject } from "@flow/stores";
 import { AnyWorkflowVariable } from "@flow/types";
 
 export default ({
   onDebugRunStart,
   onDebugRunStop,
   refetchWorkflowVariables,
-
   customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
@@ -18,7 +17,6 @@ export default ({
   refetchWorkflowVariables: () => void;
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
-  const [currentProject] = useCurrentProject();
   const [showOverlayElement, setshowOverlayElement] = useState<
     | "debugStart"
     | "debugStop"
@@ -29,8 +27,6 @@ export default ({
 
   const handleShowDebugStartPopover = () => setshowOverlayElement("debugStart");
   const handleShowDebugStopPopover = () => setshowOverlayElement("debugStop");
-  const handleShowDebugActiveRunsPopover = () =>
-    setshowOverlayElement("debugRuns");
   const handleShowDebugWorkflowVariablesDialog = () => {
     refetchWorkflowVariables();
     setshowOverlayElement("debugWorkflowVariables");
@@ -40,13 +36,14 @@ export default ({
 
   const { useGetJob } = useJob();
 
+  const { debugId } = useParams({ strict: false }) as { debugId?: string };
+
   const { value: debugRunState, updateValue: updateDebugRunState } =
     useIndexedDB("debugRun");
 
   const debugJobState = useMemo(
-    () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
-    [debugRunState, currentProject],
+    () => debugRunState?.jobs?.find((job) => job.jobId === debugId),
+    [debugRunState, debugId],
   );
 
   const { job, refetch } = useGetJob(debugJobState?.jobId);
@@ -101,7 +98,7 @@ export default ({
 
   const handleDebugRunReset = async () => {
     const jobState = debugRunState?.jobs?.filter(
-      (job) => job.projectId !== currentProject?.id,
+      (job) => job.jobId !== debugId,
     );
     if (!jobState) return;
     await updateDebugRunState({ jobs: jobState });
@@ -127,7 +124,6 @@ export default ({
     handleDebugRunStop,
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
-    handleShowDebugActiveRunsPopover,
     handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,

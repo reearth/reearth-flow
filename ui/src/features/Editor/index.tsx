@@ -47,14 +47,12 @@ export default function Editor({
     isSaving,
     spotlightUserClientId,
     spotlightUser,
-    activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
     refetchWorkflowVariables,
     showSearchPanel,
     openNodePickerViaShortcut,
     handleDebugRunVariableValueChange,
-    loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
@@ -171,8 +169,6 @@ export default function Editor({
             onSpotlightUserSelect={handleSpotlightUserSelect}
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}
-            onDebugRunJoin={loadExternalDebugJob}
-            activeUsersDebugRuns={activeUsersDebugRuns}
             showSearchPanel={showSearchPanel}
             onShowSearchPanel={setShowSearchPanel}>
             <Canvas

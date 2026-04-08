@@ -1,12 +1,11 @@
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useReactFlow } from "@xyflow/react";
 import { useCallback, useEffect, useState } from "react";
-import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useDebugAwareness } from "@flow/lib/yjs";
 import { JobState, useCurrentProject } from "@flow/stores";
 import type { AnyWorkflowVariable, Node, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
@@ -15,20 +14,15 @@ import { toast } from "../NotificationSystem/useToast";
 
 export default ({
   rawWorkflows,
-  yAwareness,
   onProjectSnapshotSave,
 }: {
   rawWorkflows: Workflow[];
-  yAwareness: Awareness;
   onProjectSnapshotSave: () => Promise<void>;
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
-
-  const { activeUsersDebugRuns, broadcastDebugRun } = useDebugAwareness({
-    yAwareness,
-    projectId: currentProject?.id,
-  });
+  const navigate = useNavigate();
+  const { debugId } = useParams({ strict: false }) as { debugId?: string };
 
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables, refetch: refetchWorkflowVariables } =
@@ -61,10 +55,6 @@ export default ({
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
-  const debugJob = debugRunState?.jobs?.find(
-    (job) => job.projectId === currentProject?.id,
-  );
-
   const runDebugWorkflow = useCallback(
     async (jobId?: string, selectedNodeId?: string) => {
       if (!currentProject) return;
@@ -78,7 +68,6 @@ export default ({
       try {
         await onProjectSnapshotSave();
       } catch {
-        // Abort run if snapshot save fails
         return;
       }
       const data = await runProject(
@@ -89,37 +78,24 @@ export default ({
         selectedNodeId,
       );
 
-      if (data.job) {
-        let jobs: JobState[] = debugRunState?.jobs || [];
+      if (data.job?.id) {
+        const newJobId = data.job.id;
 
-        if (!data.job.id) {
-          jobs =
-            debugRunState?.jobs?.filter(
-              (job) => job.projectId !== currentProject.id,
-            ) || [];
-        } else if (
-          debugRunState?.jobs?.some(
-            (job) => job.projectId === currentProject.id,
-          )
-        ) {
-          jobs = debugRunState.jobs.map((job) => {
-            if (job.projectId === currentProject.id && data.job) {
-              return {
-                projectId: currentProject.id,
-                jobId: data.job.id,
-                status: data.job.status,
-              };
-            }
-            return job;
-          });
-        } else {
-          jobs.push({
+        // Write to IndexedDB so the debug route can find intermediate data etc.
+        const existing = debugRunState?.jobs || [];
+        const jobs: JobState[] = [
+          ...existing.filter((j) => j.jobId !== newJobId),
+          {
             projectId: currentProject.id,
-            jobId: data.job.id,
+            jobId: newJobId,
             status: data.job.status,
-          });
-        }
+          },
+        ];
         await updateValue({ jobs });
+
+        navigate({
+          to: `/workspaces/${currentProject.workspaceId}/projects/${currentProject.id}/debug/${newJobId}`,
+        });
         fitView({ duration: 400, padding: 0.5 });
       }
     },
@@ -130,6 +106,7 @@ export default ({
       debugRunState?.jobs,
       fitView,
       updateValue,
+      navigate,
       runProject,
       onProjectSnapshotSave,
     ],
@@ -142,70 +119,31 @@ export default ({
   const handleFromSelectedNodeDebugRunStart = useCallback(
     async (node?: Node, nodes?: Node[]) => {
       const selectedNode = node ?? nodes?.[0];
-      if (!selectedNode || !debugJob?.jobId) return;
-      await runDebugWorkflow(debugJob.jobId, selectedNode.id);
+      if (!selectedNode || !debugId) return;
+      await runDebugWorkflow(debugId, selectedNode.id);
     },
-    [runDebugWorkflow, debugJob?.jobId],
+    [runDebugWorkflow, debugId],
   );
 
   const handleDebugRunStop = useCallback(async () => {
-    const debugJob = debugRunState?.jobs?.find(
-      (job) => job.projectId === currentProject?.id,
-    );
-    if (!debugJob) return;
-
-    const data = await useJobCancel(debugJob.jobId);
-    if (data.isSuccess && currentProject?.id) {
-      const jobs: JobState[] =
-        debugRunState?.jobs?.filter((j) => j.projectId !== currentProject.id) ||
-        [];
-      await updateValue({ jobs });
-    }
-  }, [currentProject?.id, debugRunState?.jobs, updateValue, useJobCancel]);
+    if (!debugId) return;
+    await useJobCancel(debugId);
+  }, [debugId, useJobCancel]);
 
   const loadExternalDebugJob = useCallback(
-    async (jobId: string, userName: string) => {
-      if (!currentProject || !debugRunState) return;
-
-      // Check if job already exists before updating
-      const existingJobs = debugRunState?.jobs || [];
-      if (existingJobs.some((j) => j.jobId === jobId)) {
-        return; // Already viewing this job, so no need to update
-      }
-
-      // Clear any existing debug run that the user has run
-      const filteredJobs = existingJobs.filter(
-        (job) => job.projectId !== currentProject.id,
-      );
-
-      const states = Array.from(yAwareness.getStates());
-      const debugJobStatus = states.find(([, state]) =>
-        state.debugRun ? state.debugRun.jobId === jobId : false,
-      )?.[1]?.debugRun?.status;
-
-      // Add the new external debug job
-      const newJobs = [
-        ...filteredJobs,
-        {
-          projectId: currentProject.id,
-          jobId,
-          status: debugJobStatus,
-        },
-      ];
-
-      await updateValue({ jobs: newJobs });
-
-      // Show toast after successful update
+    (jobId: string, userName: string) => {
+      if (!currentProject) return;
+      navigate({
+        to: `/workspaces/${currentProject.workspaceId}/projects/${currentProject.id}/debug/${jobId}`,
+      });
       toast({
-        title: t("Now viewing {{userName}}'s debug run", {
-          userName,
-        }),
+        title: t("Now viewing {{userName}}'s debug run", { userName }),
         description: t("You're now viewing {{userName}}'s debug session", {
           userName,
         }),
       });
     },
-    [t, currentProject, debugRunState, updateValue, yAwareness],
+    [t, currentProject, navigate],
   );
 
   const handleDebugRunVariableValueChange = useCallback(
@@ -219,15 +157,7 @@ export default ({
     [],
   );
 
-  useEffect(() => {
-    broadcastDebugRun(
-      debugJob?.jobId ?? null,
-      debugJob?.status ? debugJob.status : undefined,
-    );
-  }, [debugJob?.jobId, debugJob?.status, broadcastDebugRun]);
-
   return {
-    activeUsersDebugRuns,
     customDebugRunWorkflowVariables,
     refetchWorkflowVariables,
     handleDebugRunStart,

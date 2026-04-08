@@ -1,3 +1,4 @@
+import { useParams } from "@tanstack/react-router";
 import bbox from "@turf/bbox";
 import {
   BoundingSphere,
@@ -19,7 +20,6 @@ import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useCurrentProject } from "@flow/stores";
 
 export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
@@ -27,7 +27,6 @@ export default () => {
   const [minimized, setMinimized] = useState(false);
   const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
   const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
-  // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
   );
@@ -35,20 +34,13 @@ export default () => {
     useState(null);
   const cesiumViewerRef = useRef<any>(null);
 
-  const [currentProject] = useCurrentProject();
+  const { debugId } = useParams({ strict: false }) as { debugId?: string };
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
   const debugJobState = useMemo(
-    () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
-    [debugRunState, currentProject],
-  );
-  const debugJobId = useMemo(
-    () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
-    [debugRunState, currentProject],
+    () => debugRunState?.jobs?.find((job) => job.jobId === debugId),
+    [debugRunState, debugId],
   );
 
   const { useGetJob } = useJob();
@@ -57,7 +49,6 @@ export default () => {
 
   const outputURLs = useMemo(() => debugJob?.outputURLs, [debugJob]);
 
-  // Separate intermediate data URLs (for dropdown) from output data URLs (for download)
   const dataURLs = useMemo(() => {
     const urls: { key: string; name: string }[] = [];
     if (debugJobState?.selectedIntermediateData) {
@@ -71,11 +62,9 @@ export default () => {
         });
       });
     }
-    // Remove output data from dropdown - now handled separately
     return urls.length ? urls : undefined;
   }, [debugJobState?.selectedIntermediateData]);
 
-  // Separate output data for download functionality
   const outputDataForDownload = useMemo(() => {
     if (!outputURLs) return undefined;
     return outputURLs.map((url) => ({
@@ -95,12 +84,8 @@ export default () => {
         ...debugRunState,
         jobs:
           debugRunState?.jobs?.map((job) => {
-            if (job.projectId !== currentProject?.id) return job;
-
-            return {
-              ...job,
-              focusedIntermediateData: url,
-            };
+            if (job.jobId !== debugId) return job;
+            return { ...job, focusedIntermediateData: url };
           }) ?? [],
       });
       setMinimized(false);
@@ -108,7 +93,6 @@ export default () => {
     }
   };
 
-  // First, get metadata to determine file size
   const metadataUrl =
     selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : "");
 
@@ -119,9 +103,7 @@ export default () => {
   const selectedOutputData = streamingQuery.fileContent;
   const fileType = streamingQuery.fileType;
 
-  const handleExpand = () => {
-    setExpanded((prev) => !prev);
-  };
+  const handleExpand = () => setExpanded((prev) => !prev);
 
   const handleMinimize = (e: MouseEvent) => {
     e.stopPropagation();
@@ -129,23 +111,16 @@ export default () => {
   };
 
   const handleTabChange = () => {
-    if (minimized) {
-      setMinimized(false);
-    }
+    if (minimized) setMinimized(false);
   };
 
-  const handleFullscreenExpand = () => {
-    setFullscreenDebug((prev) => !prev);
-  };
+  const handleFullscreenExpand = () => setFullscreenDebug((prev) => !prev);
 
   const handleFlyToSelectedFeature = useCallback(
     (selectedFeature: any) => {
       if (!selectedFeature) return;
 
-      // Get the current geometry type
       const currentDetectedGeometryType = streamingQuery.detectedGeometryType;
-
-      // Determine which viewer to use based on detected geometry type
       const is3D =
         currentDetectedGeometryType === "CityGmlGeometry" ||
         currentDetectedGeometryType === "FlowGeometry3D";
@@ -156,13 +131,10 @@ export default () => {
           try {
             const featureId = selectedFeature.id;
             if (!featureId) return;
-
             const geometry = selectedFeature.geometry;
-
             if (geometry?.type === "CityGmlGeometry") {
               zoomToBoundingSphere(geometry, cesiumViewerRef, 1.5);
             } else {
-              // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
               const matchingEntities =
                 cesiumViewerRef.current?.cesiumElement.entities.values.filter(
                   (entity: any) => {
@@ -176,7 +148,6 @@ export default () => {
               if (matchingEntities.length > 0) {
                 cesiumViewerRef.current?.cesiumElement.zoomTo(matchingEntities);
               } else {
-                // Search in data sources as fallback
                 for (const dataSource of cesiumViewer.dataSources) {
                   const matching = dataSource.entities.values.filter(
                     (entity: any) => {
@@ -200,14 +171,12 @@ export default () => {
         } else {
           try {
             const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
-
             const rect = Rectangle.fromDegrees(minLng, minLat, maxLng, maxLat);
             const sphere = BoundingSphere.fromRectangle3D(rect);
             const paddedSphere = new BoundingSphere(
               sphere.center,
               Math.max(sphere.radius * 1.5, 500),
             );
-
             cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
               duration: 1.5,
               offset: new HeadingPitchRange(
@@ -232,7 +201,6 @@ export default () => {
 
   const featureIdMap = useMemo(() => {
     if (!formattedData.tableData) return null;
-
     const map = new Map<string, any>();
     formattedData.tableData.forEach((row: any) => {
       const id = row.id;
@@ -242,7 +210,6 @@ export default () => {
     return map;
   }, [formattedData.tableData]);
 
-  // Derive selectedFeature from selectedFeatureId
   const selectedFeature = useMemo(() => {
     if (!selectedFeatureId || !featureIdMap) return null;
     return featureIdMap.get(selectedFeatureId);
@@ -272,7 +239,6 @@ export default () => {
 
   const handleRowSingleClick = useCallback(
     (value: any) => {
-      // setEnableClustering(false);
       handleFeatureSelect(value?.id ?? null);
     },
     [handleFeatureSelect],
@@ -280,7 +246,6 @@ export default () => {
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
-      // setEnableClustering(false);
       const normalizedId = JSON.parse(value?.id);
       handleFeatureSelect(normalizedId ?? null);
       handleFlyToSelectedFeature(convertedSelectedFeature);
@@ -295,78 +260,48 @@ export default () => {
 
   const handleRemoveDataURL = useCallback(
     async (urlToRemove: string) => {
-      if (!debugRunState || !currentProject?.id) return;
+      if (!debugRunState || !debugId) return;
 
       const newDebugRunState = {
         ...debugRunState,
         jobs:
           debugRunState.jobs?.map((job) => {
-            if (job.projectId !== currentProject.id) return job;
-
+            if (job.jobId !== debugId) return job;
             const currentData = job.selectedIntermediateData ?? [];
-            const filtered = currentData.filter(
-              (sid) => sid.url !== urlToRemove,
-            );
-
             return {
               ...job,
-              selectedIntermediateData: filtered,
+              selectedIntermediateData: currentData.filter(
+                (sid) => sid.url !== urlToRemove,
+              ),
             };
           }) ?? [],
       };
 
       await updateValue(newDebugRunState);
 
-      // check if the currently focused data URL was removed
       if (debugJobState?.focusedIntermediateData === urlToRemove) {
+        const remaining =
+          debugJobState.selectedIntermediateData?.filter(
+            (sid) => sid.url !== urlToRemove,
+          ) ?? [];
         await updateValue({
           ...newDebugRunState,
-          jobs:
-            newDebugRunState.jobs?.map((job, index) => {
-              if (job.projectId !== currentProject.id) return job;
-
-              const removedIndex = debugRunState.jobs?.[
-                index
-              ].selectedIntermediateData?.findIndex(
-                (sid) => sid.url === urlToRemove,
-              );
-
-              // Try to focus on the next URL, or previous if last was removed
-              let newFocusedURL: string | undefined = undefined;
-              if (
-                removedIndex !== undefined &&
-                removedIndex >= 0 &&
-                job.selectedIntermediateData &&
-                job.selectedIntermediateData.length > 0
-              ) {
-                if (removedIndex < job.selectedIntermediateData.length) {
-                  newFocusedURL =
-                    job.selectedIntermediateData[removedIndex].url;
-                } else if (removedIndex - 1 >= 0) {
-                  newFocusedURL =
-                    job.selectedIntermediateData[removedIndex - 1].url;
-                }
-              }
-
-              return {
-                ...job,
-                focusedIntermediateData: newFocusedURL,
-              };
-            }) ?? [],
+          jobs: newDebugRunState.jobs?.map((job) => {
+            if (job.jobId !== debugId) return job;
+            return {
+              ...job,
+              focusedIntermediateData: remaining[0]?.url ?? undefined,
+            };
+          }),
         });
         prevSelectedDataURLRef.current = undefined;
       }
     },
-    [
-      debugRunState,
-      currentProject?.id,
-      debugJobState?.focusedIntermediateData,
-      updateValue,
-    ],
+    [debugRunState, debugId, debugJobState, updateValue],
   );
 
   return {
-    debugJobId,
+    debugJobId: debugId,
     debugJobState,
     cesiumViewerRef,
     fullscreenDebug,
@@ -376,14 +311,12 @@ export default () => {
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    // enableClustering,
     selectedFeatureId,
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
     handleFeatureSelect,
     setConvertedSelectedFeature,
-    // setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
@@ -394,8 +327,6 @@ export default () => {
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
     handleShowFeatureDetailsOverlay,
-
-    // Data loading features (always available now)
     streamingQuery: streamingQuery,
     streamingProgress: streamingQuery.progress,
     detectedGeometryType: streamingQuery.detectedGeometryType,

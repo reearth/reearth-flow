@@ -6,8 +6,9 @@ import {
   PlayIcon,
   StopIcon,
 } from "@phosphor-icons/react";
+import { useParams } from "@tanstack/react-router";
 import { getConnectedEdges, useReactFlow } from "@xyflow/react";
-import { memo, useMemo, useState } from "react";
+import { memo, useState } from "react";
 
 import {
   DropdownMenu,
@@ -22,11 +23,9 @@ import {
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { JobState, useCurrentProject } from "@flow/stores";
-import { AnyWorkflowVariable, AwarenessUser, Edge, Node } from "@flow/types";
+import { AnyWorkflowVariable, Edge, Node } from "@flow/types";
 
 import {
-  DebugActiveRunsPopover,
   DebugStartPopover,
   DebugStopPopover,
   DebugWorkflowVariablesDialog,
@@ -36,11 +35,9 @@ import useHooks from "./hooks";
 const tooltipOffset = 6;
 
 type Props = {
-  activeUsersDebugRuns?: AwarenessUser[];
   selectedNodeIds: string[];
   edges?: Edge[];
   isSaving: boolean;
-  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStartFromSelectedNode?: (
     node?: Node,
@@ -53,12 +50,10 @@ type Props = {
 };
 
 const DebugActionBar: React.FC<Props> = ({
-  activeUsersDebugRuns,
   selectedNodeIds,
   edges,
   isSaving,
   customDebugRunWorkflowVariables,
-  onDebugRunJoin,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
   onDebugRunStop,
@@ -75,7 +70,6 @@ const DebugActionBar: React.FC<Props> = ({
     handleDebugRunStop,
     handleShowDebugStartPopover,
     handleShowDebugStopPopover,
-    handleShowDebugActiveRunsPopover,
     handleShowDebugWorkflowVariablesDialog,
     handlePopoverClose,
     handleDebugRunReset,
@@ -121,14 +115,6 @@ const DebugActionBar: React.FC<Props> = ({
         icon={<BroomIcon weight="thin" size={18} />}
         onClick={handleDebugRunReset}
       />
-      <DebugActiveRunsPopover
-        activeUsersDebugRuns={activeUsersDebugRuns}
-        showPopover={showOverlayElement}
-        onDebugRunJoin={onDebugRunJoin}
-        onShowDebugRunsPopover={handleShowDebugActiveRunsPopover}
-        onPopoverClose={handlePopoverClose}
-        onDebugRunStart={onDebugRunStart}
-      />
       {showOverlayElement === "debugWorkflowVariables" && (
         <DebugWorkflowVariablesDialog
           debugRunWorkflowVariables={customDebugRunWorkflowVariables}
@@ -169,15 +155,10 @@ const StartButton: React.FC<{
   onPopoverClose,
 }) => {
   const t = useT();
-  const [currentProject] = useCurrentProject();
-
+  const { debugId } = useParams({ strict: false }) as { debugId?: string };
   const { value: debugRunState } = useIndexedDB("debugRun");
 
-  const debugJob = useMemo(
-    () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
-    [debugRunState, currentProject],
-  );
+  const debugJob = debugRunState?.jobs?.find((job) => job.jobId === debugId);
 
   const { data: jobStatus } = useSubscription(
     "GetSubscribedJobStatus",
@@ -241,7 +222,8 @@ const StartButton: React.FC<{
               edges={edges}
               isSaving={isSaving}
               jobStatus={jobStatus}
-              debugJob={debugJob}
+              debugJobId={debugJob?.jobId}
+              debugJobStatus={debugJob?.status}
               showPopover={showPopover}
               onShowDebugStartPopover={onShowDebugStartPopover}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
@@ -311,16 +293,15 @@ const DebugRunDropDownMenu: React.FC<{
   debugRunStarted: boolean;
   selectedNodeIds: string[];
   edges?: Edge[];
-
   showPopover: string | undefined;
   isSaving: boolean;
   jobStatus: string | undefined;
-  debugJob: JobState | undefined;
+  debugJobId: string | undefined;
+  debugJobStatus: string | undefined;
   onDebugRunStartFromSelectedNode?: (
     node?: Node,
     nodes?: Node[],
   ) => Promise<void>;
-
   onShowDebugStartPopover: () => void;
 }> = ({
   debugRunStarted,
@@ -328,7 +309,8 @@ const DebugRunDropDownMenu: React.FC<{
   edges,
   isSaving,
   jobStatus,
-  debugJob,
+  debugJobId,
+  debugJobStatus,
   onDebugRunStartFromSelectedNode,
   onShowDebugStartPopover,
 }) => {
@@ -391,8 +373,8 @@ const DebugRunDropDownMenu: React.FC<{
             selectedNode.type === "subworkflow" ||
             getConnectedEdges([selectedNode], edges ?? []).length === 0 ||
             selectedNodeIds.length > 1 ||
-            !debugJob?.jobId ||
-            debugJob.status !== "completed"
+            !debugJobId ||
+            debugJobStatus !== "completed"
           }
           onClick={() => {
             setTimeout(() => {

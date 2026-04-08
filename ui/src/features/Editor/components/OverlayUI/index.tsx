@@ -82,11 +82,9 @@ type OverlayUIProps = {
   ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
-  onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onProjectSnapshotSave: () => Promise<void>;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
-  activeUsersDebugRuns?: AwarenessUser[];
   children?: React.ReactNode;
   showSearchPanel: boolean;
   onShowSearchPanel: (open: boolean) => void;
@@ -131,12 +129,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onDebugRunStartFromSelectedNode,
   onDebugRunStop,
   onDebugRunVariableValueChange,
-  onDebugRunJoin,
   onProjectSnapshotSave,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
   children: canvas,
-  activeUsersDebugRuns,
   showSearchPanel,
   onShowSearchPanel,
 }) => {
@@ -185,11 +181,9 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           <div
             className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
             <DebugActionBar
-              activeUsersDebugRuns={activeUsersDebugRuns}
               selectedNodeIds={selectedNodeIds}
               edges={edges}
               isSaving={isSaving}
-              onDebugRunJoin={onDebugRunJoin}
               onDebugRunStart={onDebugRunStart}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
               onDebugRunStop={onDebugRunStop}
