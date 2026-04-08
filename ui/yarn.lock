@@ -851,12 +851,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@cesium/engine@npm:^23.0.1":
-  version: 23.0.1
-  resolution: "@cesium/engine@npm:23.0.1"
+"@cesium/engine@npm:^24.0.0":
+  version: 24.0.0
+  resolution: "@cesium/engine@npm:24.0.0"
   dependencies:
     "@cesium/wasm-splats": "npm:^0.1.0-alpha.2"
-    "@spz-loader/core": "npm:0.3.0"
+    "@spz-loader/core": "npm:0.3.1"
     "@tweenjs/tween.js": "npm:^25.0.0"
     "@zip.js/zip.js": "npm:^2.8.1"
     autolinker: "npm:^4.0.0"
@@ -876,7 +876,7 @@ __metadata:
     rbush: "npm:^4.0.1"
     topojson-client: "npm:^3.1.0"
     urijs: "npm:^1.19.7"
-  checksum: 10c0/ef4841f11b02b710cb024d05d3f77ba00f83708e9aae85dab6805704f8b846b5b65643f0d2cfefde404d682048a8f3b27759918abf42e9bcd5586894436d71dc
+  checksum: 10c0/2bcc2a65a8f95e86629ce6fe10edd6da0031937c15c381cf4e0432cb87252062ab5edbb25e26a33ec1d3cc1d7c47053a319dcad13d88ce39eb4b816762bf2f0e
   languageName: node
   linkType: hard
 
@@ -887,13 +887,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@cesium/widgets@npm:^14.4.1":
-  version: 14.4.1
-  resolution: "@cesium/widgets@npm:14.4.1"
+"@cesium/widgets@npm:^14.5.0":
+  version: 14.5.0
+  resolution: "@cesium/widgets@npm:14.5.0"
   dependencies:
-    "@cesium/engine": "npm:^23.0.1"
+    "@cesium/engine": "npm:^24.0.0"
     nosleep.js: "npm:^0.12.0"
-  checksum: 10c0/096e89e7b65321d48eb905ca23ff4847bbe845bba11fdd86517cb0f7c90c995ed209321c9370085223c3dc6c215aa1d6c93f71c67f3604ec9d3bbb2e315bef8c
+  checksum: 10c0/18a21592414323db3cb3556e4574b3cf00e2def816fde735329e30ea5b8359296c4c09acb794364e9fefd4dc062326541449038393a5f85c164a09f2af8fb9ef
   languageName: node
   linkType: hard
 
@@ -5512,7 +5512,7 @@ __metadata:
     "@vitest/coverage-v8": "npm:4.1.3"
     "@xyflow/react": "npm:12.10.2"
     autoprefixer: "npm:10.4.27"
-    cesium: "npm:1.139.1"
+    cesium: "npm:1.140.0"
     class-variance-authority: "npm:0.7.1"
     clsx: "npm:2.1.1"
     cmdk: "npm:1.1.1"
@@ -5785,10 +5785,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@spz-loader/core@npm:0.3.0":
-  version: 0.3.0
-  resolution: "@spz-loader/core@npm:0.3.0"
-  checksum: 10c0/aa8aa13369bd324c787c39ed441ffacd6ee6b7555de866710c5b8ba8d60228398498c6ce2c59ec710c62dc6a8bd841a4f913f6dc5517ae4e72ebc25e9aad5068
+"@spz-loader/core@npm:0.3.1":
+  version: 0.3.1
+  resolution: "@spz-loader/core@npm:0.3.1"
+  checksum: 10c0/5cc2ebae5862a9860088edaa53e64bc86804c23276fa84924e7ced1c4d74ca4ec0822226c6ce8454c359352ee3c8cf8e56a88fdfb28ca955b897b459385f2b70
   languageName: node
   linkType: hard
 
@@ -8355,13 +8355,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cesium@npm:1.139.1":
-  version: 1.139.1
-  resolution: "cesium@npm:1.139.1"
+"cesium@npm:1.140.0":
+  version: 1.140.0
+  resolution: "cesium@npm:1.140.0"
   dependencies:
-    "@cesium/engine": "npm:^23.0.1"
-    "@cesium/widgets": "npm:^14.4.1"
-  checksum: 10c0/12ec46e98a95f42ca92d0c3eb7601e776634f75686ad107bf4ac3b4fa76f217bba644dd87ebf60122bddf3b416e84fd5143cdb55256ba40e836d1cecfdfd0092
+    "@cesium/engine": "npm:^24.0.0"
+    "@cesium/widgets": "npm:^14.5.0"
+  checksum: 10c0/8eaf8eb7174e33424415530e35520c92844c6649c8a572c4fa07fc2a0bf5213aa14b3f75deecaa3999c18ef0f4f1319480aa34517a3d6c2be79dd55c0c1cb2ac
   languageName: node
   linkType: hard
 

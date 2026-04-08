@@ -71,7 +71,7 @@
     "@tanstack/react-virtual": "3.13.23",
     "@turf/bbox": "7.3.4",
     "@xyflow/react": "12.10.2",
-    "cesium": "1.139.1",
+    "cesium": "1.140.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
