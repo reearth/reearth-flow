@@ -87,7 +87,7 @@ fn retention_handles_hundreds_of_snapshots() {
 
     // Verify batching: 490 objects at batch_size=50 = 10 batches
     const BATCH_SIZE: usize = 50;
-    let num_batches = (to_delete.len() + BATCH_SIZE - 1) / BATCH_SIZE;
+    let num_batches = to_delete.len().div_ceil(BATCH_SIZE);
     assert_eq!(num_batches, 10, "490 deletes in batches of 50 = 10 batches");
 }
 

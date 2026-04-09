@@ -14,8 +14,7 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use yrs::updates::decoder::Decode;
-use yrs::updates::encoder::Encode;
-use yrs::{Doc, GetString, ReadTxn, StateVector, Text, Transact};
+use yrs::{Doc, ReadTxn, StateVector, Text, Transact};
 
 // ─── Bug reproduction: no-change guard ──────────────────────────────────────
 
