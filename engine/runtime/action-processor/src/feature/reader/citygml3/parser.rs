@@ -68,8 +68,10 @@ pub fn parse(
                 let ln = local_name(&name.0);
                 if ln == "cityObjectMember" || ln == "featureMember" {
                     let member = parse_element(&mut reader, &mut buf, name, attrs, source_url)?;
-                    if let Some(RawChild::Element(feature_node)) = member.children.first() {
-                        let feature_node = Arc::clone(feature_node);
+                    if let Some(feature_node) = member.children.iter().find_map(|child| match child {
+                        RawChild::Element(node) => Some(Arc::clone(node)),
+                        _ => None,
+                    }) {
                         collect_ids(&feature_node, source_url.as_str(), registry);
                         features.push(feature_node);
                     } else {
@@ -207,10 +209,10 @@ fn next_event<R: BufRead>(
             attrs: extract_attrs(&e, reader),
         }),
         Event::Text(t) => Ok(OwnedEvent::Text(
-            t.unescape().map_err(ParseError::Xml)?.trim().to_string(),
+            t.unescape().map_err(ParseError::Xml)?.to_string(),
         )),
         Event::CData(c) => Ok(OwnedEvent::Text(
-            std::str::from_utf8(&c).unwrap_or("").trim().to_string(),
+            std::str::from_utf8(&c).unwrap_or("").to_string(),
         )),
         Event::Eof => Ok(OwnedEvent::Eof),
         _ => Ok(OwnedEvent::Other),
@@ -266,7 +268,7 @@ fn parse_element<R: BufRead>(
                 }
             }
             OwnedEvent::End | OwnedEvent::Eof => break,
-            OwnedEvent::Text(t) if !t.is_empty() => {
+            OwnedEvent::Text(t) if !t.trim().is_empty() => {
                 children.push(RawChild::Text(t));
             }
             _ => {}
