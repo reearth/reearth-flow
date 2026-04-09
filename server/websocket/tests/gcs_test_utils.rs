@@ -16,6 +16,8 @@ pub struct TestInfra {
     pub redis_store: Arc<RedisStore>,
     #[allow(dead_code)]
     pub bucket: String,
+    pub gcs_endpoint: String,
+    pub redis_url: String,
     // Hold containers to keep them alive for the test duration.
     // Fields are read in drop order (top to bottom), so stores drop before containers.
     _gcs_container: ContainerAsync<GenericImage>,
@@ -56,7 +58,7 @@ impl TestInfra {
 
         let gcs_config = websocket::infrastructure::gcs::GcsConfig {
             bucket_name: bucket_name.to_string(),
-            endpoint: Some(gcs_endpoint),
+            endpoint: Some(gcs_endpoint.clone()),
         };
         let gcs_store = Arc::new(
             GcsStore::new_with_config(gcs_config)
@@ -65,7 +67,7 @@ impl TestInfra {
         );
 
         let redis_config = RedisConfig {
-            url: redis_url,
+            url: redis_url.clone(),
             ttl: 3600,
             stream_trim_interval: 60,
             stream_max_message_age: 3_600_000,
@@ -81,6 +83,8 @@ impl TestInfra {
             gcs_store,
             redis_store,
             bucket: bucket_name.to_string(),
+            gcs_endpoint,
+            redis_url,
             _gcs_container: gcs_container,
             _redis_container: redis_container,
         }
