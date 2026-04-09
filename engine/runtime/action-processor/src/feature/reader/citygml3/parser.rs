@@ -16,7 +16,6 @@ pub struct TopLevelFeature {
     pub gml_id: Option<String>,
     pub feature_type: String,
     pub node: Arc<XmlNode>,
-    #[allow(dead_code)]
     pub source_url: Url,
 }
 

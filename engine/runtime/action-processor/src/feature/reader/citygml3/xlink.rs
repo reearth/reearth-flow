@@ -6,45 +6,44 @@ use url::Url;
 use super::utils::{gml_id_attr, xlink_href_attr, IdRegistry, XmlChild, XmlNode, XLINK_NS};
 
 struct XlinkResolver<'a> {
-    base_url: &'a Url,
     registry: &'a IdRegistry,
     visited: HashSet<(String, String)>,
 }
 
 impl<'a> XlinkResolver<'a> {
-    fn new(base_url: &'a Url, registry: &'a IdRegistry) -> Self {
+    fn new(registry: &'a IdRegistry) -> Self {
         Self {
-            base_url,
             registry,
             visited: HashSet::new(),
         }
     }
 
-    fn resolve(&mut self, node: &Arc<XmlNode>) -> Arc<XmlNode> {
+    fn resolve(&mut self, node: &Arc<XmlNode>, current_url: &Url) -> Arc<XmlNode> {
         if !node.has_xlinks {
             return Arc::clone(node);
         }
 
         // Pre-mark own gml:id so back-references are blocked before recursing.
         if let Some(id) = gml_id_attr(node) {
-            self.visited
-                .insert((self.base_url.as_str().to_string(), id));
+            self.visited.insert((current_url.as_str().to_string(), id));
         }
 
         if node.children.is_empty() {
             if let Some(href) = xlink_href_attr(&node.attrs) {
-                let resolved_key = if let Some(frag) = href.strip_prefix('#') {
-                    Some((self.base_url.as_str().to_string(), frag.to_string()))
+                let resolved_key: Option<(Url, String)> = if let Some(frag) = href.strip_prefix('#')
+                {
+                    Some((current_url.clone(), frag.to_string()))
                 } else if let Some((file_part, frag)) = href.split_once('#') {
-                    self.base_url
+                    current_url
                         .join(file_part)
                         .ok()
-                        .map(|u| (u.as_str().to_string(), frag.to_string()))
+                        .map(|u| (u, frag.to_string()))
                 } else {
                     None
                 };
 
-                if let Some(key) = resolved_key {
+                if let Some((ref target_url, ref frag)) = resolved_key {
+                    let key = (target_url.as_str().to_string(), frag.clone());
                     if self.visited.contains(&key) {
                         tracing::warn!(
                             "citygml3: circular xlink:href '{}' in element '{}', skipped",
@@ -61,7 +60,7 @@ impl<'a> XlinkResolver<'a> {
                             })
                             .cloned()
                             .collect();
-                        let resolved_target = self.resolve(target);
+                        let resolved_target = self.resolve(target, target_url);
                         return Arc::new(XmlNode {
                             name: node.name.clone(),
                             attrs,
@@ -83,7 +82,7 @@ impl<'a> XlinkResolver<'a> {
             .children
             .iter()
             .map(|c| match c {
-                XmlChild::Element(e) => XmlChild::Element(self.resolve(e)),
+                XmlChild::Element(e) => XmlChild::Element(self.resolve(e, current_url)),
                 XmlChild::Text(t) => XmlChild::Text(t.clone()),
             })
             .collect();
@@ -98,7 +97,7 @@ impl<'a> XlinkResolver<'a> {
 }
 
 pub fn resolve_xlinks(node: &Arc<XmlNode>, base_url: &Url, registry: &IdRegistry) -> Arc<XmlNode> {
-    XlinkResolver::new(base_url, registry).resolve(node)
+    XlinkResolver::new(registry).resolve(node, base_url)
 }
 
 #[cfg(test)]
@@ -239,6 +238,70 @@ mod tests {
         };
         assert_eq!(child.name, "bldg:pos");
         assert_eq!(child.children.len(), 1);
+    }
+
+    #[test]
+    fn resolve_xlinks_cross_file_fragment_resolved_against_target_file() {
+        // other.gml defines poly001.
+        // other.gml also contains a node that has a fragment-only href (#poly001),
+        // i.e. the xlink target itself contains an internal reference.
+        // When the resolver follows the cross-file link it must resolve #poly001
+        // against other.gml, not against the originating file (test.gml).
+        let other_url = Url::parse("file:///other.gml").unwrap();
+
+        let poly = Arc::new(make_node(
+            "gml:Polygon",
+            vec![("gml:id", GML_NS, "poly001")],
+            vec![],
+        ));
+
+        // A wrapper in other.gml that carries a fragment-only href pointing at poly001
+        // (same file: other.gml).
+        let wrapper = Arc::new(make_node(
+            "bldg:lod1Solid",
+            vec![
+                ("gml:id", GML_NS, "wrapper001"),
+                ("xlink:href", XLINK_NS, "#poly001"),
+            ],
+            vec![],
+        ));
+
+        let mut reg = IdRegistry::new();
+        reg.insert(
+            (other_url.to_string(), "poly001".to_string()),
+            Arc::clone(&poly),
+        );
+        reg.insert(
+            (other_url.to_string(), "wrapper001".to_string()),
+            Arc::clone(&wrapper),
+        );
+
+        // In test.gml we have a cross-file reference to other.gml#wrapper001.
+        let node = make_node(
+            "ref",
+            vec![("xlink:href", XLINK_NS, "other.gml#wrapper001")],
+            vec![],
+        );
+
+        let resolved = resolve_xlinks(&Arc::new(node), &dummy_url(), &reg);
+
+        // ref → wrapper001 (from other.gml) → poly001 (from other.gml, via #poly001)
+        assert_eq!(resolved.children.len(), 1);
+        let wrapper_resolved = match &resolved.children[0] {
+            XmlChild::Element(e) => e,
+            _ => panic!("expected wrapper element"),
+        };
+        assert_eq!(wrapper_resolved.name, "bldg:lod1Solid");
+        assert_eq!(
+            wrapper_resolved.children.len(),
+            1,
+            "wrapper must have resolved its own #poly001 fragment against other.gml"
+        );
+        let poly_resolved = match &wrapper_resolved.children[0] {
+            XmlChild::Element(e) => e,
+            _ => panic!("expected polygon element"),
+        };
+        assert_eq!(poly_resolved.name, "gml:Polygon");
     }
 
     #[test]
