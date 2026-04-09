@@ -312,9 +312,7 @@ fn extract_attrs<R: BufRead>(
                     .to_string(),
                 _ => String::new(),
             };
-            let v = std::str::from_utf8(a.value.as_ref())
-                .unwrap_or("")
-                .to_string();
+            let v = a.unescape_value().unwrap_or_default().to_string();
             ((qname_str, ns_uri), v)
         })
         .collect()
@@ -581,6 +579,31 @@ mod tests {
         assert_eq!(
             map.get("@g:id"),
             Some(&AttributeValue::String("bldg001".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_unescapes_attribute_values() {
+        let xml = br#"
+<core:CityModel
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+  xmlns:gml="http://www.opengis.net/gml/3.2">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg001" codeSpace="A &amp; B &lt;test&gt;"/>
+  </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let mut reg = RawRegistry::new();
+        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+
+        assert_eq!(
+            raw[0]
+                .attrs
+                .iter()
+                .find(|((q, _), _)| q == "codeSpace")
+                .map(|(_, v)| v.as_str()),
+            Some("A & B <test>")
         );
     }
 
