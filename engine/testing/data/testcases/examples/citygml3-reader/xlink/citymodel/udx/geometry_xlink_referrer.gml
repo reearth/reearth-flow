@@ -4,6 +4,7 @@
   Per OGC 21-006r2: geometry XLinks across top-level features are only allowed
   for ImplicitGeometry.
 
+  Coordinates are JGD2011 geographic (lon lat height) — Tokyo area, EPSG:6697.
   furniture2.relativeGeometry -> geometry_xlink_definition.gml#geom_template1
 -->
 <core:CityModel
@@ -17,11 +18,11 @@
     <frn:CityFurniture gml:id="furniture2">
       <core:lod2ImplicitRepresentation>
         <core:ImplicitGeometry>
-          <!-- Translate prototype to (10, 20, 0) -->
-          <core:transformationMatrix>1 0 0 10 0 1 0 20 0 0 1 0 0 0 0 1</core:transformationMatrix>
+          <!-- Identity matrix: template coordinates are already in geographic range -->
+          <core:transformationMatrix>1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</core:transformationMatrix>
           <core:referencePoint>
             <gml:Point srsDimension="3">
-              <gml:pos>10 20 0</gml:pos>
+              <gml:pos>139.7457 35.6587 5.0</gml:pos>
             </gml:Point>
           </core:referencePoint>
           <!-- External xlink to geometry template defined in geometry_xlink_definition.gml -->
