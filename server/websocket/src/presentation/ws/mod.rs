@@ -93,17 +93,19 @@ impl Stream for WarpStream {
     type Item = Result<Bytes, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match Pin::new(&mut self.0).poll_next(cx) {
-            Poll::Pending => Poll::Pending,
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Ready(Some(res)) => match res {
-                Ok(msg) => match msg {
-                    Message::Binary(data) => Poll::Ready(Some(Ok(data))),
-                    Message::Ping(_) | Message::Pong(_) | Message::Text(_) => self.poll_next(cx),
-                    Message::Close(_) => Poll::Ready(None),
+        loop {
+            match Pin::new(&mut self.0).poll_next(cx) {
+                Poll::Pending => return Poll::Pending,
+                Poll::Ready(None) => return Poll::Ready(None),
+                Poll::Ready(Some(res)) => match res {
+                    Ok(msg) => match msg {
+                        Message::Binary(data) => return Poll::Ready(Some(Ok(data))),
+                        Message::Ping(_) | Message::Pong(_) | Message::Text(_) => continue,
+                        Message::Close(_) => return Poll::Ready(None),
+                    },
+                    Err(e) => return Poll::Ready(Some(Err(Error::Other(e.into())))),
                 },
-                Err(e) => Poll::Ready(Some(Err(Error::Other(e.into())))),
-            },
+            }
         }
     }
 }

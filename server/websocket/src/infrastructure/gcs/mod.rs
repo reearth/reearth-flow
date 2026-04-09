@@ -944,7 +944,8 @@ impl GcsStore {
                 }
             }
 
-            // Download and apply updates being deleted (in batches)
+            // Download and apply updates being deleted (in batches).
+            // If any download or decode fails, abort cleanup to avoid data loss.
             for chunk in to_delete.chunks(BATCH_SIZE) {
                 let chunk_futures = chunk.iter().map(|(_, obj_name)| {
                     let bucket = self.bucket.clone();
@@ -959,15 +960,33 @@ impl GcsStore {
                         self.client
                             .download_object(&request, &Range::default())
                             .await
-                            .ok()
+                            .map_err(|err| {
+                                anyhow::anyhow!(
+                                    "failed to download update object '{}' for compaction: {}",
+                                    object,
+                                    err
+                                )
+                            })
                     }
                 });
 
                 let results = join_all(chunk_futures).await;
-                for data in results.into_iter().flatten() {
-                    if let Ok(update) = Update::decode_v1(&data) {
-                        let _ = txn.apply_update(update);
-                    }
+                for data in results {
+                    let data = data?;
+                    let update = Update::decode_v1(&data).map_err(|err| {
+                        anyhow::anyhow!(
+                            "failed to decode update while compacting document '{}': {}",
+                            doc_id,
+                            err
+                        )
+                    })?;
+                    txn.apply_update(update).map_err(|err| {
+                        anyhow::anyhow!(
+                            "failed to apply update while compacting document '{}': {}",
+                            doc_id,
+                            err
+                        )
+                    })?;
                 }
             }
         }
@@ -983,13 +1002,25 @@ impl GcsStore {
             self.upsert(&sv_key, &state_vector).await?;
         }
 
-        // Update checkpoint to highest deleted clock
+        // Update checkpoint, but never move it backwards relative to the
+        // already-persisted compacted doc state.
         let checkpoint_key = format!("checkpoint:{}", hex::encode(doc_id.as_bytes()));
-        self.upsert(
-            checkpoint_key.as_bytes(),
-            &highest_deleted_clock.to_be_bytes(),
-        )
-        .await?;
+        let current_checkpoint = self
+            .get(checkpoint_key.as_bytes())
+            .await?
+            .and_then(|bytes| {
+                if bytes.len() == 4 {
+                    let mut arr = [0u8; 4];
+                    arr.copy_from_slice(bytes.as_ref());
+                    Some(u32::from_be_bytes(arr))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0);
+        let new_checkpoint = current_checkpoint.max(highest_deleted_clock);
+        self.upsert(checkpoint_key.as_bytes(), &new_checkpoint.to_be_bytes())
+            .await?;
 
         // Delete old update objects in batches
         for chunk in to_delete.chunks(BATCH_SIZE) {
@@ -1056,15 +1087,20 @@ impl GcsStore {
             })
             .await;
 
-        // List and delete all objects in the document's key range
-        let start = key_doc(oid)?;
-        let end_bytes = [V1, KEYSPACE_DOC]
+        // List and delete all objects in the document's key range.
+        // Use [V1, KEYSPACE_DOC, oid] as prefix (without sub-key tag) to match
+        // all sub-keys: doc state, state vector, updates, and metadata.
+        let doc_prefix_bytes = [V1, KEYSPACE_DOC]
             .iter()
             .chain(&oid.to_be_bytes())
+            .copied()
+            .collect::<Vec<_>>();
+        let end_bytes = doc_prefix_bytes
+            .iter()
             .chain(&[0xFF])
             .copied()
             .collect::<Vec<_>>();
-        let prefix = hex::encode(start.as_ref());
+        let prefix = hex::encode(&doc_prefix_bytes);
 
         let mut all_objects = Vec::new();
         let mut page_token = None;
