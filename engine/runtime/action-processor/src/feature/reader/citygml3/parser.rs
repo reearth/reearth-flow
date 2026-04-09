@@ -162,6 +162,7 @@ fn href_to_key(href: &str, base: &Url) -> Option<RawNodeKey> {
             .ok()
             .map(|u| (u.to_string(), frag.to_string()))
     } else {
+        tracing::warn!(href, "citygml3: unsupported xlink:href format, skipped");
         None
     }
 }
