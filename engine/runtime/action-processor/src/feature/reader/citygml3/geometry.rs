@@ -115,11 +115,11 @@ fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<G
     }
 }
 
-// OGC 21-006r2 §9.3: referencePoint is omitted — the translation column of
-// transformationMatrix already encodes the world-space origin.
 fn parse_implicit_geom(node: &XmlNode, lod: Option<u8>) -> Option<GmlGeometry> {
-    let matrix =
-        find_child(node, "transformationMatrix").and_then(|n| parse_matrix4(text_content(n)))?;
+    let matrix = compose_implicit_transform(
+        find_child(node, "transformationMatrix").and_then(|n| parse_matrix4(text_content(n)))?,
+        parse_reference_point(node),
+    );
     let rel_geom_node = find_child(node, "relativeGeometry")?;
     let geom_node = element_children(rel_geom_node).next()?;
     let ty = gml_element_geometry_type(local_name(&geom_node.name.0))?;
@@ -177,6 +177,26 @@ fn parse_matrix4(text: &str) -> Option<[f64; 16]> {
     } else {
         None
     }
+}
+
+fn parse_reference_point(node: &XmlNode) -> Option<Coordinate3D<f64>> {
+    let ref_point = find_child(node, "referencePoint")?;
+    let point = element_children(ref_point).find(|child| local_name(&child.name.0) == "Point")?;
+    let mut points = Vec::new();
+    collect_points(point, &mut points);
+    points.into_iter().next()
+}
+
+fn compose_implicit_transform(
+    mut matrix: [f64; 16],
+    reference_point: Option<Coordinate3D<f64>>,
+) -> [f64; 16] {
+    if let Some(reference_point) = reference_point {
+        matrix[3] += reference_point.x;
+        matrix[7] += reference_point.y;
+        matrix[11] += reference_point.z;
+    }
+    matrix
 }
 
 #[inline]
@@ -783,6 +803,19 @@ mod tests {
                     vec![text_node("1 0 0 10  0 1 0 20  0 0 1 0  0 0 0 1")],
                 )),
                 elem_child(elem(
+                    "core:referencePoint",
+                    vec![],
+                    vec![elem_child(elem(
+                        "gml:Point",
+                        vec![],
+                        vec![elem_child(elem(
+                            "gml:pos",
+                            vec![],
+                            vec![text_node("100 200 5")],
+                        ))],
+                    ))],
+                )),
+                elem_child(elem(
                     "core:relativeGeometry",
                     vec![],
                     vec![elem_child(rel_geom)],
@@ -805,12 +838,13 @@ mod tests {
         assert_eq!(g.ty, GeometryType::Surface);
         assert_eq!(g.lod, Some(2));
         let first = g.polygons[0].exterior().0[0];
-        assert!((first.x - 10.0).abs() < 1e-10);
-        assert!((first.y - 20.0).abs() < 1e-10);
-        assert!((first.z).abs() < 1e-10);
+        assert!((first.x - 110.0).abs() < 1e-10);
+        assert!((first.y - 220.0).abs() < 1e-10);
+        assert!((first.z - 5.0).abs() < 1e-10);
         let third = g.polygons[0].exterior().0[2];
-        assert!((third.x - 11.0).abs() < 1e-10);
-        assert!((third.y - 21.0).abs() < 1e-10);
+        assert!((third.x - 111.0).abs() < 1e-10);
+        assert!((third.y - 221.0).abs() < 1e-10);
+        assert!((third.z - 5.0).abs() < 1e-10);
     }
 
     #[test]
