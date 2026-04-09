@@ -16,7 +16,7 @@ use crate::{
     forwarder::SenderWithPortMapping,
     node::{EdgeId, GraphId, NodeHandle, Port},
 };
-use crossbeam::channel::{bounded, Receiver, Sender};
+use crossbeam::channel::{unbounded, Receiver, Sender};
 use petgraph::graph::NodeIndex;
 use petgraph::{visit::EdgeRef, Direction};
 
@@ -70,7 +70,7 @@ pub struct ExecutionDag {
 impl ExecutionDag {
     pub fn new(
         builder_dag: BuilderDag,
-        channel_buffer_sz: usize,
+        _channel_buffer_sz: usize,
         feature_flush_threshold: usize,
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
@@ -96,7 +96,7 @@ impl ExecutionDag {
             // Create or get channel.
             let (sender, receiver) = match channels.entry((source_node_index, target_node_index)) {
                 Entry::Vacant(entry) => {
-                    let (sender, receiver) = bounded(channel_buffer_sz);
+                    let (sender, receiver) = unbounded();
                     entry.insert((sender.clone(), receiver.clone()));
                     (sender, receiver)
                 }
