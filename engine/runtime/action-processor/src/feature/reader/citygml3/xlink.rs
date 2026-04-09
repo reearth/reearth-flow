@@ -28,7 +28,12 @@ impl<'a> XlinkResolver<'a> {
         }
     }
 
-    fn resolve(&mut self, node: &XmlNode) -> XmlNode {
+    fn resolve(&mut self, node: &Arc<XmlNode>) -> Arc<XmlNode> {
+        // Fast path: no xlinks anywhere in this subtree.
+        if !node.has_xlinks {
+            return Arc::clone(node);
+        }
+
         // Pre-mark this node's own gml:id so any back-reference to it is blocked
         // immediately, catching cycles one hop earlier.
         if let Some(id) = gml_id_attr(node) {
@@ -67,11 +72,12 @@ impl<'a> XlinkResolver<'a> {
                             .cloned()
                             .collect();
                         let resolved_target = self.resolve(target);
-                        return XmlNode {
+                        return Arc::new(XmlNode {
                             name: node.name.clone(),
                             attrs,
-                            children: vec![XmlChild::Element(Arc::new(resolved_target))],
-                        };
+                            children: vec![XmlChild::Element(resolved_target)],
+                            has_xlinks: false,
+                        });
                     } else {
                         tracing::warn!(
                             "citygml3: unresolved xlink:href '{}' in element '{}'",
@@ -87,16 +93,17 @@ impl<'a> XlinkResolver<'a> {
             .children
             .iter()
             .map(|c| match c {
-                XmlChild::Element(e) => XmlChild::Element(Arc::new(self.resolve(e))),
+                XmlChild::Element(e) => XmlChild::Element(self.resolve(e)),
                 XmlChild::Text(t) => XmlChild::Text(t.clone()),
             })
             .collect();
 
-        XmlNode {
+        Arc::new(XmlNode {
             name: node.name.clone(),
             attrs: node.attrs.clone(),
             children,
-        }
+            has_xlinks: false,
+        })
     }
 }
 
@@ -107,7 +114,7 @@ impl<'a> XlinkResolver<'a> {
 /// Both intra-file (`#id`) and cross-file (`other.gml#id`) hrefs are
 /// resolved. Cross-file hrefs are resolved relative to `base_url`.
 /// Unresolvable and circular references are left in place.
-pub fn resolve_xlinks(node: &XmlNode, base_url: &Url, registry: &IdRegistry) -> XmlNode {
+pub fn resolve_xlinks(node: &Arc<XmlNode>, base_url: &Url, registry: &IdRegistry) -> Arc<XmlNode> {
     XlinkResolver::new(base_url, registry).resolve(node)
 }
 
@@ -119,7 +126,7 @@ mod tests {
 
     use super::resolve_xlinks;
     use crate::feature::reader::citygml3::utils::{
-        local_name, IdRegistry, XmlChild, XmlNode, GML_NS, XLINK_NS,
+        local_name, xlink_href_attr, IdRegistry, XmlChild, XmlNode, GML_NS, XLINK_NS,
     };
 
     fn dummy_url() -> Url {
@@ -127,13 +134,20 @@ mod tests {
     }
 
     fn make_node(name: &str, attrs: Vec<(&str, &str, &str)>, children: Vec<XmlChild>) -> XmlNode {
+        let owned_attrs: Vec<(String, String, String)> = attrs
+            .into_iter()
+            .map(|(q, ns, v)| (q.to_string(), ns.to_string(), v.to_string()))
+            .collect();
+        let has_xlinks = xlink_href_attr(&owned_attrs).is_some()
+            || children.iter().any(|c| match c {
+                XmlChild::Element(e) => e.has_xlinks,
+                XmlChild::Text(_) => false,
+            });
         XmlNode {
             name: name.to_string(),
-            attrs: attrs
-                .into_iter()
-                .map(|(q, ns, v)| (q.to_string(), ns.to_string(), v.to_string()))
-                .collect(),
+            attrs: owned_attrs,
             children,
+            has_xlinks,
         }
     }
 
@@ -157,7 +171,7 @@ mod tests {
             vec![],
         );
 
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
+        let resolved = resolve_xlinks(&Arc::new(node), &dummy_url(), &reg);
 
         assert_eq!(resolved.children.len(), 1);
         if let XmlChild::Element(e) = &resolved.children[0] {
@@ -183,7 +197,7 @@ mod tests {
         reg.insert((dummy_url().to_string(), "p1".to_string()), target);
 
         let node = make_node("ref", vec![("xl:href", XLINK_NS, "#p1")], vec![]);
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
+        let resolved = resolve_xlinks(&Arc::new(node), &dummy_url(), &reg);
 
         assert_eq!(resolved.children.len(), 1);
     }
@@ -205,7 +219,7 @@ mod tests {
             vec![("xlink:href", XLINK_NS, "other.gml#p1")],
             vec![],
         );
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
+        let resolved = resolve_xlinks(&Arc::new(node), &dummy_url(), &reg);
 
         assert_eq!(resolved.children.len(), 1);
     }
@@ -214,7 +228,7 @@ mod tests {
     fn resolve_xlinks_leaves_unresolvable_in_place() {
         let reg = IdRegistry::new();
         let node = make_node("ref", vec![("xlink:href", XLINK_NS, "#missing")], vec![]);
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
+        let resolved = resolve_xlinks(&Arc::new(node), &dummy_url(), &reg);
 
         assert!(resolved.children.is_empty());
         assert!(resolved
@@ -236,7 +250,7 @@ mod tests {
         let inner = make_node("bldg:pos", vec![("xlink:href", XLINK_NS, "#pt1")], vec![]);
         let node = make_node("bldg:Building", vec![], vec![elem(inner)]);
 
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
+        let resolved = resolve_xlinks(&Arc::new(node), &dummy_url(), &reg);
 
         let child = match &resolved.children[0] {
             XmlChild::Element(e) => e,

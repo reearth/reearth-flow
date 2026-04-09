@@ -20,6 +20,9 @@ pub struct XmlNode {
     pub attrs: Vec<(String, String, String)>,
     /// Child content in document order.
     pub children: Vec<XmlChild>,
+    /// `true` if this node or any descendant carries an `xlink:href` attribute.
+    /// Used by the xlink resolver to skip clean subtrees in O(1).
+    pub has_xlinks: bool,
 }
 
 #[derive(Debug, Clone)]

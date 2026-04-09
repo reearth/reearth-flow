@@ -574,6 +574,7 @@ mod tests {
                 .map(|(q, ns, v)| (q.to_string(), ns.to_string(), v.to_string()))
                 .collect(),
             children,
+            has_xlinks: false,
         }
     }
 

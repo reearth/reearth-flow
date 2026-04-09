@@ -251,10 +251,12 @@ fn parse_element<R: BufRead>(
                 name: cn,
                 attrs: ca,
             } => {
+                let has_xlinks = super::utils::xlink_href_attr(&ca).is_some();
                 children.push(XmlChild::Element(Arc::new(XmlNode {
                     name: cn,
                     attrs: ca,
                     children: Vec::new(),
+                    has_xlinks,
                 })));
             }
             OwnedEvent::End | OwnedEvent::Eof => break,
@@ -265,10 +267,17 @@ fn parse_element<R: BufRead>(
         }
     }
 
+    let has_xlinks = super::utils::xlink_href_attr(&attrs).is_some()
+        || children.iter().any(|c| match c {
+            XmlChild::Element(e) => e.has_xlinks,
+            XmlChild::Text(_) => false,
+        });
+
     Ok(XmlNode {
         name,
         attrs,
         children,
+        has_xlinks,
     })
 }
 
@@ -334,7 +343,9 @@ mod tests {
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
 
-    use crate::feature::reader::citygml3::utils::{IdRegistry, XmlChild, XmlNode, GML_NS};
+    use crate::feature::reader::citygml3::utils::{
+        xlink_href_attr, IdRegistry, XmlChild, XmlNode, GML_NS,
+    };
     use crate::feature::reader::citygml3::xlink::resolve_xlinks; // used by to_feature test
 
     fn dummy_url() -> Url {
@@ -342,13 +353,20 @@ mod tests {
     }
 
     fn make_node(name: &str, attrs: Vec<(&str, &str, &str)>, children: Vec<XmlChild>) -> XmlNode {
+        let owned_attrs: Vec<(String, String, String)> = attrs
+            .into_iter()
+            .map(|(q, ns, v)| (q.to_string(), ns.to_string(), v.to_string()))
+            .collect();
+        let has_xlinks = xlink_href_attr(&owned_attrs).is_some()
+            || children.iter().any(|c| match c {
+                XmlChild::Element(e) => e.has_xlinks,
+                XmlChild::Text(_) => false,
+            });
         XmlNode {
             name: name.to_string(),
-            attrs: attrs
-                .into_iter()
-                .map(|(q, ns, v)| (q.to_string(), ns.to_string(), v.to_string()))
-                .collect(),
+            attrs: owned_attrs,
             children,
+            has_xlinks,
         }
     }
 
