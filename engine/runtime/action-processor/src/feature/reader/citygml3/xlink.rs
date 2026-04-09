@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::parser::{RawChild, RawNode, RawRegistry};
@@ -9,28 +9,40 @@ use super::utils::{XmlChild, XmlNode};
 /// Call once per feature after all files have been parsed and the registry is complete.
 pub fn resolve(raw: Arc<RawNode>, registry: &RawRegistry) -> Arc<XmlNode> {
     let mut cache: HashMap<*const RawNode, Arc<XmlNode>> = HashMap::new();
-    convert_node(&raw, registry, &mut cache)
+    let mut in_progress: HashSet<*const RawNode> = HashSet::new();
+    convert_node(&raw, registry, &mut cache, &mut in_progress)
+        .expect("root CityGML node unexpectedly hit cycle boundary")
 }
 
 fn convert_node(
     raw: &Arc<RawNode>,
     registry: &RawRegistry,
     cache: &mut HashMap<*const RawNode, Arc<XmlNode>>,
-) -> Arc<XmlNode> {
+    in_progress: &mut HashSet<*const RawNode>,
+) -> Option<Arc<XmlNode>> {
     let ptr = Arc::as_ptr(raw);
     if let Some(cached) = cache.get(&ptr) {
-        return Arc::clone(cached);
+        return Some(Arc::clone(cached));
+    }
+    if !in_progress.insert(ptr) {
+        tracing::warn!(
+            name = raw.name.0.as_str(),
+            "citygml3: cyclic xlink reference detected, skipped at cycle boundary"
+        );
+        return None;
     }
 
     let children: Vec<XmlChild> = raw
         .children
         .iter()
         .filter_map(|c| match c {
-            RawChild::Element(e) => Some(XmlChild::Element(convert_node(e, registry, cache))),
+            RawChild::Element(e) => {
+                convert_node(e, registry, cache, in_progress).map(XmlChild::Element)
+            }
             RawChild::Text(t) => Some(XmlChild::Text(t.clone())),
             RawChild::Ref(key) => {
                 if let Some(target) = registry.get(key) {
-                    Some(XmlChild::Element(convert_node(target, registry, cache)))
+                    convert_node(target, registry, cache, in_progress).map(XmlChild::Element)
                 } else {
                     tracing::warn!(id = key.1, "citygml3: unresolved xlink:href, skipped");
                     None
@@ -44,8 +56,9 @@ fn convert_node(
         attrs: raw.attrs.clone(),
         children,
     });
+    in_progress.remove(&ptr);
     cache.insert(ptr, Arc::clone(&node));
-    node
+    Some(node)
 }
 
 #[cfg(test)]
@@ -235,5 +248,29 @@ mod tests {
             XmlChild::Element(arc) => assert_eq!(local_name(&arc.name.0), "Polygon"),
             _ => panic!("expected Element child to cross-file polygon"),
         }
+    }
+
+    #[test]
+    fn resolve_cyclic_ref_terminates() {
+        let xml = br##"
+<core:CityModel
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:gml="http://www.opengis.net/gml/3.2"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+  <core:cityObjectMember>
+    <gml:CompositeSurface gml:id="a">
+      <gml:surfaceMember xlink:href="#b"/>
+    </gml:CompositeSurface>
+  </core:cityObjectMember>
+  <core:cityObjectMember>
+    <gml:CompositeSurface gml:id="b">
+      <gml:surfaceMember xlink:href="#a"/>
+    </gml:CompositeSurface>
+  </core:cityObjectMember>
+</core:CityModel>"##;
+
+        let mut reg = RawRegistry::new();
+        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let _ = resolve(raw.into_iter().next().unwrap(), &reg);
     }
 }
