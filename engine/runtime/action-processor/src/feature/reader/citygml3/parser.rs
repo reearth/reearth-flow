@@ -50,7 +50,6 @@ pub fn parse(
     let src = std::str::from_utf8(source)
         .map_err(|e| ParseError::Encoding(format!("Non-UTF-8 content: {e}")))?;
     let mut reader = NsReader::from_str(src);
-    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
 
     loop {
