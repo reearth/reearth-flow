@@ -5,7 +5,7 @@ use super::parser::{RawChild, RawNode, RawRegistry};
 use super::utils::{XmlChild, XmlNode};
 
 /// Phase-2: convert a parsed feature root into a fully resolved `XmlNode`.
-/// Each `RawChild::Ref` becomes `XmlChild::Ref(Arc<XmlNode>)` — a direct node pointer.
+/// Each `RawChild::Ref` becomes `XmlChild::Element(Arc<XmlNode>)` — a direct node pointer.
 /// Call once per feature after all files have been parsed and the registry is complete.
 pub fn resolve(raw: Arc<RawNode>, registry: &RawRegistry) -> Arc<XmlNode> {
     let mut cache: HashMap<*const RawNode, Arc<XmlNode>> = HashMap::new();
@@ -30,7 +30,7 @@ fn convert_node(
             RawChild::Text(t) => Some(XmlChild::Text(t.clone())),
             RawChild::Ref(key) => {
                 if let Some(target) = registry.get(key) {
-                    Some(XmlChild::Ref(convert_node(target, registry, cache)))
+                    Some(XmlChild::Element(convert_node(target, registry, cache)))
                 } else {
                     tracing::warn!(id = key.1, "citygml3: unresolved xlink:href, skipped");
                     None
@@ -62,7 +62,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_ref_becomes_direct_pointer() {
+    fn resolve_href_becomes_element_child() {
         let xml = br##"
 <core:CityModel
   xmlns:core="http://www.opengis.net/citygml/3.0"
@@ -89,14 +89,14 @@ mod tests {
             _ => panic!(),
         };
         match &surface_member.children[0] {
-            XmlChild::Ref(arc) => assert_eq!(local_name(&arc.name.0), "Polygon"),
-            _ => panic!("expected Ref"),
+            XmlChild::Element(arc) => assert_eq!(local_name(&arc.name.0), "Polygon"),
+            _ => panic!("expected Element"),
         }
     }
 
     #[test]
     fn resolve_shared_node_is_same_arc() {
-        // Two surfaceMembers reference the same polygon — both Ref arcs must be pointer-equal.
+        // Two surfaceMembers reference the same polygon — both child arcs must be pointer-equal.
         let xml = br##"
 <core:CityModel
   xmlns:core="http://www.opengis.net/citygml/3.0"
@@ -121,8 +121,8 @@ mod tests {
         let building = &tlf;
         let ref_arc = |i: usize| match &building.children[i] {
             XmlChild::Element(e) => match &e.children[0] {
-                XmlChild::Ref(arc) => Arc::clone(arc),
-                _ => panic!("expected Ref"),
+                XmlChild::Element(arc) => Arc::clone(arc),
+                _ => panic!("expected Element"),
             },
             _ => panic!("expected Element"),
         };
@@ -157,6 +157,41 @@ mod tests {
             _ => panic!(),
         };
         assert!(surface_member.children.is_empty());
+    }
+
+    #[test]
+    fn resolve_href_ignores_inline_content() {
+        let xml = br##"
+<core:CityModel
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+  xmlns:gml="http://www.opengis.net/gml/3.2"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg001">
+      <gml:surfaceMember xlink:href="#poly001">
+        <gml:Polygon gml:id="poly_inline"/>
+      </gml:surfaceMember>
+      <gml:surfaceMember>
+        <gml:Polygon gml:id="poly001"/>
+      </gml:surfaceMember>
+    </bldg:Building>
+  </core:cityObjectMember>
+</core:CityModel>"##;
+
+        let mut reg = RawRegistry::new();
+        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let tlf = resolve(raw.into_iter().next().unwrap(), &reg);
+
+        let building = &tlf;
+        let surface_member = match &building.children[0] {
+            XmlChild::Element(e) => e,
+            _ => panic!(),
+        };
+        match &surface_member.children[0] {
+            XmlChild::Element(arc) => assert_eq!(arc.attrs[0].1, "poly001"),
+            _ => panic!("expected Element"),
+        }
     }
 
     #[test]
@@ -197,8 +232,8 @@ mod tests {
             _ => panic!(),
         };
         match &surface_member.children[0] {
-            XmlChild::Ref(arc) => assert_eq!(local_name(&arc.name.0), "Polygon"),
-            _ => panic!("expected Ref to cross-file polygon"),
+            XmlChild::Element(arc) => assert_eq!(local_name(&arc.name.0), "Polygon"),
+            _ => panic!("expected Element child to cross-file polygon"),
         }
     }
 }

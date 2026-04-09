@@ -563,11 +563,10 @@ fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
     element_children(node).find(|c| local_name(&c.name.0) == local)
 }
 
-/// Iterate element children, transparently following `Ref` edges.
+/// Iterate element children.
 fn element_children(node: &XmlNode) -> impl Iterator<Item = &XmlNode> {
     node.children.iter().filter_map(|c| match c {
         XmlChild::Element(e) => Some(e.as_ref()),
-        XmlChild::Ref(arc) => Some(arc.as_ref()),
         XmlChild::Text(_) => None,
     })
 }
@@ -834,9 +833,7 @@ mod tests {
     }
 
     #[test]
-    fn test_element_children_follows_ref() {
-        // surfaceMember has a Ref child pointing to a Polygon.
-        // element_children should yield the Polygon directly.
+    fn test_element_children_yields_elements() {
         let polygon = Arc::new(polygon_node(&[
             (0.0, 0.0, 0.0),
             (1.0, 0.0, 0.0),
@@ -845,17 +842,17 @@ mod tests {
         let surface_member = elem(
             "gml:surfaceMember",
             vec![],
-            vec![XmlChild::Ref(Arc::clone(&polygon))],
+            vec![XmlChild::Element(Arc::clone(&polygon))],
         );
         let mut children = element_children(&surface_member);
-        let child = children.next().expect("expected one child via Ref");
+        let child = children.next().expect("expected one child");
         assert_eq!(local_name(&child.name.0), "Polygon");
         assert!(children.next().is_none());
     }
 
     #[test]
-    fn test_extract_geometries_via_ref() {
-        // Shell → surfaceMember → Ref(Polygon). extract_geometries must find the polygon.
+    fn test_extract_geometries_via_element_child() {
+        // Shell -> surfaceMember -> Polygon. extract_geometries must find the polygon.
         let polygon = Arc::new(polygon_node(&[
             (0.0, 0.0, 0.0),
             (1.0, 0.0, 0.0),
@@ -865,7 +862,7 @@ mod tests {
         let surface_member = elem(
             "gml:surfaceMember",
             vec![],
-            vec![XmlChild::Ref(Arc::clone(&polygon))],
+            vec![XmlChild::Element(Arc::clone(&polygon))],
         );
         let shell = elem("gml:Shell", vec![], vec![elem_child(surface_member)]);
         let exterior = elem("gml:exterior", vec![], vec![elem_child(shell)]);

@@ -68,7 +68,8 @@ pub fn parse(
                 let ln = local_name(&name.0);
                 if ln == "cityObjectMember" || ln == "featureMember" {
                     let member = parse_element(&mut reader, &mut buf, name, attrs, source_url)?;
-                    if let Some(feature_node) = member.children.iter().find_map(|child| match child {
+                    if let Some(feature_node) = member.children.iter().find_map(|child| match child
+                    {
                         RawChild::Element(node) => Some(Arc::clone(node)),
                         _ => None,
                     }) {
@@ -108,11 +109,6 @@ pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
                     .push(node_to_attribute_value(e));
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),
-            XmlChild::Ref(arc) => {
-                if let Some(id) = gml_id_attr(arc) {
-                    text_parts.push(id);
-                }
-            }
         }
     }
 
@@ -226,6 +222,16 @@ fn parse_element<R: BufRead>(
     attrs: Vec<(QName, String)>,
     source_url: &Url,
 ) -> Result<RawNode, ParseError> {
+    let href = xlink_href_attr(&attrs)
+        .and_then(|href| href_to_key(href, source_url))
+        .map(|key| {
+            let filtered = attrs
+                .iter()
+                .filter(|((q, ns), _)| !(local_name(q) == "href" && ns == XLINK_NS))
+                .cloned()
+                .collect::<Vec<_>>();
+            (key, filtered)
+        });
     let mut children = Vec::new();
 
     loop {
@@ -273,6 +279,21 @@ fn parse_element<R: BufRead>(
             }
             _ => {}
         }
+    }
+
+    if let Some((key, filtered_attrs)) = href {
+        if !children.is_empty() {
+            tracing::warn!(
+                element = name.0,
+                id = key.1,
+                "citygml3: xlink:href element had inline content; inline content ignored"
+            );
+        }
+        return Ok(RawNode {
+            name,
+            attrs: filtered_attrs,
+            children: vec![RawChild::Ref(key)],
+        });
     }
 
     Ok(RawNode {
@@ -644,19 +665,6 @@ mod tests {
     }
 
     #[test]
-    fn node_to_attribute_value_ref_emits_gml_id() {
-        let target = Arc::new(make_node(
-            "gml:Polygon",
-            GML_NS,
-            vec![("gml:id", GML_NS, "room001")],
-            vec![],
-        ));
-        let node = make_node("bldg:buildingRoom", "", vec![], vec![XmlChild::Ref(target)]);
-        let av = node_to_attribute_value(&node);
-        assert_eq!(av, AttributeValue::String("room001".to_string()));
-    }
-
-    #[test]
     fn to_feature_sets_feature_type_and_id() {
         let node = make_node(
             "bldg:Building",
@@ -671,7 +679,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_xlink_href_becomes_ref_child() {
+    fn resolve_xlink_href_becomes_element_child() {
         use crate::feature::reader::citygml3::xlink;
 
         let xml = br##"
@@ -726,8 +734,8 @@ mod tests {
 
         assert_eq!(local_name(&surface_member.name.0), "surfaceMember");
         match &surface_member.children[0] {
-            XmlChild::Ref(arc) => assert_eq!(local_name(&arc.name.0), "Polygon"),
-            _ => panic!("expected Ref"),
+            XmlChild::Element(arc) => assert_eq!(local_name(&arc.name.0), "Polygon"),
+            _ => panic!("expected Element"),
         }
         assert!(!surface_member
             .attrs

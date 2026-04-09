@@ -17,8 +17,6 @@ pub struct XmlNode {
 pub enum XmlChild {
     Element(Arc<XmlNode>),
     Text(String),
-    /// xlink:href resolved to a direct node pointer.
-    Ref(Arc<XmlNode>),
 }
 
 pub(super) fn local_name(qname: &str) -> &str {
