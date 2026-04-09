@@ -102,10 +102,6 @@ pub struct FeatureCityGml3ReaderParam {
     /// # Dataset
     /// Path expression resolving to the CityGML 3.0 file to read.
     dataset: Expr,
-
-    /// # Flatten
-    /// Reserved for future subfeature extraction; currently has no effect.
-    flatten: Option<bool>,
 }
 
 pub struct FeatureCityGml3Reader {

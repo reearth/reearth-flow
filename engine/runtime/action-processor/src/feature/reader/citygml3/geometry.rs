@@ -215,7 +215,12 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
                             collect_polygons(inner, out);
                         }
                     }
-                    "interior" => {} // void shells intentionally not extracted
+                    "interior" => {
+                        tracing::warn!(
+                            element = local_name(&child.name),
+                            "citygml3 geometry: interior of Solid is not supported, skipped"
+                        );
+                    }
                     _ => {}
                 }
             }
