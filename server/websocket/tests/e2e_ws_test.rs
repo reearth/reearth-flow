@@ -3,7 +3,7 @@
 // These tests start the full production stack: fake-GCS + Redis (testcontainers),
 // a mock auth server, and a real Axum server with both WebSocket and HTTP API routes.
 // Clients connect via tokio-tungstenite and exercise the Y-WebSocket sync protocol.
-#![allow(unused_imports)]
+#![allow(unused_imports, dead_code)]
 
 mod gcs_test_utils;
 

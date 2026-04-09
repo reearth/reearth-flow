@@ -16,7 +16,9 @@ pub struct TestInfra {
     pub redis_store: Arc<RedisStore>,
     #[allow(dead_code)]
     pub bucket: String,
+    #[allow(dead_code)]
     pub gcs_endpoint: String,
+    #[allow(dead_code)]
     pub redis_url: String,
     // Hold containers to keep them alive for the test duration.
     // Fields are read in drop order (top to bottom), so stores drop before containers.
