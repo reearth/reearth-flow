@@ -178,7 +178,7 @@ impl Processor for FeatureCityGml3Reader {
         for tlf in &self.pending {
             let resolved = xlink::resolve_xlinks(&tlf.node, &tlf.source_url, &self.id_registry);
             let (stripped, raw_geoms) = geometry::extract_geometries(&resolved);
-            let mut feature = parser::to_feature(tlf, &*stripped);
+            let mut feature = parser::to_feature(tlf, &stripped);
 
             if !raw_geoms.is_empty() {
                 *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(

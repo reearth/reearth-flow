@@ -78,7 +78,7 @@ impl<'a> XlinkResolver<'a> {
             }
         }
 
-        let children = node
+        let children: Vec<XmlChild> = node
             .children
             .iter()
             .map(|c| match c {
@@ -87,11 +87,17 @@ impl<'a> XlinkResolver<'a> {
             })
             .collect();
 
+        let has_xlinks = xlink_href_attr(&node.attrs).is_some()
+            || children.iter().any(|c| match c {
+                XmlChild::Element(e) => e.has_xlinks,
+                XmlChild::Text(_) => false,
+            });
+
         Arc::new(XmlNode {
             name: node.name.clone(),
             attrs: node.attrs.clone(),
             children,
-            has_xlinks: false,
+            has_xlinks,
         })
     }
 }
@@ -215,6 +221,9 @@ mod tests {
             .attrs
             .iter()
             .any(|(q, ns, _)| local_name(q) == "href" && ns == XLINK_NS));
+        // Unresolved xlink:href must keep has_xlinks true so callers know the
+        // subtree still contains dangling references.
+        assert!(resolved.has_xlinks);
     }
 
     #[test]
