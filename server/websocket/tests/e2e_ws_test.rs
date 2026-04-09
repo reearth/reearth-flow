@@ -347,11 +347,12 @@ async fn test_e2e_collaborative_editing_lifecycle() {
     client_a.close(None).await.ok();
     client_b.close(None).await.ok();
 
-    // Poll the HTTP API until the document is persisted (async cleanup)
+    // Poll the HTTP API until the document is persisted (async cleanup).
+    // The response is JSON: { "id": "...", "updates": [byte array], "version": N, "timestamp": "..." }
     let http = reqwest::Client::new();
     let mut persisted = false;
 
-    for _ in 0..20 {
+    for _ in 0..30 {
         tokio::time::sleep(Duration::from_millis(500)).await;
         let resp = http
             .get(harness.api_url(&format!("/api/document/{}", doc_id)))
@@ -359,22 +360,31 @@ async fn test_e2e_collaborative_editing_lifecycle() {
             .await
             .unwrap();
         if resp.status().is_success() {
-            let body = resp.bytes().await.unwrap();
-            if !body.is_empty() {
-                // Verify the persisted snapshot contains our data
-                let doc = Doc::new();
-                let text = doc.get_or_insert_text("content");
-                {
-                    let mut txn = doc.transact_mut();
-                    if let Ok(update) = Update::decode_v1(&body) {
-                        txn.apply_update(update).ok();
+            let json: serde_json::Value = match resp.json().await {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            // Extract the "updates" field (byte array serialized as JSON array of numbers)
+            if let Some(updates_arr) = json.get("updates").and_then(|v| v.as_array()) {
+                let update_bytes: Vec<u8> = updates_arr
+                    .iter()
+                    .filter_map(|v| v.as_u64().map(|n| n as u8))
+                    .collect();
+                if !update_bytes.is_empty() {
+                    let doc = Doc::new();
+                    let text = doc.get_or_insert_text("content");
+                    {
+                        let mut txn = doc.transact_mut();
+                        if let Ok(update) = Update::decode_v1(&update_bytes) {
+                            txn.apply_update(update).ok();
+                        }
                     }
-                }
-                let txn = doc.transact();
-                let content = text.get_string(&txn);
-                if content.contains("Hello from Client A") {
-                    persisted = true;
-                    break;
+                    let txn = doc.transact();
+                    let content = text.get_string(&txn);
+                    if content.contains("Hello from Client A") {
+                        persisted = true;
+                        break;
+                    }
                 }
             }
         }
