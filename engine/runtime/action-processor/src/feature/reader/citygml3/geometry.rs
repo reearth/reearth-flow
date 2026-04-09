@@ -12,7 +12,7 @@ use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::{GeometryType, GmlGeometry};
 
-use super::parser::{XmlChild, XmlNode};
+use super::utils::{local_name, XmlChild, XmlNode, GML_NS};
 
 pub fn extract_geometries(node: &XmlNode) -> Vec<GmlGeometry> {
     let mut out: Vec<GmlGeometry> = Vec::new();
@@ -503,10 +503,6 @@ fn parse_single_pos(text: &str) -> Option<Coordinate3D<f64>> {
     }
 }
 
-fn local_name(name: &str) -> &str {
-    name.rfind(':').map(|i| &name[i + 1..]).unwrap_or(name)
-}
-
 fn extract_lod(local: &str) -> Option<u8> {
     if local.len() >= 4 && local.starts_with("lod") {
         local.chars().nth(3)?.to_digit(10).map(|d| d as u8)
@@ -532,7 +528,7 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
 fn gml_id(node: &XmlNode) -> Option<String> {
     node.attrs
         .iter()
-        .find(|(qname, ns, _)| local_name(qname) == "id" && ns == super::parser::GML_NS)
+        .find(|(qname, ns, _)| local_name(qname) == "id" && ns == GML_NS)
         .map(|(_, _, v)| v.clone())
 }
 
@@ -564,7 +560,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::feature::reader::citygml3::parser::XmlChild;
+    use crate::feature::reader::citygml3::utils::XmlChild;
 
     fn text_node(t: &str) -> XmlChild {
         XmlChild::Text(t.to_string())

@@ -23,7 +23,9 @@ use crate::feature::errors::FeatureProcessorError;
 
 use super::{
     geometry,
-    parser::{self, IdRegistry, TopLevelFeature},
+    parser::{self, TopLevelFeature},
+    utils::IdRegistry,
+    xlink,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -182,7 +184,7 @@ impl Processor for FeatureCityGml3Reader {
     ) -> Result<(), BoxedError> {
         for tlf in &self.pending {
             // Resolve xlinks once; share the result across all passes.
-            let resolved = parser::resolve_xlinks(&tlf.node, &tlf.source_url, &self.id_registry);
+            let resolved = xlink::resolve_xlinks(&tlf.node, &tlf.source_url, &self.id_registry);
 
             // Pass 1: build attribute Feature from the resolved node.
             let mut feature = parser::to_feature(tlf, &resolved);

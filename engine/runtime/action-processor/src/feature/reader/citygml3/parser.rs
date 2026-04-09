@@ -11,37 +11,7 @@ use quick_xml::NsReader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
-pub(super) const GML_NS: &str = "http://www.opengis.net/gml/3.2";
-const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
-
-/// A generic, schema-agnostic XML node.
-///
-/// Retains the full qualified name (prefix + local) so downstream code can
-/// distinguish namespaces without a namespace resolver.
-#[derive(Debug, Clone)]
-pub struct XmlNode {
-    /// Qualified element name, e.g. `"bldg:Building"` or `"gml:Polygon"`.
-    pub name: String,
-    /// XML attributes in document order as `(qualified-name, namespace-uri, value)` triples.
-    /// The qualified name is preserved as-is from the source document; the namespace URI
-    /// is resolved so matching is prefix-independent.
-    pub attrs: Vec<(String, String, String)>,
-    /// Child content in document order.
-    pub children: Vec<XmlChild>,
-}
-
-#[derive(Debug, Clone)]
-pub enum XmlChild {
-    Element(Arc<XmlNode>),
-    Text(String),
-}
-
-/// Maps `(canonical-source-url, gml:id)` → owning nodes.
-///
-/// The URL component prevents collisions when multiple files share the same
-/// `gml:id` value, and allows cross-file `xlink:href` resolution to target
-/// the correct document.
-pub type IdRegistry = HashMap<(String, String), Arc<XmlNode>>;
+use super::utils::{gml_id_attr, qname, IdRegistry, XmlChild, XmlNode};
 
 /// A parsed CityGML 3 top-level feature (direct child of `cityObjectMember`
 /// or `featureMember`).
@@ -136,75 +106,10 @@ pub fn parse(
 
 /// Convert a [`TopLevelFeature`] to an engine [`Feature`].
 ///
-/// `resolved` must be the result of calling [`resolve_xlinks`] on `tlf.node`.
+/// `resolved` must be the result of calling [`crate::feature::reader::citygml3::xlink::resolve_xlinks`] on `tlf.node`.
 pub fn to_feature(tlf: &TopLevelFeature, resolved: &XmlNode) -> Feature {
     let content = node_to_attribute_value(resolved);
     build_feature(&tlf.feature_type, tlf.gml_id.as_deref(), content)
-}
-
-/// Recursively walk `node`, replacing elements that carry only an
-/// `xlink:href` attribute and no children with the referenced node from
-/// `registry`.
-///
-/// Both intra-file (`#id`) and cross-file (`other.gml#id`) hrefs are
-/// resolved. Cross-file hrefs are resolved relative to `base_url`.
-/// Unresolvable references are left in place. Resolution is single-pass.
-pub fn resolve_xlinks(node: &XmlNode, base_url: &Url, registry: &IdRegistry) -> XmlNode {
-    if node.children.is_empty() {
-        if let Some(href) = xlink_href_attr(&node.attrs) {
-            let resolved_key = if let Some(frag) = href.strip_prefix('#') {
-                // Intra-file: use the base document's URL.
-                Some((base_url.as_str().to_string(), frag.to_string()))
-            } else if let Some((file_part, frag)) = href.split_once('#') {
-                // Cross-file: resolve the file path relative to base_url.
-                base_url
-                    .join(file_part)
-                    .ok()
-                    .map(|u| (u.as_str().to_string(), frag.to_string()))
-            } else {
-                None
-            };
-
-            if let Some(key) = resolved_key {
-                if let Some(target) = registry.get(&key) {
-                    let attrs = node
-                        .attrs
-                        .iter()
-                        .filter(|(qname, ns, _)| !(local_name(qname) == "href" && ns == XLINK_NS))
-                        .cloned()
-                        .collect();
-                    return XmlNode {
-                        name: node.name.clone(),
-                        attrs,
-                        children: vec![XmlChild::Element(Arc::clone(target))],
-                    };
-                } else {
-                    tracing::warn!(
-                        "citygml3: unresolved xlink:href '{}' in element '{}'",
-                        href,
-                        node.name
-                    );
-                }
-            }
-        }
-    }
-
-    let children = node
-        .children
-        .iter()
-        .map(|c| match c {
-            XmlChild::Element(e) => {
-                XmlChild::Element(Arc::new(resolve_xlinks(e, base_url, registry)))
-            }
-            XmlChild::Text(t) => XmlChild::Text(t.clone()),
-        })
-        .collect();
-
-    XmlNode {
-        name: node.name.clone(),
-        attrs: node.attrs.clone(),
-        children,
-    }
 }
 
 /// Convert an [`XmlNode`] to an [`AttributeValue`].
@@ -419,26 +324,8 @@ fn extract_attrs<R: BufRead>(
         .collect()
 }
 
-fn qname(bytes: &[u8]) -> String {
-    std::str::from_utf8(bytes).unwrap_or("").to_string()
-}
-
 fn local_name(name: &str) -> &str {
-    name.rfind(':').map(|i| &name[i + 1..]).unwrap_or(name)
-}
-
-fn gml_id_attr(node: &XmlNode) -> Option<String> {
-    node.attrs
-        .iter()
-        .find(|(qname, ns, _)| local_name(qname) == "id" && ns == GML_NS)
-        .map(|(_, _, v)| v.clone())
-}
-
-fn xlink_href_attr(attrs: &[(String, String, String)]) -> Option<&str> {
-    attrs
-        .iter()
-        .find(|(qname, ns, _)| local_name(qname) == "href" && ns == XLINK_NS)
-        .map(|(_, _, v)| v.as_str())
+    super::utils::local_name(name)
 }
 
 #[cfg(test)]
@@ -446,6 +333,9 @@ mod tests {
     use super::*;
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
+
+    use crate::feature::reader::citygml3::utils::{IdRegistry, XmlChild, XmlNode, GML_NS};
+    use crate::feature::reader::citygml3::xlink::resolve_xlinks; // used by to_feature test
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()
@@ -633,111 +523,6 @@ mod tests {
         let mut reg = IdRegistry::new();
         let features = parse(xml, &dummy_url(), &mut reg).unwrap();
         assert_eq!(features.len(), 1);
-    }
-
-    #[test]
-    fn resolve_xlinks_replaces_href_leaf() {
-        let target = Arc::new(make_node(
-            "gml:Polygon",
-            vec![("gml:id", GML_NS, "poly001")],
-            vec![],
-        ));
-        let mut reg = IdRegistry::new();
-        reg.insert((dummy_url().to_string(), "poly001".to_string()), target);
-
-        let node = make_node(
-            "bldg:lod1Solid",
-            vec![("xlink:href", XLINK_NS, "#poly001")],
-            vec![],
-        );
-
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
-
-        assert_eq!(resolved.children.len(), 1);
-        if let XmlChild::Element(e) = &resolved.children[0] {
-            assert_eq!(e.name, "gml:Polygon");
-        } else {
-            panic!("expected Element child");
-        }
-        assert!(!resolved
-            .attrs
-            .iter()
-            .any(|(q, ns, _)| { local_name(q) == "href" && ns == XLINK_NS }));
-    }
-
-    #[test]
-    fn resolve_xlinks_non_standard_xlink_prefix() {
-        // Uses 'xl:href' instead of 'xlink:href' — must still resolve.
-        let target = Arc::new(make_node(
-            "gml:Polygon",
-            vec![("gml:id", GML_NS, "p1")],
-            vec![],
-        ));
-        let mut reg = IdRegistry::new();
-        reg.insert((dummy_url().to_string(), "p1".to_string()), target);
-
-        let node = make_node("ref", vec![("xl:href", XLINK_NS, "#p1")], vec![]);
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
-
-        assert_eq!(resolved.children.len(), 1);
-    }
-
-    #[test]
-    fn resolve_xlinks_handles_cross_file_fragment() {
-        // base_url is file:///test.gml; "other.gml" resolves to file:///other.gml
-        let other_url = Url::parse("file:///other.gml").unwrap();
-        let target = Arc::new(make_node(
-            "gml:Polygon",
-            vec![("gml:id", GML_NS, "p1")],
-            vec![],
-        ));
-        let mut reg = IdRegistry::new();
-        reg.insert((other_url.to_string(), "p1".to_string()), target);
-
-        let node = make_node(
-            "ref",
-            vec![("xlink:href", XLINK_NS, "other.gml#p1")],
-            vec![],
-        );
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
-
-        assert_eq!(resolved.children.len(), 1);
-    }
-
-    #[test]
-    fn resolve_xlinks_leaves_unresolvable_in_place() {
-        let reg = IdRegistry::new();
-        let node = make_node("ref", vec![("xlink:href", XLINK_NS, "#missing")], vec![]);
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
-
-        assert!(resolved.children.is_empty());
-        assert!(resolved
-            .attrs
-            .iter()
-            .any(|(q, ns, _)| { local_name(q) == "href" && ns == XLINK_NS }));
-    }
-
-    #[test]
-    fn resolve_xlinks_recurses_into_children() {
-        let target = Arc::new(make_node(
-            "gml:Point",
-            vec![("gml:id", GML_NS, "pt1")],
-            vec![],
-        ));
-        let mut reg = IdRegistry::new();
-        reg.insert((dummy_url().to_string(), "pt1".to_string()), target);
-
-        let inner = make_node("bldg:pos", vec![("xlink:href", XLINK_NS, "#pt1")], vec![]);
-        let node = make_node("bldg:Building", vec![], vec![elem(inner)]);
-
-        let resolved = resolve_xlinks(&node, &dummy_url(), &reg);
-
-        let child = match &resolved.children[0] {
-            XmlChild::Element(e) => e,
-            _ => panic!("expected element"),
-        };
-        assert_eq!(child.name, "bldg:pos");
-        assert_eq!(child.children.len(), 1);
     }
 
     #[test]
