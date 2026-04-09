@@ -23,7 +23,7 @@ use crate::feature::errors::FeatureProcessorError;
 
 use super::{
     geometry,
-    parser::{self, RawRegistry, RawTopLevelFeature},
+    parser::{self, RawNode, RawRegistry},
     xlink,
 };
 
@@ -108,7 +108,7 @@ pub struct FeatureCityGml3Reader {
     dataset_ast: rhai::AST,
     original_dataset: Expr,
     raw_registry: RawRegistry,
-    pending: Vec<RawTopLevelFeature>,
+    pending: Vec<Arc<RawNode>>,
 }
 
 impl std::fmt::Debug for FeatureCityGml3Reader {
@@ -175,10 +175,10 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let registry = std::mem::take(&mut self.raw_registry);
-        for raw_tlf in std::mem::take(&mut self.pending) {
-            let tlf = xlink::resolve(raw_tlf, &registry);
-            let (stripped, raw_geoms) = geometry::extract_geometries(&tlf.node);
-            let mut feature = parser::to_feature(&tlf, &stripped);
+        for raw_feature in std::mem::take(&mut self.pending) {
+            let feature_root = xlink::resolve(raw_feature, &registry);
+            let (stripped, raw_geoms) = geometry::extract_geometries(&feature_root);
+            let mut feature = parser::to_feature(&stripped);
 
             if !raw_geoms.is_empty() {
                 *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(

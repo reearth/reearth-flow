@@ -1,20 +1,15 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::parser::{RawChild, RawNode, RawRegistry, RawTopLevelFeature, TopLevelFeature};
+use super::parser::{RawChild, RawNode, RawRegistry};
 use super::utils::{XmlChild, XmlNode};
 
-/// Phase-2: convert a `RawTopLevelFeature` into a fully resolved `TopLevelFeature`.
+/// Phase-2: convert a parsed feature root into a fully resolved `XmlNode`.
 /// Each `RawChild::Ref` becomes `XmlChild::Ref(Arc<XmlNode>)` — a direct node pointer.
 /// Call once per feature after all files have been parsed and the registry is complete.
-pub fn resolve(raw: RawTopLevelFeature, registry: &RawRegistry) -> TopLevelFeature {
+pub fn resolve(raw: Arc<RawNode>, registry: &RawRegistry) -> Arc<XmlNode> {
     let mut cache: HashMap<*const RawNode, Arc<XmlNode>> = HashMap::new();
-    let node = convert_node(&raw.raw_node, registry, &mut cache);
-    TopLevelFeature {
-        gml_id: raw.gml_id,
-        feature_type: raw.feature_type,
-        node,
-    }
+    convert_node(&raw, registry, &mut cache)
 }
 
 fn convert_node(
@@ -88,7 +83,7 @@ mod tests {
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
         let tlf = resolve(raw.into_iter().next().unwrap(), &reg);
 
-        let building = &tlf.node;
+        let building = &tlf;
         let surface_member = match &building.children[0] {
             XmlChild::Element(e) => e,
             _ => panic!(),
@@ -123,7 +118,7 @@ mod tests {
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
         let tlf = resolve(raw.into_iter().next().unwrap(), &reg);
 
-        let building = &tlf.node;
+        let building = &tlf;
         let ref_arc = |i: usize| match &building.children[i] {
             XmlChild::Element(e) => match &e.children[0] {
                 XmlChild::Ref(arc) => Arc::clone(arc),
@@ -156,7 +151,7 @@ mod tests {
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
         let tlf = resolve(raw.into_iter().next().unwrap(), &reg);
 
-        let building = &tlf.node;
+        let building = &tlf;
         let surface_member = match &building.children[0] {
             XmlChild::Element(e) => e,
             _ => panic!(),
@@ -196,7 +191,7 @@ mod tests {
         parse(xml_b, &url_b, &mut reg).unwrap();
 
         let tlf = resolve(raw_a.into_iter().next().unwrap(), &reg);
-        let building = &tlf.node;
+        let building = &tlf;
         let surface_member = match &building.children[0] {
             XmlChild::Element(e) => e,
             _ => panic!(),

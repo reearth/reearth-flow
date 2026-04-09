@@ -30,19 +30,6 @@ pub(crate) enum RawChild {
 
 pub(crate) type RawRegistry = HashMap<RawNodeKey, Arc<RawNode>>;
 
-pub(crate) struct RawTopLevelFeature {
-    pub(crate) gml_id: Option<String>,
-    pub(crate) feature_type: String,
-    pub(crate) raw_node: Arc<RawNode>,
-}
-
-#[derive(Debug)]
-pub struct TopLevelFeature {
-    pub gml_id: Option<String>,
-    pub feature_type: String,
-    pub node: Arc<XmlNode>,
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum ParseError {
     #[error("XML error: {0}")]
@@ -59,7 +46,7 @@ pub fn parse(
     source: &[u8],
     source_url: &Url,
     registry: &mut RawRegistry,
-) -> Result<Vec<RawTopLevelFeature>, ParseError> {
+) -> Result<Vec<Arc<RawNode>>, ParseError> {
     let src = std::str::from_utf8(source)
         .map_err(|e| ParseError::Encoding(format!("Non-UTF-8 content: {e}")))?;
     let mut reader = NsReader::from_str(src);
@@ -85,13 +72,7 @@ pub fn parse(
                     if let Some(RawChild::Element(feature_node)) = member.children.first() {
                         let feature_node = Arc::clone(feature_node);
                         collect_ids(&feature_node, source_url.as_str(), registry);
-                        let gml_id = raw_gml_id(&feature_node);
-                        let feature_type = feature_node.name.0.clone();
-                        features.push(RawTopLevelFeature {
-                            gml_id,
-                            feature_type,
-                            raw_node: feature_node,
-                        });
+                        features.push(feature_node);
                     } else {
                         tracing::warn!("citygml3: empty cityObjectMember/featureMember, skipped");
                     }
@@ -108,9 +89,9 @@ pub fn parse(
     Ok(features)
 }
 
-pub fn to_feature(tlf: &TopLevelFeature, node: &XmlNode) -> Feature {
+pub fn to_feature(node: &XmlNode) -> Feature {
     let content = node_to_attribute_value(node);
-    build_feature(&tlf.feature_type, tlf.gml_id.as_deref(), content)
+    build_feature(&node.name.0, gml_id_attr(node).as_deref(), content)
 }
 
 pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
@@ -180,7 +161,9 @@ fn href_to_key(href: &str, base: &Url) -> Option<RawNodeKey> {
     if let Some(frag) = href.strip_prefix('#') {
         Some((base.as_str().to_string(), frag.to_string()))
     } else if let Some((file, frag)) = href.split_once('#') {
-        base.join(file).ok().map(|u| (u.to_string(), frag.to_string()))
+        base.join(file)
+            .ok()
+            .map(|u| (u.to_string(), frag.to_string()))
     } else {
         None
     }
@@ -246,11 +229,17 @@ fn parse_element<R: BufRead>(
 
     loop {
         match next_event(reader, buf)? {
-            OwnedEvent::Start { name: cn, attrs: ca } => {
+            OwnedEvent::Start {
+                name: cn,
+                attrs: ca,
+            } => {
                 let child = parse_element(reader, buf, cn, ca, source_url)?;
                 children.push(RawChild::Element(Arc::new(child)));
             }
-            OwnedEvent::Empty { name: cn, attrs: ca } => {
+            OwnedEvent::Empty {
+                name: cn,
+                attrs: ca,
+            } => {
                 if let Some(href) = xlink_href_attr(&ca) {
                     if let Some(key) = href_to_key(href, source_url) {
                         let filtered: Vec<(QName, String)> = ca
@@ -285,13 +274,14 @@ fn parse_element<R: BufRead>(
         }
     }
 
-    Ok(RawNode { name, attrs, children })
+    Ok(RawNode {
+        name,
+        attrs,
+        children,
+    })
 }
 
-fn skip_element<R: BufRead>(
-    reader: &mut NsReader<R>,
-    buf: &mut Vec<u8>,
-) -> Result<(), ParseError> {
+fn skip_element<R: BufRead>(reader: &mut NsReader<R>, buf: &mut Vec<u8>) -> Result<(), ParseError> {
     let mut depth: usize = 1;
     loop {
         match next_event(reader, buf)? {
@@ -419,9 +409,9 @@ mod tests {
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
 
         assert_eq!(raw.len(), 2);
-        assert_eq!(raw[0].gml_id.as_deref(), Some("bldg001"));
-        assert_eq!(raw[1].gml_id.as_deref(), Some("bldg002"));
-        assert_eq!(raw[0].feature_type, "bldg:Building");
+        assert_eq!(raw_gml_id(&raw[0]), Some("bldg001".to_string()));
+        assert_eq!(raw_gml_id(&raw[1]), Some("bldg002".to_string()));
+        assert_eq!(raw[0].name.0, "bldg:Building");
     }
 
     #[test]
@@ -438,7 +428,7 @@ mod tests {
 
         let mut reg = RawRegistry::new();
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
-        assert_eq!(raw[0].gml_id.as_deref(), Some("bldg001"));
+        assert_eq!(raw_gml_id(&raw[0]), Some("bldg001".to_string()));
         assert!(reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
 
@@ -580,7 +570,12 @@ mod tests {
 
     #[test]
     fn node_to_attribute_value_non_standard_prefix_preserves_qname() {
-        let node = make_node("bldg:Building", "", vec![("g:id", GML_NS, "bldg001")], vec![]);
+        let node = make_node(
+            "bldg:Building",
+            "",
+            vec![("g:id", GML_NS, "bldg001")],
+            vec![],
+        );
         let AttributeValue::Map(map) = node_to_attribute_value(&node) else {
             panic!("expected Map");
         };
@@ -639,18 +634,13 @@ mod tests {
 
     #[test]
     fn to_feature_sets_feature_type_and_id() {
-        let node = Arc::new(make_node(
+        let node = make_node(
             "bldg:Building",
             "",
             vec![("gml:id", GML_NS, "bldg001")],
             vec![],
-        ));
-        let tlf = TopLevelFeature {
-            gml_id: Some("bldg001".to_string()),
-            feature_type: "bldg:Building".to_string(),
-            node: Arc::clone(&node),
-        };
-        let feature = to_feature(&tlf, &node);
+        );
+        let feature = to_feature(&node);
 
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
@@ -688,7 +678,7 @@ mod tests {
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
         let tlf = xlink::resolve(raw.into_iter().next().unwrap(), &reg);
 
-        let building = &tlf.node;
+        let building = &tlf;
         let lod2 = match &building.children[0] {
             XmlChild::Element(e) => e,
             _ => panic!(),

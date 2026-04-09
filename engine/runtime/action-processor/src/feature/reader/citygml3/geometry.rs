@@ -108,7 +108,11 @@ fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<G
     }
 
     let empty = geom.polygons.is_empty() && geom.line_strings.is_empty() && geom.points.is_empty();
-    if empty { None } else { Some(geom) }
+    if empty {
+        None
+    } else {
+        Some(geom)
+    }
 }
 
 // OGC 21-006r2 §9.3: referencePoint is omitted — the translation column of
@@ -154,7 +158,11 @@ fn parse_implicit_geom(node: &XmlNode, lod: Option<u8>) -> Option<GmlGeometry> {
     }
 
     let empty = geom.polygons.is_empty() && geom.line_strings.is_empty() && geom.points.is_empty();
-    if empty { None } else { Some(geom) }
+    if empty {
+        None
+    } else {
+        Some(geom)
+    }
 }
 
 fn parse_matrix4(text: &str) -> Option<[f64; 16]> {
@@ -829,7 +837,11 @@ mod tests {
     fn test_element_children_follows_ref() {
         // surfaceMember has a Ref child pointing to a Polygon.
         // element_children should yield the Polygon directly.
-        let polygon = Arc::new(polygon_node(&[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)]));
+        let polygon = Arc::new(polygon_node(&[
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+        ]));
         let surface_member = elem(
             "gml:surfaceMember",
             vec![],
