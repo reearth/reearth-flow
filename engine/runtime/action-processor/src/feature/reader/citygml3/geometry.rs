@@ -71,6 +71,11 @@ fn collect_geometry_from_property(prop: &XmlNode, lod: Option<u8>, out: &mut Vec
     if geom_ln == "ImplicitGeometry" {
         if let Some(g) = parse_implicit_geom(geom_node, lod) {
             out.push(g);
+        } else {
+            tracing::warn!(
+                element = geom_ln,
+                "citygml3 geometry: failed to parse implicit geometry, skipped"
+            );
         }
     } else if geom_ln == "GeometricComplex" {
         parse_geometric_complex(geom_node, lod, out);
