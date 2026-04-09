@@ -3199,6 +3199,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRemoveMyAuthInput,
 		ec.unmarshalInputRemoveParameterInput,
 		ec.unmarshalInputRemoveParametersInput,
+		ec.unmarshalInputRunParameterInput,
 		ec.unmarshalInputRunProjectInput,
 		ec.unmarshalInputShareProjectInput,
 		ec.unmarshalInputSignupInput,
@@ -3792,7 +3793,7 @@ extend type Query {
 	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
   completedAt: DateTime
   deployment: Deployment
-  deploymentId: ID!
+  deploymentId: ID
   debug: Boolean
   id: ID!
   logsURL: String
@@ -3941,6 +3942,17 @@ enum ParameterType {
 
 # InputType
 
+input RunParameterInput {
+  id: ID!
+  name: String!
+  type: ParameterType!
+  required: Boolean!
+  public: Boolean!
+  value: Any!
+  config: JSON
+  index: Int!
+}
+
 input DeclareParameterInput {
   name: String!
   type: ParameterType!
@@ -4066,6 +4078,7 @@ input RunProjectInput {
   file: Upload!
   previousJobId: ID
   startNodeId: ID
+  parameters: [RunParameterInput!]
 }
 
 # Payload
@@ -8956,9 +8969,9 @@ func (ec *executionContext) _Job_deploymentId(ctx context.Context, field graphql
 			return obj.DeploymentID, nil
 		},
 		nil,
-		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -20440,6 +20453,82 @@ func (ec *executionContext) unmarshalInputRemoveParametersInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRunParameterInput(ctx context.Context, obj any) (gqlmodel.RunParameterInput, error) {
+	var it gqlmodel.RunParameterInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "name", "type", "required", "public", "value", "config", "index"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "required":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("required"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Required = data
+		case "public":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("public"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Public = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		case "config":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Config = data
+		case "index":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("index"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Index = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, obj any) (gqlmodel.RunProjectInput, error) {
 	var it gqlmodel.RunProjectInput
 	asMap := map[string]any{}
@@ -20447,7 +20536,7 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "workspaceId", "file", "previousJobId", "startNodeId"}
+	fieldsInOrder := [...]string{"projectId", "workspaceId", "file", "previousJobId", "startNodeId", "parameters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -20489,6 +20578,13 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 				return it, err
 			}
 			it.StartNodeID = data
+		case "parameters":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parameters"))
+			data, err := ec.unmarshalORunParameterInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunParameterInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Parameters = data
 		}
 	}
 
@@ -22725,9 +22821,6 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "deploymentId":
 			out.Values[i] = ec._Job_deploymentId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "debug":
 			out.Values[i] = ec._Job_debug(ctx, field, obj)
 		case "id":
@@ -27534,6 +27627,11 @@ func (ec *executionContext) marshalNRole2githubᚗcomᚋreearthᚋreearthᚑflow
 	return v
 }
 
+func (ec *executionContext) unmarshalNRunParameterInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunParameterInput(ctx context.Context, v any) (*gqlmodel.RunParameterInput, error) {
+	res, err := ec.unmarshalInputRunParameterInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNRunProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunProjectInput(ctx context.Context, v any) (gqlmodel.RunProjectInput, error) {
 	res, err := ec.unmarshalInputRunProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -28750,6 +28848,24 @@ func (ec *executionContext) marshalORemoveMemberFromWorkspacePayload2ᚖgithub�
 		return graphql.Null
 	}
 	return ec._RemoveMemberFromWorkspacePayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalORunParameterInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunParameterInputᚄ(ctx context.Context, v any) ([]*gqlmodel.RunParameterInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*gqlmodel.RunParameterInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNRunParameterInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunParameterInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalORunProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunProjectPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.RunProjectPayload) graphql.Marshaler {

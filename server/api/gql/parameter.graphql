@@ -33,6 +33,17 @@ enum ParameterType {
 
 # InputType
 
+input RunParameterInput {
+  id: ID!
+  name: String!
+  type: ParameterType!
+  required: Boolean!
+  public: Boolean!
+  value: Any!
+  config: JSON
+  index: Int!
+}
+
 input DeclareParameterInput {
   name: String!
   type: ParameterType!

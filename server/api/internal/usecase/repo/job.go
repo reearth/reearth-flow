@@ -14,6 +14,8 @@ type Job interface {
 	FindByIDs(context.Context, id.JobIDList) ([]*job.Job, error)
 	FindByID(context.Context, id.JobID) (*job.Job, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string) ([]*job.Job, *interfaces.PageBasedInfo, error)
+	FindByProject(context.Context, id.ProjectID) ([]*job.Job, error)
+	RemoveByProject(context.Context, id.ProjectID) error
 	Save(context.Context, *job.Job) error
 	Remove(context.Context, id.JobID) error
 }

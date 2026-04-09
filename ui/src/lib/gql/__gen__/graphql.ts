@@ -1120,8 +1120,20 @@ export enum Role {
   Writer = 'writer'
 }
 
+export type RunParameterInput = {
+  config?: InputMaybe<Scalars['JSON']['input']>;
+  id: Scalars['ID']['input'];
+  index: Scalars['Int']['input'];
+  name: Scalars['String']['input'];
+  public: Scalars['Boolean']['input'];
+  required: Scalars['Boolean']['input'];
+  type: ParameterType;
+  value: Scalars['Any']['input'];
+};
+
 export type RunProjectInput = {
   file: Scalars['Upload']['input'];
+  parameters?: InputMaybe<Array<RunParameterInput>>;
   previousJobId?: InputMaybe<Scalars['ID']['input']>;
   projectId: Scalars['ID']['input'];
   startNodeId?: InputMaybe<Scalars['ID']['input']>;

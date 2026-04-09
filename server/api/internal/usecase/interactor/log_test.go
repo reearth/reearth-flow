@@ -69,6 +69,10 @@ func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID accountsi
 	panic("unimplemented")
 }
 
+func (m *mockJobRepo) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {
+	return []*job.Job{m.job}, m.err
+}
+
 func (m *mockJobRepo) Save(ctx context.Context, job *job.Job) error {
 	panic("unimplemented")
 }
@@ -79,6 +83,10 @@ func (m *mockJobRepo) Filtered(filter repo.WorkspaceFilter) repo.Job {
 
 func (m *mockJobRepo) Remove(ctx context.Context, jobID id.JobID) error {
 	panic("unimplemented")
+}
+
+func (m *mockJobRepo) RemoveByProject(ctx context.Context, projectID id.ProjectID) error {
+	return nil
 }
 
 func TestNewLogInteractor(t *testing.T) {
@@ -224,7 +232,7 @@ func TestLogInteractor_Unsubscribe(t *testing.T) {
 func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 	completedJob, err := job.New().
 		NewID().
-		Deployment(id.NewDeploymentID()).
+		Deployment(id.NewDeploymentID().Ref()).
 		Workspace(accountsid.NewWorkspaceID()).
 		Status(job.StatusCompleted).
 		StartedAt(time.Now()).
