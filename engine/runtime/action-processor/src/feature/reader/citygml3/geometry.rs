@@ -24,7 +24,7 @@ fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<Xml
             continue;
         };
 
-        let ln = local_name(&e.name);
+        let ln = local_name(&e.name.0);
         let lod_opt = if ln == "tin" {
             Some(None)
         } else {
@@ -41,12 +41,10 @@ fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<Xml
             match new_children {
                 None => {
                     if !Arc::ptr_eq(&stripped_child, e) {
-                        // Something changed deeper: materialise up to here.
                         let mut nc = node.children[..i].to_vec();
                         nc.push(XmlChild::Element(stripped_child));
                         new_children = Some(nc);
                     }
-                    // else: unchanged, keep scanning without allocating.
                 }
                 Some(ref mut nc) => {
                     nc.push(XmlChild::Element(stripped_child));
@@ -61,7 +59,6 @@ fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<Xml
             name: node.name.clone(),
             attrs: node.attrs.clone(),
             children,
-            has_xlinks: node.has_xlinks,
         }),
     }
 }
@@ -70,7 +67,7 @@ fn collect_geometry_from_property(prop: &XmlNode, lod: Option<u8>, out: &mut Vec
     let Some(geom_node) = element_children(prop).next() else {
         return;
     };
-    let geom_ln = local_name(&geom_node.name);
+    let geom_ln = local_name(&geom_node.name.0);
     if geom_ln == "ImplicitGeometry" {
         if let Some(g) = parse_implicit_geom(geom_node, lod) {
             out.push(g);
@@ -111,11 +108,7 @@ fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<G
     }
 
     let empty = geom.polygons.is_empty() && geom.line_strings.is_empty() && geom.points.is_empty();
-    if empty {
-        None
-    } else {
-        Some(geom)
-    }
+    if empty { None } else { Some(geom) }
 }
 
 // OGC 21-006r2 §9.3: referencePoint is omitted — the translation column of
@@ -125,7 +118,7 @@ fn parse_implicit_geom(node: &XmlNode, lod: Option<u8>) -> Option<GmlGeometry> {
         find_child(node, "transformationMatrix").and_then(|n| parse_matrix4(text_content(n)))?;
     let rel_geom_node = find_child(node, "relativeGeometry")?;
     let geom_node = element_children(rel_geom_node).next()?;
-    let ty = gml_element_geometry_type(local_name(&geom_node.name))?;
+    let ty = gml_element_geometry_type(local_name(&geom_node.name.0))?;
 
     let mut geom = GmlGeometry::new(ty, lod);
     geom.id = gml_id(geom_node);
@@ -161,11 +154,7 @@ fn parse_implicit_geom(node: &XmlNode, lod: Option<u8>) -> Option<GmlGeometry> {
     }
 
     let empty = geom.polygons.is_empty() && geom.line_strings.is_empty() && geom.points.is_empty();
-    if empty {
-        None
-    } else {
-        Some(geom)
-    }
+    if empty { None } else { Some(geom) }
 }
 
 fn parse_matrix4(text: &str) -> Option<[f64; 16]> {
@@ -206,10 +195,10 @@ fn transform_polygon(poly: Polygon3D<f64>, m: &[f64; 16]) -> Polygon3D<f64> {
 }
 
 fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
-    match local_name(&node.name) {
+    match local_name(&node.name.0) {
         "Solid" => {
             for child in element_children(node) {
-                match local_name(&child.name) {
+                match local_name(&child.name.0) {
                     "exterior" => {
                         for inner in element_children(child) {
                             collect_polygons(inner, out);
@@ -217,7 +206,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
                     }
                     "interior" => {
                         tracing::warn!(
-                            element = local_name(&child.name),
+                            element = local_name(&child.name.0),
                             "citygml3 geometry: interior of Solid is not supported, skipped"
                         );
                     }
@@ -227,7 +216,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
         }
         "MultiSolid" | "CompositeSolid" => {
             for child in element_children(node) {
-                let ln = local_name(&child.name);
+                let ln = local_name(&child.name.0);
                 if ln == "solidMember" || ln == "solidMembers" {
                     for inner in element_children(child) {
                         collect_polygons(inner, out);
@@ -237,7 +226,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
         }
         "Shell" | "MultiSurface" | "CompositeSurface" => {
             for child in element_children(node) {
-                let ln = local_name(&child.name);
+                let ln = local_name(&child.name.0);
                 if ln == "surfaceMember" || ln == "surfaceMembers" {
                     for inner in element_children(child) {
                         collect_polygons(inner, out);
@@ -247,7 +236,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
         }
         "Surface" | "PolyhedralSurface" => {
             for child in element_children(node) {
-                if local_name(&child.name) == "patches" {
+                if local_name(&child.name.0) == "patches" {
                     for inner in element_children(child) {
                         collect_polygons(inner, out);
                     }
@@ -256,7 +245,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
         }
         "OrientableSurface" => {
             for child in element_children(node) {
-                if local_name(&child.name) == "baseSurface" {
+                if local_name(&child.name.0) == "baseSurface" {
                     for inner in element_children(child) {
                         collect_polygons(inner, out);
                     }
@@ -265,7 +254,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
         }
         "TriangulatedSurface" | "Tin" => {
             for child in element_children(node) {
-                let ln = local_name(&child.name);
+                let ln = local_name(&child.name.0);
                 if ln == "patches" || ln == "trianglePatches" {
                     for inner in element_children(child) {
                         collect_polygons(inner, out);
@@ -280,7 +269,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
         }
         _ => {
             tracing::warn!(
-                element = local_name(&node.name),
+                element = local_name(&node.name.0),
                 "citygml3 geometry: unhandled element in polygon collection"
             );
         }
@@ -294,7 +283,7 @@ fn parse_geometric_complex(node: &XmlNode, lod: Option<u8>, out: &mut Vec<GmlGeo
     let mut points: Vec<Coordinate3D<f64>> = Vec::new();
 
     for child in element_children(node) {
-        if local_name(&child.name) == "element" {
+        if local_name(&child.name.0) == "element" {
             for prim in element_children(child) {
                 dispatch_primitive(prim, &mut curves, &mut polys, &mut points);
             }
@@ -309,7 +298,7 @@ fn parse_multi_geometry(node: &XmlNode, lod: Option<u8>, out: &mut Vec<GmlGeomet
     let mut points: Vec<Coordinate3D<f64>> = Vec::new();
 
     for child in element_children(node) {
-        let ln = local_name(&child.name);
+        let ln = local_name(&child.name.0);
         if ln == "geometryMember" || ln == "geometryMembers" {
             for member in element_children(child) {
                 dispatch_primitive(member, &mut curves, &mut polys, &mut points);
@@ -325,7 +314,7 @@ fn dispatch_primitive(
     polys: &mut Vec<Polygon3D<f64>>,
     points: &mut Vec<Coordinate3D<f64>>,
 ) {
-    let ln = local_name(&node.name);
+    let ln = local_name(&node.name.0);
     match gml_element_geometry_type(ln) {
         Some(GeometryType::Curve) => collect_line_strings(node, curves),
         Some(GeometryType::Surface | GeometryType::Triangle | GeometryType::Solid) => {
@@ -371,7 +360,7 @@ fn parse_polygon(node: &XmlNode) -> Option<Polygon3D<f64>> {
     let mut interiors: Vec<LineString3D<f64>> = Vec::new();
 
     for child in element_children(node) {
-        match local_name(&child.name) {
+        match local_name(&child.name.0) {
             "exterior" => {
                 if let Some(ring) = find_child(child, "LinearRing") {
                     exterior = Some(parse_linear_ring(ring));
@@ -392,7 +381,7 @@ fn parse_polygon(node: &XmlNode) -> Option<Polygon3D<f64>> {
 fn collect_coords(node: &XmlNode) -> Vec<Coordinate3D<f64>> {
     let mut coords: Vec<Coordinate3D<f64>> = Vec::new();
     for child in element_children(node) {
-        match local_name(&child.name) {
+        match local_name(&child.name.0) {
             "posList" => {
                 coords = parse_pos_list(text_content(child));
                 break;
@@ -405,7 +394,7 @@ fn collect_coords(node: &XmlNode) -> Vec<Coordinate3D<f64>> {
             other => {
                 tracing::warn!(
                     element = other,
-                    parent = local_name(&node.name),
+                    parent = local_name(&node.name.0),
                     "citygml3 geometry: unexpected element in coordinate position, skipped"
                 );
             }
@@ -419,10 +408,10 @@ fn parse_linear_ring(node: &XmlNode) -> LineString3D<f64> {
 }
 
 fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
-    match local_name(&node.name) {
+    match local_name(&node.name.0) {
         "MultiCurve" | "CompositeCurve" => {
             for child in element_children(node) {
-                let ln = local_name(&child.name);
+                let ln = local_name(&child.name.0);
                 if ln == "curveMember" || ln == "curveMembers" {
                     for inner in element_children(child) {
                         collect_line_strings(inner, out);
@@ -432,7 +421,7 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
         }
         "OrientableCurve" => {
             for child in element_children(node) {
-                if local_name(&child.name) == "baseCurve" {
+                if local_name(&child.name.0) == "baseCurve" {
                     for inner in element_children(child) {
                         collect_line_strings(inner, out);
                     }
@@ -447,9 +436,9 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
         }
         "Curve" => {
             for child in element_children(node) {
-                if local_name(&child.name) == "segments" {
+                if local_name(&child.name.0) == "segments" {
                     for seg in element_children(child) {
-                        let seg_ln = local_name(&seg.name);
+                        let seg_ln = local_name(&seg.name.0);
                         if seg_ln == "LineStringSegment" {
                             let coords = collect_coords(seg);
                             if !coords.is_empty() {
@@ -467,7 +456,7 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
         }
         _ => {
             tracing::warn!(
-                element = local_name(&node.name),
+                element = local_name(&node.name.0),
                 "citygml3 geometry: unhandled element in line string collection"
             );
         }
@@ -475,10 +464,10 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
 }
 
 fn collect_points(node: &XmlNode, out: &mut Vec<Coordinate3D<f64>>) {
-    match local_name(&node.name) {
+    match local_name(&node.name.0) {
         "MultiPoint" => {
             for child in element_children(node) {
-                let ln = local_name(&child.name);
+                let ln = local_name(&child.name.0);
                 if ln == "pointMember" || ln == "pointMembers" {
                     for inner in element_children(child) {
                         collect_points(inner, out);
@@ -488,7 +477,7 @@ fn collect_points(node: &XmlNode, out: &mut Vec<Coordinate3D<f64>>) {
         }
         "Point" => {
             for child in element_children(node) {
-                if local_name(&child.name) == "pos" {
+                if local_name(&child.name.0) == "pos" {
                     if let Some(c) = parse_single_pos(text_content(child)) {
                         out.push(c);
                     }
@@ -497,7 +486,7 @@ fn collect_points(node: &XmlNode, out: &mut Vec<Coordinate3D<f64>>) {
         }
         _ => {
             tracing::warn!(
-                element = local_name(&node.name),
+                element = local_name(&node.name.0),
                 "citygml3 geometry: unhandled element in point collection"
             );
         }
@@ -558,21 +547,20 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
 fn gml_id(node: &XmlNode) -> Option<String> {
     node.attrs
         .iter()
-        .find(|(qname, ns, _)| local_name(qname) == "id" && ns == GML_NS)
-        .map(|(_, _, v)| v.clone())
+        .find(|((q, ns), _)| local_name(q) == "id" && ns == GML_NS)
+        .map(|(_, v)| v.clone())
 }
 
 fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
-    element_children(node).find(|c| local_name(&c.name) == local)
+    element_children(node).find(|c| local_name(&c.name.0) == local)
 }
 
+/// Iterate element children, transparently following `Ref` edges.
 fn element_children(node: &XmlNode) -> impl Iterator<Item = &XmlNode> {
-    node.children.iter().filter_map(|c| {
-        if let XmlChild::Element(e) = c {
-            Some(e.as_ref())
-        } else {
-            None
-        }
+    node.children.iter().filter_map(|c| match c {
+        XmlChild::Element(e) => Some(e.as_ref()),
+        XmlChild::Ref(arc) => Some(arc.as_ref()),
+        XmlChild::Text(_) => None,
     })
 }
 
@@ -598,13 +586,12 @@ mod tests {
 
     fn elem(name: &str, attrs: Vec<(&str, &str, &str)>, children: Vec<XmlChild>) -> XmlNode {
         XmlNode {
-            name: name.to_string(),
+            name: (name.to_string(), String::new()),
             attrs: attrs
                 .into_iter()
-                .map(|(q, ns, v)| (q.to_string(), ns.to_string(), v.to_string()))
+                .map(|(q, ns, v)| ((q.to_string(), ns.to_string()), v.to_string()))
                 .collect(),
             children,
-            has_xlinks: false,
         }
     }
 
@@ -715,7 +702,6 @@ mod tests {
 
     #[test]
     fn test_extract_geometries_multi_lod_len() {
-        // lod1 (2 polygons), lod2 (1 polygon): verify len is correct; pos is assigned by caller.
         let make_prop = |prop_name: &str, gml_name: &str, n_polys: usize| {
             let surf_members: Vec<XmlChild> = (0..n_polys)
                 .map(|_| {
@@ -754,9 +740,6 @@ mod tests {
 
     #[test]
     fn test_implicit_geometry_transform() {
-        // transformationMatrix: identity + translate (10, 20, 0)
-        // relativeGeometry: unit square at local z=0
-        // Expected: vertices shifted by (+10, +20, 0).
         let pos_list = "0 0 0 1 0 0 1 1 0 0 1 0 0 0 0";
         let rel_geom = elem(
             "gml:MultiSurface",
@@ -840,5 +823,57 @@ mod tests {
             Arc::ptr_eq(&stripped, &feature),
             "no-geometry node must be returned as-is"
         );
+    }
+
+    #[test]
+    fn test_element_children_follows_ref() {
+        // surfaceMember has a Ref child pointing to a Polygon.
+        // element_children should yield the Polygon directly.
+        let polygon = Arc::new(polygon_node(&[(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)]));
+        let surface_member = elem(
+            "gml:surfaceMember",
+            vec![],
+            vec![XmlChild::Ref(Arc::clone(&polygon))],
+        );
+        let mut children = element_children(&surface_member);
+        let child = children.next().expect("expected one child via Ref");
+        assert_eq!(local_name(&child.name.0), "Polygon");
+        assert!(children.next().is_none());
+    }
+
+    #[test]
+    fn test_extract_geometries_via_ref() {
+        // Shell → surfaceMember → Ref(Polygon). extract_geometries must find the polygon.
+        let polygon = Arc::new(polygon_node(&[
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (0.0, 0.0, 0.0),
+        ]));
+        let surface_member = elem(
+            "gml:surfaceMember",
+            vec![],
+            vec![XmlChild::Ref(Arc::clone(&polygon))],
+        );
+        let shell = elem("gml:Shell", vec![], vec![elem_child(surface_member)]);
+        let exterior = elem("gml:exterior", vec![], vec![elem_child(shell)]);
+        let solid = elem(
+            "gml:Solid",
+            vec![("gml:id", "http://www.opengis.net/gml/3.2", "solid01")],
+            vec![elem_child(exterior)],
+        );
+        let feature = Arc::new(elem(
+            "bldg:Building",
+            vec![],
+            vec![elem_child(elem(
+                "bldg:lod2Solid",
+                vec![],
+                vec![elem_child(solid)],
+            ))],
+        ));
+
+        let (_, geoms) = extract_geometries(&feature);
+        assert_eq!(geoms.len(), 1);
+        assert_eq!(geoms[0].polygons.len(), 1);
     }
 }

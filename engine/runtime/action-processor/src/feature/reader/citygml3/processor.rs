@@ -23,8 +23,7 @@ use crate::feature::errors::FeatureProcessorError;
 
 use super::{
     geometry,
-    parser::{self, TopLevelFeature},
-    utils::IdRegistry,
+    parser::{self, RawRegistry, RawTopLevelFeature},
     xlink,
 };
 
@@ -89,7 +88,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             global_params: with,
             dataset_ast,
             original_dataset: params.dataset,
-            id_registry: IdRegistry::new(),
+            raw_registry: RawRegistry::new(),
             pending: Vec::new(),
         }))
     }
@@ -108,15 +107,15 @@ pub struct FeatureCityGml3Reader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     dataset_ast: rhai::AST,
     original_dataset: Expr,
-    id_registry: IdRegistry,
-    pending: Vec<TopLevelFeature>,
+    raw_registry: RawRegistry,
+    pending: Vec<RawTopLevelFeature>,
 }
 
 impl std::fmt::Debug for FeatureCityGml3Reader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FeatureCityGml3Reader")
             .field("pending", &self.pending.len())
-            .field("id_registry", &self.id_registry.len())
+            .field("raw_registry", &self.raw_registry.len())
             .finish_non_exhaustive()
     }
 }
@@ -127,7 +126,7 @@ impl Clone for FeatureCityGml3Reader {
             global_params: self.global_params.clone(),
             dataset_ast: self.dataset_ast.clone(),
             original_dataset: self.original_dataset.clone(),
-            id_registry: IdRegistry::new(),
+            raw_registry: RawRegistry::new(),
             pending: Vec::new(),
         }
     }
@@ -163,7 +162,7 @@ impl Processor for FeatureCityGml3Reader {
             FeatureProcessorError::FileCityGml3Reader(format!("File read error: {e}"))
         })?;
 
-        let mut features = parser::parse(&bytes, &source_url, &mut self.id_registry)
+        let mut features = parser::parse(&bytes, &source_url, &mut self.raw_registry)
             .map_err(|e| FeatureProcessorError::FileCityGml3Reader(format!("{e}")))?;
 
         self.pending.append(&mut features);
@@ -175,10 +174,11 @@ impl Processor for FeatureCityGml3Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for tlf in &self.pending {
-            let resolved = xlink::resolve_xlinks(&tlf.node, &tlf.source_url, &self.id_registry);
-            let (stripped, raw_geoms) = geometry::extract_geometries(&resolved);
-            let mut feature = parser::to_feature(tlf, &stripped);
+        let registry = std::mem::take(&mut self.raw_registry);
+        for raw_tlf in std::mem::take(&mut self.pending) {
+            let tlf = xlink::resolve(raw_tlf, &registry);
+            let (stripped, raw_geoms) = geometry::extract_geometries(&tlf.node);
+            let mut feature = parser::to_feature(&tlf, &stripped);
 
             if !raw_geoms.is_empty() {
                 *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
