@@ -2809,14 +2809,6 @@
                 "$ref": "#/definitions/Expr"
               }
             ]
-          },
-          "flatten": {
-            "title": "Flatten",
-            "description": "Reserved for future subfeature extraction; currently has no effect.",
-            "type": [
-              "boolean",
-              "null"
-            ]
           }
         },
         "definitions": {

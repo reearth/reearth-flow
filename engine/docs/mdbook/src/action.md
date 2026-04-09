@@ -2809,14 +2809,6 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
           "$ref": "#/definitions/Expr"
         }
       ]
-    },
-    "flatten": {
-      "title": "Flatten",
-      "description": "Reserved for future subfeature extraction; currently has no effect.",
-      "type": [
-        "boolean",
-        "null"
-      ]
     }
   },
   "definitions": {
