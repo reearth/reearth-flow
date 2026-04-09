@@ -112,10 +112,7 @@ pub struct FeatureCityGml3Reader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     dataset_ast: rhai::AST,
     original_dataset: Expr,
-    /// Accumulates gml:id mappings across all processed files.
-    /// Populated in `process`, consumed in `finish`.
     id_registry: IdRegistry,
-    /// Top-level features buffered during `process`, emitted in `finish`.
     pending: Vec<TopLevelFeature>,
 }
 
@@ -183,14 +180,10 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         for tlf in &self.pending {
-            // Resolve xlinks once; share the result across all passes.
             let resolved = xlink::resolve_xlinks(&tlf.node, &tlf.source_url, &self.id_registry);
+            let (stripped, raw_geoms) = geometry::extract_geometries(&resolved);
+            let mut feature = parser::to_feature(tlf, &*stripped);
 
-            // Pass 1: build attribute Feature from the resolved node.
-            let mut feature = parser::to_feature(tlf, &resolved);
-
-            // Pass 2: extract geometries from the same resolved node.
-            let raw_geoms = geometry::extract_geometries(&resolved);
             if !raw_geoms.is_empty() {
                 *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
                     build_citygml_geometry(raw_geoms),
@@ -211,8 +204,7 @@ impl Processor for FeatureCityGml3Reader {
     }
 }
 
-/// Assigns `pos` to each polygon-type geometry and builds neutral appearance arrays
-/// so downstream consumers can index into them without panicking.
+// pos is assigned here; neutral appearance arrays prevent out-of-bounds access in downstream consumers.
 fn build_citygml_geometry(raw: Vec<GmlGeometry>) -> CityGmlGeometry {
     let mut polygon_materials: Vec<Option<u32>> = Vec::new();
     let mut polygon_textures: Vec<Option<u32>> = Vec::new();
@@ -246,8 +238,6 @@ fn build_citygml_geometry(raw: Vec<GmlGeometry>) -> CityGmlGeometry {
     }
 }
 
-/// Zero-UV polygon matching the ring structure of a 3D polygon.
-/// Each vertex maps to `(0.0, 0.0)` so texturing is a no-op.
 fn neutral_uv_polygon(poly: &Polygon3D<f64>) -> Polygon2D<f64> {
     let ext = LineString2D::new(vec![[0.0f64, 0.0f64].into(); poly.exterior().0.len()]);
     let ints = poly

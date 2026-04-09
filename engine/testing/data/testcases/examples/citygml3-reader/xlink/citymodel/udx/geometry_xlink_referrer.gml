@@ -14,6 +14,13 @@
   xmlns:xlink="http://www.w3.org/1999/xlink"
   gml:id="geometry_xlink_referrer">
 
+  <gml:boundedBy>
+    <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+      <gml:lowerCorner>139.7457 35.6587 0.0</gml:lowerCorner>
+      <gml:upperCorner>139.7458 35.6588 5.0</gml:upperCorner>
+    </gml:Envelope>
+  </gml:boundedBy>
+
   <core:cityObjectMember>
     <frn:CityFurniture gml:id="furniture2">
       <core:lod2ImplicitRepresentation>
@@ -21,7 +28,7 @@
           <!-- Identity matrix: template coordinates are already in geographic range -->
           <core:transformationMatrix>1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</core:transformationMatrix>
           <core:referencePoint>
-            <gml:Point srsDimension="3">
+            <gml:Point>
               <gml:pos>139.7457 35.6587 5.0</gml:pos>
             </gml:Point>
           </core:referencePoint>

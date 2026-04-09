@@ -14,6 +14,13 @@
   xmlns:xlink="http://www.w3.org/1999/xlink"
   gml:id="feature_xlink_referrer">
 
+  <gml:boundedBy>
+    <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+      <gml:lowerCorner>139.7454 35.6586 0.0</gml:lowerCorner>
+      <gml:upperCorner>139.7455 35.6587 10.0</gml:upperCorner>
+    </gml:Envelope>
+  </gml:boundedBy>
+
   <core:cityObjectMember>
     <bldg:Building gml:id="building1">
       <core:boundary>
@@ -25,7 +32,7 @@
             </core:CityObjectRelation>
           </core:relatedTo>
           <core:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:MultiSurface>
               <gml:surfaceMember>
                 <gml:Polygon>
                   <gml:exterior>

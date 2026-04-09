@@ -1,5 +1,3 @@
-//! Schema-agnostic CityGML 3 parser.
-
 use std::collections::HashMap;
 use std::io::BufRead;
 use std::sync::Arc;
@@ -13,17 +11,11 @@ use url::Url;
 
 use super::utils::{gml_id_attr, qname, IdRegistry, XmlChild, XmlNode};
 
-/// A parsed CityGML 3 top-level feature (direct child of `cityObjectMember`
-/// or `featureMember`).
 #[derive(Debug)]
 pub struct TopLevelFeature {
-    /// Value of the `gml:id` attribute on the top-level element, if present.
     pub gml_id: Option<String>,
-    /// Qualified element name, e.g. `"bldg:Building"`.
     pub feature_type: String,
-    /// Full parsed subtree; retained for geometry / subfeature extraction.
     pub node: Arc<XmlNode>,
-    /// Source file — retained for diagnostics and future cross-file work.
     #[allow(dead_code)]
     pub source_url: Url,
 }
@@ -40,11 +32,6 @@ pub enum ParseError {
     UnexpectedEof,
 }
 
-/// Parse a CityGML 3 document.
-///
-/// Returns one [`TopLevelFeature`] per `cityObjectMember` / `featureMember`
-/// child of the root `CityModel`.  Every `gml:id`-bearing node found in
-/// those subtrees is registered into `id_registry`.
 pub fn parse(
     source: &[u8],
     source_url: &Url,
@@ -56,7 +43,6 @@ pub fn parse(
     reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
 
-    // Advance past the XML declaration and any preamble to the CityModel root.
     loop {
         match next_event(&mut reader, &mut buf)? {
             OwnedEvent::Start { name, .. } if local_name(&name) == "CityModel" => break,
@@ -67,14 +53,11 @@ pub fn parse(
 
     let mut features = Vec::new();
 
-    // Stream over CityModel's direct children.
     loop {
         match next_event(&mut reader, &mut buf)? {
             OwnedEvent::Start { name, attrs } => {
                 let ln = local_name(&name);
                 if ln == "cityObjectMember" || ln == "featureMember" {
-                    // Parse the complete member element; the top-level feature
-                    // is its first element child.
                     let member = parse_element(&mut reader, &mut buf, name, attrs)?;
                     if let Some(XmlChild::Element(feature_node)) = member.children.first() {
                         let feature_node = Arc::clone(feature_node);
@@ -91,7 +74,7 @@ pub fn parse(
                         tracing::warn!("citygml3: empty cityObjectMember/featureMember, skipped");
                     }
                 } else {
-                    // Other CityModel children (gml:boundedBy, metadata, …) — skip.
+                    // gml:boundedBy, metadata, and other non-feature CityModel children
                     skip_element(&mut reader, &mut buf)?;
                 }
             }
@@ -104,22 +87,14 @@ pub fn parse(
     Ok(features)
 }
 
-/// Convert a [`TopLevelFeature`] to an engine [`Feature`].
-///
-/// `resolved` must be the result of calling [`crate::feature::reader::citygml3::xlink::resolve_xlinks`] on `tlf.node`.
 pub fn to_feature(tlf: &TopLevelFeature, resolved: &XmlNode) -> Feature {
     let content = node_to_attribute_value(resolved);
     build_feature(&tlf.feature_type, tlf.gml_id.as_deref(), content)
 }
 
-/// Convert an [`XmlNode`] to an [`AttributeValue`].
-///
-/// Rules:
-/// - Node with only text content and no XML attributes → `String`
-/// - Otherwise → `Map`:
-///   - XML attributes as `"@{qualified-name}"` keys (e.g. `"@gml:id"`)
-///   - Mixed text content under the `"$"` key
-///   - Multiple sibling elements with the same tag name → `Array`
+/// Mapping rules: pure-text nodes → `String`; otherwise → `Map` where XML
+/// attributes become `"@qname"` keys, text content uses `"$"`, and repeated
+/// sibling tags collapse into an `Array`.
 pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
     let mut elem_groups: IndexMap<String, Vec<AttributeValue>> = IndexMap::new();
     let mut text_parts: Vec<String> = Vec::new();
@@ -136,7 +111,6 @@ pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
         }
     }
 
-    // Pure text with no XML attrs and no element children → bare String.
     if node.attrs.is_empty() && elem_groups.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
@@ -178,11 +152,7 @@ fn build_feature(feature_type: &str, gml_id: Option<&str>, content: AttributeVal
     feature
 }
 
-/// Owned, lifetime-free view of a quick-xml event.
-///
-/// Extracting owned data immediately inside `next_event` avoids the lifetime
-/// conflict that would arise if we tried to hold a borrowed `Event<'_>` across
-/// a recursive call to `parse_element`.
+// Owned so `next_event` can return data without lifetime conflicts across recursive `parse_element` calls.
 enum OwnedEvent {
     Start {
         name: String,
@@ -226,10 +196,6 @@ fn next_event<R: BufRead>(
     }
 }
 
-/// Parse one element and its entire subtree.
-///
-/// `name` and `attrs` are the already-extracted data from the opening tag.
-/// The reader is positioned just after that opening tag.
 fn parse_element<R: BufRead>(
     reader: &mut NsReader<R>,
     buf: &mut Vec<u8>,
@@ -281,7 +247,6 @@ fn parse_element<R: BufRead>(
     })
 }
 
-/// Skip an already-opened element (its start tag has been consumed).
 fn skip_element<R: BufRead>(reader: &mut NsReader<R>, buf: &mut Vec<u8>) -> Result<(), ParseError> {
     let mut depth: usize = 1;
     loop {
@@ -346,7 +311,7 @@ mod tests {
     use crate::feature::reader::citygml3::utils::{
         xlink_href_attr, IdRegistry, XmlChild, XmlNode, GML_NS,
     };
-    use crate::feature::reader::citygml3::xlink::resolve_xlinks; // used by to_feature test
+    use crate::feature::reader::citygml3::xlink::resolve_xlinks;
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()
@@ -416,7 +381,6 @@ mod tests {
 
     #[test]
     fn parse_non_standard_gml_prefix() {
-        // Uses 'g:' instead of 'gml:' — id must still be recognized.
         let xml = br#"
 <core:CityModel
   xmlns:core="http://www.opengis.net/citygml/3.0"
@@ -457,8 +421,6 @@ mod tests {
 
     #[test]
     fn parse_cross_file_gml_id_collision() {
-        // Two files share the same gml:id. Both must be kept under their
-        // respective source URLs; neither should overwrite the other.
         let xml = br#"
 <core:CityModel
   xmlns:core="http://www.opengis.net/citygml/3.0"
@@ -479,7 +441,6 @@ mod tests {
         assert_eq!(reg.len(), 2);
         assert!(reg.contains_key(&(url_a.to_string(), "shared001".to_string())));
         assert!(reg.contains_key(&(url_b.to_string(), "shared001".to_string())));
-        // Nodes must be distinct (different source files, same id).
         let node_a = reg
             .get(&(url_a.to_string(), "shared001".to_string()))
             .unwrap();
@@ -561,7 +522,6 @@ mod tests {
         let AttributeValue::Map(map) = av else {
             panic!("expected Map");
         };
-        // qname is preserved in the key
         assert_eq!(
             map.get("@gml:id"),
             Some(&AttributeValue::String("n1".to_string()))
@@ -574,7 +534,6 @@ mod tests {
 
     #[test]
     fn node_to_attribute_value_non_standard_prefix_preserves_qname() {
-        // Attribute stored with qname 'g:id' must appear as '@g:id' in output.
         let node = make_node("bldg:Building", vec![("g:id", GML_NS, "bldg001")], vec![]);
         let AttributeValue::Map(map) = node_to_attribute_value(&node) else {
             panic!("expected Map");

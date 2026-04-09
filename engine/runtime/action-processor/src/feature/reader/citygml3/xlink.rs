@@ -1,5 +1,3 @@
-//! XLink href resolution for CityGML 3 nodes.
-
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -7,12 +5,6 @@ use url::Url;
 
 use super::utils::{gml_id_attr, xlink_href_attr, IdRegistry, XmlChild, XmlNode, XLINK_NS};
 
-/// Resolves `xlink:href` references in an [`XmlNode`] tree.
-///
-/// Both intra-file (`#id`) and cross-file (`other.gml#id`) hrefs are resolved.
-/// Cross-file hrefs are resolved relative to `base_url`.
-/// Unresolvable references are left in place. Circular references are detected
-/// and left unresolved to prevent infinite recursion.
 struct XlinkResolver<'a> {
     base_url: &'a Url,
     registry: &'a IdRegistry,
@@ -29,13 +21,11 @@ impl<'a> XlinkResolver<'a> {
     }
 
     fn resolve(&mut self, node: &Arc<XmlNode>) -> Arc<XmlNode> {
-        // Fast path: no xlinks anywhere in this subtree.
         if !node.has_xlinks {
             return Arc::clone(node);
         }
 
-        // Pre-mark this node's own gml:id so any back-reference to it is blocked
-        // immediately, catching cycles one hop earlier.
+        // Pre-mark own gml:id so back-references are blocked before recursing.
         if let Some(id) = gml_id_attr(node) {
             self.visited
                 .insert((self.base_url.as_str().to_string(), id));
@@ -107,13 +97,6 @@ impl<'a> XlinkResolver<'a> {
     }
 }
 
-/// Recursively walk `node`, replacing elements that carry only an
-/// `xlink:href` attribute and no children with the referenced node from
-/// `registry`.
-///
-/// Both intra-file (`#id`) and cross-file (`other.gml#id`) hrefs are
-/// resolved. Cross-file hrefs are resolved relative to `base_url`.
-/// Unresolvable and circular references are left in place.
 pub fn resolve_xlinks(node: &Arc<XmlNode>, base_url: &Url, registry: &IdRegistry) -> Arc<XmlNode> {
     XlinkResolver::new(base_url, registry).resolve(node)
 }
@@ -187,7 +170,6 @@ mod tests {
 
     #[test]
     fn resolve_xlinks_non_standard_xlink_prefix() {
-        // Uses 'xl:href' instead of 'xlink:href' — must still resolve.
         let target = Arc::new(make_node(
             "gml:Polygon",
             vec![("gml:id", GML_NS, "p1")],
@@ -204,7 +186,6 @@ mod tests {
 
     #[test]
     fn resolve_xlinks_handles_cross_file_fragment() {
-        // base_url is file:///test.gml; "other.gml" resolves to file:///other.gml
         let other_url = Url::parse("file:///other.gml").unwrap();
         let target = Arc::new(make_node(
             "gml:Polygon",
@@ -262,8 +243,7 @@ mod tests {
 
     #[test]
     fn resolve_xlinks_detects_cycle() {
-        // A(gml:id=a, href=#b) → B(gml:id=b, href=#a): back-reference to A must be blocked.
-        // Because A's id is pre-marked on entry, B's href=#a is caught immediately.
+        // A(href=#b) → B(href=#a): back-reference must be blocked without stack overflow.
         let mut reg = IdRegistry::new();
 
         let node_b = Arc::new(make_node(
@@ -286,16 +266,13 @@ mod tests {
             Arc::clone(&node_a),
         );
 
-        // Must terminate without stack overflow.
         let resolved = resolve_xlinks(&node_a, &dummy_url(), &reg);
 
-        // A resolved to wrapper containing B.
         let b = match resolved.children.first() {
             Some(XmlChild::Element(e)) => e,
             _ => panic!("expected B as first child"),
         };
         assert_eq!(b.name, "B");
-        // B's back-reference to A is blocked — no children injected.
         assert!(b.children.is_empty());
     }
 }

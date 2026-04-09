@@ -1,11 +1,4 @@
-//! CityGML 3 geometry extractor.
-//!
-//! Single entry point: [`extract_geometries`] takes a (xlink-resolved) [`XmlNode`]
-//! and returns `Vec<GmlGeometry>` with polygons/line_strings/points populated.
-//!
-//! LOD is read from the wrapping property element name (e.g. `bldg:lod2MultiSurface`
-//! → LOD 2). The `pos` field is left at 0 — the caller assigns it when constructing
-//! the parallel appearance arrays in `CityGmlGeometry`.
+use std::sync::Arc;
 
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::line_string::LineString3D;
@@ -14,18 +7,24 @@ use reearth_flow_types::{GeometryType, GmlGeometry};
 
 use super::utils::{local_name, XmlChild, XmlNode, GML_NS};
 
-pub fn extract_geometries(node: &XmlNode) -> Vec<GmlGeometry> {
+pub fn extract_geometries(node: &Arc<XmlNode>) -> (Arc<XmlNode>, Vec<GmlGeometry>) {
     let mut out: Vec<GmlGeometry> = Vec::new();
-    collect_gml_geometries(node, &mut out);
-    out
+    let stripped = strip_and_collect(node, &mut out);
+    (stripped, out)
 }
 
-// Walk the full feature subtree collecting geometry from any lod* property elements,
-// regardless of nesting depth (boundary surfaces, building parts, etc.).
-fn collect_gml_geometries(node: &XmlNode, out: &mut Vec<GmlGeometry>) {
-    for child in element_children(node) {
-        let ln = local_name(&child.name);
+fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<XmlNode> {
+    let mut new_children: Option<Vec<XmlChild>> = None;
 
+    for (i, child) in node.children.iter().enumerate() {
+        let XmlChild::Element(e) = child else {
+            if let Some(ref mut nc) = new_children {
+                nc.push(child.clone());
+            }
+            continue;
+        };
+
+        let ln = local_name(&e.name);
         let lod_opt = if ln == "tin" {
             Some(None)
         } else {
@@ -33,31 +32,62 @@ fn collect_gml_geometries(node: &XmlNode, out: &mut Vec<GmlGeometry>) {
         };
 
         if let Some(lod) = lod_opt {
-            if let Some(geom_node) = element_children(child).next() {
-                let geom_ln = local_name(&geom_node.name);
-                if geom_ln == "ImplicitGeometry" {
-                    if let Some(g) = parse_implicit_geom(geom_node, lod) {
-                        out.push(g);
-                    }
-                } else if geom_ln == "GeometricComplex" {
-                    parse_geometric_complex(geom_node, lod, out);
-                } else if geom_ln == "MultiGeometry" {
-                    parse_multi_geometry(geom_node, lod, out);
-                } else if let Some(ty) = gml_element_geometry_type(geom_ln) {
-                    if let Some(g) = parse_gml_geom(geom_node, ty, lod) {
-                        out.push(g);
-                    }
-                } else {
-                    tracing::warn!(
-                        element = geom_ln,
-                        "citygml3 geometry: unrecognized geometry element inside lod property, skipped"
-                    );
-                }
+            collect_geometry_from_property(e, lod, out);
+            if new_children.is_none() {
+                new_children = Some(node.children[..i].to_vec());
             }
         } else {
-            // Not a geometry property — recurse into it (boundary, buildingPart, etc.).
-            collect_gml_geometries(child, out);
+            let stripped_child = strip_and_collect(e, out);
+            match new_children {
+                None => {
+                    if !Arc::ptr_eq(&stripped_child, e) {
+                        // Something changed deeper: materialise up to here.
+                        let mut nc = node.children[..i].to_vec();
+                        nc.push(XmlChild::Element(stripped_child));
+                        new_children = Some(nc);
+                    }
+                    // else: unchanged, keep scanning without allocating.
+                }
+                Some(ref mut nc) => {
+                    nc.push(XmlChild::Element(stripped_child));
+                }
+            }
         }
+    }
+
+    match new_children {
+        None => Arc::clone(node),
+        Some(children) => Arc::new(XmlNode {
+            name: node.name.clone(),
+            attrs: node.attrs.clone(),
+            children,
+            has_xlinks: node.has_xlinks,
+        }),
+    }
+}
+
+fn collect_geometry_from_property(prop: &XmlNode, lod: Option<u8>, out: &mut Vec<GmlGeometry>) {
+    let Some(geom_node) = element_children(prop).next() else {
+        return;
+    };
+    let geom_ln = local_name(&geom_node.name);
+    if geom_ln == "ImplicitGeometry" {
+        if let Some(g) = parse_implicit_geom(geom_node, lod) {
+            out.push(g);
+        }
+    } else if geom_ln == "GeometricComplex" {
+        parse_geometric_complex(geom_node, lod, out);
+    } else if geom_ln == "MultiGeometry" {
+        parse_multi_geometry(geom_node, lod, out);
+    } else if let Some(ty) = gml_element_geometry_type(geom_ln) {
+        if let Some(g) = parse_gml_geom(geom_node, ty, lod) {
+            out.push(g);
+        }
+    } else {
+        tracing::warn!(
+            element = geom_ln,
+            "citygml3 geometry: unrecognized geometry element inside lod property, skipped"
+        );
     }
 }
 
@@ -88,10 +118,8 @@ fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<G
     }
 }
 
-// ImplicitGeometry (OGC 21-006r2 §9.3): apply the 4×4 transformationMatrix to
-// the relativeGeometry template to obtain world-space coordinates.
-// referencePoint is not added — the translation column of the matrix encodes
-// the world-space origin and referencePoint is a redundant spatial index hint.
+// OGC 21-006r2 §9.3: referencePoint is omitted — the translation column of
+// transformationMatrix already encodes the world-space origin.
 fn parse_implicit_geom(node: &XmlNode, lod: Option<u8>) -> Option<GmlGeometry> {
     let matrix =
         find_child(node, "transformationMatrix").and_then(|n| parse_matrix4(text_content(n)))?;
@@ -254,8 +282,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
     }
 }
 
-// GeometricComplex wraps GeometricPrimitive instances in <gml:element> children.
-// Each element child holds exactly one primitive (Point, Curve, Surface, or Solid).
+// GeometricComplex: each <gml:element> child holds exactly one primitive.
 fn parse_geometric_complex(node: &XmlNode, lod: Option<u8>, out: &mut Vec<GmlGeometry>) {
     let mut curves: Vec<LineString3D<f64>> = Vec::new();
     let mut polys: Vec<Polygon3D<f64>> = Vec::new();
@@ -271,8 +298,6 @@ fn parse_geometric_complex(node: &XmlNode, lod: Option<u8>, out: &mut Vec<GmlGeo
     emit_typed_geoms(lod, curves, polys, points, out);
 }
 
-// MultiGeometry is an unstructured bag of heterogeneous geometry.
-// Members arrive via geometryMember (per-element) or geometryMembers (inline sequence).
 fn parse_multi_geometry(node: &XmlNode, lod: Option<u8>, out: &mut Vec<GmlGeometry>) {
     let mut curves: Vec<LineString3D<f64>> = Vec::new();
     let mut polys: Vec<Polygon3D<f64>> = Vec::new();
@@ -663,7 +688,7 @@ mod tests {
                 ))],
             ))],
         );
-        let feature = elem(
+        let feature = Arc::new(elem(
             "bldg:Building",
             vec![("gml:id", "http://www.opengis.net/gml/3.2", "BLD001")],
             vec![elem_child(elem(
@@ -671,9 +696,9 @@ mod tests {
                 vec![],
                 vec![elem_child(solid)],
             ))],
-        );
+        ));
 
-        let geoms = extract_geometries(&feature);
+        let (_, geoms) = extract_geometries(&feature);
         assert_eq!(geoms.len(), 1);
         let g = &geoms[0];
         assert_eq!(g.ty, GeometryType::Solid);
@@ -707,16 +732,16 @@ mod tests {
             )
         };
 
-        let feature = elem(
+        let feature = Arc::new(elem(
             "bldg:Building",
             vec![],
             vec![
                 elem_child(make_prop("bldg:lod1MultiSurface", "gml:MultiSurface", 2)),
                 elem_child(make_prop("bldg:lod2MultiSurface", "gml:MultiSurface", 1)),
             ],
-        );
+        ));
 
-        let geoms = extract_geometries(&feature);
+        let (_, geoms) = extract_geometries(&feature);
         assert_eq!(geoms.len(), 2);
         assert_eq!(geoms[0].len, 2);
         assert_eq!(geoms[1].len, 1);
@@ -769,7 +794,7 @@ mod tests {
                 )),
             ],
         );
-        let feature = elem(
+        let feature = Arc::new(elem(
             "frn:CityFurniture",
             vec![("gml:id", "http://www.opengis.net/gml/3.2", "furniture2")],
             vec![elem_child(elem(
@@ -777,9 +802,9 @@ mod tests {
                 vec![],
                 vec![elem_child(implicit)],
             ))],
-        );
+        ));
 
-        let geoms = extract_geometries(&feature);
+        let (_, geoms) = extract_geometries(&feature);
         assert_eq!(geoms.len(), 1);
         let g = &geoms[0];
         assert_eq!(g.ty, GeometryType::Surface);
@@ -795,7 +820,7 @@ mod tests {
 
     #[test]
     fn test_extract_geometries_no_geometry_property() {
-        let feature = elem(
+        let feature = Arc::new(elem(
             "bldg:Building",
             vec![],
             vec![elem_child(elem(
@@ -803,8 +828,12 @@ mod tests {
                 vec![],
                 vec![text_node("a building")],
             ))],
-        );
-        let geoms = extract_geometries(&feature);
+        ));
+        let (stripped, geoms) = extract_geometries(&feature);
         assert!(geoms.is_empty());
+        assert!(
+            Arc::ptr_eq(&stripped, &feature),
+            "no-geometry node must be returned as-is"
+        );
     }
 }

@@ -1,27 +1,16 @@
-//! Shared types and utilities for the CityGML 3 reader.
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
 pub(super) const GML_NS: &str = "http://www.opengis.net/gml/3.2";
 pub(super) const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
 
-/// A generic, schema-agnostic XML node.
-///
-/// Retains the full qualified name (prefix + local) so downstream code can
-/// distinguish namespaces without a namespace resolver.
 #[derive(Debug, Clone)]
 pub struct XmlNode {
-    /// Qualified element name, e.g. `"bldg:Building"` or `"gml:Polygon"`.
     pub name: String,
-    /// XML attributes in document order as `(qualified-name, namespace-uri, value)` triples.
-    /// The qualified name is preserved as-is from the source document; the namespace URI
-    /// is resolved so matching is prefix-independent.
+    /// `(qualified-name, namespace-uri, value)` — namespace URI is resolved so matching is prefix-independent.
     pub attrs: Vec<(String, String, String)>,
-    /// Child content in document order.
     pub children: Vec<XmlChild>,
-    /// `true` if this node or any descendant carries an `xlink:href` attribute.
-    /// Used by the xlink resolver to skip clean subtrees in O(1).
+    /// `true` if this node or any descendant carries an `xlink:href`; lets the resolver skip clean subtrees.
     pub has_xlinks: bool,
 }
 
@@ -31,11 +20,7 @@ pub enum XmlChild {
     Text(String),
 }
 
-/// Maps `(canonical-source-url, gml:id)` → owning nodes.
-///
-/// The URL component prevents collisions when multiple files share the same
-/// `gml:id` value, and allows cross-file `xlink:href` resolution to target
-/// the correct document.
+/// `(source-url, gml:id)` → node. URL-keyed so same `gml:id` in different files never collides.
 pub type IdRegistry = HashMap<(String, String), Arc<XmlNode>>;
 
 pub(super) fn local_name(name: &str) -> &str {
