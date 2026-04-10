@@ -61,7 +61,7 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
     for prop in &top_level {
         param_i18n
             .entry(prop.clone())
-            .or_insert_with(PropertyI18n::default);
+            .or_default(PropertyI18n::default);
     }
 
     existing.parameter_i18n = if param_i18n.is_empty() {
@@ -84,16 +84,12 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
     def_i18n.retain(|def_name, _| definitions.contains_key(def_name));
 
     for (def_name, props) in &definitions {
-        let entry = def_i18n
-            .entry(def_name.clone())
-            .or_insert_with(HashMap::new);
+        let entry = def_i18n.entry(def_name.clone()).or_default(HashMap::new);
         // Remove stale property keys within the definition
         entry.retain(|k, _| props.contains(k));
         // Add missing property keys
         for prop in props {
-            entry
-                .entry(prop.clone())
-                .or_insert_with(PropertyI18n::default);
+            entry.entry(prop.clone()).or_default(PropertyI18n::default);
         }
     }
 
