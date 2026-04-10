@@ -13,10 +13,16 @@ pub fn resolve(
     // cache of resolved nodes, key is pointer of RawNode safely held by registry
     let mut cache: HashMap<*const RawNode, Arc<XmlNode>> = HashMap::new();
     raws.into_iter()
-        .map(|raw| {
+        .filter_map(|raw| {
             let mut in_progress: HashSet<*const RawNode> = HashSet::new();
             convert_node(&raw, registry, &mut cache, &mut in_progress)
-                .expect("root CityGML node unexpectedly hit cycle boundary")
+                .or_else(|| {
+                    tracing::error!(
+                        name = raw.name.0.as_str(),
+                        "citygml3: failed to resolve top-level node due to cyclic xlink reference, skipped"
+                    );
+                    None
+                })
         })
         .collect()
 }

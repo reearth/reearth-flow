@@ -329,7 +329,7 @@ fn parse_linear_ring(node: &XmlNode) -> Result<LineString3D<f64>, &'static str> 
 fn parse_polygon_ring(node: &XmlNode, role: &'static str) -> Option<LineString3D<f64>> {
     parse_linear_ring(node)
         .map_err(|err| {
-            tracing::warn!(
+            tracing::error!(
                 error = %err,
                 ring_role = role,
                 "citygml3 geometry: invalid LinearRing coordinates, skipped polygon"
@@ -426,7 +426,7 @@ fn parse_line_string(node: &XmlNode, geometry_type: &'static str) -> Option<Line
     collect_coords(node)
         .map(LineString3D::new)
         .map_err(|err| {
-            tracing::warn!(
+            tracing::error!(
                 error = %err,
                 geometry_type,
                 "citygml3 geometry: invalid coordinates, skipped"
@@ -439,7 +439,7 @@ fn parse_line_string(node: &XmlNode, geometry_type: &'static str) -> Option<Line
 fn parse_point_pos(node: &XmlNode) -> Option<Coordinate3D<f64>> {
     parse_single_pos(text_content(node))
         .map_err(|err| {
-            tracing::warn!(
+            tracing::error!(
                 error = %err,
                 "citygml3 geometry: invalid Point coordinates, skipped"
             );
