@@ -27,6 +27,10 @@ pub(super) enum FeatureProcessorError {
     FileCityGmlReaderFactory(String),
     #[error("Feature File City Gml Reader error: {0}")]
     FileCityGmlReader(String),
+    #[error("Feature CityGml3 Reader Factory error: {0}")]
+    FileCityGml3ReaderFactory(String),
+    #[error("Feature CityGml3 Reader error: {0}")]
+    FileCityGml3Reader(String),
     #[error("Feature File Reader Factory error: {0}")]
     FileReaderFactory(String),
     #[error("Feature File Csv Reader error: {0}")]
