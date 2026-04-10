@@ -15,7 +15,10 @@ use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
 /// Extracts a `PropertyI18n` from a JSON Schema node's `title` and `description` fields.
 fn property_i18n_from_schema(node: &serde_json::Value) -> PropertyI18n {
     PropertyI18n {
-        title: node.get("title").and_then(|v| v.as_str()).map(str::to_string),
+        title: node
+            .get("title")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
         description: node
             .get("description")
             .and_then(|v| v.as_str())
@@ -47,9 +50,9 @@ fn collect_enum_definitions(
         .map(|defs| {
             defs.iter()
                 .filter_map(|(def_name, def_schema)| {
-                    let variants = ["oneOf", "anyOf"].iter().find_map(|kw| {
-                        def_schema.get(*kw).and_then(|v| v.as_array())
-                    })?;
+                    let variants = ["oneOf", "anyOf"]
+                        .iter()
+                        .find_map(|kw| def_schema.get(*kw).and_then(|v| v.as_array()))?;
                     let enum_variants: Vec<(String, PropertyI18n)> = variants
                         .iter()
                         .filter_map(|variant| {
@@ -146,7 +149,11 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
         }
     }
 
-    existing.parameter_i18n = if param_i18n.is_empty() { None } else { Some(param_i18n) };
+    existing.parameter_i18n = if param_i18n.is_empty() {
+        None
+    } else {
+        Some(param_i18n)
+    };
 
     // --- definitionI18n (BTreeMap keeps keys alphabetical automatically) ---
     let mut def_i18n: BTreeMap<String, BTreeMap<String, PropertyI18n>> =
@@ -173,7 +180,11 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
         }
     }
 
-    existing.definition_i18n = if def_i18n.is_empty() { None } else { Some(def_i18n) };
+    existing.definition_i18n = if def_i18n.is_empty() {
+        None
+    } else {
+        Some(def_i18n)
+    };
 
     // --- enumI18n (oneOf/anyOf variant labels, keyed by enum value) ---
     let mut enum_i18n: BTreeMap<String, BTreeMap<String, PropertyI18n>> =
@@ -199,7 +210,11 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
         }
     }
 
-    existing.enum_i18n = if enum_i18n.is_empty() { None } else { Some(enum_i18n) };
+    existing.enum_i18n = if enum_i18n.is_empty() {
+        None
+    } else {
+        Some(enum_i18n)
+    };
 }
 
 pub fn build_scaffold_i18n_command() -> Command {

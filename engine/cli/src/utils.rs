@@ -154,10 +154,7 @@ pub(crate) fn apply_parameter_i18n(
         for (def_name, variants) in enum_i18n {
             if let Some(def_schema) = definitions.get_mut(def_name) {
                 for keyword in &["oneOf", "anyOf"] {
-                    if let Some(arr) = def_schema
-                        .get_mut(*keyword)
-                        .and_then(|v| v.as_array_mut())
-                    {
+                    if let Some(arr) = def_schema.get_mut(*keyword).and_then(|v| v.as_array_mut()) {
                         for variant in arr.iter_mut() {
                             let enum_val = variant
                                 .get("enum")
