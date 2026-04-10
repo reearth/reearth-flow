@@ -116,6 +116,7 @@ pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
         return AttributeValue::String(text_parts.join(""));
     }
 
+    // currently unordered because AttributeValue::Map is unordered
     let mut map: HashMap<String, AttributeValue> = HashMap::new();
 
     for ((qname, _), v) in &node.attrs {
@@ -333,11 +334,26 @@ fn extract_attrs<R: BufRead>(
             let qname_str = parse_qname(a.key.as_ref());
             let ns_uri = match reader.resolve_attribute(a.key).0 {
                 ResolveResult::Bound(ns) => std::str::from_utf8(ns.into_inner())
+                    .inspect_err(|err| {
+                        tracing::warn!(
+                            error = %err,
+                            "citygml3: failed to decode attribute namespace; falling back to empty string"
+                        );
+                    })
                     .unwrap_or("")
                     .to_string(),
                 _ => String::new(),
             };
-            let v = a.unescape_value().unwrap_or_default().to_string();
+            let v = a
+                .unescape_value()
+                .inspect_err(|err| {
+                    tracing::warn!(
+                        error = %err,
+                        "citygml3: failed to decode attribute value; falling back to empty string"
+                    );
+                })
+                .unwrap_or_default()
+                .to_string();
             ((qname_str, ns_uri), v)
         })
         .collect()

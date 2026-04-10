@@ -10,6 +10,7 @@ pub fn resolve(
     raws: impl IntoIterator<Item = Arc<RawNode>>,
     registry: &RawRegistry,
 ) -> Vec<Arc<XmlNode>> {
+    // cache of resolved nodes, key is pointer of RawNode safely held by registry
     let mut cache: HashMap<*const RawNode, Arc<XmlNode>> = HashMap::new();
     raws.into_iter()
         .map(|raw| {
