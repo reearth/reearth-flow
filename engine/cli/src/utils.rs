@@ -41,12 +41,89 @@ impl ActionSchema {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub(crate) struct PropertyI18n {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) description: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct I18nSchema {
     pub(crate) name: String,
     pub(crate) description: String,
+    /// Legacy JSON Merge Patch for parameters (unused, kept for compatibility).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) parameter: Option<serde_json::Value>,
+    /// Flat map of top-level parameter property names to their i18n overrides.
+    /// Use the empty string key `""` to override the root parameter object's title/description.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) parameter_i18n: Option<HashMap<String, PropertyI18n>>,
+    /// Map of definition name → property name → i18n overrides.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) definition_i18n: Option<HashMap<String, HashMap<String, PropertyI18n>>>,
+}
+
+/// Stamps translated `title` / `description` values onto a JSON Schema node.
+fn patch_node(node: &mut serde_json::Value, i18n: &PropertyI18n) {
+    if let Some(title) = &i18n.title {
+        if !title.is_empty() {
+            node["title"] = serde_json::Value::String(title.clone());
+        }
+    }
+    if let Some(desc) = &i18n.description {
+        if !desc.is_empty() {
+            node["description"] = serde_json::Value::String(desc.clone());
+        }
+    }
+}
+
+/// Applies flat property-path i18n overrides to a parameter JSON Schema.
+///
+/// - `param_i18n` keys map to `schema["properties"][key]`.
+///   The special key `""` targets the root schema object itself.
+/// - `def_i18n` keys map to `schema["definitions"][def_name]["properties"][prop_name]`.
+///
+/// Missing keys are silently skipped — if a property was renamed or removed in
+/// the Rust struct the i18n entry simply has no effect.
+pub(crate) fn apply_parameter_i18n(
+    schema: &mut serde_json::Value,
+    param_i18n: &HashMap<String, PropertyI18n>,
+    def_i18n: &HashMap<String, HashMap<String, PropertyI18n>>,
+) {
+    // "" key → root schema title/description
+    if let Some(root_i18n) = param_i18n.get("") {
+        patch_node(schema, root_i18n);
+    }
+
+    // all other keys → schema["properties"][key]
+    if let Some(properties) = schema.get_mut("properties").and_then(|p| p.as_object_mut()) {
+        for (key, i18n) in param_i18n.iter().filter(|(k, _)| !k.is_empty()) {
+            if let Some(node) = properties.get_mut(key) {
+                patch_node(node, i18n);
+            }
+        }
+    }
+
+    // def_i18n → schema["definitions"][def_name]["properties"][prop_name]
+    if let Some(definitions) = schema.get_mut("definitions").and_then(|d| d.as_object_mut()) {
+        for (def_name, props) in def_i18n {
+            if let Some(def_schema) = definitions.get_mut(def_name) {
+                if let Some(def_props) = def_schema
+                    .get_mut("properties")
+                    .and_then(|p| p.as_object_mut())
+                {
+                    for (prop_name, i18n) in props {
+                        if let Some(node) = def_props.get_mut(prop_name) {
+                            patch_node(node, i18n);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub(crate) fn create_action_schema(
