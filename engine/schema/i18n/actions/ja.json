@@ -1,8 +1,7 @@
 {
   "actions": [
     {
-      "name": "AppearanceRemover",
-      "description": ""
+      "name": "AppearanceRemover"
     },
     {
       "name": "AreaCalculator",
@@ -27,9 +26,9 @@
       "description": "あるエリアの上に別のエリアを重ね合わせる",
       "parameterI18n": {
         "generateList": {},
-        "tolerance": {},
         "outputAttribute": {},
         "groupBy": {},
+        "tolerance": {},
         "accumulationMode": {}
       }
     },
@@ -37,17 +36,17 @@
       "name": "AttributeAggregator",
       "description": "属性に基づいて地物をグルーピングする",
       "parameterI18n": {
-        "calculationAttribute": {},
-        "calculationValue": {},
         "method": {},
+        "aggregateAttributes": {},
         "calculation": {},
-        "aggregateAttributes": {}
+        "calculationValue": {},
+        "calculationAttribute": {}
       },
       "definitionI18n": {
         "AggregateAttribute": {
+          "newAttribute": {},
           "attribute": {},
-          "attributeValue": {},
-          "newAttribute": {}
+          "attributeValue": {}
         }
       }
     },
@@ -62,16 +61,16 @@
       "name": "AttributeConversionTable",
       "description": "ルックアップテーブルを使用して地物属性を変換する",
       "parameterI18n": {
+        "dataset": {},
         "rules": {},
-        "inline": {},
         "format": {},
-        "dataset": {}
+        "inline": {}
       },
       "definitionI18n": {
         "AttributeConversionTableRule": {
+          "featureFroms": {},
           "conversionTableKeys": {},
           "conversionTableTo": {},
-          "featureFroms": {},
           "featureTo": {}
         }
       }
@@ -108,15 +107,15 @@
       },
       "definitionI18n": {
         "Operation": {
-          "attribute": {
-            "title": "属性名"
-          },
           "method": {
             "title": "実行する操作"
           },
           "value": {
             "title": "値",
             "description": "操作に使用する値"
+          },
+          "attribute": {
+            "title": "属性名"
           }
         }
       }
@@ -129,12 +128,12 @@
       },
       "definitionI18n": {
         "Mapper": {
-          "multipleExpr": {},
+          "attribute": {},
           "valueAttribute": {},
+          "multipleExpr": {},
           "expr": {},
-          "parentAttribute": {},
           "childAttribute": {},
-          "attribute": {}
+          "parentAttribute": {}
         }
       }
     },
@@ -144,23 +143,22 @@
       "parameterI18n": {
         "inputAttribute": {},
         "outputAttribute": {},
-        "rangeTable": {},
-        "defaultValue": {}
+        "defaultValue": {},
+        "rangeTable": {}
       },
       "definitionI18n": {
         "RangeEntry": {
           "outputValue": {},
-          "from": {},
-          "to": {}
+          "to": {},
+          "from": {}
         }
       }
     },
     {
       "name": "BoundaryExtractor",
-      "description": "",
       "parameterI18n": {
-        "keepEmptyBoundaries": {},
-        "exteriorOnly": {}
+        "exteriorOnly": {},
+        "keepEmptyBoundaries": {}
       }
     },
     {
@@ -170,8 +168,8 @@
         "xmax": {},
         "ymax": {},
         "xmin": {},
-        "ymin": {},
         "zmax": {},
+        "ymin": {},
         "zmin": {}
       }
     },
@@ -179,34 +177,32 @@
       "name": "Bufferer",
       "description": "ジオメトリの周囲にバッファを作成する",
       "parameterI18n": {
-        "interpolationAngle": {},
         "bufferType": {},
-        "distance": {}
+        "distance": {},
+        "interpolationAngle": {}
       }
     },
     {
       "name": "BulkAttributeRenamer",
       "description": "属性名にプレフィックス／サフィックスを追加・削除、またはテキスト置換して一括でリネームする",
       "parameterI18n": {
-        "selectedAttributes": {},
-        "renameValue": {},
-        "renameAction": {},
         "textToFind": {},
-        "renameType": {}
+        "renameAction": {},
+        "renameType": {},
+        "renameValue": {},
+        "selectedAttributes": {}
       }
     },
     {
       "name": "CSGBuilder",
-      "description": "",
       "parameterI18n": {
-        "pairIdAttribute": {},
         "createList": {},
-        "listAttributeName": {}
+        "listAttributeName": {},
+        "pairIdAttribute": {}
       }
     },
     {
       "name": "CSGEvaluator",
-      "description": "",
       "parameterI18n": {
         "tolerance": {}
       }
@@ -222,19 +218,18 @@
       "name": "Cesium3DTilesWriter",
       "description": "地物をファイルに書き出す",
       "parameterI18n": {
-        "skipUnexposedAttributes": {},
-        "dracoCompression": {},
-        "maxZoom": {},
-        "attachTexture": {},
-        "output": {},
-        "schemaKey": {},
         "compressOutput": {},
-        "minZoom": {}
+        "skipUnexposedAttributes": {},
+        "maxZoom": {},
+        "schemaKey": {},
+        "attachTexture": {},
+        "minZoom": {},
+        "dracoCompression": {},
+        "output": {}
       }
     },
     {
       "name": "CityGmlReader",
-      "description": "",
       "parameterI18n": {
         "dataset": {},
         "inline": {},
@@ -243,12 +238,11 @@
     },
     {
       "name": "CityGmlWriter",
-      "description": "",
       "parameterI18n": {
         "lodFilter": {},
-        "epsgCode": {},
         "output": {},
-        "prettyPrint": {}
+        "prettyPrint": {},
+        "epsgCode": {}
       }
     },
     {
@@ -268,7 +262,6 @@
     },
     {
       "name": "CoordinateExtractor",
-      "description": "",
       "parameterI18n": {
         "defaultZValue": {},
         "mode": {}
@@ -278,13 +271,13 @@
       "name": "CsvReader",
       "description": "CSVファイルから地物を読み取る",
       "parameterI18n": {
-        "dataset": {},
         "format": {},
-        "geometry": {},
         "headerRows": {},
         "inline": {},
         "offset": {},
-        "encoding": {}
+        "encoding": {},
+        "dataset": {},
+        "geometry": {}
       },
       "definitionI18n": {
         "GeometryConfig": {
@@ -294,7 +287,6 @@
     },
     {
       "name": "CsvWriter",
-      "description": "",
       "parameterI18n": {
         "format": {},
         "geometry": {},
@@ -305,37 +297,36 @@
       "name": "CzmlReader",
       "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取ります。時系列データや時間動的プロパティに対応",
       "parameterI18n": {
-        "force2d": {},
+        "dataset": {},
         "inline": {},
-        "skipDocumentPacket": {},
+        "force2d": {},
         "timeSampling": {},
-        "dataset": {}
+        "skipDocumentPacket": {}
       }
     },
     {
       "name": "CzmlWriter",
       "description": "地物をCZMLファイルとしてエクスポートします。時間動的エンティティや時系列位置データに対応",
       "parameterI18n": {
-        "output": {},
-        "epoch": {},
-        "interpolationDegree": {},
-        "opacity": {},
-        "heightAttribute": {},
-        "interpolationAlgorithm": {},
-        "groupBy": {},
-        "timeField": {},
         "groupTimeseriesBy": {},
-        "colorAttribute": {}
+        "heightAttribute": {},
+        "opacity": {},
+        "interpolationAlgorithm": {},
+        "epoch": {},
+        "output": {},
+        "interpolationDegree": {},
+        "colorAttribute": {},
+        "timeField": {},
+        "groupBy": {}
       }
     },
     {
       "name": "DateTimeConverter",
-      "description": "",
       "parameterI18n": {
-        "attribute": {},
-        "outputFormat": {},
         "inputFormat": {},
-        "outputAttribute": {}
+        "outputFormat": {},
+        "outputAttribute": {},
+        "attribute": {}
       }
     },
     {
@@ -346,8 +337,8 @@
       "name": "DirectoryDecompressor",
       "description": "アーカイブからディレクトリを展開する",
       "parameterI18n": {
-        "findDeepestSingleFolder": {},
-        "archiveAttributes": {}
+        "archiveAttributes": {},
+        "findDeepestSingleFolder": {}
       }
     },
     {
@@ -376,10 +367,9 @@
     },
     {
       "name": "ExcelWriter",
-      "description": "",
       "parameterI18n": {
-        "sheetName": {},
-        "output": {}
+        "output": {},
+        "sheetName": {}
       }
     },
     {
@@ -393,18 +383,18 @@
       "name": "FeatureCityGmlReader",
       "description": "CityGMLファイルから地物を読み取る",
       "parameterI18n": {
+        "dataset": {},
         "flatten": {},
-        "codelistsPath": {},
-        "dataset": {}
+        "codelistsPath": {}
       }
     },
     {
       "name": "FeatureCounter",
       "description": "地物数をカウントする",
       "parameterI18n": {
-        "groupBy": {},
         "outputAttribute": {},
-        "countStart": {}
+        "countStart": {},
+        "groupBy": {}
       }
     },
     {
@@ -422,9 +412,9 @@
       "name": "FeatureFilePathExtractor",
       "description": "地物からファイルパスを抽出する",
       "parameterI18n": {
-        "sourceDataset": {},
         "extractArchive": {},
-        "destPrefix": {}
+        "destPrefix": {},
+        "sourceDataset": {}
       }
     },
     {
@@ -435,21 +425,20 @@
       },
       "definitionI18n": {
         "Condition": {
-          "expr": {},
-          "outputPort": {}
+          "outputPort": {},
+          "expr": {}
         }
       }
     },
     {
       "name": "FeatureJoiner",
-      "description": "",
       "parameterI18n": {
-        "supplierAttributeValue": {},
-        "joinType": {},
         "requestorAttribute": {},
-        "supplierAttribute": {},
         "conflictResolution": {},
-        "requestorAttributeValue": {}
+        "joinType": {},
+        "requestorAttributeValue": {},
+        "supplierAttribute": {},
+        "supplierAttributeValue": {}
       }
     },
     {
@@ -463,11 +452,11 @@
       "name": "FeatureMerger",
       "description": "属性に基づいて地物をマージする",
       "parameterI18n": {
-        "completeGrouped": {},
-        "requestorAttribute": {},
-        "supplierAttribute": {},
         "supplierAttributeValue": {},
-        "requestorAttributeValue": {}
+        "requestorAttributeValue": {},
+        "supplierAttribute": {},
+        "completeGrouped": {},
+        "requestorAttribute": {}
       }
     },
     {
@@ -478,8 +467,8 @@
       "name": "FeatureSorter",
       "description": "地物を属性でソートする",
       "parameterI18n": {
-        "order": {},
-        "attributes": {}
+        "attributes": {},
+        "order": {}
       }
     },
     {
@@ -521,8 +510,7 @@
       }
     },
     {
-      "name": "FootprintReplacer",
-      "description": ""
+      "name": "FootprintReplacer"
     },
     {
       "name": "GeoJsonReader",
@@ -544,15 +532,15 @@
       "name": "GeoPackageReader",
       "description": "GeoPackage（.gpkg）ファイルからベクター地物、タイル、メタデータを読み取る",
       "parameterI18n": {
-        "readMode": {},
-        "dataset": {},
-        "layerName": {},
         "attributeFilter": {},
-        "force2D": {},
         "includeMetadata": {},
-        "spatialFilter": {},
+        "readMode": {},
+        "layerName": {},
+        "dataset": {},
         "tileFormat": {},
+        "spatialFilter": {},
         "batchSize": {},
+        "force2D": {},
         "inline": {}
       }
     },
@@ -560,13 +548,13 @@
       "name": "GeoPackageWriter",
       "description": "地物をGeoPackage（.gpkg）ファイルに書き出す。SQLite構造、空間インデックス、メタデータテーブルを適切に作成",
       "parameterI18n": {
-        "geometryColumn": {},
-        "geometryType": {},
         "createSpatialIndex": {},
-        "output": {},
+        "geometryColumn": {},
         "overwrite": {},
+        "srsId": {},
         "tableName": {},
-        "srsId": {}
+        "geometryType": {},
+        "output": {}
       }
     },
     {
@@ -589,14 +577,12 @@
     },
     {
       "name": "GeometryPartExtractor",
-      "description": "",
       "parameterI18n": {
         "geometryPartType": {}
       }
     },
     {
-      "name": "GeometryRemover",
-      "description": ""
+      "name": "GeometryRemover"
     },
     {
       "name": "GeometryReplacer",
@@ -625,12 +611,11 @@
     },
     {
       "name": "GltfReader",
-      "description": "",
       "parameterI18n": {
-        "triangulate": {},
-        "dataset": {},
         "includeNodes": {},
+        "dataset": {},
         "inline": {},
+        "triangulate": {},
         "mergeMeshes": {}
       }
     },
@@ -638,15 +623,14 @@
       "name": "GltfWriter",
       "description": "地物をGltfファイルに書き出す",
       "parameterI18n": {
+        "schemaKey": {},
         "attachTexture": {},
-        "dracoCompression": {},
         "output": {},
-        "schemaKey": {}
+        "dracoCompression": {}
       }
     },
     {
       "name": "GridDivider",
-      "description": "",
       "parameterI18n": {
         "groupBy": {},
         "keepSquareOnly": {},
@@ -657,75 +641,75 @@
       "name": "HTTPCaller",
       "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャを強化する",
       "parameterI18n": {
+        "method": {},
         "retry": {},
+        "rateLimit": {},
+        "authentication": {},
+        "contentType": {},
+        "customHeaders": {},
+        "queryParameters": {},
+        "requestBody": {},
+        "url": {},
+        "httpOptions": {},
         "observability": {},
         "response": {},
-        "requestBody": {},
-        "timeouts": {},
-        "rateLimit": {},
-        "url": {},
-        "authentication": {},
-        "customHeaders": {},
-        "httpOptions": {},
-        "contentType": {},
-        "method": {},
-        "queryParameters": {}
+        "timeouts": {}
       },
       "definitionI18n": {
+        "ObservabilityConfig": {
+          "trackFinalUrl": {},
+          "trackRetryCount": {},
+          "retryCountAttribute": {},
+          "bytesAttribute": {},
+          "finalUrlAttribute": {},
+          "trackBytes": {},
+          "durationAttribute": {},
+          "trackDuration": {}
+        },
         "QueryParam": {
           "value": {},
           "name": {}
         },
+        "ResponseConfig": {
+          "maxResponseSize": {},
+          "errorAttribute": {},
+          "responseBodyAttribute": {},
+          "autoDetectEncoding": {},
+          "headersAttribute": {},
+          "responseEncoding": {},
+          "statusCodeAttribute": {},
+          "responseHandling": {}
+        },
+        "TimeoutConfig": {
+          "connectionTimeout": {},
+          "transferTimeout": {}
+        },
         "RetryConfig": {
-          "maxDelayMs": {},
           "retryOnStatus": {},
-          "initialDelayMs": {},
           "honorRetryAfter": {},
-          "backoffMultiplier": {},
-          "maxAttempts": {}
+          "initialDelayMs": {},
+          "maxDelayMs": {},
+          "maxAttempts": {},
+          "backoffMultiplier": {}
+        },
+        "HeaderParam": {
+          "value": {},
+          "name": {}
         },
         "RateLimitConfig": {
           "timing": {},
           "intervalMs": {},
           "requests": {}
         },
-        "ResponseConfig": {
-          "autoDetectEncoding": {},
-          "responseEncoding": {},
-          "maxResponseSize": {},
-          "statusCodeAttribute": {},
-          "responseHandling": {},
-          "errorAttribute": {},
-          "headersAttribute": {},
-          "responseBodyAttribute": {}
-        },
-        "HeaderParam": {
-          "value": {},
-          "name": {}
-        },
-        "TimeoutConfig": {
-          "connectionTimeout": {},
-          "transferTimeout": {}
-        },
         "HttpOptions": {
-          "verifySsl": {},
-          "maxRedirects": {},
           "followRedirects": {},
-          "userAgent": {}
+          "maxRedirects": {},
+          "userAgent": {},
+          "verifySsl": {}
         },
         "FormField": {
-          "name": {},
-          "value": {}
-        },
-        "ObservabilityConfig": {
-          "trackRetryCount": {},
-          "trackDuration": {},
-          "trackBytes": {},
-          "bytesAttribute": {},
-          "finalUrlAttribute": {},
-          "retryCountAttribute": {},
-          "trackFinalUrl": {},
-          "durationAttribute": {}
+          "value": {},
+          "name": {}
         }
       }
     },
@@ -744,17 +728,16 @@
       "name": "HorizontalReprojector",
       "description": "地物のジオメトリを指定された座標系に水平再投影する",
       "parameterI18n": {
-        "targetEpsgCode": {},
-        "sourceEpsgCode": {}
+        "sourceEpsgCode": {},
+        "targetEpsgCode": {}
       }
     },
     {
       "name": "ImageRasterizer",
-      "description": "",
       "parameterI18n": {
-        "imageWidth": {},
+        "onOverlap": {},
         "saveTo": {},
-        "onOverlap": {}
+        "imageWidth": {}
       }
     },
     {
@@ -769,12 +752,10 @@
       "description": "日本標準グリッドで地物を蓄積する"
     },
     {
-      "name": "JSONFragmenter",
-      "description": ""
+      "name": "JSONFragmenter"
     },
     {
       "name": "JsonReader",
-      "description": "",
       "parameterI18n": {
         "inline": {},
         "dataset": {}
@@ -782,7 +763,6 @@
     },
     {
       "name": "JsonWriter",
-      "description": "",
       "parameterI18n": {
         "output": {},
         "converter": {}
@@ -792,19 +772,18 @@
       "name": "LineOnLineOverlayer",
       "description": "交点を点地物に変換し、元の交差したラインの属性リストを結合して含めることができる",
       "parameterI18n": {
-        "groupBy": {},
         "overlaidListsAttrName": {},
-        "tolerance": {}
+        "tolerance": {},
+        "groupBy": {}
       }
     },
     {
       "name": "ListConcatenator",
-      "description": "",
       "parameterI18n": {
-        "outputAttributeName": {},
-        "list": {},
         "separateCharacter": {},
-        "attribute": {}
+        "outputAttributeName": {},
+        "attribute": {},
+        "list": {}
       }
     },
     {
@@ -816,41 +795,39 @@
     },
     {
       "name": "ListIndexer",
-      "description": "",
       "parameterI18n": {
-        "copiedAttributeSuffix": {},
+        "listIndexToCopy": {},
         "copiedAttributePrefix": {},
         "listAttribute": {},
-        "listIndexToCopy": {}
+        "copiedAttributeSuffix": {}
       }
     },
     {
       "name": "MVTWriter",
       "description": "地物をファイルに書き出す",
       "parameterI18n": {
-        "layerName": {},
-        "maxZoom": {},
         "compressOutput": {},
-        "schemaKey": {},
-        "colonToUnderscore": {},
         "skipUnexposedAttributes": {},
+        "maxZoom": {},
+        "minZoom": {},
+        "schemaKey": {},
         "extent": {},
         "output": {},
-        "minZoom": {}
+        "layerName": {},
+        "colonToUnderscore": {}
       }
     },
     {
       "name": "NeighborFinder",
-      "description": "",
       "parameterI18n": {
-        "mergeStrategy": {},
-        "neighborIndexAttribute": {},
         "distanceMetric": {},
-        "attributePrefix": {},
+        "attributesToTransfer": {},
         "maxDistance": {},
         "numClosest": {},
         "distanceAttribute": {},
-        "attributesToTransfer": {}
+        "mergeStrategy": {},
+        "attributePrefix": {},
+        "neighborIndexAttribute": {}
       }
     },
     {
@@ -863,53 +840,50 @@
     },
     {
       "name": "NullAttributeMapper",
-      "description": "",
       "parameterI18n": {
-        "nullDefinition": {},
-        "mappings": {},
         "routeNullFeatures": {},
         "defaultReplacement": {},
+        "nullDefinition": {},
+        "mappings": {},
         "scope": {}
       },
       "definitionI18n": {
         "AttributeMapping": {
-          "replacement": {},
           "onMissing": {},
+          "replacement": {},
           "attribute": {}
         }
       }
     },
     {
       "name": "ObjReader",
-      "description": "",
       "parameterI18n": {
-        "dataset": {},
         "materialFile": {},
+        "includeNormals": {},
         "inline": {},
-        "mergeGroups": {},
-        "triangulate": {},
-        "includeTexcoords": {},
         "parseMaterials": {},
-        "includeNormals": {}
+        "dataset": {},
+        "triangulate": {},
+        "mergeGroups": {},
+        "includeTexcoords": {}
       }
     },
     {
       "name": "ObjWriter",
-      "description": "",
       "parameterI18n": {
-        "output": {},
         "writeMaterials": {},
         "writeTexcoords": {},
-        "writeNormals": {}
+        "writeNormals": {},
+        "output": {}
       }
     },
     {
       "name": "Offsetter",
       "description": "地物の座標にオフセットを加える",
       "parameterI18n": {
+        "offsetZ": {},
         "offsetX": {},
-        "offsetY": {},
-        "offsetZ": {}
+        "offsetY": {}
       }
     },
     {
@@ -969,12 +943,12 @@
       "name": "PLATEAU3.XMLAttributeExtractor",
       "description": "スキーマ定義に基づいてXML断片から属性を抽出する",
       "parameterI18n": {
-        "extractDmGeometryAsXmlFragment": {},
+        "targetPackages": {},
         "cityCode": {},
         "addNsprefixToFeatureTypes": {},
         "exceptFeatureTypes": {},
-        "schemaJson": {},
-        "targetPackages": {}
+        "extractDmGeometryAsXmlFragment": {},
+        "schemaJson": {}
       }
     },
     {
@@ -985,22 +959,19 @@
       }
     },
     {
-      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
-      "description": ""
+      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker"
     },
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
-      "description": "",
       "parameterI18n": {
+        "lodAttribute": {},
         "buildingIdAttribute": {},
         "partIdAttribute": {},
-        "lodAttribute": {},
         "fileIndexAttribute": {}
       }
     },
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
-      "description": "",
       "parameterI18n": {
         "codelistsPath": {}
       }
@@ -1015,23 +986,20 @@
     },
     {
       "name": "PLATEAU4.CityGmlMeshBuilder",
-      "description": "",
       "parameterI18n": {
         "errorAttribute": {},
         "epsgCode": {}
       }
     },
     {
-      "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
-      "description": ""
+      "name": "PLATEAU4.CompositeSurfaceContinuityFilter"
     },
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
-      "description": "",
       "parameterI18n": {
-        "meshType": {},
         "epsgCode": {},
-        "meshcodeAttr": {}
+        "meshcodeAttr": {},
+        "meshType": {}
       }
     },
     {
@@ -1043,23 +1011,20 @@
     },
     {
       "name": "PLATEAU4.FaceExtractor",
-      "description": "",
       "parameterI18n": {
         "cityGmlPathAttribute": {}
       }
     },
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
-      "description": "",
       "parameterI18n": {
+        "groupBy": {},
         "pointSpacing": {},
-        "sampleInterior": {},
-        "groupBy": {}
+        "sampleInterior": {}
       }
     },
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
-      "description": "",
       "parameterI18n": {
         "cityGmlPath": {}
       }
@@ -1068,8 +1033,8 @@
       "name": "PLATEAU4.MaxLodExtractor",
       "description": "PLATEAU4の最大詳細レベルを抽出する",
       "parameterI18n": {
-        "cityGmlPathAttribute": {},
-        "maxLodAttribute": {}
+        "maxLodAttribute": {},
+        "cityGmlPathAttribute": {}
       }
     },
     {
@@ -1088,14 +1053,13 @@
     },
     {
       "name": "PLATEAU4.SolarCityGmlAttributeInserter",
-      "description": "",
       "parameterI18n": {
+        "sourceEpsg": {},
+        "textureImagePath": {},
         "outputDir": {},
         "measurements": {},
-        "textureImagePath": {},
-        "sourceEpsg": {},
-        "pathAttribute": {},
-        "gmlIdAttribute": {}
+        "gmlIdAttribute": {},
+        "pathAttribute": {}
       },
       "definitionI18n": {
         "MeasurementDef": {
@@ -1106,12 +1070,10 @@
       }
     },
     {
-      "name": "PLATEAU4.SolarPositionCalculator",
-      "description": ""
+      "name": "PLATEAU4.SolarPositionCalculator"
     },
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
-      "description": "",
       "parameterI18n": {
         "pairIdAttribute": {},
         "gmlIdAttribute": {},
@@ -1120,7 +1082,6 @@
     },
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
-      "description": "",
       "parameterI18n": {
         "cityGmlPath": {}
       }
@@ -1130,20 +1091,18 @@
       "description": "PLATEAU4データからUDXフォルダを抽出する",
       "parameterI18n": {
         "cityGmlPath": {},
-        "codelistsPath": {},
-        "schemasPath": {}
+        "schemasPath": {},
+        "codelistsPath": {}
       }
     },
     {
-      "name": "PLATEAU4.UnmatchedXlinkDetector",
-      "description": ""
+      "name": "PLATEAU4.UnmatchedXlinkDetector"
     },
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
-      "description": "",
       "parameterI18n": {
-        "groupBy": {},
-        "tolerance": {}
+        "tolerance": {},
+        "groupBy": {}
       }
     },
     {
@@ -1155,39 +1114,36 @@
       }
     },
     {
-      "name": "PolygonNormalExtractor",
-      "description": ""
+      "name": "PolygonNormalExtractor"
     },
     {
       "name": "PythonScriptProcessor",
-      "description": "",
       "parameterI18n": {
         "timeoutSeconds": {},
-        "pythonFile": {},
         "script": {},
+        "pythonFile": {},
         "pythonPath": {}
       }
     },
     {
       "name": "RayIntersector",
-      "description": "",
       "parameterI18n": {
-        "geomId": {},
+        "outputGeometryType": {},
         "closestIntersectionOnly": {},
+        "geomId": {},
+        "includeRayOrigin": {},
         "pairId": {},
         "ray": {},
-        "tolerance": {},
-        "includeRayOrigin": {},
-        "outputGeometryType": {}
+        "tolerance": {}
       },
       "definitionI18n": {
         "RayDefinition": {
-          "posX": {},
+          "dirY": {},
           "dirX": {},
           "dirZ": {},
+          "posX": {},
           "posY": {},
-          "posZ": {},
-          "dirY": {}
+          "posZ": {}
         }
       }
     },
@@ -1199,26 +1155,24 @@
       "name": "RhaiCaller",
       "description": "Rhaiスクリプトを呼び出す",
       "parameterI18n": {
-        "isTarget": {},
-        "process": {}
+        "process": {},
+        "isTarget": {}
       }
     },
     {
       "name": "Rotator3D",
-      "description": "",
       "parameterI18n": {
         "rotation": {}
       }
     },
     {
       "name": "ShapefileReader",
-      "description": "",
       "parameterI18n": {
         "encoding": {},
-        "dataset": {},
-        "allowEmptyPath": {},
         "force2d": {},
-        "inline": {}
+        "inline": {},
+        "allowEmptyPath": {},
+        "dataset": {}
       }
     },
     {
@@ -1231,37 +1185,35 @@
     },
     {
       "name": "SolidBoundaryValidator",
-      "description": "",
       "parameterI18n": {
         "tolerance": {}
       }
     },
     {
       "name": "SpatialFilter",
-      "description": "",
       "parameterI18n": {
-        "mergeFilterAttributes": {},
-        "outputMatchCountAttribute": {},
         "passOnMultipleMatches": {},
         "predicate": {},
-        "mergedAttributesPrefix": {}
+        "mergedAttributesPrefix": {},
+        "mergeFilterAttributes": {},
+        "outputMatchCountAttribute": {}
       }
     },
     {
       "name": "SqlReader",
       "description": "SQLデータベースから地物を読み取る",
       "parameterI18n": {
-        "databaseUrl": {},
-        "sql": {}
+        "sql": {},
+        "databaseUrl": {}
       }
     },
     {
       "name": "StatisticsCalculator",
       "description": "地物の統計情報を計算する",
       "parameterI18n": {
-        "groupId": {},
         "calculations": {},
-        "groupBy": {}
+        "groupBy": {},
+        "groupId": {}
       },
       "definitionI18n": {
         "Calculation": {
@@ -1276,18 +1228,17 @@
       "parameterI18n": {
         "minX": {},
         "minY": {},
-        "maxZ": {},
         "minZ": {},
+        "maxZ": {},
         "maxX": {},
         "maxY": {}
       }
     },
     {
       "name": "ThreeDimensionForcer",
-      "description": "",
       "parameterI18n": {
-        "preserveExistingZ": {},
-        "elevation": {}
+        "elevation": {},
+        "preserveExistingZ": {}
       }
     },
     {
@@ -1298,13 +1249,13 @@
       "name": "ThreeDimensionRotator",
       "description": "3次元ボックスをポリゴンで置き換える",
       "parameterI18n": {
-        "originY": {},
-        "originZ": {},
         "originX": {},
-        "directionZ": {},
-        "directionX": {},
         "directionY": {},
-        "angleDegree": {}
+        "angleDegree": {},
+        "directionX": {},
+        "directionZ": {},
+        "originY": {},
+        "originZ": {}
       }
     },
     {
@@ -1313,7 +1264,6 @@
     },
     {
       "name": "VertexCounter",
-      "description": "",
       "parameterI18n": {
         "outputAttribute": {}
       }
@@ -1344,7 +1294,6 @@
     },
     {
       "name": "XmlWriter",
-      "description": "",
       "parameterI18n": {
         "output": {}
       }
