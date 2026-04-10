@@ -1,64 +1,236 @@
 {
   "actions": [
     {
+      "name": "AppearanceRemover",
+      "description": ""
+    },
+    {
+      "name": "AreaCalculator",
+      "description": "",
+      "parameterI18n": {
+        "multiplier": {},
+        "outputAttribute": {},
+        "areaType": {}
+      }
+    },
+    {
       "name": "AreaOnAreaOverlayer",
-      "description": "在一个区域上叠加另一个区域"
+      "description": "在一个区域上叠加另一个区域",
+      "parameterI18n": {
+        "accumulationMode": {},
+        "groupBy": {},
+        "generateList": {},
+        "outputAttribute": {},
+        "tolerance": {}
+      }
     },
     {
       "name": "AttributeAggregator",
-      "description": "根据属性对实体进行分组"
+      "description": "根据属性对实体进行分组",
+      "parameterI18n": {
+        "calculation": {},
+        "calculationValue": {},
+        "aggregateAttributes": {},
+        "method": {},
+        "calculationAttribute": {}
+      },
+      "definitionI18n": {
+        "AggregateAttribute": {
+          "attribute": {},
+          "newAttribute": {},
+          "attributeValue": {}
+        }
+      }
     },
     {
       "name": "AttributeBulkArrayJoiner",
-      "description": "将数组属性连接为单个值"
+      "description": "将数组属性连接为单个值",
+      "parameterI18n": {
+        "ignoreAttributes": {}
+      }
     },
     {
       "name": "AttributeConversionTable",
-      "description": "使用查找表转换要素属性"
+      "description": "使用查找表转换要素属性",
+      "parameterI18n": {
+        "rules": {},
+        "format": {},
+        "inline": {},
+        "dataset": {}
+      },
+      "definitionI18n": {
+        "AttributeConversionTableRule": {
+          "featureTo": {},
+          "conversionTableKeys": {},
+          "conversionTableTo": {},
+          "featureFroms": {}
+        }
+      }
     },
     {
       "name": "AttributeDuplicateFilter",
-      "description": "筛选具有重复属性的实体"
+      "description": "筛选具有重复属性的实体",
+      "parameterI18n": {
+        "filterBy": {}
+      }
     },
     {
       "name": "AttributeFilePathInfoExtractor",
-      "description": "从属性中提取文件路径信息"
+      "description": "从属性中提取文件路径信息",
+      "parameterI18n": {
+        "attribute": {}
+      }
     },
     {
       "name": "AttributeFlattener",
-      "description": "嵌套属性的展平器"
+      "description": "嵌套属性的展平器",
+      "parameterI18n": {
+        "attributes": {}
+      }
     },
     {
       "name": "AttributeManager",
-      "description": "管理属性"
+      "description": "管理属性",
+      "parameterI18n": {
+        "operations": {}
+      },
+      "definitionI18n": {
+        "Operation": {
+          "method": {},
+          "attribute": {},
+          "value": {}
+        }
+      }
     },
     {
       "name": "AttributeMapper",
-      "description": "分配属性"
+      "description": "分配属性",
+      "parameterI18n": {
+        "mappers": {}
+      },
+      "definitionI18n": {
+        "Mapper": {
+          "attribute": {},
+          "childAttribute": {},
+          "valueAttribute": {},
+          "expr": {},
+          "parentAttribute": {},
+          "multipleExpr": {}
+        }
+      }
     },
     {
       "name": "AttributeRangeMapper",
-      "description": "将属性值映射到范围并分配相应的输出值"
+      "description": "将属性值映射到范围并分配相应的输出值",
+      "parameterI18n": {
+        "inputAttribute": {},
+        "defaultValue": {},
+        "outputAttribute": {},
+        "rangeTable": {}
+      },
+      "definitionI18n": {
+        "RangeEntry": {
+          "from": {},
+          "outputValue": {},
+          "to": {}
+        }
+      }
+    },
+    {
+      "name": "BoundaryExtractor",
+      "description": "",
+      "parameterI18n": {
+        "keepEmptyBoundaries": {},
+        "exteriorOnly": {}
+      }
     },
     {
       "name": "BoundsExtractor",
-      "description": "提取边界"
+      "description": "提取边界",
+      "parameterI18n": {
+        "xmin": {},
+        "xmax": {},
+        "ymax": {},
+        "zmax": {},
+        "zmin": {},
+        "ymin": {}
+      }
     },
     {
       "name": "Bufferer",
-      "description": "在几何图形周围创建缓冲区"
+      "description": "在几何图形周围创建缓冲区",
+      "parameterI18n": {
+        "bufferType": {},
+        "distance": {},
+        "interpolationAngle": {}
+      }
     },
     {
       "name": "BulkAttributeRenamer",
-      "description": "通过添加/删除前缀或后缀，或替换文本来重命名属性"
+      "description": "通过添加/删除前缀或后缀，或替换文本来重命名属性",
+      "parameterI18n": {
+        "renameValue": {},
+        "textToFind": {},
+        "renameAction": {},
+        "renameType": {},
+        "selectedAttributes": {}
+      }
+    },
+    {
+      "name": "CSGBuilder",
+      "description": "",
+      "parameterI18n": {
+        "listAttributeName": {},
+        "createList": {},
+        "pairIdAttribute": {}
+      }
+    },
+    {
+      "name": "CSGEvaluator",
+      "description": "",
+      "parameterI18n": {
+        "tolerance": {}
+      }
     },
     {
       "name": "CenterPointReplacer",
-      "description": "将实体的几何形状替换为位于其包围盒中心、质心或实体区域内部的点。"
+      "description": "将实体的几何形状替换为位于其包围盒中心、质心或实体区域内部的点。",
+      "parameterI18n": {
+        "mode": {}
+      }
     },
     {
       "name": "Cesium3DTilesWriter",
-      "description": "将实体写入文件"
+      "description": "将实体写入文件",
+      "parameterI18n": {
+        "skipUnexposedAttributes": {},
+        "attachTexture": {},
+        "maxZoom": {},
+        "dracoCompression": {},
+        "minZoom": {},
+        "output": {},
+        "compressOutput": {},
+        "schemaKey": {}
+      }
+    },
+    {
+      "name": "CityGmlReader",
+      "description": "",
+      "parameterI18n": {
+        "inline": {},
+        "dataset": {},
+        "flatten": {}
+      }
+    },
+    {
+      "name": "CityGmlWriter",
+      "description": "",
+      "parameterI18n": {
+        "lodFilter": {},
+        "output": {},
+        "prettyPrint": {},
+        "epsgCode": {}
+      }
     },
     {
       "name": "Clipper",
@@ -70,23 +242,82 @@
     },
     {
       "name": "ConvexHullAccumulator",
-      "description": "创建凸包"
+      "description": "创建凸包",
+      "parameterI18n": {
+        "groupBy": {}
+      }
     },
     {
-      "name": "CoordinateSystemSetter",
-      "description": "设置实体的坐标系"
+      "name": "CoordinateExtractor",
+      "description": "",
+      "parameterI18n": {
+        "defaultZValue": {},
+        "mode": {}
+      }
     },
     {
       "name": "CsvReader",
-      "description": "从CSV文件读取要素"
+      "description": "从CSV文件读取要素",
+      "parameterI18n": {
+        "encoding": {},
+        "inline": {},
+        "geometry": {},
+        "format": {},
+        "headerRows": {},
+        "offset": {},
+        "dataset": {}
+      },
+      "definitionI18n": {
+        "GeometryConfig": {
+          "epsg": {}
+        }
+      }
+    },
+    {
+      "name": "CsvWriter",
+      "description": "",
+      "parameterI18n": {
+        "geometry": {},
+        "format": {},
+        "output": {}
+      }
     },
     {
       "name": "CzmlReader",
-      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素，支持时间动态属性和时间序列数据"
+      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素，支持时间动态属性和时间序列数据",
+      "parameterI18n": {
+        "inline": {},
+        "timeSampling": {},
+        "force2d": {},
+        "skipDocumentPacket": {},
+        "dataset": {}
+      }
     },
     {
       "name": "CzmlWriter",
-      "description": "将要素导出为CZML格式用于Cesium可视化，支持时间动态实体和时间序列位置数据"
+      "description": "将要素导出为CZML格式用于Cesium可视化，支持时间动态实体和时间序列位置数据",
+      "parameterI18n": {
+        "groupTimeseriesBy": {},
+        "colorAttribute": {},
+        "interpolationAlgorithm": {},
+        "heightAttribute": {},
+        "groupBy": {},
+        "timeField": {},
+        "interpolationDegree": {},
+        "epoch": {},
+        "opacity": {},
+        "output": {}
+      }
+    },
+    {
+      "name": "DateTimeConverter",
+      "description": "",
+      "parameterI18n": {
+        "outputFormat": {},
+        "attribute": {},
+        "inputFormat": {},
+        "outputAttribute": {}
+      }
     },
     {
       "name": "DimensionFilter",
@@ -94,11 +325,20 @@
     },
     {
       "name": "DirectoryDecompressor",
-      "description": "从存档中解压目录"
+      "description": "从存档中解压目录",
+      "parameterI18n": {
+        "archiveAttributes": {},
+        "findDeepestSingleFolder": {}
+      }
     },
     {
       "name": "Dissolver",
-      "description": "溶解具有共同属性的相邻多边形"
+      "description": "溶解具有共同属性的相邻多边形",
+      "parameterI18n": {
+        "attributeAccumulation": {},
+        "groupBy": {},
+        "tolerance": {}
+      }
     },
     {
       "name": "EchoProcessor",
@@ -110,23 +350,50 @@
     },
     {
       "name": "ElevationExtractor",
-      "description": "提取实体的第一个z坐标值并存储为一个属性"
+      "description": "提取实体的第一个z坐标值并存储为一个属性",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
+    },
+    {
+      "name": "ExcelWriter",
+      "description": "",
+      "parameterI18n": {
+        "output": {},
+        "sheetName": {}
+      }
     },
     {
       "name": "Extruder",
-      "description": "沿一定距离拉伸多边形"
+      "description": "沿一定距离拉伸多边形",
+      "parameterI18n": {
+        "distance": {}
+      }
     },
     {
       "name": "FeatureCityGmlReader",
-      "description": "从CityGML文件读取要素"
+      "description": "从CityGML文件读取要素",
+      "parameterI18n": {
+        "dataset": {},
+        "codelistsPath": {},
+        "flatten": {}
+      }
     },
     {
       "name": "FeatureCounter",
-      "description": "统计实体数量"
+      "description": "统计实体数量",
+      "parameterI18n": {
+        "countStart": {},
+        "outputAttribute": {},
+        "groupBy": {}
+      }
     },
     {
       "name": "FeatureCreator",
-      "description": "根据表达式创建实体"
+      "description": "根据表达式创建实体",
+      "parameterI18n": {
+        "creator": {}
+      }
     },
     {
       "name": "FeatureDuplicateFilter",
@@ -134,19 +401,55 @@
     },
     {
       "name": "FeatureFilePathExtractor",
-      "description": "从要素中提取文件路径"
+      "description": "从要素中提取文件路径",
+      "parameterI18n": {
+        "extractArchive": {},
+        "sourceDataset": {},
+        "destPrefix": {}
+      }
     },
     {
       "name": "FeatureFilter",
-      "description": "根据条件筛选实体"
+      "description": "根据条件筛选实体",
+      "parameterI18n": {
+        "conditions": {}
+      },
+      "definitionI18n": {
+        "Condition": {
+          "outputPort": {},
+          "expr": {}
+        }
+      }
+    },
+    {
+      "name": "FeatureJoiner",
+      "description": "",
+      "parameterI18n": {
+        "joinType": {},
+        "conflictResolution": {},
+        "supplierAttribute": {},
+        "requestorAttribute": {},
+        "requestorAttributeValue": {},
+        "supplierAttributeValue": {}
+      }
     },
     {
       "name": "FeatureLodFilter",
-      "description": "基于详细级别进行过滤"
+      "description": "基于详细级别进行过滤",
+      "parameterI18n": {
+        "filterKey": {}
+      }
     },
     {
       "name": "FeatureMerger",
-      "description": "根据属性合并实体"
+      "description": "根据属性合并实体",
+      "parameterI18n": {
+        "requestorAttribute": {},
+        "completeGrouped": {},
+        "supplierAttribute": {},
+        "supplierAttributeValue": {},
+        "requestorAttributeValue": {}
+      }
     },
     {
       "name": "FeatureReader",
@@ -154,15 +457,30 @@
     },
     {
       "name": "FeatureSorter",
-      "description": "根据属性对实体排序"
+      "description": "根据属性对实体排序",
+      "parameterI18n": {
+        "attributes": {},
+        "order": {}
+      }
     },
     {
       "name": "FeatureTransformer",
-      "description": "通过表达式转换实体"
+      "description": "通过表达式转换实体",
+      "parameterI18n": {
+        "transformers": {}
+      },
+      "definitionI18n": {
+        "Transform": {
+          "expr": {}
+        }
+      }
     },
     {
       "name": "FeatureTypeFilter",
-      "description": "根据类型筛选实体"
+      "description": "根据类型筛选实体",
+      "parameterI18n": {
+        "targetTypes": {}
+      }
     },
     {
       "name": "FeatureWriter",
@@ -170,75 +488,234 @@
     },
     {
       "name": "FilePathExtractor",
-      "description": "从目录或归档文件中提取文件"
+      "description": "从目录或归档文件中提取文件",
+      "parameterI18n": {
+        "extractArchive": {},
+        "sourceDataset": {}
+      }
     },
     {
       "name": "FilePropertyExtractor",
-      "description": "提取文件的属性"
+      "description": "提取文件的属性",
+      "parameterI18n": {
+        "filePathAttribute": {}
+      }
+    },
+    {
+      "name": "FootprintReplacer",
+      "description": ""
     },
     {
       "name": "GeoJsonReader",
-      "description": "从GeoJSON文件读取要素"
+      "description": "从GeoJSON文件读取要素",
+      "parameterI18n": {
+        "dataset": {},
+        "inline": {}
+      }
     },
     {
       "name": "GeoJsonWriter",
-      "description": "将实体写入 GeoJSON 文件"
+      "description": "将实体写入 GeoJSON 文件",
+      "parameterI18n": {
+        "groupBy": {},
+        "output": {}
+      }
     },
     {
       "name": "GeoPackageReader",
-      "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据"
+      "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据",
+      "parameterI18n": {
+        "dataset": {},
+        "attributeFilter": {},
+        "tileFormat": {},
+        "batchSize": {},
+        "layerName": {},
+        "inline": {},
+        "force2D": {},
+        "readMode": {},
+        "spatialFilter": {},
+        "includeMetadata": {}
+      }
     },
     {
       "name": "GeoPackageWriter",
-      "description": "将地理要素写入GeoPackage（.gpkg）文件，包含正确的SQLite结构、空间索引和元数据表"
+      "description": "将地理要素写入GeoPackage（.gpkg）文件，包含正确的SQLite结构、空间索引和元数据表",
+      "parameterI18n": {
+        "srsId": {},
+        "createSpatialIndex": {},
+        "output": {},
+        "geometryType": {},
+        "geometryColumn": {},
+        "tableName": {},
+        "overwrite": {}
+      }
     },
     {
       "name": "GeometryCoercer",
-      "description": "强制将实体几何转换为特定几何类型"
-    },
-    {
-      "name": "GeometryDissolver",
-      "description": "溶解几何体"
+      "description": "强制将实体几何转换为特定几何类型",
+      "parameterI18n": {
+        "targetType": {}
+      }
     },
     {
       "name": "GeometryExtractor",
-      "description": "提取实体的几何并作为属性添加"
+      "description": "提取实体的几何并作为属性添加",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
     },
     {
       "name": "GeometryFilter",
       "description": "根据类型筛选几何"
     },
     {
-      "name": "GeometryLodFilter",
-      "description": "根据细节级别（LOD）筛选几何"
+      "name": "GeometryPartExtractor",
+      "description": "",
+      "parameterI18n": {
+        "geometryPartType": {}
+      }
+    },
+    {
+      "name": "GeometryRemover",
+      "description": ""
     },
     {
       "name": "GeometryReplacer",
-      "description": "用新几何替换实体的几何"
+      "description": "用新几何替换实体的几何",
+      "parameterI18n": {
+        "sourceAttribute": {}
+      }
     },
     {
       "name": "GeometrySplitter",
-      "description": "根据类型分割几何"
+      "description": "根据类型分割几何",
+      "parameterI18n": {
+        "splitLevel": {}
+      }
     },
     {
       "name": "GeometryValidator",
-      "description": "验证实体的几何"
+      "description": "验证实体的几何",
+      "parameterI18n": {
+        "validationTypes": {}
+      }
     },
     {
       "name": "GeometryValueFilter",
       "description": "根据值筛选几何"
     },
     {
+      "name": "GltfReader",
+      "description": "",
+      "parameterI18n": {
+        "dataset": {},
+        "inline": {},
+        "includeNodes": {},
+        "triangulate": {},
+        "mergeMeshes": {}
+      }
+    },
+    {
       "name": "GltfWriter",
-      "description": "将实体写入Gltf文件"
+      "description": "将实体写入Gltf文件",
+      "parameterI18n": {
+        "dracoCompression": {},
+        "schemaKey": {},
+        "output": {},
+        "attachTexture": {}
+      }
+    },
+    {
+      "name": "GridDivider",
+      "description": "",
+      "parameterI18n": {
+        "groupBy": {},
+        "keepSquareOnly": {},
+        "unitSquareSize": {}
+      }
     },
     {
       "name": "HTTPCaller",
-      "description": "发起HTTP/HTTPS请求并使用响应数据丰富要素"
+      "description": "发起HTTP/HTTPS请求并使用响应数据丰富要素",
+      "parameterI18n": {
+        "requestBody": {},
+        "retry": {},
+        "timeouts": {},
+        "response": {},
+        "httpOptions": {},
+        "rateLimit": {},
+        "url": {},
+        "contentType": {},
+        "queryParameters": {},
+        "method": {},
+        "customHeaders": {},
+        "observability": {},
+        "authentication": {}
+      },
+      "definitionI18n": {
+        "TimeoutConfig": {
+          "transferTimeout": {},
+          "connectionTimeout": {}
+        },
+        "QueryParam": {
+          "name": {},
+          "value": {}
+        },
+        "RetryConfig": {
+          "backoffMultiplier": {},
+          "maxDelayMs": {},
+          "initialDelayMs": {},
+          "retryOnStatus": {},
+          "maxAttempts": {},
+          "honorRetryAfter": {}
+        },
+        "ObservabilityConfig": {
+          "finalUrlAttribute": {},
+          "trackRetryCount": {},
+          "trackBytes": {},
+          "durationAttribute": {},
+          "bytesAttribute": {},
+          "trackDuration": {},
+          "trackFinalUrl": {},
+          "retryCountAttribute": {}
+        },
+        "ResponseConfig": {
+          "responseHandling": {},
+          "autoDetectEncoding": {},
+          "maxResponseSize": {},
+          "responseEncoding": {},
+          "errorAttribute": {},
+          "responseBodyAttribute": {},
+          "headersAttribute": {},
+          "statusCodeAttribute": {}
+        },
+        "RateLimitConfig": {
+          "intervalMs": {},
+          "timing": {},
+          "requests": {}
+        },
+        "FormField": {
+          "name": {},
+          "value": {}
+        },
+        "HttpOptions": {
+          "followRedirects": {},
+          "maxRedirects": {},
+          "verifySsl": {},
+          "userAgent": {}
+        },
+        "HeaderParam": {
+          "name": {},
+          "value": {}
+        }
+      }
     },
     {
       "name": "HoleCounter",
-      "description": "统计几何中的孔数量并作为属性添加"
+      "description": "统计几何中的孔数量并作为属性添加",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
     },
     {
       "name": "HoleExtractor",
@@ -246,27 +723,116 @@
     },
     {
       "name": "HorizontalReprojector",
-      "description": "将实体的几何重投影到指定坐标系"
+      "description": "将实体的几何重投影到指定坐标系",
+      "parameterI18n": {
+        "targetEpsgCode": {},
+        "sourceEpsgCode": {}
+      }
+    },
+    {
+      "name": "ImageRasterizer",
+      "description": "",
+      "parameterI18n": {
+        "imageWidth": {},
+        "onOverlap": {},
+        "saveTo": {}
+      }
     },
     {
       "name": "InputRouter",
-      "description": "用于子工作流中最初一个端口转发的操作"
+      "description": "用于子工作流中最初一个端口转发的操作",
+      "parameterI18n": {
+        "routingPort": {}
+      }
     },
     {
       "name": "JPStandardGridAccumulator",
       "description": "在日本标准网格上积累要素"
     },
     {
+      "name": "JSONFragmenter",
+      "description": ""
+    },
+    {
+      "name": "JsonReader",
+      "description": "",
+      "parameterI18n": {
+        "dataset": {},
+        "inline": {}
+      }
+    },
+    {
+      "name": "JsonWriter",
+      "description": "",
+      "parameterI18n": {
+        "output": {},
+        "converter": {}
+      }
+    },
+    {
       "name": "LineOnLineOverlayer",
-      "description": "交点转换为点实体，并可包含原始相交线段组合的属性列表"
+      "description": "交点转换为点实体，并可包含原始相交线段组合的属性列表",
+      "parameterI18n": {
+        "tolerance": {},
+        "groupBy": {},
+        "overlaidListsAttrName": {}
+      }
+    },
+    {
+      "name": "ListConcatenator",
+      "description": "",
+      "parameterI18n": {
+        "separateCharacter": {},
+        "attribute": {},
+        "list": {},
+        "outputAttributeName": {}
+      }
     },
     {
       "name": "ListExploder",
-      "description": "将列表类型的属性拆分为多个元素"
+      "description": "将列表类型的属性拆分为多个元素",
+      "parameterI18n": {
+        "sourceAttribute": {}
+      }
+    },
+    {
+      "name": "ListIndexer",
+      "description": "",
+      "parameterI18n": {
+        "copiedAttributePrefix": {},
+        "copiedAttributeSuffix": {},
+        "listIndexToCopy": {},
+        "listAttribute": {}
+      }
     },
     {
       "name": "MVTWriter",
-      "description": "将实体写入文件"
+      "description": "将实体写入文件",
+      "parameterI18n": {
+        "compressOutput": {},
+        "colonToUnderscore": {},
+        "layerName": {},
+        "minZoom": {},
+        "schemaKey": {},
+        "extent": {},
+        "output": {},
+        "skipUnexposedAttributes": {},
+        "maxZoom": {}
+      }
+    },
+    {
+      "name": "NeighborFinder",
+      "description": "",
+      "parameterI18n": {
+        "neighborIndexAttribute": {},
+        "numClosest": {},
+        "attributePrefix": {},
+        "distanceMetric": {},
+        "maxDistance": {},
+        "attributesToTransfer": {},
+        "distanceAttribute": {},
+        "mergeStrategy": {}
+      }
     },
     {
       "name": "NoopProcessor",
@@ -277,16 +843,69 @@
       "description": "不执行任何最终操作"
     },
     {
+      "name": "NullAttributeMapper",
+      "description": "",
+      "parameterI18n": {
+        "routeNullFeatures": {},
+        "mappings": {},
+        "scope": {},
+        "nullDefinition": {},
+        "defaultReplacement": {}
+      },
+      "definitionI18n": {
+        "AttributeMapping": {
+          "replacement": {},
+          "attribute": {},
+          "onMissing": {}
+        }
+      }
+    },
+    {
+      "name": "ObjReader",
+      "description": "",
+      "parameterI18n": {
+        "inline": {},
+        "materialFile": {},
+        "includeTexcoords": {},
+        "parseMaterials": {},
+        "triangulate": {},
+        "mergeGroups": {},
+        "dataset": {},
+        "includeNormals": {}
+      }
+    },
+    {
+      "name": "ObjWriter",
+      "description": "",
+      "parameterI18n": {
+        "output": {},
+        "writeNormals": {},
+        "writeTexcoords": {},
+        "writeMaterials": {}
+      }
+    },
+    {
       "name": "Offsetter",
-      "description": "为实体的坐标添加偏移"
+      "description": "为实体的坐标添加偏移",
+      "parameterI18n": {
+        "offsetZ": {},
+        "offsetY": {},
+        "offsetX": {}
+      }
     },
     {
       "name": "OrientationExtractor",
-      "description": "提取实体几何的方向并作为属性添加"
+      "description": "提取实体几何的方向并作为属性添加",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
     },
     {
       "name": "OutputRouter",
-      "description": "用于子工作流中最后一个端口转发的操作"
+      "description": "用于子工作流中最后一个端口转发的操作",
+      "parameterI18n": {
+        "routingPort": {}
+      }
     },
     {
       "name": "PLATEAU3.AttributeFlattener",
@@ -298,7 +917,10 @@
     },
     {
       "name": "PLATEAU3.BuildingUsageAttributeValidator",
-      "description": "此处理器通过检查所需属性的存在和城市代码的正确性来验证建筑用途属性。如果发现问题，将通过lBldgError和codeError端口输出错误。"
+      "description": "此处理器通过检查所需属性的存在和城市代码的正确性来验证建筑用途属性。如果发现问题，将通过lBldgError和codeError端口输出错误。",
+      "parameterI18n": {
+        "codelistsPath": {}
+      }
     },
     {
       "name": "PLATEAU3.DictionariesInitiator",
@@ -326,39 +948,229 @@
     },
     {
       "name": "PLATEAU3.XMLAttributeExtractor",
-      "description": "根据模式定义从XML片段中提取属性"
+      "description": "根据模式定义从XML片段中提取属性",
+      "parameterI18n": {
+        "schemaJson": {},
+        "targetPackages": {},
+        "cityCode": {},
+        "exceptFeatureTypes": {},
+        "extractDmGeometryAsXmlFragment": {},
+        "addNsprefixToFeatureTypes": {}
+      }
     },
     {
       "name": "PLATEAU4.AttributeFlattener",
-      "description": "PLATEAU4属性展平器"
+      "description": "PLATEAU4属性展平器",
+      "parameterI18n": {
+        "existingFlattenAttributes": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
+      "description": ""
+    },
+    {
+      "name": "PLATEAU4.BuildingPartConnectivityChecker",
+      "description": "",
+      "parameterI18n": {
+        "lodAttribute": {},
+        "partIdAttribute": {},
+        "buildingIdAttribute": {},
+        "fileIndexAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.BuildingUsageAttributeValidator",
+      "description": "",
+      "parameterI18n": {
+        "codelistsPath": {}
+      }
     },
     {
       "name": "PLATEAU4.CityCodeExtractor",
-      "description": "从PLATEAU4数据中提取城市代码"
+      "description": "从PLATEAU4数据中提取城市代码",
+      "parameterI18n": {
+        "cityCodeAttribute": {},
+        "codelistsPathAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.CityGmlMeshBuilder",
+      "description": "",
+      "parameterI18n": {
+        "epsgCode": {},
+        "errorAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
+      "description": ""
+    },
+    {
+      "name": "PLATEAU4.DestinationMeshCodeExtractor",
+      "description": "",
+      "parameterI18n": {
+        "meshcodeAttr": {},
+        "meshType": {},
+        "epsgCode": {}
+      }
     },
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
-      "description": "验证PLATEAU4的定义域"
+      "description": "验证PLATEAU4的定义域",
+      "parameterI18n": {
+        "codelistsPath": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.FaceExtractor",
+      "description": "",
+      "parameterI18n": {
+        "cityGmlPathAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
+      "description": "",
+      "parameterI18n": {
+        "groupBy": {},
+        "pointSpacing": {},
+        "sampleInterior": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.GmlNameCodeSpaceValidator",
+      "description": "",
+      "parameterI18n": {
+        "cityGmlPath": {}
+      }
     },
     {
       "name": "PLATEAU4.MaxLodExtractor",
-      "description": "提取PLATEAU4的最大详细级别"
+      "description": "提取PLATEAU4的最大详细级别",
+      "parameterI18n": {
+        "cityGmlPathAttribute": {},
+        "maxLodAttribute": {}
+      }
     },
     {
       "name": "PLATEAU4.MissingAttributeDetector",
-      "description": "检测PLATEAU4数据中缺失的属性"
+      "description": "检测PLATEAU4数据中缺失的属性",
+      "parameterI18n": {
+        "packageAttribute": {}
+      }
     },
     {
       "name": "PLATEAU4.ObjectListExtractor",
-      "description": "从PLATEAU4数据中提取对象列表"
+      "description": "从PLATEAU4数据中提取对象列表",
+      "parameterI18n": {
+        "objectListPathAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.SolarCityGmlAttributeInserter",
+      "description": "",
+      "parameterI18n": {
+        "measurements": {},
+        "pathAttribute": {},
+        "gmlIdAttribute": {},
+        "outputDir": {},
+        "sourceEpsg": {},
+        "textureImagePath": {}
+      },
+      "definitionI18n": {
+        "MeasurementDef": {
+          "name": {},
+          "uom": {},
+          "attribute": {}
+        }
+      }
+    },
+    {
+      "name": "PLATEAU4.SolarPositionCalculator",
+      "description": ""
+    },
+    {
+      "name": "PLATEAU4.SolidIntersectionTestPairCreator",
+      "description": "",
+      "parameterI18n": {
+        "listAttribute": {},
+        "gmlIdAttribute": {},
+        "pairIdAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.TransportationXlinkDetector",
+      "description": "",
+      "parameterI18n": {
+        "cityGmlPath": {}
+      }
     },
     {
       "name": "PLATEAU4.UDXFolderExtractor",
-      "description": "从PLATEAU4数据中提取UDX文件夹"
+      "description": "从PLATEAU4数据中提取UDX文件夹",
+      "parameterI18n": {
+        "cityGmlPath": {},
+        "codelistsPath": {},
+        "schemasPath": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.UnmatchedXlinkDetector",
+      "description": ""
+    },
+    {
+      "name": "PLATEAU4.UnsharedEdgeDetector",
+      "description": "",
+      "parameterI18n": {
+        "tolerance": {},
+        "groupBy": {}
+      }
     },
     {
       "name": "PlanarityFilter",
-      "description": "根据类型筛选几何"
+      "description": "根据类型筛选几何",
+      "parameterI18n": {
+        "threshold": {},
+        "filterType": {}
+      }
+    },
+    {
+      "name": "PolygonNormalExtractor",
+      "description": ""
+    },
+    {
+      "name": "PythonScriptProcessor",
+      "description": "",
+      "parameterI18n": {
+        "script": {},
+        "pythonPath": {},
+        "timeoutSeconds": {},
+        "pythonFile": {}
+      }
+    },
+    {
+      "name": "RayIntersector",
+      "description": "",
+      "parameterI18n": {
+        "tolerance": {},
+        "geomId": {},
+        "outputGeometryType": {},
+        "closestIntersectionOnly": {},
+        "includeRayOrigin": {},
+        "pairId": {},
+        "ray": {}
+      },
+      "definitionI18n": {
+        "RayDefinition": {
+          "dirY": {},
+          "dirZ": {},
+          "posX": {},
+          "dirX": {},
+          "posY": {},
+          "posZ": {}
+        }
+      }
     },
     {
       "name": "Refiner",
@@ -366,27 +1178,98 @@
     },
     {
       "name": "RhaiCaller",
-      "description": "调用Rhai脚本"
+      "description": "调用Rhai脚本",
+      "parameterI18n": {
+        "process": {},
+        "isTarget": {}
+      }
+    },
+    {
+      "name": "Rotator3D",
+      "description": "",
+      "parameterI18n": {
+        "rotation": {}
+      }
+    },
+    {
+      "name": "ShapefileReader",
+      "description": "",
+      "parameterI18n": {
+        "force2d": {},
+        "inline": {},
+        "allowEmptyPath": {},
+        "encoding": {},
+        "dataset": {}
+      }
     },
     {
       "name": "ShapefileWriter",
-      "description": "将要素写入Shapefile"
+      "description": "将要素写入Shapefile",
+      "parameterI18n": {
+        "groupBy": {},
+        "output": {}
+      }
+    },
+    {
+      "name": "SolidBoundaryValidator",
+      "description": "",
+      "parameterI18n": {
+        "tolerance": {}
+      }
+    },
+    {
+      "name": "SpatialFilter",
+      "description": "",
+      "parameterI18n": {
+        "mergeFilterAttributes": {},
+        "passOnMultipleMatches": {},
+        "mergedAttributesPrefix": {},
+        "outputMatchCountAttribute": {},
+        "predicate": {}
+      }
     },
     {
       "name": "SqlReader",
-      "description": "从SQL数据库读取要素"
+      "description": "从SQL数据库读取要素",
+      "parameterI18n": {
+        "databaseUrl": {},
+        "sql": {}
+      }
     },
     {
       "name": "StatisticsCalculator",
-      "description": "计算实体的统计信息"
-    },
-    {
-      "name": "SurfaceFootprintReplacer",
-      "description": "用足迹替换表面几何"
+      "description": "计算实体的统计信息",
+      "parameterI18n": {
+        "groupBy": {},
+        "calculations": {},
+        "groupId": {}
+      },
+      "definitionI18n": {
+        "Calculation": {
+          "newAttribute": {},
+          "expr": {}
+        }
+      }
     },
     {
       "name": "ThreeDimensionBoxReplacer",
-      "description": "用多边形替换三维盒子"
+      "description": "用多边形替换三维盒子",
+      "parameterI18n": {
+        "minZ": {},
+        "minX": {},
+        "maxZ": {},
+        "maxY": {},
+        "minY": {},
+        "maxX": {}
+      }
+    },
+    {
+      "name": "ThreeDimensionForcer",
+      "description": "",
+      "parameterI18n": {
+        "elevation": {},
+        "preserveExistingZ": {}
+      }
     },
     {
       "name": "ThreeDimensionPlanarityRotator",
@@ -394,11 +1277,27 @@
     },
     {
       "name": "ThreeDimensionRotator",
-      "description": "用多边形替换三维盒子"
+      "description": "用多边形替换三维盒子",
+      "parameterI18n": {
+        "directionX": {},
+        "directionY": {},
+        "directionZ": {},
+        "originX": {},
+        "angleDegree": {},
+        "originY": {},
+        "originZ": {}
+      }
     },
     {
       "name": "TwoDimensionForcer",
       "description": "将几何强制为二维"
+    },
+    {
+      "name": "VertexCounter",
+      "description": "",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
     },
     {
       "name": "VertexRemover",
@@ -406,11 +1305,10 @@
     },
     {
       "name": "VerticalReprojector",
-      "description": "将实体的几何重投影到指定坐标系"
-    },
-    {
-      "name": "WasmRuntimeExecutor",
-      "description": "将脚本编译为.wasm并在wasm运行环境中执行"
+      "description": "将实体的几何重投影到指定坐标系",
+      "parameterI18n": {
+        "reprojectorType": {}
+      }
     },
     {
       "name": "XMLFragmenter",
@@ -418,11 +1316,26 @@
     },
     {
       "name": "XMLValidator",
-      "description": "验证XML内容"
+      "description": "验证XML内容",
+      "parameterI18n": {
+        "attribute": {},
+        "inputType": {},
+        "validationType": {}
+      }
+    },
+    {
+      "name": "XmlWriter",
+      "description": "",
+      "parameterI18n": {
+        "output": {}
+      }
     },
     {
       "name": "ZipFileWriter",
-      "description": "将要素写入zip文件"
+      "description": "将要素写入zip文件",
+      "parameterI18n": {
+        "output": {}
+      }
     }
   ]
 }

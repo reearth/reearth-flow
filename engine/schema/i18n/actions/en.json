@@ -1,64 +1,236 @@
 {
   "actions": [
     {
+      "name": "AppearanceRemover",
+      "description": ""
+    },
+    {
+      "name": "AreaCalculator",
+      "description": "",
+      "parameterI18n": {
+        "areaType": {},
+        "multiplier": {},
+        "outputAttribute": {}
+      }
+    },
+    {
       "name": "AreaOnAreaOverlayer",
-      "description": "Overlays an area on another area"
+      "description": "Overlays an area on another area",
+      "parameterI18n": {
+        "generateList": {},
+        "groupBy": {},
+        "outputAttribute": {},
+        "accumulationMode": {},
+        "tolerance": {}
+      }
     },
     {
       "name": "AttributeAggregator",
-      "description": "Aggregates features by attributes"
+      "description": "Aggregates features by attributes",
+      "parameterI18n": {
+        "calculation": {},
+        "calculationValue": {},
+        "method": {},
+        "aggregateAttributes": {},
+        "calculationAttribute": {}
+      },
+      "definitionI18n": {
+        "AggregateAttribute": {
+          "attributeValue": {},
+          "attribute": {},
+          "newAttribute": {}
+        }
+      }
     },
     {
       "name": "AttributeBulkArrayJoiner",
-      "description": "Join Array Attributes Into Single Values"
+      "description": "Join Array Attributes Into Single Values",
+      "parameterI18n": {
+        "ignoreAttributes": {}
+      }
     },
     {
       "name": "AttributeConversionTable",
-      "description": "Transform Feature Attributes Using Lookup Tables"
+      "description": "Transform Feature Attributes Using Lookup Tables",
+      "parameterI18n": {
+        "dataset": {},
+        "inline": {},
+        "format": {},
+        "rules": {}
+      },
+      "definitionI18n": {
+        "AttributeConversionTableRule": {
+          "featureFroms": {},
+          "conversionTableTo": {},
+          "conversionTableKeys": {},
+          "featureTo": {}
+        }
+      }
     },
     {
       "name": "AttributeDuplicateFilter",
-      "description": "Filters features by duplicate attributes"
+      "description": "Filters features by duplicate attributes",
+      "parameterI18n": {
+        "filterBy": {}
+      }
     },
     {
       "name": "AttributeFilePathInfoExtractor",
-      "description": "Extracts file path information from attributes"
+      "description": "Extracts file path information from attributes",
+      "parameterI18n": {
+        "attribute": {}
+      }
     },
     {
       "name": "AttributeFlattener",
-      "description": "Flattener for nested attributes"
+      "description": "Flattener for nested attributes",
+      "parameterI18n": {
+        "attributes": {}
+      }
     },
     {
       "name": "AttributeManager",
-      "description": "Manages attributes"
+      "description": "Manages attributes",
+      "parameterI18n": {
+        "operations": {}
+      },
+      "definitionI18n": {
+        "Operation": {
+          "method": {},
+          "attribute": {},
+          "value": {}
+        }
+      }
     },
     {
       "name": "AttributeMapper",
-      "description": "Maps attributes"
+      "description": "Maps attributes",
+      "parameterI18n": {
+        "mappers": {}
+      },
+      "definitionI18n": {
+        "Mapper": {
+          "valueAttribute": {},
+          "childAttribute": {},
+          "expr": {},
+          "multipleExpr": {},
+          "parentAttribute": {},
+          "attribute": {}
+        }
+      }
     },
     {
       "name": "AttributeRangeMapper",
-      "description": "Map attribute values to ranges and assign corresponding output values"
+      "description": "Map attribute values to ranges and assign corresponding output values",
+      "parameterI18n": {
+        "outputAttribute": {},
+        "rangeTable": {},
+        "defaultValue": {},
+        "inputAttribute": {}
+      },
+      "definitionI18n": {
+        "RangeEntry": {
+          "to": {},
+          "from": {},
+          "outputValue": {}
+        }
+      }
+    },
+    {
+      "name": "BoundaryExtractor",
+      "description": "",
+      "parameterI18n": {
+        "keepEmptyBoundaries": {},
+        "exteriorOnly": {}
+      }
     },
     {
       "name": "BoundsExtractor",
-      "description": "Bounds Extractor"
+      "description": "Bounds Extractor",
+      "parameterI18n": {
+        "zmin": {},
+        "xmin": {},
+        "ymin": {},
+        "xmax": {},
+        "ymax": {},
+        "zmax": {}
+      }
     },
     {
       "name": "Bufferer",
-      "description": "Buffers a geometry"
+      "description": "Buffers a geometry",
+      "parameterI18n": {
+        "distance": {},
+        "interpolationAngle": {},
+        "bufferType": {}
+      }
     },
     {
       "name": "BulkAttributeRenamer",
-      "description": "Renames attributes by adding/removing prefixes or suffixes, or replacing text"
+      "description": "Renames attributes by adding/removing prefixes or suffixes, or replacing text",
+      "parameterI18n": {
+        "textToFind": {},
+        "selectedAttributes": {},
+        "renameAction": {},
+        "renameType": {},
+        "renameValue": {}
+      }
+    },
+    {
+      "name": "CSGBuilder",
+      "description": "",
+      "parameterI18n": {
+        "pairIdAttribute": {},
+        "createList": {},
+        "listAttributeName": {}
+      }
+    },
+    {
+      "name": "CSGEvaluator",
+      "description": "",
+      "parameterI18n": {
+        "tolerance": {}
+      }
     },
     {
       "name": "CenterPointReplacer",
-      "description": "Replaces the geometry of the feature with a point that is either in the center of the feature's bounding box, at the center of mass of the feature, or somewhere guaranteed to be inside the feature's area."
+      "description": "Replaces the geometry of the feature with a point that is either in the center of the feature's bounding box, at the center of mass of the feature, or somewhere guaranteed to be inside the feature's area.",
+      "parameterI18n": {
+        "mode": {}
+      }
     },
     {
       "name": "Cesium3DTilesWriter",
-      "description": "Writes features to a file"
+      "description": "Writes features to a file",
+      "parameterI18n": {
+        "compressOutput": {},
+        "maxZoom": {},
+        "skipUnexposedAttributes": {},
+        "attachTexture": {},
+        "dracoCompression": {},
+        "schemaKey": {},
+        "minZoom": {},
+        "output": {}
+      }
+    },
+    {
+      "name": "CityGmlReader",
+      "description": "",
+      "parameterI18n": {
+        "inline": {},
+        "dataset": {},
+        "flatten": {}
+      }
+    },
+    {
+      "name": "CityGmlWriter",
+      "description": "",
+      "parameterI18n": {
+        "output": {},
+        "prettyPrint": {},
+        "epsgCode": {},
+        "lodFilter": {}
+      }
     },
     {
       "name": "Clipper",
@@ -70,23 +242,82 @@
     },
     {
       "name": "ConvexHullAccumulator",
-      "description": "Create convex hulls"
+      "description": "Create convex hulls",
+      "parameterI18n": {
+        "groupBy": {}
+      }
     },
     {
-      "name": "CoordinateSystemSetter",
-      "description": "Sets the coordinate system of a feature"
+      "name": "CoordinateExtractor",
+      "description": "",
+      "parameterI18n": {
+        "mode": {},
+        "defaultZValue": {}
+      }
     },
     {
       "name": "CsvReader",
-      "description": "Reads features from a CSV file"
+      "description": "Reads features from a CSV file",
+      "parameterI18n": {
+        "geometry": {},
+        "offset": {},
+        "format": {},
+        "headerRows": {},
+        "dataset": {},
+        "encoding": {},
+        "inline": {}
+      },
+      "definitionI18n": {
+        "GeometryConfig": {
+          "epsg": {}
+        }
+      }
+    },
+    {
+      "name": "CsvWriter",
+      "description": "",
+      "parameterI18n": {
+        "output": {},
+        "format": {},
+        "geometry": {}
+      }
     },
     {
       "name": "CzmlReader",
-      "description": "Reads geographic features from CZML (Cesium Language) files for 3D visualization, with support for time-dynamic properties and timeseries data"
+      "description": "Reads geographic features from CZML (Cesium Language) files for 3D visualization, with support for time-dynamic properties and timeseries data",
+      "parameterI18n": {
+        "dataset": {},
+        "inline": {},
+        "force2d": {},
+        "skipDocumentPacket": {},
+        "timeSampling": {}
+      }
     },
     {
       "name": "CzmlWriter",
-      "description": "Export features as CZML for Cesium visualization, with support for time-dynamic entities and timeseries positions"
+      "description": "Export features as CZML for Cesium visualization, with support for time-dynamic entities and timeseries positions",
+      "parameterI18n": {
+        "groupTimeseriesBy": {},
+        "output": {},
+        "interpolationDegree": {},
+        "opacity": {},
+        "epoch": {},
+        "heightAttribute": {},
+        "interpolationAlgorithm": {},
+        "timeField": {},
+        "groupBy": {},
+        "colorAttribute": {}
+      }
+    },
+    {
+      "name": "DateTimeConverter",
+      "description": "",
+      "parameterI18n": {
+        "inputFormat": {},
+        "outputFormat": {},
+        "outputAttribute": {},
+        "attribute": {}
+      }
     },
     {
       "name": "DimensionFilter",
@@ -94,11 +325,20 @@
     },
     {
       "name": "DirectoryDecompressor",
-      "description": "Decompresses directories from archives"
+      "description": "Decompresses directories from archives",
+      "parameterI18n": {
+        "archiveAttributes": {},
+        "findDeepestSingleFolder": {}
+      }
     },
     {
       "name": "Dissolver",
-      "description": "Dissolve adjacent polygons with common attributes"
+      "description": "Dissolve adjacent polygons with common attributes",
+      "parameterI18n": {
+        "tolerance": {},
+        "attributeAccumulation": {},
+        "groupBy": {}
+      }
     },
     {
       "name": "EchoProcessor",
@@ -110,23 +350,50 @@
     },
     {
       "name": "ElevationExtractor",
-      "description": "Extracts a feature’s first z coordinate value, storing it in an attribute."
+      "description": "Extracts a feature’s first z coordinate value, storing it in an attribute.",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
+    },
+    {
+      "name": "ExcelWriter",
+      "description": "",
+      "parameterI18n": {
+        "output": {},
+        "sheetName": {}
+      }
     },
     {
       "name": "Extruder",
-      "description": "Extrudes a polygon by a distance"
+      "description": "Extrudes a polygon by a distance",
+      "parameterI18n": {
+        "distance": {}
+      }
     },
     {
       "name": "FeatureCityGmlReader",
-      "description": "Reads features from CityGML files"
+      "description": "Reads features from CityGML files",
+      "parameterI18n": {
+        "dataset": {},
+        "flatten": {},
+        "codelistsPath": {}
+      }
     },
     {
       "name": "FeatureCounter",
-      "description": "Counts features"
+      "description": "Counts features",
+      "parameterI18n": {
+        "groupBy": {},
+        "countStart": {},
+        "outputAttribute": {}
+      }
     },
     {
       "name": "FeatureCreator",
-      "description": "Creates features from expressions"
+      "description": "Creates features from expressions",
+      "parameterI18n": {
+        "creator": {}
+      }
     },
     {
       "name": "FeatureDuplicateFilter",
@@ -134,19 +401,55 @@
     },
     {
       "name": "FeatureFilePathExtractor",
-      "description": "Extracts file paths from features"
+      "description": "Extracts file paths from features",
+      "parameterI18n": {
+        "destPrefix": {},
+        "sourceDataset": {},
+        "extractArchive": {}
+      }
     },
     {
       "name": "FeatureFilter",
-      "description": "Filters features based on conditions"
+      "description": "Filters features based on conditions",
+      "parameterI18n": {
+        "conditions": {}
+      },
+      "definitionI18n": {
+        "Condition": {
+          "outputPort": {},
+          "expr": {}
+        }
+      }
+    },
+    {
+      "name": "FeatureJoiner",
+      "description": "",
+      "parameterI18n": {
+        "joinType": {},
+        "supplierAttributeValue": {},
+        "conflictResolution": {},
+        "supplierAttribute": {},
+        "requestorAttributeValue": {},
+        "requestorAttribute": {}
+      }
     },
     {
       "name": "FeatureLodFilter",
-      "description": "Filter based on Level of Detail"
+      "description": "Filter based on Level of Detail",
+      "parameterI18n": {
+        "filterKey": {}
+      }
     },
     {
       "name": "FeatureMerger",
-      "description": "Merges features by attributes"
+      "description": "Merges features by attributes",
+      "parameterI18n": {
+        "supplierAttributeValue": {},
+        "requestorAttribute": {},
+        "requestorAttributeValue": {},
+        "supplierAttribute": {},
+        "completeGrouped": {}
+      }
     },
     {
       "name": "FeatureReader",
@@ -154,15 +457,30 @@
     },
     {
       "name": "FeatureSorter",
-      "description": "Sorts features by attributes"
+      "description": "Sorts features by attributes",
+      "parameterI18n": {
+        "order": {},
+        "attributes": {}
+      }
     },
     {
       "name": "FeatureTransformer",
-      "description": "Transforms features by expressions"
+      "description": "Transforms features by expressions",
+      "parameterI18n": {
+        "transformers": {}
+      },
+      "definitionI18n": {
+        "Transform": {
+          "expr": {}
+        }
+      }
     },
     {
       "name": "FeatureTypeFilter",
-      "description": "Filters features by feature type"
+      "description": "Filters features by feature type",
+      "parameterI18n": {
+        "targetTypes": {}
+      }
     },
     {
       "name": "FeatureWriter",
@@ -170,75 +488,234 @@
     },
     {
       "name": "FilePathExtractor",
-      "description": "Extracts files from a directory or an archive"
+      "description": "Extracts files from a directory or an archive",
+      "parameterI18n": {
+        "sourceDataset": {},
+        "extractArchive": {}
+      }
     },
     {
       "name": "FilePropertyExtractor",
-      "description": "Extracts properties from a file"
+      "description": "Extracts properties from a file",
+      "parameterI18n": {
+        "filePathAttribute": {}
+      }
+    },
+    {
+      "name": "FootprintReplacer",
+      "description": ""
     },
     {
       "name": "GeoJsonReader",
-      "description": "Reads features from a GeoJSON file"
+      "description": "Reads features from a GeoJSON file",
+      "parameterI18n": {
+        "dataset": {},
+        "inline": {}
+      }
     },
     {
       "name": "GeoJsonWriter",
-      "description": "Writes features to a geojson file"
+      "description": "Writes features to a geojson file",
+      "parameterI18n": {
+        "groupBy": {},
+        "output": {}
+      }
     },
     {
       "name": "GeoPackageReader",
-      "description": "Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata"
+      "description": "Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata",
+      "parameterI18n": {
+        "spatialFilter": {},
+        "force2D": {},
+        "dataset": {},
+        "attributeFilter": {},
+        "includeMetadata": {},
+        "tileFormat": {},
+        "batchSize": {},
+        "readMode": {},
+        "inline": {},
+        "layerName": {}
+      }
     },
     {
       "name": "GeoPackageWriter",
-      "description": "Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables"
+      "description": "Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables",
+      "parameterI18n": {
+        "srsId": {},
+        "geometryType": {},
+        "output": {},
+        "tableName": {},
+        "overwrite": {},
+        "createSpatialIndex": {},
+        "geometryColumn": {}
+      }
     },
     {
       "name": "GeometryCoercer",
-      "description": "Coerces the geometry of a feature to a specific geometry"
-    },
-    {
-      "name": "GeometryDissolver",
-      "description": "Dissolve geometries"
+      "description": "Coerces the geometry of a feature to a specific geometry",
+      "parameterI18n": {
+        "targetType": {}
+      }
     },
     {
       "name": "GeometryExtractor",
-      "description": "Extracts geometry from a feature and adds it as an attribute."
+      "description": "Extracts geometry from a feature and adds it as an attribute.",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
     },
     {
       "name": "GeometryFilter",
       "description": "Filter geometry by type"
     },
     {
-      "name": "GeometryLodFilter",
-      "description": "Filter geometry by lod"
+      "name": "GeometryPartExtractor",
+      "description": "",
+      "parameterI18n": {
+        "geometryPartType": {}
+      }
+    },
+    {
+      "name": "GeometryRemover",
+      "description": ""
     },
     {
       "name": "GeometryReplacer",
-      "description": "Replaces the geometry of a feature with a new geometry."
+      "description": "Replaces the geometry of a feature with a new geometry.",
+      "parameterI18n": {
+        "sourceAttribute": {}
+      }
     },
     {
       "name": "GeometrySplitter",
-      "description": "Split geometry by type"
+      "description": "Split geometry by type",
+      "parameterI18n": {
+        "splitLevel": {}
+      }
     },
     {
       "name": "GeometryValidator",
-      "description": "Validates the geometry of a feature"
+      "description": "Validates the geometry of a feature",
+      "parameterI18n": {
+        "validationTypes": {}
+      }
     },
     {
       "name": "GeometryValueFilter",
       "description": "Filter geometry by value"
     },
     {
+      "name": "GltfReader",
+      "description": "",
+      "parameterI18n": {
+        "inline": {},
+        "mergeMeshes": {},
+        "triangulate": {},
+        "dataset": {},
+        "includeNodes": {}
+      }
+    },
+    {
       "name": "GltfWriter",
-      "description": "Writes features to a Gltf"
+      "description": "Writes features to a Gltf",
+      "parameterI18n": {
+        "attachTexture": {},
+        "dracoCompression": {},
+        "output": {},
+        "schemaKey": {}
+      }
+    },
+    {
+      "name": "GridDivider",
+      "description": "",
+      "parameterI18n": {
+        "unitSquareSize": {},
+        "groupBy": {},
+        "keepSquareOnly": {}
+      }
     },
     {
       "name": "HTTPCaller",
-      "description": "Make HTTP/HTTPS requests and enrich features with response data"
+      "description": "Make HTTP/HTTPS requests and enrich features with response data",
+      "parameterI18n": {
+        "customHeaders": {},
+        "queryParameters": {},
+        "contentType": {},
+        "observability": {},
+        "requestBody": {},
+        "httpOptions": {},
+        "response": {},
+        "method": {},
+        "rateLimit": {},
+        "url": {},
+        "authentication": {},
+        "timeouts": {},
+        "retry": {}
+      },
+      "definitionI18n": {
+        "RetryConfig": {
+          "backoffMultiplier": {},
+          "retryOnStatus": {},
+          "initialDelayMs": {},
+          "honorRetryAfter": {},
+          "maxAttempts": {},
+          "maxDelayMs": {}
+        },
+        "HttpOptions": {
+          "verifySsl": {},
+          "maxRedirects": {},
+          "userAgent": {},
+          "followRedirects": {}
+        },
+        "QueryParam": {
+          "value": {},
+          "name": {}
+        },
+        "ObservabilityConfig": {
+          "durationAttribute": {},
+          "trackDuration": {},
+          "retryCountAttribute": {},
+          "bytesAttribute": {},
+          "finalUrlAttribute": {},
+          "trackRetryCount": {},
+          "trackFinalUrl": {},
+          "trackBytes": {}
+        },
+        "RateLimitConfig": {
+          "timing": {},
+          "intervalMs": {},
+          "requests": {}
+        },
+        "FormField": {
+          "value": {},
+          "name": {}
+        },
+        "ResponseConfig": {
+          "maxResponseSize": {},
+          "responseHandling": {},
+          "errorAttribute": {},
+          "autoDetectEncoding": {},
+          "responseBodyAttribute": {},
+          "responseEncoding": {},
+          "headersAttribute": {},
+          "statusCodeAttribute": {}
+        },
+        "TimeoutConfig": {
+          "transferTimeout": {},
+          "connectionTimeout": {}
+        },
+        "HeaderParam": {
+          "name": {},
+          "value": {}
+        }
+      }
     },
     {
       "name": "HoleCounter",
-      "description": "Counts the number of holes in a geometry and adds it as an attribute."
+      "description": "Counts the number of holes in a geometry and adds it as an attribute.",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
     },
     {
       "name": "HoleExtractor",
@@ -246,27 +723,116 @@
     },
     {
       "name": "HorizontalReprojector",
-      "description": "Reprojects the geometry of a feature to a specified coordinate system"
+      "description": "Reprojects the geometry of a feature to a specified coordinate system",
+      "parameterI18n": {
+        "sourceEpsgCode": {},
+        "targetEpsgCode": {}
+      }
+    },
+    {
+      "name": "ImageRasterizer",
+      "description": "",
+      "parameterI18n": {
+        "imageWidth": {},
+        "onOverlap": {},
+        "saveTo": {}
+      }
     },
     {
       "name": "InputRouter",
-      "description": "Action for first port forwarding for sub-workflows."
+      "description": "Action for first port forwarding for sub-workflows.",
+      "parameterI18n": {
+        "routingPort": {}
+      }
     },
     {
       "name": "JPStandardGridAccumulator",
       "description": "Accumulates features on Japanese standard grid"
     },
     {
+      "name": "JSONFragmenter",
+      "description": ""
+    },
+    {
+      "name": "JsonReader",
+      "description": "",
+      "parameterI18n": {
+        "inline": {},
+        "dataset": {}
+      }
+    },
+    {
+      "name": "JsonWriter",
+      "description": "",
+      "parameterI18n": {
+        "converter": {},
+        "output": {}
+      }
+    },
+    {
       "name": "LineOnLineOverlayer",
-      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines."
+      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
+      "parameterI18n": {
+        "tolerance": {},
+        "groupBy": {},
+        "overlaidListsAttrName": {}
+      }
+    },
+    {
+      "name": "ListConcatenator",
+      "description": "",
+      "parameterI18n": {
+        "separateCharacter": {},
+        "attribute": {},
+        "list": {},
+        "outputAttributeName": {}
+      }
     },
     {
       "name": "ListExploder",
-      "description": "Explodes list attributes"
+      "description": "Explodes list attributes",
+      "parameterI18n": {
+        "sourceAttribute": {}
+      }
+    },
+    {
+      "name": "ListIndexer",
+      "description": "",
+      "parameterI18n": {
+        "copiedAttributePrefix": {},
+        "listIndexToCopy": {},
+        "copiedAttributeSuffix": {},
+        "listAttribute": {}
+      }
     },
     {
       "name": "MVTWriter",
-      "description": "Writes features to a file"
+      "description": "Writes features to a file",
+      "parameterI18n": {
+        "colonToUnderscore": {},
+        "schemaKey": {},
+        "layerName": {},
+        "maxZoom": {},
+        "extent": {},
+        "minZoom": {},
+        "compressOutput": {},
+        "output": {},
+        "skipUnexposedAttributes": {}
+      }
+    },
+    {
+      "name": "NeighborFinder",
+      "description": "",
+      "parameterI18n": {
+        "neighborIndexAttribute": {},
+        "attributePrefix": {},
+        "attributesToTransfer": {},
+        "distanceMetric": {},
+        "maxDistance": {},
+        "numClosest": {},
+        "distanceAttribute": {},
+        "mergeStrategy": {}
+      }
     },
     {
       "name": "NoopProcessor",
@@ -277,16 +843,69 @@
       "description": "noop sink"
     },
     {
+      "name": "NullAttributeMapper",
+      "description": "",
+      "parameterI18n": {
+        "defaultReplacement": {},
+        "mappings": {},
+        "nullDefinition": {},
+        "routeNullFeatures": {},
+        "scope": {}
+      },
+      "definitionI18n": {
+        "AttributeMapping": {
+          "replacement": {},
+          "attribute": {},
+          "onMissing": {}
+        }
+      }
+    },
+    {
+      "name": "ObjReader",
+      "description": "",
+      "parameterI18n": {
+        "triangulate": {},
+        "includeNormals": {},
+        "materialFile": {},
+        "includeTexcoords": {},
+        "inline": {},
+        "mergeGroups": {},
+        "dataset": {},
+        "parseMaterials": {}
+      }
+    },
+    {
+      "name": "ObjWriter",
+      "description": "",
+      "parameterI18n": {
+        "writeMaterials": {},
+        "writeTexcoords": {},
+        "writeNormals": {},
+        "output": {}
+      }
+    },
+    {
       "name": "Offsetter",
-      "description": "Adds offsets to the feature's coordinates."
+      "description": "Adds offsets to the feature's coordinates.",
+      "parameterI18n": {
+        "offsetX": {},
+        "offsetY": {},
+        "offsetZ": {}
+      }
     },
     {
       "name": "OrientationExtractor",
-      "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute."
+      "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute.",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
     },
     {
       "name": "OutputRouter",
-      "description": "Action for last port forwarding for sub-workflows."
+      "description": "Action for last port forwarding for sub-workflows.",
+      "parameterI18n": {
+        "routingPort": {}
+      }
     },
     {
       "name": "PLATEAU3.AttributeFlattener",
@@ -298,7 +917,10 @@
     },
     {
       "name": "PLATEAU3.BuildingUsageAttributeValidator",
-      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found."
+      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
+      "parameterI18n": {
+        "codelistsPath": {}
+      }
     },
     {
       "name": "PLATEAU3.DictionariesInitiator",
@@ -326,39 +948,229 @@
     },
     {
       "name": "PLATEAU3.XMLAttributeExtractor",
-      "description": "Extracts attributes from XML fragments based on a schema definition"
+      "description": "Extracts attributes from XML fragments based on a schema definition",
+      "parameterI18n": {
+        "addNsprefixToFeatureTypes": {},
+        "extractDmGeometryAsXmlFragment": {},
+        "targetPackages": {},
+        "cityCode": {},
+        "exceptFeatureTypes": {},
+        "schemaJson": {}
+      }
     },
     {
       "name": "PLATEAU4.AttributeFlattener",
-      "description": "PLATEAU4 attribute flattener"
+      "description": "PLATEAU4 attribute flattener",
+      "parameterI18n": {
+        "existingFlattenAttributes": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
+      "description": ""
+    },
+    {
+      "name": "PLATEAU4.BuildingPartConnectivityChecker",
+      "description": "",
+      "parameterI18n": {
+        "fileIndexAttribute": {},
+        "partIdAttribute": {},
+        "buildingIdAttribute": {},
+        "lodAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.BuildingUsageAttributeValidator",
+      "description": "",
+      "parameterI18n": {
+        "codelistsPath": {}
+      }
     },
     {
       "name": "PLATEAU4.CityCodeExtractor",
-      "description": "Extracts city code from PLATEAU4 data"
+      "description": "Extracts city code from PLATEAU4 data",
+      "parameterI18n": {
+        "codelistsPathAttribute": {},
+        "cityCodeAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.CityGmlMeshBuilder",
+      "description": "",
+      "parameterI18n": {
+        "epsgCode": {},
+        "errorAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
+      "description": ""
+    },
+    {
+      "name": "PLATEAU4.DestinationMeshCodeExtractor",
+      "description": "",
+      "parameterI18n": {
+        "meshType": {},
+        "epsgCode": {},
+        "meshcodeAttr": {}
+      }
     },
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
-      "description": "Validates domain of definition for PLATEAU4"
+      "description": "Validates domain of definition for PLATEAU4",
+      "parameterI18n": {
+        "codelistsPath": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.FaceExtractor",
+      "description": "",
+      "parameterI18n": {
+        "cityGmlPathAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
+      "description": "",
+      "parameterI18n": {
+        "groupBy": {},
+        "pointSpacing": {},
+        "sampleInterior": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.GmlNameCodeSpaceValidator",
+      "description": "",
+      "parameterI18n": {
+        "cityGmlPath": {}
+      }
     },
     {
       "name": "PLATEAU4.MaxLodExtractor",
-      "description": "Extracts maximum Level of Detail for PLATEAU4"
+      "description": "Extracts maximum Level of Detail for PLATEAU4",
+      "parameterI18n": {
+        "maxLodAttribute": {},
+        "cityGmlPathAttribute": {}
+      }
     },
     {
       "name": "PLATEAU4.MissingAttributeDetector",
-      "description": "Detects missing attributes in PLATEAU4 data"
+      "description": "Detects missing attributes in PLATEAU4 data",
+      "parameterI18n": {
+        "packageAttribute": {}
+      }
     },
     {
       "name": "PLATEAU4.ObjectListExtractor",
-      "description": "Extracts object lists from PLATEAU4 data"
+      "description": "Extracts object lists from PLATEAU4 data",
+      "parameterI18n": {
+        "objectListPathAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.SolarCityGmlAttributeInserter",
+      "description": "",
+      "parameterI18n": {
+        "textureImagePath": {},
+        "measurements": {},
+        "outputDir": {},
+        "pathAttribute": {},
+        "gmlIdAttribute": {},
+        "sourceEpsg": {}
+      },
+      "definitionI18n": {
+        "MeasurementDef": {
+          "attribute": {},
+          "uom": {},
+          "name": {}
+        }
+      }
+    },
+    {
+      "name": "PLATEAU4.SolarPositionCalculator",
+      "description": ""
+    },
+    {
+      "name": "PLATEAU4.SolidIntersectionTestPairCreator",
+      "description": "",
+      "parameterI18n": {
+        "gmlIdAttribute": {},
+        "listAttribute": {},
+        "pairIdAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.TransportationXlinkDetector",
+      "description": "",
+      "parameterI18n": {
+        "cityGmlPath": {}
+      }
     },
     {
       "name": "PLATEAU4.UDXFolderExtractor",
-      "description": "Extracts UDX folders from PLATEAU4 data"
+      "description": "Extracts UDX folders from PLATEAU4 data",
+      "parameterI18n": {
+        "codelistsPath": {},
+        "cityGmlPath": {},
+        "schemasPath": {}
+      }
+    },
+    {
+      "name": "PLATEAU4.UnmatchedXlinkDetector",
+      "description": ""
+    },
+    {
+      "name": "PLATEAU4.UnsharedEdgeDetector",
+      "description": "",
+      "parameterI18n": {
+        "groupBy": {},
+        "tolerance": {}
+      }
     },
     {
       "name": "PlanarityFilter",
-      "description": "Filter geometry by type"
+      "description": "Filter geometry by type",
+      "parameterI18n": {
+        "threshold": {},
+        "filterType": {}
+      }
+    },
+    {
+      "name": "PolygonNormalExtractor",
+      "description": ""
+    },
+    {
+      "name": "PythonScriptProcessor",
+      "description": "",
+      "parameterI18n": {
+        "timeoutSeconds": {},
+        "pythonPath": {},
+        "pythonFile": {},
+        "script": {}
+      }
+    },
+    {
+      "name": "RayIntersector",
+      "description": "",
+      "parameterI18n": {
+        "geomId": {},
+        "includeRayOrigin": {},
+        "outputGeometryType": {},
+        "pairId": {},
+        "ray": {},
+        "tolerance": {},
+        "closestIntersectionOnly": {}
+      },
+      "definitionI18n": {
+        "RayDefinition": {
+          "posX": {},
+          "dirX": {},
+          "dirY": {},
+          "posY": {},
+          "posZ": {},
+          "dirZ": {}
+        }
+      }
     },
     {
       "name": "Refiner",
@@ -366,27 +1178,98 @@
     },
     {
       "name": "RhaiCaller",
-      "description": "Calls Rhai script"
+      "description": "Calls Rhai script",
+      "parameterI18n": {
+        "isTarget": {},
+        "process": {}
+      }
+    },
+    {
+      "name": "Rotator3D",
+      "description": "",
+      "parameterI18n": {
+        "rotation": {}
+      }
+    },
+    {
+      "name": "ShapefileReader",
+      "description": "",
+      "parameterI18n": {
+        "encoding": {},
+        "inline": {},
+        "allowEmptyPath": {},
+        "dataset": {},
+        "force2d": {}
+      }
     },
     {
       "name": "ShapefileWriter",
-      "description": "Writes features to a Shapefile"
+      "description": "Writes features to a Shapefile",
+      "parameterI18n": {
+        "output": {},
+        "groupBy": {}
+      }
+    },
+    {
+      "name": "SolidBoundaryValidator",
+      "description": "",
+      "parameterI18n": {
+        "tolerance": {}
+      }
+    },
+    {
+      "name": "SpatialFilter",
+      "description": "",
+      "parameterI18n": {
+        "passOnMultipleMatches": {},
+        "predicate": {},
+        "mergeFilterAttributes": {},
+        "mergedAttributesPrefix": {},
+        "outputMatchCountAttribute": {}
+      }
     },
     {
       "name": "SqlReader",
-      "description": "Reads features from SQL database"
+      "description": "Reads features from SQL database",
+      "parameterI18n": {
+        "sql": {},
+        "databaseUrl": {}
+      }
     },
     {
       "name": "StatisticsCalculator",
-      "description": "Calculates statistics of features"
-    },
-    {
-      "name": "SurfaceFootprintReplacer",
-      "description": "Replace surface geometry with footprint"
+      "description": "Calculates statistics of features",
+      "parameterI18n": {
+        "groupBy": {},
+        "groupId": {},
+        "calculations": {}
+      },
+      "definitionI18n": {
+        "Calculation": {
+          "expr": {},
+          "newAttribute": {}
+        }
+      }
     },
     {
       "name": "ThreeDimensionBoxReplacer",
-      "description": "Replaces a three Dimension box with a polygon."
+      "description": "Replaces a three Dimension box with a polygon.",
+      "parameterI18n": {
+        "maxZ": {},
+        "minX": {},
+        "maxY": {},
+        "minY": {},
+        "minZ": {},
+        "maxX": {}
+      }
+    },
+    {
+      "name": "ThreeDimensionForcer",
+      "description": "Converts 2D geometries to 3D by adding Z-coordinates (elevation)",
+      "parameterI18n": {
+        "elevation": {},
+        "preserveExistingZ": {}
+      }
     },
     {
       "name": "ThreeDimensionPlanarityRotator",
@@ -394,15 +1277,27 @@
     },
     {
       "name": "ThreeDimensionRotator",
-      "description": "Replaces a three Dimension box with a polygon."
+      "description": "Replaces a three Dimension box with a polygon.",
+      "parameterI18n": {
+        "directionX": {},
+        "originX": {},
+        "originY": {},
+        "angleDegree": {},
+        "directionY": {},
+        "directionZ": {},
+        "originZ": {}
+      }
     },
     {
       "name": "TwoDimensionForcer",
       "description": "Forces a geometry to be two dimensional."
     },
     {
-      "name": "ThreeDimensionForcer",
-      "description": "Converts 2D geometries to 3D by adding Z-coordinates (elevation)"
+      "name": "VertexCounter",
+      "description": "",
+      "parameterI18n": {
+        "outputAttribute": {}
+      }
     },
     {
       "name": "VertexRemover",
@@ -410,11 +1305,10 @@
     },
     {
       "name": "VerticalReprojector",
-      "description": "Reprojects the geometry of a feature to a specified coordinate system"
-    },
-    {
-      "name": "WasmRuntimeExecutor",
-      "description": "Compiles scripts into .wasm and runs at the wasm runtime"
+      "description": "Reprojects the geometry of a feature to a specified coordinate system",
+      "parameterI18n": {
+        "reprojectorType": {}
+      }
     },
     {
       "name": "XMLFragmenter",
@@ -422,11 +1316,26 @@
     },
     {
       "name": "XMLValidator",
-      "description": "Validates XML content"
+      "description": "Validates XML content",
+      "parameterI18n": {
+        "attribute": {},
+        "validationType": {},
+        "inputType": {}
+      }
+    },
+    {
+      "name": "XmlWriter",
+      "description": "",
+      "parameterI18n": {
+        "output": {}
+      }
     },
     {
       "name": "ZipFileWriter",
-      "description": "Writes features to a zip file"
+      "description": "Writes features to a zip file",
+      "parameterI18n": {
+        "output": {}
+      }
     }
   ]
 }
