@@ -6,7 +6,7 @@ import {
   useViewport,
   XYPosition,
 } from "@xyflow/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useT } from "@flow/lib/i18n";
@@ -47,7 +47,9 @@ export default ({
   const { x, y, zoom } = useViewport();
   const { screenToFlowPosition } = useReactFlow();
   const t = useT();
-  const [preventPaste, setPreventPaste] = useState<boolean>(false);
+  const preventPasteRef = useRef(false);
+  const pasteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
@@ -371,83 +373,104 @@ export default ({
     },
     [prepareCopyData, handleNodesChange, handleEdgesChange, copy],
   );
+
   const handlePaste = useCallback(
     async (mousePosition?: XYPosition) => {
-      if (preventPaste) return;
-      const {
-        nodes: pastedNodes,
-        edges: pastedEdges,
-        workflows: pastedWorkflows,
-        isCutByShortCut,
-      } = (await paste()) || {
-        nodes: [],
-        edges: [],
-      };
+      if (preventPasteRef.current) return;
+      preventPasteRef.current = true;
 
-      if (
-        !isMainWorkflow &&
-        pastedNodes.some((n: any) => n.type === "reader" || n.type === "writer")
-      ) {
-        return toast({
-          title: t("Readers/Writers not allowed"),
-          description: t(
-            "Reader and Writer actions cannot be pasted into subworkflows.",
-          ),
-        });
+      // Clear any existing timeout before scheduling a new one
+      if (pasteTimeoutRef.current) {
+        clearTimeout(pasteTimeoutRef.current);
+        pasteTimeoutRef.current = null;
       }
 
-      const newNodes = newNodeCreation(
-        pastedNodes,
-        mousePosition,
-        isCutByShortCut,
-      );
-      const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
+      try {
+        const {
+          nodes: pastedNodes,
+          edges: pastedEdges,
+          workflows: pastedWorkflows,
+          isCutByShortCut,
+        } = (await paste()) || {
+          nodes: [],
+          edges: [],
+        };
 
-      // Compute the current workflow path for pasted subworkflows
-      const currentPath = computeWorkflowPath(rawWorkflows, currentWorkflowId);
-      const { newWorkflows, processedNewNodes } = newWorkflowCreation(
-        newNodes,
-        pastedWorkflows,
-        currentPath,
-      );
+        if (
+          !isMainWorkflow &&
+          pastedNodes.some(
+            (n: any) => n.type === "reader" || n.type === "writer",
+          )
+        ) {
+          return toast({
+            title: t("Readers/Writers not allowed"),
+            description: t(
+              "Reader and Writer actions cannot be pasted into subworkflows.",
+            ),
+          });
+        }
 
-      // deselect all previously selected nodes
-      const nodeChanges: NodeChange[] = nodes.map((n) => ({
-        id: n.id,
-        type: "select",
-        selected: false,
-      }));
+        const newNodes = newNodeCreation(
+          pastedNodes,
+          mousePosition,
+          isCutByShortCut,
+        );
+        const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
 
-      const edgeChanges: EdgeChange[] = edges.map((e) => ({
-        id: e.id,
-        type: "select",
-        selected: false,
-      }));
+        // Compute the current workflow path for pasted subworkflows
+        const currentPath = computeWorkflowPath(
+          rawWorkflows,
+          currentWorkflowId,
+        );
+        const { newWorkflows, processedNewNodes } = newWorkflowCreation(
+          newNodes,
+          pastedWorkflows,
+          currentPath,
+        );
 
-      handleNodesChange(nodeChanges);
-      handleEdgesChange(edgeChanges);
+        // deselect all previously selected nodes
+        const nodeChanges: NodeChange[] = nodes.map((n) => ({
+          id: n.id,
+          type: "select",
+          selected: false,
+        }));
 
-      handleNodesAdd([...processedNewNodes]);
+        const edgeChanges: EdgeChange[] = edges.map((e) => ({
+          id: e.id,
+          type: "select",
+          selected: false,
+        }));
 
-      handleEdgesAdd(newEdges);
+        handleNodesChange(nodeChanges);
+        handleEdgesChange(edgeChanges);
 
-      newWorkflows.forEach((w) => {
-        handleWorkflowUpdate(w.id, w.nodes, w.edges);
-      });
+        handleNodesAdd([...processedNewNodes]);
 
-      copy({
-        nodes: processedNewNodes,
-        edges: newEdges,
-        workflows: newWorkflows,
-        copiedAt: Date.now(),
-      });
-      setPreventPaste(true);
+        handleEdgesAdd(newEdges);
 
-      setTimeout(() => {
-        setPreventPaste(false);
-      }, 500);
+        newWorkflows.forEach((w) => {
+          handleWorkflowUpdate(w.id, w.nodes, w.edges);
+        });
 
-      return pastedNodes;
+        copy({
+          nodes: processedNewNodes,
+          edges: newEdges,
+          workflows: newWorkflows,
+          copiedAt: Date.now(),
+        });
+
+        // Schedule unlock, clear any previous timeout
+        pasteTimeoutRef.current = setTimeout(() => {
+          preventPasteRef.current = false;
+          pasteTimeoutRef.current = null;
+        }, 500);
+
+        return pastedNodes;
+      } finally {
+        if (!pasteTimeoutRef.current) {
+          preventPasteRef.current = false;
+        }
+      }
     },
     [
       nodes,
@@ -455,7 +478,6 @@ export default ({
       rawWorkflows,
       currentWorkflowId,
       isMainWorkflow,
-      preventPaste,
       t,
       copy,
       paste,
@@ -469,6 +491,15 @@ export default ({
       handleWorkflowUpdate,
     ],
   );
+
+  useEffect(() => {
+    return () => {
+      if (pasteTimeoutRef.current) {
+        clearTimeout(pasteTimeoutRef.current);
+        pasteTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     handleCopy,
