@@ -285,12 +285,12 @@ fn parse_polygon(node: &XmlNode) -> Option<Polygon3D<f64>> {
         match local_name(&child.name.0) {
             "exterior" => {
                 if let Some(ring) = find_child(child, "LinearRing") {
-                    exterior = Some(parse_linear_ring(ring));
+                    exterior = Some(parse_polygon_ring(ring, "exterior")?);
                 }
             }
             "interior" => {
                 if let Some(ring) = find_child(child, "LinearRing") {
-                    interiors.push(parse_linear_ring(ring));
+                    interiors.push(parse_polygon_ring(ring, "interior")?);
                 }
             }
             _ => {}
@@ -300,18 +300,15 @@ fn parse_polygon(node: &XmlNode) -> Option<Polygon3D<f64>> {
     exterior.map(|ext| Polygon3D::new(ext, interiors))
 }
 
-fn collect_coords(node: &XmlNode) -> Vec<Coordinate3D<f64>> {
+fn collect_coords(node: &XmlNode) -> Result<Vec<Coordinate3D<f64>>, &'static str> {
     let mut coords: Vec<Coordinate3D<f64>> = Vec::new();
     for child in element_children(node) {
         match local_name(&child.name.0) {
             "posList" => {
-                coords = parse_pos_list(text_content(child));
-                break;
+                return parse_pos_list(text_content(child));
             }
             "pos" => {
-                if let Some(c) = parse_single_pos(text_content(child)) {
-                    coords.push(c);
-                }
+                coords.push(parse_single_pos(text_content(child))?);
             }
             other => {
                 tracing::warn!(
@@ -322,11 +319,23 @@ fn collect_coords(node: &XmlNode) -> Vec<Coordinate3D<f64>> {
             }
         }
     }
-    coords
+    Ok(coords)
 }
 
-fn parse_linear_ring(node: &XmlNode) -> LineString3D<f64> {
-    LineString3D::new(collect_coords(node))
+fn parse_linear_ring(node: &XmlNode) -> Result<LineString3D<f64>, &'static str> {
+    Ok(LineString3D::new(collect_coords(node)?))
+}
+
+fn parse_polygon_ring(node: &XmlNode, role: &'static str) -> Option<LineString3D<f64>> {
+    parse_linear_ring(node)
+        .map_err(|err| {
+            tracing::warn!(
+                error = %err,
+                ring_role = role,
+                "citygml3 geometry: invalid LinearRing coordinates, skipped polygon"
+            );
+        })
+        .ok()
 }
 
 fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
@@ -351,9 +360,8 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
             }
         }
         "LineString" => {
-            let coords = collect_coords(node);
-            if !coords.is_empty() {
-                out.push(LineString3D::new(coords));
+            if let Some(line_string) = parse_line_string(node, "LineString") {
+                out.push(line_string);
             }
         }
         "Curve" => {
@@ -362,9 +370,8 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
                     for seg in element_children(child) {
                         let seg_ln = local_name(&seg.name.0);
                         if seg_ln == "LineStringSegment" {
-                            let coords = collect_coords(seg);
-                            if !coords.is_empty() {
-                                out.push(LineString3D::new(coords));
+                            if let Some(line_string) = parse_line_string(seg, "LineStringSegment") {
+                                out.push(line_string);
                             }
                         } else {
                             tracing::warn!(
@@ -400,8 +407,8 @@ fn collect_points(node: &XmlNode, out: &mut Vec<Coordinate3D<f64>>) {
         "Point" => {
             for child in element_children(node) {
                 if local_name(&child.name.0) == "pos" {
-                    if let Some(c) = parse_single_pos(text_content(child)) {
-                        out.push(c);
+                    if let Some(point) = parse_point_pos(child) {
+                        out.push(point);
                     }
                 }
             }
@@ -415,33 +422,58 @@ fn collect_points(node: &XmlNode, out: &mut Vec<Coordinate3D<f64>>) {
     }
 }
 
-fn parse_pos_list(text: &str) -> Vec<Coordinate3D<f64>> {
-    let values: Vec<f64> = text
-        .split_whitespace()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    values
-        .chunks(3)
-        .filter_map(|c| {
-            if c.len() == 3 {
-                Some(Coordinate3D::new__(c[0], c[1], c[2]))
-            } else {
-                None
-            }
+fn parse_line_string(node: &XmlNode, geometry_type: &'static str) -> Option<LineString3D<f64>> {
+    collect_coords(node)
+        .map(LineString3D::new)
+        .map_err(|err| {
+            tracing::warn!(
+                error = %err,
+                geometry_type,
+                "citygml3 geometry: invalid coordinates, skipped"
+            );
         })
-        .collect()
+        .ok()
+        .filter(|line_string| !line_string.is_empty())
 }
 
-fn parse_single_pos(text: &str) -> Option<Coordinate3D<f64>> {
+fn parse_point_pos(node: &XmlNode) -> Option<Coordinate3D<f64>> {
+    parse_single_pos(text_content(node))
+        .map_err(|err| {
+            tracing::warn!(
+                error = %err,
+                "citygml3 geometry: invalid Point coordinates, skipped"
+            );
+        })
+        .ok()
+}
+
+fn parse_pos_list(text: &str) -> Result<Vec<Coordinate3D<f64>>, &'static str> {
+    let values: Vec<f64> = text
+        .split_whitespace()
+        .map(|s| s.parse::<f64>().map_err(|_| "invalid gml:posList content"))
+        .collect::<Result<_, _>>()?;
+
+    if values.len() % 3 != 0 {
+        return Err("invalid gml:posList content");
+    }
+
+    Ok(values
+        .chunks_exact(3)
+        .map(|c| Coordinate3D::new__(c[0], c[1], c[2]))
+        .collect())
+}
+
+fn parse_single_pos(text: &str) -> Result<Coordinate3D<f64>, &'static str> {
     let vals: Vec<f64> = text
         .split_whitespace()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    if vals.len() >= 3 {
-        Some(Coordinate3D::new__(vals[0], vals[1], vals[2]))
-    } else {
-        None
+        .map(|s| s.parse::<f64>().map_err(|_| "invalid gml:pos content"))
+        .collect::<Result<_, _>>()?;
+
+    if vals.len() != 3 {
+        return Err("invalid gml:pos content");
     }
+
+    Ok(Coordinate3D::new__(vals[0], vals[1], vals[2]))
 }
 
 fn extract_lod(local: &str) -> Option<u8> {
@@ -549,16 +581,25 @@ mod tests {
 
     #[test]
     fn test_parse_pos_list_basic() {
-        let coords = parse_pos_list("1.0 2.0 3.0 4.0 5.0 6.0");
+        let coords = parse_pos_list("1.0 2.0 3.0 4.0 5.0 6.0").expect("expected valid posList");
         assert_eq!(coords.len(), 2);
         assert_eq!(coords[0], Coordinate3D::new__(1.0, 2.0, 3.0));
         assert_eq!(coords[1], Coordinate3D::new__(4.0, 5.0, 6.0));
     }
 
     #[test]
-    fn test_parse_pos_list_truncated_triple_ignored() {
-        let coords = parse_pos_list("1.0 2.0 3.0 4.0 5.0");
-        assert_eq!(coords.len(), 1);
+    fn test_parse_pos_list_truncated_triple_errors() {
+        assert!(parse_pos_list("1.0 2.0 3.0 4.0 5.0").is_err());
+    }
+
+    #[test]
+    fn test_parse_pos_list_invalid_number_errors() {
+        assert!(parse_pos_list("1.0 2.0 nope").is_err());
+    }
+
+    #[test]
+    fn test_parse_single_pos_requires_exactly_three_ordinates() {
+        assert!(parse_single_pos("1.0 2.0 3.0 4.0").is_err());
     }
 
     #[test]
