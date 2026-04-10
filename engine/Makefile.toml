@@ -117,6 +117,12 @@ done
 cargo run --package reearth-flow-cli -- doc-action > ./docs/mdbook/src/action.md
 ''']
 
+[tasks.scaffold-i18n]
+script = ['''
+#!/usr/bin/env bash -eux
+cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/actions"
+''']
+
 [tasks.check-doc-action]
 script = ['''
 #!/usr/bin/env bash -eux
