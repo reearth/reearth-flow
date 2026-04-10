@@ -195,8 +195,9 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 	}
 
 	deleter := ProjectDeleter{
-		File:    i.file,
-		Project: i.projectRepo,
+		File:      i.file,
+		Project:   i.projectRepo,
+		Websocket: i.websocket,
 	}
 	if err := deleter.Delete(ctx, prj, true); err != nil {
 		return err

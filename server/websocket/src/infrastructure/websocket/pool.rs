@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use dashmap::{DashMap, Entry};
 use tokio::sync::Mutex;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 use yrs::sync::{Awareness, DefaultProtocol};
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, Transact, Update};
@@ -162,8 +162,33 @@ impl BroadcastPool {
             let active_connections = group.get_connections_count().await;
             if active_connections == 0 {
                 if let Some((_, group)) = self.groups.remove(doc_id) {
-                    let _ = group.shutdown().await;
-                    info!("Shutdown BroadcastGroup for doc_id: {}", doc_id);
+                    match group.shutdown().await {
+                        Ok(()) => {
+                            info!("Shutdown BroadcastGroup for doc_id: {}", doc_id);
+                        }
+                        Err(e) => {
+                            error!(
+                                "First shutdown attempt failed for doc_id '{}': {}. Retrying...",
+                                doc_id, e
+                            );
+                            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                            match group.shutdown().await {
+                                Ok(()) => {
+                                    info!(
+                                        "Shutdown BroadcastGroup for doc_id: {} (succeeded on retry)",
+                                        doc_id
+                                    );
+                                }
+                                Err(e) => {
+                                    error!(
+                                        "Final shutdown attempt failed for doc_id '{}': {}. \
+                                         Data may be recoverable from Redis stream.",
+                                        doc_id, e
+                                    );
+                                }
+                            }
+                        }
+                    }
                 }
                 should_remove_lock = true;
             } else {

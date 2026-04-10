@@ -57,3 +57,14 @@ pub struct HistoryMetadataResponse {
 pub struct ImportDocumentRequest {
     pub data: Vec<u8>,
 }
+
+#[derive(Serialize)]
+pub struct CleanupResponse {
+    pub deleted: usize,
+}
+
+#[derive(Serialize)]
+pub struct BatchCleanupResponse {
+    pub docs_processed: usize,
+    pub total_deleted: usize,
+}

@@ -184,4 +184,26 @@ impl DocumentRepository for DocumentRepositoryImpl {
         store.import_document(doc_id, data).await?;
         Ok(())
     }
+
+    async fn cleanup_old_updates(&self, doc_id: &str, max_keep: usize) -> Result<usize> {
+        let store = self.store();
+        store.cleanup_old_updates(doc_id, max_keep).await
+    }
+
+    async fn delete_document(&self, doc_id: &str) -> Result<()> {
+        let store = self.store();
+        store.delete_all_doc_data(doc_id).await?;
+
+        // Also clean up Redis stream
+        let redis_store = self.collaborative_storage.redis_store();
+        if let Err(e) = redis_store.delete_stream(doc_id).await {
+            tracing::warn!("Failed to delete Redis stream for doc '{}': {}", doc_id, e);
+        }
+        Ok(())
+    }
+
+    async fn cleanup_all_documents(&self, max_keep: usize) -> Result<(usize, usize)> {
+        let store = self.store();
+        store.cleanup_all_documents(max_keep).await
+    }
 }

@@ -96,6 +96,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		Host:                     cfg.Config.Host,
 		SharedPath:               cfg.Config.SharedPath,
 		WebsocketThriftServerURL: cfg.Config.WebsocketThriftServerURL,
+		WebsocketAPISecret:       cfg.Config.WebsocketAPISecret,
 		SkipPermissionCheck:      cfg.Config.SkipPermissionCheck,
 	}))
 
