@@ -126,6 +126,28 @@ pub(crate) fn apply_parameter_i18n(
     }
 }
 
+/// Applies all i18n overrides from an `I18nSchema` entry to an already-parsed
+/// parameter JSON Schema value. Handles both the legacy merge-patch field and
+/// the new flat property-path fields, in that order.
+fn apply_i18n_to_parameter(parameter_schema: &mut serde_json::Value, i18n_schema: Option<&I18nSchema>) {
+    let Some(i18n) = i18n_schema else { return };
+
+    if let Some(patch) = &i18n.parameter {
+        reearth_flow_common::json::json_merge_patch(parameter_schema, patch);
+    }
+
+    let param_i18n = i18n.parameter_i18n.as_ref();
+    let def_i18n = i18n.definition_i18n.as_ref();
+
+    if param_i18n.is_some() || def_i18n.is_some() {
+        apply_parameter_i18n(
+            parameter_schema,
+            param_i18n.unwrap_or(&HashMap::new()),
+            def_i18n.unwrap_or(&HashMap::new()),
+        );
+    }
+}
+
 pub(crate) fn create_action_schema(
     kind: &NodeKind,
     builtin: bool,
@@ -145,14 +167,7 @@ pub(crate) fn create_action_schema(
                         let mut parameter_schema: serde_json::Value =
                             serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str())
                                 .unwrap();
-                        if let Some(parameter) =
-                            i18n_schema.and_then(|schema| schema.parameter.clone())
-                        {
-                            reearth_flow_common::json::json_merge_patch(
-                                &mut parameter_schema,
-                                &parameter,
-                            );
-                        }
+                        apply_i18n_to_parameter(&mut parameter_schema, i18n_schema);
                         parameter_schema
                     }),
                 vec![],
@@ -177,14 +192,7 @@ pub(crate) fn create_action_schema(
                         let mut parameter_schema: serde_json::Value =
                             serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str())
                                 .unwrap();
-                        if let Some(parameter) =
-                            i18n_schema.and_then(|schema| schema.parameter.clone())
-                        {
-                            reearth_flow_common::json::json_merge_patch(
-                                &mut parameter_schema,
-                                &parameter,
-                            );
-                        }
+                        apply_i18n_to_parameter(&mut parameter_schema, i18n_schema);
                         parameter_schema
                     }),
                 factory
@@ -213,14 +221,7 @@ pub(crate) fn create_action_schema(
                         let mut parameter_schema: serde_json::Value =
                             serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str())
                                 .unwrap();
-                        if let Some(parameter) =
-                            i18n_schema.and_then(|schema| schema.parameter.clone())
-                        {
-                            reearth_flow_common::json::json_merge_patch(
-                                &mut parameter_schema,
-                                &parameter,
-                            );
-                        }
+                        apply_i18n_to_parameter(&mut parameter_schema, i18n_schema);
                         parameter_schema
                     }),
                 factory
