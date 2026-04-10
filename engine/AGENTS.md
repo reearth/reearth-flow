@@ -22,6 +22,9 @@ cargo make doc
 cargo run --package reearth-flow-cli -- run --workflow path/to/workflow.yml
 cargo run --package reearth-flow-cli -- schema-action
 cargo run --package reearth-flow-cli -- doc-action
+
+# Sync i18n skeleton files (adds missing keys, removes stale, preserves existing translations)
+cargo make scaffold-i18n
 ```
 
 ## Development Dependencies
@@ -56,11 +59,39 @@ Each action defines input/output ports, JSON schema for validation, and paramete
 ### Adding New Actions
 
 1. Create factory struct implementing appropriate trait
-2. Define parameter struct with `serde` + `schemars` derives
+2. Define parameter struct with `serde` + `schemars` derives — use `#[schemars(title = "...", description = "...")]` on fields for English display strings
 3. Implement `build()` method returning action instance
 4. Register in appropriate mapping file
-5. Add i18n entries in `schema/i18n/actions/`
-6. Run `cargo make doc-action` to update schemas
+5. Run `cargo make scaffold-i18n` — adds empty i18n skeleton entries for the new action across all language files
+6. Fill in translated strings in `schema/i18n/actions/{lang}.json` for each language
+7. Run `cargo make doc-action` to regenerate all schema files
+
+### Action i18n
+
+Translated action schemas are generated from source files in `schema/i18n/actions/{lang}.json`. **Never edit the generated `schema/actions_*.json` files directly** — they are always overwritten by `cargo make doc-action`.
+
+Each i18n entry supports:
+
+```json
+{
+  "name": "MyAction",
+  "description": "Translated action description",
+  "parameterI18n": {
+    "someProperty": { "title": "Translated title", "description": "Translated description" }
+  },
+  "definitionI18n": {
+    "SomeDefinition": {
+      "fieldName": { "title": "Translated title" }
+    }
+  }
+}
+```
+
+- `parameterI18n` — keys are top-level parameter property names (from `schema["properties"]`)
+- `definitionI18n` — keys are definition names (from `schema["definitions"]`), values are maps of property name → i18n
+- Both fields are optional; missing or empty values fall back to the English strings from schemars annotations
+- Property names come directly from Rust field names after camelCase conversion (predictable without running the generator)
+- `cargo make scaffold-i18n` reconciles all lang files: adds missing keys, removes stale keys, preserves existing translations
 
 ## Key Constraints
 
