@@ -123,7 +123,7 @@ pub fn build_scaffold_i18n_command() -> Command {
         .long_about(
             "Reads all {lang}.json files in the i18n directory and reconciles them \
              against the current action schemas: adds missing parameterI18n / \
-             definitionI18n keys (with empty strings), removes stale keys, and \
+             definitionI18n keys (as empty objects), removes stale keys, and \
              preserves existing translations.",
         )
         .arg(
@@ -206,7 +206,7 @@ impl ScaffoldI18nCliCommand {
                     .entry(action_name.clone())
                     .or_insert_with(|| I18nSchema {
                         name: action_name.clone(),
-                        description: String::new(),
+                        description: None,
                         parameter: None,
                         parameter_i18n: None,
                         definition_i18n: None,

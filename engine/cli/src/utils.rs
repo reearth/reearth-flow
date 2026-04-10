@@ -49,11 +49,24 @@ pub(crate) struct PropertyI18n {
     pub(crate) description: Option<String>,
 }
 
+fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?;
+    Ok(value.and_then(|s| if s.is_empty() { None } else { Some(s) }))
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct I18nSchema {
     pub(crate) name: String,
-    pub(crate) description: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "empty_string_as_none"
+    )]
+    pub(crate) description: Option<String>,
     /// Legacy JSON Merge Patch for parameters (unused, kept for compatibility).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) parameter: Option<serde_json::Value>,
@@ -146,10 +159,12 @@ fn apply_i18n_to_parameter(
     let def_i18n = i18n.definition_i18n.as_ref();
 
     if param_i18n.is_some() || def_i18n.is_some() {
+        let empty_param = HashMap::new();
+        let empty_def = HashMap::new();
         apply_parameter_i18n(
             parameter_schema,
-            param_i18n.unwrap_or(&HashMap::new()),
-            def_i18n.unwrap_or(&HashMap::new()),
+            param_i18n.unwrap_or(&empty_param),
+            def_i18n.unwrap_or(&empty_def),
         );
     }
 }
@@ -165,8 +180,8 @@ pub(crate) fn create_action_schema(
             (
                 factory.name().to_string(),
                 i18n_schema
-                    .map(|schema| schema.description.clone())
-                    .unwrap_or(factory.description().to_string()),
+                    .and_then(|schema| schema.description.clone())
+                    .unwrap_or_else(|| factory.description().to_string()),
                 factory
                     .parameter_schema()
                     .map_or(serde_json::Value::Null, |schema| {
@@ -190,8 +205,8 @@ pub(crate) fn create_action_schema(
             (
                 factory.name().to_string(),
                 i18n_schema
-                    .map(|schema| schema.description.clone())
-                    .unwrap_or(factory.description().to_string()),
+                    .and_then(|schema| schema.description.clone())
+                    .unwrap_or_else(|| factory.description().to_string()),
                 factory
                     .parameter_schema()
                     .map_or(serde_json::Value::Null, |schema| {
@@ -219,8 +234,8 @@ pub(crate) fn create_action_schema(
             (
                 factory.name().to_string(),
                 i18n_schema
-                    .map(|schema| schema.description.clone())
-                    .unwrap_or(factory.description().to_string()),
+                    .and_then(|schema| schema.description.clone())
+                    .unwrap_or_else(|| factory.description().to_string()),
                 factory
                     .parameter_schema()
                     .map_or(serde_json::Value::Null, |schema| {
