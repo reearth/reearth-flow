@@ -23,10 +23,6 @@ pub(super) fn local_name(qname: &str) -> &str {
     qname.rfind(':').map(|i| &qname[i + 1..]).unwrap_or(qname)
 }
 
-pub(super) fn parse_qname(bytes: &[u8]) -> String {
-    std::str::from_utf8(bytes).unwrap_or("").to_string()
-}
-
 pub(super) fn gml_id_attr(node: &XmlNode) -> Option<String> {
     node.attrs
         .iter()

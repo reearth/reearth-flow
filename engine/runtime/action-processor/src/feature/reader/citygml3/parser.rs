@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 use std::io::BufRead;
 use std::sync::Arc;
 
@@ -10,8 +10,8 @@ use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureEx
 use url::Url;
 
 use super::utils::{
-    gml_id_attr, local_name as utils_local_name, parse_qname, xlink_href_attr, QName, XmlChild,
-    XmlNode, GML_NS, XLINK_NS,
+    gml_id_attr, local_name as utils_local_name, xlink_href_attr, QName, XmlChild, XmlNode, GML_NS,
+    XLINK_NS,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -36,6 +36,8 @@ pub enum ParseError {
     Xml(#[from] quick_xml::Error),
     #[error("Encoding error: {0}")]
     Encoding(String),
+    #[error("Malformed XML: {0}")]
+    Malformed(String),
     #[error("No CityModel root element found")]
     NoCityModel,
     #[error("Unexpected end of file inside CityModel")]
@@ -146,7 +148,16 @@ pub(super) fn raw_gml_id(node: &RawNode) -> Option<String> {
 
 fn collect_ids(node: &Arc<RawNode>, source_url: &str, registry: &mut RawRegistry) {
     if let Some(id) = raw_gml_id(node) {
-        registry.insert((source_url.to_string(), id), Arc::clone(node));
+        let key = (source_url.to_string(), id.clone());
+        if let Entry::Vacant(entry) = registry.entry(key) {
+            entry.insert(Arc::clone(node));
+        } else {
+            tracing::error!(
+                id,
+                source_url,
+                "citygml3: duplicate gml:id encountered; keeping first definition and skipping duplicate"
+            );
+        }
     }
     for child in &node.children {
         if let RawChild::Element(e) = child {
@@ -191,27 +202,23 @@ fn next_event<R: BufRead>(
         .read_resolved_event_into(buf)
         .map_err(ParseError::Xml)?;
     let elem_ns = match ns_result {
-        ResolveResult::Bound(ns) => std::str::from_utf8(ns.into_inner())
-            .unwrap_or("")
-            .to_string(),
+        ResolveResult::Bound(ns) => decode_utf8(ns.into_inner(), "element namespace")?,
         _ => String::new(),
     };
     match event {
         Event::Start(e) => Ok(OwnedEvent::Start {
-            name: (parse_qname(e.name().as_ref()), elem_ns),
-            attrs: extract_attrs(&e, reader),
+            name: (decode_utf8(e.name().as_ref(), "element name")?, elem_ns),
+            attrs: extract_attrs(&e, reader)?,
         }),
         Event::End(_) => Ok(OwnedEvent::End),
         Event::Empty(e) => Ok(OwnedEvent::Empty {
-            name: (parse_qname(e.name().as_ref()), elem_ns),
-            attrs: extract_attrs(&e, reader),
+            name: (decode_utf8(e.name().as_ref(), "element name")?, elem_ns),
+            attrs: extract_attrs(&e, reader)?,
         }),
         Event::Text(t) => Ok(OwnedEvent::Text(
             t.unescape().map_err(ParseError::Xml)?.to_string(),
         )),
-        Event::CData(c) => Ok(OwnedEvent::Text(
-            std::str::from_utf8(&c).unwrap_or("").to_string(),
-        )),
+        Event::CData(c) => Ok(OwnedEvent::Text(decode_utf8(&c, "CDATA content")?)),
         Event::Eof => Ok(OwnedEvent::Eof),
         _ => Ok(OwnedEvent::Other),
     }
@@ -327,36 +334,28 @@ fn skip_element<R: BufRead>(reader: &mut NsReader<R>, buf: &mut Vec<u8>) -> Resu
 fn extract_attrs<R: BufRead>(
     e: &quick_xml::events::BytesStart<'_>,
     reader: &NsReader<R>,
-) -> Vec<(QName, String)> {
+) -> Result<Vec<(QName, String)>, ParseError> {
     e.attributes()
-        .filter_map(|a| a.ok())
         .map(|a| {
-            let qname_str = parse_qname(a.key.as_ref());
+            let a = a.map_err(|err| ParseError::Malformed(format!("invalid attribute: {err}")))?;
+            let qname_str = decode_utf8(a.key.as_ref(), "attribute name")?;
             let ns_uri = match reader.resolve_attribute(a.key).0 {
-                ResolveResult::Bound(ns) => std::str::from_utf8(ns.into_inner())
-                    .inspect_err(|err| {
-                        tracing::warn!(
-                            error = %err,
-                            "citygml3: failed to decode attribute namespace; falling back to empty string"
-                        );
-                    })
-                    .unwrap_or("")
-                    .to_string(),
+                ResolveResult::Bound(ns) => decode_utf8(ns.into_inner(), "attribute namespace")?,
                 _ => String::new(),
             };
             let v = a
                 .unescape_value()
-                .inspect_err(|err| {
-                    tracing::warn!(
-                        error = %err,
-                        "citygml3: failed to decode attribute value; falling back to empty string"
-                    );
-                })
-                .unwrap_or_default()
+                .map_err(|err| ParseError::Malformed(format!("invalid attribute value: {err}")))?
                 .to_string();
-            ((qname_str, ns_uri), v)
+            Ok(((qname_str, ns_uri), v))
         })
         .collect()
+}
+
+fn decode_utf8(bytes: &[u8], context: &str) -> Result<String, ParseError> {
+    std::str::from_utf8(bytes)
+        .map(|s| s.to_string())
+        .map_err(|err| ParseError::Encoding(format!("invalid UTF-8 in {context}: {err}")))
 }
 
 fn build_feature(feature_type: &str, gml_id: Option<&str>, content: AttributeValue) -> Feature {
