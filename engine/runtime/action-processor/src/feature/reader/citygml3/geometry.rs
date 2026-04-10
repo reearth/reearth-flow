@@ -453,7 +453,7 @@ fn parse_pos_list(text: &str) -> Result<Vec<Coordinate3D<f64>>, &'static str> {
         .map(|s| s.parse::<f64>().map_err(|_| "invalid gml:posList content"))
         .collect::<Result<_, _>>()?;
 
-    if values.len() % 3 != 0 {
+    if !values.len().is_multiple_of(3) {
         return Err("invalid gml:posList content");
     }
 
