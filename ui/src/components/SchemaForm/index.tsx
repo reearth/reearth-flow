@@ -43,7 +43,8 @@ const buildExprUiSchema = (
 
   const isExprType =
     schemaObj.$ref === "#/definitions/Expr" ||
-    schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr");
+    schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr") ||
+    schemaObj.anyOf?.some((item: any) => item.$ref === "#/definitions/Expr");
 
   // Check if this schema references any definition that contains expressions
   let referencesExprDefinition = false;
@@ -71,6 +72,9 @@ const buildExprUiSchema = (
               const propHasExpr =
                 prop?.$ref === "#/definitions/Expr" ||
                 prop?.allOf?.some(
+                  (item: any) => item.$ref === "#/definitions/Expr",
+                ) ||
+                prop?.anyOf?.some(
                   (item: any) => item.$ref === "#/definitions/Expr",
                 );
 

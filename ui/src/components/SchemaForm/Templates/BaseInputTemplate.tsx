@@ -64,6 +64,9 @@ const BaseInputTemplate = <
           def?.properties?.[name]?.$ref === "#/definitions/Expr" ||
           def?.properties?.[name]?.allOf?.some(
             (item: any) => item.$ref === "#/definitions/Expr",
+          ) ||
+          def?.properties?.[name]?.anyOf?.some(
+            (item: any) => item.$ref === "#/definitions/Expr",
           ),
       );
     }
