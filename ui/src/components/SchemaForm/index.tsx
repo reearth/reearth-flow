@@ -55,7 +55,10 @@ const buildExprUiSchema = (
       referencesExprDefinition = Object.values(referencedDef.properties).some(
         (prop: any) =>
           prop?.$ref === "#/definitions/Expr" ||
-          prop?.allOf?.some((item: any) => item.$ref === "#/definitions/Expr"),
+          prop?.allOf?.some(
+            (item: any) => item.$ref === "#/definitions/Expr",
+          ) ||
+          prop?.anyOf?.some((item: any) => item.$ref === "#/definitions/Expr"),
       );
     }
   }
