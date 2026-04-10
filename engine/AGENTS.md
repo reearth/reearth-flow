@@ -20,11 +20,10 @@ cargo make doc
 
 # CLI commands
 cargo run --package reearth-flow-cli -- run --workflow path/to/workflow.yml
-cargo run --package reearth-flow-cli -- schema-action
-cargo run --package reearth-flow-cli -- doc-action
 
-# Sync i18n skeleton files (adds missing keys, removes stale, preserves existing translations)
-cargo make scaffold-i18n
+# Action schema generation (run in order when adding/modifying actions — see "Adding New Actions" below)
+cargo make schema-base        # generates actions.json + syncs i18n skeletons
+cargo make schema-translated  # generates actions_{lang}.json + docs from i18n files
 ```
 
 ## Development Dependencies
@@ -62,9 +61,11 @@ Each action defines input/output ports, JSON schema for validation, and paramete
 2. Define parameter struct with `serde` + `schemars` derives — use `#[schemars(title = "...", description = "...")]` on fields for English display strings
 3. Implement `build()` method returning action instance
 4. Register in appropriate mapping file
-5. Run `cargo make scaffold-i18n` — adds empty i18n skeleton entries for the new action across all language files
+5. Run `cargo make schema-base` — regenerates `actions.json` and syncs i18n skeleton entries for the new action across all language files
 6. Fill in translated strings in `schema/i18n/actions/{lang}.json` for each language
-7. Run `cargo make doc-action` to regenerate all schema files
+7. Run `cargo make schema-translated` — generates all `actions_{lang}.json` files and docs
+
+**Always run both commands in order. Never run `schema-translated` without first running `schema-base` when action code has changed.**
 
 ### Action i18n
 
@@ -91,7 +92,7 @@ Each i18n entry supports:
 - `definitionI18n` — keys are definition names (from `schema["definitions"]`), values are maps of property name → i18n
 - Both fields are optional; missing or empty values fall back to the English strings from schemars annotations
 - Property names come directly from Rust field names after camelCase conversion (predictable without running the generator)
-- `cargo make scaffold-i18n` reconciles all lang files: adds missing keys, removes stale keys, preserves existing translations
+- `cargo make schema-base` reconciles all lang files as part of its run: adds missing keys, removes stale keys, preserves existing translations
 
 ## Key Constraints
 

@@ -7,17 +7,21 @@
       "name": "AreaCalculator",
       "description": "ポリゴンジオメトリの平面または傾斜面積を計算し、結果を属性として追加する",
       "parameterI18n": {
+        "": {
+          "title": "AreaCalculator Parameters",
+          "description": "Configuration for calculating areas of geometries."
+        },
         "areaType": {
           "title": "面積タイプ",
           "description": "実行する面積計算のタイプ（平面面積または傾斜面積）"
         },
-        "outputAttribute": {
-          "title": "出力属性名",
-          "description": "計算された面積を格納する属性の名前"
-        },
         "multiplier": {
           "title": "乗数",
           "description": "面積値をスケールするための乗数"
+        },
+        "outputAttribute": {
+          "title": "出力属性名",
+          "description": "計算された面積を格納する属性の名前"
         }
       }
     },
@@ -25,28 +29,83 @@
       "name": "AreaOnAreaOverlayer",
       "description": "あるエリアの上に別のエリアを重ね合わせる",
       "parameterI18n": {
-        "generateList": {},
-        "outputAttribute": {},
-        "groupBy": {},
-        "tolerance": {},
-        "accumulationMode": {}
+        "": {
+          "title": "AreaOnAreaOverlayer Parameters",
+          "description": "Configure how area overlay analysis is performed"
+        },
+        "accumulationMode": {
+          "title": "Accumulation Mode",
+          "description": "Controls how attributes from input features are handled in output features"
+        },
+        "generateList": {
+          "title": "Generate List",
+          "description": "Name of the list attribute to store source feature attributes"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Optional attributes to group features by during overlay analysis"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute to store overlap count"
+        },
+        "tolerance": {
+          "title": "Tolerance",
+          "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation."
+        }
       }
     },
     {
       "name": "AttributeAggregator",
       "description": "属性に基づいて地物をグルーピングする",
       "parameterI18n": {
-        "method": {},
-        "aggregateAttributes": {},
-        "calculation": {},
-        "calculationValue": {},
-        "calculationAttribute": {}
+        "": {
+          "title": "AttributeAggregator Parameters",
+          "description": "Configure how features are grouped and aggregated based on attribute values"
+        },
+        "aggregateAttributes": {
+          "title": "List of attributes to aggregate"
+        },
+        "calculation": {
+          "title": "Calculation to perform"
+        },
+        "calculationAttribute": {
+          "title": "Attribute to store calculation result"
+        },
+        "calculationValue": {
+          "title": "Value to use for calculation"
+        },
+        "method": {
+          "title": "Method to use for aggregation"
+        }
       },
       "definitionI18n": {
         "AggregateAttribute": {
-          "newAttribute": {},
-          "attribute": {},
-          "attributeValue": {}
+          "attribute": {
+            "title": "Existing attribute to use"
+          },
+          "attributeValue": {
+            "title": "Value to use for attribute"
+          },
+          "newAttribute": {
+            "title": "New attribute to create"
+          }
+        }
+      },
+      "enumI18n": {
+        "Method": {
+          "count": {
+            "title": "Count Items",
+            "description": "Count the number of features in the group"
+          },
+          "max": {
+            "title": "Maximum Value",
+            "description": "Find the maximum value in the group"
+          },
+          "min": {
+            "title": "Minimum Value",
+            "description": "Find the minimum value in the group"
+          }
         }
       }
     },
@@ -54,24 +113,54 @@
       "name": "AttributeBulkArrayJoiner",
       "description": "配列属性を単一の値に結合する",
       "parameterI18n": {
-        "ignoreAttributes": {}
+        "": {
+          "title": "AttributeBulkArrayJoiner Parameters",
+          "description": "Configure which array attributes to join into single values"
+        },
+        "ignoreAttributes": {
+          "title": "Attributes to Ignore",
+          "description": "List of attribute names to skip during array joining process"
+        }
       }
     },
     {
       "name": "AttributeConversionTable",
       "description": "ルックアップテーブルを使用して地物属性を変換する",
       "parameterI18n": {
-        "dataset": {},
-        "rules": {},
-        "format": {},
-        "inline": {}
+        "": {
+          "title": "AttributeConversionTable Parameters"
+        },
+        "dataset": {
+          "title": "Dataset URI",
+          "description": "Path or URI to external conversion table file"
+        },
+        "format": {
+          "title": "Table Format",
+          "description": "Format of the conversion table (CSV, TSV, or JSON)"
+        },
+        "inline": {
+          "title": "Inline Table Data",
+          "description": "Conversion table data provided directly as string content"
+        },
+        "rules": {
+          "title": "Conversion Rules",
+          "description": "List of rules defining how to map attributes using the conversion table"
+        }
       },
       "definitionI18n": {
         "AttributeConversionTableRule": {
-          "featureFroms": {},
-          "conversionTableKeys": {},
-          "conversionTableTo": {},
-          "featureTo": {}
+          "conversionTableKeys": {
+            "title": "Keys to match in conversion table"
+          },
+          "conversionTableTo": {
+            "title": "Attribute to convert to"
+          },
+          "featureFroms": {
+            "title": "Attributes to convert from"
+          },
+          "featureTo": {
+            "title": "Attribute to convert to"
+          }
         }
       }
     },
@@ -79,27 +168,48 @@
       "name": "AttributeDuplicateFilter",
       "description": "重複した属性を持つ地物をフィルタリングする",
       "parameterI18n": {
-        "filterBy": {}
+        "": {
+          "title": "AttributeDuplicateFilter Parameters"
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
+        }
       }
     },
     {
       "name": "AttributeFilePathInfoExtractor",
       "description": "属性からファイルパス情報を抽出する",
       "parameterI18n": {
-        "attribute": {}
+        "": {
+          "title": "AttributeFilePathInfoExtractor Parameters"
+        },
+        "attribute": {
+          "title": "Source Path Attribute",
+          "description": "Attribute containing the file path to analyze for extracting file system information"
+        }
       }
     },
     {
       "name": "AttributeFlattener",
       "description": "ネストされた属性のフラット化",
       "parameterI18n": {
-        "attributes": {}
+        "": {
+          "title": "AttributeFlattener Parameters"
+        },
+        "attributes": {
+          "title": "Attributes to Flatten",
+          "description": "Map/object attributes that should be flattened - their nested properties will become top-level attributes"
+        }
       }
     },
     {
       "name": "AttributeManager",
       "description": "フィーチャー属性の作成、変換、名前変更、削除",
       "parameterI18n": {
+        "": {
+          "title": "AttributeManager Parameters"
+        },
         "operations": {
           "title": "属性操作",
           "description": "フィーチャー属性に対して実行する操作のリスト"
@@ -107,15 +217,15 @@
       },
       "definitionI18n": {
         "Operation": {
+          "attribute": {
+            "title": "属性名"
+          },
           "method": {
             "title": "実行する操作"
           },
           "value": {
             "title": "値",
             "description": "操作に使用する値"
-          },
-          "attribute": {
-            "title": "属性名"
           }
         }
       }
@@ -124,16 +234,34 @@
       "name": "AttributeMapper",
       "description": "属性をマッピングする",
       "parameterI18n": {
-        "mappers": {}
+        "": {
+          "title": "AttributeMapper Parameters"
+        },
+        "mappers": {
+          "title": "Attribute Mappers",
+          "description": "List of mapping rules to transform attributes using expressions or value copying"
+        }
       },
       "definitionI18n": {
         "Mapper": {
-          "attribute": {},
-          "valueAttribute": {},
-          "multipleExpr": {},
-          "expr": {},
-          "childAttribute": {},
-          "parentAttribute": {}
+          "attribute": {
+            "title": "Attribute name"
+          },
+          "childAttribute": {
+            "title": "Child attribute name"
+          },
+          "expr": {
+            "title": "Expression to evaluate"
+          },
+          "multipleExpr": {
+            "title": "Expression to evaluate multiple attributes"
+          },
+          "parentAttribute": {
+            "title": "Parent attribute name"
+          },
+          "valueAttribute": {
+            "title": "Attribute name to get value from"
+          }
         }
       }
     },
@@ -141,108 +269,321 @@
       "name": "AttributeRangeMapper",
       "description": "属性値を範囲にマッピングし、対応する出力値を割り当てます",
       "parameterI18n": {
-        "inputAttribute": {},
-        "outputAttribute": {},
-        "defaultValue": {},
-        "rangeTable": {}
+        "": {
+          "title": "AttributeRangeMapper Parameters"
+        },
+        "defaultValue": {
+          "title": "Default Value",
+          "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
+        },
+        "inputAttribute": {
+          "title": "Input Attribute",
+          "description": "The attribute to evaluate for range mapping"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "The attribute to store the mapped value"
+        },
+        "rangeTable": {
+          "title": "Range Lookup Table",
+          "description": "List of ranges and their corresponding output values"
+        }
       },
       "definitionI18n": {
         "RangeEntry": {
-          "outputValue": {},
-          "to": {},
-          "from": {}
+          "from": {
+            "title": "From (Minimum)",
+            "description": "The minimum value of the range (inclusive)"
+          },
+          "outputValue": {
+            "title": "Output Value",
+            "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+          },
+          "to": {
+            "title": "To (Maximum)",
+            "description": "The maximum value of the range (exclusive)"
+          }
         }
       }
     },
     {
       "name": "BoundaryExtractor",
       "parameterI18n": {
-        "exteriorOnly": {},
-        "keepEmptyBoundaries": {}
+        "": {
+          "title": "BoundaryExtractor Parameters",
+          "description": "Configuration for extracting boundaries from geometries."
+        },
+        "exteriorOnly": {
+          "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)"
+        },
+        "keepEmptyBoundaries": {
+          "description": "Whether to keep features with empty boundaries (default: false)"
+        }
       }
     },
     {
       "name": "BoundsExtractor",
       "description": "境界を抽出する",
       "parameterI18n": {
-        "xmax": {},
-        "ymax": {},
-        "xmin": {},
-        "zmax": {},
-        "ymin": {},
-        "zmin": {}
+        "": {
+          "title": "BoundsExtractor Parameters"
+        },
+        "xmax": {
+          "title": "Maximum X Attribute",
+          "description": "Attribute name for storing the maximum X coordinate (defaults to \"xmax\")"
+        },
+        "xmin": {
+          "title": "Minimum X Attribute",
+          "description": "Attribute name for storing the minimum X coordinate (defaults to \"xmin\")"
+        },
+        "ymax": {
+          "title": "Maximum Y Attribute",
+          "description": "Attribute name for storing the maximum Y coordinate (defaults to \"ymax\")"
+        },
+        "ymin": {
+          "title": "Minimum Y Attribute",
+          "description": "Attribute name for storing the minimum Y coordinate (defaults to \"ymin\")"
+        },
+        "zmax": {
+          "title": "Maximum Z Attribute",
+          "description": "Attribute name for storing the maximum Z coordinate (defaults to \"zmax\")"
+        },
+        "zmin": {
+          "title": "Minimum Z Attribute",
+          "description": "Attribute name for storing the minimum Z coordinate (defaults to \"zmin\")"
+        }
       }
     },
     {
       "name": "Bufferer",
       "description": "ジオメトリの周囲にバッファを作成する",
       "parameterI18n": {
-        "bufferType": {},
-        "distance": {},
-        "interpolationAngle": {}
+        "": {
+          "title": "Bufferer Parameters",
+          "description": "Configure how to create buffers around input geometries"
+        },
+        "bufferType": {
+          "title": "Buffer Type",
+          "description": "The type of buffer to create around the input geometry"
+        },
+        "distance": {
+          "title": "Distance",
+          "description": "The distance to extend the buffer from the original geometry (in coordinate units)"
+        },
+        "interpolationAngle": {
+          "title": "Interpolation Angle",
+          "description": "The angle in degrees used for curve interpolation when creating rounded corners"
+        }
+      },
+      "enumI18n": {
+        "BufferType": {
+          "area2d": {
+            "title": "2D Area Buffer",
+            "description": "Creates a 2D polygon buffer around the input geometry"
+          }
+        }
       }
     },
     {
       "name": "BulkAttributeRenamer",
       "description": "属性名にプレフィックス／サフィックスを追加・削除、またはテキスト置換して一括でリネームする",
       "parameterI18n": {
-        "textToFind": {},
-        "renameAction": {},
-        "renameType": {},
-        "renameValue": {},
-        "selectedAttributes": {}
+        "": {
+          "title": "BulkAttributeRenamer Parameters",
+          "description": "Configure how to rename feature attributes in bulk operations"
+        },
+        "renameAction": {
+          "title": "Rename Operation",
+          "description": "The type of renaming operation to perform on the attribute names"
+        },
+        "renameType": {
+          "title": "Which Attributes to Rename",
+          "description": "Choose whether to rename all attributes or only selected ones"
+        },
+        "renameValue": {
+          "title": "Text Value",
+          "description": "The text to add as prefix/suffix, remove, or use as replacement"
+        },
+        "selectedAttributes": {
+          "title": "Selected Attribute Names",
+          "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)"
+        },
+        "textToFind": {
+          "title": "Text Pattern to Find",
+          "description": "Regular expression pattern to match when using \"Replace Text\" operation"
+        }
+      },
+      "enumI18n": {
+        "RenameAction": {
+          "AddPrefix": {
+            "title": "Add Prefix",
+            "description": "Add text to the beginning of attribute names"
+          },
+          "AddSuffix": {
+            "title": "Add Suffix",
+            "description": "Add text to the end of attribute names"
+          },
+          "RemovePrefix": {
+            "title": "Remove Prefix",
+            "description": "Remove text from the beginning of attribute names"
+          },
+          "RemoveSuffix": {
+            "title": "Remove Suffix",
+            "description": "Remove text from the end of attribute names"
+          },
+          "StringReplace": {
+            "title": "Replace Text",
+            "description": "Find and replace text using regular expressions"
+          }
+        },
+        "RenameType": {
+          "All": {
+            "title": "All Attributes",
+            "description": "Rename all attributes in the feature"
+          },
+          "Selected": {
+            "title": "Selected Attributes",
+            "description": "Rename only specific attributes listed below"
+          }
+        }
       }
     },
     {
       "name": "CSGBuilder",
       "parameterI18n": {
-        "createList": {},
-        "listAttributeName": {},
-        "pairIdAttribute": {}
+        "": {
+          "title": "CSG Builder Parameters",
+          "description": "Configure how the CSG builder pairs features from left and right ports"
+        },
+        "createList": {
+          "title": "Create List",
+          "description": "When enabled, creates a list of attribute values from both children (left and right)"
+        },
+        "listAttributeName": {
+          "title": "List Attribute Name",
+          "description": "Name of the attribute to create the list from (required when create_list is true)"
+        },
+        "pairIdAttribute": {
+          "title": "Pair ID Attribute",
+          "description": "Expression to evaluate the pair ID used to match features from left and right ports"
+        }
       }
     },
     {
       "name": "CSGEvaluator",
       "parameterI18n": {
-        "tolerance": {}
+        "": {
+          "title": "CSG Evaluator Parameters",
+          "description": "Configure evaluation parameters for CSG operations"
+        },
+        "tolerance": {
+          "title": "Tolerance",
+          "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations."
+        }
       }
     },
     {
       "name": "CenterPointReplacer",
       "description": "地物のジオメトリを、地物のバウンディングボックス中央や質量中心、または地物領域内に確実に収まる点で置き換える",
       "parameterI18n": {
-        "mode": {}
+        "": {
+          "title": "CenterPointReplacerParam"
+        },
+        "mode": {
+          "description": "The method used to compute the replacement center point."
+        }
+      },
+      "enumI18n": {
+        "CenterPointMode": {
+          "anyInsidePoint": {
+            "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility)."
+          },
+          "boundingBoxCenter": {
+            "description": "Computes the center of the geometry's bounding box."
+          },
+          "centerOfGravity": {
+            "description": "Computes the centroid (center of gravity) of the geometry."
+          }
+        }
       }
     },
     {
       "name": "Cesium3DTilesWriter",
       "description": "地物をファイルに書き出す",
       "parameterI18n": {
-        "compressOutput": {},
-        "skipUnexposedAttributes": {},
-        "maxZoom": {},
-        "schemaKey": {},
-        "attachTexture": {},
-        "minZoom": {},
-        "dracoCompression": {},
-        "output": {}
+        "": {
+          "title": "Cesium3DTilesWriter Parameters"
+        },
+        "attachTexture": {
+          "title": "Attach Textures",
+          "description": "Whether to include texture information in the generated tiles"
+        },
+        "compressOutput": {
+          "title": "Compressed Output Path",
+          "description": "Optional path for compressed archive output"
+        },
+        "dracoCompression": {
+          "title": "Draco Compression",
+          "description": "Use draco compression. Defaults to true."
+        },
+        "maxZoom": {
+          "title": "Maximum Zoom Level",
+          "description": "Maximum zoom level for tile generation (0-24)"
+        },
+        "minZoom": {
+          "title": "Minimum Zoom Level",
+          "description": "Minimum zoom level for tile generation (0-24)"
+        },
+        "output": {
+          "title": "Output Path",
+          "description": "Directory path where the 3D tiles will be written"
+        },
+        "schemaKey": {
+          "title": "Schema Key",
+          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
+        },
+        "skipUnexposedAttributes": {
+          "title": "Skip unexposed Attributes",
+          "description": "Skip attributes with double underscore prefix"
+        }
       }
     },
     {
       "name": "CityGmlReader",
       "parameterI18n": {
-        "dataset": {},
-        "inline": {},
-        "flatten": {}
+        "": {
+          "title": "CityGmlReader Parameters",
+          "description": "Configuration for reading CityGML files as 3D city models."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "flatten": {},
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        }
       }
     },
     {
       "name": "CityGmlWriter",
       "parameterI18n": {
-        "lodFilter": {},
-        "output": {},
-        "prettyPrint": {},
-        "epsgCode": {}
+        "": {
+          "title": "CityGmlWriterParam"
+        },
+        "epsgCode": {
+          "description": "EPSG code for coordinate reference system"
+        },
+        "lodFilter": {
+          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
+        },
+        "output": {
+          "description": "Output file path expression"
+        },
+        "prettyPrint": {
+          "description": "Whether to format output with indentation (default: true)"
+        }
       }
     },
     {
@@ -257,76 +598,280 @@
       "name": "ConvexHullAccumulator",
       "description": "凸包を作成する",
       "parameterI18n": {
-        "groupBy": {}
+        "": {
+          "title": "ConvexHullAccumulator Parameters"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes used to group features before creating convex hulls - each group gets its own hull"
+        }
       }
     },
     {
       "name": "CoordinateExtractor",
       "parameterI18n": {
-        "defaultZValue": {},
-        "mode": {}
+        "": {
+          "title": "Coordinate Extractor Parameters"
+        },
+        "defaultZValue": {
+          "title": "Default Z Value",
+          "description": "Z value to use for 2D geometries that have no Z coordinate."
+        },
+        "mode": {
+          "title": "Extraction Mode",
+          "description": "How to extract coordinates from geometry vertices."
+        }
       }
     },
     {
       "name": "CsvReader",
       "description": "CSVファイルから地物を読み取る",
       "parameterI18n": {
-        "format": {},
-        "headerRows": {},
-        "inline": {},
-        "offset": {},
-        "encoding": {},
-        "dataset": {},
-        "geometry": {}
+        "": {
+          "title": "CsvReader Parameters",
+          "description": "Configure how CSV and TSV files are processed and read"
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "encoding": {
+          "title": "Character Encoding",
+          "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive."
+        },
+        "format": {
+          "title": "File Format",
+          "description": "Choose the delimiter format for the input file"
+        },
+        "geometry": {
+          "title": "Geometry Configuration",
+          "description": "Optional configuration for parsing geometry from CSV columns"
+        },
+        "headerRows": {
+          "title": "Header Row Count",
+          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\"."
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "offset": {
+          "title": "Header Row Offset",
+          "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)"
+        }
       },
       "definitionI18n": {
         "GeometryConfig": {
-          "epsg": {}
+          "epsg": {
+            "title": "EPSG Code",
+            "description": "Coordinate Reference System code (e.g., 4326 for WGS84)"
+          }
+        }
+      },
+      "enumI18n": {
+        "CsvFormat": {
+          "csv": {
+            "title": "CSV (Comma-Separated Values)",
+            "description": "File with comma-separated values"
+          },
+          "tsv": {
+            "title": "TSV (Tab-Separated Values)",
+            "description": "File with tab-separated values"
+          }
         }
       }
     },
     {
       "name": "CsvWriter",
       "parameterI18n": {
-        "format": {},
-        "geometry": {},
-        "output": {}
+        "": {
+          "title": "CsvWriter Parameters",
+          "description": "Configuration for writing features to CSV/TSV files."
+        },
+        "format": {
+          "description": "File format: csv (comma) or tsv (tab)"
+        },
+        "geometry": {
+          "title": "Geometry Configuration",
+          "description": "Optional configuration for exporting geometry to CSV columns"
+        },
+        "output": {
+          "description": "Output path or expression for the CSV/TSV file to create"
+        }
+      },
+      "enumI18n": {
+        "CsvFormat": {
+          "csv": {
+            "title": "CSV (Comma-Separated Values)",
+            "description": "File with comma-separated values"
+          },
+          "tsv": {
+            "title": "TSV (Tab-Separated Values)",
+            "description": "File with tab-separated values"
+          }
+        }
       }
     },
     {
       "name": "CzmlReader",
       "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取ります。時系列データや時間動的プロパティに対応",
       "parameterI18n": {
-        "dataset": {},
-        "inline": {},
-        "force2d": {},
-        "timeSampling": {},
-        "skipDocumentPacket": {}
+        "": {
+          "title": "CzmlReader Parameters",
+          "description": "Configuration for reading CZML files as geographic features."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "force2d": {
+          "title": "Force 2D",
+          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "skipDocumentPacket": {
+          "title": "Skip Document Packet",
+          "description": "If true, skips the document packet (first packet with version/clock info)"
+        },
+        "timeSampling": {
+          "title": "Time Sampling Strategy",
+          "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter."
+        }
+      },
+      "enumI18n": {
+        "TimeSamplingStrategy": {
+          "allSamples": {
+            "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions."
+          },
+          "firstSampleOnly": {
+            "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data."
+          },
+          "preserveRaw": {
+            "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CzmlWriter."
+          }
+        }
       }
     },
     {
       "name": "CzmlWriter",
       "description": "地物をCZMLファイルとしてエクスポートします。時間動的エンティティや時系列位置データに対応",
       "parameterI18n": {
-        "groupTimeseriesBy": {},
-        "heightAttribute": {},
-        "opacity": {},
-        "interpolationAlgorithm": {},
-        "epoch": {},
-        "output": {},
-        "interpolationDegree": {},
-        "colorAttribute": {},
-        "timeField": {},
-        "groupBy": {}
+        "": {
+          "title": "CzmlWriter Parameters",
+          "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CzmlWriter with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CzmlWriter with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```"
+        },
+        "colorAttribute": {
+          "title": "Color Attribute",
+          "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry."
+        },
+        "epoch": {
+          "title": "Epoch",
+          "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes used to group features into separate CZML files"
+        },
+        "groupTimeseriesBy": {
+          "title": "Group Timeseries By",
+          "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions."
+        },
+        "heightAttribute": {
+          "title": "Height Attribute",
+          "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value."
+        },
+        "interpolationAlgorithm": {
+          "title": "Interpolation Algorithm",
+          "description": "Algorithm used by Cesium to interpolate between time-tagged samples."
+        },
+        "interpolationDegree": {
+          "title": "Interpolation Degree",
+          "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE)."
+        },
+        "opacity": {
+          "title": "Opacity",
+          "description": "Alpha value (0–255) for polygon fill color. Default: 180."
+        },
+        "output": {
+          "title": "Output File Path",
+          "description": "Path where the CZML file will be written"
+        },
+        "timeField": {
+          "title": "Time Field",
+          "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
+        }
+      },
+      "enumI18n": {
+        "InterpolationAlgorithm": {
+          "HERMITE": {
+            "description": "Hermite spline interpolation using tangent data."
+          },
+          "LAGRANGE": {
+            "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5)."
+          },
+          "LINEAR": {
+            "description": "Linear interpolation between samples (degree 1)."
+          }
+        }
       }
     },
     {
       "name": "DateTimeConverter",
       "parameterI18n": {
-        "inputFormat": {},
-        "outputFormat": {},
-        "outputAttribute": {},
-        "attribute": {}
+        "": {
+          "title": "DateTimeConverter Parameters"
+        },
+        "attribute": {
+          "description": "Attribute containing the datetime value to convert"
+        },
+        "inputFormat": {
+          "description": "Format of the input value (default: auto)"
+        },
+        "outputAttribute": {
+          "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`"
+        },
+        "outputFormat": {
+          "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode)."
+        }
+      },
+      "enumI18n": {
+        "DateTimeInputFormat": {
+          "auto": {
+            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format."
+          },
+          "date": {
+            "description": "Date only format (YYYY-MM-DD)"
+          },
+          "rfc3339": {
+            "description": "RFC3339 / ISO 8601 format"
+          },
+          "unix_ms": {
+            "description": "Unix timestamp in milliseconds"
+          },
+          "unix_s": {
+            "description": "Unix timestamp in seconds"
+          }
+        },
+        "DateTimeOutputFormat": {
+          "auto": {
+            "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string."
+          },
+          "date": {
+            "description": "Date only format (YYYY-MM-DD)"
+          },
+          "rfc3339": {
+            "description": "RFC3339 / ISO 8601 format"
+          },
+          "unix_ms": {
+            "description": "Unix timestamp in milliseconds"
+          },
+          "unix_s": {
+            "description": "Unix timestamp in seconds"
+          }
+        }
       }
     },
     {
@@ -337,17 +882,54 @@
       "name": "DirectoryDecompressor",
       "description": "アーカイブからディレクトリを展開する",
       "parameterI18n": {
-        "archiveAttributes": {},
-        "findDeepestSingleFolder": {}
+        "": {
+          "title": "DirectoryDecompressor Parameters",
+          "description": "Configures the extraction and decompression of archive files."
+        },
+        "archiveAttributes": {
+          "description": "Attributes containing archive file paths to be extracted and decompressed"
+        },
+        "findDeepestSingleFolder": {
+          "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is."
+        }
       }
     },
     {
       "name": "Dissolver",
       "description": "共通属性を持つ隣接ポリゴンを融合する",
       "parameterI18n": {
-        "attributeAccumulation": {},
-        "groupBy": {},
-        "tolerance": {}
+        "": {
+          "title": "Dissolver Parameters",
+          "description": "Configure how to dissolve features by grouping them based on shared attributes"
+        },
+        "attributeAccumulation": {
+          "title": "Attribute Accumulation",
+          "description": "Strategy for handling attributes when dissolving features"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together"
+        },
+        "tolerance": {
+          "title": "Tolerance",
+          "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the dissolve operation."
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "Drop Incoming Attributes",
+            "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)"
+          },
+          "mergeAttributes": {
+            "title": "Merge Incoming Attributes",
+            "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array"
+          },
+          "useOneFeature": {
+            "title": "Use Attributes From One Feature",
+            "description": "The output inherits the attributes of one representative feature (the last feature in the group)"
+          }
+        }
       }
     },
     {
@@ -362,46 +944,101 @@
       "name": "ElevationExtractor",
       "description": "地物の最初のZ座標値を抽出し、属性として格納する",
       "parameterI18n": {
-        "outputAttribute": {}
+        "": {
+          "title": "Elevation Extractor Parameters",
+          "description": "Configure where to store the extracted elevation value from geometry coordinates"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute where the extracted elevation value will be stored"
+        }
       }
     },
     {
       "name": "ExcelWriter",
       "parameterI18n": {
-        "output": {},
-        "sheetName": {}
+        "": {
+          "title": "ExcelWriter Parameters",
+          "description": "Configuration for writing features to Microsoft Excel format."
+        },
+        "output": {
+          "description": "Output path or expression for the Excel file to create"
+        },
+        "sheetName": {
+          "description": "Sheet name (defaults to \"Sheet1\")"
+        }
       }
     },
     {
       "name": "Extruder",
       "description": "ポリゴンを一定の距離で押し出す（エクストルード）",
       "parameterI18n": {
-        "distance": {}
+        "": {
+          "title": "Extruder Parameters",
+          "description": "Configure how to extrude 2D polygons into 3D solid geometries"
+        },
+        "distance": {
+          "title": "Distance",
+          "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
+        }
       }
     },
     {
       "name": "FeatureCityGmlReader",
       "description": "CityGMLファイルから地物を読み取る",
       "parameterI18n": {
-        "dataset": {},
-        "flatten": {},
-        "codelistsPath": {}
+        "": {
+          "title": "FeatureCityGmlReader Parameters",
+          "description": "Configuration for reading and processing CityGML files as features."
+        },
+        "codelistsPath": {
+          "title": "Codelists Path",
+          "description": "Optional path to the codelists directory for resolving codelist values"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path or expression to the CityGML dataset file to be read"
+        },
+        "flatten": {
+          "title": "Flatten",
+          "description": "Whether to flatten the hierarchical structure of the CityGML data"
+        }
       }
     },
     {
       "name": "FeatureCounter",
       "description": "地物数をカウントする",
       "parameterI18n": {
-        "outputAttribute": {},
-        "countStart": {},
-        "groupBy": {}
+        "": {
+          "title": "Feature Counter Parameters",
+          "description": "Configure how features are counted and grouped, and where to store the count"
+        },
+        "countStart": {
+          "title": "Start Count",
+          "description": "Starting value for the counter"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "List of attribute names to group features by before counting"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute where the count will be stored"
+        }
       }
     },
     {
       "name": "FeatureCreator",
       "description": "式に基づいて地物を作成する",
       "parameterI18n": {
-        "creator": {}
+        "": {
+          "title": "FeatureCreator Parameters",
+          "description": "Configure how to generate custom features using script expressions"
+        },
+        "creator": {
+          "title": "Script Expression",
+          "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
+        }
       }
     },
     {
@@ -412,74 +1049,176 @@
       "name": "FeatureFilePathExtractor",
       "description": "地物からファイルパスを抽出する",
       "parameterI18n": {
-        "extractArchive": {},
-        "destPrefix": {},
-        "sourceDataset": {}
+        "": {
+          "title": "Feature File Path Extractor Parameters",
+          "description": "Configure how to extract file paths from datasets and optionally extract archives"
+        },
+        "destPrefix": {
+          "title": "Destination Prefix",
+          "description": "Optional prefix to add to extracted file paths"
+        },
+        "extractArchive": {
+          "title": "Extract Archive",
+          "description": "Whether to extract archive files found in the dataset"
+        },
+        "sourceDataset": {
+          "title": "Source Dataset",
+          "description": "Expression to get the source dataset path or URL"
+        }
       }
     },
     {
       "name": "FeatureFilter",
       "description": "条件に基づいて地物をフィルタリングする",
       "parameterI18n": {
-        "conditions": {}
+        "": {
+          "title": "Feature Filter Parameters",
+          "description": "Configure the conditions and output ports for filtering features based on expressions"
+        },
+        "conditions": {
+          "title": "Filter Conditions",
+          "description": "List of conditions and their corresponding output ports for routing filtered features"
+        }
       },
       "definitionI18n": {
         "Condition": {
-          "outputPort": {},
-          "expr": {}
+          "expr": {
+            "title": "Condition expression"
+          },
+          "outputPort": {
+            "title": "Output port"
+          }
         }
       }
     },
     {
       "name": "FeatureJoiner",
       "parameterI18n": {
-        "requestorAttribute": {},
-        "conflictResolution": {},
-        "joinType": {},
-        "requestorAttributeValue": {},
-        "supplierAttribute": {},
-        "supplierAttributeValue": {}
+        "": {
+          "title": "FeatureJoiner Parameters",
+          "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
+        },
+        "conflictResolution": {
+          "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
+        },
+        "joinType": {
+          "description": "Join type: inner, left, or full"
+        },
+        "requestorAttribute": {
+          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
+        },
+        "requestorAttributeValue": {
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
+        },
+        "supplierAttribute": {
+          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
+        },
+        "supplierAttributeValue": {
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
+        }
+      },
+      "enumI18n": {
+        "ConflictResolution": {
+          "requestorWins": {
+            "description": "Requestor attributes win on conflict"
+          },
+          "supplierWins": {
+            "description": "Supplier attributes win on conflict (default)"
+          }
+        },
+        "JoinType": {
+          "full": {
+            "description": "Emit all features from both sides"
+          },
+          "inner": {
+            "description": "Only emit features where a match exists"
+          },
+          "left": {
+            "description": "Emit all requestor features (default)"
+          }
+        }
       }
     },
     {
       "name": "FeatureLodFilter",
       "description": "詳細レベルに基づいてフィルタリングする",
       "parameterI18n": {
-        "filterKey": {}
+        "": {
+          "title": "FeatureLodFilter Parameters",
+          "description": "Configuration for filtering features based on Level of Detail (LOD)."
+        },
+        "filterKey": {
+          "description": "Attribute used to group features for LOD filtering"
+        }
       }
     },
     {
       "name": "FeatureMerger",
       "description": "属性に基づいて地物をマージする",
       "parameterI18n": {
-        "supplierAttributeValue": {},
-        "requestorAttributeValue": {},
-        "supplierAttribute": {},
-        "completeGrouped": {},
-        "requestorAttribute": {}
+        "": {
+          "title": "FeatureMerger Parameters",
+          "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
+        },
+        "completeGrouped": {
+          "description": "Whether to complete grouped features before processing the next group"
+        },
+        "requestorAttribute": {
+          "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
+        },
+        "requestorAttributeValue": {
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
+        },
+        "supplierAttribute": {
+          "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
+        },
+        "supplierAttributeValue": {
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
+        }
       }
     },
     {
       "name": "FeatureReader",
-      "description": "条件に基づいて地物をフィルタリングする"
+      "description": "条件に基づいて地物をフィルタリングする",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureReaderParam"
+        }
+      }
     },
     {
       "name": "FeatureSorter",
       "description": "地物を属性でソートする",
       "parameterI18n": {
-        "attributes": {},
-        "order": {}
+        "": {
+          "title": "FeatureSorter Parameters",
+          "description": "Configuration for sorting features based on attribute values."
+        },
+        "attributes": {
+          "description": "Attributes to use for sorting features (sort order based on attribute order)"
+        },
+        "order": {
+          "description": "Sorting order (ascending or descending)"
+        }
       }
     },
     {
       "name": "FeatureTransformer",
       "description": "式を用いて地物を変換する",
       "parameterI18n": {
-        "transformers": {}
+        "": {
+          "title": "FeatureTransformer Parameters",
+          "description": "Configuration for applying transformation expressions to features."
+        },
+        "transformers": {
+          "description": "List of transformation expressions to apply to each feature"
+        }
       },
       "definitionI18n": {
         "Transform": {
-          "expr": {}
+          "expr": {
+            "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)"
+          }
         }
       }
     },
@@ -487,26 +1226,54 @@
       "name": "FeatureTypeFilter",
       "description": "地物タイプに基づいて地物をフィルタリングする",
       "parameterI18n": {
-        "targetTypes": {}
+        "": {
+          "title": "FeatureTypeFilter Parameters",
+          "description": "Configuration for filtering features based on their feature type."
+        },
+        "targetTypes": {
+          "description": "Target feature types"
+        }
       }
     },
     {
       "name": "FeatureWriter",
-      "description": "地物をファイルに書き込む"
+      "description": "地物をファイルに書き込む",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureWriter Parameters",
+          "description": "Configuration for writing features to different file formats."
+        }
+      }
     },
     {
       "name": "FilePathExtractor",
       "description": "ディレクトリまたはアーカイブからファイルを抽出する",
       "parameterI18n": {
-        "sourceDataset": {},
-        "extractArchive": {}
+        "": {
+          "title": "FilePathExtractor Parameters",
+          "description": "Configuration for extracting file paths from directories or archives."
+        },
+        "extractArchive": {
+          "title": "Extract Archive",
+          "description": "Whether to extract files from archives (zip files, etc.) or just list them"
+        },
+        "sourceDataset": {
+          "title": "Source Dataset",
+          "description": "Path or expression pointing to the source directory or archive file"
+        }
       }
     },
     {
       "name": "FilePropertyExtractor",
       "description": "ファイルからプロパティを抽出する",
       "parameterI18n": {
-        "filePathAttribute": {}
+        "": {
+          "title": "FilePropertyExtractor Parameters",
+          "description": "Configuration for extracting file system properties from files."
+        },
+        "filePathAttribute": {
+          "description": "Attribute name containing the file path to analyze for properties"
+        }
       }
     },
     {
@@ -516,69 +1283,147 @@
       "name": "GeoJsonReader",
       "description": "GeoJSONファイルから地物を読み取る",
       "parameterI18n": {
-        "dataset": {},
-        "inline": {}
+        "": {
+          "title": "GeoJsonReader Parameters",
+          "description": "Configuration for reading GeoJSON files as geographic features."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        }
       }
     },
     {
       "name": "GeoJsonWriter",
       "description": "地物をGeoJSONファイルに書き出す",
       "parameterI18n": {
-        "output": {},
-        "groupBy": {}
+        "": {
+          "title": "GeoJsonWriter Parameters",
+          "description": "Configuration for writing features to GeoJSON files."
+        },
+        "groupBy": {
+          "description": "Optional attributes to group features by, creating separate files for each group"
+        },
+        "output": {
+          "description": "Output path or expression for the GeoJSON file to create"
+        }
       }
     },
     {
       "name": "GeoPackageReader",
       "description": "GeoPackage（.gpkg）ファイルからベクター地物、タイル、メタデータを読み取る",
       "parameterI18n": {
+        "": {
+          "title": "GeoPackageReaderParam"
+        },
         "attributeFilter": {},
-        "includeMetadata": {},
-        "readMode": {},
-        "layerName": {},
-        "dataset": {},
-        "tileFormat": {},
-        "spatialFilter": {},
         "batchSize": {},
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
         "force2D": {},
-        "inline": {}
+        "includeMetadata": {},
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "layerName": {},
+        "readMode": {},
+        "spatialFilter": {},
+        "tileFormat": {}
       }
     },
     {
       "name": "GeoPackageWriter",
       "description": "地物をGeoPackage（.gpkg）ファイルに書き出す。SQLite構造、空間インデックス、メタデータテーブルを適切に作成",
       "parameterI18n": {
-        "createSpatialIndex": {},
-        "geometryColumn": {},
-        "overwrite": {},
-        "srsId": {},
-        "tableName": {},
-        "geometryType": {},
-        "output": {}
+        "": {
+          "title": "GeoPackageWriter Parameters",
+          "description": "Configuration for writing features to GeoPackage files."
+        },
+        "createSpatialIndex": {
+          "description": "Create RTree spatial index (default: true)"
+        },
+        "geometryColumn": {
+          "description": "Geometry column name (default: \"geom\")"
+        },
+        "geometryType": {
+          "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)"
+        },
+        "output": {
+          "description": "Output path for the GeoPackage file to create"
+        },
+        "overwrite": {
+          "description": "Overwrite existing file (default: false)"
+        },
+        "srsId": {
+          "description": "Spatial Reference System ID (default: 4326 for WGS84)"
+        },
+        "tableName": {
+          "description": "Table name to create (default: \"features\")"
+        }
       }
     },
     {
       "name": "GeometryCoercer",
       "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する",
       "parameterI18n": {
-        "targetType": {}
+        "": {
+          "title": "GeometryCoercer Parameters",
+          "description": "Configuration for coercing geometries to specific target types."
+        },
+        "targetType": {
+          "description": "Target geometry type to coerce features to (e.g., LineString)"
+        }
       }
     },
     {
       "name": "GeometryExtractor",
       "description": "地物からジオメトリを抽出し、属性として追加する",
       "parameterI18n": {
-        "outputAttribute": {}
+        "": {
+          "title": "Geometry Extractor Parameters",
+          "description": "Configure where to store the extracted geometry data as a compressed attribute"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute where the extracted geometry data will be stored as compressed JSON"
+        }
       }
     },
     {
       "name": "GeometryFilter",
-      "description": "ジオメトリをタイプに基づいてフィルタリングする"
+      "description": "ジオメトリをタイプに基づいてフィルタリングする",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Filter Parameters",
+          "description": "Configure how to filter features based on their geometry type"
+        }
+      }
     },
     {
       "name": "GeometryPartExtractor",
       "parameterI18n": {
-        "geometryPartType": {}
+        "": {
+          "title": "Geometry Part Extractor Parameters",
+          "description": "Configure which geometry parts to extract from 3D geometries"
+        },
+        "geometryPartType": {
+          "title": "Part Type",
+          "description": "Type of geometry part to extract"
+        }
+      },
+      "enumI18n": {
+        "GeometryPartType": {
+          "surface": {
+            "description": "Extract surfaces as separate features"
+          }
+        }
       }
     },
     {
@@ -588,21 +1433,56 @@
       "name": "GeometryReplacer",
       "description": "地物のジオメトリを新しいジオメトリで置き換える",
       "parameterI18n": {
-        "sourceAttribute": {}
+        "": {
+          "title": "Geometry Replacer Parameters",
+          "description": "Configure which attribute contains the geometry data to replace the feature's current geometry"
+        },
+        "sourceAttribute": {
+          "title": "Source Attribute",
+          "description": "Name of the attribute containing the compressed geometry data to use as the new geometry"
+        }
       }
     },
     {
       "name": "GeometrySplitter",
       "description": "ジオメトリをタイプ別に分割する",
       "parameterI18n": {
-        "splitLevel": {}
+        "": {
+          "title": "GeometrySplitterParam",
+          "description": "Parameters for GeometrySplitter"
+        },
+        "splitLevel": {
+          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
+        }
+      },
+      "enumI18n": {
+        "SplitLevel": {
+          "element": {
+            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
+          },
+          "polygon": {
+            "description": "Split down to individual polygons within each element"
+          }
+        }
       }
     },
     {
       "name": "GeometryValidator",
       "description": "地物のジオメトリを検証する",
       "parameterI18n": {
-        "validationTypes": {}
+        "": {
+          "title": "Geometry Validator Parameters",
+          "description": "Configure which validation checks to perform on feature geometries"
+        },
+        "validationTypes": {
+          "title": "Validation Types",
+          "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)"
+        }
+      },
+      "enumI18n": {
+        "ValidationType": {
+          "duplicatePoints": {}
+        }
       }
     },
     {
@@ -612,104 +1492,394 @@
     {
       "name": "GltfReader",
       "parameterI18n": {
-        "includeNodes": {},
-        "dataset": {},
-        "inline": {},
-        "triangulate": {},
-        "mergeMeshes": {}
+        "": {
+          "title": "GltfReaderParam"
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "includeNodes": {
+          "title": "Include Nodes",
+          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "mergeMeshes": {
+          "title": "Merge Meshes",
+          "description": "If true, combines all meshes from the glTF file into a single output feature"
+        },
+        "triangulate": {
+          "title": "Triangulate",
+          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+        }
       }
     },
     {
       "name": "GltfWriter",
       "description": "地物をGltfファイルに書き出す",
       "parameterI18n": {
-        "schemaKey": {},
-        "attachTexture": {},
-        "output": {},
-        "dracoCompression": {}
+        "": {
+          "title": "GltfWriter Parameters",
+          "description": "Configuration for writing features to GLTF 3D format."
+        },
+        "attachTexture": {
+          "description": "Whether to attach texture information to the GLTF model"
+        },
+        "dracoCompression": {
+          "description": "Apply Draco compression to the geometry"
+        },
+        "output": {
+          "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file."
+        },
+        "schemaKey": {
+          "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes."
+        }
       }
     },
     {
       "name": "GridDivider",
       "parameterI18n": {
-        "groupBy": {},
-        "keepSquareOnly": {},
-        "unitSquareSize": {}
+        "": {
+          "title": "GridDivider Parameters"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes used to group features - each group gets its own grid origin"
+        },
+        "keepSquareOnly": {
+          "title": "Keep Square Only",
+          "description": "If true, only output complete grid squares (discard edge pieces). Default: false"
+        },
+        "unitSquareSize": {
+          "title": "Unit Square Size",
+          "description": "Side length of each grid cell (in the same units as the geometry coordinates)"
+        }
       }
     },
     {
       "name": "HTTPCaller",
       "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャを強化する",
       "parameterI18n": {
-        "method": {},
-        "retry": {},
-        "rateLimit": {},
-        "authentication": {},
-        "contentType": {},
-        "customHeaders": {},
-        "queryParameters": {},
-        "requestBody": {},
-        "url": {},
-        "httpOptions": {},
-        "observability": {},
-        "response": {},
-        "timeouts": {}
+        "": {
+          "title": "HTTP Caller Parameters",
+          "description": "Configure HTTP/HTTPS requests to enrich features with response data"
+        },
+        "authentication": {
+          "title": "Authentication",
+          "description": "Authentication method and credentials for the request"
+        },
+        "contentType": {
+          "title": "Content Type",
+          "description": "Override the Content-Type header for the request"
+        },
+        "customHeaders": {
+          "title": "Custom Headers",
+          "description": "Additional HTTP headers to include in the request"
+        },
+        "httpOptions": {
+          "title": "HTTP Options",
+          "description": "HTTP client behavior settings (SSL, redirects, user agent)"
+        },
+        "method": {
+          "title": "HTTP Method",
+          "description": "The HTTP method to use for the request"
+        },
+        "observability": {
+          "title": "Observability",
+          "description": "Track additional metrics and diagnostics"
+        },
+        "queryParameters": {
+          "title": "Query Parameters",
+          "description": "URL query parameters to append to the request"
+        },
+        "rateLimit": {
+          "title": "Rate Limiting",
+          "description": "Rate limiting configuration to control request frequency"
+        },
+        "requestBody": {
+          "title": "Request Body",
+          "description": "The body content to send with the request"
+        },
+        "response": {
+          "title": "Response Configuration",
+          "description": "Configure how response data is stored and processed"
+        },
+        "retry": {
+          "title": "Retry Configuration",
+          "description": "Settings for automatic retry on failures"
+        },
+        "timeouts": {
+          "title": "Timeouts",
+          "description": "Connection and transfer timeout settings"
+        },
+        "url": {
+          "title": "URL",
+          "description": "The target URL for the HTTP request (supports expressions)"
+        }
       },
       "definitionI18n": {
-        "ObservabilityConfig": {
-          "trackFinalUrl": {},
-          "trackRetryCount": {},
-          "retryCountAttribute": {},
-          "bytesAttribute": {},
-          "finalUrlAttribute": {},
-          "trackBytes": {},
-          "durationAttribute": {},
-          "trackDuration": {}
-        },
-        "QueryParam": {
-          "value": {},
-          "name": {}
-        },
-        "ResponseConfig": {
-          "maxResponseSize": {},
-          "errorAttribute": {},
-          "responseBodyAttribute": {},
-          "autoDetectEncoding": {},
-          "headersAttribute": {},
-          "responseEncoding": {},
-          "statusCodeAttribute": {},
-          "responseHandling": {}
-        },
-        "TimeoutConfig": {
-          "connectionTimeout": {},
-          "transferTimeout": {}
-        },
-        "RetryConfig": {
-          "retryOnStatus": {},
-          "honorRetryAfter": {},
-          "initialDelayMs": {},
-          "maxDelayMs": {},
-          "maxAttempts": {},
-          "backoffMultiplier": {}
+        "FormField": {
+          "name": {
+            "title": "Field Name",
+            "description": "The name of the form field"
+          },
+          "value": {
+            "title": "Field Value",
+            "description": "The value of the form field (supports expressions)"
+          }
         },
         "HeaderParam": {
-          "value": {},
-          "name": {}
-        },
-        "RateLimitConfig": {
-          "timing": {},
-          "intervalMs": {},
-          "requests": {}
+          "name": {
+            "title": "Header Name",
+            "description": "The name of the HTTP header"
+          },
+          "value": {
+            "title": "Header Value",
+            "description": "The value of the header (supports expressions)"
+          }
         },
         "HttpOptions": {
-          "followRedirects": {},
-          "maxRedirects": {},
-          "userAgent": {},
-          "verifySsl": {}
+          "followRedirects": {
+            "title": "Follow Redirects",
+            "description": "Whether to automatically follow HTTP redirects (default: true)"
+          },
+          "maxRedirects": {
+            "title": "Max Redirects",
+            "description": "Maximum number of redirects to follow (default: 10)"
+          },
+          "userAgent": {
+            "title": "User Agent",
+            "description": "Custom User-Agent header value"
+          },
+          "verifySsl": {
+            "title": "Verify SSL",
+            "description": "Whether to verify SSL/TLS certificates (default: true)"
+          }
         },
-        "FormField": {
-          "value": {},
-          "name": {}
+        "ObservabilityConfig": {
+          "bytesAttribute": {
+            "title": "Bytes Attribute",
+            "description": "Feature attribute name to store the response body size"
+          },
+          "durationAttribute": {
+            "title": "Duration Attribute",
+            "description": "Feature attribute name to store request duration in milliseconds"
+          },
+          "finalUrlAttribute": {
+            "title": "Final URL Attribute",
+            "description": "Feature attribute name to store the final URL after redirects"
+          },
+          "retryCountAttribute": {
+            "title": "Retry Count Attribute",
+            "description": "Feature attribute name to store the number of retry attempts"
+          },
+          "trackBytes": {
+            "title": "Track Bytes",
+            "description": "Whether to track the response body size in bytes (default: false)"
+          },
+          "trackDuration": {
+            "title": "Track Duration",
+            "description": "Whether to track the total request duration (default: true)"
+          },
+          "trackFinalUrl": {
+            "title": "Track Final URL",
+            "description": "Whether to track the final URL after redirects (default: false)"
+          },
+          "trackRetryCount": {
+            "title": "Track Retry Count",
+            "description": "Whether to track the number of retry attempts (default: true)"
+          }
+        },
+        "QueryParam": {
+          "name": {
+            "title": "Parameter Name",
+            "description": "The name of the query parameter"
+          },
+          "value": {
+            "title": "Parameter Value",
+            "description": "The value of the parameter (supports expressions)"
+          }
+        },
+        "RateLimitConfig": {
+          "intervalMs": {
+            "title": "Interval",
+            "description": "Time interval in milliseconds for the rate limit (default: 1000ms)"
+          },
+          "requests": {
+            "title": "Requests",
+            "description": "Maximum number of requests allowed within the interval"
+          },
+          "timing": {
+            "title": "Timing Strategy",
+            "description": "How to distribute requests within the interval (default: Burst)"
+          }
+        },
+        "ResponseConfig": {
+          "autoDetectEncoding": {
+            "title": "Auto Detect Encoding",
+            "description": "Automatically detect character encoding from response headers"
+          },
+          "errorAttribute": {
+            "title": "Error Attribute",
+            "description": "Feature attribute name to store any error messages (default: \"_http_error\")"
+          },
+          "headersAttribute": {
+            "title": "Headers Attribute",
+            "description": "Feature attribute name to store the response headers (default: \"_headers\")"
+          },
+          "maxResponseSize": {
+            "title": "Max Response Size",
+            "description": "Maximum response body size in bytes (unlimited if not set)"
+          },
+          "responseBodyAttribute": {
+            "title": "Response Body Attribute",
+            "description": "Feature attribute name to store the response body (default: \"_response_body\")"
+          },
+          "responseEncoding": {
+            "title": "Response Encoding",
+            "description": "How to encode the response body (text, base64, or binary)"
+          },
+          "responseHandling": {
+            "title": "Response Handling",
+            "description": "How to handle the response data (attribute or file)"
+          },
+          "statusCodeAttribute": {
+            "title": "Status Code Attribute",
+            "description": "Feature attribute name to store the HTTP status code (default: \"_http_status_code\")"
+          }
+        },
+        "RetryConfig": {
+          "backoffMultiplier": {
+            "title": "Backoff Multiplier",
+            "description": "Multiplier for exponential backoff between retries (default: 2.0)"
+          },
+          "honorRetryAfter": {
+            "title": "Honor Retry-After Header",
+            "description": "Whether to respect the Retry-After header from server responses (default: true)"
+          },
+          "initialDelayMs": {
+            "title": "Initial Delay",
+            "description": "Initial delay in milliseconds before first retry (default: 100ms)"
+          },
+          "maxAttempts": {
+            "title": "Max Attempts",
+            "description": "Maximum number of retry attempts (default: 3)"
+          },
+          "maxDelayMs": {
+            "title": "Max Delay",
+            "description": "Maximum delay in milliseconds between retries (default: 10000ms)"
+          },
+          "retryOnStatus": {
+            "title": "Retry on Status Codes",
+            "description": "List of HTTP status codes that should trigger a retry (e.g., [429, 503])"
+          }
+        },
+        "TimeoutConfig": {
+          "connectionTimeout": {
+            "title": "Connection Timeout",
+            "description": "Maximum time in seconds to establish a connection (default: 60)"
+          },
+          "transferTimeout": {
+            "title": "Transfer Timeout",
+            "description": "Maximum time in seconds to complete the entire request (default: 90)"
+          }
+        }
+      },
+      "enumI18n": {
+        "ApiKeyLocation": {
+          "header": {
+            "title": "Header",
+            "description": "Include API key in HTTP header"
+          },
+          "query": {
+            "title": "Query Parameter",
+            "description": "Include API key in URL query string"
+          }
+        },
+        "HttpMethod": {
+          "COPY": {
+            "title": "COPY",
+            "description": "WebDAV: Copy a resource"
+          },
+          "DELETE": {
+            "title": "DELETE",
+            "description": "Delete a resource"
+          },
+          "GET": {
+            "title": "GET",
+            "description": "Retrieve data from the server"
+          },
+          "HEAD": {
+            "title": "HEAD",
+            "description": "Retrieve headers only (no body)"
+          },
+          "LOCK": {
+            "title": "LOCK",
+            "description": "WebDAV: Lock a resource"
+          },
+          "MKCOL": {
+            "title": "MKCOL",
+            "description": "WebDAV: Create a collection"
+          },
+          "MOVE": {
+            "title": "MOVE",
+            "description": "WebDAV: Move a resource"
+          },
+          "OPTIONS": {
+            "title": "OPTIONS",
+            "description": "Query supported methods"
+          },
+          "PATCH": {
+            "title": "PATCH",
+            "description": "Partially update a resource"
+          },
+          "POST": {
+            "title": "POST",
+            "description": "Submit data to the server"
+          },
+          "PROPFIND": {
+            "title": "PROPFIND",
+            "description": "WebDAV: Retrieve properties"
+          },
+          "PROPPATCH": {
+            "title": "PROPPATCH",
+            "description": "WebDAV: Update properties"
+          },
+          "PUT": {
+            "title": "PUT",
+            "description": "Update or create a resource"
+          },
+          "UNLOCK": {
+            "title": "UNLOCK",
+            "description": "WebDAV: Unlock a resource"
+          }
+        },
+        "ResponseEncoding": {
+          "base64": {
+            "title": "Base64",
+            "description": "Encode response as base64 string"
+          },
+          "binary": {
+            "title": "Binary",
+            "description": "Store response as raw binary data"
+          },
+          "text": {
+            "title": "Text",
+            "description": "Decode response as UTF-8 text"
+          }
+        },
+        "TimingStrategy": {
+          "burst": {
+            "title": "Burst",
+            "description": "Allow all requests immediately, then pause until next interval"
+          },
+          "distributed": {
+            "title": "Distributed",
+            "description": "Evenly distribute requests throughout the interval"
+          }
         }
       }
     },
@@ -717,7 +1887,14 @@
       "name": "HoleCounter",
       "description": "ジオメトリ内の穴の数をカウントし、属性として追加する",
       "parameterI18n": {
-        "outputAttribute": {}
+        "": {
+          "title": "Hole Counter Parameters",
+          "description": "Configure where to store the count of holes found in polygon geometries"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute where the hole count will be stored as a number"
+        }
       }
     },
     {
@@ -728,22 +1905,55 @@
       "name": "HorizontalReprojector",
       "description": "地物のジオメトリを指定された座標系に水平再投影する",
       "parameterI18n": {
-        "sourceEpsgCode": {},
-        "targetEpsgCode": {}
+        "": {
+          "title": "Horizontal Reprojector Parameters",
+          "description": "Configure the source and target coordinate systems for geometry reprojection"
+        },
+        "sourceEpsgCode": {
+          "title": "Source EPSG Code",
+          "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes."
+        },
+        "targetEpsgCode": {
+          "title": "Target EPSG Code",
+          "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes."
+        }
       }
     },
     {
       "name": "ImageRasterizer",
       "parameterI18n": {
-        "onOverlap": {},
-        "saveTo": {},
-        "imageWidth": {}
+        "": {
+          "title": "Image Rasterizer Parameters",
+          "description": "Configure how to convert vector geometries to raster images"
+        },
+        "imageWidth": {
+          "description": "The width of image"
+        },
+        "onOverlap": {
+          "title": "On Overlap",
+          "description": "Strategy for resolving pixel overlap when multiple polygons cover the same pixel."
+        },
+        "saveTo": {
+          "title": "Save To",
+          "description": "Optional path expression to save the generated image. If not provided, uses default cache directory."
+        }
+      },
+      "enumI18n": {
+        "OnOverlap": {
+          "sum": {
+            "description": "Saturating-add RGB channels of all overlapping polygons."
+          },
+          "takeLast": {}
+        }
       }
     },
     {
       "name": "InputRouter",
       "description": "サブワークフローで最初のポートを転送するアクション",
       "parameterI18n": {
+        "": {
+          "title": "InputRouter"
+        },
         "routingPort": {}
       }
     },
@@ -752,82 +1962,217 @@
       "description": "日本標準グリッドで地物を蓄積する"
     },
     {
-      "name": "JSONFragmenter"
+      "name": "JSONFragmenter",
+      "parameterI18n": {
+        "": {
+          "title": "JSONFragmenter Parameters",
+          "description": "Configuration for fragmenting JSON documents into individual features."
+        }
+      }
     },
     {
       "name": "JsonReader",
       "parameterI18n": {
-        "inline": {},
-        "dataset": {}
+        "": {
+          "title": "JsonReader Parameters",
+          "description": "Configuration for reading JSON files as features."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        }
       }
     },
     {
       "name": "JsonWriter",
       "parameterI18n": {
-        "output": {},
-        "converter": {}
+        "": {
+          "title": "JsonWriter Parameters",
+          "description": "Configuration for writing features to JSON files."
+        },
+        "converter": {
+          "description": "Optional converter expression to transform features before writing"
+        },
+        "output": {
+          "description": "Output path or expression for the JSON file to create"
+        }
       }
     },
     {
       "name": "LineOnLineOverlayer",
       "description": "交点を点地物に変換し、元の交差したラインの属性リストを結合して含めることができる",
       "parameterI18n": {
-        "overlaidListsAttrName": {},
-        "tolerance": {},
-        "groupBy": {}
+        "": {
+          "title": "LineOnLineOverlayer Parameters",
+          "description": "Configuration for finding intersection points between line features."
+        },
+        "groupBy": {},
+        "overlaidListsAttrName": {
+          "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\"."
+        },
+        "tolerance": {}
       }
     },
     {
       "name": "ListConcatenator",
       "parameterI18n": {
-        "separateCharacter": {},
-        "outputAttributeName": {},
-        "attribute": {},
-        "list": {}
+        "": {
+          "title": "ListConcatenator Parameters",
+          "description": "Configuration for concatenating a specific attribute from list elements."
+        },
+        "attribute": {
+          "description": "Attribute name to extract from each list element"
+        },
+        "list": {
+          "description": "List attribute to read from"
+        },
+        "outputAttributeName": {
+          "description": "Name of the attribute to store the concatenated result"
+        },
+        "separateCharacter": {
+          "description": "Character(s) to use as separator between concatenated values"
+        }
       }
     },
     {
       "name": "ListExploder",
       "description": "リスト属性を複数の要素に分解する",
       "parameterI18n": {
-        "sourceAttribute": {}
+        "": {
+          "title": "ListExploder Parameters",
+          "description": "Configuration for exploding array attributes into individual features."
+        },
+        "sourceAttribute": {
+          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
+        }
       }
     },
     {
       "name": "ListIndexer",
       "parameterI18n": {
-        "listIndexToCopy": {},
-        "copiedAttributePrefix": {},
-        "listAttribute": {},
-        "copiedAttributeSuffix": {}
+        "": {
+          "title": "ListIndexer Parameters",
+          "description": "Configuration for copying attributes from a specific list element to main feature attributes."
+        },
+        "copiedAttributePrefix": {
+          "description": "Optional prefix to add to copied attribute names"
+        },
+        "copiedAttributeSuffix": {
+          "description": "Optional suffix to add to copied attribute names"
+        },
+        "listAttribute": {
+          "description": "List attribute to read from"
+        },
+        "listIndexToCopy": {
+          "description": "Index of the list element to copy (0-based)"
+        }
       }
     },
     {
       "name": "MVTWriter",
       "description": "地物をファイルに書き出す",
       "parameterI18n": {
-        "compressOutput": {},
-        "skipUnexposedAttributes": {},
-        "maxZoom": {},
-        "minZoom": {},
-        "schemaKey": {},
-        "extent": {},
-        "output": {},
-        "layerName": {},
-        "colonToUnderscore": {}
+        "": {
+          "title": "MVTWriter Parameters",
+          "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format. Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs)."
+        },
+        "colonToUnderscore": {
+          "title": "Colon to Underscore",
+          "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores"
+        },
+        "compressOutput": {
+          "title": "Compress Output",
+          "description": "Optional expression to determine whether to compress the output tiles"
+        },
+        "extent": {
+          "title": "Extent",
+          "description": "MVT tile resolution. Default is 4096."
+        },
+        "layerName": {
+          "title": "Layer Name",
+          "description": "Name of the layer within the MVT tiles"
+        },
+        "maxZoom": {
+          "title": "Maximum Zoom",
+          "description": "Maximum zoom level to generate tiles for"
+        },
+        "minZoom": {
+          "title": "Minimum Zoom",
+          "description": "Minimum zoom level to generate tiles for"
+        },
+        "output": {
+          "title": "Output",
+          "description": "Output directory path or expression for the generated MVT tiles"
+        },
+        "schemaKey": {
+          "title": "Schema Key",
+          "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output."
+        },
+        "skipUnexposedAttributes": {
+          "title": "Skip Unexposed Attributes",
+          "description": "Skip attributes with double underscore prefix"
+        }
       }
     },
     {
       "name": "NeighborFinder",
       "parameterI18n": {
-        "distanceMetric": {},
-        "attributesToTransfer": {},
-        "maxDistance": {},
-        "numClosest": {},
-        "distanceAttribute": {},
-        "mergeStrategy": {},
-        "attributePrefix": {},
-        "neighborIndexAttribute": {}
+        "": {
+          "title": "NeighborFinder Parameters",
+          "description": "Configuration for finding spatial neighbors between base and candidate features."
+        },
+        "attributePrefix": {
+          "description": "Prefix applied to transferred candidate attributes to avoid collisions."
+        },
+        "attributesToTransfer": {
+          "description": "List of candidate attributes to transfer. Empty list means all attributes are transferred."
+        },
+        "distanceAttribute": {
+          "description": "Name of the attribute to store the computed distance to the nearest neighbor."
+        },
+        "distanceMetric": {
+          "description": "Method used to compute distance between two features."
+        },
+        "maxDistance": {
+          "description": "Maximum distance threshold for matching. If None, no distance limit is applied. Units depend on the distanceMetric: native units for Euclidean, meters for Haversine."
+        },
+        "mergeStrategy": {
+          "description": "Controls how multiple neighbors are represented on the output."
+        },
+        "neighborIndexAttribute": {
+          "description": "Name of the attribute to store the neighbor index (0-based rank) when num_closest > 1 and merge_strategy is \"repeatBase\". Set to empty string to suppress."
+        },
+        "numClosest": {
+          "description": "Number of closest neighbors to find per base feature. Must be >= 1."
+        }
+      },
+      "enumI18n": {
+        "DistanceMetric": {
+          "euclidean2d": {
+            "description": "2D Euclidean distance using X and Y coordinates. Z is ignored."
+          },
+          "euclidean3d": {
+            "description": "3D Euclidean distance using X, Y, and Z coordinates."
+          },
+          "haversine": {
+            "description": "Great-circle distance treating X as longitude (degrees) and Y as latitude (degrees). Output is in meters. Intended for WGS-84 inputs.\n\nNote: Distance is computed between representative points (centroids). For accurate results, input features should be relatively small (e.g., buildings, local roads). Large geometries (e.g., countries, large water bodies) may produce inaccurate distances because their centroids may not represent their spatial extent well."
+          }
+        },
+        "MergeStrategy": {
+          "arrayAttributes": {
+            "description": "A single Base feature is emitted; each transferred attribute becomes an ordered array sorted by ascending distance."
+          },
+          "closest": {
+            "description": "Only the single closest neighbor is merged onto the Base feature."
+          },
+          "repeatBase": {
+            "description": "One output feature is emitted per neighbor. Base attributes are duplicated across all rows, mirroring FME's default multi-neighbor output."
+          }
+        }
       }
     },
     {
@@ -841,62 +2186,178 @@
     {
       "name": "NullAttributeMapper",
       "parameterI18n": {
-        "routeNullFeatures": {},
-        "defaultReplacement": {},
-        "nullDefinition": {},
-        "mappings": {},
-        "scope": {}
+        "": {
+          "title": "NullAttributeMapperParams",
+          "description": "NullAttributeMapper parameters"
+        },
+        "defaultReplacement": {
+          "description": "Fallback replacement for attributes not in mappings (when scope = \"all\")"
+        },
+        "mappings": {
+          "description": "Per-attribute replacement rules"
+        },
+        "nullDefinition": {
+          "description": "Which states count as \"null\""
+        },
+        "routeNullFeatures": {
+          "description": "Emit original features with nulls to hasNull port"
+        },
+        "scope": {
+          "description": "Which attributes to inspect"
+        }
       },
       "definitionI18n": {
         "AttributeMapping": {
-          "onMissing": {},
-          "replacement": {},
-          "attribute": {}
+          "attribute": {
+            "description": "Name of the attribute to inspect"
+          },
+          "onMissing": {
+            "description": "What to do when attribute is missing but not in nullDefinition"
+          },
+          "replacement": {
+            "description": "Value to write when attribute is null-like null means remove the attribute"
+          }
+        }
+      },
+      "enumI18n": {
+        "NullKind": {
+          "emptyString": {
+            "description": "AttributeValue::String(\"\")"
+          },
+          "missing": {
+            "description": "Attribute key absent from the feature"
+          },
+          "null": {
+            "description": "AttributeValue::Null"
+          }
+        },
+        "OnMissing": {
+          "create": {
+            "description": "Write replacement value, creating the attribute"
+          },
+          "skip": {
+            "description": "Leave unchanged"
+          }
+        },
+        "Scope": {
+          "all": {
+            "description": "Check all attributes on the feature"
+          },
+          "listed": {
+            "description": "Only check attributes named in mappings"
+          }
         }
       }
     },
     {
       "name": "ObjReader",
       "parameterI18n": {
-        "materialFile": {},
-        "includeNormals": {},
-        "inline": {},
-        "parseMaterials": {},
-        "dataset": {},
-        "triangulate": {},
-        "mergeGroups": {},
-        "includeTexcoords": {}
+        "": {
+          "title": "ObjReader Parameters",
+          "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "includeNormals": {
+          "title": "Include Normals",
+          "description": "Include vertex normal data in the output geometry"
+        },
+        "includeTexcoords": {
+          "title": "Include Texture Coordinates",
+          "description": "Include texture coordinate (UV) data in the output geometry"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "materialFile": {
+          "title": "Material File",
+          "description": "Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file."
+        },
+        "mergeGroups": {
+          "title": "Merge Groups",
+          "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object"
+        },
+        "parseMaterials": {
+          "title": "Parse Materials",
+          "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file"
+        },
+        "triangulate": {
+          "title": "Triangulate",
+          "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
+        }
       }
     },
     {
       "name": "ObjWriter",
       "parameterI18n": {
-        "writeMaterials": {},
-        "writeTexcoords": {},
-        "writeNormals": {},
-        "output": {}
+        "": {
+          "title": "OBJ Writer Parameters",
+          "description": "Configure output settings for writing 3D features to Wavefront OBJ format"
+        },
+        "output": {
+          "title": "Output Path",
+          "description": "Expression for the output file path where the OBJ file will be written"
+        },
+        "writeMaterials": {
+          "title": "Write Materials",
+          "description": "Enable writing of material (MTL) file alongside the OBJ file"
+        },
+        "writeNormals": {
+          "title": "Write Normals",
+          "description": "Include vertex normal vectors in the output"
+        },
+        "writeTexcoords": {
+          "title": "Write Texture Coordinates",
+          "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)"
+        }
       }
     },
     {
       "name": "Offsetter",
       "description": "地物の座標にオフセットを加える",
       "parameterI18n": {
-        "offsetZ": {},
-        "offsetX": {},
-        "offsetY": {}
+        "": {
+          "title": "Offsetter Parameters",
+          "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates"
+        },
+        "offsetX": {
+          "title": "X Offset",
+          "description": "Offset to add to all X coordinates (longitude)"
+        },
+        "offsetY": {
+          "title": "Y Offset",
+          "description": "Offset to add to all Y coordinates (latitude)"
+        },
+        "offsetZ": {
+          "title": "Z Offset",
+          "description": "Offset to add to all Z coordinates (elevation)"
+        }
       }
     },
     {
       "name": "OrientationExtractor",
       "description": "地物のジオメトリの方向を抽出し、属性として追加する",
       "parameterI18n": {
-        "outputAttribute": {}
+        "": {
+          "title": "Orientation Extractor Parameters",
+          "description": "Configure where to store the extracted polygon orientation information"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute where the orientation (clockwise/counter_clockwise) will be stored"
+        }
       }
     },
     {
       "name": "OutputRouter",
       "description": "サブワークフローで最後のポートを転送するアクション",
       "parameterI18n": {
+        "": {
+          "title": "OutputRouter"
+        },
         "routingPort": {}
       }
     },
@@ -912,6 +2373,9 @@
       "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "description": "必要な属性の存在や都市コードの正しさを確認し、建物利用属性を検証する。問題があればlBldgErrorおよびcodeErrorポートを通じてエラーを出力する。",
       "parameterI18n": {
+        "": {
+          "title": "BuildingUsageAttributeValidatorParam"
+        },
         "codelistsPath": {}
       }
     },
@@ -943,19 +2407,27 @@
       "name": "PLATEAU3.XMLAttributeExtractor",
       "description": "スキーマ定義に基づいてXML断片から属性を抽出する",
       "parameterI18n": {
-        "targetPackages": {},
-        "cityCode": {},
+        "": {
+          "title": "XmlAttributeExtractorParam"
+        },
         "addNsprefixToFeatureTypes": {},
+        "cityCode": {},
         "exceptFeatureTypes": {},
         "extractDmGeometryAsXmlFragment": {},
-        "schemaJson": {}
+        "schemaJson": {},
+        "targetPackages": {}
       }
     },
     {
       "name": "PLATEAU4.AttributeFlattener",
       "description": "PLATEAU4属性フラット化",
       "parameterI18n": {
-        "existingFlattenAttributes": {}
+        "": {
+          "title": "AttributeFlattener Parameters"
+        },
+        "existingFlattenAttributes": {
+          "description": "When true, only include attributes that were actually used during processing in the schema output. When false (default), include all defined attributes in the schema regardless of usage."
+        }
       }
     },
     {
@@ -964,15 +2436,34 @@
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
       "parameterI18n": {
-        "lodAttribute": {},
-        "buildingIdAttribute": {},
-        "partIdAttribute": {},
-        "fileIndexAttribute": {}
+        "": {
+          "title": "BuildingPartConnectivityChecker Parameters",
+          "description": "Configure how to check connectivity between BuildingParts"
+        },
+        "buildingIdAttribute": {
+          "title": "Building ID Attribute",
+          "description": "Attribute containing the parent Building ID (default: \"gmlId\")"
+        },
+        "fileIndexAttribute": {
+          "title": "File Index Attribute",
+          "description": "Attribute containing the file index (default: \"fileIndex\")"
+        },
+        "lodAttribute": {
+          "title": "LOD Attribute",
+          "description": "Attribute containing the Level of Detail (default: \"lod\")"
+        },
+        "partIdAttribute": {
+          "title": "Part ID Attribute",
+          "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
+        }
       }
     },
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "parameterI18n": {
+        "": {
+          "title": "BuildingUsageAttributeValidatorParam"
+        },
         "codelistsPath": {}
       }
     },
@@ -980,15 +2471,33 @@
       "name": "PLATEAU4.CityCodeExtractor",
       "description": "PLATEAU4データから都市コードを抽出する",
       "parameterI18n": {
-        "cityCodeAttribute": {},
-        "codelistsPathAttribute": {}
+        "": {
+          "title": "CityCodeExtractor Parameters",
+          "description": "Configuration for extracting PLATEAU4 city code information from codelists."
+        },
+        "cityCodeAttribute": {
+          "description": "Attribute containing the city code to look up in codelists"
+        },
+        "codelistsPathAttribute": {
+          "description": "Attribute containing the path to the PLATEAU codelists directory"
+        }
       }
     },
     {
       "name": "PLATEAU4.CityGmlMeshBuilder",
       "parameterI18n": {
-        "errorAttribute": {},
-        "epsgCode": {}
+        "": {
+          "title": "CityGML Mesh Builder Parameters",
+          "description": "Configure validation rules for CityGML mesh triangles"
+        },
+        "epsgCode": {
+          "title": "Target EPSG Code",
+          "description": "EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression."
+        },
+        "errorAttribute": {
+          "title": "Error Attribute Name",
+          "description": "Attribute name to store validation error messages (default: \"_validation_error\")"
+        }
       }
     },
     {
@@ -997,50 +2506,99 @@
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
       "parameterI18n": {
-        "epsgCode": {},
-        "meshcodeAttr": {},
-        "meshType": {}
+        "": {
+          "title": "PLATEAU Destination MeshCode Extractor Parameters",
+          "description": "Configure mesh code extraction for Japanese standard regional mesh"
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation"
+        },
+        "meshType": {
+          "title": "Mesh Type",
+          "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m"
+        },
+        "meshcodeAttr": {
+          "title": "Mesh Code Attribute Name",
+          "description": "Output attribute name for the mesh code"
+        }
       }
     },
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
       "description": "PLATEAU4の定義領域を検証する",
       "parameterI18n": {
-        "codelistsPath": {}
+        "": {
+          "title": "DomainOfDefinitionValidator Parameters",
+          "description": "Configuration for validating domain of definition of CityGML features."
+        },
+        "codelistsPath": {
+          "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
+        }
       }
     },
     {
       "name": "PLATEAU4.FaceExtractor",
       "parameterI18n": {
-        "cityGmlPathAttribute": {}
+        "": {
+          "title": "FaceExtractor Parameters",
+          "description": "Configuration for validating individual surfaces of WaterBody features. Always checks vertex count, closure, and orientation of polygons in TIN meshes."
+        },
+        "cityGmlPathAttribute": {
+          "description": "Attribute name for city_gml_path (default: \"_gml_path\")"
+        }
       }
     },
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
       "parameterI18n": {
-        "groupBy": {},
-        "pointSpacing": {},
-        "sampleInterior": {}
+        "": {
+          "title": "FloodingAreaSurfaceGenerator Parameters",
+          "description": "Configuration for generating TIN surfaces from flood area polygons. This processor converts polygons to triangulated surfaces by: 1. Optionally grouping features by an attribute (e.g., udxDirs) 2. Combining all polygons in each group 3. Sampling points along polygon boundaries at regular intervals 4. Optionally adding interior grid points within polygons 5. Performing Delaunay triangulation to create a TIN surface 6. Filtering triangles to keep only those inside the original polygons"
+        },
+        "groupBy": {
+          "description": "Attribute name to group features by before combining and triangulating. Features with the same value for this attribute will be processed together. If not specified, each feature is processed individually."
+        },
+        "pointSpacing": {
+          "description": "Spacing between sampled points in meters (default: 50.0). Points are sampled along polygon boundaries and optionally on an interior grid at this spacing interval."
+        },
+        "sampleInterior": {
+          "description": "Enable interior grid sampling (default: false). When enabled, points are added on a regular grid inside the polygon to create a more uniform triangulation. This can be slow for large polygons."
+        }
       }
     },
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
       "parameterI18n": {
-        "cityGmlPath": {}
+        "": {
+          "title": "GmlNameCodeSpaceValidator Parameters",
+          "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes."
+        },
+        "cityGmlPath": {
+          "description": "Expression to get the path to the CityGML file"
+        }
       }
     },
     {
       "name": "PLATEAU4.MaxLodExtractor",
       "description": "PLATEAU4の最大詳細レベルを抽出する",
       "parameterI18n": {
-        "maxLodAttribute": {},
-        "cityGmlPathAttribute": {}
+        "": {
+          "title": "MaxLodExtractor Parameters",
+          "description": "Configuration for extracting maximum LOD (Level of Detail) information from PLATEAU4 CityGML files."
+        },
+        "cityGmlPathAttribute": {},
+        "maxLodAttribute": {}
       }
     },
     {
       "name": "PLATEAU4.MissingAttributeDetector",
       "description": "PLATEAU4データの欠落属性を検出する",
       "parameterI18n": {
+        "": {
+          "title": "MissingAttributeDetector Parameters",
+          "description": "Configuration for detecting missing attributes in PLATEAU4 features."
+        },
         "packageAttribute": {}
       }
     },
@@ -1048,41 +2606,97 @@
       "name": "PLATEAU4.ObjectListExtractor",
       "description": "PLATEAU4データからオブジェクトリストを抽出する",
       "parameterI18n": {
+        "": {
+          "title": "ObjectListExtractor Parameters",
+          "description": "Configuration for extracting object lists from PLATEAU4 data."
+        },
         "objectListPathAttribute": {}
       }
     },
     {
       "name": "PLATEAU4.SolarCityGmlAttributeInserter",
       "parameterI18n": {
-        "sourceEpsg": {},
-        "textureImagePath": {},
-        "outputDir": {},
-        "measurements": {},
-        "gmlIdAttribute": {},
-        "pathAttribute": {}
+        "": {
+          "title": "CityGmlAttributeInserterParam",
+          "description": "Configuration for inserting measurement attributes into CityGML files."
+        },
+        "gmlIdAttribute": {
+          "description": "Attribute name on element features holding gml:id (default: \"gmlId\")"
+        },
+        "measurements": {
+          "description": "Measurement definitions to insert as gen:measureAttribute elements"
+        },
+        "outputDir": {
+          "description": "Output directory expression for modified CityGML files"
+        },
+        "pathAttribute": {
+          "description": "Attribute name on path features holding the file path (default: \"path\")"
+        },
+        "sourceEpsg": {
+          "description": "The projected CRS EPSG code used for rasterization (needed for UV computation)"
+        },
+        "textureImagePath": {
+          "description": "Path to the solar radiation texture PNG (texture insertion skipped if absent)"
+        }
       },
       "definitionI18n": {
         "MeasurementDef": {
-          "uom": {},
-          "attribute": {},
-          "name": {}
+          "attribute": {
+            "description": "Feature attribute key holding the numeric value (e.g. \"totalSolarRadiation\")"
+          },
+          "name": {
+            "description": "XML name attribute value (e.g. \"年間予測日射量\")"
+          },
+          "uom": {
+            "description": "Unit of measurement (e.g. \"kWh\")"
+          }
         }
       }
     },
     {
-      "name": "PLATEAU4.SolarPositionCalculator"
+      "name": "PLATEAU4.SolarPositionCalculator",
+      "parameterI18n": {
+        "": {
+          "title": "SolarPositionCalculatorParam"
+        }
+      },
+      "enumI18n": {
+        "OutputType": {
+          "altitudeAndAzimuth": {
+            "description": "Output as altitude and azimuth angles in degrees"
+          },
+          "both": {
+            "description": "Output both unit normal vector and altitude/azimuth angles"
+          },
+          "unitNormalVector": {
+            "description": "Output as unit normal vector (x, y, z) in ENU coordinate system"
+          }
+        }
+      }
     },
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
       "parameterI18n": {
-        "pairIdAttribute": {},
-        "gmlIdAttribute": {},
-        "listAttribute": {}
+        "": {
+          "title": "SolidIntersectionTestPairCreatorParam"
+        },
+        "gmlIdAttribute": {
+          "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")"
+        },
+        "listAttribute": {
+          "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")"
+        },
+        "pairIdAttribute": {
+          "description": "Attribute name to store the pair ID (default: \"pair_id\")"
+        }
       }
     },
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "parameterI18n": {
+        "": {
+          "title": "TransportationXlinkDetectorParam"
+        },
         "cityGmlPath": {}
       }
     },
@@ -1090,9 +2704,13 @@
       "name": "PLATEAU4.UDXFolderExtractor",
       "description": "PLATEAU4データからUDXフォルダを抽出する",
       "parameterI18n": {
+        "": {
+          "title": "UDXFolderExtractor Parameters",
+          "description": "Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths."
+        },
         "cityGmlPath": {},
-        "schemasPath": {},
-        "codelistsPath": {}
+        "codelistsPath": {},
+        "schemasPath": {}
       }
     },
     {
@@ -1101,16 +2719,44 @@
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
       "parameterI18n": {
-        "tolerance": {},
-        "groupBy": {}
+        "": {
+          "title": "UnsharedEdgeDetector Parameters",
+          "description": "Configure unshared edge detection behavior"
+        },
+        "groupBy": {
+          "description": "Group By Attributes. When specified, edge detection is performed independently within each group. Features with the same values for these attributes are grouped together."
+        },
+        "tolerance": {
+          "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge"
+        }
       }
     },
     {
       "name": "PlanarityFilter",
       "description": "タイプに基づいてジオメトリをフィルタリングする",
       "parameterI18n": {
-        "threshold": {},
-        "filterType": {}
+        "": {
+          "title": "Planarity Filter Parameters",
+          "description": "Configure how to filter features based on geometry planarity"
+        },
+        "filterType": {
+          "title": "Filter Type",
+          "description": "The method to use for planarity detection"
+        },
+        "threshold": {
+          "title": "Threshold",
+          "description": "The threshold value for planarity check. For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix. For height mode: the maximum allowed convex hull minimum height."
+        }
+      },
+      "enumI18n": {
+        "PlanarityFilterType": {
+          "covariance": {
+            "description": "Uses covariance matrix eigenvalue analysis"
+          },
+          "height": {
+            "description": "Uses minimum height of the 3D convex hull"
+          }
+        }
       }
     },
     {
@@ -1119,31 +2765,86 @@
     {
       "name": "PythonScriptProcessor",
       "parameterI18n": {
-        "timeoutSeconds": {},
-        "script": {},
-        "pythonFile": {},
-        "pythonPath": {}
+        "": {
+          "title": "PythonScriptProcessorParam"
+        },
+        "pythonFile": {
+          "title": "Python File",
+          "description": "Path to a Python script file (supports file://, http://, https://, gs://, etc.)"
+        },
+        "pythonPath": {
+          "title": "Python Path",
+          "description": "Path to Python interpreter executable (default: python3)"
+        },
+        "script": {
+          "title": "Inline Script",
+          "description": "Python script code to execute inline"
+        },
+        "timeoutSeconds": {
+          "title": "Timeout Seconds",
+          "description": "Maximum execution time for the Python script in seconds (default: 30)"
+        }
       }
     },
     {
       "name": "RayIntersector",
       "parameterI18n": {
-        "outputGeometryType": {},
-        "closestIntersectionOnly": {},
-        "geomId": {},
-        "includeRayOrigin": {},
-        "pairId": {},
-        "ray": {},
-        "tolerance": {}
+        "": {
+          "title": "RayIntersectorParams",
+          "description": "RayIntersector Parameters"
+        },
+        "closestIntersectionOnly": {
+          "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points."
+        },
+        "geomId": {
+          "description": "Expression evaluated on geometry features to extract an ID string. When set, intersection features will include a `geom_id` attribute identifying which geometry was hit."
+        },
+        "includeRayOrigin": {
+          "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance."
+        },
+        "outputGeometryType": {
+          "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point"
+        },
+        "pairId": {
+          "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other."
+        },
+        "ray": {
+          "description": "Defines how to extract ray data from feature attributes"
+        },
+        "tolerance": {
+          "description": "Tolerance for intersection calculations (evaluates to f64). If not specified, a default tolerance is used."
+        }
       },
       "definitionI18n": {
         "RayDefinition": {
-          "dirY": {},
-          "dirX": {},
-          "dirZ": {},
-          "posX": {},
-          "posY": {},
-          "posZ": {}
+          "dirX": {
+            "description": "Attribute containing ray direction X component"
+          },
+          "dirY": {
+            "description": "Attribute containing ray direction Y component"
+          },
+          "dirZ": {
+            "description": "Attribute containing ray direction Z component"
+          },
+          "posX": {
+            "description": "Attribute containing ray origin X coordinate"
+          },
+          "posY": {
+            "description": "Attribute containing ray origin Y coordinate"
+          },
+          "posZ": {
+            "description": "Attribute containing ray origin Z coordinate"
+          }
+        }
+      },
+      "enumI18n": {
+        "OutputGeometryType": {
+          "lineSegmentToIntersection": {
+            "description": "Output a line segment from ray origin to intersection point"
+          },
+          "pointOfIntersection": {
+            "description": "Output a point at the intersection location (default behavior)"
+          }
         }
       }
     },
@@ -1155,70 +2856,196 @@
       "name": "RhaiCaller",
       "description": "Rhaiスクリプトを呼び出す",
       "parameterI18n": {
-        "process": {},
-        "isTarget": {}
+        "": {
+          "title": "RhaiCaller Parameters",
+          "description": "Configuration for executing Rhai scripts on features with conditional processing."
+        },
+        "isTarget": {
+          "description": "Rhai script expression to determine if the feature should be processed (returns boolean)"
+        },
+        "process": {
+          "description": "Rhai script expression to process and transform the feature when target condition is met"
+        }
       }
     },
     {
       "name": "Rotator3D",
       "parameterI18n": {
-        "rotation": {}
+        "": {
+          "title": "Rotator3D Parameters",
+          "description": "Configure the rotation for a 3D polygon"
+        },
+        "rotation": {
+          "title": "Rotation",
+          "description": "The rotation specification: either from/to vectors or axis-angle"
+        }
       }
     },
     {
       "name": "ShapefileReader",
       "parameterI18n": {
-        "encoding": {},
-        "force2d": {},
-        "inline": {},
-        "allowEmptyPath": {},
-        "dataset": {}
+        "": {
+          "title": "ShapefileReader Parameters",
+          "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx)."
+        },
+        "allowEmptyPath": {
+          "title": "Allow Null Path",
+          "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "encoding": {
+          "title": "Character Encoding",
+          "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default"
+        },
+        "force2d": {
+          "title": "Force 2D",
+          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        }
       }
     },
     {
       "name": "ShapefileWriter",
       "description": "シェープファイルに地物を書き込む",
       "parameterI18n": {
-        "groupBy": {},
-        "output": {}
+        "": {
+          "title": "ShapefileWriter Parameters",
+          "description": "Configuration for writing features to ESRI Shapefile format."
+        },
+        "groupBy": {
+          "description": "Optional attributes to group features by, creating separate files for each group"
+        },
+        "output": {
+          "description": "Output path or expression for the Shapefile to create"
+        }
       }
     },
     {
       "name": "SolidBoundaryValidator",
       "parameterI18n": {
-        "tolerance": {}
+        "": {
+          "title": "Solid Boundary Validator Parameters",
+          "description": "Configure validation parameters for solid boundary geometry"
+        },
+        "tolerance": {
+          "title": "Tolerance",
+          "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation."
+        }
       }
     },
     {
       "name": "SpatialFilter",
       "parameterI18n": {
-        "passOnMultipleMatches": {},
-        "predicate": {},
-        "mergedAttributesPrefix": {},
-        "mergeFilterAttributes": {},
-        "outputMatchCountAttribute": {}
+        "": {
+          "title": "SpatialFilter Parameters",
+          "description": "Configure spatial relationship testing between filter and candidate geometries"
+        },
+        "mergeFilterAttributes": {
+          "title": "Merge Filter Attributes",
+          "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins."
+        },
+        "mergedAttributesPrefix": {
+          "title": "Merged Attributes Prefix",
+          "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\"."
+        },
+        "outputMatchCountAttribute": {
+          "title": "Output Match Count Attribute",
+          "description": "Optional attribute name to store the number of matching filters"
+        },
+        "passOnMultipleMatches": {
+          "title": "Pass on Multiple Matches",
+          "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic)."
+        },
+        "predicate": {
+          "title": "Spatial Predicate",
+          "description": "The spatial relationship to test between filter and candidate geometries"
+        }
+      },
+      "enumI18n": {
+        "SpatialPredicate": {
+          "contains": {
+            "description": "Filter geometry completely contains candidate"
+          },
+          "coveredBy": {
+            "description": "Candidate is covered by filter geometry"
+          },
+          "covers": {
+            "description": "Filter geometry covers candidate"
+          },
+          "crosses": {
+            "description": "Geometries cross each other"
+          },
+          "disjoint": {
+            "description": "Geometries have no spatial relationship"
+          },
+          "intersects": {
+            "description": "Geometries have any intersection"
+          },
+          "overlaps": {
+            "description": "Geometries overlap partially"
+          },
+          "touches": {
+            "description": "Geometries touch at boundaries but don't overlap"
+          },
+          "within": {
+            "description": "Candidate completely within filter geometry"
+          }
+        }
       }
     },
     {
       "name": "SqlReader",
       "description": "SQLデータベースから地物を読み取る",
       "parameterI18n": {
-        "sql": {},
-        "databaseUrl": {}
+        "": {
+          "title": "SQL Reader Parameters",
+          "description": "Configure the SQL query and database connection for reading features from a database"
+        },
+        "databaseUrl": {
+          "title": "Database URL",
+          "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)"
+        },
+        "sql": {
+          "title": "SQL Query",
+          "description": "SQL query expression to execute for retrieving data"
+        }
       }
     },
     {
       "name": "StatisticsCalculator",
       "description": "地物の統計情報を計算する",
       "parameterI18n": {
-        "calculations": {},
-        "groupBy": {},
-        "groupId": {}
+        "": {
+          "title": "StatisticsCalculator Parameters",
+          "description": "Configuration for calculating statistical aggregations on feature attributes."
+        },
+        "calculations": {
+          "title": "Calculations",
+          "description": "List of statistical calculations to perform on grouped features"
+        },
+        "groupBy": {
+          "title": "Group by",
+          "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified."
+        },
+        "groupId": {
+          "title": "Group id",
+          "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'."
+        }
       },
       "definitionI18n": {
         "Calculation": {
-          "expr": {},
-          "newAttribute": {}
+          "expr": {
+            "title": "Calculation to perform"
+          },
+          "newAttribute": {
+            "title": "New attribute name"
+          }
         }
       }
     },
@@ -1226,19 +3053,51 @@
       "name": "ThreeDimensionBoxReplacer",
       "description": "3次元ボックスをポリゴンで置き換える",
       "parameterI18n": {
-        "minX": {},
-        "minY": {},
-        "minZ": {},
-        "maxZ": {},
-        "maxX": {},
-        "maxY": {}
+        "": {
+          "title": "3D Box Replacer Parameters",
+          "description": "Configure which attributes contain the minimum and maximum coordinates for creating a 3D box"
+        },
+        "maxX": {
+          "title": "Maximum X Attribute",
+          "description": "Name of attribute containing the maximum X coordinate"
+        },
+        "maxY": {
+          "title": "Maximum Y Attribute",
+          "description": "Name of attribute containing the maximum Y coordinate"
+        },
+        "maxZ": {
+          "title": "Maximum Z Attribute",
+          "description": "Name of attribute containing the maximum Z coordinate"
+        },
+        "minX": {
+          "title": "Minimum X Attribute",
+          "description": "Name of attribute containing the minimum X coordinate"
+        },
+        "minY": {
+          "title": "Minimum Y Attribute",
+          "description": "Name of attribute containing the minimum Y coordinate"
+        },
+        "minZ": {
+          "title": "Minimum Z Attribute",
+          "description": "Name of attribute containing the minimum Z coordinate"
+        }
       }
     },
     {
       "name": "ThreeDimensionForcer",
       "parameterI18n": {
-        "elevation": {},
-        "preserveExistingZ": {}
+        "": {
+          "title": "ThreeDimensionForcer Parameters",
+          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
+        },
+        "elevation": {
+          "title": "Elevation",
+          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
+        },
+        "preserveExistingZ": {
+          "title": "Preserve Existing Z Values",
+          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
+        }
       }
     },
     {
@@ -1249,13 +3108,38 @@
       "name": "ThreeDimensionRotator",
       "description": "3次元ボックスをポリゴンで置き換える",
       "parameterI18n": {
-        "originX": {},
-        "directionY": {},
-        "angleDegree": {},
-        "directionX": {},
-        "directionZ": {},
-        "originY": {},
-        "originZ": {}
+        "": {
+          "title": "3D Rotator Parameters",
+          "description": "Configure the 3D rotation parameters including axis, origin point, and angle"
+        },
+        "angleDegree": {
+          "title": "Angle in Degrees",
+          "description": "Rotation angle in degrees around the specified axis"
+        },
+        "directionX": {
+          "title": "Direction X",
+          "description": "X component of the rotation axis direction vector"
+        },
+        "directionY": {
+          "title": "Direction Y",
+          "description": "Y component of the rotation axis direction vector"
+        },
+        "directionZ": {
+          "title": "Direction Z",
+          "description": "Z component of the rotation axis direction vector"
+        },
+        "originX": {
+          "title": "Origin X",
+          "description": "X coordinate of the rotation origin point"
+        },
+        "originY": {
+          "title": "Origin Y",
+          "description": "Y coordinate of the rotation origin point"
+        },
+        "originZ": {
+          "title": "Origin Z",
+          "description": "Z coordinate of the rotation origin point"
+        }
       }
     },
     {
@@ -1265,7 +3149,14 @@
     {
       "name": "VertexCounter",
       "parameterI18n": {
-        "outputAttribute": {}
+        "": {
+          "title": "Vertex Counter Parameters",
+          "description": "Configure where to store the count of vertices found in geometries"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute where the vertex count will be stored as a number"
+        }
       }
     },
     {
@@ -1276,33 +3167,61 @@
       "name": "VerticalReprojector",
       "description": "地物のジオメトリを指定された座標系に垂直再投影する",
       "parameterI18n": {
-        "reprojectorType": {}
+        "": {
+          "title": "Vertical Reprojector Parameters",
+          "description": "Configure the type of vertical datum conversion to apply"
+        },
+        "reprojectorType": {
+          "title": "Reprojector Type",
+          "description": "The type of vertical coordinate transformation to apply"
+        }
       }
     },
     {
       "name": "XMLFragmenter",
-      "description": "XMLを分割する"
+      "description": "XMLを分割する",
+      "parameterI18n": {
+        "": {
+          "title": "XMLFragmenter Parameters",
+          "description": "Configuration for fragmenting XML documents into smaller pieces."
+        }
+      }
     },
     {
       "name": "XMLValidator",
       "description": "XMLコンテンツを検証する",
       "parameterI18n": {
-        "validationType": {},
+        "": {
+          "title": "XmlValidatorParam"
+        },
         "attribute": {},
-        "inputType": {}
+        "inputType": {},
+        "validationType": {}
       }
     },
     {
       "name": "XmlWriter",
       "parameterI18n": {
-        "output": {}
+        "": {
+          "title": "XmlWriter Parameters",
+          "description": "Configuration for writing features to XML files."
+        },
+        "output": {
+          "description": "Output path or expression for the XML file to create"
+        }
       }
     },
     {
       "name": "ZipFileWriter",
       "description": "zipファイルに地物を書き込む",
       "parameterI18n": {
-        "output": {}
+        "": {
+          "title": "ZipFileWriter Parameters",
+          "description": "Configuration for creating ZIP archive files from features."
+        },
+        "output": {
+          "description": "Output path"
+        }
       }
     }
   ]

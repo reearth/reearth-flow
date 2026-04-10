@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use reearth_flow_runtime::node::NodeKind;
 use serde::{Deserialize, Serialize};
@@ -72,11 +72,18 @@ pub(crate) struct I18nSchema {
     pub(crate) parameter: Option<serde_json::Value>,
     /// Flat map of top-level parameter property names to their i18n overrides.
     /// Use the empty string key `""` to override the root parameter object's title/description.
+    /// Keys are always stored in alphabetical order (BTreeMap) for stable diffs.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) parameter_i18n: Option<HashMap<String, PropertyI18n>>,
+    pub(crate) parameter_i18n: Option<BTreeMap<String, PropertyI18n>>,
     /// Map of definition name → property name → i18n overrides.
+    /// Both levels are always stored in alphabetical order for stable diffs.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) definition_i18n: Option<HashMap<String, HashMap<String, PropertyI18n>>>,
+    pub(crate) definition_i18n: Option<BTreeMap<String, BTreeMap<String, PropertyI18n>>>,
+    /// Map of definition name → enum value → i18n overrides for oneOf/anyOf enum variants.
+    /// Keyed by the variant's enum value (e.g. "max", "min") rather than array index,
+    /// so adding new variants never invalidates existing translations.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) enum_i18n: Option<BTreeMap<String, BTreeMap<String, PropertyI18n>>>,
 }
 
 /// Stamps translated `title` / `description` values onto a JSON Schema node.
@@ -98,13 +105,16 @@ fn patch_node(node: &mut serde_json::Value, i18n: &PropertyI18n) {
 /// - `param_i18n` keys map to `schema["properties"][key]`.
 ///   The special key `""` targets the root schema object itself.
 /// - `def_i18n` keys map to `schema["definitions"][def_name]["properties"][prop_name]`.
+/// - `enum_i18n` keys map to `schema["definitions"][def_name]["oneOf"|"anyOf"]` variants,
+///   looked up by the variant's enum value (e.g. `"max"`, `"min"`).
 ///
 /// Missing keys are silently skipped — if a property was renamed or removed in
 /// the Rust struct the i18n entry simply has no effect.
 pub(crate) fn apply_parameter_i18n(
     schema: &mut serde_json::Value,
-    param_i18n: &HashMap<String, PropertyI18n>,
-    def_i18n: &HashMap<String, HashMap<String, PropertyI18n>>,
+    param_i18n: &BTreeMap<String, PropertyI18n>,
+    def_i18n: &BTreeMap<String, BTreeMap<String, PropertyI18n>>,
+    enum_i18n: &BTreeMap<String, BTreeMap<String, PropertyI18n>>,
 ) {
     // "" key → root schema title/description
     if let Some(root_i18n) = param_i18n.get("") {
@@ -120,11 +130,11 @@ pub(crate) fn apply_parameter_i18n(
         }
     }
 
-    // def_i18n → schema["definitions"][def_name]["properties"][prop_name]
     if let Some(definitions) = schema
         .get_mut("definitions")
         .and_then(|d| d.as_object_mut())
     {
+        // def_i18n → schema["definitions"][def_name]["properties"][prop_name]
         for (def_name, props) in def_i18n {
             if let Some(def_schema) = definitions.get_mut(def_name) {
                 if let Some(def_props) = def_schema
@@ -134,6 +144,32 @@ pub(crate) fn apply_parameter_i18n(
                     for (prop_name, i18n) in props {
                         if let Some(node) = def_props.get_mut(prop_name) {
                             patch_node(node, i18n);
+                        }
+                    }
+                }
+            }
+        }
+
+        // enum_i18n → schema["definitions"][def_name]["oneOf"|"anyOf"][variant with enum value]
+        for (def_name, variants) in enum_i18n {
+            if let Some(def_schema) = definitions.get_mut(def_name) {
+                for keyword in &["oneOf", "anyOf"] {
+                    if let Some(arr) = def_schema
+                        .get_mut(*keyword)
+                        .and_then(|v| v.as_array_mut())
+                    {
+                        for variant in arr.iter_mut() {
+                            let enum_val = variant
+                                .get("enum")
+                                .and_then(|e| e.as_array())
+                                .and_then(|a| a.first())
+                                .and_then(|v| v.as_str())
+                                .map(str::to_string);
+                            if let Some(val) = enum_val {
+                                if let Some(i18n) = variants.get(&val) {
+                                    patch_node(variant, i18n);
+                                }
+                            }
                         }
                     }
                 }
@@ -157,14 +193,17 @@ fn apply_i18n_to_parameter(
 
     let param_i18n = i18n.parameter_i18n.as_ref();
     let def_i18n = i18n.definition_i18n.as_ref();
+    let enum_i18n = i18n.enum_i18n.as_ref();
 
-    if param_i18n.is_some() || def_i18n.is_some() {
-        let empty_param = HashMap::new();
-        let empty_def = HashMap::new();
+    if param_i18n.is_some() || def_i18n.is_some() || enum_i18n.is_some() {
+        let empty_param = BTreeMap::new();
+        let empty_def = BTreeMap::new();
+        let empty_enum = BTreeMap::new();
         apply_parameter_i18n(
             parameter_schema,
             param_i18n.unwrap_or(&empty_param),
             def_i18n.unwrap_or(&empty_def),
+            enum_i18n.unwrap_or(&empty_enum),
         );
     }
 }
