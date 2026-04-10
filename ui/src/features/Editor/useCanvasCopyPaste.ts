@@ -6,7 +6,7 @@ import {
   useViewport,
   XYPosition,
 } from "@xyflow/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useT } from "@flow/lib/i18n";
@@ -47,6 +47,7 @@ export default ({
   const { x, y, zoom } = useViewport();
   const { screenToFlowPosition } = useReactFlow();
   const t = useT();
+  const [preventPaste, setPreventPaste] = useState<boolean>(false);
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
@@ -372,6 +373,7 @@ export default ({
   );
   const handlePaste = useCallback(
     async (mousePosition?: XYPosition) => {
+      if (preventPaste) return;
       const {
         nodes: pastedNodes,
         edges: pastedEdges,
@@ -439,6 +441,11 @@ export default ({
         workflows: newWorkflows,
         copiedAt: Date.now(),
       });
+      setPreventPaste(true);
+
+      setTimeout(() => {
+        setPreventPaste(false);
+      }, 500);
 
       return pastedNodes;
     },
@@ -448,6 +455,7 @@ export default ({
       rawWorkflows,
       currentWorkflowId,
       isMainWorkflow,
+      preventPaste,
       t,
       copy,
       paste,
