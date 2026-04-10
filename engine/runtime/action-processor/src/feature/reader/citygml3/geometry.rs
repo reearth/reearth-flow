@@ -1,8 +1,3 @@
-// Geometry parsing logic for CityGML 3.0
-// Rules of simplicity & robustness:
-// 1. do not take over XSD validation responsibilities
-// 2. unsupported geometry or error not detectable by XSD should be logged and skipped, not panic
-
 use std::sync::Arc;
 
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
