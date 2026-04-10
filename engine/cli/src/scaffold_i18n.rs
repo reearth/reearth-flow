@@ -6,12 +6,10 @@ use std::{
 
 use clap::{Arg, ArgMatches, Command};
 use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
-use serde::{Deserialize, Serialize};
-
 use crate::{
     factory::{BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES, PYTHON_ACTION_FACTORIES},
     schema_action::RootI18nSchema,
-    utils::{apply_parameter_i18n, ActionSchema, I18nSchema, PropertyI18n},
+    utils::{ActionSchema, I18nSchema, PropertyI18n},
 };
 
 /// Collects all property names at the top level of `schema["properties"]`.
