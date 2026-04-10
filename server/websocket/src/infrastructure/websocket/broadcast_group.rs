@@ -117,8 +117,8 @@ impl BroadcastGroup {
                                 if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
                                     let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
                                     if let Err(e) = sink.send(msg_bytes) {
-                                        error!("couldn't broadcast awareness update {}", e);
-                                        return;
+                                        warn!("Broadcast awareness send failed ({}), will retry on next update", e);
+                                        continue;
                                     }
 
                                     let update_bytes = update.encode_v1();
@@ -327,13 +327,23 @@ impl BroadcastGroup {
             let sink = sink.clone();
             tokio::spawn(async move {
                 let mut rx = sender.subscribe();
-                while let Ok(msg) = rx.recv().await {
-                    let mut sink = sink.lock().await;
-                    if sink.send(msg).await.is_err() {
-                        return Ok(());
+                loop {
+                    match rx.recv().await {
+                        Ok(msg) => {
+                            let mut sink = sink.lock().await;
+                            if sink.send(msg).await.is_err() {
+                                return Ok(());
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            warn!("Client lagged by {} messages, recovering", n);
+                            continue;
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                            return Ok(());
+                        }
                     }
                 }
-                Ok(())
             })
         };
 
@@ -566,8 +576,8 @@ impl BroadcastGroup {
                     let gcs_doc = Doc::new();
                     let mut gcs_txn = gcs_doc.transact_mut();
 
-                    if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
-                        warn!("Failed to load current state from GCS: {}", e);
+                    if let Err(e) = self.storage.load_doc_v2(&self.doc_name, &mut gcs_txn).await {
+                        warn!("Failed to load current v2 state from GCS: {}", e);
                     }
 
                     let gcs_state = gcs_txn.state_vector();
@@ -610,6 +620,28 @@ impl BroadcastGroup {
                             {
                                 warn!("Failed to trim Redis stream after GCS save: {}", e);
                             }
+                        }
+
+                        // Clean up old snapshot versions, keeping only the most recent 10
+                        const MAX_SNAPSHOT_VERSIONS: usize = 10;
+                        match self
+                            .storage
+                            .cleanup_old_updates(&self.doc_name, MAX_SNAPSHOT_VERSIONS)
+                            .await
+                        {
+                            Ok(deleted) if deleted > 0 => {
+                                info!(
+                                    "Cleaned up {} old snapshot versions for doc '{}'",
+                                    deleted, self.doc_name
+                                );
+                            }
+                            Err(e) => {
+                                warn!(
+                                    "Failed to cleanup old snapshots for doc '{}': {}",
+                                    self.doc_name, e
+                                );
+                            }
+                            _ => {}
                         }
                     }
                 }

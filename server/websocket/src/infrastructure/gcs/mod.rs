@@ -2,7 +2,8 @@ use crate::application::usecases::kv::{get_oid, get_or_create_oid, DocOps};
 use crate::domain::repositories::kv::KVEntry;
 use crate::domain::repositories::kv::KVStore;
 use crate::domain::value_objects::keys::{
-    key_doc, key_state_vector, key_update, KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1,
+    key_doc, key_state_vector, key_update, KEYSPACE_DOC, KEYSPACE_OID, SUB_DOC, SUB_STATE_VEC,
+    SUB_UPDATE, V1,
 };
 
 use crate::infrastructure::redis::RedisStore;
@@ -866,9 +867,372 @@ impl GcsStore {
             Ok(None)
         }
     }
+
+    /// Keep only the most recent `max_keep` individual update objects for a document.
+    /// Older updates are merged into the compacted v1 doc state, then deleted.
+    /// Operates in batches to handle documents with hundreds of updates.
+    pub async fn cleanup_old_updates(&self, doc_id: &str, max_keep: usize) -> Result<usize> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(0),
+        };
+
+        // List all update objects (paginated)
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(prefix_str.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+            all_objects.extend(items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        // Parse clock from each object key
+        let mut clock_objects: Vec<(u32, String)> = Vec::new();
+        for obj in &all_objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
+                    let clock = u32::from_be_bytes(clock_bytes);
+                    clock_objects.push((clock, obj.name.clone()));
+                }
+            }
+        }
+
+        if clock_objects.len() <= max_keep {
+            return Ok(0);
+        }
+
+        // Sort ascending by clock — oldest first
+        clock_objects.sort_by_key(|(clock, _)| *clock);
+
+        let num_to_delete = clock_objects.len() - max_keep;
+        let to_delete: Vec<(u32, String)> = clock_objects[..num_to_delete].to_vec();
+        let highest_deleted_clock = to_delete.last().map(|(c, _)| *c).unwrap_or(0);
+
+        // Merge deleted updates into the compacted v1 doc state
+        let doc = Doc::new();
+        let doc_key = key_doc(oid)?;
+
+        {
+            let mut txn = doc.transact_mut();
+            // Load existing compacted state
+            if let Some(doc_state) = self.get(&doc_key).await? {
+                if let Ok(update) = Update::decode_v1(doc_state.as_ref()) {
+                    let _ = txn.apply_update(update);
+                }
+            }
+
+            // Download and apply updates being deleted (in batches).
+            // If any download or decode fails, abort cleanup to avoid data loss.
+            for chunk in to_delete.chunks(BATCH_SIZE) {
+                let chunk_futures = chunk.iter().map(|(_, obj_name)| {
+                    let bucket = self.bucket.clone();
+                    let object = obj_name.clone();
+
+                    async move {
+                        let request = GetObjectRequest {
+                            bucket,
+                            object: object.clone(),
+                            ..Default::default()
+                        };
+                        self.client
+                            .download_object(&request, &Range::default())
+                            .await
+                            .map_err(|err| {
+                                anyhow::anyhow!(
+                                    "failed to download update object '{}' for compaction: {}",
+                                    object,
+                                    err
+                                )
+                            })
+                    }
+                });
+
+                let results = join_all(chunk_futures).await;
+                for data in results {
+                    let data = data?;
+                    let update = Update::decode_v1(&data).map_err(|err| {
+                        anyhow::anyhow!(
+                            "failed to decode update while compacting document '{}': {}",
+                            doc_id,
+                            err
+                        )
+                    })?;
+                    txn.apply_update(update).map_err(|err| {
+                        anyhow::anyhow!(
+                            "failed to apply update while compacting document '{}': {}",
+                            doc_id,
+                            err
+                        )
+                    })?;
+                }
+            }
+        }
+
+        // Write merged state
+        {
+            let txn = doc.transact();
+            let doc_state = txn.encode_state_as_update_v1(&StateVector::default());
+            let state_vector = txn.state_vector().encode_v1();
+
+            self.upsert(&doc_key, &doc_state).await?;
+            let sv_key = key_state_vector(oid)?;
+            self.upsert(&sv_key, &state_vector).await?;
+        }
+
+        // Update checkpoint, but never move it backwards relative to the
+        // already-persisted compacted doc state.
+        let checkpoint_key = format!("checkpoint:{}", hex::encode(doc_id.as_bytes()));
+        let current_checkpoint = self
+            .get(checkpoint_key.as_bytes())
+            .await?
+            .and_then(|bytes| {
+                if bytes.len() == 4 {
+                    let mut arr = [0u8; 4];
+                    arr.copy_from_slice(bytes.as_ref());
+                    Some(u32::from_be_bytes(arr))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0);
+        let new_checkpoint = current_checkpoint.max(highest_deleted_clock);
+        self.upsert(checkpoint_key.as_bytes(), &new_checkpoint.to_be_bytes())
+            .await?;
+
+        // Delete old update objects in batches
+        for chunk in to_delete.chunks(BATCH_SIZE) {
+            let delete_futures = chunk.iter().map(|(_, obj_name)| {
+                let bucket = self.bucket.clone();
+                let object = obj_name.clone();
+                async move {
+                    let request = DeleteObjectRequest {
+                        bucket,
+                        object,
+                        ..Default::default()
+                    };
+                    self.client.delete_object(&request).await
+                }
+            });
+            let _ = join_all(delete_futures).await;
+        }
+
+        Ok(num_to_delete)
+    }
+
+    /// Delete ALL data for a document: doc_v2, v1 state, state vector, all updates,
+    /// checkpoint, and OID mapping. Used for project deletion.
+    pub async fn delete_all_doc_data(&self, doc_id: &str) -> Result<()> {
+        // Delete doc_v2 snapshot
+        let doc_v2_key = format!("doc_v2:{}", hex::encode(doc_id.as_bytes()));
+        let doc_v2_hex = hex::encode(doc_v2_key.as_bytes());
+        let _ = self
+            .client
+            .delete_object(&DeleteObjectRequest {
+                bucket: self.bucket.clone(),
+                object: doc_v2_hex,
+                ..Default::default()
+            })
+            .await;
+
+        // Delete checkpoint
+        let checkpoint_key = format!("checkpoint:{}", hex::encode(doc_id.as_bytes()));
+        let checkpoint_hex = hex::encode(checkpoint_key.as_bytes());
+        let _ = self
+            .client
+            .delete_object(&DeleteObjectRequest {
+                bucket: self.bucket.clone(),
+                object: checkpoint_hex,
+                ..Default::default()
+            })
+            .await;
+
+        // Delete all OID-based objects using direct GCS listing
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(()),
+        };
+
+        // Delete OID mapping
+        let oid_key = crate::domain::value_objects::keys::key_oid(doc_id.as_bytes())?;
+        let oid_hex = hex::encode(oid_key.as_ref());
+        let _ = self
+            .client
+            .delete_object(&DeleteObjectRequest {
+                bucket: self.bucket.clone(),
+                object: oid_hex,
+                ..Default::default()
+            })
+            .await;
+
+        // List and delete all objects in the document's key range.
+        // Use [V1, KEYSPACE_DOC, oid] as prefix (without sub-key tag) to match
+        // all sub-keys: doc state, state vector, updates, and metadata.
+        let doc_prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .copied()
+            .collect::<Vec<_>>();
+        let end_bytes = doc_prefix_bytes
+            .iter()
+            .chain(&[0xFF])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix = hex::encode(&doc_prefix_bytes);
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(prefix.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+
+            let end_hex = hex::encode(&end_bytes);
+            let filtered = items
+                .into_iter()
+                .filter(|obj| obj.name.as_str() <= end_hex.as_str());
+            all_objects.extend(filtered);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        // Batch delete
+        for chunk in all_objects.chunks(BATCH_SIZE) {
+            let delete_futures = chunk.iter().map(|obj| {
+                let bucket = self.bucket.clone();
+                let object = obj.name.clone();
+                async move {
+                    let request = DeleteObjectRequest {
+                        bucket,
+                        object,
+                        ..Default::default()
+                    };
+                    self.client.delete_object(&request).await
+                }
+            });
+            let _ = join_all(delete_futures).await;
+        }
+
+        Ok(())
+    }
+
+    /// Run cleanup on ALL documents in the bucket: for each document with an OID,
+    /// run `cleanup_old_updates` to keep at most `max_keep` versions.
+    /// Returns (docs_processed, total_updates_deleted).
+    pub async fn cleanup_all_documents(&self, max_keep: usize) -> Result<(usize, usize)> {
+        // List all OID entries (prefix "00" in hex = KEYSPACE_OID)
+        let oid_prefix = hex::encode([V1, KEYSPACE_OID]);
+        let doc_end_prefix = hex::encode([V1, KEYSPACE_DOC]);
+
+        let mut all_oid_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(oid_prefix.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+
+            // Filter to only OID keyspace entries (< doc keyspace)
+            let filtered = items
+                .into_iter()
+                .filter(|obj| obj.name.as_str() < doc_end_prefix.as_str());
+            all_oid_objects.extend(filtered);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        let mut docs_processed = 0;
+        let mut total_deleted = 0;
+
+        for obj in &all_oid_objects {
+            // Decode the OID key to extract the document name
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                // Key format: [V1, KEYSPACE_OID, ...doc_name_bytes..., TERMINATOR]
+                if key_bytes.len() > 3 {
+                    let doc_name_bytes = &key_bytes[2..key_bytes.len() - 1];
+                    if let Ok(doc_name) = std::str::from_utf8(doc_name_bytes) {
+                        match self.cleanup_old_updates(doc_name, max_keep).await {
+                            Ok(deleted) => {
+                                if deleted > 0 {
+                                    tracing::info!(
+                                        "Cleaned up {} old updates for doc '{}'",
+                                        deleted,
+                                        doc_name
+                                    );
+                                }
+                                total_deleted += deleted;
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to cleanup doc '{}': {}", doc_name, e);
+                            }
+                        }
+                        docs_processed += 1;
+                    }
+                }
+            }
+        }
+
+        Ok((docs_processed, total_deleted))
+    }
 }
 
 impl DocOps<'_> for GcsStore {}
+
+/// Returns true if the given GCS error represents a "not found" (404) response.
+/// All other errors (permission denied, server errors, network failures) return false
+/// so that they propagate to the caller instead of being silently swallowed.
+fn is_not_found(err: &google_cloud_storage::http::Error) -> bool {
+    match err {
+        google_cloud_storage::http::Error::Response(resp) => resp.code == 404,
+        google_cloud_storage::http::Error::HttpClient(reqwest_err) => {
+            reqwest_err.status().is_some_and(|s| s.as_u16() == 404)
+        }
+        _ => false,
+    }
+}
 
 #[async_trait::async_trait]
 impl KVStore for GcsStore {
@@ -891,7 +1255,8 @@ impl KVStore for GcsStore {
             .await
         {
             Ok(data) => Ok(Some(data)),
-            Err(_) => Ok(None),
+            Err(e) if is_not_found(&e) => Ok(None),
+            Err(e) => Err(e),
         }
     }
 
@@ -1148,5 +1513,56 @@ impl KVEntry for GcsEntry {
     }
     fn value(&self) -> &[u8] {
         &self.value
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_not_found;
+    use google_cloud_storage::http::error::ErrorResponse;
+    use google_cloud_storage::http::Error as GcsError;
+
+    fn make_response_error(code: u16, message: &str) -> GcsError {
+        GcsError::Response(ErrorResponse {
+            code,
+            errors: vec![],
+            message: message.to_string(),
+        })
+    }
+
+    #[test]
+    fn gcs_404_is_not_found() {
+        let err = make_response_error(404, "Not Found");
+        assert!(
+            is_not_found(&err),
+            "404 Response error should be identified as not-found"
+        );
+    }
+
+    #[test]
+    fn gcs_500_is_not_not_found() {
+        let err = make_response_error(500, "Internal Server Error");
+        assert!(
+            !is_not_found(&err),
+            "500 Response error should not be identified as not-found"
+        );
+    }
+
+    #[test]
+    fn gcs_403_is_not_not_found() {
+        let err = make_response_error(403, "Forbidden");
+        assert!(
+            !is_not_found(&err),
+            "403 Response error should not be identified as not-found"
+        );
+    }
+
+    #[test]
+    fn gcs_401_is_not_not_found() {
+        let err = make_response_error(401, "Unauthorized");
+        assert!(
+            !is_not_found(&err),
+            "401 Response error should not be identified as not-found"
+        );
     }
 }

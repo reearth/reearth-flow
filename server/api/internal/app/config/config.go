@@ -86,6 +86,7 @@ type (
 
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
+		WebsocketAPISecret       string `envconfig:"REEARTH_FLOW_WEBSOCKET_API_SECRET" pp:",omitempty"`
 
 		// cms
 		CMS_Endpoint string          `envconfig:"REEARTH_FLOW_GRPC_ENDPOINT_CMS" pp:",omitempty"`

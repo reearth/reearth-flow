@@ -16,6 +16,7 @@ type WebsocketClient interface {
 	CreateSnapshot(ctx context.Context, docID string, version int, name string) (*websocket.Document, error)
 	CopyDocument(ctx context.Context, docID string, source string) error
 	ImportDocument(ctx context.Context, docID string, data []byte) error
+	DeleteDocument(ctx context.Context, docID string) error
 
 	Close() error
 }

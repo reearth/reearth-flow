@@ -15,7 +15,10 @@ use super::{
     list_indexer::ListIndexerFactory,
     lod_filter::FeatureLodFilterFactory,
     merger::FeatureMergerFactory,
-    reader::{citygml::processor::FeatureCityGmlReaderFactory, FeatureReaderFactory},
+    reader::{
+        citygml::processor::FeatureCityGmlReaderFactory,
+        citygml3::processor::FeatureCityGml3ReaderFactory, FeatureReaderFactory,
+    },
     rhai::RhaiCallerFactory,
     sorter::FeatureSorterFactory,
     transformer::FeatureTransformerFactory,
@@ -42,6 +45,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<FeatureDuplicateFilterFactory>::default(),
         Box::<FeatureWriterFactory>::default(),
         Box::<FeatureCityGmlReaderFactory>::default(),
+        Box::<FeatureCityGml3ReaderFactory>::default(),
         Box::<JSONFragmenterFactory>::default(),
     ];
     factories
