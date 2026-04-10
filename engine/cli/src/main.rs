@@ -6,6 +6,7 @@ mod factory;
 mod incremental;
 mod logger;
 mod run;
+mod scaffold_i18n;
 mod schema_action;
 mod schema_workflow;
 mod utils;

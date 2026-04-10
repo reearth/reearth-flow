@@ -5,6 +5,7 @@ use clap::{ArgMatches, Command};
 use crate::doc_action::{build_doc_action_command, DocActionCliCommand};
 use crate::dot::{build_dot_command, DotCliCommand};
 use crate::run::{build_run_command, RunCliCommand};
+use crate::scaffold_i18n::{build_scaffold_i18n_command, ScaffoldI18nCliCommand};
 use crate::schema_action::{build_schema_action_command, SchemaActionCliCommand};
 use crate::schema_workflow::{build_schema_workflow_command, SchemaWorkflowCliCommand};
 
@@ -16,6 +17,7 @@ pub fn build_cli() -> Command {
         .subcommand(build_schema_action_command().display_order(3))
         .subcommand(build_schema_workflow_command().display_order(4))
         .subcommand(build_doc_action_command().display_order(5))
+        .subcommand(build_scaffold_i18n_command().display_order(6))
         .arg_required_else_help(true)
         .disable_help_subcommand(true)
         .subcommand_required(true)
@@ -28,6 +30,7 @@ pub enum CliCommand {
     SchemaAction(SchemaActionCliCommand),
     SchemaWorkflow(SchemaWorkflowCliCommand),
     DocAction(DocActionCliCommand),
+    ScaffoldI18n(ScaffoldI18nCliCommand),
 }
 
 impl CliCommand {
@@ -43,6 +46,9 @@ impl CliCommand {
             )),
             "schema-workflow" => Ok(CliCommand::SchemaWorkflow(SchemaWorkflowCliCommand)),
             "doc-action" => Ok(CliCommand::DocAction(DocActionCliCommand)),
+            "scaffold-i18n" => Ok(CliCommand::ScaffoldI18n(
+                ScaffoldI18nCliCommand::parse_cli_args(submatches)?,
+            )),
             _ => Err(crate::errors::Error::unknown_command(subcommand)),
         }
     }
@@ -54,6 +60,7 @@ impl CliCommand {
             CliCommand::SchemaAction(subcommand) => subcommand.execute(),
             CliCommand::SchemaWorkflow(subcommand) => subcommand.execute(),
             CliCommand::DocAction(subcommand) => subcommand.execute(),
+            CliCommand::ScaffoldI18n(subcommand) => subcommand.execute(),
         }
     }
 }
