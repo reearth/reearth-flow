@@ -414,13 +414,13 @@ type ParameterBatchInput struct {
 }
 
 type ParameterUpdateItem struct {
-	ParamID      ID             `json:"paramId"`
-	Name         *string        `json:"name,omitempty"`
-	Type         *ParameterType `json:"type,omitempty"`
-	Required     *bool          `json:"required,omitempty"`
-	Public       *bool          `json:"public,omitempty"`
-	DefaultValue any            `json:"defaultValue,omitempty"`
-	Config       JSON           `json:"config,omitempty"`
+	ParamID      ID            `json:"paramId"`
+	Name         string        `json:"name"`
+	Type         ParameterType `json:"type"`
+	Required     bool          `json:"required"`
+	Public       bool          `json:"public"`
+	DefaultValue any           `json:"defaultValue,omitempty"`
+	Config       JSON          `json:"config,omitempty"`
 }
 
 type PreviewSnapshot struct {
@@ -639,7 +639,7 @@ type UpdateMemberOfWorkspacePayload struct {
 }
 
 type UpdateParameterInput struct {
-	DefaultValue any           `json:"defaultValue"`
+	DefaultValue any           `json:"defaultValue,omitempty"`
 	Name         string        `json:"name"`
 	Required     bool          `json:"required"`
 	Public       bool          `json:"public"`

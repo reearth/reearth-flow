@@ -3964,7 +3964,7 @@ input DeclareParameterInput {
 }
 
 input UpdateParameterInput {
-  defaultValue: Any!
+  defaultValue: Any
   name: String!
   required: Boolean!
   public: Boolean!
@@ -3995,10 +3995,10 @@ input ParameterBatchInput {
 
 input ParameterUpdateItem {
   paramId: ID!
-  name: String
-  type: ParameterType
-  required: Boolean
-  public: Boolean
+  name: String!
+  type: ParameterType!
+  required: Boolean!
+  public: Boolean!
   defaultValue: Any
   config: JSON
 }
@@ -20292,28 +20292,28 @@ func (ec *executionContext) unmarshalInputParameterUpdateItem(ctx context.Contex
 			it.ParamID = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Name = data
 		case "type":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			data, err := ec.unmarshalOParameterType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx, v)
+			data, err := ec.unmarshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Type = data
 		case "required":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("required"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Required = data
 		case "public":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("public"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -20907,7 +20907,7 @@ func (ec *executionContext) unmarshalInputUpdateParameterInput(ctx context.Conte
 		switch k {
 		case "defaultValue":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultValue"))
-			data, err := ec.unmarshalNAny2interface(ctx, v)
+			data, err := ec.unmarshalOAny2interface(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28795,22 +28795,6 @@ func (ec *executionContext) unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋree
 	}
 	res, err := ec.unmarshalInputPagination(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOParameterType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx context.Context, v any) (*gqlmodel.ParameterType, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(gqlmodel.ParameterType)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOParameterType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ParameterType) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) unmarshalOParameterUpdateItem2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterUpdateItemᚄ(ctx context.Context, v any) ([]*gqlmodel.ParameterUpdateItem, error) {

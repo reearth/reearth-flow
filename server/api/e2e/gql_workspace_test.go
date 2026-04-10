@@ -15,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -158,12 +159,12 @@ func TestUpdateWorkspace(t *testing.T) {
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockWorkspaceRepo.EXPECT().UpdateWorkspace(gomock.Any(), workspace.UpdateWorkspaceInput{
 			WorkspaceID: wid.String(),
-			Name:        "updated",
+			Name:        lo.ToPtr("updated"),
 		}).Return(w, nil),
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockWorkspaceRepo.EXPECT().UpdateWorkspace(gomock.Any(), workspace.UpdateWorkspaceInput{
 			WorkspaceID: wid2.String(),
-			Name:        "updated",
+			Name:        lo.ToPtr("updated"),
 		}).Return(nil, errors.New("not found")),
 	)
 	mock := &TestMocks{

@@ -130,11 +130,11 @@ export const useQueries = () => {
       }[];
       updates?: {
         paramId: string;
-        name?: string;
-        defaultValue?: any;
-        type?: VarType;
-        required?: boolean;
-        publicValue?: boolean;
+        name: string;
+        defaultValue: any;
+        type: VarType;
+        required: boolean;
+        publicValue: boolean;
         config?: any;
       }[];
       deletes?: string[];
@@ -166,24 +166,18 @@ export const useQueries = () => {
 
       if (input.updates && input.updates.length > 0) {
         multiInput.updates = input.updates.map((update) => {
-          const updateItem: any = {
+          const gqlType = toGqlParameterType(update.type);
+          if (!gqlType)
+            throw new Error(`Invalid parameter type: ${update.type}`);
+          return {
             paramId: update.paramId,
+            name: update.name,
+            defaultValue: update.defaultValue,
+            type: gqlType,
+            required: update.required,
+            public: update.publicValue,
+            config: update.config,
           };
-          if (update.name !== undefined) updateItem.name = update.name;
-          if (update.defaultValue !== undefined)
-            updateItem.defaultValue = update.defaultValue;
-          if (update.type !== undefined) {
-            const gqlType = toGqlParameterType(update.type);
-            if (!gqlType)
-              throw new Error(`Invalid parameter type: ${update.type}`);
-            updateItem.type = gqlType;
-          }
-          if (update.required !== undefined)
-            updateItem.required = update.required;
-          if (update.publicValue !== undefined)
-            updateItem.public = update.publicValue;
-          if (update.config !== undefined) updateItem.config = update.config;
-          return updateItem;
         });
       }
 
