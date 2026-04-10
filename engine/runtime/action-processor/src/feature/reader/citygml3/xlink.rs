@@ -6,12 +6,18 @@ use super::utils::{XmlChild, XmlNode};
 
 /// Phase-2: convert a parsed feature root into a fully resolved `XmlNode`.
 /// Each `RawChild::Ref` becomes `XmlChild::Element(Arc<XmlNode>)` — a direct node pointer.
-/// Call once per feature after all files have been parsed and the registry is complete.
-pub fn resolve(raw: Arc<RawNode>, registry: &RawRegistry) -> Arc<XmlNode> {
+pub fn resolve(
+    raws: impl IntoIterator<Item = Arc<RawNode>>,
+    registry: &RawRegistry,
+) -> Vec<Arc<XmlNode>> {
     let mut cache: HashMap<*const RawNode, Arc<XmlNode>> = HashMap::new();
-    let mut in_progress: HashSet<*const RawNode> = HashSet::new();
-    convert_node(&raw, registry, &mut cache, &mut in_progress)
-        .expect("root CityGML node unexpectedly hit cycle boundary")
+    raws.into_iter()
+        .map(|raw| {
+            let mut in_progress: HashSet<*const RawNode> = HashSet::new();
+            convert_node(&raw, registry, &mut cache, &mut in_progress)
+                .expect("root CityGML node unexpectedly hit cycle boundary")
+        })
+        .collect()
 }
 
 fn convert_node(
@@ -94,9 +100,11 @@ mod tests {
 
         let mut reg = RawRegistry::new();
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
-        let tlf = resolve(raw.into_iter().next().unwrap(), &reg);
+        let resolved = resolve(raw, &reg);
+        assert_eq!(resolved.len(), 1);
+        let tlf = &resolved[0];
 
-        let building = &tlf;
+        let building = tlf;
         let surface_member = match &building.children[0] {
             XmlChild::Element(e) => e,
             _ => panic!(),
@@ -129,9 +137,11 @@ mod tests {
 
         let mut reg = RawRegistry::new();
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
-        let tlf = resolve(raw.into_iter().next().unwrap(), &reg);
+        let resolved = resolve(raw, &reg);
+        assert_eq!(resolved.len(), 1);
+        let tlf = &resolved[0];
 
-        let building = &tlf;
+        let building = tlf;
         let ref_arc = |i: usize| match &building.children[i] {
             XmlChild::Element(e) => match &e.children[0] {
                 XmlChild::Element(arc) => Arc::clone(arc),
@@ -162,9 +172,11 @@ mod tests {
 
         let mut reg = RawRegistry::new();
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
-        let tlf = resolve(raw.into_iter().next().unwrap(), &reg);
+        let resolved = resolve(raw, &reg);
+        assert_eq!(resolved.len(), 1);
+        let tlf = &resolved[0];
 
-        let building = &tlf;
+        let building = tlf;
         let surface_member = match &building.children[0] {
             XmlChild::Element(e) => e,
             _ => panic!(),
@@ -194,9 +206,11 @@ mod tests {
 
         let mut reg = RawRegistry::new();
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
-        let tlf = resolve(raw.into_iter().next().unwrap(), &reg);
+        let resolved = resolve(raw, &reg);
+        assert_eq!(resolved.len(), 1);
+        let tlf = &resolved[0];
 
-        let building = &tlf;
+        let building = tlf;
         let surface_member = match &building.children[0] {
             XmlChild::Element(e) => e,
             _ => panic!(),
@@ -238,8 +252,10 @@ mod tests {
         let raw_a = parse(xml_a, &url_a, &mut reg).unwrap();
         parse(xml_b, &url_b, &mut reg).unwrap();
 
-        let tlf = resolve(raw_a.into_iter().next().unwrap(), &reg);
-        let building = &tlf;
+        let resolved = resolve(raw_a, &reg);
+        assert_eq!(resolved.len(), 1);
+        let tlf = &resolved[0];
+        let building = tlf;
         let surface_member = match &building.children[0] {
             XmlChild::Element(e) => e,
             _ => panic!(),
@@ -271,6 +287,51 @@ mod tests {
 
         let mut reg = RawRegistry::new();
         let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
-        let _ = resolve(raw.into_iter().next().unwrap(), &reg);
+        let resolved = resolve(raw, &reg);
+        assert_eq!(resolved.len(), 2);
+        let _ = resolved;
+    }
+
+    #[test]
+    fn resolve_many_shares_cache_across_entrypoints() {
+        let xml = br##"
+<core:CityModel
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+  xmlns:gml="http://www.opengis.net/gml/3.2"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg001">
+      <gml:surfaceMember xlink:href="#poly001"/>
+    </bldg:Building>
+  </core:cityObjectMember>
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg002">
+      <gml:surfaceMember xlink:href="#poly001"/>
+    </bldg:Building>
+  </core:cityObjectMember>
+  <core:cityObjectMember>
+    <gml:Polygon gml:id="poly001"/>
+  </core:cityObjectMember>
+</core:CityModel>"##;
+
+        let mut reg = RawRegistry::new();
+        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let resolved = resolve(raw, &reg);
+
+        let polygon_arc = |feature: &Arc<XmlNode>| match &feature.children[0] {
+            XmlChild::Element(e) => match &e.children[0] {
+                XmlChild::Element(arc) => Arc::clone(arc),
+                _ => panic!("expected referenced polygon"),
+            },
+            _ => panic!("expected surfaceMember element"),
+        };
+
+        let arc0 = polygon_arc(&resolved[0]);
+        let arc1 = polygon_arc(&resolved[1]);
+        assert!(
+            Arc::ptr_eq(&arc0, &arc1),
+            "shared xlink target should be resolved once across feature roots"
+        );
     }
 }

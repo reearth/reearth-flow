@@ -274,7 +274,8 @@ fn parse_element<R: BufRead>(
                     })));
                 }
             }
-            OwnedEvent::End | OwnedEvent::Eof => break,
+            OwnedEvent::End => break,
+            OwnedEvent::Eof => return Err(ParseError::UnexpectedEof),
             OwnedEvent::Text(t) if !t.trim().is_empty() => {
                 children.push(RawChild::Text(t));
             }
@@ -315,7 +316,7 @@ fn skip_element<R: BufRead>(reader: &mut NsReader<R>, buf: &mut Vec<u8>) -> Resu
                     break;
                 }
             }
-            OwnedEvent::Eof => break,
+            OwnedEvent::Eof => return Err(ParseError::UnexpectedEof),
             _ => {}
         }
     }
@@ -369,7 +370,7 @@ mod tests {
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
 
-    use crate::feature::reader::citygml3::utils::{XmlChild, XmlNode, GML_NS, XLINK_NS};
+    use crate::feature::reader::citygml3::utils::{XmlChild, XmlNode, GML_NS};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()
@@ -677,70 +678,5 @@ mod tests {
 
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
-    }
-
-    #[test]
-    fn resolve_xlink_href_becomes_element_child() {
-        use crate::feature::reader::citygml3::xlink;
-
-        let xml = br##"
-<core:CityModel
-  xmlns:core="http://www.opengis.net/citygml/3.0"
-  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
-  xmlns:gml="http://www.opengis.net/gml/3.2"
-  xmlns:xlink="http://www.w3.org/1999/xlink">
-  <core:cityObjectMember>
-    <bldg:Building gml:id="bldg001">
-      <bldg:lod2Solid>
-        <gml:Solid>
-          <gml:exterior>
-            <gml:Shell>
-              <gml:surfaceMember xlink:href="#poly001"/>
-            </gml:Shell>
-          </gml:exterior>
-        </gml:Solid>
-      </bldg:lod2Solid>
-      <gml:surfaceMember>
-        <gml:Polygon gml:id="poly001"/>
-      </gml:surfaceMember>
-    </bldg:Building>
-  </core:cityObjectMember>
-</core:CityModel>"##;
-
-        let mut reg = RawRegistry::new();
-        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
-        let tlf = xlink::resolve(raw.into_iter().next().unwrap(), &reg);
-
-        let building = &tlf;
-        let lod2 = match &building.children[0] {
-            XmlChild::Element(e) => e,
-            _ => panic!(),
-        };
-        let solid = match &lod2.children[0] {
-            XmlChild::Element(e) => e,
-            _ => panic!(),
-        };
-        let exterior = match &solid.children[0] {
-            XmlChild::Element(e) => e,
-            _ => panic!(),
-        };
-        let shell = match &exterior.children[0] {
-            XmlChild::Element(e) => e,
-            _ => panic!(),
-        };
-        let surface_member = match &shell.children[0] {
-            XmlChild::Element(e) => e,
-            _ => panic!(),
-        };
-
-        assert_eq!(local_name(&surface_member.name.0), "surfaceMember");
-        match &surface_member.children[0] {
-            XmlChild::Element(arc) => assert_eq!(local_name(&arc.name.0), "Polygon"),
-            _ => panic!("expected Element"),
-        }
-        assert!(!surface_member
-            .attrs
-            .iter()
-            .any(|((q, ns), _)| local_name(q) == "href" && ns == XLINK_NS));
     }
 }

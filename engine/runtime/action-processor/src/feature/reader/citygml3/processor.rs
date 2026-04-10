@@ -175,8 +175,7 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let registry = std::mem::take(&mut self.raw_registry);
-        for raw_feature in std::mem::take(&mut self.pending) {
-            let feature_root = xlink::resolve(raw_feature, &registry);
+        for feature_root in xlink::resolve(std::mem::take(&mut self.pending), &registry) {
             let (stripped, raw_geoms) = geometry::extract_geometries(&feature_root);
             let mut feature = parser::to_feature(&stripped);
 

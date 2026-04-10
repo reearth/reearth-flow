@@ -1,3 +1,8 @@
+// Geometry parsing logic for CityGML 3.0
+// Rules of simplicity & robustness:
+// 1. do not take over XSD validation responsibilities
+// 2. unsupported geometry or error not detectable by XSD should be logged and skipped, not panic
+
 use std::sync::Arc;
 
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
@@ -563,11 +568,13 @@ fn extract_lod(local: &str) -> Option<u8> {
     }
 }
 
+// `AbstractGeometry` subtypes that can appear as the top-level value of
+// an lod/tin property or as a direct member of `MultiGeometry`/`GeometricComplex`
 fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
     match local {
         "Solid" | "MultiSolid" | "CompositeSolid" => Some(GeometryType::Solid),
         "MultiSurface" | "CompositeSurface" | "Surface" | "PolyhedralSurface"
-        | "OrientableSurface" | "Polygon" | "Rectangle" => Some(GeometryType::Surface),
+        | "OrientableSurface" | "Polygon" => Some(GeometryType::Surface),
         "TriangulatedSurface" | "Tin" => Some(GeometryType::Triangle),
         "MultiCurve" | "CompositeCurve" | "OrientableCurve" | "LineString" | "Curve" => {
             Some(GeometryType::Curve)
