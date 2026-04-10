@@ -74,13 +74,9 @@ fn collect_geometry_from_property(prop: &XmlNode, lod: Option<u8>, out: &mut Vec
     };
     let geom_ln = local_name(&geom_node.name.0);
     if geom_ln == "ImplicitGeometry" {
-        if let Some(g) = parse_implicit_geom(geom_node, lod) {
-            out.push(g);
-        } else {
-            tracing::warn!(
-                element = geom_ln,
-                "citygml3 geometry: failed to parse implicit geometry, skipped"
-            );
+        tracing::warn!("citygml3 geometry: transformationMatrix/referencePoint not supported");
+        if let Some(rel_geom) = find_child(geom_node, "relativeGeometry") {
+            collect_geometry_from_property(rel_geom, lod, out);
         }
     } else if geom_ln == "GeometricComplex" {
         parse_geometric_complex(geom_node, lod, out);
@@ -123,113 +119,6 @@ fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<G
     } else {
         Some(geom)
     }
-}
-
-fn parse_implicit_geom(node: &XmlNode, lod: Option<u8>) -> Option<GmlGeometry> {
-    let matrix = compose_implicit_transform(
-        find_child(node, "transformationMatrix").and_then(|n| parse_matrix4(text_content(n)))?,
-        parse_reference_point(node),
-    );
-    let rel_geom_node = find_child(node, "relativeGeometry")?;
-    let geom_node = element_children(rel_geom_node).next()?;
-    let ty = gml_element_geometry_type(local_name(&geom_node.name.0))?;
-
-    let mut geom = GmlGeometry::new(ty, lod);
-    geom.id = gml_id(geom_node);
-
-    match ty {
-        GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-            let mut polys = Vec::new();
-            collect_polygons(geom_node, &mut polys);
-            geom.polygons = polys
-                .into_iter()
-                .map(|p| transform_polygon(p, &matrix))
-                .collect();
-            geom.len = geom.polygons.len() as u32;
-        }
-        GeometryType::Curve => {
-            let mut ls = Vec::new();
-            collect_line_strings(geom_node, &mut ls);
-            geom.line_strings = ls
-                .into_iter()
-                .map(|l| transform_line_string(l, &matrix))
-                .collect();
-            geom.len = geom.line_strings.len() as u32;
-        }
-        GeometryType::Point => {
-            let mut pts = Vec::new();
-            collect_points(geom_node, &mut pts);
-            geom.points = pts
-                .into_iter()
-                .map(|p| transform_coord(p, &matrix))
-                .collect();
-            geom.len = geom.points.len() as u32;
-        }
-    }
-
-    let empty = geom.polygons.is_empty() && geom.line_strings.is_empty() && geom.points.is_empty();
-    if empty {
-        None
-    } else {
-        Some(geom)
-    }
-}
-
-fn parse_matrix4(text: &str) -> Option<[f64; 16]> {
-    let vals: Vec<f64> = text
-        .split_whitespace()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    if vals.len() == 16 {
-        let mut m = [0.0f64; 16];
-        m.copy_from_slice(&vals);
-        Some(m)
-    } else {
-        None
-    }
-}
-
-fn parse_reference_point(node: &XmlNode) -> Option<Coordinate3D<f64>> {
-    let ref_point = find_child(node, "referencePoint")?;
-    let point = element_children(ref_point).find(|child| local_name(&child.name.0) == "Point")?;
-    let mut points = Vec::new();
-    collect_points(point, &mut points);
-    points.into_iter().next()
-}
-
-fn compose_implicit_transform(
-    mut matrix: [f64; 16],
-    reference_point: Option<Coordinate3D<f64>>,
-) -> [f64; 16] {
-    if let Some(reference_point) = reference_point {
-        matrix[3] += reference_point.x;
-        matrix[7] += reference_point.y;
-        matrix[11] += reference_point.z;
-    }
-    matrix
-}
-
-#[inline]
-fn transform_coord(c: Coordinate3D<f64>, m: &[f64; 16]) -> Coordinate3D<f64> {
-    Coordinate3D::new__(
-        m[0] * c.x + m[1] * c.y + m[2] * c.z + m[3],
-        m[4] * c.x + m[5] * c.y + m[6] * c.z + m[7],
-        m[8] * c.x + m[9] * c.y + m[10] * c.z + m[11],
-    )
-}
-
-fn transform_line_string(ls: LineString3D<f64>, m: &[f64; 16]) -> LineString3D<f64> {
-    LineString3D::new(ls.0.into_iter().map(|c| transform_coord(c, m)).collect())
-}
-
-fn transform_polygon(poly: Polygon3D<f64>, m: &[f64; 16]) -> Polygon3D<f64> {
-    let (ext, ints) = poly.into_inner();
-    Polygon3D::new(
-        transform_line_string(ext, m),
-        ints.into_iter()
-            .map(|i| transform_line_string(i, m))
-            .collect(),
-    )
 }
 
 fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
@@ -778,7 +667,7 @@ mod tests {
     }
 
     #[test]
-    fn test_implicit_geometry_transform() {
+    fn test_implicit_geometry_relative_geom_parsed() {
         let pos_list = "0 0 0 1 0 0 1 1 0 0 1 0 0 0 0";
         let rel_geom = elem(
             "gml:MultiSurface",
@@ -815,19 +704,6 @@ mod tests {
                     vec![text_node("1 0 0 10  0 1 0 20  0 0 1 0  0 0 0 1")],
                 )),
                 elem_child(elem(
-                    "core:referencePoint",
-                    vec![],
-                    vec![elem_child(elem(
-                        "gml:Point",
-                        vec![],
-                        vec![elem_child(elem(
-                            "gml:pos",
-                            vec![],
-                            vec![text_node("100 200 5")],
-                        ))],
-                    ))],
-                )),
-                elem_child(elem(
                     "core:relativeGeometry",
                     vec![],
                     vec![elem_child(rel_geom)],
@@ -849,14 +725,11 @@ mod tests {
         let g = &geoms[0];
         assert_eq!(g.ty, GeometryType::Surface);
         assert_eq!(g.lod, Some(2));
+        // transform is not applied; coordinates are from relativeGeometry as-is
         let first = g.polygons[0].exterior().0[0];
-        assert!((first.x - 110.0).abs() < 1e-10);
-        assert!((first.y - 220.0).abs() < 1e-10);
-        assert!((first.z - 5.0).abs() < 1e-10);
-        let third = g.polygons[0].exterior().0[2];
-        assert!((third.x - 111.0).abs() < 1e-10);
-        assert!((third.y - 221.0).abs() < 1e-10);
-        assert!((third.z - 5.0).abs() < 1e-10);
+        assert!((first.x - 0.0).abs() < 1e-10);
+        assert!((first.y - 0.0).abs() < 1e-10);
+        assert!((first.z - 0.0).abs() < 1e-10);
     }
 
     #[test]

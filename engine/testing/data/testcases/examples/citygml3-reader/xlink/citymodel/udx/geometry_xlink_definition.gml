@@ -39,6 +39,7 @@
                 <gml:Polygon>
                   <gml:exterior>
                     <gml:LinearRing>
+                      <!-- to be fixed after supporting referencePoint/transformationMatrix, should be local coordinates -->
                       <gml:posList>139.7457 35.6587 5.0 139.7458 35.6587 5.0 139.7458 35.6588 5.0 139.7457 35.6588 5.0 139.7457 35.6587 5.0</gml:posList>
                     </gml:LinearRing>
                   </gml:exterior>
