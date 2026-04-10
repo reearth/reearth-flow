@@ -1,16 +1,12 @@
-use std::{
-    collections::HashMap,
-    fs,
-    path::Path,
-};
+use std::{collections::HashMap, fs, path::Path};
 
-use clap::{Arg, ArgMatches, Command};
-use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
 use crate::{
     factory::{BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES, PYTHON_ACTION_FACTORIES},
     schema_action::RootI18nSchema,
     utils::{ActionSchema, I18nSchema, PropertyI18n},
 };
+use clap::{Arg, ArgMatches, Command};
+use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
 
 /// Collects all property names at the top level of `schema["properties"]`.
 fn collect_top_level_properties(parameter: &serde_json::Value) -> Vec<String> {
@@ -23,9 +19,7 @@ fn collect_top_level_properties(parameter: &serde_json::Value) -> Vec<String> {
 
 /// Collects all definition names and their property names from
 /// `schema["definitions"][def_name]["properties"]`.
-fn collect_definitions(
-    parameter: &serde_json::Value,
-) -> HashMap<String, Vec<String>> {
+fn collect_definitions(parameter: &serde_json::Value) -> HashMap<String, Vec<String>> {
     parameter
         .get("definitions")
         .and_then(|d| d.as_object())
@@ -58,17 +52,16 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
     let definitions = collect_definitions(&action.parameter);
 
     // --- parameterI18n ---
-    let mut param_i18n = existing
-        .parameter_i18n
-        .take()
-        .unwrap_or_default();
+    let mut param_i18n = existing.parameter_i18n.take().unwrap_or_default();
 
     // Remove stale keys (keep "" root key always if present)
     param_i18n.retain(|k, _| k.is_empty() || top_level.contains(k));
 
     // Add missing keys
     for prop in &top_level {
-        param_i18n.entry(prop.clone()).or_insert_with(PropertyI18n::default);
+        param_i18n
+            .entry(prop.clone())
+            .or_insert_with(PropertyI18n::default);
     }
 
     existing.parameter_i18n = if param_i18n.is_empty() {
@@ -85,21 +78,22 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
     };
 
     // --- definitionI18n ---
-    let mut def_i18n = existing
-        .definition_i18n
-        .take()
-        .unwrap_or_default();
+    let mut def_i18n = existing.definition_i18n.take().unwrap_or_default();
 
     // Remove stale definition names
     def_i18n.retain(|def_name, _| definitions.contains_key(def_name));
 
     for (def_name, props) in &definitions {
-        let entry = def_i18n.entry(def_name.clone()).or_insert_with(HashMap::new);
+        let entry = def_i18n
+            .entry(def_name.clone())
+            .or_insert_with(HashMap::new);
         // Remove stale property keys within the definition
         entry.retain(|k, _| props.contains(k));
         // Add missing property keys
         for prop in props {
-            entry.entry(prop.clone()).or_insert_with(PropertyI18n::default);
+            entry
+                .entry(prop.clone())
+                .or_insert_with(PropertyI18n::default);
         }
     }
 
@@ -114,8 +108,7 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
             sorted_defs
                 .into_iter()
                 .map(|(def_name, props)| {
-                    let mut sorted_props: Vec<(String, PropertyI18n)> =
-                        props.into_iter().collect();
+                    let mut sorted_props: Vec<(String, PropertyI18n)> = props.into_iter().collect();
                     sorted_props.sort_by(|a, b| a.0.cmp(&b.0));
                     (def_name, sorted_props.into_iter().collect())
                 })
@@ -188,9 +181,7 @@ impl ScaffoldI18nCliCommand {
             )));
         }
 
-        for entry in fs::read_dir(dir)
-            .map_err(|e| crate::errors::Error::init(format!("{e:?}")))?
-        {
+        for entry in fs::read_dir(dir).map_err(|e| crate::errors::Error::init(format!("{e:?}")))? {
             let entry = entry.map_err(|e| crate::errors::Error::init(format!("{e:?}")))?;
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
@@ -211,13 +202,15 @@ impl ScaffoldI18nCliCommand {
 
             // Reconcile each known action
             for (action_name, action_schema) in &actions {
-                let entry = by_name.entry(action_name.clone()).or_insert_with(|| I18nSchema {
-                    name: action_name.clone(),
-                    description: String::new(),
-                    parameter: None,
-                    parameter_i18n: None,
-                    definition_i18n: None,
-                });
+                let entry = by_name
+                    .entry(action_name.clone())
+                    .or_insert_with(|| I18nSchema {
+                        name: action_name.clone(),
+                        description: String::new(),
+                        parameter: None,
+                        parameter_i18n: None,
+                        definition_i18n: None,
+                    });
                 reconcile_action(entry, action_schema);
             }
 

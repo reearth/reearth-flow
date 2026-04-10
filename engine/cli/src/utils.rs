@@ -108,7 +108,10 @@ pub(crate) fn apply_parameter_i18n(
     }
 
     // def_i18n → schema["definitions"][def_name]["properties"][prop_name]
-    if let Some(definitions) = schema.get_mut("definitions").and_then(|d| d.as_object_mut()) {
+    if let Some(definitions) = schema
+        .get_mut("definitions")
+        .and_then(|d| d.as_object_mut())
+    {
         for (def_name, props) in def_i18n {
             if let Some(def_schema) = definitions.get_mut(def_name) {
                 if let Some(def_props) = def_schema
@@ -129,7 +132,10 @@ pub(crate) fn apply_parameter_i18n(
 /// Applies all i18n overrides from an `I18nSchema` entry to an already-parsed
 /// parameter JSON Schema value. Handles both the legacy merge-patch field and
 /// the new flat property-path fields, in that order.
-fn apply_i18n_to_parameter(parameter_schema: &mut serde_json::Value, i18n_schema: Option<&I18nSchema>) {
+fn apply_i18n_to_parameter(
+    parameter_schema: &mut serde_json::Value,
+    i18n_schema: Option<&I18nSchema>,
+) {
     let Some(i18n) = i18n_schema else { return };
 
     if let Some(patch) = &i18n.parameter {
