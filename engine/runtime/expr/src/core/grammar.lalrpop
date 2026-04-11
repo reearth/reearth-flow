@@ -1,0 +1,217 @@
+use crate::core::ast::{BinOp, Expr, UnaryOp};
+
+grammar;
+
+extern {
+    type Location = usize;
+    type Error = crate::core::error::Error;
+
+    enum crate::core::lexer::Token {
+        "int"   => crate::core::lexer::Token::Int(<i64>),
+        "float" => crate::core::lexer::Token::Float(<f64>),
+        "str"   => crate::core::lexer::Token::Str(<String>),
+        "ident" => crate::core::lexer::Token::Ident(<String>),
+        "true"  => crate::core::lexer::Token::True,
+        "false" => crate::core::lexer::Token::False,
+        "null"  => crate::core::lexer::Token::Null,
+        "in"    => crate::core::lexer::Token::In,
+        "let"   => crate::core::lexer::Token::Let,
+        "if"    => crate::core::lexer::Token::If,
+        "else"  => crate::core::lexer::Token::Else,
+        "."     => crate::core::lexer::Token::Dot,
+        "["     => crate::core::lexer::Token::LBracket,
+        "]"     => crate::core::lexer::Token::RBracket,
+        "("     => crate::core::lexer::Token::LParen,
+        ")"     => crate::core::lexer::Token::RParen,
+        "{"     => crate::core::lexer::Token::LBrace,
+        "}"     => crate::core::lexer::Token::RBrace,
+        ","     => crate::core::lexer::Token::Comma,
+        ":"     => crate::core::lexer::Token::Colon,
+        ";"     => crate::core::lexer::Token::Semi,
+        "="     => crate::core::lexer::Token::Assign,
+        "+"     => crate::core::lexer::Token::Plus,
+        "-"     => crate::core::lexer::Token::Minus,
+        "*"     => crate::core::lexer::Token::Star,
+        "/"     => crate::core::lexer::Token::Slash,
+        "=="    => crate::core::lexer::Token::Eq,
+        "!="    => crate::core::lexer::Token::Ne,
+        "<"     => crate::core::lexer::Token::Lt,
+        "<="    => crate::core::lexer::Token::Le,
+        ">"     => crate::core::lexer::Token::Gt,
+        ">="    => crate::core::lexer::Token::Ge,
+        "&&"    => crate::core::lexer::Token::And,
+        "||"    => crate::core::lexer::Token::Or,
+        "!"     => crate::core::lexer::Token::Bang,
+    }
+}
+
+// precedence levels (lowest → highest):
+// Expr (let) → Or → And → Equality → Comparison → Add → Mul → Unary → Postfix → Primary
+//
+// All binary levels use left recursion — the LALR table-driven stack handles
+// arbitrarily deep nesting without touching the Rust call stack.
+
+// Top-level: let is lowest precedence, right-recursive so its body captures everything after.
+pub Expr: Expr = {
+    "let" <n:"ident"> "=" <v:Or> ";" <body:Expr>
+        => Expr::Let { name: n, value: Box::new(v), body: Box::new(body) },
+    Or,
+};
+
+Or: Expr = {
+    <l:Or> "||" <r:And> => Expr::Binary(Box::new(l), BinOp::Or, Box::new(r)),
+    And,
+};
+
+And: Expr = {
+    <l:And> "&&" <r:Equality> => Expr::Binary(Box::new(l), BinOp::And, Box::new(r)),
+    Equality,
+};
+
+Equality: Expr = {
+    <l:Equality> "==" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::Eq, Box::new(r)),
+    <l:Equality> "!=" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::Ne, Box::new(r)),
+    <l:Equality> "in" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::In, Box::new(r)),
+    Comparison,
+};
+
+Comparison: Expr = {
+    <l:Comparison> "<"  <r:Add> => Expr::Binary(Box::new(l), BinOp::Lt, Box::new(r)),
+    <l:Comparison> "<=" <r:Add> => Expr::Binary(Box::new(l), BinOp::Le, Box::new(r)),
+    <l:Comparison> ">"  <r:Add> => Expr::Binary(Box::new(l), BinOp::Gt, Box::new(r)),
+    <l:Comparison> ">=" <r:Add> => Expr::Binary(Box::new(l), BinOp::Ge, Box::new(r)),
+    Add,
+};
+
+Add: Expr = {
+    <l:Add> "+" <r:Mul> => Expr::Binary(Box::new(l), BinOp::Add, Box::new(r)),
+    <l:Add> "-" <r:Mul> => Expr::Binary(Box::new(l), BinOp::Sub, Box::new(r)),
+    Mul,
+};
+
+Mul: Expr = {
+    <l:Mul> "*" <r:Unary> => Expr::Binary(Box::new(l), BinOp::Mul, Box::new(r)),
+    <l:Mul> "/" <r:Unary> => Expr::Binary(Box::new(l), BinOp::Div, Box::new(r)),
+    Unary,
+};
+
+Unary: Expr = {
+    "!" <e:Unary> => Expr::Unary(UnaryOp::Not, Box::new(e)),
+    "-" <e:Unary> => Expr::Unary(UnaryOp::Neg, Box::new(e)),
+    Postfix,
+};
+
+Postfix: Expr = {
+    <e:Postfix> "[" <k:Or> "]"
+        => Expr::Index(Box::new(e), Box::new(k)),
+    <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> "]"
+        => Expr::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: None },
+    <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> ":" <step:OptExpr> "]"
+        => Expr::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: step.map(Box::new) },
+    <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")"
+        => Expr::MethodCall { receiver: Box::new(e), method: name, args },
+    Primary,
+};
+
+OptExpr: Option<Expr> = {
+    <e:Or> => Some(e),
+    => None,
+};
+
+Primary: Expr = {
+    "int"   => Expr::Int(<>),
+    "float" => Expr::Float(<>),
+    "str"   => Expr::Str(<>),
+    "true"  => Expr::Bool(true),
+    "false" => Expr::Bool(false),
+    "null"  => Expr::Null,
+    <name:"ident"> "(" <args:Comma<Or>> ")" => Expr::FuncCall { name, args },
+    "ident" => Expr::Var(<>),
+    // parens now accept full Expr so `let` works inside: (let x = 1; x)
+    "(" <Expr> ")",
+    "[" <items:Comma<Or>> "]" => Expr::Array(items),
+    BlockExpr,
+    MapExpr,
+    IfExpr,
+};
+
+// if <cond> { <then> } else <branch>
+// ElseBranch is either a block or another `if`, enabling natural `else if` chains.
+IfExpr: Expr = {
+    "if" <cond:Or> <then:BlockExpr> "else" <else_:ElseBranch>
+        => Expr::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(else_) },
+    "if" <cond:Or> <then:BlockExpr>
+        => Expr::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(Expr::Null) },
+};
+
+ElseBranch: Expr = {
+    BlockExpr,
+    IfExpr,
+};
+
+// Block expression: { } or { seq_body }
+// Braces are purely grouping + sequencing — scope is created only by `let`.
+BlockExpr: Expr = {
+    "{" "}" => Expr::Null,
+    "{" <s:SeqBody> "}" => s,
+};
+
+// SeqBody: right-recursive sequence inside a block.
+//
+// Each rule reads lookahead to decide:
+//   `}` after Or         → terminal expression  (block value)
+//   `;` then `}`         → trailing semi         (discard, return Null)
+//   `;` then something   → expression continues
+//   `let` anywhere       → binding; rest of block is its body
+//
+// `let x = v` uses `Or` for v so bare `let` can't nest on the RHS without
+// braces — use `{ let ... }` to nest. This matches Rust's design.
+SeqBody: Expr = {
+    // Single expression — block value (no trailing semi).
+    <e:Or> => e,
+
+    // Trailing semicolon: evaluate e for effects, block returns Null.
+    <e:Or> ";" => Expr::Block(vec![e, Expr::Null]),
+
+    // let binding at end of block (degenerate but consistent): returns Null.
+    "let" <n:"ident"> "=" <v:Or> ";"
+        => Expr::Let { name: n, value: Box::new(v), body: Box::new(Expr::Null) },
+
+    // let binding scoping over the rest of the block.
+    "let" <n:"ident"> "=" <v:Or> ";" <rest:SeqBody>
+        => Expr::Let { name: n, value: Box::new(v), body: Box::new(rest) },
+
+    // Expression followed by more: build a flat Block by prepending.
+    <e:Or> ";" <rest:SeqBody> => match rest {
+        Expr::Block(mut items) => { items.insert(0, e); Expr::Block(items) }
+        other => Expr::Block(vec![e, other]),
+    },
+};
+
+// Map literal: { key: value, ... } — at least one entry so {} stays unambiguous (Null).
+// After reducing the key `Or`, lookahead `:` is never valid in SeqBody context,
+// so LR(1) disambiguates map vs block without any grammar conflict.
+MapExpr: Expr = {
+    "{" <e:MapEntry> <rest:("," <MapEntry>)*> "}" => {
+        let mut entries = vec![e];
+        entries.extend(rest);
+        Expr::Map(entries)
+    },
+    "{" <e:MapEntry> <rest:("," <MapEntry>)*> "," "}" => {
+        let mut entries = vec![e];
+        entries.extend(rest);
+        Expr::Map(entries)
+    },
+};
+
+MapEntry: (Expr, Expr) = {
+    <k:Or> ":" <v:Or> => (k, v),
+};
+
+// Comma-separated list with optional trailing comma, allowing empty.
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => {
+        if let Some(e) = e { v.push(e); }
+        v
+    }
+};
