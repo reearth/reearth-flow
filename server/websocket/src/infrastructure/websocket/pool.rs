@@ -216,6 +216,29 @@ impl BroadcastPool {
         self.perform_cleanup(doc_id).await;
     }
 
+    /// Force-evict a BroadcastGroup regardless of active connections.
+    /// Used after rollback: the rolled-back state has already been persisted
+    /// to GCS, so we skip the normal shutdown flush. Dropping the group
+    /// closes the broadcast sender, which terminates all client sink tasks
+    /// and closes WebSocket connections.
+    pub async fn force_evict_group(&self, doc_id: &str) {
+        let lock = self.get_or_create_lock(doc_id);
+        let guard = lock.lock_owned().await;
+
+        if let Some((_, group)) = self.groups.remove(doc_id) {
+            if let Err(e) = group.shutdown_without_flush().await {
+                warn!(
+                    "Error during force-evict shutdown for doc '{}': {}",
+                    doc_id, e
+                );
+            }
+            info!("Force-evicted BroadcastGroup for doc_id: {}", doc_id);
+        }
+
+        drop(guard);
+        self.locks.remove(doc_id);
+    }
+
     pub fn get_cached_groups_count(&self) -> usize {
         self.groups.len()
     }

@@ -22,7 +22,7 @@ use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
 use yrs::sync::{Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
-use yrs::{Doc, ReadTxn, Transact, Update};
+use yrs::{Doc, Map, ReadTxn, Transact, Update};
 
 use super::redis_channels::RedisChannels;
 use crate::domain::value_objects::broadcast::BroadcastConfig;
@@ -299,6 +299,38 @@ impl BroadcastGroup {
 
     pub fn get_redis_store(&self) -> &Arc<RedisStore> {
         &self.redis_store
+    }
+
+    /// Write `rollbackInProgress = true` to the Y-doc metadata map.
+    /// The `doc_sub` observer broadcasts this to all connected clients
+    /// via the existing Yjs sync protocol.
+    pub async fn signal_rollback(&self) {
+        let awareness = self.awareness_ref.write().await;
+        let doc = awareness.doc();
+        let metadata = doc.get_or_insert_map("metadata");
+        let mut txn = doc.transact_mut();
+        metadata.insert(&mut txn, "rollbackInProgress", true);
+        // Dropping txn triggers the observe_update_v1 callback,
+        // which encodes and broadcasts the update to all clients.
+    }
+
+    /// Shut down background tasks and clean up heartbeat without flushing
+    /// the in-memory doc state to GCS. Used after rollback, where the
+    /// rolled-back state has already been persisted separately.
+    pub async fn shutdown_without_flush(&self) -> Result<()> {
+        if let Ok(mut guard) = self.shutdown_handle.try_lock() {
+            if let Some(handle) = guard.take() {
+                handle.shutdown_sync();
+            }
+        }
+        let client_id = {
+            let awareness_read = self.awareness_ref.read().await;
+            awareness_read.client_id()
+        };
+        self.redis_store
+            .remove_instance_heartbeat(&self.doc_name, &client_id)
+            .await?;
+        Ok(())
     }
 
     pub fn get_last_read_id(&self) -> &Arc<Mutex<String>> {
