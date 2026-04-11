@@ -88,20 +88,39 @@ impl DocumentHandler {
         State(state): State<Arc<AppState>>,
         Json(request): Json<RollbackRequest>,
     ) -> Response {
-        match state
+        // 1. Rollback and persist the rolled-back state to GCS
+        let document = match state
             .document_usecase
             .rollback(&doc_id, request.version)
             .await
         {
-            Ok(document) => Json(DocumentResponse {
-                id: document.id.value().to_string(),
-                updates: document.updates,
-                version: document.version.value(),
-                timestamp: document.timestamp.to_rfc3339(),
-            })
-            .into_response(),
-            Err(err) => handle_service_error(&format!("rollback [{}]", doc_id), err),
+            Ok(doc) => doc,
+            Err(err) => return handle_service_error(&format!("rollback [{}]", doc_id), err),
+        };
+
+        // 2. Signal rollback to connected clients via Yjs metadata (if any
+        //    active group exists). Use try_get_group to avoid creating a new
+        //    group just to signal — only signal when clients are connected.
+        if let Some(group) = state.pool.try_get_group(&doc_id) {
+            group.signal_rollback().await;
         }
+
+        if let Err(e) = state.pool.get_redis_store().delete_stream(&doc_id).await {
+            warn!(
+                "Failed to delete Redis stream during rollback for '{}': {}",
+                doc_id, e
+            );
+        }
+
+        state.pool.force_evict_group(&doc_id).await;
+
+        Json(DocumentResponse {
+            id: document.id.value().to_string(),
+            updates: document.updates,
+            version: document.version.value(),
+            timestamp: document.timestamp.to_rfc3339(),
+        })
+        .into_response()
     }
 
     pub async fn get_history_metadata(

@@ -159,8 +159,22 @@ impl DocumentRepository for DocumentRepositoryImpl {
     }
 
     async fn rollback(&self, doc_id: &str, version: u64) -> Result<Document> {
+        anyhow::ensure!(
+            version <= u32::MAX as u64,
+            "version {} exceeds maximum supported value ({})",
+            version,
+            u32::MAX
+        );
         let store = self.store();
         let doc = store.rollback_to(doc_id, version as u32).await?;
+
+        // Persist the rolled-back state to GCS so that new BroadcastGroups
+        // (created on client reconnect) load the correct state.
+        {
+            let txn = doc.transact();
+            store.flush_doc_v2(doc_id, &txn).await?;
+        }
+
         let document = Self::to_document(doc_id, doc, version, Utc::now());
         Ok(document)
     }
