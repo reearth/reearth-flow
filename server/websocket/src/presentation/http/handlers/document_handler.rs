@@ -98,10 +98,10 @@ impl DocumentHandler {
             Err(err) => return handle_service_error(&format!("rollback [{}]", doc_id), err),
         };
 
-        // 2. Signal rollback to all connected clients via Yjs metadata,
-        //    then wipe stale Redis data and force-evict the BroadcastGroup.
-        //    Clients will auto-reconnect and load the fresh rolled-back state.
-        if let Ok(group) = state.pool.get_group(&doc_id).await {
+        // 2. Signal rollback to connected clients via Yjs metadata (if any
+        //    active group exists). Use try_get_group to avoid creating a new
+        //    group just to signal — only signal when clients are connected.
+        if let Some(group) = state.pool.try_get_group(&doc_id) {
             group.signal_rollback().await;
         }
 

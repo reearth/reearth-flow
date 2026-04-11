@@ -212,6 +212,11 @@ impl BroadcastPool {
         self.ensure_group(doc_id).await
     }
 
+    /// Return the cached BroadcastGroup if one exists, without creating a new one.
+    pub fn try_get_group(&self, doc_id: &str) -> Option<Arc<BroadcastGroup>> {
+        self.groups.get(doc_id).map(|entry| entry.clone())
+    }
+
     pub async fn cleanup_group(&self, doc_id: &str) {
         self.perform_cleanup(doc_id).await;
     }

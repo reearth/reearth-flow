@@ -159,6 +159,12 @@ impl DocumentRepository for DocumentRepositoryImpl {
     }
 
     async fn rollback(&self, doc_id: &str, version: u64) -> Result<Document> {
+        anyhow::ensure!(
+            version <= u32::MAX as u64,
+            "version {} exceeds maximum supported value ({})",
+            version,
+            u32::MAX
+        );
         let store = self.store();
         let doc = store.rollback_to(doc_id, version as u32).await?;
 
