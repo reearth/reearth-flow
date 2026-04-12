@@ -19,7 +19,7 @@
     {
       "name": "AreaCalculator",
       "type": "processor",
-      "description": "Calculates the planar or sloped area of polygon geometries and adds the results as attributes",
+      "description": "ポリゴンジオメトリの平面または傾斜面積を計算し、結果を属性として追加する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AreaCalculator Parameters",
@@ -27,28 +27,31 @@
         "type": "object",
         "properties": {
           "areaType": {
-            "description": "Type of area calculation to perform (PlaneArea or SlopedArea)",
+            "description": "実行する面積計算のタイプ（平面面積または傾斜面積）",
             "default": "planeArea",
             "allOf": [
               {
                 "$ref": "#/definitions/AreaType"
               }
-            ]
+            ],
+            "title": "面積タイプ"
           },
           "multiplier": {
-            "description": "Multiplier to scale the area values (default: 1.0)",
+            "description": "面積値をスケールするための乗数",
             "default": 1.0,
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "title": "乗数"
           },
           "outputAttribute": {
-            "description": "Name of the attribute to store the calculated area (default: \"area\")",
+            "description": "計算された面積を格納する属性の名前",
             "default": "area",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
-            ]
+            ],
+            "title": "出力属性名"
           }
         },
         "definitions": {
@@ -576,7 +579,7 @@
     {
       "name": "AttributeManager",
       "type": "processor",
-      "description": "属性を管理する",
+      "description": "フィーチャー属性の作成、変換、名前変更、削除",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeManager Parameters",
@@ -586,8 +589,8 @@
         ],
         "properties": {
           "operations": {
-            "title": "Attribute Operations",
-            "description": "List of operations to perform on feature attributes (create, convert, rename, remove)",
+            "title": "属性操作",
+            "description": "フィーチャー属性に対して実行する操作のリスト",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Operation"
@@ -615,11 +618,11 @@
             ],
             "properties": {
               "attribute": {
-                "title": "Attribute name",
+                "title": "属性名",
                 "type": "string"
               },
               "method": {
-                "title": "Operation to perform",
+                "title": "実行する操作",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Method"
@@ -627,8 +630,8 @@
                 ]
               },
               "value": {
-                "title": "Value",
-                "description": "Value to use for the operation",
+                "title": "値",
+                "description": "操作に使用する値",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
