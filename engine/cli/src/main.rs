@@ -24,7 +24,6 @@ const RED_COLOR: Color = Color::TrueColor {
 };
 
 fn main() -> Result<()> {
-    unsafe { backtrace_on_stack_overflow::enable() };
     let about_text = about_text();
     let app = build_cli()
         .about(about_text)
