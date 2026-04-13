@@ -333,11 +333,12 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	}
 
 	debug := false
+	did := d.ID()
 
 	j, err := job.New().
 		NewID().
 		Debug(&debug).
-		Deployment(d.ID()).
+		Deployment(&did).
 		Workspace(d.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).

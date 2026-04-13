@@ -1,7 +1,7 @@
 type Job implements Node {
   completedAt: DateTime
   deployment: Deployment
-  deploymentId: ID!
+  deploymentId: ID
   debug: Boolean
   id: ID!
   logsURL: String

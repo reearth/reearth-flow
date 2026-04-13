@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	jobIndexes       = []string{"deploymentid", "workspaceid", "status"}
+	jobIndexes       = []string{"deploymentid", "workspaceid", "projectid", "status"}
 	jobUniqueIndexes = []string{"id"}
 )
 
@@ -163,6 +163,22 @@ func (r *Job) CountByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (
 		},
 	})
 	return int(count), err
+}
+
+func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {
+	filter := bson.M{
+		"projectid": projectID.String(),
+		"debug":     true,
+	}
+
+	return r.find(ctx, filter)
+}
+
+func (r *Job) RemoveByProject(ctx context.Context, projectID id.ProjectID) error {
+	return r.client.RemoveAll(ctx, bson.M{
+		"projectid": projectID.String(),
+		"debug":     true,
+	})
 }
 
 func (r *Job) Save(ctx context.Context, j *job.Job) error {

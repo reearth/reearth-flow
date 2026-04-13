@@ -205,13 +205,14 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
+	deploymentID1 := deployment.ID()
+
 	j, err := job.New().
 		NewID().
-		Deployment(deployment.ID()).
+		Deployment(&deploymentID1).
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
-		Variables(variable.MapToSlice(finalVarMap)).
 		Build()
 	if err != nil {
 		return nil, err
@@ -317,13 +318,14 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
+	deploymentID2 := deployment.ID()
+
 	j, err := job.New().
 		NewID().
-		Deployment(deployment.ID()).
+		Deployment(&deploymentID2).
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
-		Variables(variable.MapToSlice(finalVarMap)).
 		Build()
 	if err != nil {
 		return nil, err

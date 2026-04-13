@@ -3,7 +3,8 @@ package job
 import (
 	"time"
 
-	"github.com/reearth/reearth-flow/api/pkg/variable"
+	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
 
 type Status string
@@ -22,7 +23,7 @@ type Job struct {
 	debug             *bool
 	batchStatus       *Status
 	workerStatus      *Status
-	variables         []variable.Variable
+	parameters        []*parameter.Parameter
 	gcpJobID          string
 	logsURL           string
 	workerLogsURL     string
@@ -30,12 +31,14 @@ type Job struct {
 	metadataURL       string
 	status            Status
 	outputURLs        []string
-	deployment        DeploymentID
+	deployment        *DeploymentID
 	id                ID
 	workspace         WorkspaceID
+	projectID         *id.ProjectID
+	projectVersion    *int
 }
 
-func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
+func NewJob(id ID, deployment *DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
 	pending := StatusPending
 	return &Job{
 		deployment:   deployment,
@@ -58,7 +61,7 @@ func (j *Job) Debug() *bool {
 	return j.debug
 }
 
-func (j *Job) Deployment() DeploymentID {
+func (j *Job) Deployment() *DeploymentID {
 	return j.deployment
 }
 
@@ -135,8 +138,24 @@ func (j *Job) OutputURLs() []string {
 	return j.outputURLs
 }
 
-func (j *Job) Variables() []variable.Variable {
-	return j.variables
+func (j *Job) Parameters() []*parameter.Parameter {
+	return j.parameters
+}
+
+func (j *Job) ProjectID() *id.ProjectID {
+	return j.projectID
+}
+
+func (j *Job) ProjectVersion() *int {
+	return j.projectVersion
+}
+
+func (j *Job) SetProjectID(projectID *id.ProjectID) {
+	j.projectID = projectID
+}
+
+func (j *Job) SetProjectVersion(projectVersion *int) {
+	j.projectVersion = projectVersion
 }
 
 func (j *Job) SetID(id ID) {
@@ -147,7 +166,7 @@ func (j *Job) SetDebug(debug *bool) {
 	j.debug = debug
 }
 
-func (j *Job) SetDeployment(deployment DeploymentID) {
+func (j *Job) SetDeployment(deployment *DeploymentID) {
 	j.deployment = deployment
 }
 
@@ -203,6 +222,6 @@ func (j *Job) SetWorkerStatus(workerStatus Status) {
 	j.workerStatus = &workerStatus
 }
 
-func (j *Job) SetVariables(variables []variable.Variable) {
-	j.variables = variables
+func (j *Job) SetParameters(parameters []*parameter.Parameter) {
+	j.parameters = parameters
 }

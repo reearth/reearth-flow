@@ -20,4 +20,7 @@ pub trait DocumentRepository: Send + Sync {
     async fn save_snapshot(&self, doc_id: &str) -> Result<()>;
     async fn copy_document(&self, doc_id: &str, source: &str) -> Result<()>;
     async fn import_document(&self, doc_id: &str, data: &[u8]) -> Result<()>;
+    async fn cleanup_old_updates(&self, doc_id: &str, max_keep: usize) -> Result<usize>;
+    async fn delete_document(&self, doc_id: &str) -> Result<()>;
+    async fn cleanup_all_documents(&self, max_keep: usize) -> Result<(usize, usize)>;
 }

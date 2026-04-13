@@ -182,6 +182,43 @@ impl DocumentUseCase {
                 source: err,
             })
     }
+
+    pub async fn cleanup_old_updates(
+        &self,
+        doc_id: &str,
+        max_keep: usize,
+    ) -> Result<usize, DocumentUseCaseError> {
+        self.repository
+            .cleanup_old_updates(doc_id, max_keep)
+            .await
+            .map_err(|err| DocumentUseCaseError::Unexpected {
+                message: format!("failed to cleanup old updates for document '{}'", doc_id),
+                source: err,
+            })
+    }
+
+    pub async fn delete_document(&self, doc_id: &str) -> Result<(), DocumentUseCaseError> {
+        self.repository
+            .delete_document(doc_id)
+            .await
+            .map_err(|err| DocumentUseCaseError::Unexpected {
+                message: format!("failed to delete document '{}'", doc_id),
+                source: err,
+            })
+    }
+
+    pub async fn cleanup_all_documents(
+        &self,
+        max_keep: usize,
+    ) -> Result<(usize, usize), DocumentUseCaseError> {
+        self.repository
+            .cleanup_all_documents(max_keep)
+            .await
+            .map_err(|err| DocumentUseCaseError::Unexpected {
+                message: "failed to cleanup all documents".to_string(),
+                source: err,
+            })
+    }
 }
 
 impl Clone for DocumentUseCase {

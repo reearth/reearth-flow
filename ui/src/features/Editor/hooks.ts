@@ -265,7 +265,6 @@ export default ({
   } = useDebugRun({
     rawWorkflows,
     yAwareness,
-    onProjectSnapshotSave: handleProjectSnapshotSave,
   });
 
   const handleBeforeDeleteNodes = useCallback(

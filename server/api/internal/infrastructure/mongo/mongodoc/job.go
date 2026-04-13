@@ -10,22 +10,24 @@ import (
 )
 
 type JobDocument struct {
-	StartedAt         time.Time          `bson:"startedat"`
-	Debug             *bool              `bson:"debug"`
-	BatchStatus       *string            `bson:"batchstatus,omitempty"`
-	WorkerStatus      *string            `bson:"workerstatus,omitempty"`
-	CompletedAt       *time.Time         `bson:"completedat"`
-	Variables         []VariableDocument `bson:"variables,omitempty"`
-	ID                string             `bson:"id"`
-	DeploymentID      string             `bson:"deploymentid"`
-	WorkspaceID       string             `bson:"workspaceid"`
-	GCPJobID          string             `bson:"gcpjobid"`
-	LogsURL           string             `bson:"logsurl"`
-	WorkerLogsURL     string             `bson:"workerlogsurl"`
-	UserFacingLogsURL string             `bson:"userfacinglogsurl"`
-	Status            string             `bson:"status"`
-	MetadataURL       string             `bson:"metadataurl"`
-	OutputURLs        []string           `bson:"outputurls"`
+	StartedAt         time.Time           `bson:"startedat"`
+	Debug             *bool               `bson:"debug"`
+	BatchStatus       *string             `bson:"batchstatus,omitempty"`
+	WorkerStatus      *string             `bson:"workerstatus,omitempty"`
+	CompletedAt       *time.Time          `bson:"completedat"`
+	Parameters        []ParameterDocument `bson:"parameters,omitempty"`
+	ID                string              `bson:"id"`
+	DeploymentID      *string             `bson:"deploymentid,omitempty"`
+	WorkspaceID       string              `bson:"workspaceid"`
+	ProjectID         *string             `bson:"projectid,omitempty"`
+	ProjectVersion    *int                `bson:"projectversion,omitempty"`
+	GCPJobID          string              `bson:"gcpjobid"`
+	LogsURL           string              `bson:"logsurl"`
+	WorkerLogsURL     string              `bson:"workerlogsurl"`
+	UserFacingLogsURL string              `bson:"userfacinglogsurl"`
+	Status            string              `bson:"status"`
+	MetadataURL       string              `bson:"metadataurl"`
+	OutputURLs        []string            `bson:"outputurls"`
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]
@@ -56,11 +58,25 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		workerStatus = &s
 	}
 
+	var deploymentID *string
+	if j.Deployment() != nil {
+		s := j.Deployment().String()
+		deploymentID = &s
+	}
+
+	var projectID *string
+	if j.ProjectID() != nil {
+		s := j.ProjectID().String()
+		projectID = &s
+	}
+
 	doc := &JobDocument{
 		ID:                jid,
 		Debug:             j.Debug(),
-		DeploymentID:      j.Deployment().String(),
+		DeploymentID:      deploymentID,
 		WorkspaceID:       j.Workspace().String(),
+		ProjectID:         projectID,
+		ProjectVersion:    j.ProjectVersion(),
 		GCPJobID:          j.GCPJobID(),
 		LogsURL:           j.LogsURL(),
 		WorkerLogsURL:     j.WorkerLogsURL(),
@@ -74,8 +90,9 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		OutputURLs:        j.OutputURLs(),
 	}
 
-	if vs := j.Variables(); len(vs) > 0 {
-		doc.Variables = VariablesToDoc(vs)
+	if p := j.Parameters(); len(p) > 0 {
+		// IDs not needed; parameters are embedded in the job document
+		doc.Parameters, _ = ParametersToDocs(p)
 	}
 
 	return doc, jid
@@ -91,9 +108,13 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		return nil, err
 	}
 
-	did, err := id.DeploymentIDFrom(d.DeploymentID)
-	if err != nil {
-		return nil, err
+	var did *id.DeploymentID
+	if d.DeploymentID != nil {
+		deploymentID, err := id.DeploymentIDFrom(*d.DeploymentID)
+		if err != nil {
+			return nil, err
+		}
+		did = &deploymentID
 	}
 
 	wid, err := accountsid.WorkspaceIDFrom(d.WorkspaceID)
@@ -133,8 +154,8 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		j = j.CompletedAt(d.CompletedAt)
 	}
 
-	if vs := VariablesFromDoc(d.Variables); len(vs) > 0 {
-		j = j.Variables(vs)
+	if ps := ParametersFromDocs(d.Parameters); len(ps) > 0 {
+		j = j.Parameters(ps)
 	}
 
 	jobModel, err := j.Build()

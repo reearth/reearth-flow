@@ -91,11 +91,11 @@ export default () => {
       }[];
       updates?: {
         paramId: string;
-        name?: string;
-        defaultValue?: any;
-        type?: WorkflowVariableType["type"];
-        required?: boolean;
-        publicValue?: boolean;
+        name: string;
+        defaultValue: any;
+        type: WorkflowVariableType["type"];
+        required: boolean;
+        publicValue: boolean;
         config?: AnyWorkflowVariable["config"];
       }[];
       deletes?: string[];

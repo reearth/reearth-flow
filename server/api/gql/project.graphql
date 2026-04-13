@@ -51,6 +51,7 @@ input RunProjectInput {
   file: Upload!
   previousJobId: ID
   startNodeId: ID
+  parameters: [RunParameterInput!]
 }
 
 # Payload

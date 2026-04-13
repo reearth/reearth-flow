@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use dashmap::{DashMap, Entry};
 use tokio::sync::Mutex;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 use yrs::sync::{Awareness, DefaultProtocol};
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, Transact, Update};
@@ -162,8 +162,33 @@ impl BroadcastPool {
             let active_connections = group.get_connections_count().await;
             if active_connections == 0 {
                 if let Some((_, group)) = self.groups.remove(doc_id) {
-                    let _ = group.shutdown().await;
-                    info!("Shutdown BroadcastGroup for doc_id: {}", doc_id);
+                    match group.shutdown().await {
+                        Ok(()) => {
+                            info!("Shutdown BroadcastGroup for doc_id: {}", doc_id);
+                        }
+                        Err(e) => {
+                            error!(
+                                "First shutdown attempt failed for doc_id '{}': {}. Retrying...",
+                                doc_id, e
+                            );
+                            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                            match group.shutdown().await {
+                                Ok(()) => {
+                                    info!(
+                                        "Shutdown BroadcastGroup for doc_id: {} (succeeded on retry)",
+                                        doc_id
+                                    );
+                                }
+                                Err(e) => {
+                                    error!(
+                                        "Final shutdown attempt failed for doc_id '{}': {}. \
+                                         Data may be recoverable from Redis stream.",
+                                        doc_id, e
+                                    );
+                                }
+                            }
+                        }
+                    }
                 }
                 should_remove_lock = true;
             } else {
@@ -187,8 +212,36 @@ impl BroadcastPool {
         self.ensure_group(doc_id).await
     }
 
+    /// Return the cached BroadcastGroup if one exists, without creating a new one.
+    pub fn try_get_group(&self, doc_id: &str) -> Option<Arc<BroadcastGroup>> {
+        self.groups.get(doc_id).map(|entry| entry.clone())
+    }
+
     pub async fn cleanup_group(&self, doc_id: &str) {
         self.perform_cleanup(doc_id).await;
+    }
+
+    /// Force-evict a BroadcastGroup regardless of active connections.
+    /// Used after rollback: the rolled-back state has already been persisted
+    /// to GCS, so we skip the normal shutdown flush. Dropping the group
+    /// closes the broadcast sender, which terminates all client sink tasks
+    /// and closes WebSocket connections.
+    pub async fn force_evict_group(&self, doc_id: &str) {
+        let lock = self.get_or_create_lock(doc_id);
+        let guard = lock.lock_owned().await;
+
+        if let Some((_, group)) = self.groups.remove(doc_id) {
+            if let Err(e) = group.shutdown_without_flush().await {
+                warn!(
+                    "Error during force-evict shutdown for doc '{}': {}",
+                    doc_id, e
+                );
+            }
+            info!("Force-evicted BroadcastGroup for doc_id: {}", doc_id);
+        }
+
+        drop(guard);
+        self.locks.remove(doc_id);
     }
 
     pub fn get_cached_groups_count(&self) -> usize {

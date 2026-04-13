@@ -811,11 +811,11 @@ export enum ParameterType {
 export type ParameterUpdateItem = {
   config?: InputMaybe<Scalars['JSON']['input']>;
   defaultValue?: InputMaybe<Scalars['Any']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
   paramId: Scalars['ID']['input'];
-  public?: InputMaybe<Scalars['Boolean']['input']>;
-  required?: InputMaybe<Scalars['Boolean']['input']>;
-  type?: InputMaybe<ParameterType>;
+  public: Scalars['Boolean']['input'];
+  required: Scalars['Boolean']['input'];
+  type: ParameterType;
 };
 
 export type PreviewSnapshot = {
@@ -1120,8 +1120,20 @@ export enum Role {
   Writer = 'writer'
 }
 
+export type RunParameterInput = {
+  config?: InputMaybe<Scalars['JSON']['input']>;
+  id: Scalars['ID']['input'];
+  index: Scalars['Int']['input'];
+  name: Scalars['String']['input'];
+  public: Scalars['Boolean']['input'];
+  required: Scalars['Boolean']['input'];
+  type: ParameterType;
+  value: Scalars['Any']['input'];
+};
+
 export type RunProjectInput = {
   file: Scalars['Upload']['input'];
+  parameters?: InputMaybe<Array<RunParameterInput>>;
   previousJobId?: InputMaybe<Scalars['ID']['input']>;
   projectId: Scalars['ID']['input'];
   startNodeId?: InputMaybe<Scalars['ID']['input']>;
@@ -1289,7 +1301,7 @@ export type UpdateMemberOfWorkspacePayload = {
 
 export type UpdateParameterInput = {
   config?: InputMaybe<Scalars['JSON']['input']>;
-  defaultValue: Scalars['Any']['input'];
+  defaultValue?: InputMaybe<Scalars['Any']['input']>;
   name: Scalars['String']['input'];
   public: Scalars['Boolean']['input'];
   required: Scalars['Boolean']['input'];
