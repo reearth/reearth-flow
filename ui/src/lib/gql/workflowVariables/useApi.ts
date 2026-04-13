@@ -104,11 +104,11 @@ export const useWorkflowVariables = () => {
     }[];
     updates?: {
       paramId: string;
-      name?: string;
-      defaultValue?: any;
-      type?: VarType;
-      required?: boolean;
-      publicValue?: boolean;
+      name: string;
+      defaultValue: any;
+      type: VarType;
+      required: boolean;
+      publicValue: boolean;
       config?: any;
     }[];
     deletes?: string[];

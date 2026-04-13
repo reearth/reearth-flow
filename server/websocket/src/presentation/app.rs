@@ -74,6 +74,7 @@ pub async fn build_with_config(config: Config) -> Result<ApplicationContext> {
                 websocket_usecase: Arc::clone(&websocket_usecase),
                 auth_usecase,
                 instance_id,
+                api_secret: config.api_secret.clone(),
             }
         }
         #[cfg(not(feature = "auth"))]
@@ -83,6 +84,7 @@ pub async fn build_with_config(config: Config) -> Result<ApplicationContext> {
                 document_usecase,
                 websocket_usecase,
                 instance_id,
+                api_secret: config.api_secret.clone(),
             }
         }
     });

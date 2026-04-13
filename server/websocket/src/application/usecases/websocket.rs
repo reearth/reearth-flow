@@ -78,6 +78,45 @@ where
     {
         group.increment_connections_count().await;
 
+        // Run the connection lifecycle in an inner function so that
+        // decrement_connections_count always runs, even on early error returns.
+        let result = self
+            .handle_connection_inner(group.clone(), sink, stream, doc_id, user_token)
+            .await;
+
+        group.decrement_connections_count().await;
+
+        let active_connections = group.get_connections_count().await;
+        info!(
+            "Active connections for document '{}': {}",
+            doc_id, active_connections
+        );
+
+        if active_connections == 0 {
+            let pool = Arc::clone(&self.pool);
+            let cleanup_doc_id = doc_id.to_string();
+            tokio::spawn(async move {
+                pool.cleanup_group(&cleanup_doc_id).await;
+                info!("Cleaned up BroadcastGroup for doc_id: {}", cleanup_doc_id);
+            });
+        }
+
+        result
+    }
+
+    async fn handle_connection_inner<Sink, Stream, E>(
+        &self,
+        group: Arc<P::Group>,
+        sink: Sink,
+        stream: Stream,
+        doc_id: &str,
+        user_token: Option<String>,
+    ) -> Result<(), WebsocketUseCaseError>
+    where
+        Sink: SinkExt<Bytes, Error = E> + Send + Sync + Unpin + 'static,
+        Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
+        E: std::error::Error + Into<YSyncError> + Send + Sync + 'static,
+    {
         let doc_id_owned = doc_id.to_string();
         let client_id = ClientId::new(group.get_client_id().await).map_err(|err| {
             WebsocketUseCaseError::Connection {
@@ -125,27 +164,11 @@ where
             }
         };
 
-        group.decrement_connections_count().await;
         if let Err(err) = session.disconnect(session_id.value()) {
             warn!(
                 "Failed to update session for doc '{}': {}",
                 doc_id_owned, err
             );
-        }
-
-        let active_connections = group.get_connections_count().await;
-        info!(
-            "Active connections for document '{}': {}",
-            doc_id_owned, active_connections
-        );
-
-        if active_connections == 0 {
-            let pool = Arc::clone(&self.pool);
-            let cleanup_doc_id = doc_id_owned.clone();
-            tokio::spawn(async move {
-                pool.cleanup_group(&cleanup_doc_id).await;
-                info!("Cleaned up BroadcastGroup for doc_id: {}", cleanup_doc_id);
-            });
         }
 
         match connection_result {

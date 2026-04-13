@@ -14,7 +14,7 @@ func TestJobDocument_UserFacingLogsURL(t *testing.T) {
 	// Test conversion to/from MongoDB document
 	j := job.New().
 		ID(id.NewJobID()).
-		Deployment(id.NewDeploymentID()).
+		Deployment(id.NewDeploymentID().Ref()).
 		Workspace(accountsid.NewWorkspaceID()).
 		StartedAt(time.Now()).
 		Status(job.StatusPending).

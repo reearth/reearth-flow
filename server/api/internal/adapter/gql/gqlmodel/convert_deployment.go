@@ -30,13 +30,15 @@ func ToJob(j *job.Job) *Job {
 	}
 
 	job := &Job{
-		ID:           ID(j.ID().String()),
-		DeploymentID: IDFrom(j.Deployment()),
-		WorkspaceID:  IDFrom(j.Workspace()),
-		Status:       ToJobStatus(j.Status()),
-		StartedAt:    j.StartedAt(),
-		CompletedAt:  j.CompletedAt(),
-		Variables:    ToVariables(j.Variables()),
+		ID:          ID(j.ID().String()),
+		WorkspaceID: IDFrom(j.Workspace()),
+		Status:      ToJobStatus(j.Status()),
+		StartedAt:   j.StartedAt(),
+		CompletedAt: j.CompletedAt(),
+	}
+
+	if did := j.Deployment(); did != nil {
+		job.DeploymentID = IDFromRef(did)
 	}
 
 	if urls := j.OutputURLs(); len(urls) > 0 {

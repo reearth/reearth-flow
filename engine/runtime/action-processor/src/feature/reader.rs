@@ -1,4 +1,5 @@
 pub(super) mod citygml;
+pub(super) mod citygml3;
 mod csv;
 mod json;
 

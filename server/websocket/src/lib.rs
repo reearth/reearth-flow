@@ -38,6 +38,10 @@ pub struct AppState {
     pub websocket_usecase: Arc<WebsocketUseCase>,
     pub auth_usecase: Arc<application::usecases::auth::VerifyTokenUseCase>,
     pub instance_id: String,
+    /// Optional shared secret for HTTP API authentication.
+    /// When `Some`, all `/api/document/*` requests must include a matching `X-API-Secret` header.
+    /// When `None`, all requests are allowed (development mode).
+    pub api_secret: Option<String>,
 }
 
 #[cfg(not(feature = "auth"))]
@@ -47,6 +51,10 @@ pub struct AppState {
     pub document_usecase: Arc<DocumentUseCase>,
     pub websocket_usecase: Arc<WebsocketUseCase>,
     pub instance_id: String,
+    /// Optional shared secret for HTTP API authentication.
+    /// When `Some`, all `/api/document/*` requests must include a matching `X-API-Secret` header.
+    /// When `None`, all requests are allowed (development mode).
+    pub api_secret: Option<String>,
 }
 
 pub use conf::Config;

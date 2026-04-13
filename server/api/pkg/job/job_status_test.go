@@ -178,7 +178,7 @@ func TestNewJob_InitializesBatchStatus(t *testing.T) {
 	deploymentID, _ := DeploymentIDFrom("01234567-89ab-cdef-0123-456789abcdef")
 	workspaceID, _ := accountsid.WorkspaceIDFrom("01234567-89ab-cdef-0123-456789abcde0")
 
-	j := NewJob(jobID, deploymentID, workspaceID, "gcp-job-123")
+	j := NewJob(jobID, &deploymentID, workspaceID, "gcp-job-123")
 
 	if j.batchStatus == nil {
 		t.Error("NewJob() should initialize batchStatus to non-nil")

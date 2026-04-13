@@ -3,7 +3,8 @@ package job
 import (
 	"time"
 
-	"github.com/reearth/reearth-flow/api/pkg/variable"
+	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
 
 type JobBuilder struct {
@@ -49,7 +50,7 @@ func (b *JobBuilder) Debug(debug *bool) *JobBuilder {
 	return b
 }
 
-func (b *JobBuilder) Deployment(deployment DeploymentID) *JobBuilder {
+func (b *JobBuilder) Deployment(deployment *DeploymentID) *JobBuilder {
 	b.j.deployment = deployment
 	return b
 }
@@ -109,7 +110,17 @@ func (b *JobBuilder) WorkerStatus(workerStatus *Status) *JobBuilder {
 	return b
 }
 
-func (b *JobBuilder) Variables(variables []variable.Variable) *JobBuilder {
-	b.j.variables = variables
+func (b *JobBuilder) ProjectID(projectID *id.ProjectID) *JobBuilder {
+	b.j.projectID = projectID
+	return b
+}
+
+func (b *JobBuilder) ProjectVersion(projectVersion *int) *JobBuilder {
+	b.j.projectVersion = projectVersion
+	return b
+}
+
+func (b *JobBuilder) Parameters(parameters []*parameter.Parameter) *JobBuilder {
+	b.j.parameters = parameters
 	return b
 }
