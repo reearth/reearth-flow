@@ -95,7 +95,7 @@ pub fn merge_rects(mut rects: Vec<DamageRect>) -> Vec<DamageRect> {
 pub fn collect_damage(
     materials: &[TextureMaterial],
     k: u32,
-) -> crate::errors::Result<Vec<(PathBuf, TextureDamage)>> {
+) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
     let mut candidates: HashMap<PathBuf, Vec<DamageRect>> = HashMap::new();
     let mut excluded: HashSet<PathBuf> = HashSet::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
@@ -119,7 +119,7 @@ pub fn collect_damage(
                 Some(&d) => d,
                 None => {
                     let (w, h) = image::image_dimensions(&mat.path).map_err(|e| {
-                        crate::errors::SinkError::atlas_builder(format!(
+                        crate::AtlasError::builder(format!(
                             "Failed to read image dimensions for '{}': {e}",
                             mat.path.display()
                         ))
@@ -232,7 +232,6 @@ mod tests {
     fn test_wrapping_excludes_texture_from_later_non_wrapping() {
         let tmp = TempDir::new().unwrap();
         let path = create_texture(tmp.path(), "t.png", 64, 64);
-        // Two polygons on the same texture; first wraps → whole texture excluded.
         let mat = TextureMaterial {
             path,
             uvs: vec![
@@ -289,11 +288,16 @@ mod tests {
             y: 5,
             w: 10,
             h: 9,
-        }; // bottom = 14, right = 13 → both unaligned
+        };
         let aligned = r.align(2, 64, 64);
-        assert_eq!(aligned.x, 0);
-        assert_eq!(aligned.y, 4);
-        assert_eq!(aligned.right(), 16);
-        assert_eq!(aligned.bottom(), 16);
+        assert_eq!(
+            aligned,
+            DamageRect {
+                x: 0,
+                y: 4,
+                w: 16,
+                h: 12
+            }
+        );
     }
 }

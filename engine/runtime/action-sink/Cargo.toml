@@ -12,6 +12,7 @@ version.workspace = true
 
 [dependencies]
 reearth-flow-action-log.workspace = true
+reearth-flow-atlas.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-geometry.workspace = true
@@ -35,7 +36,6 @@ wkt.workspace = true
 
 ahash.workspace = true
 async-trait.workspace = true
-texture_packer.workspace = true
 bincode.workspace = true
 bytemuck.workspace = true
 byteorder.workspace = true

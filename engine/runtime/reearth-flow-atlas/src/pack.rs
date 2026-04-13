@@ -31,9 +31,9 @@ struct PackCandidate {
     packed_h: u32,
 }
 
-fn downsample_factor(k: u32) -> crate::errors::Result<u32> {
+fn downsample_factor(k: u32) -> crate::Result<u32> {
     if k > MAX_DOWNSAMPLE_K {
-        return Err(crate::errors::SinkError::atlas_builder(format!(
+        return Err(crate::AtlasError::builder(format!(
             "Unsupported atlas downsample exponent: {k}"
         )));
     }
@@ -88,7 +88,7 @@ pub fn pack_textures(
     ext: &str,
     k: u32,
     current_size: (u32, u32),
-) -> crate::errors::Result<PackResult> {
+) -> crate::Result<PackResult> {
     if damage_list.is_empty() {
         return Ok(PackResult::NeedsDownscale);
     }
@@ -112,10 +112,7 @@ pub fn pack_textures(
 
     for (path, td) in damage_list {
         let source = image::open(path).map_err(|e| {
-            crate::errors::SinkError::atlas_builder(format!(
-                "Failed to open texture '{}': {e}",
-                path.display()
-            ))
+            crate::AtlasError::builder(format!("Failed to open texture '{}': {e}", path.display()))
         })?;
         let path_str = path.to_string_lossy().into_owned();
 
@@ -162,15 +159,12 @@ pub fn pack_textures(
     let actual_w = packer.width();
     let actual_h = packer.height();
 
-    let atlas_image = ImageExporter::export(&packer, None)
-        .map_err(|e| crate::errors::SinkError::atlas_builder(e))?;
+    let atlas_image = ImageExporter::export(&packer, None).map_err(crate::AtlasError::builder)?;
 
     let atlas_path = atlas_dir.join("0").with_extension(ext);
     atlas_image
         .save_with_format(&atlas_path, image_format)
-        .map_err(|e| {
-            crate::errors::SinkError::atlas_builder(format!("Failed to save atlas: {e}"))
-        })?;
+        .map_err(|e| crate::AtlasError::builder(format!("Failed to save atlas: {e}")))?;
 
     let mut texture_frames: HashMap<String, Vec<(DamageRect, texture_packer::Rect)>> =
         HashMap::new();
@@ -194,7 +188,6 @@ pub fn pack_textures(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[test]
     fn test_estimate_atlas_size() {

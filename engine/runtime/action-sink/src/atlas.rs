@@ -1,8 +1,5 @@
-mod damage;
-mod pack;
-
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::zip_eq_logged::ZipEqLoggedExt;
 use ahash::RandomState;
@@ -10,6 +7,7 @@ use earcut::{utils3d::project3d_to_2d, Earcut};
 use flatgeom::MultiPolygon;
 use image::ImageFormat;
 use indexmap::IndexSet;
+use reearth_flow_atlas::{build_atlas, TextureMaterial};
 use reearth_flow_gltf::{calculate_normal, Primitives};
 use reearth_flow_types::{
     material::{self, Material},
@@ -18,19 +16,7 @@ use reearth_flow_types::{
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use damage::{collect_damage, DamageRect};
-use pack::pack_textures;
-
-type PolygonUVs = Vec<[f64; 2]>;
-type TextureUVs = Vec<PolygonUVs>;
-
-struct TextureMaterial {
-    path: PathBuf,
-    uvs: TextureUVs,
-}
-
-pub(super) const MAX_ATLAS_SIZE: u32 = 8192;
-pub(super) const MAX_DOWNSAMPLE_K: u32 = 13;
+type PolygonUVs = reearth_flow_atlas::PolygonUVs;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GltfFeature {
@@ -42,128 +28,6 @@ pub struct GltfFeature {
     pub materials: IndexSet<Material>,
     // attribute values
     pub attributes: HashMap<String, AttributeValue>,
-}
-
-fn uv_bbox_in_pixel_space(uvs: &[[f64; 2]], tw: u32, th: u32) -> DamageRect {
-    let (mn_u, mx_u, mn_v, mx_v) = uvs.iter().fold(
-        (f64::MAX, f64::MIN, f64::MAX, f64::MIN),
-        |(mn_u, mx_u, mn_v, mx_v), [u, v]| (mn_u.min(*u), mx_u.max(*u), mn_v.min(*v), mx_v.max(*v)),
-    );
-    let x = ((mn_u * tw as f64).floor().max(0.0) as u32).min(tw);
-    let y = (((1.0 - mx_v) * th as f64).floor().max(0.0) as u32).min(th);
-    let right = ((mx_u * tw as f64).ceil() as u32).min(tw);
-    let bottom = (((1.0 - mn_v) * th as f64).ceil() as u32).min(th);
-    DamageRect {
-        x,
-        y,
-        w: right.saturating_sub(x),
-        h: bottom.saturating_sub(y),
-    }
-}
-
-fn remap_uv(
-    u: f64,
-    v: f64,
-    tw: u32,
-    th: u32,
-    damage: DamageRect,
-    frame: texture_packer::Rect,
-    atlas_w: f64,
-    atlas_h: f64,
-    downsample: u32,
-) -> [f64; 2] {
-    let scale = downsample as f64;
-    let px = u * tw as f64 - damage.x as f64;
-    let py = (1.0 - v) * th as f64 - damage.y as f64;
-    [
-        (px / scale + frame.x as f64) / atlas_w,
-        1.0 - (py / scale + frame.y as f64) / atlas_h,
-    ]
-}
-
-/// Pack `materials` into an atlas and return remapped UVs.
-/// `result[i]` is `Some(remapped_uvs)` if `materials[i]` was packed, `None` if excluded.
-fn build_atlas(
-    materials: &[TextureMaterial],
-    atlas_dir: &Path,
-    image_format: ImageFormat,
-    ext: &str,
-) -> crate::errors::Result<Vec<Option<TextureUVs>>> {
-    let mut k = 0;
-    let mut damage_list = collect_damage(materials, k)?;
-    if damage_list.is_empty() {
-        return Ok(materials.iter().map(|_| None).collect());
-    }
-
-    let mut current_size = pack::estimate_atlas_size(&damage_list, k);
-    let info = loop {
-        match pack_textures(&damage_list, atlas_dir, image_format, ext, k, current_size)? {
-            pack::PackResult::Packed(info) => break info,
-            pack::PackResult::NeedsDownscale => {
-                if k >= MAX_DOWNSAMPLE_K {
-                    return Err(crate::errors::SinkError::atlas_builder(format!(
-                        "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
-                        MAX_ATLAS_SIZE, MAX_ATLAS_SIZE, k
-                    )));
-                }
-                k += 1;
-                current_size = (
-                    current_size.0.saturating_mul(2).min(MAX_ATLAS_SIZE),
-                    current_size.1.saturating_mul(2).min(MAX_ATLAS_SIZE),
-                );
-                damage_list = collect_damage(materials, k)?;
-                if damage_list.is_empty() {
-                    return Ok(materials.iter().map(|_| None).collect());
-                }
-            }
-        }
-    };
-
-    let tex_dims: HashMap<String, (u32, u32)> = damage_list
-        .iter()
-        .map(|(p, td)| (p.to_string_lossy().into_owned(), (td.width, td.height)))
-        .collect();
-
-    Ok(materials
-        .iter()
-        .map(|mat| {
-            let path_str = mat.path.to_string_lossy().into_owned();
-            let frames = info.texture_frames.get(&path_str)?;
-            let (tw, th) = tex_dims.get(&path_str).copied().unwrap_or((1, 1));
-
-            Some(
-                mat.uvs
-                    .iter()
-                    .map(|poly_uvs| {
-                        let uv_bbox = uv_bbox_in_pixel_space(poly_uvs, tw, th);
-                        let Some((damage, frame)) = frames
-                            .iter()
-                            .find(|(d, _)| d.overlaps(uv_bbox))
-                            .map(|(d, f)| (*d, *f))
-                        else {
-                            return poly_uvs.clone();
-                        };
-                        poly_uvs
-                            .iter()
-                            .map(|&[u, v]| {
-                                remap_uv(
-                                    u,
-                                    v,
-                                    tw,
-                                    th,
-                                    damage,
-                                    frame,
-                                    info.width as f64,
-                                    info.height as f64,
-                                    info.downsample,
-                                )
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            )
-        })
-        .collect())
 }
 
 pub fn build_atlas_geometry(
@@ -219,7 +83,8 @@ pub fn build_atlas_geometry(
     let remapped = if texture_materials.is_empty() {
         Vec::new()
     } else {
-        build_atlas(&texture_materials, atlas_dir, image_format, ext)?
+        build_atlas(&texture_materials, atlas_dir, image_format, ext)
+            .map_err(crate::errors::SinkError::atlas_builder)?
     };
     let atlas_uri = Url::from_file_path(atlas_dir.join("0").with_extension(ext)).ok();
 
@@ -294,6 +159,7 @@ pub fn build_atlas_geometry(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_atlas::MAX_ATLAS_SIZE;
     use std::path::PathBuf;
     use tempfile::TempDir;
 

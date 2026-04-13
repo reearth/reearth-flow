@@ -6700,6 +6700,7 @@ dependencies = [
  "quick-xml 0.37.5",
  "rayon",
  "reearth-flow-action-log",
+ "reearth-flow-atlas",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
@@ -6717,7 +6718,6 @@ dependencies = [
  "serde_json",
  "shapefile 0.7.0",
  "tempfile",
- "texture_packer",
  "thiserror 2.0.18",
  "tinymvt",
  "tokio",
@@ -6776,6 +6776,16 @@ dependencies = [
  "uuid",
  "wkt",
  "zip 8.2.0",
+]
+
+[[package]]
+name = "reearth-flow-atlas"
+version = "0.0.358"
+dependencies = [
+ "image 0.25.10",
+ "tempfile",
+ "texture_packer",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
