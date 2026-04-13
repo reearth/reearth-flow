@@ -1,17 +1,12 @@
 // atlas builder shared between glTF and 3D Tiles generation
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::path::{Path, PathBuf};
 
 use ahash::RandomState;
-use atlas_packer::export::AtlasExporter;
-use atlas_packer::pack::AtlasPacker;
-use atlas_packer::place::GuillotineTexturePlacer;
-use atlas_packer::place::TexturePlacerConfig;
-use atlas_packer::texture::cache::{TextureCache, TextureSizeCache};
-use atlas_packer::texture::{DownsampleFactor, PolygonMappedTexture};
 use earcut::{utils3d::project3d_to_2d, Earcut};
 use flatgeom::MultiPolygon;
+use image::{ImageFormat, RgbaImage};
 use indexmap::IndexSet;
 use reearth_flow_gltf::{calculate_normal, Primitives};
 use reearth_flow_types::{
@@ -19,12 +14,14 @@ use reearth_flow_types::{
     AttributeValue,
 };
 use serde::{Deserialize, Serialize};
+use texture_packer::exporter::ImageExporter;
+use texture_packer::texture::Texture;
+use texture_packer::{TexturePacker, TexturePackerConfig};
 use url::Url;
 
 use crate::zip_eq_logged::ZipEqLoggedExt;
 
-// Textures with width+height >= this are embedded as-is, skipping lossy reencoding
-const ATLAS_SKIP_DIMENSION_SUM: u32 = 4096;
+const MAX_ATLAS_SIZE: u32 = 8192;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GltfFeature {
@@ -45,177 +42,249 @@ pub fn has_wrapping_uvs(uv_coords: &[(f64, f64)]) -> bool {
         .any(|(u, v)| *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0)
 }
 
-pub fn load_textures_into_packer<F>(
-    features: &[&GltfFeature],
-    packer: &Mutex<AtlasPacker>,
-    texture_size_cache: &TextureSizeCache,
-    texture_id_generator: &F,
-    geom_error: f64,
-    limit_texture_resolution: bool,
-) -> crate::errors::Result<(u32, u32)>
-where
-    F: Fn(usize, usize) -> String,
-{
-    let mut max_width = 0;
-    let mut max_height = 0;
+struct AtlasInfo {
+    /// Maps texture path string → placed frame rect in the atlas
+    frame_map: HashMap<String, texture_packer::Rect>,
+    width: u32,
+    height: u32,
+    uri: Url,
+}
 
-    for (feature_id, feature) in features.iter().enumerate() {
-        for (poly_count, (mat, poly)) in feature
+/// Collect unique packable textures from features, sorted by area descending.
+/// Skips textures larger than MAX_ATLAS_SIZE or used only with wrapping UVs.
+fn collect_unique_textures(
+    features: &[&GltfFeature],
+) -> crate::errors::Result<Vec<(PathBuf, (u32, u32))>> {
+    let mut seen: HashMap<PathBuf, (u32, u32)> = HashMap::new();
+
+    for feature in features {
+        for (poly, mat_id) in feature
             .polygons
             .iter()
             .zip_eq_logged(feature.polygon_material_ids.iter())
-            .map(move |(poly, orig_mat_id)| {
-                (feature.materials[*orig_mat_id as usize].clone(), poly)
-            })
-            .enumerate()
         {
-            if let Some(base_texture) = mat.base_texture {
-                let original_vertices = poly
-                    .raw_coords()
-                    .iter()
-                    .map(|[x, y, z, u, v]| (*x, *y, *z, *u, *v))
-                    .collect::<Vec<(f64, f64, f64, f64, f64)>>();
+            let mat = &feature.materials[*mat_id as usize];
+            let Some(base_texture) = &mat.base_texture else {
+                continue;
+            };
 
-                let uv_coords = original_vertices
-                    .iter()
-                    .map(|(_, _, _, u, v)| (*u, *v))
-                    .collect::<Vec<(f64, f64)>>();
+            let path = base_texture.uri.to_file_path().map_err(|_| {
+                crate::errors::SinkError::atlas_builder(
+                    "Failed to convert texture URI to file path",
+                )
+            })?;
 
-                // Check if this texture has wrapping UVs
-                if has_wrapping_uvs(&uv_coords) {
-                    continue; // Skip atlas packing for wrapping textures
-                }
-
-                let texture_id = texture_id_generator(feature_id, poly_count);
-
-                let texture_uri = base_texture.uri.to_file_path().map_err(|_| {
-                    crate::errors::SinkError::atlas_builder(
-                        "Failed to convert texture URI to file path",
-                    )
-                })?;
-                let texture_size = texture_size_cache.get_or_insert(&texture_uri);
-
-                if texture_size.0 + texture_size.1 >= ATLAS_SKIP_DIMENSION_SUM {
-                    continue;
-                }
-
-                let downsample_scale = if limit_texture_resolution {
-                    reearth_flow_common::texture::get_texture_downsample_scale_of_polygon(
-                        &original_vertices,
-                        texture_size,
-                    ) as f32
-                } else {
-                    1.0
-                };
-
-                let factor = reearth_flow_common::texture::apply_downsample_factor(
-                    geom_error,
-                    downsample_scale,
-                );
-                let downsample_factor = DownsampleFactor::new(&factor);
-
-                let texture = PolygonMappedTexture::new(
-                    &texture_uri,
-                    texture_size,
-                    &uv_coords,
-                    downsample_factor,
-                );
-
-                let scaled_width = (texture_size.0 as f32 * factor) as u32;
-                let scaled_height = (texture_size.1 as f32 * factor) as u32;
-
-                max_width = max_width.max(scaled_width);
-                max_height = max_height.max(scaled_height);
-
-                packer
-                    .lock()
-                    .map_err(|_| {
-                        crate::errors::SinkError::atlas_builder("Failed to lock the texture packer")
-                    })?
-                    .add_texture(texture_id, texture);
+            if seen.contains_key(&path) {
+                continue;
             }
+
+            let uv_coords: Vec<(f64, f64)> = poly
+                .raw_coords()
+                .iter()
+                .map(|[_, _, _, u, v]| (*u, *v))
+                .collect();
+            if has_wrapping_uvs(&uv_coords) {
+                continue;
+            }
+
+            let (w, h) = image::image_dimensions(&path).map_err(|e| {
+                crate::errors::SinkError::atlas_builder(format!(
+                    "Failed to read image dimensions for '{}': {e}",
+                    path.display()
+                ))
+            })?;
+
+            if w > MAX_ATLAS_SIZE || h > MAX_ATLAS_SIZE {
+                continue;
+            }
+
+            seen.insert(path, (w, h));
         }
     }
 
-    let max_width = max_width.next_power_of_two();
-    let max_height = max_height.next_power_of_two();
+    let mut textures: Vec<(PathBuf, (u32, u32))> = seen.into_iter().collect();
+    // Sort by area descending for best skyline packing
+    textures.sort_by(|a, b| {
+        let area_a = a.1 .0 as u64 * a.1 .1 as u64;
+        let area_b = b.1 .0 as u64 * b.1 .1 as u64;
+        area_b.cmp(&area_a)
+    });
 
-    Ok((max_width, max_height))
+    Ok(textures)
 }
 
-pub fn process_geometry_with_atlas<F, P>(
-    features: &[&GltfFeature],
-    packed: &atlas_packer::pack::PackedAtlasProvider,
+/// Per-texture overhead in each dimension from extrusion on both sides.
+const TEXTURE_EXTRUSION: u32 = 1;
+const TEXTURE_OVERHEAD: u32 = 2 * TEXTURE_EXTRUSION;
+
+fn estimate_atlas_size(textures: &[(PathBuf, (u32, u32))]) -> (u32, u32) {
+    let total_area: u64 = textures
+        .iter()
+        .map(|(_, (w, h))| (*w + TEXTURE_OVERHEAD) as u64 * (*h + TEXTURE_OVERHEAD) as u64)
+        .sum();
+    let max_eff_dim = textures
+        .iter()
+        .map(|(_, (w, h))| (*w + TEXTURE_OVERHEAD).max(*h + TEXTURE_OVERHEAD))
+        .max()
+        .unwrap_or(0);
+
+    let n = textures.len() as f64;
+    let grid_side = (n.sqrt().ceil() as u32).saturating_mul(max_eff_dim);
+    let area_side = (total_area as f64).sqrt().ceil() as u32;
+
+    let side = grid_side
+        .max(area_side)
+        .next_power_of_two()
+        .min(MAX_ATLAS_SIZE);
+
+    (side, side)
+}
+
+/// Pack textures into a single atlas, export to disk, and return placement info.
+/// Returns None if there are no textures to pack.
+fn pack_textures(
+    textures: &[(PathBuf, (u32, u32))],
+    atlas_dir: &Path,
+    image_format: ImageFormat,
     ext: &str,
-    texture_id_generator: F,
-    atlas_path_builder: P,
+) -> crate::errors::Result<Option<AtlasInfo>> {
+    if textures.is_empty() {
+        return Ok(None);
+    }
+
+    let (atlas_w, atlas_h) = estimate_atlas_size(textures);
+
+    let config = TexturePackerConfig {
+        max_width: atlas_w,
+        max_height: atlas_h,
+        allow_rotation: false,
+        trim: false,
+        texture_extrusion: TEXTURE_EXTRUSION,
+        force_max_dimensions: false,
+        ..Default::default()
+    };
+
+    let mut packer: TexturePacker<RgbaImage, String> = TexturePacker::new_skyline(config);
+
+    for (path, _) in textures {
+        let image = image::open(path)
+            .map_err(|e| {
+                crate::errors::SinkError::atlas_builder(format!(
+                    "Failed to open texture '{}': {e}",
+                    path.display()
+                ))
+            })?
+            .to_rgba8();
+
+        let key = path.to_string_lossy().into_owned();
+        packer.pack_own(key, image).map_err(|_| {
+            crate::errors::SinkError::atlas_builder(format!(
+                "Texture '{}' does not fit in atlas ({}x{})",
+                path.display(),
+                atlas_w,
+                atlas_h,
+            ))
+        })?;
+    }
+
+    let atlas_actual_w = packer.width();
+    let atlas_actual_h = packer.height();
+
+    let atlas_image = ImageExporter::export(&packer, None)
+        .map_err(|e| crate::errors::SinkError::atlas_builder(e))?;
+
+    let atlas_path = atlas_dir.join("0").with_extension(ext);
+    atlas_image
+        .save_with_format(&atlas_path, image_format)
+        .map_err(|e| {
+            crate::errors::SinkError::atlas_builder(format!("Failed to save atlas: {e}"))
+        })?;
+
+    let uri = Url::from_file_path(&atlas_path).map_err(|_| {
+        crate::errors::SinkError::atlas_builder("Failed to convert atlas path to URL")
+    })?;
+
+    let frame_map = packer
+        .get_frames()
+        .iter()
+        .map(|(key, frame)| (key.clone(), frame.frame))
+        .collect();
+
+    Ok(Some(AtlasInfo {
+        frame_map,
+        width: atlas_actual_w,
+        height: atlas_actual_h,
+        uri,
+    }))
+}
+
+/// Remap a UV coordinate from source texture space into atlas space.
+///
+/// `frame` is the placed rect in the atlas (image-space, y-down).
+/// Input/output `v` uses GL convention (0 = bottom).
+fn remap_uv(
+    u: f64,
+    v: f64,
+    frame: &texture_packer::Rect,
+    atlas_w: f64,
+    atlas_h: f64,
+) -> (f64, f64) {
+    let px = u * frame.w as f64;
+    let py = (1.0 - v) * frame.h as f64; // flip to image-space (y-down)
+    let new_u = (px + frame.x as f64) / atlas_w;
+    let new_v = 1.0 - (py + frame.y as f64) / atlas_h; // flip back to GL-space
+    (new_u, new_v)
+}
+
+/// Build atlas and process geometry with remapped UVs.
+///
+/// Packs unique source textures into a single atlas image, remaps polygon UV
+/// coordinates to atlas space, triangulates via earcut, and accumulates results
+/// into `primitives` and `vertices`.
+pub fn build_atlas_geometry(
+    features: &[&GltfFeature],
+    atlas_dir: &Path,
+    image_format: ImageFormat,
+    ext: &str,
     primitives: &mut Primitives,
     vertices: &mut IndexSet<[u32; 9], RandomState>,
-) -> Result<(), crate::errors::SinkError>
-where
-    F: Fn(usize, usize) -> String,
-    P: Fn(atlas_packer::AtlasID) -> std::path::PathBuf,
-{
+) -> crate::errors::Result<()> {
+    let textures = collect_unique_textures(features)?;
+    let atlas = pack_textures(&textures, atlas_dir, image_format, ext)?;
+
     for (feature_id, feature) in features.iter().enumerate() {
-        for (poly_count, (mut mat, mut poly)) in feature
+        for (mut mat, mut poly) in feature
             .polygons
             .iter()
             .zip_eq_logged(feature.polygon_material_ids.iter())
-            .map(move |(poly, orig_mat_id)| {
-                (feature.materials[*orig_mat_id as usize].clone(), poly)
-            })
-            .enumerate()
+            .map(|(poly, mat_id)| (feature.materials[*mat_id as usize].clone(), poly))
         {
-            let original_vertices = poly
-                .raw_coords()
-                .iter()
-                .map(|[x, y, z, u, v]| (*x, *y, *z, *u, *v))
-                .collect::<Vec<(f64, f64, f64, f64, f64)>>();
+            // Remap UVs if this polygon's texture was packed into the atlas
+            if let Some(ref info) = atlas {
+                if let Some(base_texture) = &mat.base_texture {
+                    if let Ok(path) = base_texture.uri.to_file_path() {
+                        let key = path.to_string_lossy().into_owned();
+                        if let Some(frame) = info.frame_map.get(&key) {
+                            let aw = info.width as f64;
+                            let ah = info.height as f64;
 
-            let texture_id = texture_id_generator(feature_id, poly_count);
+                            poly.transform_inplace(|&[x, y, z, u, v]| {
+                                let (new_u, new_v) = remap_uv(u, v, frame, aw, ah);
+                                [x, y, z, new_u, new_v]
+                            });
 
-            // Transform UVs if texture was packed into atlas
-            if let Some(info) = packed.get_texture_info(&texture_id) {
-                let atlas_placed_uv_coords = info
-                    .placed_uv_coords
-                    .iter()
-                    .map(|(u, v)| (*u, *v))
-                    .collect::<Vec<(f64, f64)>>();
-
-                let updated_vertices = original_vertices
-                    .iter()
-                    .zip(atlas_placed_uv_coords.iter())
-                    .map(|((x, y, z, _, _), (u, v))| (*x, *y, *z, *u, *v))
-                    .collect::<Vec<(f64, f64, f64, f64, f64)>>();
-
-                poly.transform_inplace(|&[x, y, z, _, _]| {
-                    let (u, v) = updated_vertices
-                        .iter()
-                        .find(|(x_, y_, z_, _, _)| {
-                            (*x_ - x).abs() < 1e-6
-                                && (*y_ - y).abs() < 1e-6
-                                && (*z_ - z).abs() < 1e-6
-                        })
-                        .map(|(_, _, _, u, v)| (*u, *v))
-                        .unwrap();
-                    [x, y, z, u, v]
-                });
-
-                // Build atlas file path using callback
-                let atlas_uri = atlas_path_builder(info.atlas_id).with_extension(ext);
-
-                mat = material::Material {
-                    base_color: mat.base_color,
-                    base_texture: Some(material::Texture {
-                        uri: Url::from_file_path(atlas_uri).map_err(|_| {
-                            crate::errors::SinkError::atlas_builder(
-                                "Failed to convert atlas URI to URL",
-                            )
-                        })?,
-                    }),
-                };
+                            mat = material::Material {
+                                base_color: mat.base_color,
+                                base_texture: Some(material::Texture {
+                                    uri: info.uri.clone(),
+                                }),
+                            };
+                        }
+                    }
+                }
             }
 
+            // Triangulate and emit geometry
             let primitive = primitives.entry(mat).or_default();
             primitive.feature_ids.insert(feature_id as u32);
 
@@ -231,7 +300,6 @@ where
                 let mut buf2d: Vec<[f64; 2]> = Vec::new();
                 let mut index_buf: Vec<u32> = Vec::new();
 
-                buf3d.clear();
                 buf3d.extend(poly.raw_coords().iter().map(|c| [c[0], c[1], c[2]]));
 
                 if project3d_to_2d(&buf3d, num_outer_points, &mut buf2d) {
@@ -261,89 +329,13 @@ where
     Ok(())
 }
 
-/// Process geometry with atlas packing and export
-/// Combines packing, geometry processing, and atlas export into one function
-pub fn process_geometry_with_atlas_export<F, P, E>(
-    features: &[&GltfFeature],
-    packer: Mutex<AtlasPacker>,
-    dimensions: (u32, u32),
-    exporter: E,
-    atlas_path: P,
-    texture_cache: &TextureCache,
-    texture_id_generator: F,
-) -> Result<(Primitives, IndexSet<[u32; 9], RandomState>), crate::errors::SinkError>
-where
-    F: Fn(usize, usize) -> String,
-    P: AsRef<std::path::Path>,
-    E: AtlasExporter + Clone,
-{
-    let mut primitives: Primitives = Default::default();
-    let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
-
-    let (max_width, max_height) = dimensions;
-
-    // Initialize texture packer config
-    let config = TexturePlacerConfig::new_padded(max_width, max_height, 0, 2);
-
-    let placer = GuillotineTexturePlacer::new(config.clone());
-    let packer = packer
-        .into_inner()
-        .map_err(|_| crate::errors::SinkError::atlas_builder("Failed to unwrap texture packer"))?;
-
-    // Pack textures into atlas
-    let packed = packer.pack(placer);
-
-    let ext = exporter.clone().get_extension().to_string();
-
-    // Process geometry with atlas
-    process_geometry_with_atlas(
-        features,
-        &packed,
-        &ext,
-        &texture_id_generator,
-        |atlas_id| atlas_path.as_ref().join(atlas_id.to_string()),
-        &mut primitives,
-        &mut vertices,
-    )?;
-
-    // Export atlas textures
-    packed.export(
-        exporter,
-        atlas_path.as_ref(),
-        texture_cache,
-        config.width(),
-        config.height(),
-    );
-
-    Ok((primitives, vertices))
-}
-
-pub fn encode_metadata<'a>(
-    features: &'a [GltfFeature],
-    typename: &str,
-    metadata_encoder: &mut reearth_flow_gltf::MetadataEncoder,
-) -> Vec<&'a GltfFeature> {
-    features
-        .iter()
-        .filter(|feature| {
-            let result = metadata_encoder.add_feature(typename, &feature.attributes);
-            if let Err(e) = result {
-                tracing::error!("Failed to add feature with error = {e:?}");
-                false
-            } else {
-                true
-            }
-        })
-        .collect::<Vec<_>>()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    fn create_test_texture(dir: &std::path::Path, name: &str, width: u32, height: u32) -> PathBuf {
+    fn create_test_texture(dir: &Path, name: &str, width: u32, height: u32) -> PathBuf {
         use image::{ImageBuffer, Rgb};
         let img = ImageBuffer::<Rgb<u8>, _>::new(width, height);
         let path = dir.join(name);
@@ -352,11 +344,10 @@ mod tests {
     }
 
     fn create_test_feature(
-        texture_path: &std::path::Path,
+        texture_path: &Path,
         uvs: Vec<(f64, f64)>,
         offset_x: f64,
     ) -> GltfFeature {
-        // Create coplanar square polygon at z=0 with x offset
         let coords: Vec<[f64; 5]> = vec![
             [offset_x, 0.0, 0.0, uvs[0].0, uvs[0].1],
             [offset_x + 1.0, 0.0, 0.0, uvs[1].0, uvs[1].1],
@@ -383,191 +374,63 @@ mod tests {
     }
 
     #[test]
-    fn test_load_textures_wrapping_detection() {
+    fn test_wrapping_uvs_skipped() {
         let temp_dir = TempDir::new().unwrap();
         let texture_path = create_test_texture(temp_dir.path(), "test.png", 64, 64);
 
-        // Feature with wrapping UVs
         let feature = create_test_feature(
             &texture_path,
             vec![(0.0, 0.0), (1.5, 0.0), (1.5, 1.0), (0.0, 1.0)],
             0.0,
         );
         let features = vec![&feature];
-
-        let packer = Mutex::new(AtlasPacker::default());
-        let texture_size_cache = TextureSizeCache::new();
-        let texture_id_gen = |fid, pid| format!("tex_{}_{}", fid, pid);
-
-        let result = load_textures_into_packer(
-            &features,
-            &packer,
-            &texture_size_cache,
-            &texture_id_gen,
-            0.0,
-            false,
-        );
-
-        assert!(result.is_ok());
-        // Wrapping textures are not added to the packer
-        let packer = packer.into_inner().unwrap();
-        let placer = GuillotineTexturePlacer::new(Default::default());
-        // Pack textures into atlas
-        let packed = packer.pack(placer);
-        assert!(packed.get_texture_info(&texture_id_gen(0, 0)).is_none());
+        let textures = collect_unique_textures(&features).unwrap();
+        assert!(textures.is_empty());
     }
 
     #[test]
-    fn test_load_textures_max_size_calculation() {
-        let temp_dir = TempDir::new().unwrap();
-        let texture1 = create_test_texture(temp_dir.path(), "test1.png", 64, 64);
-        let texture2 = create_test_texture(temp_dir.path(), "test2.png", 100, 80);
-        let texture3 = create_test_texture(temp_dir.path(), "test3.png", 50, 120);
-
-        let feature1 = create_test_feature(
-            &texture1,
-            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
-            0.0,
-        );
-        let feature2 = create_test_feature(
-            &texture2,
-            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
-            0.0,
-        );
-        let feature3 = create_test_feature(
-            &texture3,
-            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
-            0.0,
-        );
-        let features = vec![&feature1, &feature2, &feature3];
-
-        let packer = Mutex::new(AtlasPacker::default());
-        let texture_size_cache = TextureSizeCache::new();
-
-        let result = load_textures_into_packer(
-            &features,
-            &packer,
-            &texture_size_cache,
-            &|f, p| format!("{}_{}", f, p),
-            0.0,
-            false,
-        );
-
-        assert!(result.is_ok());
-        let (width, height) = result.unwrap();
-
-        // Max width is 100 -> next power of two = 128
-        // Max height is 120 -> next power of two = 128
-        assert_eq!(width, 128);
-        assert_eq!(height, 128);
+    fn test_estimate_atlas_size() {
+        let textures = vec![
+            (PathBuf::from("a"), (100u32, 80u32)),
+            (PathBuf::from("b"), (100u32, 80u32)),
+            (PathBuf::from("c"), (50u32, 120u32)),
+        ];
+        let (w, h) = estimate_atlas_size(&textures);
+        // effective: (102,82),(102,82),(52,122); total_area≈23704, max_eff=122, grid=ceil(sqrt(3))*122=244, area≈154 → max(244,154)→next_pow2=256
+        assert_eq!(w, 256);
+        assert_eq!(h, 256);
     }
 
     #[test]
-    fn test_load_textures_downsampling() {
+    fn test_large_texture_skipped() {
         let temp_dir = TempDir::new().unwrap();
-        let texture_path = create_test_texture(temp_dir.path(), "test.png", 256, 256);
-
+        let texture_path = create_test_texture(temp_dir.path(), "large.png", 16384, 1);
         let feature = create_test_feature(
             &texture_path,
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             0.0,
         );
         let features = vec![&feature];
-
-        let packer = Mutex::new(AtlasPacker::default());
-        let texture_size_cache = TextureSizeCache::new();
-
-        // Test with downsample_factor = 0.5
-        let result = load_textures_into_packer(
-            &features,
-            &packer,
-            &texture_size_cache,
-            &|f, p| format!("{}_{}", f, p),
-            9e9,
-            true,
-        );
-
-        assert!(result.is_ok());
-        let (width, height) = result.unwrap();
-
-        // extremely large geom_error should lead to maximum downsampling
-        assert_eq!(width, 1);
-        assert_eq!(height, 1);
+        let textures = collect_unique_textures(&features).unwrap();
+        assert!(textures.is_empty(), "oversized texture should be excluded");
     }
 
     #[test]
-    // test 16384x1 texture which crashes webP if included in atlas
-    fn test_large_texture_skipped_from_atlas() {
-        use atlas_packer::export::WebpAtlasExporter;
-        use atlas_packer::texture::cache::TextureCache;
-
-        let temp_dir = TempDir::new().unwrap();
-        // 16384x1: width+height >= 4096, exceeds WebP's 16383px limit
-        let texture_path = create_test_texture(temp_dir.path(), "large.jpg", 16384, 1);
-        let feature = create_test_feature(
-            &texture_path,
-            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
-            0.0,
-        );
-        let features = vec![&feature];
-        let packer = Mutex::new(AtlasPacker::default());
-        let texture_size_cache = TextureSizeCache::new();
-        let texture_cache = TextureCache::new(200_000_000);
-        let texture_id_gen = |fid: usize, pid: usize| format!("tex_{}_{}", fid, pid);
-
-        load_textures_into_packer(
-            &features,
-            &packer,
-            &texture_size_cache,
-            &texture_id_gen,
-            0.0,
-            false,
-        )
-        .expect("load textures");
-
-        let atlas_dir = temp_dir.path().join("atlas");
-        std::fs::create_dir(&atlas_dir).unwrap();
-
-        let (primitives, _) = process_geometry_with_atlas_export(
-            &features,
-            packer,
-            (16384, 1),
-            WebpAtlasExporter::default(),
-            &atlas_dir,
-            &texture_cache,
-            texture_id_gen,
-        )
-        .expect("process geometry");
-
-        // Without the fix: panics in WebpAtlasExporter, or mat points to .webp atlas
-        // With the fix: texture skipped, mat retains original .jpg
-        let (mat, _) = primitives.iter().next().unwrap();
-        assert!(mat
-            .base_texture
-            .as_ref()
-            .unwrap()
-            .uri
-            .to_string()
-            .ends_with(".jpg"));
-    }
-
-    #[test]
-    fn test_process_geometry_with_atlas_export_uv_mapping() {
-        use atlas_packer::export::PngAtlasExporter;
+    fn test_build_atlas_geometry_uv_mapping() {
         use image::{ImageBuffer, Rgb, RgbImage};
 
-        let temp_path = tempfile::tempdir().expect("create temp dir").keep();
+        let temp_dir = TempDir::new().unwrap();
 
-        // Create two 256x256 textures with distinct colors based on position
-        let img1: RgbImage = ImageBuffer::from_fn(256, 256, |x, y| Rgb([x as u8, y as u8, 10]));
-        let path1 = temp_path.join("texture1.png");
-        img1.save(&path1).expect("save texture1");
+        let img1: RgbImage =
+            ImageBuffer::from_fn(256, 256, |x, y| Rgb([x as u8, y as u8, 10u8]));
+        let path1 = temp_dir.path().join("texture1.png");
+        img1.save(&path1).unwrap();
 
-        let img2: RgbImage = ImageBuffer::from_fn(256, 256, |x, y| Rgb([x as u8, y as u8, 20]));
-        let path2 = temp_path.join("texture2.png");
-        img2.save(&path2).expect("save texture2");
+        let img2: RgbImage =
+            ImageBuffer::from_fn(256, 256, |x, y| Rgb([x as u8, y as u8, 20u8]));
+        let path2 = temp_dir.path().join("texture2.png");
+        img2.save(&path2).unwrap();
 
-        // Create test features with non-overlapping polygons
         let feature1 = create_test_feature(
             &path1,
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -578,136 +441,29 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             2.0,
         );
-
         let features = vec![&feature1, &feature2];
 
-        // Setup packer and load textures
-        let packer = Mutex::new(AtlasPacker::default());
-        let texture_size_cache = TextureSizeCache::new();
-        let texture_id_gen = |fid: usize, pid: usize| format!("tex_{}_{}", fid, pid);
+        let atlas_dir = temp_dir.path().join("atlas");
+        std::fs::create_dir(&atlas_dir).unwrap();
 
-        load_textures_into_packer(
+        let mut primitives: Primitives = Default::default();
+        let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
+
+        build_atlas_geometry(
             &features,
-            &packer,
-            &texture_size_cache,
-            &texture_id_gen,
-            0.0,
-            false,
-        )
-        .expect("load textures");
-
-        // Create atlas output directory
-        let atlas_dir = temp_path.join("atlas");
-        std::fs::create_dir(&atlas_dir).expect("create atlas dir");
-
-        // Setup texture cache
-        let texture_cache = TextureCache::new(200_000_000);
-
-        // Process geometry and export atlas with large dimensions to pack both textures together
-        let (primitives, vertices) = process_geometry_with_atlas_export(
-            &features,
-            packer,
-            (1000, 1000),
-            PngAtlasExporter {
-                ext: "png".to_string(),
-            },
             &atlas_dir,
-            &texture_cache,
-            texture_id_gen,
+            ImageFormat::Png,
+            "png",
+            &mut primitives,
+            &mut vertices,
         )
-        .expect("process geometry");
+        .unwrap();
 
-        assert!(!primitives.is_empty(), "primitives should not be empty");
-        assert!(!vertices.is_empty(), "vertices should not be empty");
+        assert!(!primitives.is_empty());
+        assert!(!vertices.is_empty());
+        assert_eq!(primitives.len(), 1, "both features share one atlas material");
 
-        // Verify primitives structure
-        assert_eq!(
-            primitives.len(),
-            1,
-            "should have 1 material group for 1 atlas texture"
-        );
-        let (material, primitive) = primitives.iter().next().unwrap();
-        assert!(
-            material.base_texture.is_some(),
-            "material should have a base texture"
-        );
-        let texture_uri = material.base_texture.as_ref().unwrap().uri.to_string();
-        assert!(
-            texture_uri.contains("atlas"),
-            "texture should be from atlas directory"
-        );
-        assert!(
-            texture_uri.ends_with(".png"),
-            "texture should be PNG format"
-        );
-        assert!(
-            !primitive.indices.is_empty(),
-            "primitive should have indices"
-        );
-        assert!(
-            !primitive.feature_ids.is_empty(),
-            "primitive should have feature IDs"
-        );
-        assert_eq!(
-            primitive.indices.len(),
-            12,
-            "should have 12 indices for 2 quads"
-        );
-
-        // Read back the exported atlas
         let atlas_path = atlas_dir.join("0.png");
-        assert!(atlas_path.exists(), "atlas file should exist");
-
-        let atlas_img = image::open(&atlas_path).expect("open atlas");
-        let atlas_rgb = atlas_img.to_rgb8();
-
-        // Build HashMap: world position (x,y,z) -> expected color from original texture
-        let mut expected_colors: HashMap<(i32, i32, i32), [u8; 3]> = HashMap::new();
-
-        for (feature, orig_img) in [(&feature1, &img1), (&feature2, &img2)] {
-            let poly = feature.polygons.iter().next().expect("get polygon");
-            for coord in poly.raw_coords() {
-                let [x, y, z, u, v] = coord;
-                let tex_x = (u * 255.0) as u32;
-                let tex_y = ((1.0 - v) * 255.0) as u32; // V is flipped in vertex buffer (line 242)
-                let pixel = orig_img.get_pixel(tex_x, tex_y);
-
-                let key = (
-                    (*x * 1000.0) as i32,
-                    (*y * 1000.0) as i32,
-                    (*z * 1000.0) as i32,
-                );
-                expected_colors.insert(key, pixel.0);
-            }
-        }
-
-        // Verify: for each vertex, sample atlas at packed UV and compare to expected color
-        for vertex_bits in vertices.iter() {
-            let v_x = f32::from_bits(vertex_bits[0]);
-            let v_y = f32::from_bits(vertex_bits[1]);
-            let v_z = f32::from_bits(vertex_bits[2]);
-            let u_packed = f32::from_bits(vertex_bits[6]) as f64;
-            let v_packed = f32::from_bits(vertex_bits[7]) as f64;
-
-            let key = (
-                (v_x * 1000.0) as i32,
-                (v_y * 1000.0) as i32,
-                (v_z * 1000.0) as i32,
-            );
-            let expected = expected_colors
-                .get(&key)
-                .expect("vertex should have expected color");
-
-            // Sample atlas at packed UV
-            let atlas_x = (u_packed * atlas_rgb.width() as f64) as u32;
-            let atlas_y = (v_packed * atlas_rgb.height() as f64) as u32;
-            let atlas_pixel = atlas_rgb.get_pixel(atlas_x, atlas_y);
-
-            assert_eq!(
-                atlas_pixel.0, *expected,
-                "Color mismatch at pos=({:.1},{:.1},{:.1}) uv=({:.4},{:.4})",
-                v_x, v_y, v_z, u_packed, v_packed
-            );
-        }
+        assert!(atlas_path.exists());
     }
 }
