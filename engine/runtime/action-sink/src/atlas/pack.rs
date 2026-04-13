@@ -22,6 +22,15 @@ pub enum PackResult {
     NeedsDownscale,
 }
 
+struct PackCandidate {
+    path_str: String,
+    rect: DamageRect,
+    crop: RgbaImage,
+    key: String,
+    packed_w: u32,
+    packed_h: u32,
+}
+
 fn downsample_factor(k: u32) -> crate::errors::Result<u32> {
     if k > MAX_DOWNSAMPLE_K {
         return Err(crate::errors::SinkError::atlas_builder(format!(
@@ -99,6 +108,7 @@ pub fn pack_textures(
     let mut packer: TexturePacker<RgbaImage, String> = TexturePacker::new_skyline(config);
 
     let mut key_to_info: HashMap<String, (String, DamageRect)> = HashMap::new();
+    let mut candidates: Vec<PackCandidate> = Vec::new();
 
     for (path, td) in damage_list {
         let source = image::open(path).map_err(|e| {
@@ -122,11 +132,31 @@ pub fn pack_textures(
                 crop
             };
             let key = make_pack_key(path, i);
-            if packer.pack_own(key.clone(), crop).is_err() {
-                return Ok(PackResult::NeedsDownscale);
-            }
-            key_to_info.insert(key, (path_str.clone(), rect));
+            candidates.push(PackCandidate {
+                path_str: path_str.clone(),
+                rect,
+                packed_w: crop.width(),
+                packed_h: crop.height(),
+                crop,
+                key,
+            });
         }
+    }
+
+    candidates.sort_by(|a, b| {
+        b.packed_h
+            .cmp(&a.packed_h)
+            .then_with(|| b.packed_w.cmp(&a.packed_w))
+    });
+
+    for candidate in candidates {
+        if packer
+            .pack_own(candidate.key.clone(), candidate.crop)
+            .is_err()
+        {
+            return Ok(PackResult::NeedsDownscale);
+        }
+        key_to_info.insert(candidate.key, (candidate.path_str, candidate.rect));
     }
 
     let actual_w = packer.width();
