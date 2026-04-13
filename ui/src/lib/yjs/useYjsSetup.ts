@@ -96,13 +96,19 @@ export default ({
         // state arrives. The sync handler above will set isSynced back to
         // true once the provider reconnects with the rolled-back snapshot.
         // The rolled-back state won't carry the flag, so this only fires once.
-        metadata.observe((event: Y.YMapEvent<any>) => {
+        const handleRollbackInProgress = (event: Y.YMapEvent<any>) => {
           if (
             event.changes.keys.has("rollbackInProgress") &&
             metadata.get("rollbackInProgress") === true
           ) {
             setIsSynced(false);
           }
+        };
+
+        metadata.observe(handleRollbackInProgress);
+
+        yDoc.on("destroy", () => {
+          metadata.unobserve(handleRollbackInProgress);
         });
       })();
     }
