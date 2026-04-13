@@ -16,6 +16,8 @@ use reearth_flow_types::{
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+const DEFAULT_MAX_ATLAS_SIZE: u32 = 8192;
+
 type PolygonUVs = reearth_flow_atlas::PolygonUVs;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -83,8 +85,14 @@ pub fn build_atlas_geometry(
     let remapped = if texture_materials.is_empty() {
         Vec::new()
     } else {
-        build_atlas(&texture_materials, atlas_dir, image_format, ext)
-            .map_err(crate::errors::SinkError::atlas_builder)?
+        build_atlas(
+            &texture_materials,
+            atlas_dir,
+            image_format,
+            ext,
+            DEFAULT_MAX_ATLAS_SIZE,
+        )
+        .map_err(crate::errors::SinkError::atlas_builder)?
     };
     let atlas_uri = Url::from_file_path(atlas_dir.join("0").with_extension(ext)).ok();
 
@@ -159,7 +167,6 @@ pub fn build_atlas_geometry(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_atlas::MAX_ATLAS_SIZE;
     use std::path::PathBuf;
     use tempfile::TempDir;
 
@@ -289,8 +296,8 @@ mod tests {
         .unwrap();
 
         let atlas = image::open(atlas_dir.join("0.png")).unwrap();
-        assert!(atlas.width() <= MAX_ATLAS_SIZE);
-        assert!(atlas.height() <= MAX_ATLAS_SIZE);
+        assert!(atlas.width() <= DEFAULT_MAX_ATLAS_SIZE);
+        assert!(atlas.height() <= DEFAULT_MAX_ATLAS_SIZE);
         assert_eq!(
             primitives.len(),
             1,

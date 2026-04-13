@@ -19,7 +19,6 @@ pub struct TextureMaterial {
     pub uvs: TextureUVs,
 }
 
-pub const MAX_ATLAS_SIZE: u32 = 8192;
 pub const MAX_DOWNSAMPLE_K: u32 = 13;
 
 fn uv_bbox_in_pixel_space(uvs: &[[f64; 2]], tw: u32, th: u32) -> DamageRect {
@@ -66,6 +65,7 @@ pub fn build_atlas(
     atlas_dir: &Path,
     image_format: ImageFormat,
     ext: &str,
+    max_atlas_size: u32,
 ) -> Result<Vec<Option<TextureUVs>>> {
     let mut k = 0;
     let mut damage_list = collect_damage(materials, k)?;
@@ -73,21 +73,29 @@ pub fn build_atlas(
         return Ok(materials.iter().map(|_| None).collect());
     }
 
-    let mut current_size = pack::estimate_atlas_size(&damage_list, k);
+    let mut current_size = pack::estimate_atlas_size(&damage_list, k, max_atlas_size);
     let info = loop {
-        match pack_textures(&damage_list, atlas_dir, image_format, ext, k, current_size)? {
+        match pack_textures(
+            &damage_list,
+            atlas_dir,
+            image_format,
+            ext,
+            k,
+            current_size,
+            max_atlas_size,
+        )? {
             pack::PackResult::Packed(info) => break info,
             pack::PackResult::NeedsDownscale => {
                 if k >= MAX_DOWNSAMPLE_K {
                     return Err(AtlasError::builder(format!(
                         "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
-                        MAX_ATLAS_SIZE, MAX_ATLAS_SIZE, k
+                        max_atlas_size, max_atlas_size, k
                     )));
                 }
                 k += 1;
                 current_size = (
-                    current_size.0.saturating_mul(2).min(MAX_ATLAS_SIZE),
-                    current_size.1.saturating_mul(2).min(MAX_ATLAS_SIZE),
+                    current_size.0.saturating_mul(2).min(max_atlas_size),
+                    current_size.1.saturating_mul(2).min(max_atlas_size),
                 );
                 damage_list = collect_damage(materials, k)?;
                 if damage_list.is_empty() {
@@ -188,7 +196,7 @@ mod tests {
         let atlas_dir = temp_dir.path().join("atlas");
         std::fs::create_dir(&atlas_dir).unwrap();
 
-        let remapped = build_atlas(&materials, &atlas_dir, ImageFormat::Png, "png").unwrap();
+        let remapped = build_atlas(&materials, &atlas_dir, ImageFormat::Png, "png", 8192).unwrap();
         assert_eq!(remapped.len(), 2);
         assert!(remapped.iter().all(|entry| entry.is_some()));
         assert!(atlas_dir.join("0.png").exists());
@@ -208,10 +216,10 @@ mod tests {
         let atlas_dir = temp_dir.path().join("atlas");
         std::fs::create_dir(&atlas_dir).unwrap();
 
-        build_atlas(&materials, &atlas_dir, ImageFormat::Png, "png").unwrap();
+        build_atlas(&materials, &atlas_dir, ImageFormat::Png, "png", 8192).unwrap();
 
         let atlas = image::open(atlas_dir.join("0.png")).unwrap();
-        assert!(atlas.width() <= MAX_ATLAS_SIZE);
-        assert!(atlas.height() <= MAX_ATLAS_SIZE);
+        assert!(atlas.width() <= 8192);
+        assert!(atlas.height() <= 8192);
     }
 }

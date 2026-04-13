@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use super::damage::{DamageRect, TextureDamage};
-use super::{MAX_ATLAS_SIZE, MAX_DOWNSAMPLE_K};
+use super::MAX_DOWNSAMPLE_K;
 use image::imageops::FilterType;
 use image::{ImageFormat, RgbaImage};
 use texture_packer::exporter::ImageExporter;
@@ -44,7 +44,11 @@ fn ceil_div(value: u32, divisor: u32) -> u32 {
     value.div_ceil(divisor)
 }
 
-pub(super) fn estimate_atlas_size(damage_list: &[(PathBuf, TextureDamage)], k: u32) -> (u32, u32) {
+pub(super) fn estimate_atlas_size(
+    damage_list: &[(PathBuf, TextureDamage)],
+    k: u32,
+    max_atlas_size: u32,
+) -> (u32, u32) {
     if damage_list.is_empty() {
         return (1, 1);
     }
@@ -72,8 +76,8 @@ pub(super) fn estimate_atlas_size(damage_list: &[(PathBuf, TextureDamage)], k: u
         .max()
         .unwrap_or(0);
     let area_side = (total_area as f64).sqrt().ceil() as u32;
-    let width = max_w.max(area_side).next_power_of_two().min(MAX_ATLAS_SIZE);
-    let height = max_h.max(area_side).next_power_of_two().min(MAX_ATLAS_SIZE);
+    let width = max_w.max(area_side).next_power_of_two().min(max_atlas_size);
+    let height = max_h.max(area_side).next_power_of_two().min(max_atlas_size);
     (width, height)
 }
 
@@ -88,6 +92,7 @@ pub fn pack_textures(
     ext: &str,
     k: u32,
     current_size: (u32, u32),
+    _max_atlas_size: u32,
 ) -> crate::Result<PackResult> {
     if damage_list.is_empty() {
         return Ok(PackResult::NeedsDownscale);
@@ -232,7 +237,7 @@ mod tests {
                 },
             ),
         ];
-        let (w, h) = estimate_atlas_size(&dims, 0);
+        let (w, h) = estimate_atlas_size(&dims, 0, 8192);
         assert_eq!(w, 256);
         assert_eq!(h, 256);
     }
@@ -267,14 +272,14 @@ mod tests {
                 },
             ),
         ];
-        let (w, h) = estimate_atlas_size(&dims, 0);
+        let (w, h) = estimate_atlas_size(&dims, 0, 8192);
         assert_eq!(w, 512);
         assert_eq!(h, 512);
     }
 
     #[test]
     fn test_estimate_empty() {
-        let (w, h) = estimate_atlas_size(&[], 0);
+        let (w, h) = estimate_atlas_size(&[], 0, 8192);
         assert_eq!((w, h), (1, 1));
     }
 
@@ -293,7 +298,7 @@ mod tests {
                 }],
             },
         )];
-        let (w, h) = estimate_atlas_size(&dims, 0);
+        let (w, h) = estimate_atlas_size(&dims, 0, 8192);
         assert_eq!(w, 1024);
         assert_eq!(h, 1024);
     }
