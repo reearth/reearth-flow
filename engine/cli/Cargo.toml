@@ -55,5 +55,3 @@ tracing.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
-
-backtrace-on-stack-overflow = "0.3.0"
