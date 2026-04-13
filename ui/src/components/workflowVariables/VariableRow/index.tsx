@@ -1,6 +1,7 @@
 import { GearIcon, PencilIcon } from "@phosphor-icons/react";
 
 import {
+  ColorDefaultValueInput,
   AssetDefaultSelectionInput,
   DateTimeDefaultValueInput,
   Dialog,
@@ -10,11 +11,7 @@ import {
   DialogTitle,
   IconButton,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  NumberDefaultValueInput,
   Switch,
   TextArea,
 } from "@flow/components";
@@ -22,6 +19,7 @@ import { useT } from "@flow/lib/i18n";
 import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
 
 import VariableArrayInput from "./VariableArrayInput";
+import VariableChoiceInput from "./VariableChoiceInput";
 
 type Props = {
   variable: TriggerVariableConfig | AnyWorkflowVariable;
@@ -77,13 +75,12 @@ const VariableRow: React.FC<Props> = ({
       );
     case "number":
       return (
-        <Input
+        <NumberDefaultValueInput
           id={`default-${index}`}
-          type="number"
-          value={variable.defaultValue}
-          onChange={(e) => {
-            onDefaultValueChange(index, parseFloat(e.target.value));
-          }}
+          variable={variable}
+          onDefaultValueChange={(newValue) =>
+            onDefaultValueChange(index, newValue)
+          }
         />
       );
     case "choice":
@@ -99,22 +96,13 @@ const VariableRow: React.FC<Props> = ({
           }
           return choice;
         });
-
         return (
-          <Select
-            value={variable.defaultValue}
-            onValueChange={(newValue) => onDefaultValueChange(index, newValue)}>
-            <SelectTrigger className="h-9 w-[150px]">
-              <SelectValue placeholder={t("Select an option")} />
-            </SelectTrigger>
-            <SelectContent>
-              {choices.map((option: { value: string; label: string }) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <VariableChoiceInput
+            index={index}
+            variable={variable}
+            choices={choices}
+            onDefaultValueChange={onDefaultValueChange}
+          />
         );
       }
       return (
@@ -130,14 +118,13 @@ const VariableRow: React.FC<Props> = ({
     case "color":
       return (
         <div className="flex items-center gap-2">
-          <Input
-            id={`default-${index}`}
+          <ColorDefaultValueInput
+            id={`default-color-${index}`}
             className="h-6 w-6 rounded border p-0 hover:cursor-pointer"
-            type={"color"}
-            value={variable.defaultValue}
-            onChange={(e) => {
-              onDefaultValueChange(index, e.target.value);
-            }}
+            variable={variable}
+            onDefaultValueChange={(newValue) =>
+              onDefaultValueChange(index, newValue)
+            }
           />
           <span className="font-mono text-sm">{variable.defaultValue}</span>
         </div>
