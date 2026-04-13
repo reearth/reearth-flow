@@ -1,0 +1,299 @@
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
+
+use super::TextureMaterial;
+
+/// Axis-aligned rectangle in source texture pixel space (origin top-left).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DamageRect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+impl DamageRect {
+    pub fn right(self) -> u32 {
+        self.x + self.w
+    }
+
+    pub fn bottom(self) -> u32 {
+        self.y + self.h
+    }
+
+    pub fn overlaps(self, other: Self) -> bool {
+        self.x < other.right()
+            && other.x < self.right()
+            && self.y < other.bottom()
+            && other.y < self.bottom()
+    }
+
+    pub fn union(self, other: Self) -> Self {
+        let x = self.x.min(other.x);
+        let y = self.y.min(other.y);
+        Self {
+            x,
+            y,
+            w: self.right().max(other.right()) - x,
+            h: self.bottom().max(other.bottom()) - y,
+        }
+    }
+
+    /// Expand to 2^k pixel alignment, clamped to texture bounds.
+    pub fn align(self, k: u32, tex_w: u32, tex_h: u32) -> Self {
+        if k == 0 {
+            return self;
+        }
+        let align = 1u32 << k;
+        let x = (self.x / align) * align;
+        let y = (self.y / align) * align;
+        let right = ((self.right() + align - 1) / align * align).min(tex_w);
+        let bottom = ((self.bottom() + align - 1) / align * align).min(tex_h);
+        Self {
+            x,
+            y,
+            w: right - x,
+            h: bottom - y,
+        }
+    }
+}
+
+pub struct TextureDamage {
+    pub width: u32,
+    pub height: u32,
+    /// Disjoint merged damage rects, sorted by area descending.
+    pub rects: Vec<DamageRect>,
+}
+
+/// Merge a list of potentially overlapping rects into disjoint rects.
+pub fn merge_rects(mut rects: Vec<DamageRect>) -> Vec<DamageRect> {
+    loop {
+        let mut merged = false;
+        let mut result: Vec<DamageRect> = Vec::with_capacity(rects.len());
+        'outer: for r in rects.drain(..) {
+            for existing in &mut result {
+                if existing.overlaps(r) {
+                    *existing = existing.union(r);
+                    merged = true;
+                    continue 'outer;
+                }
+            }
+            result.push(r);
+        }
+        rects = result;
+        if !merged {
+            break;
+        }
+    }
+    rects
+}
+
+/// Collect per-texture damage rectangles from polygon UV coverages.
+///
+/// Textures with any wrapping UV polygon are excluded. `k` aligns each
+/// rect outward to 2^k pixel boundaries.
+pub fn collect_damage(
+    materials: &[TextureMaterial],
+    k: u32,
+) -> crate::errors::Result<Vec<(PathBuf, TextureDamage)>> {
+    let mut candidates: HashMap<PathBuf, Vec<DamageRect>> = HashMap::new();
+    let mut excluded: HashSet<PathBuf> = HashSet::new();
+    let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
+
+    'mat: for mat in materials {
+        if excluded.contains(&mat.path) {
+            continue;
+        }
+
+        for poly_uvs in &mat.uvs {
+            if poly_uvs
+                .iter()
+                .any(|[u, v]| *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0)
+            {
+                candidates.remove(&mat.path);
+                excluded.insert(mat.path.clone());
+                continue 'mat;
+            }
+
+            let (tw, th) = match dims.get(&mat.path) {
+                Some(&d) => d,
+                None => {
+                    let (w, h) = image::image_dimensions(&mat.path).map_err(|e| {
+                        crate::errors::SinkError::atlas_builder(format!(
+                            "Failed to read image dimensions for '{}': {e}",
+                            mat.path.display()
+                        ))
+                    })?;
+                    dims.insert(mat.path.clone(), (w, h));
+                    (w, h)
+                }
+            };
+
+            let (min_u, max_u, min_v, max_v) = poly_uvs.iter().fold(
+                (f64::MAX, f64::MIN, f64::MAX, f64::MIN),
+                |(mn_u, mx_u, mn_v, mx_v), [u, v]| {
+                    (mn_u.min(*u), mx_u.max(*u), mn_v.min(*v), mx_v.max(*v))
+                },
+            );
+
+            let x = ((min_u * tw as f64).floor().max(0.0) as u32).min(tw);
+            let y = (((1.0 - max_v) * th as f64).floor().max(0.0) as u32).min(th);
+            let right = ((max_u * tw as f64).ceil() as u32).min(tw);
+            let bottom = (((1.0 - min_v) * th as f64).ceil() as u32).min(th);
+
+            if right <= x || bottom <= y {
+                continue;
+            }
+
+            let rect = DamageRect {
+                x,
+                y,
+                w: right - x,
+                h: bottom - y,
+            }
+            .align(k, tw, th);
+            candidates.entry(mat.path.clone()).or_default().push(rect);
+        }
+    }
+
+    let mut result: Vec<(PathBuf, TextureDamage)> = candidates
+        .into_iter()
+        .filter_map(|(path, rects)| {
+            let &(width, height) = dims.get(&path)?;
+            let mut merged = merge_rects(rects);
+            merged.sort_by(|a, b| (b.w as u64 * b.h as u64).cmp(&(a.w as u64 * a.h as u64)));
+            Some((
+                path,
+                TextureDamage {
+                    width,
+                    height,
+                    rects: merged,
+                },
+            ))
+        })
+        .collect();
+
+    result.sort_by(|a, b| {
+        let area = |td: &TextureDamage| {
+            td.rects
+                .iter()
+                .map(|r| r.w as u64 * r.h as u64)
+                .sum::<u64>()
+        };
+        area(&b.1).cmp(&area(&a.1))
+    });
+
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+    use tempfile::TempDir;
+
+    use super::super::TextureMaterial;
+
+    fn create_texture(dir: &Path, name: &str, w: u32, h: u32) -> PathBuf {
+        use image::{ImageBuffer, Rgb};
+        let img = ImageBuffer::<Rgb<u8>, _>::new(w, h);
+        let path = dir.join(name);
+        img.save(&path).unwrap();
+        path
+    }
+
+    fn make_material(path: PathBuf, uvs: &[(f64, f64)]) -> TextureMaterial {
+        TextureMaterial {
+            path,
+            uvs: vec![uvs.iter().map(|&(u, v)| [u, v]).collect()],
+        }
+    }
+
+    #[test]
+    fn test_wrapping_uvs_excluded() {
+        let tmp = TempDir::new().unwrap();
+        let path = create_texture(tmp.path(), "t.png", 64, 64);
+        let mat = make_material(path, &[(0.0, 0.0), (1.5, 0.0), (1.5, 1.0), (0.0, 1.0)]);
+        let result = collect_damage(&[mat], 0).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_large_texture_included() {
+        let tmp = TempDir::new().unwrap();
+        let path = create_texture(tmp.path(), "large.png", 16384, 1);
+        let mat = make_material(path, &[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let result = collect_damage(&[mat], 0).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].1.width, 16384);
+    }
+
+    #[test]
+    fn test_wrapping_excludes_texture_from_later_non_wrapping() {
+        let tmp = TempDir::new().unwrap();
+        let path = create_texture(tmp.path(), "t.png", 64, 64);
+        // Two polygons on the same texture; first wraps → whole texture excluded.
+        let mat = TextureMaterial {
+            path,
+            uvs: vec![
+                vec![[0.0, 0.0], [1.5, 0.0], [1.5, 1.0], [0.0, 1.0]],
+                vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            ],
+        };
+        let result = collect_damage(&[mat], 0).unwrap();
+        assert!(
+            result.is_empty(),
+            "texture excluded by wrapping must not be added back"
+        );
+    }
+
+    #[test]
+    fn test_disjoint_uvs_produce_two_rects() {
+        let tmp = TempDir::new().unwrap();
+        let path = create_texture(tmp.path(), "t.png", 100, 100);
+        let mat = TextureMaterial {
+            path,
+            uvs: vec![
+                vec![[0.0, 0.5], [0.3, 0.5], [0.3, 1.0], [0.0, 1.0]],
+                vec![[0.7, 0.0], [1.0, 0.0], [1.0, 0.5], [0.7, 0.5]],
+            ],
+        };
+        let result = collect_damage(&[mat], 0).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(
+            result[0].1.rects.len(),
+            2,
+            "non-overlapping regions must not merge"
+        );
+    }
+
+    #[test]
+    fn test_overlapping_uvs_merge() {
+        let tmp = TempDir::new().unwrap();
+        let path = create_texture(tmp.path(), "t.png", 100, 100);
+        let mat = TextureMaterial {
+            path,
+            uvs: vec![
+                vec![[0.0, 0.0], [0.6, 0.0], [0.6, 1.0], [0.0, 1.0]],
+                vec![[0.4, 0.0], [1.0, 0.0], [1.0, 1.0], [0.4, 1.0]],
+            ],
+        };
+        let result = collect_damage(&[mat], 0).unwrap();
+        assert_eq!(result[0].1.rects.len(), 1, "overlapping regions must merge");
+    }
+
+    #[test]
+    fn test_align_k() {
+        let r = DamageRect {
+            x: 3,
+            y: 5,
+            w: 10,
+            h: 9,
+        }; // bottom = 14, right = 13 → both unaligned
+        let aligned = r.align(2, 64, 64);
+        assert_eq!(aligned.x, 0);
+        assert_eq!(aligned.y, 4);
+        assert_eq!(aligned.right(), 16);
+        assert_eq!(aligned.bottom(), 16);
+    }
+}
