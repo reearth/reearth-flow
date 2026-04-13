@@ -89,6 +89,13 @@ export default ({
     }
   }, [currentWorkflowVariables, getUserFacingName]);
 
+  function defaultValueConversion(variable: WorkflowVariable) {
+    return {
+      ...variable,
+      defaultValue: variable.defaultValue === "" ? null : variable.defaultValue,
+    };
+  }
+
   const handleLocalAdd = useCallback(
     (type: VarType) => {
       const tempId = `temp_${generateUUID()}`;
@@ -256,7 +263,9 @@ export default ({
       ) {
         const creates = addChanges.map((change) => ({
           name: change.workflowVariable.name,
-          defaultValue: change.workflowVariable.defaultValue,
+          defaultValue: defaultValueConversion(change.workflowVariable)
+            .defaultValue,
+
           config: change.workflowVariable.config,
           type: change.workflowVariable.type,
           required: change.workflowVariable.required,
@@ -267,7 +276,8 @@ export default ({
         const updates = updateChanges.map((change) => ({
           paramId: change.workflowVariable.id,
           name: change.workflowVariable.name,
-          defaultValue: change.workflowVariable.defaultValue,
+          defaultValue: defaultValueConversion(change.workflowVariable)
+            .defaultValue,
           config: change.workflowVariable.config,
           type: change.workflowVariable.type,
           required: change.workflowVariable.required,
@@ -290,11 +300,11 @@ export default ({
         });
       } else {
         for (const change of addChanges) {
-          await onAdd(change.workflowVariable);
+          await onAdd(defaultValueConversion(change.workflowVariable));
         }
 
         for (const change of updateChanges) {
-          await onChange(change.workflowVariable);
+          await onChange(defaultValueConversion(change.workflowVariable));
         }
 
         if (deleteChanges.length > 0) {
