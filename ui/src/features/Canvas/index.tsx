@@ -113,6 +113,7 @@ const Canvas: React.FC<Props> = ({
     nodes,
     edges,
     isMainWorkflow,
+    readonly,
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,

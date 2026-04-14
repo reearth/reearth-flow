@@ -1,7 +1,9 @@
+import { LockIcon } from "@phosphor-icons/react";
 import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
+import { useT } from "@flow/lib/i18n";
 import type {
   ActionNodeType,
   Algorithm,
@@ -84,6 +86,8 @@ type OverlayUIProps = {
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onProjectSnapshotSave: () => Promise<void>;
+  isLocked: boolean;
+  onProjectLockChange: (lock: boolean) => void;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
   activeUsersDebugRuns?: AwarenessUser[];
@@ -133,6 +137,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onDebugRunVariableValueChange,
   onDebugRunJoin,
   onProjectSnapshotSave,
+  isLocked,
+  onProjectLockChange,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
   children: canvas,
@@ -147,6 +153,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
     setShowLayoutOptions((prev) => !prev);
   }, []);
 
+  const t = useT();
+
   return (
     <>
       <div
@@ -160,11 +168,22 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             canUndo={canUndo}
             canRedo={canRedo}
             isMainWorkflow={isMainWorkflow}
+            isLocked={isLocked}
             onLayoutChange={handleLayoutOptionsToggle}
             onRedo={onWorkflowRedo}
             onUndo={onWorkflowUndo}
           />
         </div>
+        {isLocked && (
+          <div className="absolute top-4 left-70 z-10 flex shrink-0 justify-center">
+            <div className="flex items-center gap-2 rounded p-2 text-xs">
+              <LockIcon weight="thin" size={18} />
+              <p className="font-light text-accent-foreground select-none">
+                {t("Locked")}
+              </p>
+            </div>
+          </div>
+        )}
         <div
           id="left-top"
           className="pointer-events-none absolute top-2 left-2 *:pointer-events-auto">
@@ -175,6 +194,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             spotlightUserClientId={spotlightUserClientId}
             currentWorkflowId={currentWorkflowId}
             openWorkflows={openWorkflows}
+            isLocked={isLocked}
             onWorkflowChange={onWorkflowChange}
             onWorkflowClose={onWorkflowClose}
             onSpotlightUserSelect={onSpotlightUserSelect}
@@ -189,6 +209,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               selectedNodeIds={selectedNodeIds}
               edges={edges}
               isSaving={isSaving}
+              isLocked={isLocked}
               onDebugRunJoin={onDebugRunJoin}
               onDebugRunStart={onDebugRunStart}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
@@ -207,6 +228,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onProjectShare={onProjectShare}
               onProjectExport={onProjectExport}
               onWorkflowDeployment={onWorkflowDeployment}
+              onProjectLockChange={onProjectLockChange}
+              isLocked={isLocked}
               onProjectSnapshotSave={onProjectSnapshotSave}
             />
           </div>
@@ -214,6 +237,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {showDialog === "version" && (
           <VersionDialog
             project={project}
+            isLocked={isLocked}
             yDoc={yDoc}
             onDialogClose={handleDialogClose}
           />

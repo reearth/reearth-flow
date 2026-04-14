@@ -16,7 +16,7 @@ import {
   DEFAULT_ENTRY_GRAPH_ID,
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
-import { useProjectExport, useProjectSave } from "@flow/hooks";
+import { useProjectExport, useProjectLock, useProjectSave } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import {
   useAwarenessPresence,
@@ -223,6 +223,10 @@ export default ({
     yWorkflows,
   });
 
+  const { isLocked, handleProjectLockChange } = useProjectLock({
+    currentProject,
+  });
+
   const handleProjectShare = useCallback(
     (share: boolean) => {
       if (!currentProject) return;
@@ -320,10 +324,13 @@ export default ({
 
       switch (handler.keys?.join("")) {
         case "s":
-          if (hasModifier && !isSaving && !hasShift)
+          if (hasModifier && !isSaving && !hasShift && !isLocked)
             handleProjectSnapshotSave?.();
-          if (hasModifier && hasShift)
+          if (hasModifier && hasShift && !isLocked)
             handleYWorkflowAddFromSelection(nodes, edges);
+          break;
+        case "l":
+          if (hasModifier) handleProjectLockChange?.(!isLocked);
           break;
         case "k":
           if (hasModifier && !showSearchPanel) setShowSearchPanel(true);
@@ -331,8 +338,8 @@ export default ({
 
           break;
         case "z":
-          if (hasModifier && hasShift) handleYWorkflowRedo?.();
-          if (hasModifier && !hasShift) handleYWorkflowUndo?.();
+          if (hasModifier && hasShift && !isLocked) handleYWorkflowRedo?.();
+          if (hasModifier && !hasShift && !isLocked) handleYWorkflowUndo?.();
           break;
       }
     },
@@ -486,6 +493,8 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    handleProjectLockChange,
+    isLocked,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,

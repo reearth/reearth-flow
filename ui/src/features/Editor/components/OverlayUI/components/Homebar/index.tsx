@@ -25,6 +25,7 @@ type Props = {
     id: string;
     name: string;
   }[];
+  isLocked: boolean;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
   onWorkflowClose: (workflowId: string) => void;
@@ -38,6 +39,7 @@ const Homebar: React.FC<Props> = ({
   spotlightUserClientId,
   currentWorkflowId,
   openWorkflows,
+  isLocked,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
   onWorkflowChange,
@@ -107,6 +109,7 @@ const Homebar: React.FC<Props> = ({
         <WorkflowVariablesDialog
           currentWorkflowVariables={currentWorkflowVariables}
           projectId={currentProject?.id}
+          isLocked={isLocked}
           onClose={handleDialogClose}
           onAdd={handleWorkflowVariableAdd}
           onChange={handleWorkflowVariableChange}

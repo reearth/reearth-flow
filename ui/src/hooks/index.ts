@@ -13,3 +13,4 @@ export { default as useProjectSave } from "./useProjectSave";
 export { default as useDebouncedSearch } from "./useDebouncedSearch";
 export { default as useWorkflowVars } from "./useWorkflowVars";
 export { default as useAssets } from "./useAssets";
+export { default as useProjectLock } from "./useProjectLock";

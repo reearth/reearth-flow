@@ -40,6 +40,7 @@ type Props = {
   selectedNodeIds: string[];
   edges?: Edge[];
   isSaving: boolean;
+  isLocked: boolean;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStartFromSelectedNode?: (
@@ -57,6 +58,7 @@ const DebugActionBar: React.FC<Props> = ({
   selectedNodeIds,
   edges,
   isSaving,
+  isLocked,
   customDebugRunWorkflowVariables,
   onDebugRunJoin,
   onDebugRunStart,
@@ -92,6 +94,7 @@ const DebugActionBar: React.FC<Props> = ({
         selectedNodeIds={selectedNodeIds}
         edges={edges}
         isSaving={isSaving}
+        isLocked={isLocked}
         onShowDebugStartPopover={handleShowDebugStartPopover}
         onShowDebugWorkflowVariablesDialog={
           handleShowDebugWorkflowVariablesDialog
@@ -148,6 +151,7 @@ const StartButton: React.FC<{
   selectedNodeIds: string[];
   edges?: Edge[];
   isSaving: boolean;
+  isLocked: boolean;
   showPopover: string | undefined;
   onShowDebugStartPopover: () => void;
   onShowDebugWorkflowVariablesDialog: () => void;
@@ -162,6 +166,7 @@ const StartButton: React.FC<{
   selectedNodeIds,
   edges,
   isSaving,
+  isLocked,
   showPopover,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
@@ -202,6 +207,7 @@ const StartButton: React.FC<{
               }`}
               disabled={
                 isSaving ||
+                isLocked ||
                 debugRunStarted ||
                 jobStatus === "running" ||
                 jobStatus === "queued"
@@ -240,6 +246,7 @@ const StartButton: React.FC<{
               selectedNodeIds={selectedNodeIds}
               edges={edges}
               isSaving={isSaving}
+              isLocked={isLocked}
               jobStatus={jobStatus}
               debugJob={debugJob}
               showPopover={showPopover}
@@ -311,6 +318,7 @@ const DebugRunDropDownMenu: React.FC<{
   debugRunStarted: boolean;
   selectedNodeIds: string[];
   edges?: Edge[];
+  isLocked: boolean;
 
   showPopover: string | undefined;
   isSaving: boolean;
@@ -327,6 +335,7 @@ const DebugRunDropDownMenu: React.FC<{
   selectedNodeIds,
   edges,
   isSaving,
+  isLocked,
   jobStatus,
   debugJob,
   onDebugRunStartFromSelectedNode,
@@ -357,6 +366,7 @@ const DebugRunDropDownMenu: React.FC<{
               : "h-[36px] w-3"
           }
         `}
+          disabled={isLocked}
           tooltipText={t("Additional Debug Actions")}
           tooltipOffset={tooltipOffset}
           icon={<CaretDownIcon size={18} weight="light" />}

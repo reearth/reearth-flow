@@ -35,6 +35,7 @@ type Props = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
+  isLocked: boolean;
   onRedo: () => void;
   onUndo: () => void;
   onLayoutChange: () => void;
@@ -44,6 +45,7 @@ const Toolbox: React.FC<Props> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
+  isLocked,
   onRedo,
   onUndo,
   onLayoutChange,
@@ -54,23 +56,25 @@ const Toolbox: React.FC<Props> = ({
       id: "reader" as const,
       name: t("Reader"),
       icon: <DatabaseIcon weight="thin" size={16} />,
-      disabled: !isMainWorkflow,
+      disabled: !isMainWorkflow || isLocked,
     },
     {
       id: "transformer" as const,
       name: t("Transformer"),
       icon: <LightningIcon weight="thin" size={16} />,
+      disabled: isLocked,
     },
     {
       id: "writer" as const,
       name: t("Writer"),
       icon: <DiscIcon weight="thin" size={16} />,
-      disabled: !isMainWorkflow,
+      disabled: !isMainWorkflow || isLocked,
     },
     {
       id: "note" as const,
       name: t("Note"),
       icon: <NoteIcon weight="thin" size={16} />,
+      disabled: isLocked,
     },
     {
       id: "batch" as const,
@@ -82,11 +86,13 @@ const Toolbox: React.FC<Props> = ({
           size={16}
         />
       ),
+      disabled: isLocked,
     },
     {
       id: "subworkflow" as const,
       name: t("Subworkflow"),
       icon: <GraphIcon weight="thin" size={16} />,
+      disabled: isLocked,
     },
   ];
 
@@ -96,20 +102,21 @@ const Toolbox: React.FC<Props> = ({
       name: t("Auto layout"),
       icon: <LayoutIcon weight="thin" size={16} />,
       onClick: onLayoutChange,
+      disabled: isLocked,
     },
     { id: "break" },
     {
       id: "undo",
       name: t("Undo last action"),
       icon: <ArrowArcLeftIcon weight="thin" size={16} />,
-      disabled: !canUndo,
+      disabled: !canUndo || isLocked,
       onClick: onUndo,
     },
     {
       id: "redo",
       name: t("Redo action"),
       icon: <ArrowArcRightIcon weight="thin" size={16} />,
-      disabled: !canRedo,
+      disabled: !canRedo || isLocked,
       onClick: onRedo,
     },
   ];

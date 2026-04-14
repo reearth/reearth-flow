@@ -13,6 +13,7 @@ import useHooks from "./hooks";
 type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
+  isLocked: boolean;
   onDialogClose: () => void;
   onErrorReset?: () => void;
 };
@@ -20,6 +21,7 @@ type Props = {
 const VersionDialog: React.FC<Props> = ({
   project,
   yDoc,
+  isLocked,
   onDialogClose,
   onErrorReset,
 }) => {
@@ -149,7 +151,8 @@ const VersionDialog: React.FC<Props> = ({
                 disabled={
                   !selectedProjectSnapshotVersion ||
                   isLoadingPreview ||
-                  isCorruptedVersion
+                  isCorruptedVersion ||
+                  isLocked
                 }
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>

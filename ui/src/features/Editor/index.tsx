@@ -85,6 +85,8 @@ export default function Editor({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    isLocked,
+    handleProjectLockChange,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handleNodesDisable,
@@ -168,6 +170,8 @@ export default function Editor({
             onDebugRunStop={handleDebugRunStop}
             onDebugRunVariableValueChange={handleDebugRunVariableValueChange}
             onProjectSnapshotSave={handleProjectSnapshotSave}
+            onProjectLockChange={handleProjectLockChange}
+            isLocked={isLocked}
             onSpotlightUserSelect={handleSpotlightUserSelect}
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}
@@ -176,6 +180,7 @@ export default function Editor({
             showSearchPanel={showSearchPanel}
             onShowSearchPanel={setShowSearchPanel}>
             <Canvas
+              readonly={isLocked}
               nodes={nodes}
               edges={edges}
               yDoc={yDoc}
@@ -208,6 +213,7 @@ export default function Editor({
 
           {openNode && (
             <ParamsDialog
+              readonly={isLocked}
               yDoc={yDoc}
               users={users}
               openNode={openNode}
