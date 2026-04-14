@@ -132,6 +132,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
           return (
             <NameInput
               variable={variable}
+              disabled={isLocked}
               onUpdate={handleLocalUpdate}
               placeholder={t("Enter name")}
             />
