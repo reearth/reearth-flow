@@ -92,6 +92,7 @@ const TextInput = <
       />
       <ActionArea
         value={value}
+        readonly={readonly}
         defaultValue={defaultValue}
         onEditorOpen={onEditorOpen}
         onPythonEditorOpen={onPythonEditorOpen}
