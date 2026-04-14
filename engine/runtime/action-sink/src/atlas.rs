@@ -19,6 +19,19 @@ use url::Url;
 const DEFAULT_MAX_ATLAS_SIZE: u32 = 8192;
 
 type PolygonUVs = reearth_flow_atlas::PolygonUVs;
+type PolyAtlasIndex = Vec<Vec<Option<(usize, usize)>>>;
+type PendingPolyAtlasIndex = Vec<Vec<Option<(String, usize)>>>;
+
+struct PendingTextureMaterial {
+    path: std::path::PathBuf,
+    uvs: Vec<PolygonUVs>,
+    wrapping: bool,
+}
+
+struct AtlasArtifacts {
+    atlas: Option<reearth_flow_atlas::BuiltAtlas>,
+    atlas_uri: Option<Url>,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GltfFeature {
@@ -40,53 +53,146 @@ pub fn build_atlas_geometry(
     primitives: &mut Primitives,
     vertices: &mut IndexSet<[u32; 9], RandomState>,
 ) -> crate::errors::Result<()> {
-    // Conversion pass: group polygon UVs by texture path, track mapping back.
-    let mut texture_materials: Vec<TextureMaterial> = Vec::new();
-    let mut path_to_mat_idx: HashMap<String, usize> = HashMap::new();
-    // poly_index[feature_id][poly_idx] = Some((mat_idx, poly_within_mat))
-    let mut poly_index: Vec<Vec<Option<(usize, usize)>>> = Vec::new();
+    let (texture_materials, poly_index) = collect_atlas_inputs(features);
+    let AtlasArtifacts { atlas, atlas_uri } =
+        build_atlas_artifacts(&texture_materials, atlas_dir, image_format, ext)?;
+
+    emit_atlas_geometry(
+        features,
+        &poly_index,
+        atlas.as_ref(),
+        atlas_uri.as_ref(),
+        primitives,
+        vertices,
+    );
+
+    Ok(())
+}
+
+fn collect_atlas_inputs(features: &[&GltfFeature]) -> (Vec<TextureMaterial>, PolyAtlasIndex) {
+    let mut pending_materials: HashMap<String, PendingTextureMaterial> = HashMap::new();
+    let mut material_order: Vec<String> = Vec::new();
+    let mut poly_index: PendingPolyAtlasIndex = Vec::new();
 
     for feature in features.iter() {
-        let mut feature_row = Vec::new();
-        for (poly, mat_id) in feature
-            .polygons
-            .iter()
-            .zip_eq_logged(feature.polygon_material_ids.iter())
-        {
-            let mat = &feature.materials[*mat_id as usize];
-            let entry = (|| {
-                let path = mat.base_texture.as_ref()?.uri.to_file_path().ok()?;
-                let path_str = path.to_string_lossy().into_owned();
-                let mat_idx = if let Some(&idx) = path_to_mat_idx.get(&path_str) {
-                    idx
-                } else {
-                    let idx = texture_materials.len();
-                    texture_materials.push(TextureMaterial {
-                        path,
-                        uvs: Vec::new(),
-                    });
-                    path_to_mat_idx.insert(path_str, idx);
-                    idx
-                };
-                let poly_within = texture_materials[mat_idx].uvs.len();
-                let uvs: PolygonUVs = poly
-                    .raw_coords()
-                    .iter()
-                    .map(|&[_, _, _, u, v]| [u, v])
-                    .collect();
-                texture_materials[mat_idx].uvs.push(uvs);
-                Some((mat_idx, poly_within))
-            })();
-            feature_row.push(entry);
-        }
-        poly_index.push(feature_row);
+        poly_index.push(collect_feature_poly_index(
+            feature,
+            &mut pending_materials,
+            &mut material_order,
+        ));
     }
 
+    let (texture_materials, path_to_mat_idx) =
+        finalize_texture_materials(material_order, pending_materials);
+    let poly_index = finalize_poly_index(poly_index, &path_to_mat_idx);
+
+    (texture_materials, poly_index)
+}
+
+fn collect_feature_poly_index(
+    feature: &GltfFeature,
+    pending_materials: &mut HashMap<String, PendingTextureMaterial>,
+    material_order: &mut Vec<String>,
+) -> Vec<Option<(String, usize)>> {
+    let mut polygon_mappings = Vec::new();
+
+    for (poly, mat_id) in feature
+        .polygons
+        .iter()
+        .zip_eq_logged(feature.polygon_material_ids.iter())
+    {
+        let mat = &feature.materials[*mat_id as usize];
+        let entry = (|| {
+            let path = mat.base_texture.as_ref()?.uri.to_file_path().ok()?;
+            let path_str = path.to_string_lossy().into_owned();
+            let pending = pending_materials
+                .entry(path_str.clone())
+                .or_insert_with(|| {
+                    material_order.push(path_str.clone());
+                    PendingTextureMaterial {
+                        path,
+                        uvs: Vec::new(),
+                        wrapping: false,
+                    }
+                });
+            let uvs: PolygonUVs = poly
+                .raw_coords()
+                .iter()
+                .map(|&[_, _, _, u, v]| [u, v])
+                .collect();
+            if has_wrapping_uvs(&uvs) {
+                pending.wrapping = true;
+                pending.uvs.clear();
+                return None;
+            }
+            if pending.wrapping {
+                return None;
+            }
+            let poly_within = pending.uvs.len();
+            pending.uvs.push(uvs);
+            Some((path_str, poly_within))
+        })();
+        polygon_mappings.push(entry);
+    }
+
+    polygon_mappings
+}
+
+fn finalize_texture_materials(
+    material_order: Vec<String>,
+    mut pending_materials: HashMap<String, PendingTextureMaterial>,
+) -> (Vec<TextureMaterial>, HashMap<String, usize>) {
+    let mut texture_materials = Vec::new();
+    let mut path_to_mat_idx = HashMap::new();
+
+    for path_str in material_order {
+        let Some(pending) = pending_materials.remove(&path_str) else {
+            continue;
+        };
+        if pending.wrapping || pending.uvs.is_empty() {
+            continue;
+        }
+        let mat_idx = texture_materials.len();
+        texture_materials.push(TextureMaterial {
+            path: pending.path,
+            uvs: pending.uvs,
+        });
+        path_to_mat_idx.insert(path_str, mat_idx);
+    }
+
+    (texture_materials, path_to_mat_idx)
+}
+
+fn finalize_poly_index(
+    poly_index: PendingPolyAtlasIndex,
+    path_to_mat_idx: &HashMap<String, usize>,
+) -> PolyAtlasIndex {
+    poly_index
+        .into_iter()
+        .map(|feature_row| {
+            feature_row
+                .into_iter()
+                .map(|entry| {
+                    let (path_str, poly_within) = entry?;
+                    let mat_idx = *path_to_mat_idx.get(&path_str)?;
+                    Some((mat_idx, poly_within))
+                })
+                .collect()
+        })
+        .collect()
+}
+
+fn build_atlas_artifacts(
+    texture_materials: &[TextureMaterial],
+    atlas_dir: &Path,
+    image_format: ImageFormat,
+    ext: &str,
+) -> crate::errors::Result<AtlasArtifacts> {
     let atlas = if texture_materials.is_empty() {
         None
     } else {
         Some(
-            build_atlas(&texture_materials, DEFAULT_MAX_ATLAS_SIZE)
+            build_atlas(texture_materials, DEFAULT_MAX_ATLAS_SIZE)
                 .map_err(crate::errors::SinkError::atlas_builder)?,
         )
     };
@@ -100,7 +206,17 @@ pub fn build_atlas_geometry(
         .and_then(|atlas| atlas.image.as_ref().map(|_| ()))
         .and_then(|_| Url::from_file_path(atlas_dir.join("0").with_extension(ext)).ok());
 
-    // Triangulation pass: use remapped UVs where available.
+    Ok(AtlasArtifacts { atlas, atlas_uri })
+}
+
+fn emit_atlas_geometry(
+    features: &[&GltfFeature],
+    poly_index: &PolyAtlasIndex,
+    atlas: Option<&reearth_flow_atlas::BuiltAtlas>,
+    atlas_uri: Option<&Url>,
+    primitives: &mut Primitives,
+    vertices: &mut IndexSet<[u32; 9], RandomState>,
+) {
     for (feature_id, feature) in features.iter().enumerate() {
         for (poly_idx, (mut mat, poly)) in feature
             .polygons
@@ -109,18 +225,16 @@ pub fn build_atlas_geometry(
             .map(|(poly, mat_id)| (feature.materials[*mat_id as usize].clone(), poly))
             .enumerate()
         {
-            let remapped_uvs: Option<&PolygonUVs> =
-                poly_index[feature_id][poly_idx].and_then(|(mi, pi)| {
-                    atlas
-                        .as_ref()?
-                        .remapped_uvs
-                        .get(mi)?
-                        .as_ref()
-                        .map(|uvs| &uvs[pi])
-                });
-
+            let remapped_uvs = poly_index[feature_id][poly_idx].and_then(|(mi, pi)| {
+                atlas
+                    .as_ref()?
+                    .remapped_uvs
+                    .get(mi)?
+                    .as_ref()
+                    .map(|uvs| &uvs[pi])
+            });
             if remapped_uvs.is_some() {
-                if let Some(ref uri) = atlas_uri {
+                if let Some(uri) = atlas_uri {
                     mat = material::Material {
                         base_color: mat.base_color,
                         base_texture: Some(material::Texture { uri: uri.clone() }),
@@ -128,51 +242,64 @@ pub fn build_atlas_geometry(
                 }
             }
 
-            let primitive = primitives.entry(mat).or_default();
-            primitive.feature_ids.insert(feature_id as u32);
-
-            let Some((nx, ny, nz)) =
-                calculate_normal(poly.exterior().iter().map(|v| [v[0], v[1], v[2]]))
-            else {
-                continue;
-            };
-
-            let num_outer_points = poly
-                .hole_indices()
-                .first()
-                .map_or(poly.raw_coords().len(), |&v| v as usize);
-            let mut earcutter = Earcut::new();
-            let mut buf3d: Vec<[f64; 3]> = Vec::new();
-            let mut buf2d: Vec<[f64; 2]> = Vec::new();
-            let mut index_buf: Vec<u32> = Vec::new();
-
-            buf3d.extend(poly.raw_coords().iter().map(|c| [c[0], c[1], c[2]]));
-
-            if project3d_to_2d(&buf3d, num_outer_points, &mut buf2d) {
-                earcutter.earcut(buf2d.iter().cloned(), poly.hole_indices(), &mut index_buf);
-
-                primitive.indices.extend(index_buf.iter().map(|&idx| {
-                    let [x, y, z, orig_u, orig_v] = poly.raw_coords()[idx as usize];
-                    let [u, v] = remapped_uvs.map_or([orig_u, orig_v], |r| r[idx as usize]);
-                    let vbits = [
-                        (x as f32).to_bits(),
-                        (y as f32).to_bits(),
-                        (z as f32).to_bits(),
-                        (nx as f32).to_bits(),
-                        (ny as f32).to_bits(),
-                        (nz as f32).to_bits(),
-                        (u as f32).to_bits(),
-                        ((1.0 - v) as f32).to_bits(),
-                        (feature_id as f32).to_bits(),
-                    ];
-                    let (index, _) = vertices.insert_full(vbits);
-                    index as u32
-                }));
-            }
+            emit_polygon(feature_id, &poly, remapped_uvs, mat, primitives, vertices);
         }
     }
+}
 
-    Ok(())
+fn emit_polygon(
+    feature_id: usize,
+    poly: &flatgeom::Polygon<'_, [f64; 5]>,
+    remapped_uvs: Option<&PolygonUVs>,
+    mat: Material,
+    primitives: &mut Primitives,
+    vertices: &mut IndexSet<[u32; 9], RandomState>,
+) {
+    let primitive = primitives.entry(mat).or_default();
+    primitive.feature_ids.insert(feature_id as u32);
+
+    let Some((nx, ny, nz)) = calculate_normal(poly.exterior().iter().map(|v| [v[0], v[1], v[2]]))
+    else {
+        return;
+    };
+
+    let num_outer_points = poly
+        .hole_indices()
+        .first()
+        .map_or(poly.raw_coords().len(), |&v| v as usize);
+    let mut earcutter = Earcut::new();
+    let mut buf3d: Vec<[f64; 3]> = Vec::new();
+    let mut buf2d: Vec<[f64; 2]> = Vec::new();
+    let mut index_buf: Vec<u32> = Vec::new();
+
+    buf3d.extend(poly.raw_coords().iter().map(|c| [c[0], c[1], c[2]]));
+
+    if project3d_to_2d(&buf3d, num_outer_points, &mut buf2d) {
+        earcutter.earcut(buf2d.iter().cloned(), poly.hole_indices(), &mut index_buf);
+
+        primitive.indices.extend(index_buf.iter().map(|&idx| {
+            let [x, y, z, orig_u, orig_v] = poly.raw_coords()[idx as usize];
+            let [u, v] = remapped_uvs.map_or([orig_u, orig_v], |r| r[idx as usize]);
+            let vbits = [
+                (x as f32).to_bits(),
+                (y as f32).to_bits(),
+                (z as f32).to_bits(),
+                (nx as f32).to_bits(),
+                (ny as f32).to_bits(),
+                (nz as f32).to_bits(),
+                (u as f32).to_bits(),
+                ((1.0 - v) as f32).to_bits(),
+                (feature_id as f32).to_bits(),
+            ];
+            let (index, _) = vertices.insert_full(vbits);
+            index as u32
+        }));
+    }
+}
+
+fn has_wrapping_uvs(uvs: &PolygonUVs) -> bool {
+    uvs.iter()
+        .any(|[u, v]| *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0)
 }
 
 #[cfg(test)]

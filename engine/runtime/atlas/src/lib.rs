@@ -3,7 +3,7 @@ mod error;
 mod pack;
 mod skyline;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use damage::{collect_damage, DamageRect, TextureDamage};
@@ -23,7 +23,6 @@ pub struct TextureMaterial {
 pub struct BuiltAtlas {
     pub image: Option<RgbaImage>,
     pub remapped_uvs: Vec<Option<TextureUVs>>,
-    pub skipped_textures: Vec<PathBuf>,
 }
 
 pub const MAX_DOWNSAMPLE_K: u32 = 13;
@@ -55,7 +54,6 @@ fn empty_atlas(materials: &[TextureMaterial]) -> BuiltAtlas {
     BuiltAtlas {
         image: None,
         remapped_uvs: materials.iter().map(|_| None).collect(),
-        skipped_textures: unique_paths_in_order(materials.iter().map(|mat| mat.path.clone())),
     }
 }
 
@@ -69,9 +67,7 @@ fn pack_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result<Opti
     let mut current_size = pack::estimate_atlas_size(&damage_list, k, max_atlas_size);
     loop {
         match pack_textures(&damage_list, k, current_size)? {
-            pack::PackResult::Packed(info) => {
-                return Ok(Some(PackedAtlas { damage_list, info }));
-            }
+            pack::PackResult::Packed(info) => return Ok(Some(PackedAtlas { damage_list, info })),
             pack::PackResult::NeedsDownscale => {
                 if k >= MAX_DOWNSAMPLE_K {
                     return Err(AtlasError::builder(format!(
@@ -162,24 +158,6 @@ fn build_remapped_uvs(
         .collect()
 }
 
-fn skipped_textures(
-    materials: &[TextureMaterial],
-    remapped_uvs: &[Option<TextureUVs>],
-) -> Vec<PathBuf> {
-    let mut seen = HashSet::new();
-    materials
-        .iter()
-        .zip(remapped_uvs.iter())
-        .filter_map(|(mat, remapped)| {
-            if remapped.is_none() && seen.insert(mat.path.clone()) {
-                Some(mat.path.clone())
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
 /// Pack `materials` into an atlas image and return remapped UVs.
 /// `remapped_uvs[i]` is `Some(remapped_uvs)` if `materials[i]` was packed, `None` if excluded.
 pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result<BuiltAtlas> {
@@ -188,22 +166,16 @@ pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result
     };
 
     let remapped_uvs = build_remapped_uvs(materials, &packed.damage_list, &packed.info);
-    let skipped_textures = skipped_textures(materials, &remapped_uvs);
     let PackedAtlas { info, .. } = packed;
 
     Ok(BuiltAtlas {
-        image: Some(info.atlas),
+        image: if remapped_uvs.iter().any(Option::is_some) {
+            Some(info.atlas)
+        } else {
+            None
+        },
         remapped_uvs,
-        skipped_textures,
     })
-}
-
-fn unique_paths_in_order(paths: impl IntoIterator<Item = PathBuf>) -> Vec<PathBuf> {
-    let mut seen = HashSet::new();
-    paths
-        .into_iter()
-        .filter(|path| seen.insert(path.clone()))
-        .collect()
 }
 
 #[cfg(test)]

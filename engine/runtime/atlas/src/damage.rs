@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use super::TextureMaterial;
@@ -97,32 +97,15 @@ fn merge_regions(mut regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
 }
 
 /// Collect per-texture damage rectangles from polygon UV coverages.
-///
-/// Textures with any wrapping UV polygon are excluded. `k` aligns each
-/// rect outward to 2^k pixel boundaries.
 pub fn collect_damage(
     materials: &[TextureMaterial],
     k: u32,
 ) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
     let mut candidates: HashMap<PathBuf, Vec<DamageRegion>> = HashMap::new();
-    let mut excluded: HashSet<PathBuf> = HashSet::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
 
-    'mat: for mat in materials {
-        if excluded.contains(&mat.path) {
-            continue;
-        }
-
+    for mat in materials {
         for (polygon_idx, poly_uvs) in mat.uvs.iter().enumerate() {
-            if poly_uvs
-                .iter()
-                .any(|[u, v]| *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0)
-            {
-                candidates.remove(&mat.path);
-                excluded.insert(mat.path.clone());
-                continue 'mat;
-            }
-
             let (tw, th) = match dims.get(&mat.path) {
                 Some(&d) => d,
                 None => {
@@ -245,15 +228,6 @@ mod tests {
     }
 
     #[test]
-    fn test_wrapping_uvs_excluded() {
-        let tmp = TempDir::new().unwrap();
-        let path = create_texture(tmp.path(), "t.png", 64, 64);
-        let mat = make_material(path, &[(0.0, 0.0), (1.5, 0.0), (1.5, 1.0), (0.0, 1.0)]);
-        let result = collect_damage(&[mat], 0).unwrap();
-        assert!(result.is_empty());
-    }
-
-    #[test]
     fn test_large_texture_included() {
         let tmp = TempDir::new().unwrap();
         let path = create_texture(tmp.path(), "large.png", 16384, 1);
@@ -262,24 +236,6 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].1.width, 16384);
         assert_eq!(result[0].1.polygon_regions, vec![0]);
-    }
-
-    #[test]
-    fn test_wrapping_excludes_texture_from_later_non_wrapping() {
-        let tmp = TempDir::new().unwrap();
-        let path = create_texture(tmp.path(), "t.png", 64, 64);
-        let mat = TextureMaterial {
-            path,
-            uvs: vec![
-                vec![[0.0, 0.0], [1.5, 0.0], [1.5, 1.0], [0.0, 1.0]],
-                vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-            ],
-        };
-        let result = collect_damage(&[mat], 0).unwrap();
-        assert!(
-            result.is_empty(),
-            "texture excluded by wrapping must not be added back"
-        );
     }
 
     #[test]
