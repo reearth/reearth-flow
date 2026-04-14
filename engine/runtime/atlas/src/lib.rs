@@ -64,25 +64,31 @@ fn pack_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result<Opti
         return Ok(None);
     }
 
-    let mut current_size = pack::estimate_atlas_size(&damage_list, k, max_atlas_size);
+    // guided_w/h stay on the power-of-2 ladder and drive the retry stepping.
+    // The actual canvas passed to the packer is guided clamped to max_atlas_size.
+    let (mut guided_w, mut guided_h) = pack::estimate_atlas_size(&damage_list, k);
     loop {
+        let current_size = (guided_w.min(max_atlas_size), guided_h.min(max_atlas_size));
         match pack_textures(&damage_list, k, current_size)? {
             pack::PackResult::Packed(info) => return Ok(Some(PackedAtlas { damage_list, info })),
             pack::PackResult::NeedsDownscale => {
-                if k >= MAX_DOWNSAMPLE_K {
-                    return Err(AtlasError::builder(format!(
-                        "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
-                        max_atlas_size, max_atlas_size, k
-                    )));
-                }
-                k += 1;
-                current_size = (
-                    current_size.0.saturating_mul(2).min(max_atlas_size),
-                    current_size.1.saturating_mul(2).min(max_atlas_size),
-                );
-                damage_list = collect_damage(materials, k)?;
-                if damage_list.is_empty() {
-                    return Ok(None);
+                if guided_w < max_atlas_size || guided_h < max_atlas_size {
+                    // Actual canvas can still grow — advance the power-of-2 ladder.
+                    guided_w = guided_w.saturating_mul(2);
+                    guided_h = guided_h.saturating_mul(2);
+                } else {
+                    // Canvas is fully maxed — must downsample.
+                    if k >= MAX_DOWNSAMPLE_K {
+                        return Err(AtlasError::builder(format!(
+                            "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
+                            max_atlas_size, max_atlas_size, k
+                        )));
+                    }
+                    k += 1;
+                    damage_list = collect_damage(materials, k)?;
+                    if damage_list.is_empty() {
+                        return Ok(None);
+                    }
                 }
             }
         }
@@ -164,6 +170,7 @@ pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result
     let Some(packed) = pack_atlas(materials, max_atlas_size)? else {
         return Ok(empty_atlas(materials));
     };
+    eprintln!("{:?}", packed.damage_list);
 
     let remapped_uvs = build_remapped_uvs(materials, &packed.damage_list, &packed.info);
     let PackedAtlas { info, .. } = packed;
@@ -224,6 +231,108 @@ mod tests {
         assert!(built.remapped_uvs.iter().all(|entry| entry.is_some()));
         assert!(built.image.as_ref().unwrap().width() > 0);
         assert!(built.image.as_ref().unwrap().height() > 0);
+    }
+
+    // A 16x16 texture at max downsample (k=4, factor=16) shrinks to 1x1 px, which the packer
+    // places in a 3x3 slot (1px content + 1px extrusion on each side).  Four such slots tile
+    // into a 6x6 atlas (2×2 arrangement), so four textures fit exactly; a fifth cannot.
+
+    // Bleeding test: solid-color textures are used so any inter-region bleed produces a
+    // detectably wrong pixel.  64x64 sources with max_atlas_size=32 forces k=3 (downsample×8).
+    // Downsampling a solid color is lossless (all pixels identical), so exact color equality holds.
+    #[test]
+    fn test_no_bleeding_between_packed_regions() {
+        use image::{Rgba, RgbaImage};
+
+        let temp_dir = TempDir::new().unwrap();
+        let colors = [
+            Rgba([255u8, 0, 0, 255]),
+            Rgba([0, 255, 0, 255]),
+            Rgba([0, 0, 255, 255]),
+            Rgba([255, 255, 0, 255]),
+        ];
+
+        let materials: Vec<_> = colors
+            .iter()
+            .enumerate()
+            .map(|(i, &color)| {
+                let mut img = RgbaImage::new(64, 64);
+                for pixel in img.pixels_mut() {
+                    *pixel = color;
+                }
+                let path = temp_dir.path().join(format!("t{i}.png"));
+                img.save(&path).unwrap();
+                make_material(path, vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
+            })
+            .collect();
+
+        let built = build_atlas(&materials, 32).unwrap();
+        let atlas = built.image.as_ref().unwrap();
+        let aw = atlas.width() as f64;
+        let ah = atlas.height() as f64;
+
+        for (mat_idx, (color, remapped)) in colors.iter().zip(built.remapped_uvs.iter()).enumerate()
+        {
+            let poly_uvs = remapped
+                .as_ref()
+                .unwrap_or_else(|| panic!("material {mat_idx} not packed"));
+
+            // Vertices are (0,0),(1,0),(1,1),(0,1); v3=(u=0,v=1) is atlas top-left,
+            // v1=(u=1,v=0) is atlas bottom-right.
+            let [tl_u, tl_v] = poly_uvs[0][3];
+            let [br_u, br_v] = poly_uvs[0][1];
+            let x0 = (tl_u * aw).round() as u32;
+            let y0 = ((1.0 - tl_v) * ah).round() as u32;
+            let x1 = (br_u * aw).round() as u32;
+            let y1 = ((1.0 - br_v) * ah).round() as u32;
+            assert!(x1 > x0 && y1 > y0, "empty frame for material {mat_idx}");
+
+            // Content area and 1px extrusion ring must all be the expected solid color.
+            let ex0 = x0.saturating_sub(1);
+            let ey0 = y0.saturating_sub(1);
+            let ex1 = (x1 + 1).min(atlas.width());
+            let ey1 = (y1 + 1).min(atlas.height());
+            for y in ey0..ey1 {
+                for x in ex0..ex1 {
+                    assert_eq!(
+                        *atlas.get_pixel(x, y),
+                        *color,
+                        "bleed at ({x},{y}) for material {mat_idx}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_four_16x16_fit_in_6x6_atlas() {
+        let temp_dir = TempDir::new().unwrap();
+        let full_uvs = vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+        let materials: Vec<_> = (0..4)
+            .map(|i| {
+                let path = create_test_texture(temp_dir.path(), &format!("t{i}.png"), 16, 16);
+                make_material(path, full_uvs.clone())
+            })
+            .collect();
+
+        let built = build_atlas(&materials, 6).unwrap();
+        assert!(built.remapped_uvs.iter().all(|e| e.is_some()));
+        let img = built.image.as_ref().unwrap();
+        assert!(img.width() <= 6 && img.height() <= 6);
+    }
+
+    #[test]
+    fn test_five_16x16_do_not_fit_in_6x6_atlas() {
+        let temp_dir = TempDir::new().unwrap();
+        let full_uvs = vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
+        let materials: Vec<_> = (0..5)
+            .map(|i| {
+                let path = create_test_texture(temp_dir.path(), &format!("t{i}.png"), 16, 16);
+                make_material(path, full_uvs.clone())
+            })
+            .collect();
+
+        assert!(build_atlas(&materials, 6).is_err());
     }
 
     #[test]

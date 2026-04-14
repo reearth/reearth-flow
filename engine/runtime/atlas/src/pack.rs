@@ -46,7 +46,6 @@ fn ceil_div(value: u32, divisor: u32) -> u32 {
 pub(super) fn estimate_atlas_size(
     damage_list: &[(PathBuf, TextureDamage)],
     k: u32,
-    max_atlas_size: u32,
 ) -> (u32, u32) {
     if damage_list.is_empty() {
         return (1, 1);
@@ -76,8 +75,8 @@ pub(super) fn estimate_atlas_size(
         .unwrap_or(0);
     let side = (total_area as f64).sqrt().ceil() as u32;
     (
-        max_w.max(side).next_power_of_two().min(max_atlas_size),
-        max_h.max(side).next_power_of_two().min(max_atlas_size),
+        max_w.max(side).next_power_of_two(),
+        max_h.max(side).next_power_of_two(),
     )
 }
 
@@ -145,7 +144,9 @@ pub fn pack_textures(
     current_size: (u32, u32),
 ) -> crate::Result<PackResult> {
     let downsample = downsample_factor(k)?;
-    let extrusion = 1; // reserved for future mipmap artifact control
+    // extrude 1px for bilinear filtering
+    // mip-safe extrusion requires log2(N) which is likely overkill
+    let extrusion = 1;
     let candidates = build_candidates(damage_list, downsample);
     let mut layout = SkylinePacker::new(current_size.0, current_size.1, extrusion);
     let mut frames = HashMap::new();
@@ -267,7 +268,7 @@ mod tests {
                 },
             ),
         ];
-        let (w, h) = estimate_atlas_size(&dims, 0, 8192);
+        let (w, h) = estimate_atlas_size(&dims, 0);
         assert_eq!((w, h), (256, 256));
     }
 
@@ -303,13 +304,13 @@ mod tests {
                 },
             ),
         ];
-        let (w, h) = estimate_atlas_size(&dims, 0, 8192);
+        let (w, h) = estimate_atlas_size(&dims, 0);
         assert_eq!((w, h), (512, 512));
     }
 
     #[test]
     fn test_estimate_empty() {
-        assert_eq!(estimate_atlas_size(&[], 0, 8192), (1, 1));
+        assert_eq!(estimate_atlas_size(&[], 0), (1, 1));
     }
 
     #[test]
@@ -328,7 +329,7 @@ mod tests {
                 polygon_regions: vec![],
             },
         )];
-        assert_eq!(estimate_atlas_size(&dims, 0, 8192), (1024, 1024));
+        assert_eq!(estimate_atlas_size(&dims, 0), (1024, 1024));
     }
 
     #[test]

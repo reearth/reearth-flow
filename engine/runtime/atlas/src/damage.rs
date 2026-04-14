@@ -58,6 +58,7 @@ impl DamageRect {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct TextureDamage {
     pub width: u32,
     pub height: u32,
