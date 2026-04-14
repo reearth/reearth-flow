@@ -13,7 +13,7 @@ import useHooks from "./hooks";
 type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
-  isLocked: boolean;
+  isLocked?: boolean;
   onDialogClose: () => void;
   onErrorReset?: () => void;
 };
