@@ -143,8 +143,10 @@ const Canvas: React.FC<Props> = ({
       ref={paneRef}
       // Readonly props START
       nodesConnectable={!readonly}
+      nodesDraggable={!readonly}
       nodesFocusable={!readonly}
-      elementsSelectable={!readonly}
+      // elementsSelectable={!readonly}
+
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
       zIndexMode="manual" // Prevent xyflow from auto-elevating nodes and edges within Batch nodes, which would break the intended layering of Batch containers > edges > action nodes.
@@ -195,6 +197,7 @@ const Canvas: React.FC<Props> = ({
           edges={edges}
           allNodes={nodes}
           isMainWorkflow={isMainWorkflow}
+          isLocked={readonly}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
           onNodesChange={onNodesChange}

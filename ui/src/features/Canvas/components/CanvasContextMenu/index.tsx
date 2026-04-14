@@ -30,6 +30,7 @@ type Props = {
   edges: Edge[];
   allNodes: Node[];
   isMainWorkflow: boolean;
+  isLocked?: boolean;
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
@@ -54,6 +55,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   edges,
   allNodes,
   isMainWorkflow,
+  isLocked,
   onWorkflowOpen,
   onWorkflowAddFromSelection,
   onNodeSettings,
@@ -196,7 +198,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
           ),
-          disabled: (!nodes && !node) || !onCopy,
+          disabled: (!nodes && !node) || !onCopy || isLocked,
           onCallback: wrapWithClose(() => onCopy?.(node) ?? (() => {})),
         },
       },
@@ -209,7 +211,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "x", commandKey: true }} />
           ),
-          disabled: (!nodes && !node) || !onCut,
+          disabled: (!nodes && !node) || !onCut || isLocked,
           onCallback: wrapWithClose(() => onCut?.(false, node) ?? (() => {})),
         },
       },
@@ -222,7 +224,10 @@ const CanvasContextMenu: React.FC<Props> = ({
             <ContextMenuShortcut keyBinding={{ key: "v", commandKey: true }} />
           ),
           disabled:
-            !value?.clipboard || !onPaste || clipboardHasReadersOrWriters,
+            !value?.clipboard ||
+            !onPaste ||
+            clipboardHasReadersOrWriters ||
+            isLocked,
           onCallback: wrapWithClose(() => onPaste?.(contextMenu.mousePosition)),
         },
       },
@@ -251,7 +256,10 @@ const CanvasContextMenu: React.FC<Props> = ({
                   />
                 ),
                 disabled:
-                  !onNodesChange || !onEdgesChange || containsReadersOrWriters,
+                  !onNodesChange ||
+                  !onEdgesChange ||
+                  containsReadersOrWriters ||
+                  isLocked,
                 onCallback: wrapWithClose(() =>
                   handleWorkflowAddFromSelection(),
                 ),
@@ -287,7 +295,8 @@ const CanvasContextMenu: React.FC<Props> = ({
             (!nodes && !node) ||
             !onNodesDisable ||
             nodes?.some((n) => n.type === "note") ||
-            node?.type === "note",
+            node?.type === "note" ||
+            isLocked,
           onCallback: wrapWithClose(
             () => onNodesDisable?.(node ? [node] : undefined) ?? (() => {}),
           ),
@@ -301,8 +310,7 @@ const CanvasContextMenu: React.FC<Props> = ({
                 label: node ? t("Delete Action") : t("Delete Selection"),
                 icon: <TrashIcon weight="light" />,
                 destructive: true,
-                disabled: !onNodesChange || !onEdgesChange,
-
+                disabled: !onNodesChange || !onEdgesChange || isLocked,
                 onCallback: wrapWithClose(() => handleNodeDelete(node, nodes)),
               },
             },
@@ -337,6 +345,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     clipboardHasReadersOrWriters,
     containsReadersOrWriters,
     debugRunJob,
+    isLocked,
     onCopy,
     edges,
     onCut,
