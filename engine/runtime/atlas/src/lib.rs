@@ -9,7 +9,6 @@ use std::path::PathBuf;
 use damage::{collect_damage, DamageRect, TextureDamage};
 pub use error::{AtlasError, Result};
 use image::RgbaImage;
-use pack::pack_textures;
 
 pub type PolygonUVs = Vec<[f64; 2]>;
 pub type TextureUVs = Vec<PolygonUVs>;
@@ -20,17 +19,24 @@ pub struct TextureMaterial {
     pub uvs: TextureUVs,
 }
 
+/// Result of a pure layout pass — no image I/O, no blitting.
+pub struct LayoutPlan {
+    pub atlas_width: u32,
+    pub atlas_height: u32,
+    /// Downsample factor applied (1 = no downsampling, 2 = half-res, …).
+    pub downsample: u32,
+    /// Sum of content rect areas placed in atlas space (after downsampling).
+    pub packed_pixels: u64,
+    /// Atlas-space top-left `(x, y)` for each input rect, in input order.
+    pub placements: Vec<(u32, u32)>,
+}
+
 pub struct BuiltAtlas {
     pub image: Option<RgbaImage>,
     pub remapped_uvs: Vec<Option<TextureUVs>>,
 }
 
 pub const MAX_DOWNSAMPLE_K: u32 = 13;
-
-struct PackedAtlas {
-    damage_list: Vec<(PathBuf, damage::TextureDamage)>,
-    info: pack::AtlasInfo,
-}
 
 struct RemapContext {
     texture_size: (u32, u32),
@@ -54,44 +60,6 @@ fn empty_atlas(materials: &[TextureMaterial]) -> BuiltAtlas {
     BuiltAtlas {
         image: None,
         remapped_uvs: materials.iter().map(|_| None).collect(),
-    }
-}
-
-fn pack_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result<Option<PackedAtlas>> {
-    let mut k = 0;
-    let mut damage_list = collect_damage(materials, k)?;
-    if damage_list.is_empty() {
-        return Ok(None);
-    }
-
-    // guided_w/h stay on the power-of-2 ladder and drive the retry stepping.
-    // The actual canvas passed to the packer is guided clamped to max_atlas_size.
-    let (mut guided_w, mut guided_h) = pack::estimate_atlas_size(&damage_list, k);
-    loop {
-        let current_size = (guided_w.min(max_atlas_size), guided_h.min(max_atlas_size));
-        match pack_textures(&damage_list, k, current_size)? {
-            pack::PackResult::Packed(info) => return Ok(Some(PackedAtlas { damage_list, info })),
-            pack::PackResult::NeedsDownscale => {
-                if guided_w < max_atlas_size || guided_h < max_atlas_size {
-                    // Actual canvas can still grow — advance the power-of-2 ladder.
-                    guided_w = guided_w.saturating_mul(2);
-                    guided_h = guided_h.saturating_mul(2);
-                } else {
-                    // Canvas is fully maxed — must downsample.
-                    if k >= MAX_DOWNSAMPLE_K {
-                        return Err(AtlasError::builder(format!(
-                            "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
-                            max_atlas_size, max_atlas_size, k
-                        )));
-                    }
-                    k += 1;
-                    damage_list = collect_damage(materials, k)?;
-                    if damage_list.is_empty() {
-                        return Ok(None);
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -164,17 +132,73 @@ fn build_remapped_uvs(
         .collect()
 }
 
+/// Compute the layout for a set of textures given only their dimensions.
+/// No image files are read; no pixels are blitted.
+/// Useful for efficiency benchmarks and layout-only unit tests.
+pub fn plan_layout(dims: &[(u32, u32)], max_atlas_size: u32) -> Result<LayoutPlan> {
+    if dims.is_empty() {
+        return Ok(LayoutPlan {
+            atlas_width: 1,
+            atlas_height: 1,
+            downsample: 1,
+            packed_pixels: 0,
+            placements: vec![],
+        });
+    }
+    let mut k = 0u32;
+    let (mut guided_w, mut guided_h) = pack::estimate_atlas_size_from_dims(dims, k);
+    loop {
+        let current_size = (guided_w.min(max_atlas_size), guided_h.min(max_atlas_size));
+        match pack::try_layout_rects(dims, k, current_size) {
+            Some((used_w, used_h, packed_pixels, placements)) => {
+                return Ok(LayoutPlan {
+                    atlas_width: used_w,
+                    atlas_height: used_h,
+                    downsample: 1u32 << k,
+                    packed_pixels,
+                    placements,
+                });
+            }
+            None => {
+                if guided_w < max_atlas_size || guided_h < max_atlas_size {
+                    guided_w = guided_w.saturating_mul(2);
+                    guided_h = guided_h.saturating_mul(2);
+                } else {
+                    if k >= MAX_DOWNSAMPLE_K {
+                        return Err(AtlasError::builder(format!(
+                            "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
+                            max_atlas_size, max_atlas_size, k
+                        )));
+                    }
+                    k += 1;
+                    guided_w = pack::estimate_atlas_size_from_dims(dims, k).0;
+                    guided_h = pack::estimate_atlas_size_from_dims(dims, k).1;
+                }
+            }
+        }
+    }
+}
+
 /// Pack `materials` into an atlas image and return remapped UVs.
 /// `remapped_uvs[i]` is `Some(remapped_uvs)` if `materials[i]` was packed, `None` if excluded.
 pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result<BuiltAtlas> {
-    let Some(packed) = pack_atlas(materials, max_atlas_size)? else {
+    // Stage 1: collect damage rects (reads image headers only).
+    let damage_list = collect_damage(materials)?;
+    if damage_list.is_empty() {
         return Ok(empty_atlas(materials));
-    };
-    eprintln!("{:?}", packed.damage_list);
+    }
 
-    let remapped_uvs = build_remapped_uvs(materials, &packed.damage_list, &packed.info);
-    let PackedAtlas { info, .. } = packed;
+    // Stage 2: plan layout (pure — no I/O, no blitting).
+    let dims: Vec<(u32, u32)> = damage_list
+        .iter()
+        .flat_map(|(_, td)| td.rects.iter().map(|r| (r.w, r.h)))
+        .collect();
+    let plan = plan_layout(&dims, max_atlas_size)?;
 
+    // Stage 3: blit using pre-computed placements — no second layout pass.
+    let info = pack::blit(&damage_list, plan.downsample, (plan.atlas_width, plan.atlas_height), &plan.placements)?;
+
+    let remapped_uvs = build_remapped_uvs(materials, &damage_list, &info);
     Ok(BuiltAtlas {
         image: if remapped_uvs.iter().any(Option::is_some) {
             Some(info.atlas)
@@ -188,16 +212,8 @@ pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use tempfile::TempDir;
-
-    fn create_test_texture(dir: &Path, name: &str, width: u32, height: u32) -> PathBuf {
-        use image::{ImageBuffer, Rgb};
-        let img = ImageBuffer::<Rgb<u8>, _>::new(width, height);
-        let path = dir.join(name);
-        img.save(&path).unwrap();
-        path
-    }
 
     fn make_material(path: PathBuf, uvs: Vec<(f64, f64)>) -> TextureMaterial {
         TextureMaterial {
@@ -306,50 +322,19 @@ mod tests {
 
     #[test]
     fn test_four_16x16_fit_in_6x6_atlas() {
-        let temp_dir = TempDir::new().unwrap();
-        let full_uvs = vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
-        let materials: Vec<_> = (0..4)
-            .map(|i| {
-                let path = create_test_texture(temp_dir.path(), &format!("t{i}.png"), 16, 16);
-                make_material(path, full_uvs.clone())
-            })
-            .collect();
-
-        let built = build_atlas(&materials, 6).unwrap();
-        assert!(built.remapped_uvs.iter().all(|e| e.is_some()));
-        let img = built.image.as_ref().unwrap();
-        assert!(img.width() <= 6 && img.height() <= 6);
+        let plan = plan_layout(&vec![(16, 16); 4], 6).unwrap();
+        assert!(plan.atlas_width <= 6 && plan.atlas_height <= 6);
     }
 
     #[test]
     fn test_five_16x16_do_not_fit_in_6x6_atlas() {
-        let temp_dir = TempDir::new().unwrap();
-        let full_uvs = vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
-        let materials: Vec<_> = (0..5)
-            .map(|i| {
-                let path = create_test_texture(temp_dir.path(), &format!("t{i}.png"), 16, 16);
-                make_material(path, full_uvs.clone())
-            })
-            .collect();
-
-        assert!(build_atlas(&materials, 6).is_err());
+        assert!(plan_layout(&vec![(16, 16); 5], 6).is_err());
     }
 
     #[test]
-    fn test_build_atlas_retries_with_downscaling() {
-        let temp_dir = TempDir::new().unwrap();
-        let max_atlas_size = 2048;
-        let path1 = create_test_texture(temp_dir.path(), "large1.png", 1536, 1536);
-        let path2 = create_test_texture(temp_dir.path(), "large2.png", 1536, 1536);
-
-        let materials = vec![
-            make_material(path1, vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
-            make_material(path2, vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
-        ];
-
-        let built = build_atlas(&materials, max_atlas_size).unwrap();
-
-        assert!(built.image.as_ref().unwrap().width() <= max_atlas_size);
-        assert!(built.image.as_ref().unwrap().height() <= max_atlas_size);
+    fn test_plan_layout_triggers_downsampling() {
+        let plan = plan_layout(&vec![(1536, 1536); 2], 2048).unwrap();
+        assert!(plan.downsample > 1);
+        assert!(plan.atlas_width <= 2048 && plan.atlas_height <= 2048);
     }
 }

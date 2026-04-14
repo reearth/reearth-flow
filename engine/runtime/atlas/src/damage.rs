@@ -39,23 +39,7 @@ impl DamageRect {
         }
     }
 
-    /// Expand to 2^k pixel alignment, clamped to texture bounds.
-    pub fn align(self, k: u32, tex_w: u32, tex_h: u32) -> Self {
-        if k == 0 {
-            return self;
-        }
-        let align = 1u32 << k;
-        let x = (self.x / align) * align;
-        let y = (self.y / align) * align;
-        let right = (self.right().div_ceil(align) * align).min(tex_w);
-        let bottom = (self.bottom().div_ceil(align) * align).min(tex_h);
-        Self {
-            x,
-            y,
-            w: right - x,
-            h: bottom - y,
-        }
-    }
+
 }
 
 #[derive(Debug, Clone)]
@@ -100,7 +84,6 @@ fn merge_regions(mut regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
 /// Collect per-texture damage rectangles from polygon UV coverages.
 pub fn collect_damage(
     materials: &[TextureMaterial],
-    k: u32,
 ) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
     let mut candidates: HashMap<PathBuf, Vec<DamageRegion>> = HashMap::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
@@ -142,8 +125,7 @@ pub fn collect_damage(
                 y,
                 w: right - x,
                 h: bottom - y,
-            }
-            .align(k, tw, th);
+            };
             candidates
                 .entry(mat.path.clone())
                 .or_default()
@@ -233,7 +215,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let path = create_texture(tmp.path(), "large.png", 16384, 1);
         let mat = make_material(path, &[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
-        let result = collect_damage(&[mat], 0).unwrap();
+        let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].1.width, 16384);
         assert_eq!(result[0].1.polygon_regions, vec![0]);
@@ -250,7 +232,7 @@ mod tests {
                 vec![[0.7, 0.0], [1.0, 0.0], [1.0, 0.5], [0.7, 0.5]],
             ],
         };
-        let result = collect_damage(&[mat], 0).unwrap();
+        let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(
             result[0].1.rects.len(),
@@ -271,28 +253,9 @@ mod tests {
                 vec![[0.4, 0.0], [1.0, 0.0], [1.0, 1.0], [0.4, 1.0]],
             ],
         };
-        let result = collect_damage(&[mat], 0).unwrap();
+        let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result[0].1.rects.len(), 1, "overlapping regions must merge");
         assert_eq!(result[0].1.polygon_regions, vec![0, 0]);
     }
 
-    #[test]
-    fn test_align_k() {
-        let r = DamageRect {
-            x: 3,
-            y: 5,
-            w: 10,
-            h: 9,
-        };
-        let aligned = r.align(2, 64, 64);
-        assert_eq!(
-            aligned,
-            DamageRect {
-                x: 0,
-                y: 4,
-                w: 16,
-                h: 12
-            }
-        );
-    }
 }

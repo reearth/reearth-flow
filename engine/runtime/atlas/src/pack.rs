@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 
 use super::damage::{DamageRect, TextureDamage};
 use super::skyline::SkylinePacker;
-use super::MAX_DOWNSAMPLE_K;
 use image::imageops::FilterType;
 use image::{GenericImage, Rgba, RgbaImage};
 
@@ -13,11 +12,6 @@ pub struct AtlasInfo {
     pub width: u32,
     pub height: u32,
     pub downsample: u32,
-}
-
-pub enum PackResult {
-    Packed(AtlasInfo),
-    NeedsDownscale,
 }
 
 struct Candidate<'a> {
@@ -30,47 +24,32 @@ struct Candidate<'a> {
     h: u32,
 }
 
-fn downsample_factor(k: u32) -> crate::Result<u32> {
-    if k > MAX_DOWNSAMPLE_K {
-        return Err(crate::AtlasError::builder(format!(
-            "Unsupported atlas downsample exponent: {k}"
-        )));
-    }
-    Ok(1u32 << k)
-}
-
 fn ceil_div(value: u32, divisor: u32) -> u32 {
     value.div_ceil(divisor)
 }
 
-pub(super) fn estimate_atlas_size(
-    damage_list: &[(PathBuf, TextureDamage)],
-    k: u32,
-) -> (u32, u32) {
-    if damage_list.is_empty() {
+pub(crate) fn estimate_atlas_size_from_dims(dims: &[(u32, u32)], k: u32) -> (u32, u32) {
+    if dims.is_empty() {
         return (1, 1);
     }
     let downsample = 1u32 << k;
-    let extrusion = 1;
-    let total_area: u64 = damage_list
+    let extrusion = 1u32;
+    let total_area: u64 = dims
         .iter()
-        .flat_map(|(_, td)| td.rects.iter())
-        .map(|r| {
-            let w = ceil_div(r.w, downsample) + 2 * extrusion;
-            let h = ceil_div(r.h, downsample) + 2 * extrusion;
-            w as u64 * h as u64
+        .map(|&(w, h)| {
+            let pw = ceil_div(w, downsample) + 2 * extrusion;
+            let ph = ceil_div(h, downsample) + 2 * extrusion;
+            pw as u64 * ph as u64
         })
         .sum();
-    let max_w = damage_list
+    let max_w = dims
         .iter()
-        .flat_map(|(_, td)| td.rects.iter())
-        .map(|r| ceil_div(r.w, downsample) + 2 * extrusion)
+        .map(|&(w, _)| ceil_div(w, downsample) + 2 * extrusion)
         .max()
         .unwrap_or(0);
-    let max_h = damage_list
+    let max_h = dims
         .iter()
-        .flat_map(|(_, td)| td.rects.iter())
-        .map(|r| ceil_div(r.h, downsample) + 2 * extrusion)
+        .map(|&(_, h)| ceil_div(h, downsample) + 2 * extrusion)
         .max()
         .unwrap_or(0);
     let side = (total_area as f64).sqrt().ceil() as u32;
@@ -78,6 +57,37 @@ pub(super) fn estimate_atlas_size(
         max_w.max(side).next_power_of_two(),
         max_h.max(side).next_power_of_two(),
     )
+}
+
+/// Dry-run layout — no image I/O, no blitting.
+/// Returns `Some((used_w, used_h, packed_pixels, placements))` if all rects fit, `None` otherwise.
+/// `placements[i]` is the atlas-space top-left `(x, y)` of the content rect for `dims[i]`.
+/// `packed_pixels` is the sum of content rect areas in atlas space (after downsampling).
+pub(crate) fn try_layout_rects(
+    dims: &[(u32, u32)],
+    k: u32,
+    canvas: (u32, u32),
+) -> Option<(u32, u32, u64, Vec<(u32, u32)>)> {
+    let downsample = 1u32 << k;
+    let extrusion = 1u32;
+    // Pair each rect with its original index before sorting.
+    let mut indexed: Vec<(usize, u32, u32)> = dims
+        .iter()
+        .enumerate()
+        .map(|(i, &(w, h))| (i, ceil_div(w, downsample).max(1), ceil_div(h, downsample).max(1)))
+        .collect();
+    indexed.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| b.1.cmp(&a.1)));
+    let mut packer = SkylinePacker::new(canvas.0, canvas.1, extrusion);
+    let mut packed_pixels: u64 = 0;
+    let mut placements_sorted: Vec<(usize, u32, u32)> = Vec::with_capacity(dims.len());
+    for &(orig_idx, w, h) in &indexed {
+        let frame = packer.pack(w, h)?;
+        packed_pixels += w as u64 * h as u64;
+        placements_sorted.push((orig_idx, frame.x, frame.y));
+    }
+    placements_sorted.sort_by_key(|&(i, _, _)| i);
+    let placements = placements_sorted.into_iter().map(|(_, x, y)| (x, y)).collect();
+    Some((packer.width(), packer.height(), packed_pixels, placements))
 }
 
 fn build_candidates<'a>(
@@ -138,26 +148,31 @@ fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: DamageRect, extrusion: u32
     }
 }
 
-pub fn pack_textures(
+/// Blit all damage regions into an atlas using pre-computed placements from `plan_layout`.
+/// `placements[i]` is the atlas-space `(x, y)` for the i-th rect in the flattened damage list.
+pub(super) fn blit(
     damage_list: &[(PathBuf, TextureDamage)],
-    k: u32,
-    current_size: (u32, u32),
-) -> crate::Result<PackResult> {
-    let downsample = downsample_factor(k)?;
-    // extrude 1px for bilinear filtering
-    // mip-safe extrusion requires log2(N) which is likely overkill
-    let extrusion = 1;
+    downsample: u32,
+    atlas_size: (u32, u32),
+    placements: &[(u32, u32)],
+) -> crate::Result<AtlasInfo> {
+    let extrusion = 1u32;
     let candidates = build_candidates(damage_list, downsample);
-    let mut layout = SkylinePacker::new(current_size.0, current_size.1, extrusion);
-    let mut frames = HashMap::new();
-    for c in &candidates {
-        let Some(frame) = layout.pack(c.w, c.h) else {
-            return Ok(PackResult::NeedsDownscale);
-        };
-        frames.insert(c.key.clone(), frame);
+    // Build frames from placements (indexed by candidate key, same flat order as damage_list).
+    let mut flat_idx = 0usize;
+    let mut frames: HashMap<String, DamageRect> = HashMap::with_capacity(candidates.len());
+    for (path, td) in damage_list {
+        for (region_index, &rect) in td.rects.iter().enumerate() {
+            let w = ceil_div(rect.w, downsample).max(1);
+            let h = ceil_div(rect.h, downsample).max(1);
+            let (x, y) = placements[flat_idx];
+            let key = format!("{}#{region_index}", path.to_string_lossy());
+            frames.insert(key, DamageRect { x, y, w, h });
+            flat_idx += 1;
+        }
     }
 
-    let mut atlas = RgbaImage::from_pixel(layout.width(), layout.height(), Rgba([0, 0, 0, 0]));
+    let mut atlas = RgbaImage::from_pixel(atlas_size.0, atlas_size.1, Rgba([0, 0, 0, 0]));
     let mut sources = HashMap::new();
     let mut texture_frames: HashMap<String, Vec<Option<(DamageRect, DamageRect)>>> = damage_list
         .iter()
@@ -209,128 +224,18 @@ pub fn pack_textures(
     let width = atlas.width();
     let height = atlas.height();
 
-    Ok(PackResult::Packed(AtlasInfo {
+    Ok(AtlasInfo {
         atlas,
         texture_frames,
         width,
         height,
         downsample,
-    }))
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_estimate_atlas_size() {
-        let dims = vec![
-            (
-                PathBuf::from("a"),
-                TextureDamage {
-                    width: 100,
-                    height: 80,
-                    rects: vec![DamageRect {
-                        x: 0,
-                        y: 0,
-                        w: 100,
-                        h: 80,
-                    }],
-                    polygon_regions: vec![],
-                },
-            ),
-            (
-                PathBuf::from("b"),
-                TextureDamage {
-                    width: 100,
-                    height: 80,
-                    rects: vec![DamageRect {
-                        x: 0,
-                        y: 0,
-                        w: 100,
-                        h: 80,
-                    }],
-                    polygon_regions: vec![],
-                },
-            ),
-            (
-                PathBuf::from("c"),
-                TextureDamage {
-                    width: 50,
-                    height: 120,
-                    rects: vec![DamageRect {
-                        x: 0,
-                        y: 0,
-                        w: 50,
-                        h: 120,
-                    }],
-                    polygon_regions: vec![],
-                },
-            ),
-        ];
-        let (w, h) = estimate_atlas_size(&dims, 0);
-        assert_eq!((w, h), (256, 256));
-    }
-
-    #[test]
-    fn test_estimate_two_large_square() {
-        let dims = vec![
-            (
-                PathBuf::from("a"),
-                TextureDamage {
-                    width: 256,
-                    height: 256,
-                    rects: vec![DamageRect {
-                        x: 0,
-                        y: 0,
-                        w: 256,
-                        h: 256,
-                    }],
-                    polygon_regions: vec![],
-                },
-            ),
-            (
-                PathBuf::from("b"),
-                TextureDamage {
-                    width: 256,
-                    height: 256,
-                    rects: vec![DamageRect {
-                        x: 0,
-                        y: 0,
-                        w: 256,
-                        h: 256,
-                    }],
-                    polygon_regions: vec![],
-                },
-            ),
-        ];
-        let (w, h) = estimate_atlas_size(&dims, 0);
-        assert_eq!((w, h), (512, 512));
-    }
-
-    #[test]
-    fn test_estimate_empty() {
-        assert_eq!(estimate_atlas_size(&[], 0), (1, 1));
-    }
-
-    #[test]
-    fn test_estimate_single() {
-        let dims = vec![(
-            PathBuf::from("a"),
-            TextureDamage {
-                width: 512,
-                height: 512,
-                rects: vec![DamageRect {
-                    x: 0,
-                    y: 0,
-                    w: 512,
-                    h: 512,
-                }],
-                polygon_regions: vec![],
-            },
-        )];
-        assert_eq!(estimate_atlas_size(&dims, 0), (1024, 1024));
-    }
 
     #[test]
     fn test_fill_frame_extrusion_replicates_edge_pixels() {
