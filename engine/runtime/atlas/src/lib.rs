@@ -3,12 +3,12 @@ mod error;
 mod pack;
 mod skyline;
 
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 
-use damage::{collect_damage, DamageRect};
+use damage::{collect_damage, DamageRect, TextureDamage};
 pub use error::{AtlasError, Result};
-use image::ImageFormat;
+use image::RgbaImage;
 use pack::pack_textures;
 
 pub type PolygonUVs = Vec<[f64; 2]>;
@@ -20,64 +20,58 @@ pub struct TextureMaterial {
     pub uvs: TextureUVs,
 }
 
-pub const MAX_DOWNSAMPLE_K: u32 = 13;
-
-fn uv_bbox_in_pixel_space(uvs: &[[f64; 2]], tw: u32, th: u32) -> DamageRect {
-    let (mn_u, mx_u, mn_v, mx_v) = uvs.iter().fold(
-        (f64::MAX, f64::MIN, f64::MAX, f64::MIN),
-        |(mn_u, mx_u, mn_v, mx_v), [u, v]| (mn_u.min(*u), mx_u.max(*u), mn_v.min(*v), mx_v.max(*v)),
-    );
-    let x = ((mn_u * tw as f64).floor().max(0.0) as u32).min(tw);
-    let y = (((1.0 - mx_v) * th as f64).floor().max(0.0) as u32).min(th);
-    let right = ((mx_u * tw as f64).ceil() as u32).min(tw);
-    let bottom = (((1.0 - mn_v) * th as f64).ceil() as u32).min(th);
-    DamageRect {
-        x,
-        y,
-        w: right.saturating_sub(x),
-        h: bottom.saturating_sub(y),
-    }
+pub struct BuiltAtlas {
+    pub image: Option<RgbaImage>,
+    pub remapped_uvs: Vec<Option<TextureUVs>>,
+    pub skipped_textures: Vec<PathBuf>,
 }
 
-fn remap_uv(
-    u: f64,
-    v: f64,
-    tw: u32,
-    th: u32,
+pub const MAX_DOWNSAMPLE_K: u32 = 13;
+
+struct PackedAtlas {
+    damage_list: Vec<(PathBuf, damage::TextureDamage)>,
+    info: pack::AtlasInfo,
+}
+
+struct RemapContext {
+    texture_size: (u32, u32),
     damage: DamageRect,
     frame: DamageRect,
-    atlas_w: f64,
-    atlas_h: f64,
+    atlas_size: (f64, f64),
     downsample: u32,
-) -> [f64; 2] {
-    let scale = downsample as f64;
-    let px = u * tw as f64 - damage.x as f64;
-    let py = (1.0 - v) * th as f64 - damage.y as f64;
+}
+
+fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
+    let scale = ctx.downsample as f64;
+    let px = u * ctx.texture_size.0 as f64 - ctx.damage.x as f64;
+    let py = (1.0 - v) * ctx.texture_size.1 as f64 - ctx.damage.y as f64;
     [
-        (px / scale + frame.x as f64) / atlas_w,
-        1.0 - (py / scale + frame.y as f64) / atlas_h,
+        (px / scale + ctx.frame.x as f64) / ctx.atlas_size.0,
+        1.0 - (py / scale + ctx.frame.y as f64) / ctx.atlas_size.1,
     ]
 }
 
-/// Pack `materials` into an atlas and return remapped UVs.
-/// `result[i]` is `Some(remapped_uvs)` if `materials[i]` was packed, `None` if excluded.
-pub fn build_atlas(
-    materials: &[TextureMaterial],
-    atlas_dir: &Path,
-    image_format: ImageFormat,
-    ext: &str,
-    max_atlas_size: u32,
-) -> Result<Vec<Option<TextureUVs>>> {
+fn empty_atlas(materials: &[TextureMaterial]) -> BuiltAtlas {
+    BuiltAtlas {
+        image: None,
+        remapped_uvs: materials.iter().map(|_| None).collect(),
+        skipped_textures: unique_paths_in_order(materials.iter().map(|mat| mat.path.clone())),
+    }
+}
+
+fn pack_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result<Option<PackedAtlas>> {
     let mut k = 0;
     let mut damage_list = collect_damage(materials, k)?;
     if damage_list.is_empty() {
-        return Ok(materials.iter().map(|_| None).collect());
+        return Ok(None);
     }
 
     let mut current_size = pack::estimate_atlas_size(&damage_list, k, max_atlas_size);
-    let info = loop {
-        match pack_textures(&damage_list, atlas_dir, image_format, ext, k, current_size)? {
-            pack::PackResult::Packed(info) => break info,
+    loop {
+        match pack_textures(&damage_list, k, current_size)? {
+            pack::PackResult::Packed(info) => {
+                return Ok(Some(PackedAtlas { damage_list, info }));
+            }
             pack::PackResult::NeedsDownscale => {
                 if k >= MAX_DOWNSAMPLE_K {
                     return Err(AtlasError::builder(format!(
@@ -92,63 +86,130 @@ pub fn build_atlas(
                 );
                 damage_list = collect_damage(materials, k)?;
                 if damage_list.is_empty() {
-                    return Ok(materials.iter().map(|_| None).collect());
+                    return Ok(None);
                 }
             }
         }
-    };
+    }
+}
 
-    let tex_dims: HashMap<String, (u32, u32)> = damage_list
+fn texture_dimensions(damage_list: &[(PathBuf, TextureDamage)]) -> HashMap<String, (u32, u32)> {
+    damage_list
         .iter()
-        .map(|(p, td)| (p.to_string_lossy().into_owned(), (td.width, td.height)))
-        .collect();
+        .map(|(path, td)| (path.to_string_lossy().into_owned(), (td.width, td.height)))
+        .collect()
+}
 
-    Ok(materials
+fn remap_polygon_uvs(
+    poly_uvs: &PolygonUVs,
+    texture_size: (u32, u32),
+    damage: DamageRect,
+    frame: DamageRect,
+    downsample: u32,
+    atlas_size: (f64, f64),
+) -> PolygonUVs {
+    let ctx = RemapContext {
+        texture_size,
+        damage,
+        frame,
+        atlas_size,
+        downsample,
+    };
+    poly_uvs
+        .iter()
+        .map(|&[u, v]| remap_uv(u, v, &ctx))
+        .collect()
+}
+
+fn build_remapped_uvs(
+    materials: &[TextureMaterial],
+    damage_list: &[(PathBuf, TextureDamage)],
+    info: &pack::AtlasInfo,
+) -> Vec<Option<TextureUVs>> {
+    let texture_sizes = texture_dimensions(damage_list);
+    let damage_by_path: HashMap<_, _> = damage_list
+        .iter()
+        .map(|(path, td)| (path.to_string_lossy().into_owned(), td))
+        .collect();
+    let atlas_size = (info.width as f64, info.height as f64);
+
+    materials
         .iter()
         .map(|mat| {
-            let path_str = mat.path.to_string_lossy().into_owned();
-            let frames = info.texture_frames.get(&path_str)?;
-            let (tw, th) = tex_dims.get(&path_str).copied().unwrap_or((1, 1));
-
+            let path = mat.path.to_string_lossy().into_owned();
+            let frames = info.texture_frames.get(&path)?;
+            let damage = damage_by_path.get(&path)?;
+            let texture_size = texture_sizes.get(&path).copied().unwrap_or((1, 1));
             Some(
                 mat.uvs
                     .iter()
-                    .map(|poly_uvs| {
-                        let uv_bbox = uv_bbox_in_pixel_space(poly_uvs, tw, th);
-                        let Some((damage, frame)) = frames
-                            .iter()
-                            .find(|(d, _)| d.overlaps(uv_bbox))
-                            .map(|(d, f)| (*d, *f))
-                        else {
-                            return poly_uvs.clone();
-                        };
-                        poly_uvs
-                            .iter()
-                            .map(|&[u, v]| {
-                                remap_uv(
-                                    u,
-                                    v,
-                                    tw,
-                                    th,
-                                    damage,
-                                    frame,
-                                    info.width as f64,
-                                    info.height as f64,
-                                    info.downsample,
-                                )
-                            })
-                            .collect()
+                    .enumerate()
+                    .map(|(polygon_idx, poly_uvs)| {
+                        let region_idx = damage.polygon_regions[polygon_idx];
+                        let (damage, frame) = frames[region_idx];
+                        remap_polygon_uvs(
+                            poly_uvs,
+                            texture_size,
+                            damage,
+                            frame,
+                            info.downsample,
+                            atlas_size,
+                        )
                     })
                     .collect(),
             )
         })
-        .collect())
+        .collect()
+}
+
+fn skipped_textures(
+    materials: &[TextureMaterial],
+    remapped_uvs: &[Option<TextureUVs>],
+) -> Vec<PathBuf> {
+    let mut seen = HashSet::new();
+    materials
+        .iter()
+        .zip(remapped_uvs.iter())
+        .filter_map(|(mat, remapped)| {
+            if remapped.is_none() && seen.insert(mat.path.clone()) {
+                Some(mat.path.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Pack `materials` into an atlas image and return remapped UVs.
+/// `remapped_uvs[i]` is `Some(remapped_uvs)` if `materials[i]` was packed, `None` if excluded.
+pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result<BuiltAtlas> {
+    let Some(packed) = pack_atlas(materials, max_atlas_size)? else {
+        return Ok(empty_atlas(materials));
+    };
+
+    let remapped_uvs = build_remapped_uvs(materials, &packed.damage_list, &packed.info);
+    let skipped_textures = skipped_textures(materials, &remapped_uvs);
+    let PackedAtlas { info, .. } = packed;
+
+    Ok(BuiltAtlas {
+        image: Some(info.atlas),
+        remapped_uvs,
+        skipped_textures,
+    })
+}
+
+fn unique_paths_in_order(paths: impl IntoIterator<Item = PathBuf>) -> Vec<PathBuf> {
+    let mut seen = HashSet::new();
+    paths
+        .into_iter()
+        .filter(|path| seen.insert(path.clone()))
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use tempfile::TempDir;
 
     fn create_test_texture(dir: &Path, name: &str, width: u32, height: u32) -> PathBuf {
@@ -186,13 +247,11 @@ mod tests {
             make_material(path2, vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
         ];
 
-        let atlas_dir = temp_dir.path().join("atlas");
-        std::fs::create_dir(&atlas_dir).unwrap();
-
-        let remapped = build_atlas(&materials, &atlas_dir, ImageFormat::Png, "png", 8192).unwrap();
-        assert_eq!(remapped.len(), 2);
-        assert!(remapped.iter().all(|entry| entry.is_some()));
-        assert!(atlas_dir.join("0.png").exists());
+        let built = build_atlas(&materials, 8192).unwrap();
+        assert_eq!(built.remapped_uvs.len(), 2);
+        assert!(built.remapped_uvs.iter().all(|entry| entry.is_some()));
+        assert!(built.image.as_ref().unwrap().width() > 0);
+        assert!(built.image.as_ref().unwrap().height() > 0);
     }
 
     #[test]
@@ -207,20 +266,9 @@ mod tests {
             make_material(path2, vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
         ];
 
-        let atlas_dir = temp_dir.path().join("atlas");
-        std::fs::create_dir(&atlas_dir).unwrap();
+        let built = build_atlas(&materials, max_atlas_size).unwrap();
 
-        build_atlas(
-            &materials,
-            &atlas_dir,
-            ImageFormat::Png,
-            "png",
-            max_atlas_size,
-        )
-        .unwrap();
-
-        let atlas = image::open(atlas_dir.join("0.png")).unwrap();
-        assert!(atlas.width() <= max_atlas_size);
-        assert!(atlas.height() <= max_atlas_size);
+        assert!(built.image.as_ref().unwrap().width() <= max_atlas_size);
+        assert!(built.image.as_ref().unwrap().height() <= max_atlas_size);
     }
 }

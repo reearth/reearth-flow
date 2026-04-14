@@ -89,9 +89,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     fs::create_dir_all(&work_dir)?;
 
-    let atlas_dir = work_dir.join("atlas");
-    fs::create_dir_all(&atlas_dir)?;
-
     let materials: Vec<_> = dims
         .into_iter()
         .enumerate()
@@ -103,23 +100,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect::<Result<_, _>>()?;
 
-    build_atlas(
-        &materials,
-        &atlas_dir,
-        ImageFormat::Png,
-        "png",
-        MAX_ATLAS_SIZE,
-    )?;
-
-    let built_atlas = atlas_dir.join("0.png");
-    if !built_atlas.exists() {
-        return Err("atlas generation did not produce 0.png".into());
-    }
+    let atlas = build_atlas(&materials, MAX_ATLAS_SIZE)?;
 
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::copy(&built_atlas, output_path)?;
+    let image = atlas
+        .image
+        .ok_or("atlas generation produced no atlas image")?;
+    image.save_with_format(output_path, ImageFormat::Png)?;
 
     println!("wrote atlas to {}", output_path.display());
     Ok(())

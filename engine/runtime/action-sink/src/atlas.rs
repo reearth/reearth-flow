@@ -82,19 +82,23 @@ pub fn build_atlas_geometry(
         poly_index.push(feature_row);
     }
 
-    let remapped = if texture_materials.is_empty() {
-        Vec::new()
+    let atlas = if texture_materials.is_empty() {
+        None
     } else {
-        build_atlas(
-            &texture_materials,
-            atlas_dir,
-            image_format,
-            ext,
-            DEFAULT_MAX_ATLAS_SIZE,
+        Some(
+            build_atlas(&texture_materials, DEFAULT_MAX_ATLAS_SIZE)
+                .map_err(crate::errors::SinkError::atlas_builder)?,
         )
-        .map_err(crate::errors::SinkError::atlas_builder)?
     };
-    let atlas_uri = Url::from_file_path(atlas_dir.join("0").with_extension(ext)).ok();
+    if let Some(image) = atlas.as_ref().and_then(|atlas| atlas.image.as_ref()) {
+        image
+            .save_with_format(atlas_dir.join("0").with_extension(ext), image_format)
+            .map_err(crate::errors::SinkError::atlas_builder)?;
+    }
+    let atlas_uri = atlas
+        .as_ref()
+        .and_then(|atlas| atlas.image.as_ref().map(|_| ()))
+        .and_then(|_| Url::from_file_path(atlas_dir.join("0").with_extension(ext)).ok());
 
     // Triangulation pass: use remapped UVs where available.
     for (feature_id, feature) in features.iter().enumerate() {
@@ -105,8 +109,15 @@ pub fn build_atlas_geometry(
             .map(|(poly, mat_id)| (feature.materials[*mat_id as usize].clone(), poly))
             .enumerate()
         {
-            let remapped_uvs: Option<&PolygonUVs> = poly_index[feature_id][poly_idx]
-                .and_then(|(mi, pi)| remapped.get(mi)?.as_ref().map(|uvs| &uvs[pi]));
+            let remapped_uvs: Option<&PolygonUVs> =
+                poly_index[feature_id][poly_idx].and_then(|(mi, pi)| {
+                    atlas
+                        .as_ref()?
+                        .remapped_uvs
+                        .get(mi)?
+                        .as_ref()
+                        .map(|uvs| &uvs[pi])
+                });
 
             if remapped_uvs.is_some() {
                 if let Some(ref uri) = atlas_uri {

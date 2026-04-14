@@ -5,9 +5,10 @@ use super::damage::{DamageRect, TextureDamage};
 use super::skyline::SkylinePacker;
 use super::MAX_DOWNSAMPLE_K;
 use image::imageops::FilterType;
-use image::{GenericImage, ImageFormat, Rgba, RgbaImage};
+use image::{GenericImage, Rgba, RgbaImage};
 
 pub struct AtlasInfo {
+    pub atlas: RgbaImage,
     pub texture_frames: HashMap<String, Vec<(DamageRect, DamageRect)>>,
     pub width: u32,
     pub height: u32,
@@ -22,6 +23,7 @@ pub enum PackResult {
 struct Candidate<'a> {
     path: &'a Path,
     path_str: String,
+    region_index: usize,
     rect: DamageRect,
     key: String,
     w: u32,
@@ -90,6 +92,7 @@ fn build_candidates<'a>(
             out.push(Candidate {
                 path,
                 path_str: path_str.clone(),
+                region_index: i,
                 rect,
                 key: format!("{}#{i}", path.to_string_lossy()),
                 w: ceil_div(rect.w, downsample).max(1),
@@ -138,9 +141,6 @@ fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: DamageRect, extrusion: u32
 
 pub fn pack_textures(
     damage_list: &[(PathBuf, TextureDamage)],
-    atlas_dir: &Path,
-    image_format: ImageFormat,
-    ext: &str,
     k: u32,
     current_size: (u32, u32),
 ) -> crate::Result<PackResult> {
@@ -158,7 +158,15 @@ pub fn pack_textures(
 
     let mut atlas = RgbaImage::from_pixel(layout.width(), layout.height(), Rgba([0, 0, 0, 0]));
     let mut sources = HashMap::new();
-    let mut texture_frames: HashMap<String, Vec<(DamageRect, DamageRect)>> = HashMap::new();
+    let mut texture_frames: HashMap<String, Vec<Option<(DamageRect, DamageRect)>>> = damage_list
+        .iter()
+        .map(|(path, td)| {
+            (
+                path.to_string_lossy().into_owned(),
+                vec![None; td.rects.len()],
+            )
+        })
+        .collect();
 
     for c in candidates {
         let source = match sources.entry(c.path) {
@@ -183,20 +191,28 @@ pub fn pack_textures(
             crate::AtlasError::builder("Internal bug: failed to copy texture into atlas")
         })?;
         fill_frame_extrusion(&mut atlas, frame, extrusion);
-        texture_frames
-            .entry(c.path_str)
-            .or_default()
-            .push((c.rect, frame));
+        texture_frames.entry(c.path_str).or_default()[c.region_index] = Some((c.rect, frame));
     }
 
-    atlas
-        .save_with_format(atlas_dir.join("0").with_extension(ext), image_format)
-        .map_err(|e| crate::AtlasError::builder(format!("Failed to save atlas: {e}")))?;
+    let texture_frames = texture_frames
+        .into_iter()
+        .map(|(path, frames)| {
+            let frames = frames
+                .into_iter()
+                .collect::<Option<Vec<_>>>()
+                .ok_or_else(|| crate::AtlasError::builder("Internal bug: missing atlas frame"))?;
+            Ok((path, frames))
+        })
+        .collect::<crate::Result<HashMap<_, _>>>()?;
+
+    let width = atlas.width();
+    let height = atlas.height();
 
     Ok(PackResult::Packed(AtlasInfo {
+        atlas,
         texture_frames,
-        width: atlas.width(),
-        height: atlas.height(),
+        width,
+        height,
         downsample,
     }))
 }
@@ -219,6 +235,7 @@ mod tests {
                         w: 100,
                         h: 80,
                     }],
+                    polygon_regions: vec![],
                 },
             ),
             (
@@ -232,6 +249,7 @@ mod tests {
                         w: 100,
                         h: 80,
                     }],
+                    polygon_regions: vec![],
                 },
             ),
             (
@@ -245,6 +263,7 @@ mod tests {
                         w: 50,
                         h: 120,
                     }],
+                    polygon_regions: vec![],
                 },
             ),
         ];
@@ -266,6 +285,7 @@ mod tests {
                         w: 256,
                         h: 256,
                     }],
+                    polygon_regions: vec![],
                 },
             ),
             (
@@ -279,6 +299,7 @@ mod tests {
                         w: 256,
                         h: 256,
                     }],
+                    polygon_regions: vec![],
                 },
             ),
         ];
@@ -304,6 +325,7 @@ mod tests {
                     w: 512,
                     h: 512,
                 }],
+                polygon_regions: vec![],
             },
         )];
         assert_eq!(estimate_atlas_size(&dims, 0, 8192), (1024, 1024));

@@ -47,8 +47,8 @@ impl DamageRect {
         let align = 1u32 << k;
         let x = (self.x / align) * align;
         let y = (self.y / align) * align;
-        let right = ((self.right() + align - 1) / align * align).min(tex_w);
-        let bottom = ((self.bottom() + align - 1) / align * align).min(tex_h);
+        let right = (self.right().div_ceil(align) * align).min(tex_w);
+        let bottom = (self.bottom().div_ceil(align) * align).min(tex_h);
         Self {
             x,
             y,
@@ -63,29 +63,37 @@ pub struct TextureDamage {
     pub height: u32,
     /// Disjoint merged damage rects, sorted by area descending.
     pub rects: Vec<DamageRect>,
+    /// For each polygon in `TextureMaterial::uvs`, the merged rect index it belongs to.
+    pub polygon_regions: Vec<usize>,
 }
 
-/// Merge a list of potentially overlapping rects into disjoint rects.
-pub fn merge_rects(mut rects: Vec<DamageRect>) -> Vec<DamageRect> {
+struct DamageRegion {
+    rect: DamageRect,
+    polygons: Vec<usize>,
+}
+
+/// Merge a list of potentially overlapping polygon regions into disjoint rects.
+fn merge_regions(mut regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
     loop {
         let mut merged = false;
-        let mut result: Vec<DamageRect> = Vec::with_capacity(rects.len());
-        'outer: for r in rects.drain(..) {
+        let mut result: Vec<DamageRegion> = Vec::with_capacity(regions.len());
+        'outer: for region in regions.drain(..) {
             for existing in &mut result {
-                if existing.overlaps(r) {
-                    *existing = existing.union(r);
+                if existing.rect.overlaps(region.rect) {
+                    existing.rect = existing.rect.union(region.rect);
+                    existing.polygons.extend(region.polygons);
                     merged = true;
                     continue 'outer;
                 }
             }
-            result.push(r);
+            result.push(region);
         }
-        rects = result;
+        regions = result;
         if !merged {
             break;
         }
     }
-    rects
+    regions
 }
 
 /// Collect per-texture damage rectangles from polygon UV coverages.
@@ -96,7 +104,7 @@ pub fn collect_damage(
     materials: &[TextureMaterial],
     k: u32,
 ) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
-    let mut candidates: HashMap<PathBuf, Vec<DamageRect>> = HashMap::new();
+    let mut candidates: HashMap<PathBuf, Vec<DamageRegion>> = HashMap::new();
     let mut excluded: HashSet<PathBuf> = HashSet::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
 
@@ -105,7 +113,7 @@ pub fn collect_damage(
             continue;
         }
 
-        for poly_uvs in &mat.uvs {
+        for (polygon_idx, poly_uvs) in mat.uvs.iter().enumerate() {
             if poly_uvs
                 .iter()
                 .any(|[u, v]| *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0)
@@ -152,22 +160,49 @@ pub fn collect_damage(
                 h: bottom - y,
             }
             .align(k, tw, th);
-            candidates.entry(mat.path.clone()).or_default().push(rect);
+            candidates
+                .entry(mat.path.clone())
+                .or_default()
+                .push(DamageRegion {
+                    rect,
+                    polygons: vec![polygon_idx],
+                });
         }
     }
 
     let mut result: Vec<(PathBuf, TextureDamage)> = candidates
         .into_iter()
-        .filter_map(|(path, rects)| {
+        .filter_map(|(path, regions)| {
             let &(width, height) = dims.get(&path)?;
-            let mut merged = merge_rects(rects);
-            merged.sort_by(|a, b| (b.w as u64 * b.h as u64).cmp(&(a.w as u64 * a.h as u64)));
+            let mut merged = merge_regions(regions);
+            merged.sort_by(|a, b| {
+                (b.rect.w as u64 * b.rect.h as u64).cmp(&(a.rect.w as u64 * a.rect.h as u64))
+            });
+            let mut polygon_regions = vec![
+                0;
+                merged
+                    .iter()
+                    .flat_map(|r| r.polygons.iter())
+                    .max()
+                    .map_or(0, |i| i + 1)
+            ];
+            let rects = merged
+                .into_iter()
+                .enumerate()
+                .map(|(region_idx, region)| {
+                    for polygon_idx in region.polygons {
+                        polygon_regions[polygon_idx] = region_idx;
+                    }
+                    region.rect
+                })
+                .collect();
             Some((
                 path,
                 TextureDamage {
                     width,
                     height,
-                    rects: merged,
+                    rects,
+                    polygon_regions,
                 },
             ))
         })
@@ -226,6 +261,7 @@ mod tests {
         let result = collect_damage(&[mat], 0).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].1.width, 16384);
+        assert_eq!(result[0].1.polygon_regions, vec![0]);
     }
 
     #[test]
@@ -264,6 +300,7 @@ mod tests {
             2,
             "non-overlapping regions must not merge"
         );
+        assert_eq!(result[0].1.polygon_regions, vec![0, 1]);
     }
 
     #[test]
@@ -279,6 +316,7 @@ mod tests {
         };
         let result = collect_damage(&[mat], 0).unwrap();
         assert_eq!(result[0].1.rects.len(), 1, "overlapping regions must merge");
+        assert_eq!(result[0].1.polygon_regions, vec![0, 0]);
     }
 
     #[test]
