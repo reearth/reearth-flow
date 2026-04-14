@@ -5,7 +5,7 @@ use super::damage::{DamageRect, TextureDamage};
 use super::skyline::SkylinePacker;
 use super::MAX_DOWNSAMPLE_K;
 use image::imageops::FilterType;
-use image::{ImageFormat, Rgba, RgbaImage};
+use image::{GenericImage, ImageFormat, Rgba, RgbaImage};
 
 pub struct AtlasInfo {
     pub texture_frames: HashMap<String, Vec<(DamageRect, DamageRect)>>,
@@ -50,7 +50,7 @@ pub(super) fn estimate_atlas_size(
         return (1, 1);
     }
     let downsample = 1u32 << k;
-    let extrusion = downsample;
+    let extrusion = 1;
     let total_area: u64 = damage_list
         .iter()
         .flat_map(|(_, td)| td.rects.iter())
@@ -143,14 +143,9 @@ pub fn pack_textures(
     ext: &str,
     k: u32,
     current_size: (u32, u32),
-    _max_atlas_size: u32,
 ) -> crate::Result<PackResult> {
-    if damage_list.is_empty() {
-        return Ok(PackResult::NeedsDownscale);
-    }
-
     let downsample = downsample_factor(k)?;
-    let extrusion = downsample;
+    let extrusion = 1;
     let candidates = build_candidates(damage_list, downsample);
     let mut layout = SkylinePacker::new(current_size.0, current_size.1, extrusion);
     let mut frames = HashMap::new();
@@ -184,11 +179,9 @@ pub fn pack_textures(
             crop = image::imageops::resize(&crop, c.w, c.h, FilterType::Triangle);
         }
         let frame = frames[&c.key];
-        for y in 0..crop.height() {
-            for x in 0..crop.width() {
-                atlas.put_pixel(frame.x + x, frame.y + y, *crop.get_pixel(x, y));
-            }
-        }
+        atlas.copy_from(&crop, frame.x, frame.y).map_err(|_| {
+            crate::AtlasError::builder("Internal bug: failed to copy texture into atlas")
+        })?;
         fill_frame_extrusion(&mut atlas, frame, extrusion);
         texture_frames
             .entry(c.path_str)

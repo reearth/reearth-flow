@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use image::{ImageBuffer, ImageFormat, Rgb, RgbImage};
 use reearth_flow_atlas::{build_atlas, TextureMaterial};
 
-const MAX_ATLAS_SIZE: u32 = 256;
+const MAX_ATLAS_SIZE: u32 = 1024;
 
 fn next_u32(state: &mut u64) -> u32 {
     // Small xorshift PRNG so the example does not need an extra dependency.

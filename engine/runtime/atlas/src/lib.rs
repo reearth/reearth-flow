@@ -76,15 +76,7 @@ pub fn build_atlas(
 
     let mut current_size = pack::estimate_atlas_size(&damage_list, k, max_atlas_size);
     let info = loop {
-        match pack_textures(
-            &damage_list,
-            atlas_dir,
-            image_format,
-            ext,
-            k,
-            current_size,
-            max_atlas_size,
-        )? {
+        match pack_textures(&damage_list, atlas_dir, image_format, ext, k, current_size)? {
             pack::PackResult::Packed(info) => break info,
             pack::PackResult::NeedsDownscale => {
                 if k >= MAX_DOWNSAMPLE_K {
