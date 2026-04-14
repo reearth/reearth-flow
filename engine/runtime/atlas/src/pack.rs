@@ -145,7 +145,7 @@ pub fn pack_textures(
     current_size: (u32, u32),
 ) -> crate::Result<PackResult> {
     let downsample = downsample_factor(k)?;
-    let extrusion = 1;
+    let extrusion = 1; // reserved for future mipmap artifact control
     let candidates = build_candidates(damage_list, downsample);
     let mut layout = SkylinePacker::new(current_size.0, current_size.1, extrusion);
     let mut frames = HashMap::new();
