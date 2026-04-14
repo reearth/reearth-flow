@@ -111,14 +111,30 @@ pub fn collect_damage(
                 },
             );
 
-            let x = ((min_u * tw as f64).floor().max(0.0) as u32).min(tw);
-            let y = (((1.0 - max_v) * th as f64).floor().max(0.0) as u32).min(th);
+            if min_u < 0.0 || max_u > 1.0 || min_v < 0.0 || max_v > 1.0 {
+                eprintln!(
+                    "reearth-flow-atlas: polygon {} of '{}' has UV coordinates outside \
+                     [0,1] (u=[{min_u:.4},{max_u:.4}], v=[{min_v:.4},{max_v:.4}]); clamping",
+                    polygon_idx,
+                    mat.path.display()
+                );
+            }
+            let min_u = min_u.clamp(0.0, 1.0);
+            let max_u = max_u.clamp(0.0, 1.0);
+            let min_v = min_v.clamp(0.0, 1.0);
+            let max_v = max_v.clamp(0.0, 1.0);
+
+            let x = ((min_u * tw as f64).floor() as u32).min(tw);
+            let y = (((1.0 - max_v) * th as f64).floor() as u32).min(th);
             let right = ((max_u * tw as f64).ceil() as u32).min(tw);
             let bottom = (((1.0 - min_v) * th as f64).ceil() as u32).min(th);
 
-            if right <= x || bottom <= y {
-                continue;
-            }
+            // Every polygon must be represented — guarantee a minimum 1×1 damage rect
+            // so that polygon_regions is dense and no index is ever left unmapped.
+            let x = x.min(tw.saturating_sub(1));
+            let y = y.min(th.saturating_sub(1));
+            let right = right.max(x + 1);
+            let bottom = bottom.max(y + 1);
 
             let rect = DamageRect {
                 x,
