@@ -84,7 +84,6 @@ async-recursion = "1.1.1"
 async-stream = "0.3.6"
 async-trait = "0.1.89"
 async_zip = { version = "0.0.18", features = ["full"] }
-texture_packer = { version = "0.30.0", default-features = false }
 base64 = "0.22.1"
 bincode = { version = "2.0.1", default-features = false, features = [
   "serde",

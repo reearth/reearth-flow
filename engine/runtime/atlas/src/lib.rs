@@ -1,6 +1,7 @@
 mod damage;
 mod error;
 mod pack;
+mod skyline;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -44,7 +45,7 @@ fn remap_uv(
     tw: u32,
     th: u32,
     damage: DamageRect,
-    frame: texture_packer::Rect,
+    frame: DamageRect,
     atlas_w: f64,
     atlas_h: f64,
     downsample: u32,
@@ -205,8 +206,9 @@ mod tests {
     #[test]
     fn test_build_atlas_retries_with_downscaling() {
         let temp_dir = TempDir::new().unwrap();
-        let path1 = create_test_texture(temp_dir.path(), "large1.png", 4096, 4096);
-        let path2 = create_test_texture(temp_dir.path(), "large2.png", 4096, 4096);
+        let max_atlas_size = 2048;
+        let path1 = create_test_texture(temp_dir.path(), "large1.png", 1536, 1536);
+        let path2 = create_test_texture(temp_dir.path(), "large2.png", 1536, 1536);
 
         let materials = vec![
             make_material(path1, vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
@@ -216,10 +218,17 @@ mod tests {
         let atlas_dir = temp_dir.path().join("atlas");
         std::fs::create_dir(&atlas_dir).unwrap();
 
-        build_atlas(&materials, &atlas_dir, ImageFormat::Png, "png", 8192).unwrap();
+        build_atlas(
+            &materials,
+            &atlas_dir,
+            ImageFormat::Png,
+            "png",
+            max_atlas_size,
+        )
+        .unwrap();
 
         let atlas = image::open(atlas_dir.join("0.png")).unwrap();
-        assert!(atlas.width() <= 8192);
-        assert!(atlas.height() <= 8192);
+        assert!(atlas.width() <= max_atlas_size);
+        assert!(atlas.height() <= max_atlas_size);
     }
 }

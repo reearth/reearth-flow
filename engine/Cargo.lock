@@ -6784,7 +6784,6 @@ version = "0.0.358"
 dependencies = [
  "image 0.25.10",
  "tempfile",
- "texture_packer",
  "thiserror 2.0.18",
 ]
 
@@ -9183,15 +9182,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8c27177b12a6399ffc08b98f76f7c9a1f4fe9fc967c784c5a071fa8d93cf7e1"
 dependencies = [
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "texture_packer"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a976e9faf26d09a951476bd85322e275ccaa61602b93d2bf796fbb6be4535097"
-dependencies = [
- "image 0.25.10",
 ]
 
 [[package]]

@@ -2,16 +2,13 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use super::damage::{DamageRect, TextureDamage};
+use super::skyline::SkylinePacker;
 use super::MAX_DOWNSAMPLE_K;
 use image::imageops::FilterType;
-use image::{ImageFormat, RgbaImage};
-use texture_packer::exporter::ImageExporter;
-use texture_packer::texture::Texture;
-use texture_packer::{TexturePacker, TexturePackerConfig};
+use image::{ImageFormat, Rgba, RgbaImage};
 
 pub struct AtlasInfo {
-    /// Maps texture path string → list of (damage_rect, atlas_frame_rect).
-    pub texture_frames: HashMap<String, Vec<(DamageRect, texture_packer::Rect)>>,
+    pub texture_frames: HashMap<String, Vec<(DamageRect, DamageRect)>>,
     pub width: u32,
     pub height: u32,
     pub downsample: u32,
@@ -22,13 +19,13 @@ pub enum PackResult {
     NeedsDownscale,
 }
 
-struct PackCandidate {
+struct Candidate<'a> {
+    path: &'a Path,
     path_str: String,
     rect: DamageRect,
-    crop: RgbaImage,
     key: String,
-    packed_w: u32,
-    packed_h: u32,
+    w: u32,
+    h: u32,
 }
 
 fn downsample_factor(k: u32) -> crate::Result<u32> {
@@ -58,9 +55,9 @@ pub(super) fn estimate_atlas_size(
         .iter()
         .flat_map(|(_, td)| td.rects.iter())
         .map(|r| {
-            let packed_w = ceil_div(r.w, downsample) + 2 * extrusion;
-            let packed_h = ceil_div(r.h, downsample) + 2 * extrusion;
-            packed_w as u64 * packed_h as u64
+            let w = ceil_div(r.w, downsample) + 2 * extrusion;
+            let h = ceil_div(r.h, downsample) + 2 * extrusion;
+            w as u64 * h as u64
         })
         .sum();
     let max_w = damage_list
@@ -75,14 +72,68 @@ pub(super) fn estimate_atlas_size(
         .map(|r| ceil_div(r.h, downsample) + 2 * extrusion)
         .max()
         .unwrap_or(0);
-    let area_side = (total_area as f64).sqrt().ceil() as u32;
-    let width = max_w.max(area_side).next_power_of_two().min(max_atlas_size);
-    let height = max_h.max(area_side).next_power_of_two().min(max_atlas_size);
-    (width, height)
+    let side = (total_area as f64).sqrt().ceil() as u32;
+    (
+        max_w.max(side).next_power_of_two().min(max_atlas_size),
+        max_h.max(side).next_power_of_two().min(max_atlas_size),
+    )
 }
 
-fn make_pack_key(path: &Path, rect_idx: usize) -> String {
-    format!("{}#{}", path.to_string_lossy(), rect_idx)
+fn build_candidates<'a>(
+    damage_list: &'a [(PathBuf, TextureDamage)],
+    downsample: u32,
+) -> Vec<Candidate<'a>> {
+    let mut out = Vec::new();
+    for (path, td) in damage_list {
+        let path_str = path.to_string_lossy().into_owned();
+        for (i, &rect) in td.rects.iter().enumerate() {
+            out.push(Candidate {
+                path,
+                path_str: path_str.clone(),
+                rect,
+                key: format!("{}#{i}", path.to_string_lossy()),
+                w: ceil_div(rect.w, downsample).max(1),
+                h: ceil_div(rect.h, downsample).max(1),
+            });
+        }
+    }
+    out.sort_by(|a, b| b.h.cmp(&a.h).then_with(|| b.w.cmp(&a.w)));
+    out
+}
+
+fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: DamageRect, extrusion: u32) {
+    if extrusion == 0 || frame.w == 0 || frame.h == 0 {
+        return;
+    }
+    let left = frame.x;
+    let top = frame.y;
+    let right = frame.right() - 1;
+    let bottom = frame.bottom() - 1;
+    let fill_left = left.saturating_sub(extrusion);
+    let fill_top = top.saturating_sub(extrusion);
+    let fill_right = right.saturating_add(extrusion).min(atlas.width() - 1);
+    let fill_bottom = bottom.saturating_add(extrusion).min(atlas.height() - 1);
+
+    for y in top..=bottom {
+        let a = *atlas.get_pixel(left, y);
+        let b = *atlas.get_pixel(right, y);
+        for x in fill_left..left {
+            atlas.put_pixel(x, y, a);
+        }
+        for x in right + 1..=fill_right {
+            atlas.put_pixel(x, y, b);
+        }
+    }
+    for x in fill_left..=fill_right {
+        let a = *atlas.get_pixel(x, top);
+        let b = *atlas.get_pixel(x, bottom);
+        for y in fill_top..top {
+            atlas.put_pixel(x, y, a);
+        }
+        for y in bottom + 1..=fill_bottom {
+            atlas.put_pixel(x, y, b);
+        }
+    }
 }
 
 pub fn pack_textures(
@@ -97,95 +148,62 @@ pub fn pack_textures(
     if damage_list.is_empty() {
         return Ok(PackResult::NeedsDownscale);
     }
+
     let downsample = downsample_factor(k)?;
     let extrusion = downsample;
-    let (atlas_w, atlas_h) = current_size;
-
-    let config = TexturePackerConfig {
-        max_width: atlas_w,
-        max_height: atlas_h,
-        allow_rotation: false,
-        trim: false,
-        texture_extrusion: extrusion,
-        force_max_dimensions: false,
-        ..Default::default()
-    };
-    let mut packer: TexturePacker<RgbaImage, String> = TexturePacker::new_skyline(config);
-
-    let mut key_to_info: HashMap<String, (String, DamageRect)> = HashMap::new();
-    let mut candidates: Vec<PackCandidate> = Vec::new();
-
-    for (path, td) in damage_list {
-        let source = image::open(path).map_err(|e| {
-            crate::AtlasError::builder(format!("Failed to open texture '{}': {e}", path.display()))
-        })?;
-        let path_str = path.to_string_lossy().into_owned();
-
-        for (i, &rect) in td.rects.iter().enumerate() {
-            let crop = source.crop_imm(rect.x, rect.y, rect.w, rect.h).to_rgba8();
-            let crop = if downsample > 1 {
-                image::imageops::resize(
-                    &crop,
-                    ceil_div(rect.w, downsample).max(1),
-                    ceil_div(rect.h, downsample).max(1),
-                    FilterType::Triangle,
-                )
-            } else {
-                crop
-            };
-            let key = make_pack_key(path, i);
-            candidates.push(PackCandidate {
-                path_str: path_str.clone(),
-                rect,
-                packed_w: crop.width(),
-                packed_h: crop.height(),
-                crop,
-                key,
-            });
-        }
-    }
-
-    candidates.sort_by(|a, b| {
-        b.packed_h
-            .cmp(&a.packed_h)
-            .then_with(|| b.packed_w.cmp(&a.packed_w))
-    });
-
-    for candidate in candidates {
-        if packer
-            .pack_own(candidate.key.clone(), candidate.crop)
-            .is_err()
-        {
+    let candidates = build_candidates(damage_list, downsample);
+    let mut layout = SkylinePacker::new(current_size.0, current_size.1, extrusion);
+    let mut frames = HashMap::new();
+    for c in &candidates {
+        let Some(frame) = layout.pack(c.w, c.h) else {
             return Ok(PackResult::NeedsDownscale);
-        }
-        key_to_info.insert(candidate.key, (candidate.path_str, candidate.rect));
+        };
+        frames.insert(c.key.clone(), frame);
     }
 
-    let actual_w = packer.width();
-    let actual_h = packer.height();
+    let mut atlas = RgbaImage::from_pixel(layout.width(), layout.height(), Rgba([0, 0, 0, 0]));
+    let mut sources = HashMap::new();
+    let mut texture_frames: HashMap<String, Vec<(DamageRect, DamageRect)>> = HashMap::new();
 
-    let atlas_image = ImageExporter::export(&packer, None).map_err(crate::AtlasError::builder)?;
+    for c in candidates {
+        let source = match sources.entry(c.path) {
+            std::collections::hash_map::Entry::Occupied(e) => e.into_mut(),
+            std::collections::hash_map::Entry::Vacant(e) => {
+                e.insert(image::open(c.path).map_err(|e| {
+                    crate::AtlasError::builder(format!(
+                        "Failed to open texture '{}': {e}",
+                        c.path.display()
+                    ))
+                })?)
+            }
+        };
+        let mut crop = source
+            .crop_imm(c.rect.x, c.rect.y, c.rect.w, c.rect.h)
+            .to_rgba8();
+        if downsample > 1 {
+            crop = image::imageops::resize(&crop, c.w, c.h, FilterType::Triangle);
+        }
+        let frame = frames[&c.key];
+        for y in 0..crop.height() {
+            for x in 0..crop.width() {
+                atlas.put_pixel(frame.x + x, frame.y + y, *crop.get_pixel(x, y));
+            }
+        }
+        fill_frame_extrusion(&mut atlas, frame, extrusion);
+        texture_frames
+            .entry(c.path_str)
+            .or_default()
+            .push((c.rect, frame));
+    }
 
-    let atlas_path = atlas_dir.join("0").with_extension(ext);
-    atlas_image
-        .save_with_format(&atlas_path, image_format)
+    atlas
+        .save_with_format(atlas_dir.join("0").with_extension(ext), image_format)
         .map_err(|e| crate::AtlasError::builder(format!("Failed to save atlas: {e}")))?;
-
-    let mut texture_frames: HashMap<String, Vec<(DamageRect, texture_packer::Rect)>> =
-        HashMap::new();
-    for (key, frame) in packer.get_frames() {
-        if let Some((path_str, damage_rect)) = key_to_info.get(key) {
-            texture_frames
-                .entry(path_str.clone())
-                .or_default()
-                .push((*damage_rect, frame.frame));
-        }
-    }
 
     Ok(PackResult::Packed(AtlasInfo {
         texture_frames,
-        width: actual_w,
-        height: actual_h,
+        width: atlas.width(),
+        height: atlas.height(),
         downsample,
     }))
 }
@@ -238,8 +256,7 @@ mod tests {
             ),
         ];
         let (w, h) = estimate_atlas_size(&dims, 0, 8192);
-        assert_eq!(w, 256);
-        assert_eq!(h, 256);
+        assert_eq!((w, h), (256, 256));
     }
 
     #[test]
@@ -273,14 +290,12 @@ mod tests {
             ),
         ];
         let (w, h) = estimate_atlas_size(&dims, 0, 8192);
-        assert_eq!(w, 512);
-        assert_eq!(h, 512);
+        assert_eq!((w, h), (512, 512));
     }
 
     #[test]
     fn test_estimate_empty() {
-        let (w, h) = estimate_atlas_size(&[], 0, 8192);
-        assert_eq!((w, h), (1, 1));
+        assert_eq!(estimate_atlas_size(&[], 0, 8192), (1, 1));
     }
 
     #[test]
@@ -298,8 +313,29 @@ mod tests {
                 }],
             },
         )];
-        let (w, h) = estimate_atlas_size(&dims, 0, 8192);
-        assert_eq!(w, 1024);
-        assert_eq!(h, 1024);
+        assert_eq!(estimate_atlas_size(&dims, 0, 8192), (1024, 1024));
+    }
+
+    #[test]
+    fn test_fill_frame_extrusion_replicates_edge_pixels() {
+        let mut atlas = RgbaImage::new(4, 4);
+        atlas.put_pixel(1, 1, Rgba([10, 11, 12, 255]));
+        atlas.put_pixel(2, 1, Rgba([20, 21, 22, 255]));
+        atlas.put_pixel(1, 2, Rgba([30, 31, 32, 255]));
+        atlas.put_pixel(2, 2, Rgba([40, 41, 42, 255]));
+        fill_frame_extrusion(
+            &mut atlas,
+            DamageRect {
+                x: 1,
+                y: 1,
+                w: 2,
+                h: 2,
+            },
+            1,
+        );
+        assert_eq!(*atlas.get_pixel(0, 0), Rgba([10, 11, 12, 255]));
+        assert_eq!(*atlas.get_pixel(3, 0), Rgba([20, 21, 22, 255]));
+        assert_eq!(*atlas.get_pixel(0, 3), Rgba([30, 31, 32, 255]));
+        assert_eq!(*atlas.get_pixel(3, 3), Rgba([40, 41, 42, 255]));
     }
 }

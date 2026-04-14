@@ -12,7 +12,6 @@ version.workspace = true
 
 [dependencies]
 image.workspace = true
-texture_packer.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
