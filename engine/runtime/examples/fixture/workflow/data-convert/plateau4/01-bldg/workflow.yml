@@ -223,7 +223,7 @@ graphs:
             # Derive _lod by recovering highest LOD from bitmask (same for all LODs). Notes:
             # 1. FeatureLodFilter filters __citygml_lod_mask to a single-bit mask representing the LOD
             # 2. Setting _lod before FeatureLodFilter would incorrectly capture the original highest LOD
-            # 3. FeatureLodFilter routes best fallback, so LOD0~2 features also exist in lod4 branch with _lod=2
+            # 3. FeatureLodFilter routes best fallback. LOD0~2 features should also exist in lod4 branch with _lod=2
             - attribute: _lod
               method: create
               value: |
