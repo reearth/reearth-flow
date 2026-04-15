@@ -1,6 +1,6 @@
-import { debounce } from "lodash-es";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
+import { useDebouncedCallback } from "@flow/hooks";
 import { Project } from "@flow/types";
 
 export default ({
@@ -14,20 +14,13 @@ export default ({
   //   setIsLocked(!!currentProject?.isLocked);
   // }, [currentProject?.isLocked]);
 
-  const useDebouncedCallback = (
-    callback: (checked: boolean) => void,
-    delay: number,
-  ) => {
-    const callbackRef = useRef(callback);
-
-    useEffect(() => {
-      callbackRef.current = callback;
-    }, [callback]);
-
-    return useRef(
-      debounce((...args: [boolean]) => callbackRef.current(...args), delay),
-    ).current;
-  };
+  const handleProjectLock = useCallback(
+    (lock: boolean) => {
+      if (!currentProject) return;
+      console.log("Lock/Unlock project:", lock);
+    },
+    [currentProject],
+  );
 
   const debouncedHandleLockChange = useDebouncedCallback((checked: boolean) => {
     handleProjectLock(checked);
@@ -37,14 +30,6 @@ export default ({
     setIsLocked(checked);
     debouncedHandleLockChange(checked);
   };
-
-  const handleProjectLock = useCallback(
-    (lock: boolean) => {
-      if (!currentProject) return;
-      console.log("Lock/Unlock project:", lock);
-    },
-    [currentProject],
-  );
 
   return {
     isLocked,

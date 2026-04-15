@@ -53,6 +53,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({
             background: "none",
             zIndex: 0,
           }}
+          shouldResize={() => !readonly}
           lineClassName="border-none rounded"
           handleStyle={{
             background: "none",

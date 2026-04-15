@@ -46,6 +46,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({
             background: "none",
             zIndex: 0,
           }}
+          shouldResize={() => !readonly}
           lineClassName="border-none rounded"
           handleStyle={{
             background: "none",

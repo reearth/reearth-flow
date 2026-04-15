@@ -11,6 +11,7 @@ export { default as useWorkflowImport } from "./useWorkflowImport";
 export { default as useJobSubscriptionsSetup } from "./useJobSubscriptionsSetup";
 export { default as useProjectSave } from "./useProjectSave";
 export { default as useDebouncedSearch } from "./useDebouncedSearch";
+export { useDebouncedCallback } from "./useDebouncedCallback";
 export { default as useWorkflowVars } from "./useWorkflowVars";
 export { default as useAssets } from "./useAssets";
 export { default as useProjectLock } from "./useProjectLock";

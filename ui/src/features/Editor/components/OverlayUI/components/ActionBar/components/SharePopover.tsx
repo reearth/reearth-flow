@@ -1,9 +1,9 @@
 import { PaperclipIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react";
-import { debounce } from "lodash-es";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button, Switch } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { useDebouncedCallback } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
@@ -28,21 +28,6 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
   useEffect(() => {
     setIsSharing(!!currentProject?.sharedToken);
   }, [currentProject?.sharedToken]);
-
-  const useDebouncedCallback = (
-    callback: (checked: boolean) => void,
-    delay: number,
-  ) => {
-    const callbackRef = useRef(callback);
-
-    useEffect(() => {
-      callbackRef.current = callback;
-    }, [callback]);
-
-    return useRef(
-      debounce((...args: [boolean]) => callbackRef.current(...args), delay),
-    ).current;
-  };
 
   const debouncedHandleSharingChange = useDebouncedCallback(
     (checked: boolean) => {

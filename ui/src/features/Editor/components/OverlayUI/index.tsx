@@ -173,17 +173,17 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onRedo={onWorkflowRedo}
             onUndo={onWorkflowUndo}
           />
-        </div>
-        {isLocked && (
-          <div className="absolute top-4 left-70 z-10 flex shrink-0 justify-center">
-            <div className="flex items-center gap-2 rounded p-2 text-xs">
-              <LockIcon weight="thin" size={18} />
-              <p className="font-light text-accent-foreground select-none">
-                {t("Locked")}
-              </p>
+          {isLocked && (
+            <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
+              <div className="flex items-center gap-2 rounded p-2 text-xs">
+                <LockIcon weight="thin" size={18} />
+                <p className="font-light text-accent-foreground select-none">
+                  {t("Locked")}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
         <div
           id="left-top"
           className="pointer-events-none absolute top-2 left-2 *:pointer-events-auto">
