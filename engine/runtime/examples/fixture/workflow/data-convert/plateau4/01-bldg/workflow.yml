@@ -186,6 +186,17 @@ graphs:
               method: remove
             - attribute: dirRoot
               method: remove
+            - attribute: _lod
+              method: create
+              value: |
+                let mask = env.get("__value")["__citygml_lod_mask"];
+                let lod = 0;
+                let i = 0;
+                while i < 8 {
+                  if (mask & (1 << i)) != 0 { lod = i; }
+                  i += 1;
+                }
+                lod
 
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
@@ -220,9 +231,6 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-            - attribute: _lod
-              method: create
-              value: '1'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojectorByLod1
@@ -257,9 +265,6 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-            - attribute: _lod
-              method: create
-              value: '2'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
         name: VerticalReprojectorByLod2
@@ -294,9 +299,6 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-            - attribute: _lod
-              method: create
-              value: '2'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
         name: VerticalReprojectorByLod2NoTexture
@@ -331,9 +333,6 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-            - attribute: _lod
-              method: create
-              value: '3'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
         name: VerticalReprojectorByLod3
@@ -368,9 +367,6 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-            - attribute: _lod
-              method: create
-              value: '3'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
         name: VerticalReprojectorByLod3NoTexture
@@ -405,9 +401,6 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-            - attribute: _lod
-              method: create
-              value: '4'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
         name: VerticalReprojectorByLod4
@@ -442,9 +435,6 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-            - attribute: _lod
-              method: create
-              value: '4'
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
         name: VerticalReprojectorByLod4NoTexture
