@@ -7,11 +7,19 @@ import type { Node } from "@flow/types";
 
 import { convertHextoRgba } from "../utils";
 
-export type NoteNodeProps = NodeProps<Node>;
+export type NoteNodeProps = NodeProps<Node> & {
+  readonly?: boolean;
+};
 
 const minSize = { width: 250, height: 150 };
 
-const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
+const NoteNode: React.FC<NoteNodeProps> = ({
+  id,
+  type,
+  data,
+  readonly = false,
+  ...props
+}) => {
   // background color will always be a hex color, therefore needs to be converted to rgba
   const backgroundColor = data.customizations?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
@@ -59,7 +67,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
         />
       )}
       <div
-        className={`relative z-0 h-full rounded-b-lg p-1 shadow-md shadow-secondary backdrop-blur-xs ${gradientStyles ? "" : `border-x border-b bg-secondary/50 ${props.selected ? "border-border" : "border-transparent"}`}`}
+        className={`relative z-0 h-full rounded-b-lg p-1 shadow-md shadow-secondary backdrop-blur-xs ${gradientStyles ? "" : `border-x border-b bg-secondary/50 ${props.selected ? "border-border" : "border-transparent"}`} ${readonly ? "nopan" : ""}`}
         ref={(element) => {
           if (element && !gradientStyles) {
             element.style.setProperty(

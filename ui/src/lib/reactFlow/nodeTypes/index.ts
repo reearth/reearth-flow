@@ -24,8 +24,8 @@ const createFullNodeTypes = (readonly?: boolean): NodeTypes => ({
     createElement(TransformerNode, { ...props, readonly }),
   subworkflow: (props) =>
     createElement(SubworkflowNode, { ...props, readonly }),
-  batch: (props) => createElement(BatchNode, { ...props }),
-  note: (props) => createElement(NoteNode, { ...props }),
+  batch: (props) => createElement(BatchNode, { ...props, readonly }),
+  note: (props) => createElement(NoteNode, { ...props, readonly }),
 });
 
 export default createFullNodeTypes;

@@ -7,9 +7,16 @@ import type { Node } from "@flow/types";
 
 import useHooks from "./hooks";
 
-export type BatchNodeProps = NodeProps<Node>;
+export type BatchNodeProps = NodeProps<Node> & {
+  readonly?: boolean;
+};
 
-const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
+const BatchNode: React.FC<BatchNodeProps> = ({
+  data,
+  readonly = false,
+  selected,
+  id,
+}) => {
   const { bounds, rgbaColor, handleOnEndResize } = useHooks({ id, data });
   const awarenessSelections = useAwarenessNodeSelections(id);
   const remoteColor = awarenessSelections[0]?.color;
@@ -55,7 +62,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
       )}
 
       <div
-        className={`relative z-0 h-full rounded-b-lg p-2 shadow-md shadow-secondary backdrop-blur-xs ${gradientStyles ? "" : `border-x border-b bg-orange-400/40 dark:bg-orange-400/20 ${selected ? "border-orange-400/50" : "border-transparent"}`} ${data.isDisabled ? "opacity-70" : ""}`}
+        className={`relative z-0 h-full rounded-b-lg p-2 shadow-md shadow-secondary backdrop-blur-xs ${gradientStyles ? "" : `border-x border-b bg-orange-400/40 dark:bg-orange-400/20 ${selected ? "border-orange-400/50" : "border-transparent"}`} ${data.isDisabled ? "opacity-70" : ""} ${readonly ? "nopan" : ""}`}
         style={
           gradientStyles?.body ??
           (remoteColor ? { outline: `solid ${remoteColor}` } : undefined)
