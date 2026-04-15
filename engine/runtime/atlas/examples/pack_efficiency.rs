@@ -42,22 +42,20 @@ fn run(name: &str, dim_fn: impl Fn(&mut u64) -> (u32, u32), dump_dir: Option<&Pa
         match plan_layout(&dims, MAX_ATLAS_SIZE) {
             Ok(plan) => {
                 let atlas_area = plan.atlas_width as f64 * plan.atlas_height as f64;
-                let ds = plan.downsample;
-                let packed_pixels: u64 = dims
+                let packed_pixels: u64 = plan
+                    .placements
                     .iter()
-                    .map(|&(w, h)| w.div_ceil(ds).max(1) as u64 * h.div_ceil(ds).max(1) as u64)
+                    .map(|r| r.w as u64 * r.h as u64)
                     .sum();
                 ratios.push(packed_pixels as f64 / atlas_area);
                 k_values.push(plan.downsample.trailing_zeros() as f64);
 
                 if let Some(dir) = dump_dir {
                     let mut img = RgbImage::new(plan.atlas_width, plan.atlas_height);
-                    for (&(w, h), &(x, y)) in dims.iter().zip(plan.placements.iter()) {
-                        let pw = w.div_ceil(ds).max(1);
-                        let ph = h.div_ceil(ds).max(1);
+                    for r in &plan.placements {
                         let color = random_color(&mut state);
-                        for py in y..y + ph {
-                            for px in x..x + pw {
+                        for py in r.y..r.y + r.h {
+                            for px in r.x..r.x + r.w {
                                 if px < plan.atlas_width && py < plan.atlas_height {
                                     img.put_pixel(px, py, color);
                                 }
