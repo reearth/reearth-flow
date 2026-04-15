@@ -365,18 +365,18 @@ mod tests {
 
     #[test]
     fn test_four_16x16_fit_in_6x6_atlas() {
-        let plan = plan_layout(&vec![(16, 16); 4], 6).unwrap();
+        let plan = plan_layout(&[(16, 16); 4], 6).unwrap();
         assert!(plan.atlas_width <= 6 && plan.atlas_height <= 6);
     }
 
     #[test]
     fn test_five_16x16_do_not_fit_in_6x6_atlas() {
-        assert!(plan_layout(&vec![(16, 16); 5], 6).is_err());
+        assert!(plan_layout(&[(16, 16); 5], 6).is_err());
     }
 
     #[test]
     fn test_plan_layout_triggers_downsampling() {
-        let plan = plan_layout(&vec![(1536, 1536); 2], 2048).unwrap();
+        let plan = plan_layout(&[(1536, 1536); 2], 2048).unwrap();
         assert!(plan.downsample > 1);
         assert!(plan.atlas_width <= 2048 && plan.atlas_height <= 2048);
     }
