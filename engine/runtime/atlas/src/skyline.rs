@@ -1,4 +1,4 @@
-use super::damage::Rect;
+use super::Rect;
 
 struct Skyline {
     x: u32,

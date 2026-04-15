@@ -4,37 +4,7 @@ use std::path::PathBuf;
 
 use rstar::{RTree, RTreeObject, AABB};
 
-use super::TextureMaterial;
-
-/// Axis-aligned rectangle in source texture pixel space (origin top-left).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Rect {
-    pub x: u32,
-    pub y: u32,
-    pub w: u32,
-    pub h: u32,
-}
-
-impl Rect {
-    pub fn right(self) -> u32 {
-        self.x + self.w
-    }
-
-    pub fn bottom(self) -> u32 {
-        self.y + self.h
-    }
-
-    pub fn union(self, other: Self) -> Self {
-        let x = self.x.min(other.x);
-        let y = self.y.min(other.y);
-        Self {
-            x,
-            y,
-            w: self.right().max(other.right()) - x,
-            h: self.bottom().max(other.bottom()) - y,
-        }
-    }
-}
+use super::{Rect, TextureMaterial};
 
 #[derive(Debug, Clone)]
 pub struct TextureDamage {

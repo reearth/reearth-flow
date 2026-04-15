@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use super::damage::{Rect, TextureDamage};
+use super::damage::TextureDamage;
+use super::Rect;
 
 pub(super) type TextureFrames = HashMap<String, Vec<(Rect, Rect)>>;
 use super::skyline::SkylinePacker;
@@ -55,12 +56,12 @@ pub(crate) fn estimate_atlas_size_from_dims(dims: &[(u32, u32)], k: u32) -> (u32
 
 /// Dry-run layout — no image I/O, no blitting.
 /// Returns `Some((used_w, used_h, placements))` if all rects fit, `None` otherwise.
-/// `placements[i]` is the atlas-space top-left `(x, y)` of the content rect for `dims[i]`.
+/// `placements[i]` is the atlas-space rect for `dims[i]`.
 pub(crate) fn try_layout_rects(
     dims: &[(u32, u32)],
     k: u32,
     canvas: (u32, u32),
-) -> Option<(u32, u32, Vec<(u32, u32)>)> {
+) -> Option<(u32, u32, Vec<Rect>)> {
     let downsample = 1u32 << k;
     let extrusion = 1u32;
     // Pair each rect with its original index before sorting.
@@ -77,36 +78,44 @@ pub(crate) fn try_layout_rects(
         .collect();
     indexed.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| b.1.cmp(&a.1)));
     let mut packer = SkylinePacker::new(canvas.0, canvas.1, extrusion);
-    let mut placements_sorted: Vec<(usize, u32, u32)> = Vec::with_capacity(dims.len());
+    let mut placements_sorted: Vec<(usize, Rect)> = Vec::with_capacity(dims.len());
     for &(orig_idx, w, h) in &indexed {
         let frame = packer.pack(w, h)?;
-        placements_sorted.push((orig_idx, frame.x, frame.y));
+        placements_sorted.push((
+            orig_idx,
+            Rect {
+                x: frame.x,
+                y: frame.y,
+                w,
+                h,
+            },
+        ));
     }
-    placements_sorted.sort_by_key(|&(i, _, _)| i);
-    let placements = placements_sorted
-        .into_iter()
-        .map(|(_, x, y)| (x, y))
-        .collect();
+    placements_sorted.sort_by_key(|t| t.0);
+    let placements = placements_sorted.into_iter().map(|(_, r)| r).collect();
     Some((packer.width(), packer.height(), placements))
 }
 
 fn build_candidates<'a>(
     damage_list: &'a [(PathBuf, TextureDamage)],
-    downsample: u32,
+    placements: &[Rect],
 ) -> Vec<Candidate<'a>> {
     let mut out = Vec::new();
+    let mut flat_idx = 0usize;
     for (path, td) in damage_list {
         let path_str = path.to_string_lossy().into_owned();
         for (i, &rect) in td.rects.iter().enumerate() {
+            let Rect { w, h, .. } = placements[flat_idx];
             out.push(Candidate {
                 path,
                 path_str: path_str.clone(),
                 region_index: i,
                 rect,
                 key: format!("{}#{i}", path.to_string_lossy()),
-                w: ceil_div(rect.w, downsample).max(1),
-                h: ceil_div(rect.h, downsample).max(1),
+                w,
+                h,
             });
+            flat_idx += 1;
         }
     }
     out.sort_by(|a, b| b.h.cmp(&a.h).then_with(|| b.w.cmp(&a.w)));
@@ -149,28 +158,24 @@ fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: Rect, extrusion: u32) {
 }
 
 /// Blit all damage regions into an atlas using pre-computed placements from `plan_layout`.
-/// `placements[i]` is the atlas-space `(x, y)` for the i-th rect in the flattened damage list.
+/// `placements[i]` is the atlas-space rect for the i-th rect in the flattened damage list.
 pub(super) fn blit(
     damage_list: &[(PathBuf, TextureDamage)],
-    downsample: u32,
     atlas_size: (u32, u32),
-    placements: &[(u32, u32)],
+    placements: &[Rect],
 ) -> crate::Result<(RgbaImage, TextureFrames)> {
     let extrusion = 1u32;
-    let candidates = build_candidates(damage_list, downsample);
     // Build frames from placements (indexed by candidate key, same flat order as damage_list).
     let mut flat_idx = 0usize;
-    let mut frames: HashMap<String, Rect> = HashMap::with_capacity(candidates.len());
+    let mut frames: HashMap<String, Rect> = HashMap::with_capacity(placements.len());
     for (path, td) in damage_list {
-        for (region_index, &rect) in td.rects.iter().enumerate() {
-            let w = ceil_div(rect.w, downsample).max(1);
-            let h = ceil_div(rect.h, downsample).max(1);
-            let (x, y) = placements[flat_idx];
+        for (region_index, _) in td.rects.iter().enumerate() {
             let key = format!("{}#{region_index}", path.to_string_lossy());
-            frames.insert(key, Rect { x, y, w, h });
+            frames.insert(key, placements[flat_idx]);
             flat_idx += 1;
         }
     }
+    let candidates = build_candidates(damage_list, placements);
 
     let mut atlas = RgbaImage::from_pixel(atlas_size.0, atlas_size.1, Rgba([0, 0, 0, 0]));
     let mut sources = HashMap::new();
@@ -199,7 +204,7 @@ pub(super) fn blit(
         let mut crop = source
             .crop_imm(c.rect.x, c.rect.y, c.rect.w, c.rect.h)
             .to_rgba8();
-        if downsample > 1 {
+        if (c.w, c.h) != (c.rect.w, c.rect.h) {
             crop = image::imageops::resize(&crop, c.w, c.h, FilterType::Triangle);
         }
         let frame = frames[&c.key];

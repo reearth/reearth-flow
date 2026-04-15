@@ -6,12 +6,42 @@ mod skyline;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use damage::{collect_damage, Rect, TextureDamage};
+use damage::{collect_damage, TextureDamage};
 pub use error::{AtlasError, Result};
 use image::RgbaImage;
 
 pub type PolygonUVs = Vec<[f64; 2]>;
 pub type TextureUVs = Vec<PolygonUVs>;
+
+/// Axis-aligned rectangle in atlas pixel space.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+impl Rect {
+    pub fn right(self) -> u32 {
+        self.x + self.w
+    }
+
+    pub fn bottom(self) -> u32 {
+        self.y + self.h
+    }
+
+    pub fn union(self, other: Self) -> Self {
+        let x = self.x.min(other.x);
+        let y = self.y.min(other.y);
+        Self {
+            x,
+            y,
+            w: self.right().max(other.right()) - x,
+            h: self.bottom().max(other.bottom()) - y,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct TextureMaterial {
@@ -25,8 +55,8 @@ pub struct LayoutPlan {
     pub atlas_height: u32,
     /// Downsample factor applied (1 = no downsampling, 2 = half-res, …).
     pub downsample: u32,
-    /// Atlas-space top-left `(x, y)` for each input rect, in input order.
-    pub placements: Vec<(u32, u32)>,
+    /// Atlas-space rect for each input, in input order.
+    pub placements: Vec<Rect>,
 }
 
 pub struct BuiltAtlas {
@@ -201,7 +231,6 @@ pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result
     // Stage 3: blit using pre-computed placements — no second layout pass.
     let (atlas, texture_frames) = pack::blit(
         &damage_list,
-        plan.downsample,
         (plan.atlas_width, plan.atlas_height),
         &plan.placements,
     )?;
