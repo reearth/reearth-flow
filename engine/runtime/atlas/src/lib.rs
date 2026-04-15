@@ -6,7 +6,7 @@ mod skyline;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use damage::{collect_damage, DamageRect, TextureDamage};
+use damage::{collect_damage, Rect, TextureDamage};
 pub use error::{AtlasError, Result};
 use image::RgbaImage;
 
@@ -38,8 +38,8 @@ pub const MAX_DOWNSAMPLE_K: u32 = 13;
 
 struct RemapContext {
     texture_size: (u32, u32),
-    damage: DamageRect,
-    frame: DamageRect,
+    damage: Rect,
+    frame: Rect,
     atlas_size: (f64, f64),
     downsample: u32,
 }
@@ -71,8 +71,8 @@ fn texture_dimensions(damage_list: &[(PathBuf, TextureDamage)]) -> HashMap<Strin
 fn remap_polygon_uvs(
     poly_uvs: &PolygonUVs,
     texture_size: (u32, u32),
-    damage: DamageRect,
-    frame: DamageRect,
+    damage: Rect,
+    frame: Rect,
     downsample: u32,
     atlas_size: (f64, f64),
 ) -> PolygonUVs {
@@ -92,20 +92,21 @@ fn remap_polygon_uvs(
 fn build_remapped_uvs(
     materials: &[TextureMaterial],
     damage_list: &[(PathBuf, TextureDamage)],
-    info: &pack::AtlasInfo,
+    texture_frames: &pack::TextureFrames,
+    downsample: u32,
+    atlas_size: (f64, f64),
 ) -> Vec<Option<TextureUVs>> {
     let texture_sizes = texture_dimensions(damage_list);
     let damage_by_path: HashMap<_, _> = damage_list
         .iter()
         .map(|(path, td)| (path.to_string_lossy().into_owned(), td))
         .collect();
-    let atlas_size = (info.width as f64, info.height as f64);
 
     materials
         .iter()
         .map(|mat| {
             let path = mat.path.to_string_lossy().into_owned();
-            let frames = info.texture_frames.get(&path)?;
+            let frames = texture_frames.get(&path)?;
             let damage = damage_by_path.get(&path)?;
             let texture_size = texture_sizes.get(&path).copied().unwrap_or((1, 1));
             Some(
@@ -120,7 +121,7 @@ fn build_remapped_uvs(
                             texture_size,
                             damage,
                             frame,
-                            info.downsample,
+                            downsample,
                             atlas_size,
                         )
                     })
@@ -198,17 +199,23 @@ pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result
     let plan = plan_layout(&dims, max_atlas_size)?;
 
     // Stage 3: blit using pre-computed placements — no second layout pass.
-    let info = pack::blit(
+    let (atlas, texture_frames) = pack::blit(
         &damage_list,
         plan.downsample,
         (plan.atlas_width, plan.atlas_height),
         &plan.placements,
     )?;
-
-    let remapped_uvs = build_remapped_uvs(materials, &damage_list, &info);
+    let atlas_size = (atlas.width() as f64, atlas.height() as f64);
+    let remapped_uvs = build_remapped_uvs(
+        materials,
+        &damage_list,
+        &texture_frames,
+        plan.downsample,
+        atlas_size,
+    );
     Ok(BuiltAtlas {
         image: if remapped_uvs.iter().any(Option::is_some) {
-            Some(info.atlas)
+            Some(atlas)
         } else {
             None
         },

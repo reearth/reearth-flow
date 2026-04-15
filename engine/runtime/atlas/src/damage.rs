@@ -8,14 +8,14 @@ use super::TextureMaterial;
 
 /// Axis-aligned rectangle in source texture pixel space (origin top-left).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct DamageRect {
+pub struct Rect {
     pub x: u32,
     pub y: u32,
     pub w: u32,
     pub h: u32,
 }
 
-impl DamageRect {
+impl Rect {
     pub fn right(self) -> u32 {
         self.x + self.w
     }
@@ -41,19 +41,19 @@ pub struct TextureDamage {
     pub width: u32,
     pub height: u32,
     /// Disjoint merged damage rects, sorted by area descending.
-    pub rects: Vec<DamageRect>,
+    pub rects: Vec<Rect>,
     /// For each polygon in `TextureMaterial::uvs`, the merged rect index it belongs to.
     pub polygon_regions: Vec<usize>,
 }
 
 struct DamageRegion {
-    rect: DamageRect,
+    rect: Rect,
     polygons: Vec<usize>,
 }
 
 struct REntry {
     idx: usize,
-    rect: DamageRect,
+    rect: Rect,
 }
 
 impl RTreeObject for REntry {
@@ -170,7 +170,7 @@ pub fn collect_damage(
             let right = right.max(x + 1);
             let bottom = bottom.max(y + 1);
 
-            let rect = DamageRect {
+            let rect = Rect {
                 x,
                 y,
                 w: right - x,

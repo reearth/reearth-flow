@@ -1,4 +1,4 @@
-use super::damage::DamageRect;
+use super::damage::Rect;
 
 struct Skyline {
     x: u32,
@@ -39,7 +39,7 @@ impl SkylinePacker {
         self.used_h.max(1)
     }
 
-    pub fn pack(&mut self, w: u32, h: u32) -> Option<DamageRect> {
+    pub fn pack(&mut self, w: u32, h: u32) -> Option<Rect> {
         let w = w + self.extrusion * 2;
         let h = h + self.extrusion * 2;
         let (i, rect) = self.find(w, h)?;
@@ -47,7 +47,7 @@ impl SkylinePacker {
         self.merge();
         self.used_w = self.used_w.max(rect.x + rect.w);
         self.used_h = self.used_h.max(rect.y + rect.h);
-        Some(DamageRect {
+        Some(Rect {
             x: rect.x + self.extrusion,
             y: rect.y + self.extrusion,
             w: rect.w - self.extrusion * 2,
@@ -55,7 +55,7 @@ impl SkylinePacker {
         })
     }
 
-    fn find(&self, w: u32, h: u32) -> Option<(usize, DamageRect)> {
+    fn find(&self, w: u32, h: u32) -> Option<(usize, Rect)> {
         let mut best = None;
         let mut bottom = u32::MAX;
         let mut width = u32::MAX;
@@ -72,8 +72,8 @@ impl SkylinePacker {
         best
     }
 
-    fn can_put(&self, mut i: usize, w: u32, h: u32) -> Option<DamageRect> {
-        let mut rect = DamageRect {
+    fn can_put(&self, mut i: usize, w: u32, h: u32) -> Option<Rect> {
+        let mut rect = Rect {
             x: self.skylines[i].x,
             y: 0,
             w,
@@ -93,7 +93,7 @@ impl SkylinePacker {
         }
     }
 
-    fn split(&mut self, index: usize, rect: DamageRect) {
+    fn split(&mut self, index: usize, rect: Rect) {
         self.skylines.insert(
             index,
             Skyline {

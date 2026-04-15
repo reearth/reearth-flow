@@ -1,24 +1,18 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use super::damage::{DamageRect, TextureDamage};
+use super::damage::{Rect, TextureDamage};
+
+pub(super) type TextureFrames = HashMap<String, Vec<(Rect, Rect)>>;
 use super::skyline::SkylinePacker;
 use image::imageops::FilterType;
 use image::{GenericImage, Rgba, RgbaImage};
-
-pub struct AtlasInfo {
-    pub atlas: RgbaImage,
-    pub texture_frames: HashMap<String, Vec<(DamageRect, DamageRect)>>,
-    pub width: u32,
-    pub height: u32,
-    pub downsample: u32,
-}
 
 struct Candidate<'a> {
     path: &'a Path,
     path_str: String,
     region_index: usize,
-    rect: DamageRect,
+    rect: Rect,
     key: String,
     w: u32,
     h: u32,
@@ -119,7 +113,7 @@ fn build_candidates<'a>(
     out
 }
 
-fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: DamageRect, extrusion: u32) {
+fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: Rect, extrusion: u32) {
     if extrusion == 0 || frame.w == 0 || frame.h == 0 {
         return;
     }
@@ -161,26 +155,26 @@ pub(super) fn blit(
     downsample: u32,
     atlas_size: (u32, u32),
     placements: &[(u32, u32)],
-) -> crate::Result<AtlasInfo> {
+) -> crate::Result<(RgbaImage, TextureFrames)> {
     let extrusion = 1u32;
     let candidates = build_candidates(damage_list, downsample);
     // Build frames from placements (indexed by candidate key, same flat order as damage_list).
     let mut flat_idx = 0usize;
-    let mut frames: HashMap<String, DamageRect> = HashMap::with_capacity(candidates.len());
+    let mut frames: HashMap<String, Rect> = HashMap::with_capacity(candidates.len());
     for (path, td) in damage_list {
         for (region_index, &rect) in td.rects.iter().enumerate() {
             let w = ceil_div(rect.w, downsample).max(1);
             let h = ceil_div(rect.h, downsample).max(1);
             let (x, y) = placements[flat_idx];
             let key = format!("{}#{region_index}", path.to_string_lossy());
-            frames.insert(key, DamageRect { x, y, w, h });
+            frames.insert(key, Rect { x, y, w, h });
             flat_idx += 1;
         }
     }
 
     let mut atlas = RgbaImage::from_pixel(atlas_size.0, atlas_size.1, Rgba([0, 0, 0, 0]));
     let mut sources = HashMap::new();
-    let mut texture_frames: HashMap<String, Vec<Option<(DamageRect, DamageRect)>>> = damage_list
+    let mut texture_frames: HashMap<String, Vec<Option<(Rect, Rect)>>> = damage_list
         .iter()
         .map(|(path, td)| {
             (
@@ -227,16 +221,7 @@ pub(super) fn blit(
         })
         .collect::<crate::Result<HashMap<_, _>>>()?;
 
-    let width = atlas.width();
-    let height = atlas.height();
-
-    Ok(AtlasInfo {
-        atlas,
-        texture_frames,
-        width,
-        height,
-        downsample,
-    })
+    Ok((atlas, texture_frames))
 }
 
 #[cfg(test)]
@@ -252,7 +237,7 @@ mod tests {
         atlas.put_pixel(2, 2, Rgba([40, 41, 42, 255]));
         fill_frame_extrusion(
             &mut atlas,
-            DamageRect {
+            Rect {
                 x: 1,
                 y: 1,
                 w: 2,
