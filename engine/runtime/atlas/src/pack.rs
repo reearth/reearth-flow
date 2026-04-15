@@ -60,34 +60,40 @@ pub(crate) fn estimate_atlas_size_from_dims(dims: &[(u32, u32)], k: u32) -> (u32
 }
 
 /// Dry-run layout — no image I/O, no blitting.
-/// Returns `Some((used_w, used_h, packed_pixels, placements))` if all rects fit, `None` otherwise.
+/// Returns `Some((used_w, used_h, placements))` if all rects fit, `None` otherwise.
 /// `placements[i]` is the atlas-space top-left `(x, y)` of the content rect for `dims[i]`.
-/// `packed_pixels` is the sum of content rect areas in atlas space (after downsampling).
 pub(crate) fn try_layout_rects(
     dims: &[(u32, u32)],
     k: u32,
     canvas: (u32, u32),
-) -> Option<(u32, u32, u64, Vec<(u32, u32)>)> {
+) -> Option<(u32, u32, Vec<(u32, u32)>)> {
     let downsample = 1u32 << k;
     let extrusion = 1u32;
     // Pair each rect with its original index before sorting.
     let mut indexed: Vec<(usize, u32, u32)> = dims
         .iter()
         .enumerate()
-        .map(|(i, &(w, h))| (i, ceil_div(w, downsample).max(1), ceil_div(h, downsample).max(1)))
+        .map(|(i, &(w, h))| {
+            (
+                i,
+                ceil_div(w, downsample).max(1),
+                ceil_div(h, downsample).max(1),
+            )
+        })
         .collect();
     indexed.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| b.1.cmp(&a.1)));
     let mut packer = SkylinePacker::new(canvas.0, canvas.1, extrusion);
-    let mut packed_pixels: u64 = 0;
     let mut placements_sorted: Vec<(usize, u32, u32)> = Vec::with_capacity(dims.len());
     for &(orig_idx, w, h) in &indexed {
         let frame = packer.pack(w, h)?;
-        packed_pixels += w as u64 * h as u64;
         placements_sorted.push((orig_idx, frame.x, frame.y));
     }
     placements_sorted.sort_by_key(|&(i, _, _)| i);
-    let placements = placements_sorted.into_iter().map(|(_, x, y)| (x, y)).collect();
-    Some((packer.width(), packer.height(), packed_pixels, placements))
+    let placements = placements_sorted
+        .into_iter()
+        .map(|(_, x, y)| (x, y))
+        .collect();
+    Some((packer.width(), packer.height(), placements))
 }
 
 fn build_candidates<'a>(

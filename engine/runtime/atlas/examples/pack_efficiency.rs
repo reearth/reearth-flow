@@ -36,16 +36,22 @@ fn run(name: &str, dim_fn: impl Fn(&mut u64) -> (u32, u32), dump_dir: Option<&Pa
     let mut failures: usize = 0;
 
     for trial in 0..TOTAL {
-        let dims: Vec<_> = (0..TEXTURES_PER_TRIAL).map(|_| dim_fn(&mut state)).collect();
+        let dims: Vec<_> = (0..TEXTURES_PER_TRIAL)
+            .map(|_| dim_fn(&mut state))
+            .collect();
         match plan_layout(&dims, MAX_ATLAS_SIZE) {
             Ok(plan) => {
                 let atlas_area = plan.atlas_width as f64 * plan.atlas_height as f64;
-                ratios.push(plan.packed_pixels as f64 / atlas_area);
+                let ds = plan.downsample;
+                let packed_pixels: u64 = dims
+                    .iter()
+                    .map(|&(w, h)| w.div_ceil(ds).max(1) as u64 * h.div_ceil(ds).max(1) as u64)
+                    .sum();
+                ratios.push(packed_pixels as f64 / atlas_area);
                 k_values.push(plan.downsample.trailing_zeros() as f64);
 
                 if let Some(dir) = dump_dir {
                     let mut img = RgbImage::new(plan.atlas_width, plan.atlas_height);
-                    let ds = plan.downsample;
                     for (&(w, h), &(x, y)) in dims.iter().zip(plan.placements.iter()) {
                         let pw = w.div_ceil(ds).max(1);
                         let ph = h.div_ceil(ds).max(1);
@@ -67,14 +73,27 @@ fn run(name: &str, dim_fn: impl Fn(&mut u64) -> (u32, u32), dump_dir: Option<&Pa
     }
 
     let n = ratios.len() as f64;
-    let avg_ratio = if ratios.is_empty() { 0.0 } else { ratios.iter().sum::<f64>() / n };
+    let avg_ratio = if ratios.is_empty() {
+        0.0
+    } else {
+        ratios.iter().sum::<f64>() / n
+    };
     let std_dev = if ratios.len() < 2 {
         0.0
     } else {
         (ratios.iter().map(|r| (r - avg_ratio).powi(2)).sum::<f64>() / n).sqrt()
     };
-    let avg_k = if k_values.is_empty() { 0.0 } else { k_values.iter().sum::<f64>() / n };
-    Report { avg_ratio, std_dev, avg_k, failures }
+    let avg_k = if k_values.is_empty() {
+        0.0
+    } else {
+        k_values.iter().sum::<f64>() / n
+    };
+    Report {
+        avg_ratio,
+        std_dev,
+        avg_k,
+        failures,
+    }
 }
 
 fn uniform_rect(state: &mut u64) -> (u32, u32) {

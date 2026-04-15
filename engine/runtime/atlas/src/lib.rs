@@ -25,8 +25,6 @@ pub struct LayoutPlan {
     pub atlas_height: u32,
     /// Downsample factor applied (1 = no downsampling, 2 = half-res, …).
     pub downsample: u32,
-    /// Sum of content rect areas placed in atlas space (after downsampling).
-    pub packed_pixels: u64,
     /// Atlas-space top-left `(x, y)` for each input rect, in input order.
     pub placements: Vec<(u32, u32)>,
 }
@@ -132,6 +130,18 @@ fn build_remapped_uvs(
         .collect()
 }
 
+/// Returns the minimum k such that `side / 2^k <= max`, or `MAX_DOWNSAMPLE_K + 1` if none exists.
+fn needed_k(side: u32, max: u32) -> u32 {
+    if side <= max {
+        return 0;
+    }
+    let ratio = side.div_ceil(max);
+    if ratio > (1u32 << MAX_DOWNSAMPLE_K) {
+        return MAX_DOWNSAMPLE_K + 1;
+    }
+    ratio.next_power_of_two().trailing_zeros()
+}
+
 /// Compute the layout for a set of textures given only their dimensions.
 /// No image files are read; no pixels are blitted.
 /// Useful for efficiency benchmarks and layout-only unit tests.
@@ -141,42 +151,34 @@ pub fn plan_layout(dims: &[(u32, u32)], max_atlas_size: u32) -> Result<LayoutPla
             atlas_width: 1,
             atlas_height: 1,
             downsample: 1,
-            packed_pixels: 0,
             placements: vec![],
         });
     }
-    let mut k = 0u32;
-    let (mut guided_w, mut guided_h) = pack::estimate_atlas_size_from_dims(dims, k);
+    // `virtual_w/h` is the estimated canvas in original (pre-downsampling) pixel space.
+    // Doubling grows the canvas at k=0; once the larger dimension exceeds max_atlas_size,
+    // needed_k increments to keep the physical atlas within bounds. Both k and canvas are derived.
+    let (mut virtual_w, mut virtual_h) = pack::estimate_atlas_size_from_dims(dims, 0);
     loop {
-        let current_size = (guided_w.min(max_atlas_size), guided_h.min(max_atlas_size));
-        match pack::try_layout_rects(dims, k, current_size) {
-            Some((used_w, used_h, packed_pixels, placements)) => {
-                return Ok(LayoutPlan {
-                    atlas_width: used_w,
-                    atlas_height: used_h,
-                    downsample: 1u32 << k,
-                    packed_pixels,
-                    placements,
-                });
-            }
-            None => {
-                if guided_w < max_atlas_size || guided_h < max_atlas_size {
-                    guided_w = guided_w.saturating_mul(2);
-                    guided_h = guided_h.saturating_mul(2);
-                } else {
-                    if k >= MAX_DOWNSAMPLE_K {
-                        return Err(AtlasError::builder(format!(
-                            "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
-                            max_atlas_size, max_atlas_size, k
-                        )));
-                    }
-                    k += 1;
-                    guided_w = pack::estimate_atlas_size_from_dims(dims, k).0;
-                    guided_h = pack::estimate_atlas_size_from_dims(dims, k).1;
-                }
-            }
+        let k = needed_k(virtual_w.max(virtual_h), max_atlas_size);
+        if k > MAX_DOWNSAMPLE_K {
+            break;
         }
+        let canvas = (virtual_w.min(max_atlas_size), virtual_h.min(max_atlas_size));
+        if let Some((used_w, used_h, placements)) = pack::try_layout_rects(dims, k, canvas) {
+            return Ok(LayoutPlan {
+                atlas_width: used_w,
+                atlas_height: used_h,
+                downsample: 1u32 << k,
+                placements,
+            });
+        }
+        virtual_w = virtual_w.saturating_mul(2);
+        virtual_h = virtual_h.saturating_mul(2);
     }
+    Err(AtlasError::builder(format!(
+        "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
+        max_atlas_size, max_atlas_size, MAX_DOWNSAMPLE_K
+    )))
 }
 
 /// Pack `materials` into an atlas image and return remapped UVs.
@@ -196,7 +198,12 @@ pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result
     let plan = plan_layout(&dims, max_atlas_size)?;
 
     // Stage 3: blit using pre-computed placements — no second layout pass.
-    let info = pack::blit(&damage_list, plan.downsample, (plan.atlas_width, plan.atlas_height), &plan.placements)?;
+    let info = pack::blit(
+        &damage_list,
+        plan.downsample,
+        (plan.atlas_width, plan.atlas_height),
+        &plan.placements,
+    )?;
 
     let remapped_uvs = build_remapped_uvs(materials, &damage_list, &info);
     Ok(BuiltAtlas {

@@ -34,8 +34,6 @@ impl DamageRect {
             h: self.bottom().max(other.bottom()) - y,
         }
     }
-
-
 }
 
 #[derive(Debug, Clone)]
@@ -71,12 +69,21 @@ impl RTreeObject for REntry {
 /// Merge a list of potentially overlapping polygon regions into disjoint rects.
 fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
     let tree = RTree::bulk_load(
-        regions.iter().enumerate().map(|(i, r)| REntry { idx: i, rect: r.rect }).collect(),
+        regions
+            .iter()
+            .enumerate()
+            .map(|(i, r)| REntry {
+                idx: i,
+                rect: r.rect,
+            })
+            .collect(),
     );
     let mut used = vec![false; regions.len()];
     let mut result = Vec::new();
     for start in 0..regions.len() {
-        if used[start] { continue; }
+        if used[start] {
+            continue;
+        }
         used[start] = true;
         let mut merged = regions[start].rect;
         let mut polys = regions[start].polygons.clone();
@@ -86,16 +93,24 @@ fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
                 [merged.x as f64 + 0.5, merged.y as f64 + 0.5],
                 [merged.right() as f64 - 0.5, merged.bottom() as f64 - 0.5],
             );
-            let found: Vec<_> = tree.locate_in_envelope_intersecting(&env)
-                .filter(|e| !used[e.idx]).map(|e| e.idx).collect();
-            if found.is_empty() { break; }
+            let found: Vec<_> = tree
+                .locate_in_envelope_intersecting(&env)
+                .filter(|e| !used[e.idx])
+                .map(|e| e.idx)
+                .collect();
+            if found.is_empty() {
+                break;
+            }
             for idx in found {
                 used[idx] = true;
                 merged = merged.union(regions[idx].rect);
                 polys.extend_from_slice(&regions[idx].polygons);
             }
         }
-        result.push(DamageRegion { rect: merged, polygons: polys });
+        result.push(DamageRegion {
+            rect: merged,
+            polygons: polys,
+        });
     }
     result
 }
@@ -210,7 +225,12 @@ pub fn collect_damage(
         .collect();
 
     result.sort_by_cached_key(|(_, td)| {
-        Reverse(td.rects.iter().map(|r| r.w as u64 * r.h as u64).sum::<u64>())
+        Reverse(
+            td.rects
+                .iter()
+                .map(|r| r.w as u64 * r.h as u64)
+                .sum::<u64>(),
+        )
     });
 
     Ok(result)
@@ -286,5 +306,4 @@ mod tests {
         assert_eq!(result[0].1.rects.len(), 1, "overlapping regions must merge");
         assert_eq!(result[0].1.polygon_regions, vec![0, 0]);
     }
-
 }
