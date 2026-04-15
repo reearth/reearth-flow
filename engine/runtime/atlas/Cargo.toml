@@ -12,6 +12,7 @@ version.workspace = true
 
 [dependencies]
 image.workspace = true
+rstar.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

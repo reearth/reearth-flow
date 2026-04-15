@@ -6783,6 +6783,7 @@ name = "reearth-flow-atlas"
 version = "0.0.358"
 dependencies = [
  "image 0.25.10",
+ "rstar 0.12.2",
  "tempfile",
  "thiserror 2.0.18",
 ]

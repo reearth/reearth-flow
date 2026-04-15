@@ -1,5 +1,8 @@
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+use rstar::{RTree, RTreeObject, AABB};
 
 use super::TextureMaterial;
 
@@ -19,13 +22,6 @@ impl DamageRect {
 
     pub fn bottom(self) -> u32 {
         self.y + self.h
-    }
-
-    pub fn overlaps(self, other: Self) -> bool {
-        self.x < other.right()
-            && other.x < self.right()
-            && self.y < other.bottom()
-            && other.y < self.bottom()
     }
 
     pub fn union(self, other: Self) -> Self {
@@ -57,28 +53,51 @@ struct DamageRegion {
     polygons: Vec<usize>,
 }
 
-/// Merge a list of potentially overlapping polygon regions into disjoint rects.
-fn merge_regions(mut regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
-    loop {
-        let mut merged = false;
-        let mut result: Vec<DamageRegion> = Vec::with_capacity(regions.len());
-        'outer: for region in regions.drain(..) {
-            for existing in &mut result {
-                if existing.rect.overlaps(region.rect) {
-                    existing.rect = existing.rect.union(region.rect);
-                    existing.polygons.extend(region.polygons);
-                    merged = true;
-                    continue 'outer;
-                }
-            }
-            result.push(region);
-        }
-        regions = result;
-        if !merged {
-            break;
-        }
+struct REntry {
+    idx: usize,
+    rect: DamageRect,
+}
+
+impl RTreeObject for REntry {
+    type Envelope = AABB<[f64; 2]>;
+    fn envelope(&self) -> Self::Envelope {
+        AABB::from_corners(
+            [self.rect.x as f64, self.rect.y as f64],
+            [self.rect.right() as f64, self.rect.bottom() as f64],
+        )
     }
-    regions
+}
+
+/// Merge a list of potentially overlapping polygon regions into disjoint rects.
+fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
+    let tree = RTree::bulk_load(
+        regions.iter().enumerate().map(|(i, r)| REntry { idx: i, rect: r.rect }).collect(),
+    );
+    let mut used = vec![false; regions.len()];
+    let mut result = Vec::new();
+    for start in 0..regions.len() {
+        if used[start] { continue; }
+        used[start] = true;
+        let mut merged = regions[start].rect;
+        let mut polys = regions[start].polygons.clone();
+        loop {
+            // Shrink query by 0.5px to match strict-overlap semantics (touching edges excluded).
+            let env = AABB::from_corners(
+                [merged.x as f64 + 0.5, merged.y as f64 + 0.5],
+                [merged.right() as f64 - 0.5, merged.bottom() as f64 - 0.5],
+            );
+            let found: Vec<_> = tree.locate_in_envelope_intersecting(&env)
+                .filter(|e| !used[e.idx]).map(|e| e.idx).collect();
+            if found.is_empty() { break; }
+            for idx in found {
+                used[idx] = true;
+                merged = merged.union(regions[idx].rect);
+                polys.extend_from_slice(&regions[idx].polygons);
+            }
+        }
+        result.push(DamageRegion { rect: merged, polygons: polys });
+    }
+    result
 }
 
 /// Collect per-texture damage rectangles from polygon UV coverages.
@@ -190,14 +209,8 @@ pub fn collect_damage(
         })
         .collect();
 
-    result.sort_by(|a, b| {
-        let area = |td: &TextureDamage| {
-            td.rects
-                .iter()
-                .map(|r| r.w as u64 * r.h as u64)
-                .sum::<u64>()
-        };
-        area(&b.1).cmp(&area(&a.1))
+    result.sort_by_cached_key(|(_, td)| {
+        Reverse(td.rects.iter().map(|r| r.w as u64 * r.h as u64).sum::<u64>())
     });
 
     Ok(result)
