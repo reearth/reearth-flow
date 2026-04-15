@@ -22,7 +22,7 @@ use google_cloud_storage::{
 use hex;
 use serde::Deserialize;
 use time::OffsetDateTime;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use yrs::{
     updates::decoder::Decode, updates::encoder::Encode, Doc, ReadTxn, StateVector, Transact, Update,
 };
@@ -376,15 +376,36 @@ impl GcsStore {
 
         let mut to_delete = Vec::new();
         for obj in &all_objects {
-            if let Ok(key_bytes) = hex::decode(&obj.name) {
-                if key_bytes.len() >= 12 {
-                    if let Ok(clock_bytes) = key_bytes[7..11].try_into() {
-                        let clock = u32::from_be_bytes(clock_bytes);
-                        if clock > target_clock {
-                            to_delete.push(obj.name.clone());
-                        }
-                    }
+            let key_bytes = match hex::decode(&obj.name) {
+                Ok(b) => b,
+                Err(e) => {
+                    warn!(
+                        "Skipping update object with non-hex name '{}' for doc '{}': {}",
+                        obj.name, doc_id, e
+                    );
+                    continue;
                 }
+            };
+            if key_bytes.len() < 12 {
+                warn!(
+                    "Skipping update object with unexpected key length '{}' for doc '{}': got {} bytes",
+                    obj.name, doc_id, key_bytes.len()
+                );
+                continue;
+            }
+            let clock_bytes: [u8; 4] = match key_bytes[7..11].try_into() {
+                Ok(b) => b,
+                Err(_) => {
+                    warn!(
+                        "Skipping update object with unreadable clock bytes '{}' for doc '{}'",
+                        obj.name, doc_id
+                    );
+                    continue;
+                }
+            };
+            let clock = u32::from_be_bytes(clock_bytes);
+            if clock > target_clock {
+                to_delete.push(obj.name.clone());
             }
         }
 
@@ -403,7 +424,10 @@ impl GcsStore {
                         .await
                 }
             });
-            let _ = join_all(delete_futures).await;
+            let delete_results = join_all(delete_futures).await;
+            for result in delete_results {
+                result?;
+            }
         }
 
         if count > 0 {

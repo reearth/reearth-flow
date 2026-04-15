@@ -237,17 +237,16 @@ impl BroadcastPool {
                     doc_id, e
                 );
             }
-
-            // Delete Redis stream after cancellation, under the lock, so that
-            // no evicted task can recreate the stream between deletion and eviction.
-            if let Err(e) = self.storage.redis_store().delete_stream(doc_id).await {
-                warn!(
-                    "Failed to delete Redis stream during force-evict for '{}': {}",
-                    doc_id, e
-                );
-            }
-
             info!("Force-evicted BroadcastGroup for doc_id: {}", doc_id);
+        }
+
+        // Delete Redis stream under the lock even when no in-memory group exists,
+        // so stale updates cannot survive a rollback/force-eviction path.
+        if let Err(e) = self.storage.redis_store().delete_stream(doc_id).await {
+            warn!(
+                "Failed to delete Redis stream during force-evict for '{}': {}",
+                doc_id, e
+            );
         }
 
         drop(guard);
