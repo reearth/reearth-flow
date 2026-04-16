@@ -104,7 +104,10 @@ fn collect_feature_poly_index(
     {
         let mat = &feature.materials[*mat_id as usize];
         let entry = (|| {
-            let path = mat.base_texture.as_ref()?.uri.to_file_path().ok()?;
+            let texture = mat.base_texture.as_ref()?;
+            let path = texture.uri.to_file_path()
+                .map_err(|_| tracing::error!(uri = %texture.uri, "base_texture URI is not a file path"))
+                .ok()?;
             let path_str = path.to_string_lossy().into_owned();
             let pending = pending_materials
                 .entry(path_str.clone())
