@@ -281,19 +281,23 @@ impl ScaffoldI18nCliCommand {
             )));
         }
 
-        for entry in fs::read_dir(dir)
-            .map_err(|e| crate::errors::Error::init(format!("failed to read dir {}: {e}", dir.display())))?
-        {
-            let entry = entry.map_err(|e| crate::errors::Error::init(format!("failed to read dir entry: {e}")))?;
+        for entry in fs::read_dir(dir).map_err(|e| {
+            crate::errors::Error::init(format!("failed to read dir {}: {e}", dir.display()))
+        })? {
+            let entry = entry.map_err(|e| {
+                crate::errors::Error::init(format!("failed to read dir entry: {e}"))
+            })?;
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
 
-            let content = fs::read_to_string(&path)
-                .map_err(|e| crate::errors::Error::init(format!("failed to read {}: {e}", path.display())))?;
-            let mut root: RootI18nSchema = serde_json::from_str(&content)
-                .map_err(|e| crate::errors::Error::init(format!("failed to parse {}: {e}", path.display())))?;
+            let content = fs::read_to_string(&path).map_err(|e| {
+                crate::errors::Error::init(format!("failed to read {}: {e}", path.display()))
+            })?;
+            let mut root: RootI18nSchema = serde_json::from_str(&content).map_err(|e| {
+                crate::errors::Error::init(format!("failed to parse {}: {e}", path.display()))
+            })?;
 
             // Build a lookup of existing entries by action name
             let mut by_name: HashMap<String, I18nSchema> = root
@@ -326,10 +330,12 @@ impl ScaffoldI18nCliCommand {
 
             root = RootI18nSchema { actions: updated };
 
-            let output = serde_json::to_string_pretty(&root)
-                .map_err(|e| crate::errors::Error::init(format!("failed to serialize {}: {e}", path.display())))?;
-            fs::write(&path, output + "\n")
-                .map_err(|e| crate::errors::Error::init(format!("failed to write {}: {e}", path.display())))?;
+            let output = serde_json::to_string_pretty(&root).map_err(|e| {
+                crate::errors::Error::init(format!("failed to serialize {}: {e}", path.display()))
+            })?;
+            fs::write(&path, output + "\n").map_err(|e| {
+                crate::errors::Error::init(format!("failed to write {}: {e}", path.display()))
+            })?;
 
             eprintln!("  updated {}", path.display());
         }
