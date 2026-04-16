@@ -103,6 +103,9 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (
 	if p.Archived != nil {
 		pb = pb.IsArchived(*p.Archived)
 	}
+	if p.IsLocked != nil {
+		pb = pb.IsLocked(*p.IsLocked)
+	}
 
 	proj, err := pb.Build()
 	if err != nil {
@@ -154,6 +157,10 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 
 	if p.IsBasicAuthActive != nil {
 		prj.SetIsBasicAuthActive(*p.IsBasicAuthActive)
+	}
+
+	if p.IsLocked != nil {
+		prj.SetIsLocked(*p.IsLocked)
 	}
 
 	if p.BasicAuthUsername != nil {

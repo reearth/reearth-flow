@@ -18,6 +18,7 @@ type CreateProjectParam struct {
 	Description *string
 	Archived    *bool
 	WorkspaceID accountsid.WorkspaceID
+	IsLocked    *bool
 }
 
 type UpdateProjectParam struct {
@@ -25,6 +26,7 @@ type UpdateProjectParam struct {
 	Description       *string
 	Archived          *bool
 	IsBasicAuthActive *bool
+	IsLocked          *bool
 	BasicAuthUsername *string
 	BasicAuthPassword *string
 	ID                id.ProjectID

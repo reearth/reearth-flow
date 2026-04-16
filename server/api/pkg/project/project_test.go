@@ -63,6 +63,12 @@ func TestProject_IsBasicAuthActive(t *testing.T) {
 	}
 }
 
+func TestProject_SetIsLocked(t *testing.T) {
+	p := &Project{}
+	p.SetIsLocked(true)
+	assert.Equal(t, true, p.IsLocked())
+}
+
 func TestProject_BasicAuthUsername(t *testing.T) {
 	t.Run("return basic auth username", func(t *testing.T) {
 		p := &Project{basicAuthUsername: "test1"}
