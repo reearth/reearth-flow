@@ -6,6 +6,7 @@ use super::Rect;
 use image::imageops::FilterType;
 use image::{GenericImage, Rgba, RgbaImage};
 
+/// Maps texture path → per-region `(src_rect, atlas_placement)` pairs.
 pub(super) type TextureFrames = HashMap<String, Vec<(Rect, Rect)>>;
 
 fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: Rect, extrusion: u32) {

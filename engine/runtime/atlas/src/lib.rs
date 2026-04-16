@@ -93,13 +93,6 @@ fn empty_atlas(materials: &[TextureMaterial]) -> BuiltAtlas {
     }
 }
 
-fn texture_dimensions(damage_list: &[(PathBuf, TextureDamage)]) -> HashMap<String, (u32, u32)> {
-    damage_list
-        .iter()
-        .map(|(path, td)| (path.to_string_lossy().into_owned(), (td.width, td.height)))
-        .collect()
-}
-
 fn remap_polygon_uvs(
     poly_uvs: &PolygonUVs,
     texture_size: (u32, u32),
@@ -128,7 +121,6 @@ fn build_remapped_uvs(
     downsample: u32,
     atlas_size: (f64, f64),
 ) -> Vec<Option<TextureUVs>> {
-    let texture_sizes = texture_dimensions(damage_list);
     let damage_by_path: HashMap<_, _> = damage_list
         .iter()
         .map(|(path, td)| (path.to_string_lossy().into_owned(), td))
@@ -140,7 +132,7 @@ fn build_remapped_uvs(
             let path = mat.path.to_string_lossy().into_owned();
             let frames = texture_frames.get(&path)?;
             let damage = damage_by_path.get(&path)?;
-            let texture_size = texture_sizes.get(&path).copied().unwrap_or((1, 1));
+            let texture_size = (damage.src_width, damage.src_height);
             Some(
                 mat.uvs
                     .iter()

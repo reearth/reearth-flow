@@ -1,11 +1,13 @@
 use super::Rect;
 
+#[derive(Debug)]
 struct Skyline {
     x: u32,
     y: u32,
     w: u32,
 }
 
+#[derive(Debug)]
 pub struct SkylinePacker {
     max_w: u32,
     max_h: u32,

@@ -8,8 +8,9 @@ use super::{Rect, TextureMaterial};
 
 #[derive(Debug, Clone)]
 pub struct TextureDamage {
-    pub width: u32,
-    pub height: u32,
+    /// Full source image dimensions (pixels), used for UV→pixel conversion.
+    pub src_width: u32,
+    pub src_height: u32,
     /// Disjoint merged damage rects, sorted by area descending.
     pub rects: Vec<Rect>,
     /// For each polygon in `TextureMaterial::uvs`, the merged rect index it belongs to.
@@ -185,8 +186,8 @@ pub fn collect_damage(
             Some((
                 path,
                 TextureDamage {
-                    width,
-                    height,
+                    src_width: width,
+                    src_height: height,
                     rects,
                     polygon_regions,
                 },
@@ -236,7 +237,7 @@ mod tests {
         let mat = make_material(path, &[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
         let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].1.width, 16384);
+        assert_eq!(result[0].1.src_width, 16384);
         assert_eq!(result[0].1.polygon_regions, vec![0]);
     }
 

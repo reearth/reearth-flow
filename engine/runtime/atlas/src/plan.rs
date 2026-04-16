@@ -1,10 +1,6 @@
 use super::skyline::SkylinePacker;
 use super::Rect;
 
-fn ceil_div(value: u32, divisor: u32) -> u32 {
-    value.div_ceil(divisor)
-}
-
 pub(crate) fn estimate_atlas_size_from_dims(dims: &[(u32, u32)], k: u32) -> (u32, u32) {
     if dims.is_empty() {
         return (1, 1);
@@ -14,19 +10,19 @@ pub(crate) fn estimate_atlas_size_from_dims(dims: &[(u32, u32)], k: u32) -> (u32
     let total_area: u64 = dims
         .iter()
         .map(|&(w, h)| {
-            let pw = ceil_div(w, downsample) + 2 * extrusion;
-            let ph = ceil_div(h, downsample) + 2 * extrusion;
+            let pw = w.div_ceil(downsample) + 2 * extrusion;
+            let ph = h.div_ceil(downsample) + 2 * extrusion;
             pw as u64 * ph as u64
         })
         .sum();
     let max_w = dims
         .iter()
-        .map(|&(w, _)| ceil_div(w, downsample) + 2 * extrusion)
+        .map(|&(w, _)| w.div_ceil(downsample) + 2 * extrusion)
         .max()
         .unwrap_or(0);
     let max_h = dims
         .iter()
-        .map(|&(_, h)| ceil_div(h, downsample) + 2 * extrusion)
+        .map(|&(_, h)| h.div_ceil(downsample) + 2 * extrusion)
         .max()
         .unwrap_or(0);
     let side = (total_area as f64).sqrt().ceil() as u32;
@@ -53,8 +49,8 @@ pub(crate) fn try_layout_rects(
         .map(|(i, &(w, h))| {
             (
                 i,
-                ceil_div(w, downsample).max(1),
-                ceil_div(h, downsample).max(1),
+                w.div_ceil(downsample).max(1),
+                h.div_ceil(downsample).max(1),
             )
         })
         .collect();
