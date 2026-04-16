@@ -257,11 +257,7 @@ impl BroadcastGroup {
                         break;
                     },
                     _ = interval.tick() => {
-                        // Acquire write lock to serialize after redis_subscriber_task
-                        // (which also takes write lock to apply updates). This ensures
-                        // the state vector includes all Redis updates applied so far,
-                        // preventing stale SyncStep1 messages that cause position drift.
-                        let awareness = awareness_clone.write().await;
+                        let awareness = awareness_clone.read().await;
                         let txn = awareness.doc().transact();
                         let state_vector = txn.state_vector();
 
