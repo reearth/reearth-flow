@@ -87,9 +87,7 @@ fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
 }
 
 /// Collect per-texture damage rectangles from polygon UV coverages.
-pub fn collect_damage(
-    materials: &[TextureInput],
-) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
+pub fn collect_damage(materials: &[TextureInput]) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
     let mut candidates: HashMap<PathBuf, Vec<DamageRegion>> = HashMap::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
 
