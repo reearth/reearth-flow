@@ -255,31 +255,53 @@ impl ChannelManager {
     }
 
     /// Try to send to each downstream channel; spill to disk if full.
-    /// Spills use the *upstream* port (ctx.port) as key so flush_spill_files
-    /// can pass it to send_file_backed_op which resolves port mapping.
+    ///
+    /// Each sender has one channel shared across all port mappings. If
+    /// try_send fails (channel full) for a sender, the entire feature is
+    /// spilled to disk for that sender. The spill file is later flushed
+    /// via send_file_backed_op which resolves the full port mapping,
+    /// avoiding partial sends and duplicates.
     fn send_op_or_spill(&self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
         for (idx, sender) in self.senders.iter().enumerate() {
             let Some(ports) = sender.port_mapping.get(&ctx.port) else {
                 continue;
             };
-            for port in ports {
-                let op = ExecutorOperation::Op {
-                    ctx: ExecutorContext {
-                        port: port.clone(),
-                        ..ctx.clone()
-                    },
-                };
-                match sender.sender.try_send(op) {
-                    Ok(()) => {}
-                    Err(crossbeam::channel::TrySendError::Full(_)) => {
-                        // Use upstream port as spill key so flush can resolve mapping
-                        self.spill_feature(idx, &ctx.port, &ctx.feature);
+            // Probe with a single try_send to check channel capacity.
+            // If full, spill the feature and skip all ports for this sender.
+            let first_port = match ports.first() {
+                Some(p) => p,
+                None => continue,
+            };
+            let probe = ExecutorOperation::Op {
+                ctx: ExecutorContext {
+                    port: first_port.clone(),
+                    ..ctx.clone()
+                },
+            };
+            match sender.sender.try_send(probe) {
+                Ok(()) => {
+                    // Channel has space. Send remaining mapped ports normally.
+                    // First port already sent via try_send above.
+                    if let Some((_, rest)) = ports.split_first() {
+                        for port in rest {
+                            let op = ExecutorOperation::Op {
+                                ctx: ExecutorContext {
+                                    port: port.clone(),
+                                    ..ctx.clone()
+                                },
+                            };
+                            // These may block but the channel just had space
+                            sender.sender.send(op)?;
+                        }
                     }
-                    Err(crossbeam::channel::TrySendError::Disconnected(_)) => {
-                        return Err(ExecutionError::CannotSendToChannel(
-                            "channel disconnected during spill".to_string(),
-                        ));
-                    }
+                }
+                Err(crossbeam::channel::TrySendError::Full(_)) => {
+                    self.spill_feature(idx, &ctx.port, &ctx.feature);
+                }
+                Err(crossbeam::channel::TrySendError::Disconnected(_)) => {
+                    return Err(ExecutionError::CannotSendToChannel(
+                        "channel disconnected during spill".to_string(),
+                    ));
                 }
             }
         }
