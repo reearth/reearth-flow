@@ -46,7 +46,7 @@ impl Rect {
 }
 
 #[derive(Debug, Clone)]
-pub struct TextureMaterial {
+pub struct TextureInput {
     pub path: PathBuf,
     pub uvs: TextureUVs,
 }
@@ -86,7 +86,7 @@ fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
     ]
 }
 
-fn empty_atlas(materials: &[TextureMaterial]) -> BuiltAtlas {
+fn empty_atlas(materials: &[TextureInput]) -> BuiltAtlas {
     BuiltAtlas {
         image: None,
         remapped_uvs: materials.iter().map(|_| None).collect(),
@@ -115,7 +115,7 @@ fn remap_polygon_uvs(
 }
 
 fn build_remapped_uvs(
-    materials: &[TextureMaterial],
+    materials: &[TextureInput],
     damage_list: &[(PathBuf, TextureDamage)],
     texture_frames: &blit::TextureFrames,
     downsample: u32,
@@ -157,7 +157,7 @@ fn build_remapped_uvs(
 
 /// Pack `materials` into an atlas image and return remapped UVs.
 /// `remapped_uvs[i]` is `Some(remapped_uvs)` if `materials[i]` was packed, `None` if excluded.
-pub fn build_atlas(materials: &[TextureMaterial], max_atlas_size: u32) -> Result<BuiltAtlas> {
+pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<BuiltAtlas> {
     // Stage 1: collect damage rects (reads image headers only).
     let damage_list = collect_damage(materials)?;
     if damage_list.is_empty() {
@@ -201,8 +201,8 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    fn make_material(path: PathBuf, uvs: Vec<(f64, f64)>) -> TextureMaterial {
-        TextureMaterial {
+    fn make_material(path: PathBuf, uvs: Vec<(f64, f64)>) -> TextureInput {
+        TextureInput {
             path,
             uvs: vec![uvs.into_iter().map(|(u, v)| [u, v]).collect()],
         }

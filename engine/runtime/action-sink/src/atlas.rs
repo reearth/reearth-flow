@@ -7,7 +7,7 @@ use earcut::{utils3d::project3d_to_2d, Earcut};
 use flatgeom::MultiPolygon;
 use image::ImageFormat;
 use indexmap::IndexSet;
-use reearth_flow_atlas::{build_atlas, TextureMaterial};
+use reearth_flow_atlas::{build_atlas, TextureInput};
 use reearth_flow_gltf::{calculate_normal, Primitives};
 use reearth_flow_types::{
     material::{self, Material},
@@ -22,7 +22,7 @@ type PolygonUVs = reearth_flow_atlas::PolygonUVs;
 type PolyAtlasIndex = Vec<Vec<Option<(usize, usize)>>>;
 type PendingPolyAtlasIndex = Vec<Vec<Option<(String, usize)>>>;
 
-struct PendingTextureMaterial {
+struct PendingTextureInput {
     path: std::path::PathBuf,
     uvs: Vec<PolygonUVs>,
     wrapping: bool,
@@ -69,8 +69,8 @@ pub fn build_atlas_geometry(
     Ok(())
 }
 
-fn collect_atlas_inputs(features: &[&GltfFeature]) -> (Vec<TextureMaterial>, PolyAtlasIndex) {
-    let mut pending_materials: HashMap<String, PendingTextureMaterial> = HashMap::new();
+fn collect_atlas_inputs(features: &[&GltfFeature]) -> (Vec<TextureInput>, PolyAtlasIndex) {
+    let mut pending_materials: HashMap<String, PendingTextureInput> = HashMap::new();
     let mut material_order: Vec<String> = Vec::new();
     let mut poly_index: PendingPolyAtlasIndex = Vec::new();
 
@@ -91,7 +91,7 @@ fn collect_atlas_inputs(features: &[&GltfFeature]) -> (Vec<TextureMaterial>, Pol
 
 fn collect_feature_poly_index(
     feature: &GltfFeature,
-    pending_materials: &mut HashMap<String, PendingTextureMaterial>,
+    pending_materials: &mut HashMap<String, PendingTextureInput>,
     material_order: &mut Vec<String>,
 ) -> Vec<Option<(String, usize)>> {
     let mut polygon_mappings = Vec::new();
@@ -109,7 +109,7 @@ fn collect_feature_poly_index(
                 .entry(path_str.clone())
                 .or_insert_with(|| {
                     material_order.push(path_str.clone());
-                    PendingTextureMaterial {
+                    PendingTextureInput {
                         path,
                         uvs: Vec::new(),
                         wrapping: false,
@@ -140,8 +140,8 @@ fn collect_feature_poly_index(
 
 fn finalize_texture_materials(
     material_order: Vec<String>,
-    mut pending_materials: HashMap<String, PendingTextureMaterial>,
-) -> (Vec<TextureMaterial>, HashMap<String, usize>) {
+    mut pending_materials: HashMap<String, PendingTextureInput>,
+) -> (Vec<TextureInput>, HashMap<String, usize>) {
     let mut texture_materials = Vec::new();
     let mut path_to_mat_idx = HashMap::new();
 
@@ -153,7 +153,7 @@ fn finalize_texture_materials(
             continue;
         }
         let mat_idx = texture_materials.len();
-        texture_materials.push(TextureMaterial {
+        texture_materials.push(TextureInput {
             path: pending.path,
             uvs: pending.uvs,
         });
@@ -183,7 +183,7 @@ fn finalize_poly_index(
 }
 
 fn build_atlas_artifacts(
-    texture_materials: &[TextureMaterial],
+    texture_materials: &[TextureInput],
     atlas_dir: &Path,
     image_format: ImageFormat,
     ext: &str,

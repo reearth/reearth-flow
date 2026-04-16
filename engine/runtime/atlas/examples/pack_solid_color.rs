@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use image::{ImageBuffer, ImageFormat, Rgb, RgbImage};
-use reearth_flow_atlas::{build_atlas, TextureMaterial};
+use reearth_flow_atlas::{build_atlas, TextureInput};
 
 const MAX_ATLAS_SIZE: u32 = 1024;
 
@@ -45,8 +45,8 @@ fn parse_dims(line: &str, line_no: usize) -> Result<(u32, u32), String> {
     Ok((w, h))
 }
 
-fn make_material(path: PathBuf) -> TextureMaterial {
-    TextureMaterial {
+fn make_material(path: PathBuf) -> TextureInput {
+    TextureInput {
         path,
         uvs: vec![vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]],
     }

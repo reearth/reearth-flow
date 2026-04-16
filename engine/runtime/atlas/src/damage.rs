@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use rstar::{RTree, RTreeObject, AABB};
 
-use super::{Rect, TextureMaterial};
+use super::{Rect, TextureInput};
 
 #[derive(Debug, Clone)]
 pub struct TextureDamage {
@@ -13,7 +13,7 @@ pub struct TextureDamage {
     pub src_height: u32,
     /// Disjoint merged damage rects, sorted by area descending.
     pub rects: Vec<Rect>,
-    /// For each polygon in `TextureMaterial::uvs`, the merged rect index it belongs to.
+    /// For each polygon in `TextureInput::uvs`, the merged rect index it belongs to.
     pub polygon_regions: Vec<usize>,
 }
 
@@ -88,7 +88,7 @@ fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
 
 /// Collect per-texture damage rectangles from polygon UV coverages.
 pub fn collect_damage(
-    materials: &[TextureMaterial],
+    materials: &[TextureInput],
 ) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
     let mut candidates: HashMap<PathBuf, Vec<DamageRegion>> = HashMap::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
@@ -213,7 +213,7 @@ mod tests {
     use std::path::Path;
     use tempfile::TempDir;
 
-    use super::super::TextureMaterial;
+    use super::super::TextureInput;
 
     fn create_texture(dir: &Path, name: &str, w: u32, h: u32) -> PathBuf {
         use image::{ImageBuffer, Rgb};
@@ -223,8 +223,8 @@ mod tests {
         path
     }
 
-    fn make_material(path: PathBuf, uvs: &[(f64, f64)]) -> TextureMaterial {
-        TextureMaterial {
+    fn make_material(path: PathBuf, uvs: &[(f64, f64)]) -> TextureInput {
+        TextureInput {
             path,
             uvs: vec![uvs.iter().map(|&(u, v)| [u, v]).collect()],
         }
@@ -245,7 +245,7 @@ mod tests {
     fn test_disjoint_uvs_produce_two_rects() {
         let tmp = TempDir::new().unwrap();
         let path = create_texture(tmp.path(), "t.png", 100, 100);
-        let mat = TextureMaterial {
+        let mat = TextureInput {
             path,
             uvs: vec![
                 vec![[0.0, 0.5], [0.3, 0.5], [0.3, 1.0], [0.0, 1.0]],
@@ -266,7 +266,7 @@ mod tests {
     fn test_overlapping_uvs_merge() {
         let tmp = TempDir::new().unwrap();
         let path = create_texture(tmp.path(), "t.png", 100, 100);
-        let mat = TextureMaterial {
+        let mat = TextureInput {
             path,
             uvs: vec![
                 vec![[0.0, 0.0], [0.6, 0.0], [0.6, 1.0], [0.0, 1.0]],
