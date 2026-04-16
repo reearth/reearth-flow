@@ -151,7 +151,8 @@ fn build_remapped_uvs(
 }
 
 /// Pack `materials` into an atlas image and return remapped UVs.
-/// Returns `None` if no damageable texture regions were found (e.g. all files unreadable).
+/// Returns `Ok(None)` if there are no UV polygons to pack (empty materials or all UVs empty).
+/// Returns `Err` if any texture file cannot be read.
 pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Option<BuiltAtlas>> {
     // Stage 1: collect damage rects (reads image headers only).
     let damage_list = collect_damage(materials)?;

@@ -99,8 +99,6 @@ pub fn plan_layout(dims: &[(u32, u32)], max_atlas_size: u32) -> super::Result<su
         });
     }
     // `virtual_w/h` is the estimated canvas in original (pre-downsampling) pixel space.
-    // Doubling grows the canvas at k=0; once the larger dimension exceeds max_atlas_size,
-    // needed_k increments to keep the physical atlas within bounds. Both k and canvas are derived.
     let (mut virtual_w, mut virtual_h) = estimate_atlas_size_from_dims(dims, 0);
     loop {
         let k = needed_k(virtual_w.max(virtual_h), max_atlas_size);
