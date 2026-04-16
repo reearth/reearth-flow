@@ -57,7 +57,7 @@ Each action defines input/output ports, JSON schema for validation, and paramete
 
 ### Adding New Actions
 
-Use the `/add-action` skill for a full step-by-step guide including i18n workflow.
+Use the `add-action` skill for a full step-by-step guide including i18n workflow.
 
 ## Key Constraints
 
