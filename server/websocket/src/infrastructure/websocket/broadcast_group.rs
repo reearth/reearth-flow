@@ -22,10 +22,11 @@ use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
 use yrs::sync::{Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
-use yrs::{Doc, ReadTxn, Transact, Update};
+use yrs::{Doc, Map, ReadTxn, Transact, Update};
 
 use super::redis_channels::RedisChannels;
 use crate::domain::value_objects::broadcast::BroadcastConfig;
+use tokio_util::sync::CancellationToken;
 
 pub struct BroadcastGroup {
     pub(crate) awareness_ref: AwarenessRef,
@@ -39,6 +40,9 @@ pub struct BroadcastGroup {
     shutdown_handle: Arc<Mutex<Option<ShutdownHandle>>>,
     pub(crate) connections_count: ConnectionCounter,
     redis_channels: RedisChannels,
+    /// Cancellation token used to signal all per-connection tasks (sink_task,
+    /// stream_task) to stop. Cancelled during force-evict on rollback.
+    cancel_token: CancellationToken,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -253,7 +257,11 @@ impl BroadcastGroup {
                         break;
                     },
                     _ = interval.tick() => {
-                        let awareness = awareness_clone.read().await;
+                        // Acquire write lock to serialize after redis_subscriber_task
+                        // (which also takes write lock to apply updates). This ensures
+                        // the state vector includes all Redis updates applied so far,
+                        // preventing stale SyncStep1 messages that cause position drift.
+                        let awareness = awareness_clone.write().await;
                         let txn = awareness.doc().transact();
                         let state_vector = txn.state_vector();
 
@@ -278,6 +286,7 @@ impl BroadcastGroup {
             redis_store,
             doc_name,
             last_read_id,
+            cancel_token: CancellationToken::new(),
             shutdown_handle: Arc::new(Mutex::new(Some(ShutdownHandle {
                 awareness_updater,
                 awareness_shutdown_tx,
@@ -299,6 +308,44 @@ impl BroadcastGroup {
 
     pub fn get_redis_store(&self) -> &Arc<RedisStore> {
         &self.redis_store
+    }
+
+    /// Write `rollbackInProgress = true` to the live in-memory Y-doc metadata map.
+    /// The `doc_sub` observer broadcasts this to all currently connected clients
+    /// via the existing Yjs sync protocol. This flag is intentionally NOT persisted
+    /// to GCS — it only serves as a transient signal to connected clients before
+    /// the group is evicted. Reconnecting clients load the rolled-back state from
+    /// GCS, which does not contain this flag.
+    pub async fn signal_rollback(&self) {
+        let awareness = self.awareness_ref.write().await;
+        let doc = awareness.doc();
+        let metadata = doc.get_or_insert_map("metadata");
+        let mut txn = doc.transact_mut();
+        metadata.insert(&mut txn, "rollbackInProgress", true);
+        // Dropping txn triggers the observe_update_v1 callback,
+        // which encodes and broadcasts the update to all clients.
+    }
+
+    /// Shut down background tasks, cancel all per-connection tasks, and clean
+    /// up heartbeat without flushing the in-memory doc state to GCS. Used after
+    /// rollback, where the rolled-back state has already been persisted separately.
+    /// Cancelling the token causes all sink_task loops to exit, which closes
+    /// the WebSocket connections even though Arc<BroadcastGroup> refs still exist.
+    pub async fn shutdown_without_flush(&self) -> Result<()> {
+        self.cancel_token.cancel();
+        if let Ok(mut guard) = self.shutdown_handle.try_lock() {
+            if let Some(handle) = guard.take() {
+                handle.shutdown_sync();
+            }
+        }
+        let client_id = {
+            let awareness_read = self.awareness_ref.read().await;
+            awareness_read.client_id()
+        };
+        self.redis_store
+            .remove_instance_heartbeat(&self.doc_name, &client_id)
+            .await?;
+        Ok(())
     }
 
     pub fn get_last_read_id(&self) -> &Arc<Mutex<String>> {
@@ -325,22 +372,31 @@ impl BroadcastGroup {
         let sink_task = {
             let sender = self.sender.clone();
             let sink = sink.clone();
+            let cancel = self.cancel_token.clone();
             tokio::spawn(async move {
                 let mut rx = sender.subscribe();
                 loop {
-                    match rx.recv().await {
-                        Ok(msg) => {
-                            let mut sink = sink.lock().await;
-                            if sink.send(msg).await.is_err() {
-                                return Ok(());
-                            }
-                        }
-                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                            warn!("Client lagged by {} messages, recovering", n);
-                            continue;
-                        }
-                        Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    select! {
+                        _ = cancel.cancelled() => {
+                            info!("Connection cancelled (rollback or force-evict)");
                             return Ok(());
+                        }
+                        result = rx.recv() => {
+                            match result {
+                                Ok(msg) => {
+                                    let mut sink = sink.lock().await;
+                                    if sink.send(msg).await.is_err() {
+                                        return Ok(());
+                                    }
+                                }
+                                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                                    warn!("Client lagged by {} messages, recovering", n);
+                                    continue;
+                                }
+                                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                                    return Ok(());
+                                }
+                            }
                         }
                     }
                 }
