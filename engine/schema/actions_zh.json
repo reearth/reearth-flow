@@ -3,7 +3,7 @@
     {
       "name": "AppearanceRemover",
       "type": "processor",
-      "description": "Removes appearance information (materials, textures) from CityGML geometry",
+      "description": "从CityGML几何体中移除外观信息（材质、纹理）",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -19,7 +19,7 @@
     {
       "name": "AreaCalculator",
       "type": "processor",
-      "description": "Calculates the planar or sloped area of polygon geometries and adds the results as attributes",
+      "description": "计算多边形几何体的平面或坡面面积，并将结果作为属性添加",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AreaCalculator Parameters",
@@ -827,7 +827,7 @@
     {
       "name": "BoundaryExtractor",
       "type": "processor",
-      "description": "Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry",
+      "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BoundaryExtractor Parameters",
@@ -1160,7 +1160,7 @@
     {
       "name": "CSGBuilder",
       "type": "processor",
-      "description": "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator.",
+      "description": "从一对（左、右）实体几何体构建构造实体几何（CSG）表示。检测并集、交集和差集（左-右），但不计算结果几何体。使用CSGEvaluator来评估CSG树。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Builder Parameters",
@@ -1220,7 +1220,7 @@
     {
       "name": "CSGEvaluator",
       "type": "processor",
-      "description": "Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.",
+      "description": "对构造实体几何（CSG）树进行求值以生成实体几何体。接受CSG表示，计算布尔运算产生的网格。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Evaluator Parameters",
@@ -1420,7 +1420,7 @@
     {
       "name": "CityGmlReader",
       "type": "source",
-      "description": "Reads 3D city models from CityGML files.",
+      "description": "从CityGML文件读取3D城市模型",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlReader Parameters",
@@ -1476,7 +1476,7 @@
     {
       "name": "CityGmlWriter",
       "type": "sink",
-      "description": "Writes features to CityGML 2.0 files",
+      "description": "将要素写入CityGML 2.0文件",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -1619,7 +1619,7 @@
     {
       "name": "CoordinateExtractor",
       "type": "processor",
-      "description": "Extracts coordinates from geometry vertices into feature attributes",
+      "description": "从几何体顶点中提取坐标作为要素属性",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Coordinate Extractor Parameters",
@@ -1935,7 +1935,7 @@
     {
       "name": "CsvWriter",
       "type": "sink",
-      "description": "Writes features to CSV or TSV files.",
+      "description": "将要素写入CSV或TSV文件",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvWriter Parameters",
@@ -2322,7 +2322,7 @@
     {
       "name": "DateTimeConverter",
       "type": "processor",
-      "description": "Convert datetime values between different formats",
+      "description": "在不同格式之间转换日期时间值",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "DateTimeConverter Parameters",
@@ -2708,7 +2708,7 @@
     {
       "name": "ExcelWriter",
       "type": "sink",
-      "description": "Writes features to Microsoft Excel format (.xlsx files).",
+      "description": "将要素写入Microsoft Excel格式（.xlsx文件）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ExcelWriter Parameters",
@@ -2792,7 +2792,7 @@
     {
       "name": "FeatureCityGml3Reader",
       "type": "processor",
-      "description": "Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across files",
+      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCityGml3Reader Parameters",
@@ -3122,7 +3122,7 @@
     {
       "name": "FeatureJoiner",
       "type": "processor",
-      "description": "Joins requestor and supplier features based on matching attribute values with configurable join types",
+      "description": "基于匹配的属性值，以可配置的连接类型连接请求要素和供给要素",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureJoiner Parameters",
@@ -3928,7 +3928,7 @@
     {
       "name": "FootprintReplacer",
       "type": "processor",
-      "description": "Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)",
+      "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4394,7 +4394,7 @@
     {
       "name": "GeometryPartExtractor",
       "type": "processor",
-      "description": "Extract geometry parts (surfaces) from 3D geometries as separate features",
+      "description": "将3D几何体中的几何部件（面）提取为单独的要素",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Part Extractor Parameters",
@@ -4442,7 +4442,7 @@
     {
       "name": "GeometryRemover",
       "type": "processor",
-      "description": "Removes geometry from a feature",
+      "description": "从要素中移除几何体",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4665,7 +4665,7 @@
     {
       "name": "GltfReader",
       "type": "source",
-      "description": "Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives",
+      "description": "从glTF 2.0文件读取3D模型，支持网格、节点、场景和几何图元",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GltfReaderParam",
@@ -4791,7 +4791,7 @@
     {
       "name": "GridDivider",
       "type": "processor",
-      "description": "Divide Polygons into Regular Grid Cells",
+      "description": "将多边形划分为规则网格单元",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GridDivider Parameters",
@@ -6140,7 +6140,7 @@
     {
       "name": "ImageRasterizer",
       "type": "processor",
-      "description": "Convert vector geometries to raster image format",
+      "description": "将矢量几何体转换为栅格图像格式",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Image Rasterizer Parameters",
@@ -6290,7 +6290,7 @@
     {
       "name": "JSONFragmenter",
       "type": "processor",
-      "description": "Fragments JSON documents into individual features based on a JSONPath query",
+      "description": "根据JSONPath查询将JSON文档分割为单独的要素",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JSONFragmenter Parameters",
@@ -6425,7 +6425,7 @@
     {
       "name": "JsonReader",
       "type": "source",
-      "description": "Reads features from JSON files, supporting both single objects and arrays of objects.",
+      "description": "从JSON文件读取要素，支持单个对象和对象数组",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JsonReader Parameters",
@@ -6475,7 +6475,7 @@
     {
       "name": "JsonWriter",
       "type": "sink",
-      "description": "Writes features to JSON files.",
+      "description": "将要素写入JSON文件",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JsonWriter Parameters",
@@ -6576,7 +6576,7 @@
     {
       "name": "ListConcatenator",
       "type": "processor",
-      "description": "Extracts a specific attribute from each element in a list and concatenates them into a single string",
+      "description": "从列表的每个元素中提取特定属性，并将其连接成单个字符串",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ListConcatenator Parameters",
@@ -6677,7 +6677,7 @@
     {
       "name": "ListIndexer",
       "type": "processor",
-      "description": "Copies attributes from a specific list element to become the main attributes of a feature",
+      "description": "将特定列表元素的属性复制为要素的主要属性",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ListIndexer Parameters",
@@ -6850,7 +6850,7 @@
     {
       "name": "NeighborFinder",
       "type": "processor",
-      "description": "Finds the closest candidate features for each base feature based on spatial proximity",
+      "description": "基于空间邻近性，为每个基础要素找到最近的候选要素",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "NeighborFinder Parameters",
@@ -7027,7 +7027,7 @@
     {
       "name": "NullAttributeMapper",
       "type": "processor",
-      "description": "Replace null-like attribute values with configured defaults",
+      "description": "用配置的默认值替换空属性值",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "NullAttributeMapperParams",
@@ -7180,7 +7180,7 @@
     {
       "name": "ObjReader",
       "type": "source",
-      "description": "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials",
+      "description": "从Wavefront OBJ文件读取3D模型，支持顶点、面、法线、纹理坐标和材质",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ObjReader Parameters",
@@ -7274,7 +7274,7 @@
     {
       "name": "ObjWriter",
       "type": "sink",
-      "description": "Writes 3D features to Wavefront OBJ format with optional material (MTL) files",
+      "description": "将3D要素写入Wavefront OBJ格式，可选包含材质（MTL）文件",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "OBJ Writer Parameters",
@@ -7713,7 +7713,7 @@
     {
       "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
       "type": "processor",
-      "description": "Checks BuildingInstallation's geometry type",
+      "description": "检查BuildingInstallation的几何体类型",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -7729,7 +7729,7 @@
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
       "type": "processor",
-      "description": "Check connectivity between BuildingParts within the same Building using 3D boundary surface matching",
+      "description": "使用3D边界面匹配检查同一建筑内BuildingPart之间的连通性",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BuildingPartConnectivityChecker Parameters",
@@ -7798,7 +7798,7 @@
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
-      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
+      "description": "通过检查必要属性的存在性和城市代码的正确性来验证建筑用途属性。如发现问题，通过lBldgError和codeError端口输出错误。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BuildingUsageAttributeValidatorParam",
@@ -7881,7 +7881,7 @@
     {
       "name": "PLATEAU4.CityGmlMeshBuilder",
       "type": "processor",
-      "description": "Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exactly 4 vertices, (2) each triangle is closed (first vertex equals last vertex)",
+      "description": "通过解析原始XML验证CityGML网格三角形：(1)每个三角形恰好有4个顶点，(2)每个三角形是闭合的（首顶点等于末顶点）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGML Mesh Builder Parameters",
@@ -7941,7 +7941,7 @@
     {
       "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
       "type": "processor",
-      "description": "Checks if a CompositeSurface is continuous (all parts share edges)",
+      "description": "检查CompositeSurface是否连续（所有部分共享边）",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -7959,7 +7959,7 @@
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
       "type": "processor",
-      "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
+      "description": "提取PLATEAU目标文件的日本标准区域网格代码并作为属性添加",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "PLATEAU Destination MeshCode Extractor Parameters",
@@ -8053,7 +8053,7 @@
     {
       "name": "PLATEAU4.FaceExtractor",
       "type": "processor",
-      "description": "Validates individual surfaces of WaterBody features for TIN mesh quality",
+      "description": "验证WaterBody要素的各个面的TIN网格质量",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FaceExtractor Parameters",
@@ -8093,7 +8093,7 @@
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
       "type": "processor",
-      "description": "Generates TIN-based surfaces from flood area polygons for efficient 3D tile generation. Optionally groups features by attribute before combining and triangulating.",
+      "description": "从洪水区域多边形生成基于TIN的面，用于高效生成3D瓦片。可选在合并和三角剖分前按属性分组要素。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FloodingAreaSurfaceGenerator Parameters",
@@ -8148,7 +8148,7 @@
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
       "type": "processor",
-      "description": "Validates that gml:name elements have codeSpace attributes (coded values)",
+      "description": "验证gml:name元素是否具有codeSpace属性（编码值）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GmlNameCodeSpaceValidator Parameters",
@@ -8299,7 +8299,7 @@
     {
       "name": "PLATEAU4.SolarCityGmlAttributeInserter",
       "type": "processor",
-      "description": "Inserts solar radiation measurement attributes into original CityGML files",
+      "description": "将太阳辐射测量属性插入原始CityGML文件",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlAttributeInserterParam",
@@ -8411,7 +8411,7 @@
     {
       "name": "PLATEAU4.SolarPositionCalculator",
       "type": "processor",
-      "description": "Calculates solar position (altitude and azimuth) for geographic features using Spencer's algorithm",
+      "description": "使用Spencer算法计算地理要素的太阳位置（高度角和方位角）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolarPositionCalculatorParam",
@@ -8616,7 +8616,7 @@
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
       "type": "processor",
-      "description": "Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing",
+      "description": "从AreaOnAreaOverlayer的输出创建用于实体相交测试的要素对",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolidIntersectionTestPairCreatorParam",
@@ -8654,7 +8654,7 @@
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "type": "processor",
-      "description": "Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)",
+      "description": "检测PLATEAU交通模型中的未引用面（L-TRAN-03）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "TransportationXlinkDetectorParam",
@@ -8746,7 +8746,7 @@
     {
       "name": "PLATEAU4.UnmatchedXlinkDetector",
       "type": "processor",
-      "description": "Detect unmatched Xlinks for PLATEAU",
+      "description": "检测PLATEAU中不匹配的Xlink",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -8764,7 +8764,7 @@
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
       "type": "processor",
-      "description": "Detect unshared edges in triangular meshes - edges that appear only once. REQUIRES: Input geometries must be in a projected coordinate system (meters). Use HorizontalReprojector before this action if input is in geographic coordinates.",
+      "description": "检测三角网格中的非共享边——只出现一次的边。要求：输入几何体必须在投影坐标系（米）中。如果输入为地理坐标，请先使用HorizontalReprojector。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "UnsharedEdgeDetector Parameters",
@@ -8879,7 +8879,7 @@
     {
       "name": "PolygonNormalExtractor",
       "type": "processor",
-      "description": "Extract normal vectors and other properties for polygon features",
+      "description": "提取多边形要素的法向量和其他属性",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -8895,7 +8895,7 @@
     {
       "name": "PythonScriptProcessor",
       "type": "processor",
-      "description": "Execute Python Scripts with Geospatial Data Processing",
+      "description": "执行用于地理空间数据处理的Python脚本",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "PythonScriptProcessorParam",
@@ -8965,7 +8965,7 @@
     {
       "name": "RayIntersector",
       "type": "processor",
-      "description": "Computes intersection points between rays and geometries",
+      "description": "计算射线与几何体之间的交点",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "RayIntersectorParams",
@@ -9222,7 +9222,7 @@
     {
       "name": "Rotator3D",
       "type": "processor",
-      "description": "Rotate a 3D polygon using from/to vectors or axis-angle specification",
+      "description": "使用起止向量或轴角规格旋转3D多边形",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Rotator3D Parameters",
@@ -9388,7 +9388,7 @@
     {
       "name": "ShapefileReader",
       "type": "source",
-      "description": "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)",
+      "description": "从Shapefile存档（包含.shp、.dbf、.shx的.zip文件）读取地理要素",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileReader Parameters",
@@ -9508,7 +9508,7 @@
     {
       "name": "SolidBoundaryValidator",
       "type": "processor",
-      "description": "Validates the Solid Boundary Geometry",
+      "description": "验证实体边界几何体",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Solid Boundary Validator Parameters",
@@ -9550,7 +9550,7 @@
     {
       "name": "SpatialFilter",
       "type": "processor",
-      "description": "Filter Features by Spatial Relationship",
+      "description": "按空间关系过滤要素",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SpatialFilter Parameters",
@@ -9921,7 +9921,7 @@
     {
       "name": "ThreeDimensionForcer",
       "type": "processor",
-      "description": "Convert 2D Geometry to 3D by Adding Z-Coordinates",
+      "description": "通过添加Z坐标（高程）将2D几何体转换为3D",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ThreeDimensionForcer Parameters",
@@ -10100,7 +10100,7 @@
     {
       "name": "VertexCounter",
       "type": "processor",
-      "description": "Count Geometry Vertices to Attribute",
+      "description": "计算几何体顶点数并作为属性存储",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Vertex Counter Parameters",
@@ -10314,7 +10314,7 @@
     {
       "name": "XmlWriter",
       "type": "sink",
-      "description": "Writes features to XML files.",
+      "description": "将要素写入XML文件",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XmlWriter Parameters",

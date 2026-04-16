@@ -3,7 +3,7 @@
     {
       "name": "AppearanceRemover",
       "type": "processor",
-      "description": "Removes appearance information (materials, textures) from CityGML geometry",
+      "description": "CityGMLジオメトリから外観情報（マテリアル、テクスチャ）を削除する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -830,7 +830,7 @@
     {
       "name": "BoundaryExtractor",
       "type": "processor",
-      "description": "Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry",
+      "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BoundaryExtractor Parameters",
@@ -1163,7 +1163,7 @@
     {
       "name": "CSGBuilder",
       "type": "processor",
-      "description": "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator.",
+      "description": "一対のソリッドジオメトリ（左・右）からCSG（構成的立体幾何学）表現を構築する。和・積・差（左－右）を検出するが、結果ジオメトリは計算しない。ツリーを評価するにはCSGEvaluatorを使用してください。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Builder Parameters",
@@ -1223,7 +1223,7 @@
     {
       "name": "CSGEvaluator",
       "type": "processor",
-      "description": "Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.",
+      "description": "CSG（構成的立体幾何学）ツリーを評価してソリッドジオメトリを生成する。CSG表現を受け取り、ブール演算から得られるメッシュを計算する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Evaluator Parameters",
@@ -1423,7 +1423,7 @@
     {
       "name": "CityGmlReader",
       "type": "source",
-      "description": "Reads 3D city models from CityGML files.",
+      "description": "CityGMLファイルから3D都市モデルを読み込む",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlReader Parameters",
@@ -1479,7 +1479,7 @@
     {
       "name": "CityGmlWriter",
       "type": "sink",
-      "description": "Writes features to CityGML 2.0 files",
+      "description": "地物をCityGML 2.0ファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -1622,7 +1622,7 @@
     {
       "name": "CoordinateExtractor",
       "type": "processor",
-      "description": "Extracts coordinates from geometry vertices into feature attributes",
+      "description": "ジオメトリの頂点から座標を地物の属性として抽出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Coordinate Extractor Parameters",
@@ -1938,7 +1938,7 @@
     {
       "name": "CsvWriter",
       "type": "sink",
-      "description": "Writes features to CSV or TSV files.",
+      "description": "地物をCSVまたはTSVファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvWriter Parameters",
@@ -2325,7 +2325,7 @@
     {
       "name": "DateTimeConverter",
       "type": "processor",
-      "description": "Convert datetime values between different formats",
+      "description": "日時値を異なるフォーマット間で変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "DateTimeConverter Parameters",
@@ -2711,7 +2711,7 @@
     {
       "name": "ExcelWriter",
       "type": "sink",
-      "description": "Writes features to Microsoft Excel format (.xlsx files).",
+      "description": "地物をMicrosoft Excel形式（.xlsx）に書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ExcelWriter Parameters",
@@ -2795,7 +2795,7 @@
     {
       "name": "FeatureCityGml3Reader",
       "type": "processor",
-      "description": "Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across files",
+      "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCityGml3Reader Parameters",
@@ -3125,7 +3125,7 @@
     {
       "name": "FeatureJoiner",
       "type": "processor",
-      "description": "Joins requestor and supplier features based on matching attribute values with configurable join types",
+      "description": "設定可能な結合タイプで、一致する属性値に基づいてリクエスタとサプライヤの地物を結合する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureJoiner Parameters",
@@ -3931,7 +3931,7 @@
     {
       "name": "FootprintReplacer",
       "type": "processor",
-      "description": "Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)",
+      "description": "3DジオメトリをXY平面に投影して結合フットプリントを計算する（ソリッド、サーフェス、CityGML対応）",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4397,7 +4397,7 @@
     {
       "name": "GeometryPartExtractor",
       "type": "processor",
-      "description": "Extract geometry parts (surfaces) from 3D geometries as separate features",
+      "description": "3Dジオメトリからジオメトリパーツ（サーフェス）を個別の地物として抽出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Part Extractor Parameters",
@@ -4445,7 +4445,7 @@
     {
       "name": "GeometryRemover",
       "type": "processor",
-      "description": "Removes geometry from a feature",
+      "description": "地物からジオメトリを削除する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4668,7 +4668,7 @@
     {
       "name": "GltfReader",
       "type": "source",
-      "description": "Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives",
+      "description": "glTF 2.0ファイルから3Dモデルを読み込む。メッシュ、ノード、シーン、ジオメトリプリミティブに対応",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GltfReaderParam",
@@ -4794,7 +4794,7 @@
     {
       "name": "GridDivider",
       "type": "processor",
-      "description": "Divide Polygons into Regular Grid Cells",
+      "description": "ポリゴンを規則的なグリッドセルに分割する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GridDivider Parameters",
@@ -6143,7 +6143,7 @@
     {
       "name": "ImageRasterizer",
       "type": "processor",
-      "description": "Convert vector geometries to raster image format",
+      "description": "ベクターデータをラスター画像形式に変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Image Rasterizer Parameters",
@@ -6293,7 +6293,7 @@
     {
       "name": "JSONFragmenter",
       "type": "processor",
-      "description": "Fragments JSON documents into individual features based on a JSONPath query",
+      "description": "JSONPathクエリに基づいてJSONドキュメントを個別の地物に分割する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JSONFragmenter Parameters",
@@ -6428,7 +6428,7 @@
     {
       "name": "JsonReader",
       "type": "source",
-      "description": "Reads features from JSON files, supporting both single objects and arrays of objects.",
+      "description": "JSONファイルから地物を読み込む。単一オブジェクトとオブジェクトの配列に対応",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JsonReader Parameters",
@@ -6478,7 +6478,7 @@
     {
       "name": "JsonWriter",
       "type": "sink",
-      "description": "Writes features to JSON files.",
+      "description": "地物をJSONファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JsonWriter Parameters",
@@ -6579,7 +6579,7 @@
     {
       "name": "ListConcatenator",
       "type": "processor",
-      "description": "Extracts a specific attribute from each element in a list and concatenates them into a single string",
+      "description": "リストの各要素から特定の属性を取り出し、一つの文字列に連結する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ListConcatenator Parameters",
@@ -6680,7 +6680,7 @@
     {
       "name": "ListIndexer",
       "type": "processor",
-      "description": "Copies attributes from a specific list element to become the main attributes of a feature",
+      "description": "特定のリスト要素の属性を地物のメイン属性としてコピーする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ListIndexer Parameters",
@@ -6853,7 +6853,7 @@
     {
       "name": "NeighborFinder",
       "type": "processor",
-      "description": "Finds the closest candidate features for each base feature based on spatial proximity",
+      "description": "空間的な近接性に基づいて、各基本地物に対して最も近い候補地物を見つける",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "NeighborFinder Parameters",
@@ -7030,7 +7030,7 @@
     {
       "name": "NullAttributeMapper",
       "type": "processor",
-      "description": "Replace null-like attribute values with configured defaults",
+      "description": "null値の属性を設定されたデフォルト値に置き換える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "NullAttributeMapperParams",
@@ -7183,7 +7183,7 @@
     {
       "name": "ObjReader",
       "type": "source",
-      "description": "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials",
+      "description": "Wavefront OBJファイルから3Dモデルを読み込む。頂点、面、法線、テクスチャ座標、マテリアルに対応",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ObjReader Parameters",
@@ -7277,7 +7277,7 @@
     {
       "name": "ObjWriter",
       "type": "sink",
-      "description": "Writes 3D features to Wavefront OBJ format with optional material (MTL) files",
+      "description": "3D地物をWavefront OBJ形式で書き出す。オプションのマテリアル（MTL）ファイルに対応",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "OBJ Writer Parameters",
@@ -7716,7 +7716,7 @@
     {
       "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
       "type": "processor",
-      "description": "Checks BuildingInstallation's geometry type",
+      "description": "BuildingInstallationのジオメトリタイプを確認する",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -7732,7 +7732,7 @@
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
       "type": "processor",
-      "description": "Check connectivity between BuildingParts within the same Building using 3D boundary surface matching",
+      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BuildingPartConnectivityChecker Parameters",
@@ -7801,7 +7801,7 @@
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
-      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
+      "description": "必須属性の存在と都市コードの正確性を確認して建物用途属性を検証する。問題が見つかった場合はlBldgErrorおよびcodeErrorポートからエラーを出力する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BuildingUsageAttributeValidatorParam",
@@ -7884,7 +7884,7 @@
     {
       "name": "PLATEAU4.CityGmlMeshBuilder",
       "type": "processor",
-      "description": "Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exactly 4 vertices, (2) each triangle is closed (first vertex equals last vertex)",
+      "description": "生のXMLを解析してCityGMLメッシュの三角形を検証する：(1) 各三角形は正確に4つの頂点を持つ、(2) 各三角形は閉じている（最初の頂点と最後の頂点が一致する）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGML Mesh Builder Parameters",
@@ -7944,7 +7944,7 @@
     {
       "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
       "type": "processor",
-      "description": "Checks if a CompositeSurface is continuous (all parts share edges)",
+      "description": "CompositeSurfaceが連続しているか（すべての部分がエッジを共有しているか）を確認する",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -7962,7 +7962,7 @@
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
       "type": "processor",
-      "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
+      "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "PLATEAU Destination MeshCode Extractor Parameters",
@@ -8056,7 +8056,7 @@
     {
       "name": "PLATEAU4.FaceExtractor",
       "type": "processor",
-      "description": "Validates individual surfaces of WaterBody features for TIN mesh quality",
+      "description": "WaterBody地物の個別サーフェスをTINメッシュ品質の観点から検証する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FaceExtractor Parameters",
@@ -8096,7 +8096,7 @@
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
       "type": "processor",
-      "description": "Generates TIN-based surfaces from flood area polygons for efficient 3D tile generation. Optionally groups features by attribute before combining and triangulating.",
+      "description": "洪水エリアのポリゴンからTINベースのサーフェスを生成し、3Dタイルの効率的な生成に使用する。オプションで結合・三角形分割の前に属性でグループ化できる。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FloodingAreaSurfaceGenerator Parameters",
@@ -8151,7 +8151,7 @@
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
       "type": "processor",
-      "description": "Validates that gml:name elements have codeSpace attributes (coded values)",
+      "description": "gml:name要素がcodeSpace属性（コード化された値）を持っていることを検証する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GmlNameCodeSpaceValidator Parameters",
@@ -8302,7 +8302,7 @@
     {
       "name": "PLATEAU4.SolarCityGmlAttributeInserter",
       "type": "processor",
-      "description": "Inserts solar radiation measurement attributes into original CityGML files",
+      "description": "太陽放射量の測定属性を元のCityGMLファイルに挿入する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlAttributeInserterParam",
@@ -8414,7 +8414,7 @@
     {
       "name": "PLATEAU4.SolarPositionCalculator",
       "type": "processor",
-      "description": "Calculates solar position (altitude and azimuth) for geographic features using Spencer's algorithm",
+      "description": "スペンサーのアルゴリズムを使用して地理的地物の太陽位置（高度・方位角）を計算する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolarPositionCalculatorParam",
@@ -8619,7 +8619,7 @@
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
       "type": "processor",
-      "description": "Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing",
+      "description": "AreaOnAreaOverlayerの出力からソリッドの交差テスト用の地物ペアを作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolidIntersectionTestPairCreatorParam",
@@ -8657,7 +8657,7 @@
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "type": "processor",
-      "description": "Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)",
+      "description": "PLATEAU交通モデルの未参照サーフェスを検出する（L-TRAN-03）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "TransportationXlinkDetectorParam",
@@ -8749,7 +8749,7 @@
     {
       "name": "PLATEAU4.UnmatchedXlinkDetector",
       "type": "processor",
-      "description": "Detect unmatched Xlinks for PLATEAU",
+      "description": "PLATEAUの未一致Xlinkを検出する",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -8767,7 +8767,7 @@
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
       "type": "processor",
-      "description": "Detect unshared edges in triangular meshes - edges that appear only once. REQUIRES: Input geometries must be in a projected coordinate system (meters). Use HorizontalReprojector before this action if input is in geographic coordinates.",
+      "description": "三角形メッシュの非共有エッジ（一度しか現れないエッジ）を検出する。入力ジオメトリは投影座標系（メートル）である必要があります。地理座標の場合はHorizontalReprojectorを事前に使用してください。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "UnsharedEdgeDetector Parameters",
@@ -8882,7 +8882,7 @@
     {
       "name": "PolygonNormalExtractor",
       "type": "processor",
-      "description": "Extract normal vectors and other properties for polygon features",
+      "description": "ポリゴン地物の法線ベクトルおよびその他のプロパティを抽出する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -8898,7 +8898,7 @@
     {
       "name": "PythonScriptProcessor",
       "type": "processor",
-      "description": "Execute Python Scripts with Geospatial Data Processing",
+      "description": "地理空間データ処理のためのPythonスクリプトを実行する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "PythonScriptProcessorParam",
@@ -8968,7 +8968,7 @@
     {
       "name": "RayIntersector",
       "type": "processor",
-      "description": "Computes intersection points between rays and geometries",
+      "description": "レイとジオメトリの交差点を計算する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "RayIntersectorParams",
@@ -9225,7 +9225,7 @@
     {
       "name": "Rotator3D",
       "type": "processor",
-      "description": "Rotate a 3D polygon using from/to vectors or axis-angle specification",
+      "description": "始点/終点ベクトルまたは軸-角度指定を使用して3Dポリゴンを回転する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Rotator3D Parameters",
@@ -9391,7 +9391,7 @@
     {
       "name": "ShapefileReader",
       "type": "source",
-      "description": "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)",
+      "description": "Shapefileアーカイブ（.shp、.dbf、.shxを含む.zip）から地理的地物を読み込む",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileReader Parameters",
@@ -9511,7 +9511,7 @@
     {
       "name": "SolidBoundaryValidator",
       "type": "processor",
-      "description": "Validates the Solid Boundary Geometry",
+      "description": "ソリッドの境界ジオメトリを検証する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Solid Boundary Validator Parameters",
@@ -9553,7 +9553,7 @@
     {
       "name": "SpatialFilter",
       "type": "processor",
-      "description": "Filter Features by Spatial Relationship",
+      "description": "空間的な関係によって地物をフィルタリングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SpatialFilter Parameters",
@@ -9924,7 +9924,7 @@
     {
       "name": "ThreeDimensionForcer",
       "type": "processor",
-      "description": "Convert 2D Geometry to 3D by Adding Z-Coordinates",
+      "description": "Z座標（高度）を追加して2Dジオメトリを3Dに変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ThreeDimensionForcer Parameters",
@@ -10103,7 +10103,7 @@
     {
       "name": "VertexCounter",
       "type": "processor",
-      "description": "Count Geometry Vertices to Attribute",
+      "description": "ジオメトリの頂点数を数えて属性として格納する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Vertex Counter Parameters",
@@ -10317,7 +10317,7 @@
     {
       "name": "XmlWriter",
       "type": "sink",
-      "description": "Writes features to XML files.",
+      "description": "地物をXMLファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XmlWriter Parameters",
