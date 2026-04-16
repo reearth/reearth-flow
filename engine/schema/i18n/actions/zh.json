@@ -1,7 +1,8 @@
 {
   "actions": [
     {
-      "name": "AppearanceRemover"
+      "name": "AppearanceRemover",
+      "description": "从CityGML几何体中移除外观信息（材质、纹理）"
     },
     {
       "name": "AreaCalculator",
@@ -19,7 +20,8 @@
         "outputAttribute": {
           "description": "Name of the attribute to store the calculated area (default: \"area\")"
         }
-      }
+      },
+      "description": "计算多边形几何体的平面或坡面面积，并将结果作为属性添加"
     },
     {
       "name": "AreaOnAreaOverlayer",
@@ -315,7 +317,8 @@
         "keepEmptyBoundaries": {
           "description": "Whether to keep features with empty boundaries (default: false)"
         }
-      }
+      },
+      "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体"
     },
     {
       "name": "BoundsExtractor",
@@ -463,7 +466,8 @@
           "title": "Pair ID Attribute",
           "description": "Expression to evaluate the pair ID used to match features from left and right ports"
         }
-      }
+      },
+      "description": "从一对（左、右）实体几何体构建构造实体几何（CSG）表示。检测并集、交集和差集（左-右），但不计算结果几何体。使用CSGEvaluator来评估CSG树。"
     },
     {
       "name": "CSGEvaluator",
@@ -476,7 +480,8 @@
           "title": "Tolerance",
           "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations."
         }
-      }
+      },
+      "description": "对构造实体几何（CSG）树进行求值以生成实体几何体。接受CSG表示，计算布尔运算产生的网格。"
     },
     {
       "name": "CenterPointReplacer",
@@ -560,7 +565,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "从CityGML文件读取3D城市模型"
     },
     {
       "name": "CityGmlWriter",
@@ -580,7 +586,8 @@
         "prettyPrint": {
           "description": "Whether to format output with indentation (default: true)"
         }
-      }
+      },
+      "description": "将要素写入CityGML 2.0文件"
     },
     {
       "name": "Clipper",
@@ -617,7 +624,8 @@
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
         }
-      }
+      },
+      "description": "从几何体顶点中提取坐标作为要素属性"
     },
     {
       "name": "CsvReader",
@@ -706,7 +714,8 @@
             "description": "File with tab-separated values"
           }
         }
-      }
+      },
+      "description": "将要素写入CSV或TSV文件"
     },
     {
       "name": "CzmlReader",
@@ -868,7 +877,8 @@
             "description": "Unix timestamp in seconds"
           }
         }
-      }
+      },
+      "description": "在不同格式之间转换日期时间值"
     },
     {
       "name": "DimensionFilter",
@@ -963,7 +973,8 @@
         "sheetName": {
           "description": "Sheet name (defaults to \"Sheet1\")"
         }
-      }
+      },
+      "description": "将要素写入Microsoft Excel格式（.xlsx文件）"
     },
     {
       "name": "Extruder",
@@ -978,6 +989,19 @@
           "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
         }
       }
+    },
+    {
+      "name": "FeatureCityGml3Reader",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml3Reader Parameters"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path expression resolving to the CityGML 3.0 file to read."
+        }
+      },
+      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接"
     },
     {
       "name": "FeatureCityGmlReader",
@@ -1133,7 +1157,8 @@
             "description": "Emit all requestor features (default)"
           }
         }
-      }
+      },
+      "description": "基于匹配的属性值，以可配置的连接类型连接请求要素和供给要素"
     },
     {
       "name": "FeatureLodFilter",
@@ -1273,7 +1298,8 @@
       }
     },
     {
-      "name": "FootprintReplacer"
+      "name": "FootprintReplacer",
+      "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）"
     },
     {
       "name": "GeoJsonReader",
@@ -1420,10 +1446,12 @@
             "description": "Extract surfaces as separate features"
           }
         }
-      }
+      },
+      "description": "将3D几何体中的几何部件（面）提取为单独的要素"
     },
     {
-      "name": "GeometryRemover"
+      "name": "GeometryRemover",
+      "description": "从要素中移除几何体"
     },
     {
       "name": "GeometryReplacer",
@@ -1511,7 +1539,8 @@
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
         }
-      }
+      },
+      "description": "从glTF 2.0文件读取3D模型，支持网格、节点、场景和几何图元"
     },
     {
       "name": "GltfWriter",
@@ -1553,7 +1582,8 @@
           "title": "Unit Square Size",
           "description": "Side length of each grid cell (in the same units as the geometry coordinates)"
         }
-      }
+      },
+      "description": "将多边形划分为规则网格单元"
     },
     {
       "name": "HTTPCaller",
@@ -1941,7 +1971,8 @@
           },
           "takeLast": {}
         }
-      }
+      },
+      "description": "将矢量几何体转换为栅格图像格式"
     },
     {
       "name": "InputRouter",
@@ -1964,7 +1995,8 @@
           "title": "JSONFragmenter Parameters",
           "description": "Configuration for fragmenting JSON documents into individual features."
         }
-      }
+      },
+      "description": "根据JSONPath查询将JSON文档分割为单独的要素"
     },
     {
       "name": "JsonReader",
@@ -1981,7 +2013,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "从JSON文件读取要素，支持单个对象和对象数组"
     },
     {
       "name": "JsonWriter",
@@ -1996,7 +2029,8 @@
         "output": {
           "description": "Output path or expression for the JSON file to create"
         }
-      }
+      },
+      "description": "将要素写入JSON文件"
     },
     {
       "name": "LineOnLineOverlayer",
@@ -2032,7 +2066,8 @@
         "separateCharacter": {
           "description": "Character(s) to use as separator between concatenated values"
         }
-      }
+      },
+      "description": "从列表的每个元素中提取特定属性，并将其连接成单个字符串"
     },
     {
       "name": "ListExploder",
@@ -2066,7 +2101,8 @@
         "listIndexToCopy": {
           "description": "Index of the list element to copy (0-based)"
         }
-      }
+      },
+      "description": "将特定列表元素的属性复制为要素的主要属性"
     },
     {
       "name": "MVTWriter",
@@ -2169,7 +2205,8 @@
             "description": "One output feature is emitted per neighbor. Base attributes are duplicated across all rows, mirroring FME's default multi-neighbor output."
           }
         }
-      }
+      },
+      "description": "基于空间邻近性，为每个基础要素找到最近的候选要素"
     },
     {
       "name": "NoopProcessor",
@@ -2243,7 +2280,8 @@
             "description": "Only check attributes named in mappings"
           }
         }
-      }
+      },
+      "description": "用配置的默认值替换空属性值"
     },
     {
       "name": "ObjReader",
@@ -2284,7 +2322,8 @@
           "title": "Triangulate",
           "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
         }
-      }
+      },
+      "description": "从Wavefront OBJ文件读取3D模型，支持顶点、面、法线、纹理坐标和材质"
     },
     {
       "name": "ObjWriter",
@@ -2309,7 +2348,8 @@
           "title": "Write Texture Coordinates",
           "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)"
         }
-      }
+      },
+      "description": "将3D要素写入Wavefront OBJ格式，可选包含材质（MTL）文件"
     },
     {
       "name": "Offsetter",
@@ -2427,7 +2467,8 @@
       }
     },
     {
-      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker"
+      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
+      "description": "检查BuildingInstallation的几何体类型"
     },
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
@@ -2452,7 +2493,8 @@
           "title": "Part ID Attribute",
           "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
         }
-      }
+      },
+      "description": "使用3D边界面匹配检查同一建筑内BuildingPart之间的连通性"
     },
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
@@ -2461,7 +2503,8 @@
           "title": "BuildingUsageAttributeValidatorParam"
         },
         "codelistsPath": {}
-      }
+      },
+      "description": "通过检查必要属性的存在性和城市代码的正确性来验证建筑用途属性。如发现问题，通过lBldgError和codeError端口输出错误。"
     },
     {
       "name": "PLATEAU4.CityCodeExtractor",
@@ -2494,10 +2537,12 @@
           "title": "Error Attribute Name",
           "description": "Attribute name to store validation error messages (default: \"_validation_error\")"
         }
-      }
+      },
+      "description": "通过解析原始XML验证CityGML网格三角形：(1)每个三角形恰好有4个顶点，(2)每个三角形是闭合的（首顶点等于末顶点）"
     },
     {
-      "name": "PLATEAU4.CompositeSurfaceContinuityFilter"
+      "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
+      "description": "检查CompositeSurface是否连续（所有部分共享边）"
     },
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
@@ -2518,7 +2563,8 @@
           "title": "Mesh Code Attribute Name",
           "description": "Output attribute name for the mesh code"
         }
-      }
+      },
+      "description": "提取PLATEAU目标文件的日本标准区域网格代码并作为属性添加"
     },
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
@@ -2543,7 +2589,8 @@
         "cityGmlPathAttribute": {
           "description": "Attribute name for city_gml_path (default: \"_gml_path\")"
         }
-      }
+      },
+      "description": "验证WaterBody要素的各个面的TIN网格质量"
     },
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
@@ -2561,7 +2608,8 @@
         "sampleInterior": {
           "description": "Enable interior grid sampling (default: false). When enabled, points are added on a regular grid inside the polygon to create a more uniform triangulation. This can be slow for large polygons."
         }
-      }
+      },
+      "description": "从洪水区域多边形生成基于TIN的面，用于高效生成3D瓦片。可选在合并和三角剖分前按属性分组要素。"
     },
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
@@ -2573,7 +2621,8 @@
         "cityGmlPath": {
           "description": "Expression to get the path to the CityGML file"
         }
-      }
+      },
+      "description": "验证gml:name元素是否具有codeSpace属性（编码值）"
     },
     {
       "name": "PLATEAU4.MaxLodExtractor",
@@ -2647,7 +2696,8 @@
             "description": "Unit of measurement (e.g. \"kWh\")"
           }
         }
-      }
+      },
+      "description": "将太阳辐射测量属性插入原始CityGML文件"
     },
     {
       "name": "PLATEAU4.SolarPositionCalculator",
@@ -2668,7 +2718,8 @@
             "description": "Output as unit normal vector (x, y, z) in ENU coordinate system"
           }
         }
-      }
+      },
+      "description": "使用Spencer算法计算地理要素的太阳位置（高度角和方位角）"
     },
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
@@ -2685,7 +2736,8 @@
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
         }
-      }
+      },
+      "description": "从AreaOnAreaOverlayer的输出创建用于实体相交测试的要素对"
     },
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
@@ -2694,7 +2746,8 @@
           "title": "TransportationXlinkDetectorParam"
         },
         "cityGmlPath": {}
-      }
+      },
+      "description": "检测PLATEAU交通模型中的未引用面（L-TRAN-03）"
     },
     {
       "name": "PLATEAU4.UDXFolderExtractor",
@@ -2710,7 +2763,8 @@
       }
     },
     {
-      "name": "PLATEAU4.UnmatchedXlinkDetector"
+      "name": "PLATEAU4.UnmatchedXlinkDetector",
+      "description": "检测PLATEAU中不匹配的Xlink"
     },
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
@@ -2725,7 +2779,8 @@
         "tolerance": {
           "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge"
         }
-      }
+      },
+      "description": "检测三角网格中的非共享边——只出现一次的边。要求：输入几何体必须在投影坐标系（米）中。如果输入为地理坐标，请先使用HorizontalReprojector。"
     },
     {
       "name": "PlanarityFilter",
@@ -2756,7 +2811,8 @@
       }
     },
     {
-      "name": "PolygonNormalExtractor"
+      "name": "PolygonNormalExtractor",
+      "description": "提取多边形要素的法向量和其他属性"
     },
     {
       "name": "PythonScriptProcessor",
@@ -2780,7 +2836,8 @@
           "title": "Timeout Seconds",
           "description": "Maximum execution time for the Python script in seconds (default: 30)"
         }
-      }
+      },
+      "description": "执行用于地理空间数据处理的Python脚本"
     },
     {
       "name": "RayIntersector",
@@ -2842,7 +2899,8 @@
             "description": "Output a point at the intersection location (default behavior)"
           }
         }
-      }
+      },
+      "description": "计算射线与几何体之间的交点"
     },
     {
       "name": "Refiner",
@@ -2875,7 +2933,8 @@
           "title": "Rotation",
           "description": "The rotation specification: either from/to vectors or axis-angle"
         }
-      }
+      },
+      "description": "使用起止向量或轴角规格旋转3D多边形"
     },
     {
       "name": "ShapefileReader",
@@ -2904,7 +2963,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "从Shapefile存档（包含.shp、.dbf、.shx的.zip文件）读取地理要素"
     },
     {
       "name": "ShapefileWriter",
@@ -2933,7 +2993,8 @@
           "title": "Tolerance",
           "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation."
         }
-      }
+      },
+      "description": "验证实体边界几何体"
     },
     {
       "name": "SpatialFilter",
@@ -2993,7 +3054,8 @@
             "description": "Candidate completely within filter geometry"
           }
         }
-      }
+      },
+      "description": "按空间关系过滤要素"
     },
     {
       "name": "SqlReader",
@@ -3094,7 +3156,8 @@
           "title": "Preserve Existing Z Values",
           "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
         }
-      }
+      },
+      "description": "通过添加Z坐标（高程）将2D几何体转换为3D"
     },
     {
       "name": "ThreeDimensionPlanarityRotator",
@@ -3153,7 +3216,8 @@
           "title": "Output Attribute",
           "description": "Name of the attribute where the vertex count will be stored as a number"
         }
-      }
+      },
+      "description": "计算几何体顶点数并作为属性存储"
     },
     {
       "name": "VertexRemover",
@@ -3205,7 +3269,8 @@
         "output": {
           "description": "Output path or expression for the XML file to create"
         }
-      }
+      },
+      "description": "将要素写入XML文件"
     },
     {
       "name": "ZipFileWriter",

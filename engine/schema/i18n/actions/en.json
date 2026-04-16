@@ -980,6 +980,18 @@
       }
     },
     {
+      "name": "FeatureCityGml3Reader",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml3Reader Parameters"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path expression resolving to the CityGML 3.0 file to read."
+        }
+      }
+    },
+    {
       "name": "FeatureCityGmlReader",
       "description": "Reads features from CityGML files",
       "parameterI18n": {

@@ -1,7 +1,8 @@
 {
   "actions": [
     {
-      "name": "AppearanceRemover"
+      "name": "AppearanceRemover",
+      "description": "CityGMLジオメトリから外観情報（マテリアル、テクスチャ）を削除する"
     },
     {
       "name": "AreaCalculator",
@@ -319,7 +320,8 @@
         "keepEmptyBoundaries": {
           "description": "Whether to keep features with empty boundaries (default: false)"
         }
-      }
+      },
+      "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す"
     },
     {
       "name": "BoundsExtractor",
@@ -467,7 +469,8 @@
           "title": "Pair ID Attribute",
           "description": "Expression to evaluate the pair ID used to match features from left and right ports"
         }
-      }
+      },
+      "description": "一対のソリッドジオメトリ（左・右）からCSG（構成的立体幾何学）表現を構築する。和・積・差（左－右）を検出するが、結果ジオメトリは計算しない。ツリーを評価するにはCSGEvaluatorを使用してください。"
     },
     {
       "name": "CSGEvaluator",
@@ -480,7 +483,8 @@
           "title": "Tolerance",
           "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations."
         }
-      }
+      },
+      "description": "CSG（構成的立体幾何学）ツリーを評価してソリッドジオメトリを生成する。CSG表現を受け取り、ブール演算から得られるメッシュを計算する。"
     },
     {
       "name": "CenterPointReplacer",
@@ -564,7 +568,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "CityGMLファイルから3D都市モデルを読み込む"
     },
     {
       "name": "CityGmlWriter",
@@ -584,7 +589,8 @@
         "prettyPrint": {
           "description": "Whether to format output with indentation (default: true)"
         }
-      }
+      },
+      "description": "地物をCityGML 2.0ファイルに書き出す"
     },
     {
       "name": "Clipper",
@@ -621,7 +627,8 @@
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
         }
-      }
+      },
+      "description": "ジオメトリの頂点から座標を地物の属性として抽出する"
     },
     {
       "name": "CsvReader",
@@ -710,7 +717,8 @@
             "description": "File with tab-separated values"
           }
         }
-      }
+      },
+      "description": "地物をCSVまたはTSVファイルに書き出す"
     },
     {
       "name": "CzmlReader",
@@ -872,7 +880,8 @@
             "description": "Unix timestamp in seconds"
           }
         }
-      }
+      },
+      "description": "日時値を異なるフォーマット間で変換する"
     },
     {
       "name": "DimensionFilter",
@@ -967,7 +976,8 @@
         "sheetName": {
           "description": "Sheet name (defaults to \"Sheet1\")"
         }
-      }
+      },
+      "description": "地物をMicrosoft Excel形式（.xlsx）に書き出す"
     },
     {
       "name": "Extruder",
@@ -982,6 +992,19 @@
           "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
         }
       }
+    },
+    {
+      "name": "FeatureCityGml3Reader",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml3Reader Parameters"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path expression resolving to the CityGML 3.0 file to read."
+        }
+      },
+      "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する"
     },
     {
       "name": "FeatureCityGmlReader",
@@ -1137,7 +1160,8 @@
             "description": "Emit all requestor features (default)"
           }
         }
-      }
+      },
+      "description": "設定可能な結合タイプで、一致する属性値に基づいてリクエスタとサプライヤの地物を結合する"
     },
     {
       "name": "FeatureLodFilter",
@@ -1277,7 +1301,8 @@
       }
     },
     {
-      "name": "FootprintReplacer"
+      "name": "FootprintReplacer",
+      "description": "3DジオメトリをXY平面に投影して結合フットプリントを計算する（ソリッド、サーフェス、CityGML対応）"
     },
     {
       "name": "GeoJsonReader",
@@ -1424,10 +1449,12 @@
             "description": "Extract surfaces as separate features"
           }
         }
-      }
+      },
+      "description": "3Dジオメトリからジオメトリパーツ（サーフェス）を個別の地物として抽出する"
     },
     {
-      "name": "GeometryRemover"
+      "name": "GeometryRemover",
+      "description": "地物からジオメトリを削除する"
     },
     {
       "name": "GeometryReplacer",
@@ -1515,7 +1542,8 @@
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
         }
-      }
+      },
+      "description": "glTF 2.0ファイルから3Dモデルを読み込む。メッシュ、ノード、シーン、ジオメトリプリミティブに対応"
     },
     {
       "name": "GltfWriter",
@@ -1557,7 +1585,8 @@
           "title": "Unit Square Size",
           "description": "Side length of each grid cell (in the same units as the geometry coordinates)"
         }
-      }
+      },
+      "description": "ポリゴンを規則的なグリッドセルに分割する"
     },
     {
       "name": "HTTPCaller",
@@ -1945,7 +1974,8 @@
           },
           "takeLast": {}
         }
-      }
+      },
+      "description": "ベクターデータをラスター画像形式に変換する"
     },
     {
       "name": "InputRouter",
@@ -1968,7 +1998,8 @@
           "title": "JSONFragmenter Parameters",
           "description": "Configuration for fragmenting JSON documents into individual features."
         }
-      }
+      },
+      "description": "JSONPathクエリに基づいてJSONドキュメントを個別の地物に分割する"
     },
     {
       "name": "JsonReader",
@@ -1985,7 +2016,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "JSONファイルから地物を読み込む。単一オブジェクトとオブジェクトの配列に対応"
     },
     {
       "name": "JsonWriter",
@@ -2000,7 +2032,8 @@
         "output": {
           "description": "Output path or expression for the JSON file to create"
         }
-      }
+      },
+      "description": "地物をJSONファイルに書き出す"
     },
     {
       "name": "LineOnLineOverlayer",
@@ -2036,7 +2069,8 @@
         "separateCharacter": {
           "description": "Character(s) to use as separator between concatenated values"
         }
-      }
+      },
+      "description": "リストの各要素から特定の属性を取り出し、一つの文字列に連結する"
     },
     {
       "name": "ListExploder",
@@ -2070,7 +2104,8 @@
         "listIndexToCopy": {
           "description": "Index of the list element to copy (0-based)"
         }
-      }
+      },
+      "description": "特定のリスト要素の属性を地物のメイン属性としてコピーする"
     },
     {
       "name": "MVTWriter",
@@ -2173,7 +2208,8 @@
             "description": "One output feature is emitted per neighbor. Base attributes are duplicated across all rows, mirroring FME's default multi-neighbor output."
           }
         }
-      }
+      },
+      "description": "空間的な近接性に基づいて、各基本地物に対して最も近い候補地物を見つける"
     },
     {
       "name": "NoopProcessor",
@@ -2247,7 +2283,8 @@
             "description": "Only check attributes named in mappings"
           }
         }
-      }
+      },
+      "description": "null値の属性を設定されたデフォルト値に置き換える"
     },
     {
       "name": "ObjReader",
@@ -2288,7 +2325,8 @@
           "title": "Triangulate",
           "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
         }
-      }
+      },
+      "description": "Wavefront OBJファイルから3Dモデルを読み込む。頂点、面、法線、テクスチャ座標、マテリアルに対応"
     },
     {
       "name": "ObjWriter",
@@ -2313,7 +2351,8 @@
           "title": "Write Texture Coordinates",
           "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)"
         }
-      }
+      },
+      "description": "3D地物をWavefront OBJ形式で書き出す。オプションのマテリアル（MTL）ファイルに対応"
     },
     {
       "name": "Offsetter",
@@ -2431,7 +2470,8 @@
       }
     },
     {
-      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker"
+      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
+      "description": "BuildingInstallationのジオメトリタイプを確認する"
     },
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
@@ -2456,7 +2496,8 @@
           "title": "Part ID Attribute",
           "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
         }
-      }
+      },
+      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する"
     },
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
@@ -2465,7 +2506,8 @@
           "title": "BuildingUsageAttributeValidatorParam"
         },
         "codelistsPath": {}
-      }
+      },
+      "description": "必須属性の存在と都市コードの正確性を確認して建物用途属性を検証する。問題が見つかった場合はlBldgErrorおよびcodeErrorポートからエラーを出力する。"
     },
     {
       "name": "PLATEAU4.CityCodeExtractor",
@@ -2498,10 +2540,12 @@
           "title": "Error Attribute Name",
           "description": "Attribute name to store validation error messages (default: \"_validation_error\")"
         }
-      }
+      },
+      "description": "生のXMLを解析してCityGMLメッシュの三角形を検証する：(1) 各三角形は正確に4つの頂点を持つ、(2) 各三角形は閉じている（最初の頂点と最後の頂点が一致する）"
     },
     {
-      "name": "PLATEAU4.CompositeSurfaceContinuityFilter"
+      "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
+      "description": "CompositeSurfaceが連続しているか（すべての部分がエッジを共有しているか）を確認する"
     },
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
@@ -2522,7 +2566,8 @@
           "title": "Mesh Code Attribute Name",
           "description": "Output attribute name for the mesh code"
         }
-      }
+      },
+      "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する"
     },
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
@@ -2547,7 +2592,8 @@
         "cityGmlPathAttribute": {
           "description": "Attribute name for city_gml_path (default: \"_gml_path\")"
         }
-      }
+      },
+      "description": "WaterBody地物の個別サーフェスをTINメッシュ品質の観点から検証する"
     },
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
@@ -2565,7 +2611,8 @@
         "sampleInterior": {
           "description": "Enable interior grid sampling (default: false). When enabled, points are added on a regular grid inside the polygon to create a more uniform triangulation. This can be slow for large polygons."
         }
-      }
+      },
+      "description": "洪水エリアのポリゴンからTINベースのサーフェスを生成し、3Dタイルの効率的な生成に使用する。オプションで結合・三角形分割の前に属性でグループ化できる。"
     },
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
@@ -2577,7 +2624,8 @@
         "cityGmlPath": {
           "description": "Expression to get the path to the CityGML file"
         }
-      }
+      },
+      "description": "gml:name要素がcodeSpace属性（コード化された値）を持っていることを検証する"
     },
     {
       "name": "PLATEAU4.MaxLodExtractor",
@@ -2651,7 +2699,8 @@
             "description": "Unit of measurement (e.g. \"kWh\")"
           }
         }
-      }
+      },
+      "description": "太陽放射量の測定属性を元のCityGMLファイルに挿入する"
     },
     {
       "name": "PLATEAU4.SolarPositionCalculator",
@@ -2672,7 +2721,8 @@
             "description": "Output as unit normal vector (x, y, z) in ENU coordinate system"
           }
         }
-      }
+      },
+      "description": "スペンサーのアルゴリズムを使用して地理的地物の太陽位置（高度・方位角）を計算する"
     },
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
@@ -2689,7 +2739,8 @@
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
         }
-      }
+      },
+      "description": "AreaOnAreaOverlayerの出力からソリッドの交差テスト用の地物ペアを作成する"
     },
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
@@ -2698,7 +2749,8 @@
           "title": "TransportationXlinkDetectorParam"
         },
         "cityGmlPath": {}
-      }
+      },
+      "description": "PLATEAU交通モデルの未参照サーフェスを検出する（L-TRAN-03）"
     },
     {
       "name": "PLATEAU4.UDXFolderExtractor",
@@ -2714,7 +2766,8 @@
       }
     },
     {
-      "name": "PLATEAU4.UnmatchedXlinkDetector"
+      "name": "PLATEAU4.UnmatchedXlinkDetector",
+      "description": "PLATEAUの未一致Xlinkを検出する"
     },
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
@@ -2729,7 +2782,8 @@
         "tolerance": {
           "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge"
         }
-      }
+      },
+      "description": "三角形メッシュの非共有エッジ（一度しか現れないエッジ）を検出する。入力ジオメトリは投影座標系（メートル）である必要があります。地理座標の場合はHorizontalReprojectorを事前に使用してください。"
     },
     {
       "name": "PlanarityFilter",
@@ -2760,7 +2814,8 @@
       }
     },
     {
-      "name": "PolygonNormalExtractor"
+      "name": "PolygonNormalExtractor",
+      "description": "ポリゴン地物の法線ベクトルおよびその他のプロパティを抽出する"
     },
     {
       "name": "PythonScriptProcessor",
@@ -2784,7 +2839,8 @@
           "title": "Timeout Seconds",
           "description": "Maximum execution time for the Python script in seconds (default: 30)"
         }
-      }
+      },
+      "description": "地理空間データ処理のためのPythonスクリプトを実行する"
     },
     {
       "name": "RayIntersector",
@@ -2846,7 +2902,8 @@
             "description": "Output a point at the intersection location (default behavior)"
           }
         }
-      }
+      },
+      "description": "レイとジオメトリの交差点を計算する"
     },
     {
       "name": "Refiner",
@@ -2879,7 +2936,8 @@
           "title": "Rotation",
           "description": "The rotation specification: either from/to vectors or axis-angle"
         }
-      }
+      },
+      "description": "始点/終点ベクトルまたは軸-角度指定を使用して3Dポリゴンを回転する"
     },
     {
       "name": "ShapefileReader",
@@ -2908,7 +2966,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "Shapefileアーカイブ（.shp、.dbf、.shxを含む.zip）から地理的地物を読み込む"
     },
     {
       "name": "ShapefileWriter",
@@ -2937,7 +2996,8 @@
           "title": "Tolerance",
           "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation."
         }
-      }
+      },
+      "description": "ソリッドの境界ジオメトリを検証する"
     },
     {
       "name": "SpatialFilter",
@@ -2997,7 +3057,8 @@
             "description": "Candidate completely within filter geometry"
           }
         }
-      }
+      },
+      "description": "空間的な関係によって地物をフィルタリングする"
     },
     {
       "name": "SqlReader",
@@ -3098,7 +3159,8 @@
           "title": "Preserve Existing Z Values",
           "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
         }
-      }
+      },
+      "description": "Z座標（高度）を追加して2Dジオメトリを3Dに変換する"
     },
     {
       "name": "ThreeDimensionPlanarityRotator",
@@ -3157,7 +3219,8 @@
           "title": "Output Attribute",
           "description": "Name of the attribute where the vertex count will be stored as a number"
         }
-      }
+      },
+      "description": "ジオメトリの頂点数を数えて属性として格納する"
     },
     {
       "name": "VertexRemover",
@@ -3209,7 +3272,8 @@
         "output": {
           "description": "Output path or expression for the XML file to create"
         }
-      }
+      },
+      "description": "地物をXMLファイルに書き出す"
     },
     {
       "name": "ZipFileWriter",

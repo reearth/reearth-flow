@@ -1,7 +1,8 @@
 {
   "actions": [
     {
-      "name": "AppearanceRemover"
+      "name": "AppearanceRemover",
+      "description": "Supprime les informations d'apparence (matériaux, textures) de la géométrie CityGML"
     },
     {
       "name": "AreaCalculator",
@@ -19,7 +20,8 @@
         "outputAttribute": {
           "description": "Name of the attribute to store the calculated area (default: \"area\")"
         }
-      }
+      },
+      "description": "Calcule la surface plane ou inclinée des géométries de polygone et ajoute les résultats en tant qu'attributs"
     },
     {
       "name": "AreaOnAreaOverlayer",
@@ -315,7 +317,8 @@
         "keepEmptyBoundaries": {
           "description": "Whether to keep features with empty boundaries (default: false)"
         }
-      }
+      },
+      "description": "Extrait la limite des géométries. Pour les solides/maillages, retourne les surfaces limites ; pour les surfaces, retourne les arêtes limites ; pour les surfaces fermées, retourne une géométrie vide"
     },
     {
       "name": "BoundsExtractor",
@@ -463,7 +466,8 @@
           "title": "Pair ID Attribute",
           "description": "Expression to evaluate the pair ID used to match features from left and right ports"
         }
-      }
+      },
+      "description": "Construit une représentation de Géométrie Solide Constructive (CSG) à partir d'une paire (Gauche, Droite) de géométries solides. Détecte l'union, l'intersection et la différence (Gauche - Droite), mais ne calcule pas la géométrie résultante. Utilisez CSGEvaluator pour évaluer l'arbre CSG."
     },
     {
       "name": "CSGEvaluator",
@@ -476,7 +480,8 @@
           "title": "Tolerance",
           "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations."
         }
-      }
+      },
+      "description": "Évalue un arbre de Géométrie Solide Constructive (CSG) pour produire une géométrie solide. Prend une représentation CSG et calcule le maillage résultant des opérations booléennes."
     },
     {
       "name": "CenterPointReplacer",
@@ -560,7 +565,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "Lit des modèles de ville 3D depuis des fichiers CityGML"
     },
     {
       "name": "CityGmlWriter",
@@ -580,7 +586,8 @@
         "prettyPrint": {
           "description": "Whether to format output with indentation (default: true)"
         }
-      }
+      },
+      "description": "Écrit des entités dans des fichiers CityGML 2.0"
     },
     {
       "name": "Clipper",
@@ -617,7 +624,8 @@
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
         }
-      }
+      },
+      "description": "Extrait les coordonnées des sommets de géométrie en tant qu'attributs d'entité"
     },
     {
       "name": "CsvReader",
@@ -706,7 +714,8 @@
             "description": "File with tab-separated values"
           }
         }
-      }
+      },
+      "description": "Écrit des entités dans des fichiers CSV ou TSV"
     },
     {
       "name": "CzmlReader",
@@ -868,7 +877,8 @@
             "description": "Unix timestamp in seconds"
           }
         }
-      }
+      },
+      "description": "Convertit les valeurs de date et heure entre différents formats"
     },
     {
       "name": "DimensionFilter",
@@ -963,7 +973,8 @@
         "sheetName": {
           "description": "Sheet name (defaults to \"Sheet1\")"
         }
-      }
+      },
+      "description": "Écrit des entités au format Microsoft Excel (.xlsx)"
     },
     {
       "name": "Extruder",
@@ -978,6 +989,19 @@
           "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
         }
       }
+    },
+    {
+      "name": "FeatureCityGml3Reader",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml3Reader Parameters"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path expression resolving to the CityGML 3.0 file to read."
+        }
+      },
+      "description": "Lit des fichiers CityGML 3.0 : résout les références gml:id et les liens xlink:href entre fichiers"
     },
     {
       "name": "FeatureCityGmlReader",
@@ -1133,7 +1157,8 @@
             "description": "Emit all requestor features (default)"
           }
         }
-      }
+      },
+      "description": "Joint des entités requérantes et fournisseuses basées sur des valeurs d'attributs correspondantes avec des types de jointure configurables"
     },
     {
       "name": "FeatureLodFilter",
@@ -1273,7 +1298,8 @@
       }
     },
     {
-      "name": "FootprintReplacer"
+      "name": "FootprintReplacer",
+      "description": "Projette la géométrie 3D sur le plan XY et calcule l'empreinte union (supporte les solides, surfaces et CityGML)"
     },
     {
       "name": "GeoJsonReader",
@@ -1420,10 +1446,12 @@
             "description": "Extract surfaces as separate features"
           }
         }
-      }
+      },
+      "description": "Extrait les parties de géométrie (surfaces) des géométries 3D en tant qu'entités séparées"
     },
     {
-      "name": "GeometryRemover"
+      "name": "GeometryRemover",
+      "description": "Supprime la géométrie d'une entité"
     },
     {
       "name": "GeometryReplacer",
@@ -1511,7 +1539,8 @@
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
         }
-      }
+      },
+      "description": "Lit des modèles 3D depuis des fichiers glTF 2.0, prenant en charge les maillages, nœuds, scènes et primitives de géométrie"
     },
     {
       "name": "GltfWriter",
@@ -1553,7 +1582,8 @@
           "title": "Unit Square Size",
           "description": "Side length of each grid cell (in the same units as the geometry coordinates)"
         }
-      }
+      },
+      "description": "Divise les polygones en cellules de grille régulières"
     },
     {
       "name": "HTTPCaller",
@@ -1941,7 +1971,8 @@
           },
           "takeLast": {}
         }
-      }
+      },
+      "description": "Convertit les géométries vectorielles au format d'image raster"
     },
     {
       "name": "InputRouter",
@@ -1964,7 +1995,8 @@
           "title": "JSONFragmenter Parameters",
           "description": "Configuration for fragmenting JSON documents into individual features."
         }
-      }
+      },
+      "description": "Fragmente des documents JSON en entités individuelles basées sur une requête JSONPath"
     },
     {
       "name": "JsonReader",
@@ -1981,7 +2013,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "Lit des entités depuis des fichiers JSON, prenant en charge les objets individuels et les tableaux d'objets"
     },
     {
       "name": "JsonWriter",
@@ -1996,7 +2029,8 @@
         "output": {
           "description": "Output path or expression for the JSON file to create"
         }
-      }
+      },
+      "description": "Écrit des entités dans des fichiers JSON"
     },
     {
       "name": "LineOnLineOverlayer",
@@ -2032,7 +2066,8 @@
         "separateCharacter": {
           "description": "Character(s) to use as separator between concatenated values"
         }
-      }
+      },
+      "description": "Extrait un attribut spécifique de chaque élément d'une liste et les concatène en une seule chaîne"
     },
     {
       "name": "ListExploder",
@@ -2066,7 +2101,8 @@
         "listIndexToCopy": {
           "description": "Index of the list element to copy (0-based)"
         }
-      }
+      },
+      "description": "Copie les attributs d'un élément de liste spécifique pour en faire les attributs principaux d'une entité"
     },
     {
       "name": "MVTWriter",
@@ -2169,7 +2205,8 @@
             "description": "One output feature is emitted per neighbor. Base attributes are duplicated across all rows, mirroring FME's default multi-neighbor output."
           }
         }
-      }
+      },
+      "description": "Trouve les entités candidates les plus proches pour chaque entité de base basée sur la proximité spatiale"
     },
     {
       "name": "NoopProcessor",
@@ -2243,7 +2280,8 @@
             "description": "Only check attributes named in mappings"
           }
         }
-      }
+      },
+      "description": "Remplace les valeurs d'attributs nulles par des valeurs par défaut configurées"
     },
     {
       "name": "ObjReader",
@@ -2284,7 +2322,8 @@
           "title": "Triangulate",
           "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
         }
-      }
+      },
+      "description": "Lit des modèles 3D depuis des fichiers Wavefront OBJ, prenant en charge les sommets, faces, normales, coordonnées de texture et matériaux"
     },
     {
       "name": "ObjWriter",
@@ -2309,7 +2348,8 @@
           "title": "Write Texture Coordinates",
           "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)"
         }
-      }
+      },
+      "description": "Écrit des entités 3D au format Wavefront OBJ avec des fichiers de matériaux (MTL) optionnels"
     },
     {
       "name": "Offsetter",
@@ -2427,7 +2467,8 @@
       }
     },
     {
-      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker"
+      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
+      "description": "Vérifie le type de géométrie de BuildingInstallation"
     },
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
@@ -2452,7 +2493,8 @@
           "title": "Part ID Attribute",
           "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
         }
-      }
+      },
+      "description": "Vérifie la connectivité entre les BuildingParts au sein du même bâtiment par la correspondance des surfaces limites 3D"
     },
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
@@ -2461,7 +2503,8 @@
           "title": "BuildingUsageAttributeValidatorParam"
         },
         "codelistsPath": {}
-      }
+      },
+      "description": "Valide les attributs d'utilisation des bâtiments en vérifiant la présence des attributs requis et l'exactitude des codes de ville. Les erreurs sont émises via les ports lBldgError et codeError."
     },
     {
       "name": "PLATEAU4.CityCodeExtractor",
@@ -2494,10 +2537,12 @@
           "title": "Error Attribute Name",
           "description": "Attribute name to store validation error messages (default: \"_validation_error\")"
         }
-      }
+      },
+      "description": "Valide les triangles de maillage CityGML en analysant le XML brut : (1) chaque triangle a exactement 4 sommets, (2) chaque triangle est fermé (premier sommet égal au dernier sommet)"
     },
     {
-      "name": "PLATEAU4.CompositeSurfaceContinuityFilter"
+      "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
+      "description": "Vérifie si une CompositeSurface est continue (toutes les parties partagent des arêtes)"
     },
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
@@ -2518,7 +2563,8 @@
           "title": "Mesh Code Attribute Name",
           "description": "Output attribute name for the mesh code"
         }
-      }
+      },
+      "description": "Extrait le code de maille régionale standard japonais pour les fichiers de destination PLATEAU et l'ajoute comme attribut"
     },
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
@@ -2543,7 +2589,8 @@
         "cityGmlPathAttribute": {
           "description": "Attribute name for city_gml_path (default: \"_gml_path\")"
         }
-      }
+      },
+      "description": "Valide les surfaces individuelles des entités WaterBody pour la qualité du maillage TIN"
     },
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
@@ -2561,7 +2608,8 @@
         "sampleInterior": {
           "description": "Enable interior grid sampling (default: false). When enabled, points are added on a regular grid inside the polygon to create a more uniform triangulation. This can be slow for large polygons."
         }
-      }
+      },
+      "description": "Génère des surfaces TIN à partir de polygones de zones d'inondation pour une génération efficace de tuiles 3D. Regroupe optionnellement les entités par attribut avant de combiner et trianguler."
     },
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
@@ -2573,7 +2621,8 @@
         "cityGmlPath": {
           "description": "Expression to get the path to the CityGML file"
         }
-      }
+      },
+      "description": "Valide que les éléments gml:name ont des attributs codeSpace (valeurs codées)"
     },
     {
       "name": "PLATEAU4.MaxLodExtractor",
@@ -2647,7 +2696,8 @@
             "description": "Unit of measurement (e.g. \"kWh\")"
           }
         }
-      }
+      },
+      "description": "Insère des attributs de mesure de rayonnement solaire dans les fichiers CityGML originaux"
     },
     {
       "name": "PLATEAU4.SolarPositionCalculator",
@@ -2668,7 +2718,8 @@
             "description": "Output as unit normal vector (x, y, z) in ENU coordinate system"
           }
         }
-      }
+      },
+      "description": "Calcule la position solaire (altitude et azimut) pour des entités géographiques en utilisant l'algorithme de Spencer"
     },
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
@@ -2685,7 +2736,8 @@
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
         }
-      }
+      },
+      "description": "Crée des paires d'entités à partir de la sortie d'AreaOnAreaOverlayer pour les tests d'intersection de solides"
     },
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
@@ -2694,7 +2746,8 @@
           "title": "TransportationXlinkDetectorParam"
         },
         "cityGmlPath": {}
-      }
+      },
+      "description": "Détecte les surfaces non référencées dans les modèles de transport PLATEAU (L-TRAN-03)"
     },
     {
       "name": "PLATEAU4.UDXFolderExtractor",
@@ -2710,7 +2763,8 @@
       }
     },
     {
-      "name": "PLATEAU4.UnmatchedXlinkDetector"
+      "name": "PLATEAU4.UnmatchedXlinkDetector",
+      "description": "Détecte les Xlinks non correspondants pour PLATEAU"
     },
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
@@ -2725,7 +2779,8 @@
         "tolerance": {
           "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge"
         }
-      }
+      },
+      "description": "Détecte les arêtes non partagées dans les maillages triangulaires — arêtes qui n'apparaissent qu'une seule fois. REQUIS : Les géométries d'entrée doivent être dans un système de coordonnées projeté (mètres). Utilisez HorizontalReprojector si l'entrée est en coordonnées géographiques."
     },
     {
       "name": "PlanarityFilter",
@@ -2756,7 +2811,8 @@
       }
     },
     {
-      "name": "PolygonNormalExtractor"
+      "name": "PolygonNormalExtractor",
+      "description": "Extrait les vecteurs normaux et d'autres propriétés des entités de polygone"
     },
     {
       "name": "PythonScriptProcessor",
@@ -2780,7 +2836,8 @@
           "title": "Timeout Seconds",
           "description": "Maximum execution time for the Python script in seconds (default: 30)"
         }
-      }
+      },
+      "description": "Exécute des scripts Python pour le traitement de données géospatiales"
     },
     {
       "name": "RayIntersector",
@@ -2842,7 +2899,8 @@
             "description": "Output a point at the intersection location (default behavior)"
           }
         }
-      }
+      },
+      "description": "Calcule les points d'intersection entre des rayons et des géométries"
     },
     {
       "name": "Refiner",
@@ -2875,7 +2933,8 @@
           "title": "Rotation",
           "description": "The rotation specification: either from/to vectors or axis-angle"
         }
-      }
+      },
+      "description": "Fait pivoter un polygone 3D en utilisant des vecteurs de/vers ou une spécification axe-angle"
     },
     {
       "name": "ShapefileReader",
@@ -2904,7 +2963,8 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      }
+      },
+      "description": "Lit des entités géographiques depuis des archives Shapefile (.zip contenant .shp, .dbf, .shx)"
     },
     {
       "name": "ShapefileWriter",
@@ -2933,7 +2993,8 @@
           "title": "Tolerance",
           "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation."
         }
-      }
+      },
+      "description": "Valide la géométrie des limites du solide"
     },
     {
       "name": "SpatialFilter",
@@ -2993,7 +3054,8 @@
             "description": "Candidate completely within filter geometry"
           }
         }
-      }
+      },
+      "description": "Filtre les entités par relation spatiale"
     },
     {
       "name": "SqlReader",
@@ -3094,7 +3156,8 @@
           "title": "Preserve Existing Z Values",
           "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
         }
-      }
+      },
+      "description": "Convertit les géométries 2D en 3D en ajoutant des coordonnées Z (élévation)"
     },
     {
       "name": "ThreeDimensionPlanarityRotator",
@@ -3153,7 +3216,8 @@
           "title": "Output Attribute",
           "description": "Name of the attribute where the vertex count will be stored as a number"
         }
-      }
+      },
+      "description": "Compte les sommets de géométrie et les stocke comme attribut"
     },
     {
       "name": "VertexRemover",
@@ -3205,7 +3269,8 @@
         "output": {
           "description": "Output path or expression for the XML file to create"
         }
-      }
+      },
+      "description": "Écrit des entités dans des fichiers XML"
     },
     {
       "name": "ZipFileWriter",
