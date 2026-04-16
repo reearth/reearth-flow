@@ -4,7 +4,6 @@ use image::{Rgb, RgbImage};
 use reearth_flow_atlas::plan_layout;
 
 const TOTAL: usize = 10;
-const TEXTURES_PER_TRIAL: usize = 64;
 const MAX_ATLAS_SIZE: u32 = 4096;
 
 fn next_u32(state: &mut u64) -> u32 {
@@ -29,16 +28,18 @@ struct Report {
     failures: usize,
 }
 
-fn run(name: &str, dim_fn: impl Fn(&mut u64) -> (u32, u32), dump_dir: Option<&Path>) -> Report {
+fn run(
+    name: &str,
+    sample_fn: impl Fn(&mut u64) -> Vec<(u32, u32)>,
+    dump_dir: Option<&Path>,
+) -> Report {
     let mut state: u64 = 0x9E3779B97F4A7C15;
     let mut ratios: Vec<f64> = Vec::with_capacity(TOTAL);
     let mut k_values: Vec<f64> = Vec::with_capacity(TOTAL);
     let mut failures: usize = 0;
 
     for trial in 0..TOTAL {
-        let dims: Vec<_> = (0..TEXTURES_PER_TRIAL)
-            .map(|_| dim_fn(&mut state))
-            .collect();
+        let dims = sample_fn(&mut state);
         match plan_layout(&dims, MAX_ATLAS_SIZE) {
             Ok(plan) => {
                 let atlas_area = plan.atlas_width as f64 * plan.atlas_height as f64;
@@ -94,20 +95,43 @@ fn run(name: &str, dim_fn: impl Fn(&mut u64) -> (u32, u32), dump_dir: Option<&Pa
     }
 }
 
-fn uniform_rect(state: &mut u64) -> (u32, u32) {
+fn uniform_rect(state: &mut u64) -> Vec<(u32, u32)> {
     const MIN: u32 = 16;
     const MAX: u32 = 256;
-    let w = MIN + next_u32(state) % (MAX - MIN + 1);
-    let h = MIN + next_u32(state) % (MAX - MIN + 1);
-    (w, h)
+    let count = 32 + next_u32(state) % 33;
+    (0..count)
+        .map(|_| {
+            let w = MIN + next_u32(state) % (MAX - MIN + 1);
+            let h = MIN + next_u32(state) % (MAX - MIN + 1);
+            (w, h)
+        })
+        .collect()
 }
 
-fn power_of_two(state: &mut u64) -> (u32, u32) {
+fn power_of_two(state: &mut u64) -> Vec<(u32, u32)> {
     const MIN_EXP: u32 = 3; // 8
     const MAX_EXP: u32 = 12; // 4096
-    let w_exp = MIN_EXP + next_u32(state) % (MAX_EXP - MIN_EXP + 1);
-    let h_exp = MIN_EXP + next_u32(state) % (MAX_EXP - MIN_EXP + 1);
-    (1 << w_exp, 1 << h_exp)
+    let count = 32 + next_u32(state) % 33;
+    (0..count)
+        .map(|_| {
+            let w_exp = MIN_EXP + next_u32(state) % (MAX_EXP - MIN_EXP + 1);
+            let h_exp = MIN_EXP + next_u32(state) % (MAX_EXP - MIN_EXP + 1);
+            (1 << w_exp, 1 << h_exp)
+        })
+        .collect()
+}
+
+// Further optimizing initial width for the tall-dominant case is possible but not worth the complexity.
+fn tall_dominant(state: &mut u64) -> Vec<(u32, u32)> {
+    const SMALL_MIN: u32 = 24;
+    const SMALL_MAX: u32 = 64;
+    let count = 5 + next_u32(state) % 26;
+    let mut dims = vec![(10u32, 1000u32)];
+    dims.extend((0..count).map(|_| {
+        let side = SMALL_MIN + next_u32(state) % (SMALL_MAX - SMALL_MIN + 1);
+        (side, side)
+    }));
+    dims
 }
 
 fn print_report(report: &Report, name: &str) {
@@ -135,6 +159,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let r = run("power_of_two", power_of_two, dump_dir.as_deref());
     print_report(&r, "Power of Two");
+
+    let r = run("tall_dominant", tall_dominant, dump_dir.as_deref());
+    print_report(&r, "Tall Dominant");
 
     Ok(())
 }

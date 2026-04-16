@@ -59,10 +59,9 @@ fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
         let mut merged = regions[start].rect;
         let mut polys = regions[start].polygons.clone();
         loop {
-            // Shrink query by 0.5px to match strict-overlap semantics (touching edges excluded).
             let env = AABB::from_corners(
-                [merged.x as f64 + 0.5, merged.y as f64 + 0.5],
-                [merged.right() as f64 - 0.5, merged.bottom() as f64 - 0.5],
+                [merged.x as f64, merged.y as f64],
+                [merged.right() as f64, merged.bottom() as f64],
             );
             let found: Vec<_> = tree
                 .locate_in_envelope_intersecting(&env)

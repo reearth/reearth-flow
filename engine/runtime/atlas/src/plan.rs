@@ -1,35 +1,19 @@
 use super::skyline::SkylinePacker;
 use super::Rect;
 
-pub(crate) fn estimate_atlas_size_from_dims(dims: &[(u32, u32)], k: u32) -> (u32, u32) {
-    if dims.is_empty() {
-        return (1, 1);
-    }
-    let downsample = 1u32 << k;
-    let extrusion = 1u32;
+pub(crate) fn estimate_atlas_size_from_dims(dims: &[(u32, u32)]) -> u32 {
+    const EXTRUSION: u32 = 1;
     let total_area: u64 = dims
         .iter()
-        .map(|&(w, h)| {
-            let pw = w.div_ceil(downsample) + 2 * extrusion;
-            let ph = h.div_ceil(downsample) + 2 * extrusion;
-            pw as u64 * ph as u64
-        })
+        .map(|&(w, h)| (w + 2 * EXTRUSION) as u64 * (h + 2 * EXTRUSION) as u64)
         .sum();
-    let max_w = dims
+    let max_padded_w = dims
         .iter()
-        .map(|&(w, _)| w.div_ceil(downsample) + 2 * extrusion)
+        .map(|&(w, _)| w + 2 * EXTRUSION)
         .max()
         .unwrap_or(0);
-    let max_h = dims
-        .iter()
-        .map(|&(_, h)| h.div_ceil(downsample) + 2 * extrusion)
-        .max()
-        .unwrap_or(0);
-    let side = (total_area as f64).sqrt().ceil() as u32;
-    (
-        max_w.max(side).next_power_of_two(),
-        max_h.max(side).next_power_of_two(),
-    )
+    let area_side = (total_area as f64).sqrt().ceil() as u32;
+    max_padded_w.max(area_side).next_power_of_two().max(1)
 }
 
 /// Dry-run layout — no image I/O, no blitting.
@@ -74,18 +58,6 @@ pub(crate) fn try_layout_rects(
     Some((packer.width(), packer.height(), placements))
 }
 
-/// Returns the minimum k such that `side / 2^k <= max`, or `MAX_DOWNSAMPLE_K + 1` if none exists.
-fn needed_k(side: u32, max: u32) -> u32 {
-    if side <= max {
-        return 0;
-    }
-    let ratio = side.div_ceil(max);
-    if ratio > (1u32 << super::MAX_DOWNSAMPLE_K) {
-        return super::MAX_DOWNSAMPLE_K + 1;
-    }
-    ratio.next_power_of_two().trailing_zeros()
-}
-
 /// Compute the layout for a set of textures given only their dimensions.
 /// No image files are read; no pixels are blitted.
 /// Useful for efficiency benchmarks and layout-only unit tests.
@@ -98,24 +70,26 @@ pub fn plan_layout(dims: &[(u32, u32)], max_atlas_size: u32) -> super::Result<su
             placements: vec![],
         });
     }
-    // `virtual_w/h` is the estimated canvas in original (pre-downsampling) pixel space.
-    let (mut virtual_w, mut virtual_h) = estimate_atlas_size_from_dims(dims, 0);
-    loop {
-        let k = needed_k(virtual_w.max(virtual_h), max_atlas_size);
-        if k > super::MAX_DOWNSAMPLE_K {
-            break;
+    let initial_w = estimate_atlas_size_from_dims(dims);
+    for k in 0..=super::MAX_DOWNSAMPLE_K {
+        let mut canvas_w = initial_w;
+        loop {
+            let w = canvas_w.min(max_atlas_size);
+            if let Some((used_w, used_h, placements)) =
+                try_layout_rects(dims, k, (w, max_atlas_size))
+            {
+                return Ok(super::LayoutPlan {
+                    atlas_width: used_w,
+                    atlas_height: used_h,
+                    downsample: 1u32 << k,
+                    placements,
+                });
+            }
+            if canvas_w >= max_atlas_size {
+                break;
+            }
+            canvas_w = canvas_w.saturating_mul(2);
         }
-        let canvas = (virtual_w.min(max_atlas_size), virtual_h.min(max_atlas_size));
-        if let Some((used_w, used_h, placements)) = try_layout_rects(dims, k, canvas) {
-            return Ok(super::LayoutPlan {
-                atlas_width: used_w,
-                atlas_height: used_h,
-                downsample: 1u32 << k,
-                placements,
-            });
-        }
-        virtual_w = virtual_w.saturating_mul(2);
-        virtual_h = virtual_h.saturating_mul(2);
     }
     Err(super::AtlasError::builder(format!(
         "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
