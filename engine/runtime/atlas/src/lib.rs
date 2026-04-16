@@ -9,8 +9,8 @@ use std::path::PathBuf;
 
 use damage::{collect_damage, TextureDamage};
 pub use error::{AtlasError, Result};
-pub use plan::plan_layout;
 use image::RgbaImage;
+pub use plan::plan_layout;
 
 pub type PolygonUVs = Vec<[f64; 2]>;
 pub type TextureUVs = Vec<PolygonUVs>;

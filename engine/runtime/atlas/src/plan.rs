@@ -125,6 +125,8 @@ pub fn plan_layout(dims: &[(u32, u32)], max_atlas_size: u32) -> super::Result<su
     }
     Err(super::AtlasError::builder(format!(
         "Texture atlas does not fit within {}x{} even at downsample factor 2^{}",
-        max_atlas_size, max_atlas_size, super::MAX_DOWNSAMPLE_K
+        max_atlas_size,
+        max_atlas_size,
+        super::MAX_DOWNSAMPLE_K
     )))
 }

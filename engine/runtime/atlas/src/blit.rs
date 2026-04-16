@@ -55,7 +55,12 @@ pub(super) fn blit(
     let mut sources = HashMap::new();
     let mut texture_frames: HashMap<String, Vec<Option<(Rect, Rect)>>> = damage_list
         .iter()
-        .map(|(path, td)| (path.to_string_lossy().into_owned(), vec![None; td.rects.len()]))
+        .map(|(path, td)| {
+            (
+                path.to_string_lossy().into_owned(),
+                vec![None; td.rects.len()],
+            )
+        })
         .collect();
 
     let mut flat_idx = 0usize;
@@ -81,11 +86,14 @@ pub(super) fn blit(
                 .crop_imm(src_rect.x, src_rect.y, src_rect.w, src_rect.h)
                 .to_rgba8();
             if (placement.w, placement.h) != (src_rect.w, src_rect.h) {
-                crop = image::imageops::resize(&crop, placement.w, placement.h, FilterType::Triangle);
+                crop =
+                    image::imageops::resize(&crop, placement.w, placement.h, FilterType::Triangle);
             }
-            atlas.copy_from(&crop, placement.x, placement.y).map_err(|_| {
-                crate::AtlasError::builder("Internal bug: failed to copy texture into atlas")
-            })?;
+            atlas
+                .copy_from(&crop, placement.x, placement.y)
+                .map_err(|_| {
+                    crate::AtlasError::builder("Internal bug: failed to copy texture into atlas")
+                })?;
             fill_frame_extrusion(&mut atlas, placement, extrusion);
             frames_slot[region_index] = Some((src_rect, placement));
         }
