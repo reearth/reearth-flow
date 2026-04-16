@@ -221,13 +221,8 @@ fn emit_atlas_geometry(
             .map(|(poly, mat_id)| (feature.materials[*mat_id as usize].clone(), poly))
             .enumerate()
         {
-            let remapped_uvs = poly_index[feature_id][poly_idx].and_then(|(mi, pi)| {
-                atlas
-                    .as_ref()?
-                    .remapped_uvs
-                    .get(mi)
-                    .map(|uvs| &uvs[pi])
-            });
+            let remapped_uvs = poly_index[feature_id][poly_idx]
+                .and_then(|(mi, pi)| atlas.as_ref()?.remapped_uvs.get(mi).map(|uvs| &uvs[pi]));
             if remapped_uvs.is_some() {
                 if let Some(uri) = atlas_uri {
                     mat = material::Material {

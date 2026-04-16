@@ -100,15 +100,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect::<Result<_, _>>()?;
 
-    let atlas = build_atlas(&materials, MAX_ATLAS_SIZE)?;
+    let atlas = build_atlas(&materials, MAX_ATLAS_SIZE)?
+        .ok_or("atlas generation produced no atlas image")?;
 
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let image = atlas
+    atlas
         .image
-        .ok_or("atlas generation produced no atlas image")?;
-    image.save_with_format(output_path, ImageFormat::Png)?;
+        .save_with_format(output_path, ImageFormat::Png)?;
 
     println!("wrote atlas to {}", output_path.display());
     Ok(())

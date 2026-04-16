@@ -123,12 +123,12 @@ fn build_remapped_uvs(
         .iter()
         .map(|mat| {
             let path = mat.path.to_string_lossy().into_owned();
-            let frames = texture_frames
-                .get(&path)
-                .unwrap_or_else(|| panic!("texture_frames missing '{path}' — internal inconsistency"));
-            let damage = damage_by_path
-                .get(&path)
-                .unwrap_or_else(|| panic!("damage_by_path missing '{path}' — internal inconsistency"));
+            let frames = texture_frames.get(&path).unwrap_or_else(|| {
+                panic!("texture_frames missing '{path}' — internal inconsistency")
+            });
+            let damage = damage_by_path.get(&path).unwrap_or_else(|| {
+                panic!("damage_by_path missing '{path}' — internal inconsistency")
+            });
             let texture_size = (damage.src_width, damage.src_height);
             mat.uvs
                 .iter()
@@ -180,7 +180,10 @@ pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Op
         plan.downsample,
         atlas_size,
     );
-    Ok(Some(BuiltAtlas { image, remapped_uvs }))
+    Ok(Some(BuiltAtlas {
+        image,
+        remapped_uvs,
+    }))
 }
 
 #[cfg(test)]
@@ -216,7 +219,9 @@ mod tests {
             make_material(path2, vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
         ];
 
-        let built = build_atlas(&materials, 8192).unwrap().expect("expected atlas to be built");
+        let built = build_atlas(&materials, 8192)
+            .unwrap()
+            .expect("expected atlas to be built");
         assert_eq!(built.remapped_uvs.len(), 2);
         assert!(built.image.width() > 0);
         assert!(built.image.height() > 0);
@@ -255,7 +260,9 @@ mod tests {
             })
             .collect();
 
-        let built = build_atlas(&materials, 32).unwrap().expect("expected atlas to be built");
+        let built = build_atlas(&materials, 32)
+            .unwrap()
+            .expect("expected atlas to be built");
         let aw = built.image.width() as f64;
         let ah = built.image.height() as f64;
 
