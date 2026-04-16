@@ -190,15 +190,12 @@ fn build_atlas_artifacts(
     ext: &str,
 ) -> crate::errors::Result<(reearth_flow_atlas::BuiltAtlas, Url)> {
     let atlas = build_atlas(texture_materials, DEFAULT_MAX_ATLAS_SIZE)
-        .map_err(crate::errors::SinkError::atlas_builder)?;
-
-    let image = atlas
-        .image
-        .as_ref()
+        .map_err(crate::errors::SinkError::atlas_builder)?
         .ok_or_else(|| crate::errors::SinkError::atlas_builder("atlas produced no image"))?;
 
     let atlas_path = atlas_dir.join("0").with_extension(ext);
-    image
+    atlas
+        .image
         .save_with_format(&atlas_path, image_format)
         .map_err(crate::errors::SinkError::atlas_builder)?;
 
@@ -228,8 +225,7 @@ fn emit_atlas_geometry(
                 atlas
                     .as_ref()?
                     .remapped_uvs
-                    .get(mi)?
-                    .as_ref()
+                    .get(mi)
                     .map(|uvs| &uvs[pi])
             });
             if remapped_uvs.is_some() {

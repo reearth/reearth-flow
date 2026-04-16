@@ -62,8 +62,8 @@ pub struct LayoutPlan {
 }
 
 pub struct BuiltAtlas {
-    pub image: Option<RgbaImage>,
-    pub remapped_uvs: Vec<Option<TextureUVs>>,
+    pub image: RgbaImage,
+    pub remapped_uvs: Vec<TextureUVs>,
 }
 
 pub const MAX_DOWNSAMPLE_K: u32 = 13;
@@ -84,13 +84,6 @@ fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
         (px / scale + ctx.frame.x as f64) / ctx.atlas_size.0,
         1.0 - (py / scale + ctx.frame.y as f64) / ctx.atlas_size.1,
     ]
-}
-
-fn empty_atlas(materials: &[TextureInput]) -> BuiltAtlas {
-    BuiltAtlas {
-        image: None,
-        remapped_uvs: materials.iter().map(|_| None).collect(),
-    }
 }
 
 fn remap_polygon_uvs(
@@ -120,7 +113,7 @@ fn build_remapped_uvs(
     texture_frames: &blit::TextureFrames,
     downsample: u32,
     atlas_size: (f64, f64),
-) -> Vec<Option<TextureUVs>> {
+) -> Vec<TextureUVs> {
     let damage_by_path: HashMap<_, _> = damage_list
         .iter()
         .map(|(path, td)| (path.to_string_lossy().into_owned(), td))
@@ -130,38 +123,40 @@ fn build_remapped_uvs(
         .iter()
         .map(|mat| {
             let path = mat.path.to_string_lossy().into_owned();
-            let frames = texture_frames.get(&path)?;
-            let damage = damage_by_path.get(&path)?;
+            let frames = texture_frames
+                .get(&path)
+                .unwrap_or_else(|| panic!("texture_frames missing '{path}' — internal inconsistency"));
+            let damage = damage_by_path
+                .get(&path)
+                .unwrap_or_else(|| panic!("damage_by_path missing '{path}' — internal inconsistency"));
             let texture_size = (damage.src_width, damage.src_height);
-            Some(
-                mat.uvs
-                    .iter()
-                    .enumerate()
-                    .map(|(polygon_idx, poly_uvs)| {
-                        let region_idx = damage.polygon_regions[polygon_idx];
-                        let (damage, frame) = frames[region_idx];
-                        remap_polygon_uvs(
-                            poly_uvs,
-                            texture_size,
-                            damage,
-                            frame,
-                            downsample,
-                            atlas_size,
-                        )
-                    })
-                    .collect(),
-            )
+            mat.uvs
+                .iter()
+                .enumerate()
+                .map(|(polygon_idx, poly_uvs)| {
+                    let region_idx = damage.polygon_regions[polygon_idx];
+                    let (damage, frame) = frames[region_idx];
+                    remap_polygon_uvs(
+                        poly_uvs,
+                        texture_size,
+                        damage,
+                        frame,
+                        downsample,
+                        atlas_size,
+                    )
+                })
+                .collect()
         })
         .collect()
 }
 
 /// Pack `materials` into an atlas image and return remapped UVs.
-/// `remapped_uvs[i]` is `Some(remapped_uvs)` if `materials[i]` was packed, `None` if excluded.
-pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<BuiltAtlas> {
+/// Returns `None` if no damageable texture regions were found (e.g. all files unreadable).
+pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Option<BuiltAtlas>> {
     // Stage 1: collect damage rects (reads image headers only).
     let damage_list = collect_damage(materials)?;
     if damage_list.is_empty() {
-        return Ok(empty_atlas(materials));
+        return Ok(None);
     }
 
     // Stage 2: plan layout (pure — no I/O, no blitting).
@@ -172,12 +167,12 @@ pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Bu
     let plan = plan_layout(&dims, max_atlas_size)?;
 
     // Stage 3: blit using pre-computed placements — no second layout pass.
-    let (atlas, texture_frames) = blit::blit(
+    let (image, texture_frames) = blit::blit(
         &damage_list,
         (plan.atlas_width, plan.atlas_height),
         &plan.placements,
     )?;
-    let atlas_size = (atlas.width() as f64, atlas.height() as f64);
+    let atlas_size = (image.width() as f64, image.height() as f64);
     let remapped_uvs = build_remapped_uvs(
         materials,
         &damage_list,
@@ -185,14 +180,7 @@ pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Bu
         plan.downsample,
         atlas_size,
     );
-    Ok(BuiltAtlas {
-        image: if remapped_uvs.iter().any(Option::is_some) {
-            Some(atlas)
-        } else {
-            None
-        },
-        remapped_uvs,
-    })
+    Ok(Some(BuiltAtlas { image, remapped_uvs }))
 }
 
 #[cfg(test)]
@@ -228,11 +216,10 @@ mod tests {
             make_material(path2, vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]),
         ];
 
-        let built = build_atlas(&materials, 8192).unwrap();
+        let built = build_atlas(&materials, 8192).unwrap().expect("expected atlas to be built");
         assert_eq!(built.remapped_uvs.len(), 2);
-        assert!(built.remapped_uvs.iter().all(|entry| entry.is_some()));
-        assert!(built.image.as_ref().unwrap().width() > 0);
-        assert!(built.image.as_ref().unwrap().height() > 0);
+        assert!(built.image.width() > 0);
+        assert!(built.image.height() > 0);
     }
 
     // A 16x16 texture at max downsample (k=4, factor=16) shrinks to 1x1 px, which the packer
@@ -268,17 +255,12 @@ mod tests {
             })
             .collect();
 
-        let built = build_atlas(&materials, 32).unwrap();
-        let atlas = built.image.as_ref().unwrap();
-        let aw = atlas.width() as f64;
-        let ah = atlas.height() as f64;
+        let built = build_atlas(&materials, 32).unwrap().expect("expected atlas to be built");
+        let aw = built.image.width() as f64;
+        let ah = built.image.height() as f64;
 
-        for (mat_idx, (color, remapped)) in colors.iter().zip(built.remapped_uvs.iter()).enumerate()
+        for (mat_idx, (color, poly_uvs)) in colors.iter().zip(built.remapped_uvs.iter()).enumerate()
         {
-            let poly_uvs = remapped
-                .as_ref()
-                .unwrap_or_else(|| panic!("material {mat_idx} not packed"));
-
             // Vertices are (0,0),(1,0),(1,1),(0,1); v3=(u=0,v=1) is atlas top-left,
             // v1=(u=1,v=0) is atlas bottom-right.
             let [tl_u, tl_v] = poly_uvs[0][3];
@@ -292,12 +274,12 @@ mod tests {
             // Content area and 1px extrusion ring must all be the expected solid color.
             let ex0 = x0.saturating_sub(1);
             let ey0 = y0.saturating_sub(1);
-            let ex1 = (x1 + 1).min(atlas.width());
-            let ey1 = (y1 + 1).min(atlas.height());
+            let ex1 = (x1 + 1).min(built.image.width());
+            let ey1 = (y1 + 1).min(built.image.height());
             for y in ey0..ey1 {
                 for x in ex0..ex1 {
                     assert_eq!(
-                        *atlas.get_pixel(x, y),
+                        *built.image.get_pixel(x, y),
                         *color,
                         "bleed at ({x},{y}) for material {mat_idx}"
                     );
