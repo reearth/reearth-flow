@@ -116,7 +116,7 @@ pub fn collect_damage(
             );
 
             if min_u < 0.0 || max_u > 1.0 || min_v < 0.0 || max_v > 1.0 {
-                eprintln!(
+                tracing::error!(
                     "reearth-flow-atlas: polygon {} of '{}' has UV coordinates outside \
                      [0,1] (u=[{min_u:.4},{max_u:.4}], v=[{min_v:.4},{max_v:.4}]); clamping",
                     polygon_idx,

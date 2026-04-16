@@ -72,7 +72,7 @@ impl SkylinePacker {
         best
     }
 
-    fn can_put(&self, mut i: usize, w: u32, h: u32) -> Option<Rect> {
+    fn can_put(&self, i: usize, w: u32, h: u32) -> Option<Rect> {
         let mut rect = Rect {
             x: self.skylines[i].x,
             y: 0,
@@ -80,17 +80,18 @@ impl SkylinePacker {
             h,
         };
         let mut left = w;
-        loop {
-            rect.y = rect.y.max(self.skylines[i].y);
+        for skyline in &self.skylines[i..] {
+            rect.y = rect.y.max(skyline.y);
             if rect.x + rect.w > self.max_w || rect.y + rect.h > self.max_h {
                 return None;
             }
-            if self.skylines[i].w >= left {
+            if skyline.w >= left {
                 return Some(rect);
             }
-            left -= self.skylines[i].w;
-            i += 1;
+            left -= skyline.w;
         }
+        tracing::error!("skyline invariant violated: skylines do not cover full width");
+        None
     }
 
     fn split(&mut self, index: usize, rect: Rect) {
