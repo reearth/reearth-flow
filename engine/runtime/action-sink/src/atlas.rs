@@ -28,11 +28,6 @@ struct PendingTextureInput {
     wrapping: bool,
 }
 
-struct AtlasArtifacts {
-    atlas: Option<reearth_flow_atlas::BuiltAtlas>,
-    atlas_uri: Option<Url>,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GltfFeature {
     // polygons [x, y, z, u, v]
@@ -54,14 +49,20 @@ pub fn build_atlas_geometry(
     vertices: &mut IndexSet<[u32; 9], RandomState>,
 ) -> crate::errors::Result<()> {
     let (texture_materials, poly_index) = collect_atlas_inputs(features);
-    let AtlasArtifacts { atlas, atlas_uri } =
+
+    if texture_materials.is_empty() {
+        emit_atlas_geometry(features, &poly_index, None, None, primitives, vertices);
+        return Ok(());
+    }
+
+    let (atlas, atlas_uri) =
         build_atlas_artifacts(&texture_materials, atlas_dir, image_format, ext)?;
 
     emit_atlas_geometry(
         features,
         &poly_index,
-        atlas.as_ref(),
-        atlas_uri.as_ref(),
+        Some(&atlas),
+        Some(&atlas_uri),
         primitives,
         vertices,
     );
@@ -187,26 +188,24 @@ fn build_atlas_artifacts(
     atlas_dir: &Path,
     image_format: ImageFormat,
     ext: &str,
-) -> crate::errors::Result<AtlasArtifacts> {
-    let atlas = if texture_materials.is_empty() {
-        None
-    } else {
-        Some(
-            build_atlas(texture_materials, DEFAULT_MAX_ATLAS_SIZE)
-                .map_err(crate::errors::SinkError::atlas_builder)?,
-        )
-    };
-    if let Some(image) = atlas.as_ref().and_then(|atlas| atlas.image.as_ref()) {
-        image
-            .save_with_format(atlas_dir.join("0").with_extension(ext), image_format)
-            .map_err(crate::errors::SinkError::atlas_builder)?;
-    }
-    let atlas_uri = atlas
-        .as_ref()
-        .and_then(|atlas| atlas.image.as_ref().map(|_| ()))
-        .and_then(|_| Url::from_file_path(atlas_dir.join("0").with_extension(ext)).ok());
+) -> crate::errors::Result<(reearth_flow_atlas::BuiltAtlas, Url)> {
+    let atlas = build_atlas(texture_materials, DEFAULT_MAX_ATLAS_SIZE)
+        .map_err(crate::errors::SinkError::atlas_builder)?;
 
-    Ok(AtlasArtifacts { atlas, atlas_uri })
+    let image = atlas
+        .image
+        .as_ref()
+        .ok_or_else(|| crate::errors::SinkError::atlas_builder("atlas produced no image"))?;
+
+    let atlas_path = atlas_dir.join("0").with_extension(ext);
+    image
+        .save_with_format(&atlas_path, image_format)
+        .map_err(crate::errors::SinkError::atlas_builder)?;
+
+    let atlas_uri = Url::from_file_path(&atlas_path)
+        .map_err(|_| crate::errors::SinkError::atlas_builder("failed to create atlas file URI"))?;
+
+    Ok((atlas, atlas_uri))
 }
 
 fn emit_atlas_geometry(
