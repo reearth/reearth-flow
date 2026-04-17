@@ -103,9 +103,6 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (
 	if p.Archived != nil {
 		pb = pb.IsArchived(*p.Archived)
 	}
-	if p.IsLocked != nil {
-		pb = pb.IsLocked(*p.IsLocked)
-	}
 
 	proj, err := pb.Build()
 	if err != nil {

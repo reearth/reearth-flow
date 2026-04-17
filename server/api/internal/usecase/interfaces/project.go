@@ -18,7 +18,6 @@ type CreateProjectParam struct {
 	Description *string
 	Archived    *bool
 	WorkspaceID accountsid.WorkspaceID
-	IsLocked    *bool
 }
 
 type UpdateProjectParam struct {
