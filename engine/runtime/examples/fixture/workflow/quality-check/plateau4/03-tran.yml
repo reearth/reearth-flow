@@ -2552,7 +2552,7 @@ graphs:
       groupBy:
       - lod
       - package
-      tolerance: 1e-9
+      tolerance: 0.01
   - id: 5dab814a-c4c6-47e0-8688-1c5667c775fb
     name: LineOnLineOverlayerLOD23
     type: action
@@ -2561,7 +2561,7 @@ graphs:
       groupBy:
       - lod
       - package
-      tolerance: 1e-9
+      tolerance: 0.01
   - id: b03dfe7a-a32a-4334-90a1-23c7486576dc
     name: FilterOverlaps
     type: action
