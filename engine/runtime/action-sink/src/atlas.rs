@@ -123,19 +123,19 @@ fn collect_feature_poly_index(
                         wrapping: false,
                     }
                 });
-            let uvs: PolygonUVs = poly
+            if pending.wrapping {
+                return None;
+            }
+            let raw_uvs: PolygonUVs = poly
                 .raw_coords()
                 .iter()
                 .map(|&[_, _, _, u, v]| [u, v])
                 .collect();
-            if has_wrapping_uvs(&uvs) {
+            let Some(uvs) = normalize_uvs(raw_uvs) else {
                 pending.wrapping = true;
                 pending.uvs.clear();
                 return None;
-            }
-            if pending.wrapping {
-                return None;
-            }
+            };
             let poly_within = pending.uvs.len();
             pending.uvs.push(uvs);
             Some((path_str, poly_within))
@@ -294,9 +294,23 @@ fn emit_polygon(
     }
 }
 
-fn has_wrapping_uvs(uvs: &PolygonUVs) -> bool {
-    uvs.iter()
-        .any(|[u, v]| *u < 0.0 || *u > 1.0 || *v < 0.0 || *v > 1.0)
+// Workaround for missing `wrapMode` in CityGML
+// infer wrapping from UV range with 0.1 tolerance to handle dataset UV errors and clamp to [0,1]
+fn normalize_uvs(uvs: PolygonUVs) -> Option<PolygonUVs> {
+    const WRAP_THRESHOLD: f64 = 0.1;
+    if uvs.iter().any(|[u, v]| {
+        *u < -WRAP_THRESHOLD
+            || *u > 1.0 + WRAP_THRESHOLD
+            || *v < -WRAP_THRESHOLD
+            || *v > 1.0 + WRAP_THRESHOLD
+    }) {
+        return None;
+    }
+    Some(
+        uvs.into_iter()
+            .map(|[u, v]| [u.clamp(0.0, 1.0), v.clamp(0.0, 1.0)])
+            .collect(),
+    )
 }
 
 #[cfg(test)]
