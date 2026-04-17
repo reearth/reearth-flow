@@ -185,14 +185,14 @@ impl LineOnLineOverlayer {
     fn append_to_group(
         &mut self,
         group_idx: usize,
-        aabbs_json: &str,
-        feature_json: &str,
+        aabbs_json: String,
+        feature_json: String,
     ) -> Result<(), BoxedError> {
         self.buffer_bytes += aabbs_json.len() + feature_json.len();
         self.buffer
             .entry(group_idx)
             .or_default()
-            .push((aabbs_json.to_string(), feature_json.to_string()));
+            .push((aabbs_json, feature_json));
 
         if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
             self.flush_buffer()?;
@@ -292,7 +292,7 @@ impl Processor for LineOnLineOverlayer {
                 let aabbs: Vec<[f64; 4]> = line_strings.iter().map(aabb_of_line_string).collect();
                 let aabbs_json = serde_json::to_string(&aabbs)?;
                 let feature_json = serde_json::to_string(&ctx.feature)?;
-                self.append_to_group(group_idx, &aabbs_json, &feature_json)?;
+                self.append_to_group(group_idx, aabbs_json, feature_json)?;
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -361,7 +361,6 @@ impl Processor for LineOnLineOverlayer {
     }
 }
 
-/// Extract all sub-line-strings from a 2D geometry. Returns empty for unsupported types.
 fn extract_line_strings(geom: &Geometry2D<f64>) -> Vec<LineString2D<f64>> {
     match geom {
         Geometry2D::LineString(line) => vec![line.clone()],
@@ -386,9 +385,6 @@ fn aabb_to_rstar(aabb: [f64; 4]) -> AABB<Point2D<f64>> {
     )
 }
 
-// --- Disk-backed helpers (mirrors AreaOnAreaOverlayer) ---
-
-/// Provides random access to features stored on disk in a JSONL file.
 struct DiskBackedFeatures {
     path: PathBuf,
     offsets: Vec<u64>,
@@ -439,9 +435,11 @@ impl DiskBackedFeatures {
     fn len(&self) -> usize {
         self.offsets.len()
     }
-}
 
-// --- Phase A / Phase B core types ---
+    fn is_empty(&self) -> bool {
+        self.offsets.is_empty()
+    }
+}
 
 #[derive(Clone, Copy)]
 struct AabbEntry {
@@ -459,8 +457,6 @@ impl RTreeObject for AabbEntry {
     }
 }
 
-/// Per-group handler — runs Phase A (pair enumeration) and Phase B (dedup) on one group's
-/// disk-backed inputs, streaming outputs to the writers.
 fn process_group<W: Write>(
     group_dir: &Path,
     tolerance: f64,
@@ -475,7 +471,6 @@ fn process_group<W: Write>(
         return Ok((0, 0));
     }
 
-    // Load per-feature AABB arrays from disk, flatten into entry list.
     let aabbs_per_feature: Vec<Vec<[f64; 4]>> = {
         let file = File::open(&aabbs_path)?;
         let reader = BufReader::new(file);
@@ -506,13 +501,11 @@ fn process_group<W: Write>(
         return Ok((0, 0));
     }
 
-    // Random-access index over features + cached per-feature geometry vector.
     let disk_feats = DiskBackedFeatures::scan(&features_path)?;
     let geometries: Vec<Arc<Geometry>> = (0..disk_feats.len())
         .map(|i| disk_feats.read_geometry(i))
         .collect::<Result<Vec<_>, _>>()?;
 
-    // Extract sub-line-string vectors once — index by feature_idx then ls_local_idx.
     let lss_per_feature: Vec<Vec<LineString2D<f64>>> = geometries
         .iter()
         .map(|g| match &g.value {
@@ -521,11 +514,8 @@ fn process_group<W: Write>(
         })
         .collect();
 
-    // Run the R-tree-backed overlay across all sub-line-strings in the group.
     let overlay = overlay_entries(&entries, &lss_per_feature, tolerance);
 
-    // --- Emit line-port features ---
-    // Attribute cache keyed by feature_idx for on-demand attribute loads.
     let mut attributes_cache: HashMap<usize, Arc<Attributes>> = HashMap::new();
     let load_attrs = |i: usize,
                       cache: &mut HashMap<usize, Arc<Attributes>>|
@@ -541,7 +531,6 @@ fn process_group<W: Write>(
 
     let mut line_count: usize = 0;
     for meta in &overlay.line_strings_with_metadata {
-        // overlay_ids indexes into `entries` (entry_idx); map each to its source feature_idx.
         let source_feature_idxs: Vec<usize> = meta
             .overlay_ids
             .iter()
@@ -595,10 +584,9 @@ fn process_group<W: Write>(
         line_count += 1;
     }
 
-    // --- Emit point-port features ---
-    // Preserve the existing convention: point attributes come from the last feature in the
-    // group (by insertion order), filtered by group_by if set.
-    let last_feature_idx = if disk_feats.len() == 0 {
+    // Point attributes come from the last feature in the group (by insertion order),
+    // filtered by group_by if set — preserves pre-rewrite convention.
+    let last_feature_idx = if disk_feats.is_empty() {
         None
     } else {
         Some(disk_feats.len() - 1)
@@ -629,8 +617,6 @@ fn process_group<W: Write>(
     Ok((line_count, point_count))
 }
 
-// --- Overlay core ---
-
 #[derive(Debug, Clone)]
 struct LineString2DWithMetadata<T: GeoFloat> {
     line_string: LineString2D<T>,
@@ -646,25 +632,15 @@ struct OverlayResult {
     split_coords: Vec<Coordinate2D<f64>>,
 }
 
-/// Core overlay: for each entry (one sub-line-string), use the R-tree to find candidate
-/// neighbours by AABB, compute pairwise intersections via `LineStringWithTree2D`, then split
-/// each entry's line string at the intersection points. Deduplicate segments / split points
-/// via R-trees.
 fn overlay_entries(
     entries: &[AabbEntry],
     lss_per_feature: &[Vec<LineString2D<f64>>],
     tolerance: f64,
 ) -> OverlayResult {
-    // Bulk-load the R-tree over sub-line-string AABBs.
     let rtree: RTree<AabbEntry> = RTree::bulk_load(entries.to_vec());
 
-    // Phase A: per-entry parallel work.
-    //   - Query the R-tree lazily for candidates whose AABB overlaps self.
-    //   - Skip candidates from the same feature (feature-level self-skip, matches the old
-    //     `j != i` when indices were feature-level).
-    //   - Emit this entry's split segments (tagged with entry_idx) and split coords.
-    type PhaseAEntryResult = (Vec<(usize, LineString2D<f64>)>, Vec<Coordinate2D<f64>>);
-    let per_entry_results: Vec<PhaseAEntryResult> = entries
+    type PerEntryResult = (Vec<(usize, LineString2D<f64>)>, Vec<Coordinate2D<f64>>);
+    let per_entry_results: Vec<PerEntryResult> = entries
         .par_iter()
         .map(|entry_i| {
             let self_ls = &lss_per_feature[entry_i.feature_idx][entry_i.ls_local_idx];
@@ -673,9 +649,6 @@ fn overlay_entries(
             // Lazy iteration over R-tree candidates; never materialises the pair list.
             let mut intersection_coords: Vec<Coordinate2D<f64>> = Vec::new();
             for entry_j in rtree.locate_in_envelope_intersecting(&entry_i.aabb) {
-                if entry_j.entry_idx == entry_i.entry_idx {
-                    continue;
-                }
                 if entry_j.feature_idx == entry_i.feature_idx {
                     continue;
                 }
@@ -707,7 +680,6 @@ fn overlay_entries(
         })
         .collect();
 
-    // Flatten Phase A's output. Each segment is tagged with its source entry_idx.
     let mut segments: Vec<(usize, LineString2D<f64>)> = Vec::new();
     let mut split_coords_flat: Vec<Coordinate2D<f64>> = Vec::new();
     for (segs, coords) in per_entry_results {
@@ -719,13 +691,8 @@ fn overlay_entries(
     // aren't meaningful overlays and previously dominated the line-port output.
     segments.retain(|(_, ls)| line_string_length_2d(ls) >= tolerance);
 
-    // Phase B, Block 1 — segment dedup via R-tree.
-    //
     // Two source entries that overlapped geometrically produce identical split segments from
-    // different Phase A tasks. We cluster them here: R-tree over segment AABBs, single-pass
-    // sweep with a `processed` mask. For each unprocessed segment i, query the R-tree and
-    // compare candidates by coord-by-coord tolerance (forward + reversed). Candidates that
-    // match are merged into i's `overlay_ids` list.
+    // different per-entry tasks; we cluster them here.
     let seg_aabbs: Vec<AABB<Point2D<f64>>> = segments.iter().map(|(_, ls)| ls.envelope()).collect();
 
     #[derive(Clone, Copy)]
@@ -788,13 +755,9 @@ fn overlay_entries(
         });
     }
 
-    // Phase B, Block 2 — split-coord dedup via R-tree.
-    //
-    // Each physical intersection is discovered by both sides of the crossing (task i and
-    // task j), plus multiple times for 3+-way near-coincidences. Build an R-tree over point
-    // AABBs and sweep with a mask; use a tolerance-expanded envelope for the query so near
-    // matches get pulled in. Sources are discarded by design (matches the existing behavior
-    // at the current `line_on_line_overlayer.rs` L542).
+    // Each physical intersection is discovered by both sides of the crossing plus extras
+    // from 3+-way near-coincidences, so dedup by tolerance-expanded envelope. Sources are
+    // discarded by design, matching pre-rewrite behavior.
     #[derive(Clone, Copy)]
     struct PointEntry {
         idx: usize,
@@ -871,8 +834,6 @@ fn segments_match(a: &LineString2D<f64>, b: &LineString2D<f64>, tolerance: f64) 
         .all(|(&c1, &c2)| (c1 - c2).norm() < tolerance)
 }
 
-/// In-memory entry point kept for unit tests. Wraps `overlay_entries` with one entry per
-/// line string (each line treated as its own feature).
 #[cfg(test)]
 fn line_string_intersection_2d(
     line_strings: &[LineString2D<f64>],
@@ -1199,8 +1160,6 @@ mod tests {
 
     #[test]
     fn test_process_group_two_crossing_lines() {
-        use reearth_flow_types::Geometry;
-
         let dir =
             engine_cache_dir(uuid::Uuid::nil()).join(format!("test-lol-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -1226,7 +1185,6 @@ mod tests {
             Feature::new_with_attributes_and_geometry(Attributes::new(), geom)
         };
 
-        // aabbs.jsonl — one JSON array per feature.
         {
             let mut w = BufWriter::new(File::create(group_dir.join("aabbs.jsonl")).unwrap());
             let a1: Vec<[f64; 4]> = vec![[0.0, 0.0, 5.0, 5.0]];
@@ -1235,7 +1193,6 @@ mod tests {
             writeln!(w, "{}", serde_json::to_string(&a2).unwrap()).unwrap();
             w.flush().unwrap();
         }
-        // features.jsonl
         {
             let mut w = BufWriter::new(File::create(group_dir.join("features.jsonl")).unwrap());
             writeln!(w, "{}", serde_json::to_string(&f1).unwrap()).unwrap();
