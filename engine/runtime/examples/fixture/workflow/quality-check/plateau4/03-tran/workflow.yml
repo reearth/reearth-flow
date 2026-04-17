@@ -379,7 +379,7 @@ graphs:
           groupBy:
             - lod
             - package
-          tolerance: 0.000000001
+          tolerance: 0.01
 
       # Detect overlaps between different Road instances for LOD2 and LOD3
       - id: 5dab814a-c4c6-47e0-8688-1c5667c775fb
@@ -390,7 +390,7 @@ graphs:
           groupBy:
             - lod
             - package
-          tolerance: 0.000000001
+          tolerance: 0.01
 
       # Filter features with overlaps (lines that have overlap attribute > 1)
       - id: b03dfe7a-a32a-4334-90a1-23c7486576dc
