@@ -498,14 +498,14 @@ fn process_group<W: Write>(
 
     let disk_feats = DiskBackedFeatures::scan(&features_path)?;
     if disk_feats.len() != aabbs_per_feature.len() {
-        return Err(Box::new(GeometryProcessorError::LineOnLineOverlayerFactory(
-            format!(
+        return Err(Box::new(
+            GeometryProcessorError::LineOnLineOverlayerFactory(format!(
                 "aabbs/features row count mismatch in {}: aabbs={}, features={}",
                 group_dir.display(),
                 aabbs_per_feature.len(),
                 disk_feats.len(),
-            ),
-        )));
+            )),
+        ));
     }
     let mut attributes_by_feature: Vec<Arc<Attributes>> = Vec::with_capacity(disk_feats.len());
     let mut lss_per_feature: Vec<Vec<LineString2D<f64>>> = Vec::with_capacity(disk_feats.len());
