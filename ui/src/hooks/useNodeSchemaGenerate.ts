@@ -32,7 +32,7 @@ export default (
       content: {
         default: "",
         type: "string",
-        format: "textarea",
+        format: "wysiwyg",
         title: t("Content"),
         description: t("The content shown on the note"),
       },

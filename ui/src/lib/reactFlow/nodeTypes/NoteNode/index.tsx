@@ -107,9 +107,12 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
                 );
             }
           }}>
-          <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-hidden">
-            {data.customizations?.content}
-          </p>
+          <div
+            className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-hidden [&_b]:font-bold [&_i]:italic"
+            dangerouslySetInnerHTML={{
+              __html: data.customizations?.content ?? "",
+            }}
+          />
         </div>
       </div>
     </>

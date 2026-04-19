@@ -5573,6 +5573,7 @@ __metadata:
     react-hotkeys-hook: "npm:5.2.4"
     react-i18next: "npm:17.0.2"
     react-resizable-panels: "npm:4.9.0"
+    react-simple-wysiwyg: "npm:3.4.1"
     react-yjs: "npm:2.0.1"
     read-env: "npm:2.0.0"
     resium: "npm:1.20.1"
@@ -14213,6 +14214,15 @@ __metadata:
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
   checksum: 10c0/7435c4f8c7ae51fbcd30b8c0637088ccb274633da44505c66b5a4624b5d7c0b269b36b203ed0fd4c7509d1db955e8d59d73d6b3555f68b3c94ff112043f0debf
+  languageName: node
+  linkType: hard
+
+"react-simple-wysiwyg@npm:3.4.1":
+  version: 3.4.1
+  resolution: "react-simple-wysiwyg@npm:3.4.1"
+  peerDependencies:
+    react: ">=16.8"
+  checksum: 10c0/0abe2a97811b965e932f8139c44512fcf336005a85bbd00a13e8139d03f70c758ab6f7efea8e2ffa1d965a04b26536c504a447bb0fed16d5f21af7700d27dead
   languageName: node
   linkType: hard
 
