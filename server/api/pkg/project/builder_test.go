@@ -141,7 +141,6 @@ func TestBuilder_Build(t *testing.T) {
 				UpdatedAt(tt.args.updatedAt).
 				Workspace(tt.args.workspace).
 				Name(tt.args.name).
-				UpdatedAt(tt.args.updatedAt).
 				Description(tt.args.description).
 				IsLocked(tt.args.isLocked).
 				Build()
@@ -224,7 +223,6 @@ func TestBuilder_MustBuild(t *testing.T) {
 					UpdatedAt(tt.args.updatedAt).
 					Workspace(tt.args.workspace).
 					Name(tt.args.name).
-					UpdatedAt(tt.args.updatedAt).
 					Description(tt.args.description).
 					IsLocked(tt.args.isLocked).
 					MustBuild()
