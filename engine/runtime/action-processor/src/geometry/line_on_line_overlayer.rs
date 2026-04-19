@@ -427,11 +427,6 @@ impl DiskBackedFeatures {
         Ok(serde_json::from_slice(&buf)?)
     }
 
-    fn read_geometry(&self, i: usize) -> Result<Arc<Geometry>, BoxedError> {
-        let feature = self.read_feature(i)?;
-        Ok(feature.geometry)
-    }
-
     fn len(&self) -> usize {
         self.offsets.len()
     }
@@ -502,32 +497,19 @@ fn process_group<W: Write>(
     }
 
     let disk_feats = DiskBackedFeatures::scan(&features_path)?;
-    let geometries: Vec<Arc<Geometry>> = (0..disk_feats.len())
-        .map(|i| disk_feats.read_geometry(i))
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let lss_per_feature: Vec<Vec<LineString2D<f64>>> = geometries
-        .iter()
-        .map(|g| match &g.value {
+    let mut attributes_by_feature: Vec<Arc<Attributes>> = Vec::with_capacity(disk_feats.len());
+    let mut lss_per_feature: Vec<Vec<LineString2D<f64>>> = Vec::with_capacity(disk_feats.len());
+    for i in 0..disk_feats.len() {
+        let feat = disk_feats.read_feature(i)?;
+        let lss = match &feat.geometry.value {
             GeometryValue::FlowGeometry2D(g2) => extract_line_strings(g2),
             _ => Vec::new(),
-        })
-        .collect();
+        };
+        attributes_by_feature.push(feat.attributes);
+        lss_per_feature.push(lss);
+    }
 
     let overlay = overlay_entries(&entries, &lss_per_feature, tolerance);
-
-    let mut attributes_cache: HashMap<usize, Arc<Attributes>> = HashMap::new();
-    let load_attrs = |i: usize,
-                      cache: &mut HashMap<usize, Arc<Attributes>>|
-     -> Result<Arc<Attributes>, BoxedError> {
-        if let Some(a) = cache.get(&i) {
-            return Ok(a.clone());
-        }
-        let feat = disk_feats.read_feature(i)?;
-        let a = feat.attributes.clone();
-        cache.insert(i, a.clone());
-        Ok(a)
-    };
 
     let mut line_count: usize = 0;
     for meta in &overlay.line_strings_with_metadata {
@@ -545,7 +527,7 @@ fn process_group<W: Write>(
 
         let mut overlaid_list: Vec<AttributeValue> = Vec::with_capacity(source_feature_idxs.len());
         for &fi in &source_feature_idxs {
-            let attrs = load_attrs(fi, &mut attributes_cache)?;
+            let attrs = &attributes_by_feature[fi];
             let attrs_map: HashMap<String, AttributeValue> = attrs
                 .as_ref()
                 .iter()
@@ -560,7 +542,7 @@ fn process_group<W: Write>(
 
         if let Some(group_by) = group_by {
             let first_fi = source_feature_idxs[0];
-            let first_attrs = load_attrs(first_fi, &mut attributes_cache)?;
+            let first_attrs = &attributes_by_feature[first_fi];
             for gb in group_by {
                 if let Some(value) = first_attrs.get(gb) {
                     attributes.insert(gb.clone(), value.clone());
@@ -596,7 +578,7 @@ fn process_group<W: Write>(
     for coord in &overlay.split_coords {
         let attributes: IndexMap<Attribute, AttributeValue> =
             if let (Some(group_by), Some(lfi)) = (group_by, last_feature_idx) {
-                let attrs = load_attrs(lfi, &mut attributes_cache)?;
+                let attrs = &attributes_by_feature[lfi];
                 group_by
                     .iter()
                     .filter_map(|gb| attrs.get(gb).cloned().map(|v| (gb.clone(), v)))
