@@ -34,10 +34,10 @@ func TestCheckPermission(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
 		ctx     context.Context
 		checker *mockPermissionChecker
 		wantErr error
+		name    string
 	}{
 		{
 			name:    "grants permission when checker allows",
