@@ -102,25 +102,24 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 	authInfo := adapter.GetAuthInfo(ctx)
 	if authInfo == nil {
 		log.Printf("WARNING: AuthInfo not found for resource=%s action=%s", resource, action)
-		return nil
+		return interfaces.ErrOperationDenied
 	}
 
-	user := adapter.ReearthxUser(ctx)
+	user := adapter.User(ctx)
 	if user == nil {
 		log.Printf("WARNING: User not found for resource=%s action=%s", resource, action)
-		return nil
+		return interfaces.ErrOperationDenied
 	}
 
-	// Once the operation check in the oss environment is completed, delete the log output and
 	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, user.ID().String(), resource, action)
 	if err != nil {
 		log.Printf("WARNING: Permission check error for user=%s resource=%s action=%s: %v", user.ID().String(), resource, action, err)
-		return nil
+		return err
 	}
 
 	if !hasPermission {
 		log.Printf("WARNING: Permission denied for user=%s resource=%s action=%s", user.ID().String(), resource, action)
-		return nil
+		return interfaces.ErrOperationDenied
 	}
 
 	log.Printf("DEBUG: Permission granted for user=%s resource=%s action=%s", user.ID().String(), resource, action)
