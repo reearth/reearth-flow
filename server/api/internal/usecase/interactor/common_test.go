@@ -58,10 +58,10 @@ func TestCheckPermission(t *testing.T) {
 			wantErr: errors.New("service unavailable"),
 		},
 		{
-			name:    "denies when authInfo is missing from context",
-			ctx:     adapter.AttachUser(context.Background(), validUser),
+			name:    "uses JWT from context when AuthInfo is not set",
+			ctx:     adapter.AttachJWT(adapter.AttachUser(context.Background(), validUser), "jwt-token"),
 			checker: checkerAllow,
-			wantErr: interfaces.ErrOperationDenied,
+			wantErr: nil,
 		},
 		{
 			name:    "denies when user is missing from context",
