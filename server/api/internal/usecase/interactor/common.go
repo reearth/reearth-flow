@@ -108,10 +108,6 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 			authInfo = tmp
 		}
 	}
-	if authInfo == nil {
-		log.Printf("WARNING: AuthInfo not found for resource=%s action=%s", resource, action)
-		return interfaces.ErrOperationDenied
-	}
 
 	var userIDStr string
 	if u := adapter.User(ctx); u != nil {
