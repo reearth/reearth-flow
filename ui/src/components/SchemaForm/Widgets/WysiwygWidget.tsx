@@ -28,8 +28,10 @@ const TOOLBAR_OPTIONS = [
     { list: "ordered" },
     { list: "bullet" },
     { color: [] },
+    { background: [] },
     "code-block",
     "link",
+    "clean",
   ],
 ];
 
