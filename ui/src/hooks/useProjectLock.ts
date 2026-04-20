@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 
 import { useDebouncedCallback } from "@flow/hooks";
+import { useProject } from "@flow/lib/gql";
 import { Project } from "@flow/types";
 
 export default ({
@@ -8,18 +9,26 @@ export default ({
 }: {
   currentProject?: Project | undefined;
 }) => {
-  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [isLocked, setIsLocked] = useState<boolean>(!!currentProject?.isLocked);
+  const { updateProject } = useProject();
 
   // useEffect(() => {
   //   setIsLocked(!!currentProject?.isLocked);
   // }, [currentProject?.isLocked]);
 
   const handleProjectLock = useCallback(
-    (lock: boolean) => {
+    async (lock: boolean) => {
       if (!currentProject) return;
-      console.log("Lock/Unlock project:", lock);
+      try {
+        await updateProject({
+          projectId: currentProject.id,
+          isLocked: lock,
+        });
+      } catch (error) {
+        console.error("Failed to update project lock status:", error);
+      }
     },
-    [currentProject],
+    [currentProject, updateProject],
   );
 
   const debouncedHandleLockChange = useDebouncedCallback((checked: boolean) => {

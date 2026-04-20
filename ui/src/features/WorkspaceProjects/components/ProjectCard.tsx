@@ -6,6 +6,7 @@ import {
   PencilSimpleIcon,
   PaperPlaneTiltIcon,
   TrashIcon,
+  LockIcon,
 } from "@phosphor-icons/react";
 import { MouseEvent, useState } from "react";
 
@@ -171,12 +172,14 @@ const ProjectCard: React.FC<Props> = ({
       </div>
       <div className="flex">
         <div className="absolute top-1 right-1 flex gap-1">
-          {/* <Tooltip>
-            <TooltipTrigger className="rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary">
-              <LockIcon />
-            </TooltipTrigger>
-            <TooltipContent>{t("Locked")}</TooltipContent>
-          </Tooltip> */}
+          {project.isLocked && (
+            <Tooltip>
+              <TooltipTrigger className="rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary">
+                <LockIcon />
+              </TooltipTrigger>
+              <TooltipContent>{t("Locked")}</TooltipContent>
+            </Tooltip>
+          )}
           {sharedUrl && (
             <Tooltip>
               <TooltipTrigger
