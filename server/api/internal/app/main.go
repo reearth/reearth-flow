@@ -14,12 +14,12 @@ import (
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	authserver "github.com/reearth/reearth-flow/api/internal/infrastructure/auth"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/permission"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
-	cerbosClient "github.com/reearth/reearthx/cerbos/client"
 	"github.com/reearth/reearthx/log"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -52,7 +52,6 @@ func Start(debug bool, version string) {
 	// Health checker
 	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.Redis)
 
-	// PermissionChecker
 	if conf.AccountsApiHost == "" {
 		log.Error("accounts host configuration is required")
 		return
@@ -61,15 +60,13 @@ func Start(debug bool, version string) {
 		log.Errorf("invalid accounts host URL: %v", err)
 		return
 	}
-	permissionChecker := cerbosClient.NewPermissionChecker(rbac.ServiceName, conf.AccountsApiHost)
-	if permissionChecker == nil {
-		log.Error("failed to initialize permission checker")
-		return
-	}
 
 	// AccountGQLClient
 	const accountsTimeoutSec = 30
 	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, authserver.NewDynamicAuthTransport())
+
+	// PermissionChecker
+	permissionChecker := permission.NewChecker(accountGQLClient.CerbosRepo, rbac.ServiceName)
 
 	serverCfg := &ServerConfig{
 		Config:            conf,

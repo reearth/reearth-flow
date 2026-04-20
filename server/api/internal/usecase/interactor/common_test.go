@@ -5,33 +5,20 @@ import (
 	"errors"
 	"testing"
 
-	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCheckPermission(t *testing.T) {
-	validAuthInfo := &appx.AuthInfo{Token: "token"}
-	validUser := accountsuser.New().NewID().Name("test").Email("test@example.com").MustBuild()
-
-	checkerAllow := NewMockPermissionChecker(func(_ context.Context, _ *appx.AuthInfo, _, _, _ string) (bool, error) {
+	checkerAllow := NewMockPermissionChecker(func(_ context.Context, _, _ string) (bool, error) {
 		return true, nil
 	})
-	checkerDeny := NewMockPermissionChecker(func(_ context.Context, _ *appx.AuthInfo, _, _, _ string) (bool, error) {
+	checkerDeny := NewMockPermissionChecker(func(_ context.Context, _, _ string) (bool, error) {
 		return false, nil
 	})
-	checkerErr := NewMockPermissionChecker(func(_ context.Context, _ *appx.AuthInfo, _, _, _ string) (bool, error) {
+	checkerErr := NewMockPermissionChecker(func(_ context.Context, _, _ string) (bool, error) {
 		return false, errors.New("service unavailable")
 	})
-
-	baseCtx := func() context.Context {
-		ctx := context.Background()
-		ctx = adapter.AttachAuthInfo(ctx, validAuthInfo)
-		ctx = adapter.AttachUser(ctx, validUser)
-		return ctx
-	}
 
 	tests := []struct {
 		ctx     context.Context
@@ -41,33 +28,21 @@ func TestCheckPermission(t *testing.T) {
 	}{
 		{
 			name:    "grants permission when checker allows",
-			ctx:     baseCtx(),
+			ctx:     context.Background(),
 			checker: checkerAllow,
 			wantErr: nil,
 		},
 		{
 			name:    "denies when checker returns false",
-			ctx:     baseCtx(),
+			ctx:     context.Background(),
 			checker: checkerDeny,
 			wantErr: interfaces.ErrOperationDenied,
 		},
 		{
-			name:    "denies when checker returns error",
-			ctx:     baseCtx(),
+			name:    "propagates error from checker",
+			ctx:     context.Background(),
 			checker: checkerErr,
 			wantErr: errors.New("service unavailable"),
-		},
-		{
-			name:    "uses JWT from context when AuthInfo is not set",
-			ctx:     adapter.AttachJWT(adapter.AttachUser(context.Background(), validUser), "jwt-token"),
-			checker: checkerAllow,
-			wantErr: nil,
-		},
-		{
-			name:    "denies when user is missing from context",
-			ctx:     adapter.AttachAuthInfo(context.Background(), validAuthInfo),
-			checker: checkerAllow,
-			wantErr: interfaces.ErrOperationDenied,
 		},
 	}
 

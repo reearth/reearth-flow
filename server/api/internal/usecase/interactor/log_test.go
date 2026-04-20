@@ -93,7 +93,7 @@ func TestNewLogInteractor(t *testing.T) {
 	t.Run("successfully create LogInteractor", func(t *testing.T) {
 		redisMock := &mockLogGateway{}
 		jobRepoMock := &mockJobRepo{}
-		mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 			return true, nil
 		})
 		li := NewLogInteractor(redisMock, jobRepoMock, mockPermissionCheckerTrue)
@@ -119,7 +119,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 	}
 	redisMock := &mockLogGateway{logs: redisLogs}
 	jobRepoMock := &mockJobRepo{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 
@@ -161,7 +161,7 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 		logs: []*log.Log{initialLog},
 	}
 	jobRepoMock := &mockJobRepo{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 	li := NewLogInteractor(redisMock, jobRepoMock, mockPermissionCheckerTrue)
@@ -191,7 +191,7 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 func TestLogInteractor_Unsubscribe(t *testing.T) {
 	redisMock := &mockLogGateway{}
 	jobRepoMock := &mockJobRepo{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 	liInterface := NewLogInteractor(redisMock, jobRepoMock, mockPermissionCheckerTrue)
@@ -251,7 +251,7 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 		job: completedJob,
 	}
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 
