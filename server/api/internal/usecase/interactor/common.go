@@ -11,6 +11,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearthx/appx"
 )
 
 var skipPermissionCheck bool
@@ -100,6 +101,13 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 	}
 
 	authInfo := adapter.GetAuthInfo(ctx)
+	if authInfo == nil {
+		if token := adapter.JWT(ctx); token != "" {
+			authInfo = &appx.AuthInfo{Token: token}
+		} else if tmp := adapter.TempAuthInfo(ctx); tmp != nil {
+			authInfo = tmp
+		}
+	}
 	if authInfo == nil {
 		log.Printf("WARNING: AuthInfo not found for resource=%s action=%s", resource, action)
 		return interfaces.ErrOperationDenied
