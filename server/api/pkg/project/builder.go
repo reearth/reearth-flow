@@ -53,6 +53,11 @@ func (b *Builder) IsBasicAuthActive(isBasicAuthActive bool) *Builder {
 	return b
 }
 
+func (b *Builder) IsLocked(isLocked bool) *Builder {
+	b.p.isLocked = isLocked
+	return b
+}
+
 func (b *Builder) MustBuild() *Project {
 	r, err := b.Build()
 	if err != nil {

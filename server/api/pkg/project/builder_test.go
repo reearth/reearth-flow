@@ -44,6 +44,12 @@ func TestBuilder_IsArchived(t *testing.T) {
 	assert.True(t, res.IsArchived())
 }
 
+func TestBuilder_IsLocked(t *testing.T) {
+	tb := New().NewID()
+	res := tb.IsLocked(true).MustBuild()
+	assert.True(t, res.IsLocked())
+}
+
 func TestBuilder_BasicAuthUsername(t *testing.T) {
 	tb := New().NewID()
 	res := tb.BasicAuthUsername("username").MustBuild()
@@ -78,6 +84,7 @@ func TestBuilder_Build(t *testing.T) {
 		name, description string
 		id                ID
 		isArchived        bool
+		isLocked          bool
 		updatedAt         time.Time
 		workspace         WorkspaceID
 	}
@@ -95,6 +102,7 @@ func TestBuilder_Build(t *testing.T) {
 				description: "ddd",
 				id:          pid,
 				isArchived:  false,
+				isLocked:    true,
 				updatedAt:   d,
 				workspace:   tid,
 			},
@@ -103,6 +111,7 @@ func TestBuilder_Build(t *testing.T) {
 				description: "ddd",
 				name:        "xxx.aaa",
 				isArchived:  false,
+				isLocked:    true,
 				updatedAt:   d,
 				workspace:   tid,
 			},
@@ -132,8 +141,8 @@ func TestBuilder_Build(t *testing.T) {
 				UpdatedAt(tt.args.updatedAt).
 				Workspace(tt.args.workspace).
 				Name(tt.args.name).
-				UpdatedAt(tt.args.updatedAt).
 				Description(tt.args.description).
+				IsLocked(tt.args.isLocked).
 				Build()
 
 			if tt.err == nil {
@@ -154,6 +163,7 @@ func TestBuilder_MustBuild(t *testing.T) {
 		name, description string
 		id                ID
 		isArchived        bool
+		isLocked          bool
 		updatedAt         time.Time
 		workspace         WorkspaceID
 	}
@@ -171,6 +181,7 @@ func TestBuilder_MustBuild(t *testing.T) {
 				description: "ddd",
 				id:          pid,
 				isArchived:  false,
+				isLocked:    true,
 				updatedAt:   d,
 				workspace:   tid,
 			},
@@ -179,6 +190,7 @@ func TestBuilder_MustBuild(t *testing.T) {
 				description: "ddd",
 				name:        "xxx.aaa",
 				isArchived:  false,
+				isLocked:    true,
 				updatedAt:   d,
 				workspace:   tid,
 			},
@@ -211,8 +223,8 @@ func TestBuilder_MustBuild(t *testing.T) {
 					UpdatedAt(tt.args.updatedAt).
 					Workspace(tt.args.workspace).
 					Name(tt.args.name).
-					UpdatedAt(tt.args.updatedAt).
 					Description(tt.args.description).
+					IsLocked(tt.args.isLocked).
 					MustBuild()
 			}
 
