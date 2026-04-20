@@ -10,7 +10,6 @@ export type NodeCustomizations = {
   customName?: string;
   content?: string;
   backgroundColor?: string;
-  textColor?: string;
   titleColor?: string;
 };
 

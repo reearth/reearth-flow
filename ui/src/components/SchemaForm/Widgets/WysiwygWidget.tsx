@@ -37,6 +37,11 @@ const TOOLBAR_OPTIONS = [
 
 const QUILL_EMPTY_HTML = "<p><br></p>";
 
+function serializeQuill(quill: Quill, emptyValue?: unknown): unknown {
+  const html = quill.getSemanticHTML();
+  return !html || html === QUILL_EMPTY_HTML ? emptyValue : html;
+}
+
 const WysiwygWidget = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
@@ -96,23 +101,18 @@ const WysiwygWidget = <
     }
 
     quill.on(Quill.events.TEXT_CHANGE, () => {
-      const html = quill.getSemanticHTML();
-      onChangeRef.current(
-        !html || html === QUILL_EMPTY_HTML
-          ? optionsRef.current?.emptyValue
-          : html,
-      );
+      onChangeRef.current(serializeQuill(quill, optionsRef.current?.emptyValue));
     });
 
     quill.root.addEventListener("focus", () => {
       isFocusedRef.current = true;
-      onFocusRef.current(id, quill.root.innerHTML);
+      onFocusRef.current(id, serializeQuill(quill, optionsRef.current?.emptyValue));
       onFieldFocusRef.current?.(id);
     });
 
     quill.root.addEventListener("blur", () => {
       isFocusedRef.current = false;
-      onBlurRef.current(id, quill.root.innerHTML);
+      onBlurRef.current(id, serializeQuill(quill, optionsRef.current?.emptyValue));
       onFieldFocusRef.current?.(null);
     });
 

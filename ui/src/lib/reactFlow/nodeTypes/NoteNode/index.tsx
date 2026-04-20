@@ -1,5 +1,6 @@
 import { NoteIcon } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
+import DOMPurify from "dompurify";
 import { memo, useMemo } from "react";
 
 import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
@@ -98,7 +99,14 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
           <div
             className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-hidden [&_a]:text-blue-400 [&_a]:underline [&_b]:font-bold [&_i]:italic [&_li]:ml-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-1 [&_pre]:font-mono [&_s]:line-through [&_u]:underline [&_ul]:list-disc [&_ul]:pl-4"
             dangerouslySetInnerHTML={{
-              __html: data.customizations?.content ?? "",
+              __html: DOMPurify.sanitize(data.customizations?.content ?? "", {
+                ALLOWED_TAGS: [
+                  "p", "br", "strong", "b", "em", "i", "u", "s",
+                  "ol", "ul", "li", "pre", "code", "a", "span",
+                ],
+                ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
+                ALLOW_DATA_ATTR: false,
+              }),
             }}
           />
         </div>
