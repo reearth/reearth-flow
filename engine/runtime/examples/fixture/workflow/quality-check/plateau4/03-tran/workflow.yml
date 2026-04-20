@@ -327,9 +327,9 @@ graphs:
           groupBy:
             - lod
             - fileIndex
-            - gmlId
+            - gmlRootId
             - package
-          tolerance: 0.000000001
+          tolerance: 0.01
 
       # FeatureSorter
       - id: 0c979585-82b2-41aa-909c-00d9b8d017d0
@@ -447,7 +447,7 @@ graphs:
             - lod
             - package
           generateList: areaOverlapList
-          tolerance: 0.000000001
+          tolerance: 0.01
 
       # Filter for overlapping areas
       - id: b0568e70-1c73-4ee0-8bae-8db3687e3d7d

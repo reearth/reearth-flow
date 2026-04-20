@@ -2509,9 +2509,9 @@ graphs:
       groupBy:
       - lod
       - fileIndex
-      - gmlId
+      - gmlRootId
       - package
-      tolerance: 1e-9
+      tolerance: 0.01
   - id: 0c979585-82b2-41aa-909c-00d9b8d017d0
     name: FeatureSorter
     type: action
@@ -2607,7 +2607,7 @@ graphs:
       - lod
       - package
       generateList: areaOverlapList
-      tolerance: 1e-9
+      tolerance: 0.01
   - id: b0568e70-1c73-4ee0-8bae-8db3687e3d7d
     name: FilterAreaOverlaps
     type: action
