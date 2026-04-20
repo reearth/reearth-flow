@@ -1,22 +1,30 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use super::utils::{local_name, XmlChild, XmlNode};
+use super::utils::{gml_id_attr, local_name, XmlChild, XmlNode};
 
-/// Walks `node`'s subtree bottom-up, lifting out every descendant whose tag is in `included`
-/// (matched by qualified name, local name, or Clark notation `{ns}local`).
-/// Returns the stripped tree and the extracted nodes, deepest-first.
-/// No-op when `included` is empty.
-pub fn extract_by_types(
-    node: &Arc<XmlNode>,
-    included: &HashSet<String>,
-) -> (Arc<XmlNode>, Vec<Arc<XmlNode>>) {
+/// Extracts all nodes whose tag is in `included` from `node`'s subtree (including `node` itself),
+/// deepest-first. Each extracted node has its own matching descendants stripped out.
+pub fn extract(node: &Arc<XmlNode>, included: &HashSet<String>) -> Vec<Arc<XmlNode>> {
     if included.is_empty() {
-        return (Arc::clone(node), Vec::new());
+        return Vec::new();
     }
-    let mut extracted: Vec<Arc<XmlNode>> = Vec::new();
-    let stripped = extract_recursive(node, included, &mut extracted);
-    (stripped, extracted)
+    let mut out = Vec::new();
+    extract_inner(node, included, &mut out);
+    out
+}
+
+fn extract_inner(node: &Arc<XmlNode>, included: &HashSet<String>, out: &mut Vec<Arc<XmlNode>>) {
+    if tag_matches(node, included) {
+        let stripped = extract_recursive(node, included, out);
+        out.push(stripped);
+    } else {
+        for child in &node.children {
+            if let XmlChild::Element(e) = child {
+                extract_inner(e, included, out);
+            }
+        }
+    }
 }
 
 pub fn tag_matches(node: &XmlNode, included: &HashSet<String>) -> bool {
@@ -24,6 +32,46 @@ pub fn tag_matches(node: &XmlNode, included: &HashSet<String>) -> bool {
     included.contains(node.name.0.as_str())
         || included.contains(ln)
         || (!node.name.1.is_empty() && included.contains(&format!("{{{}}}{ln}", node.name.1)))
+}
+
+/// Tracks the nearest ancestor `gml:id` for every node in a tree.
+/// Build with [`ParentIdTracker::collect`], then query with [`ParentIdTracker::parent_gml_id`].
+pub struct ParentIdTracker {
+    /// node gml:id → nearest ancestor gml:id (None when the node is a root)
+    map: HashMap<String, Option<String>>,
+}
+
+impl ParentIdTracker {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+
+    /// Walk `node` and record every descendant's parent id.
+    pub fn collect(&mut self, node: &XmlNode) {
+        self.walk(node, None);
+    }
+
+    /// Return the nearest ancestor `gml:id` for the given node id, or `None` if it was a root
+    /// or is unknown.
+    pub fn parent_gml_id(&self, gml_id: &str) -> Option<&str> {
+        self.map.get(gml_id)?.as_deref()
+    }
+
+    fn walk(&mut self, node: &XmlNode, parent_gml_id: Option<&str>) {
+        let my_id = gml_id_attr(node);
+        if let Some(id) = &my_id {
+            self.map
+                .insert(id.clone(), parent_gml_id.map(str::to_string));
+        }
+        let child_parent = my_id.as_deref().or(parent_gml_id);
+        for child in &node.children {
+            if let XmlChild::Element(e) = child {
+                self.walk(e, child_parent);
+            }
+        }
+    }
 }
 
 fn extract_recursive(
@@ -104,8 +152,7 @@ mod tests {
     fn matching_child_extracted_from_parent() {
         let part = node("bldg:BuildingPart", vec![]);
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
-        let (stripped, extracted) = extract_by_types(&root, &included(&["bldg:BuildingPart"]));
-        assert!(stripped.children.is_empty());
+        let extracted = extract(&root, &included(&["bldg:BuildingPart"]));
         assert_eq!(extracted.len(), 1);
         assert!(Arc::ptr_eq(&extracted[0], &part));
     }
@@ -118,10 +165,8 @@ mod tests {
         let part = node("bldg:BuildingPart", vec![elem(Arc::clone(&room))]);
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
 
-        let (stripped, extracted) =
-            extract_by_types(&root, &included(&["bldg:BuildingPart", "bldg:Room"]));
+        let extracted = extract(&root, &included(&["bldg:BuildingPart", "bldg:Room"]));
 
-        assert!(stripped.children.is_empty());
         assert_eq!(extracted.len(), 2);
         assert_eq!(extracted[0].name.0, "bldg:Room");
         assert_eq!(extracted[1].name.0, "bldg:BuildingPart");
@@ -132,8 +177,7 @@ mod tests {
     fn local_name_match() {
         let part = node("bldg:BuildingPart", vec![]);
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
-        let (stripped, extracted) = extract_by_types(&root, &included(&["BuildingPart"]));
-        assert!(stripped.children.is_empty());
+        let extracted = extract(&root, &included(&["BuildingPart"]));
         assert_eq!(extracted.len(), 1);
     }
 
@@ -147,8 +191,7 @@ mod tests {
         });
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
         let clark = format!("{{{ns}}}BuildingPart");
-        let (stripped, extracted) = extract_by_types(&root, &included(&[&clark]));
-        assert!(stripped.children.is_empty());
+        let extracted = extract(&root, &included(&[&clark]));
         assert_eq!(extracted.len(), 1);
     }
 }

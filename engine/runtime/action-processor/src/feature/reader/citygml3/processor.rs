@@ -21,14 +21,18 @@ use url::Url;
 use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
-use reearth_flow_types::{CityGmlGeometry, Geometry, GeometryType, GeometryValue, GmlGeometry};
+use reearth_flow_types::{
+    AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryType, GeometryValue, GmlGeometry,
+    CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
+};
 
 use crate::feature::errors::FeatureProcessorError;
 
 use super::{
-    flatten, geometry,
+    flatten::{self, ParentIdTracker},
+    geometry,
     parser::{self, RawNode, RawRegistry},
-    utils::XmlNode,
+    utils::{gml_id_attr, XmlNode},
     xlink,
 };
 
@@ -193,17 +197,33 @@ impl Processor for FeatureCityGml3Reader {
         let registry = std::mem::take(&mut self.raw_registry);
         for feature_root in xlink::resolve(std::mem::take(&mut self.pending), &registry) {
             if self.extracted_tags.is_empty() {
-                emit_node(&feature_root, &ctx, fw);
+                let feature = build_feature(&feature_root);
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    feature,
+                    DEFAULT_PORT.clone(),
+                ));
             } else {
-                let root_matches = flatten::tag_matches(&feature_root, &self.extracted_tags);
-                let (stripped_root, extracted) =
-                    flatten::extract_by_types(&feature_root, &self.extracted_tags);
+                let root_gml_id = gml_id_attr(&feature_root);
+                let mut tracker = ParentIdTracker::new();
+                tracker.collect(&feature_root);
 
-                for node in extracted {
-                    emit_node(&node, &ctx, fw);
-                }
-                if root_matches {
-                    emit_node(&stripped_root, &ctx, fw);
+                for node in flatten::extract(&feature_root, &self.extracted_tags) {
+                    let mut feature = build_feature(&node);
+                    if let Some(id) = gml_id_attr(&node).and_then(|id| tracker.parent_gml_id(&id)) {
+                        feature.insert(
+                            CITYGML_PARENT_GML_ID_KEY,
+                            AttributeValue::String(id.to_string()),
+                        );
+                    }
+                    if let Some(ref id) = root_gml_id {
+                        feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
+                    }
+                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                        &ctx,
+                        feature,
+                        DEFAULT_PORT.clone(),
+                    ));
                 }
             }
         }
@@ -215,7 +235,7 @@ impl Processor for FeatureCityGml3Reader {
     }
 }
 
-fn emit_node(node: &Arc<XmlNode>, ctx: &NodeContext, fw: &ProcessorChannelForwarder) {
+fn build_feature(node: &Arc<XmlNode>) -> Feature {
     let (stripped, raw_geoms) = geometry::extract_geometries(node);
     let mut feature = parser::to_feature(&stripped);
     if !raw_geoms.is_empty() {
@@ -223,11 +243,7 @@ fn emit_node(node: &Arc<XmlNode>, ctx: &NodeContext, fw: &ProcessorChannelForwar
             build_citygml_geometry(raw_geoms),
         ));
     }
-    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-        ctx,
-        feature,
-        DEFAULT_PORT.clone(),
-    ));
+    feature
 }
 
 // pos is assigned here; neutral appearance arrays prevent out-of-bounds access in downstream consumers.
