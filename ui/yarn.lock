@@ -5543,7 +5543,7 @@ __metadata:
     cmdk: "npm:1.1.1"
     date-fns: "npm:4.1.0"
     del-cli: "npm:7.0.0"
-    dompurify: "npm:^3.4.0"
+    dompurify: "npm:3.4.0"
     earcut: "npm:3.0.2"
     embla-carousel-react: "npm:8.6.0"
     eslint: "npm:9.39.4"
@@ -9244,7 +9244,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dompurify@npm:*, dompurify@npm:^3.4.0":
+"dompurify@npm:*, dompurify@npm:3.4.0":
   version: 3.4.0
   resolution: "dompurify@npm:3.4.0"
   dependencies:

@@ -101,8 +101,21 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(data.customizations?.content ?? "", {
                 ALLOWED_TAGS: [
-                  "p", "br", "strong", "b", "em", "i", "u", "s",
-                  "ol", "ul", "li", "pre", "code", "a", "span",
+                  "p",
+                  "br",
+                  "strong",
+                  "b",
+                  "em",
+                  "i",
+                  "u",
+                  "s",
+                  "ol",
+                  "ul",
+                  "li",
+                  "pre",
+                  "code",
+                  "a",
+                  "span",
                 ],
                 ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
                 ALLOW_DATA_ATTR: false,

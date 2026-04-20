@@ -101,18 +101,26 @@ const WysiwygWidget = <
     }
 
     quill.on(Quill.events.TEXT_CHANGE, () => {
-      onChangeRef.current(serializeQuill(quill, optionsRef.current?.emptyValue));
+      onChangeRef.current(
+        serializeQuill(quill, optionsRef.current?.emptyValue),
+      );
     });
 
     quill.root.addEventListener("focus", () => {
       isFocusedRef.current = true;
-      onFocusRef.current(id, serializeQuill(quill, optionsRef.current?.emptyValue));
+      onFocusRef.current(
+        id,
+        serializeQuill(quill, optionsRef.current?.emptyValue),
+      );
       onFieldFocusRef.current?.(id);
     });
 
     quill.root.addEventListener("blur", () => {
       isFocusedRef.current = false;
-      onBlurRef.current(id, serializeQuill(quill, optionsRef.current?.emptyValue));
+      onBlurRef.current(
+        id,
+        serializeQuill(quill, optionsRef.current?.emptyValue),
+      );
       onFieldFocusRef.current?.(null);
     });
 
