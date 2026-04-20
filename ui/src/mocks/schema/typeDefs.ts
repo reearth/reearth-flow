@@ -141,6 +141,7 @@ export const typeDefs = `
     version: Int!
     workspace: Workspace
     workspaceId: ID!
+    isLocked: Boolean
   }
 
   # Asset Types
