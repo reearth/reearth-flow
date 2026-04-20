@@ -105,24 +105,28 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 		return interfaces.ErrOperationDenied
 	}
 
-	user := adapter.User(ctx)
-	if user == nil {
+	var userIDStr string
+	if u := adapter.User(ctx); u != nil {
+		userIDStr = u.ID().String()
+	} else if u := adapter.ReearthxUser(ctx); u != nil {
+		userIDStr = u.ID().String()
+	} else {
 		log.Printf("WARNING: User not found for resource=%s action=%s", resource, action)
 		return interfaces.ErrOperationDenied
 	}
 
-	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, user.ID().String(), resource, action)
+	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, userIDStr, resource, action)
 	if err != nil {
-		log.Printf("WARNING: Permission check error for user=%s resource=%s action=%s: %v", user.ID().String(), resource, action, err)
+		log.Printf("WARNING: Permission check error for user=%s resource=%s action=%s: %v", userIDStr, resource, action, err)
 		return err
 	}
 
 	if !hasPermission {
-		log.Printf("WARNING: Permission denied for user=%s resource=%s action=%s", user.ID().String(), resource, action)
+		log.Printf("WARNING: Permission denied for user=%s resource=%s action=%s", userIDStr, resource, action)
 		return interfaces.ErrOperationDenied
 	}
 
-	log.Printf("DEBUG: Permission granted for user=%s resource=%s action=%s", user.ID().String(), resource, action)
+	log.Printf("DEBUG: Permission granted for user=%s resource=%s action=%s", userIDStr, resource, action)
 
 	return nil
 }
