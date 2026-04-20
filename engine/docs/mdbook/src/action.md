@@ -2809,6 +2809,15 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
           "$ref": "#/definitions/Expr"
         }
       ]
+    },
+    "extractedTags": {
+      "title": "Extracted Tags",
+      "description": "Tag names to extract as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "definitions": {
