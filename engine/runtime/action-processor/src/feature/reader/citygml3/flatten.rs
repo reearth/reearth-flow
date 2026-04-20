@@ -23,8 +23,7 @@ pub fn tag_matches(node: &XmlNode, included: &HashSet<String>) -> bool {
     let ln = local_name(&node.name.0);
     included.contains(node.name.0.as_str())
         || included.contains(ln)
-        || (!node.name.1.is_empty()
-            && included.contains(&format!("{{{}}}{ln}", node.name.1)))
+        || (!node.name.1.is_empty() && included.contains(&format!("{{{}}}{ln}", node.name.1)))
 }
 
 fn extract_recursive(

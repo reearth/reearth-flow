@@ -1,4 +1,8 @@
-use std::{collections::{HashMap, HashSet}, str::FromStr, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+    sync::Arc,
+};
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -22,8 +26,7 @@ use reearth_flow_types::{CityGmlGeometry, Geometry, GeometryType, GeometryValue,
 use crate::feature::errors::FeatureProcessorError;
 
 use super::{
-    flatten,
-    geometry,
+    flatten, geometry,
     parser::{self, RawNode, RawRegistry},
     utils::XmlNode,
     xlink,
