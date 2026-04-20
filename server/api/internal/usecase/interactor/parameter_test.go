@@ -46,7 +46,7 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 	prj := project.New().ID(pid).Workspace(accountsworkspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = projectRepo.Save(ctx, prj)
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 

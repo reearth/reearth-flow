@@ -5,13 +5,11 @@ import (
 	"log"
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/appx"
 )
 
 var skipPermissionCheck bool
@@ -100,37 +98,18 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 		return nil
 	}
 
-	authInfo := adapter.GetAuthInfo(ctx)
-	if authInfo == nil {
-		if token := adapter.JWT(ctx); token != "" {
-			authInfo = &appx.AuthInfo{Token: token}
-		} else if tmp := adapter.TempAuthInfo(ctx); tmp != nil {
-			authInfo = tmp
-		}
-	}
-
-	var userIDStr string
-	if u := adapter.User(ctx); u != nil {
-		userIDStr = u.ID().String()
-	} else if u := adapter.ReearthxUser(ctx); u != nil {
-		userIDStr = u.ID().String()
-	} else {
-		log.Printf("WARNING: User not found for resource=%s action=%s", resource, action)
-		return interfaces.ErrOperationDenied
-	}
-
-	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, userIDStr, resource, action)
+	hasPermission, err := permissionChecker.CheckPermission(ctx, resource, action)
 	if err != nil {
-		log.Printf("WARNING: Permission check error for user=%s resource=%s action=%s: %v", userIDStr, resource, action, err)
+		log.Printf("WARNING: Permission check error for resource=%s action=%s: %v", resource, action, err)
 		return err
 	}
 
 	if !hasPermission {
-		log.Printf("WARNING: Permission denied for user=%s resource=%s action=%s", userIDStr, resource, action)
+		log.Printf("WARNING: Permission denied for resource=%s action=%s", resource, action)
 		return interfaces.ErrOperationDenied
 	}
 
-	log.Printf("DEBUG: Permission granted for user=%s resource=%s action=%s", userIDStr, resource, action)
+	log.Printf("DEBUG: Permission granted for resource=%s action=%s", resource, action)
 
 	return nil
 }
