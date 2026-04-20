@@ -2590,7 +2590,7 @@ graphs:
     action: AttributeDuplicateFilter
     with:
       filterBy:
-      - gmlId
+      - gmlRootId
   - id: 2261a5c9-46a4-45ce-a292-d277a3dc0ebc
     name: GeometryReplacer
     type: action
@@ -2630,16 +2630,16 @@ graphs:
     action: ListConcatenator
     with:
       list: areaOverlapList
-      attribute: gmlId
+      attribute: gmlRootId
       separateCharacter: ','
-      outputAttributeName: concatenatedGmlIds
+      outputAttributeName: concatenatedGmlRootIds
   - id: 518572d2-8561-4b60-ab28-fcd66d90afa2
     name: DuplicateFilter
     type: action
     action: AttributeDuplicateFilter
     with:
       filterBy:
-      - concatenatedGmlIds
+      - concatenatedGmlRootIds
   - id: 2ccf00f0-202b-4bf5-b2a1-0c27a0e82a37
     name: ListExploderForAreaOverlaps
     type: action
@@ -2669,7 +2669,7 @@ graphs:
           env.get("__value")["lod"] ?? ""
       - attribute: gml:id
         expr: |
-          env.get("__value")["gmlId"] ?? ""
+          env.get("__value")["gmlRootId"] ?? ""
       - attribute: 隣接ID
         expr: |
           env.get("__value")["areaOverlapIndex"] ?? ""

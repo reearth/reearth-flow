@@ -419,6 +419,10 @@ impl DiskBackedFeatures {
         })
     }
 
+    // Opens a fresh fd per call so `&self` callers can be parallelised in the future.
+    // The current sole caller is sequential, so the N file opens are wasted — but
+    // they scale linearly and the target is a local filesystem, so the overhead
+    // is bounded.
     fn read_feature(&self, i: usize) -> Result<Feature, BoxedError> {
         let mut file = File::open(&self.path)?;
         file.seek(SeekFrom::Start(self.offsets[i]))?;
