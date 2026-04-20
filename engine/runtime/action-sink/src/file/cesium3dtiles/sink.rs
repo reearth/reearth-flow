@@ -403,8 +403,7 @@ impl Cesium3DTilesWriter {
                             receiver_sorted,
                             tile_id_conv,
                             &schema,
-                            None,
-                            self.params.draco_compression.unwrap_or(true), // On by default
+                            self.params.draco_compression.unwrap_or(true),
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();
