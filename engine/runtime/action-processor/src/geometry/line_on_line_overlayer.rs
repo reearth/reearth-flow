@@ -438,7 +438,6 @@ impl DiskBackedFeatures {
 
 #[derive(Clone, Copy)]
 struct AabbEntry {
-    entry_idx: usize,
     feature_idx: usize,
     ls_local_idx: usize,
     aabb: AABB<Point2D<f64>>,
@@ -481,11 +480,11 @@ fn process_group<W: Write>(
         out
     };
 
-    let mut entries: Vec<AabbEntry> = Vec::new();
+    let total_entries: usize = aabbs_per_feature.iter().map(|v| v.len()).sum();
+    let mut entries: Vec<AabbEntry> = Vec::with_capacity(total_entries);
     for (feature_idx, lss) in aabbs_per_feature.iter().enumerate() {
         for (ls_local_idx, aabb) in lss.iter().enumerate() {
             entries.push(AabbEntry {
-                entry_idx: entries.len(),
                 feature_idx,
                 ls_local_idx,
                 aabb: aabb_to_rstar(*aabb),
@@ -519,24 +518,20 @@ fn process_group<W: Write>(
         lss_per_feature.push(lss);
     }
 
-    let overlay = overlay_entries(&entries, &lss_per_feature, tolerance);
+    let overlay = overlay_entries(entries, &lss_per_feature, tolerance);
 
     let mut line_count: usize = 0;
     for meta in &overlay.line_strings_with_metadata {
-        let source_feature_idxs: Vec<usize> = meta
-            .overlay_ids
-            .iter()
-            .map(|&entry_idx| entries[entry_idx].feature_idx)
-            .collect();
+        let source_feature_idxs = &meta.source_feature_idxs;
 
         let mut attributes = Attributes::new();
         attributes.insert(
             Attribute::new("overlayCount"),
-            AttributeValue::Number(Number::from(meta.overlay_count)),
+            AttributeValue::Number(Number::from(source_feature_idxs.len())),
         );
 
         let mut overlaid_list: Vec<AttributeValue> = Vec::with_capacity(source_feature_idxs.len());
-        for &fi in &source_feature_idxs {
+        for &fi in source_feature_idxs {
             let attrs = &attributes_by_feature[fi];
             let attrs_map: HashMap<String, AttributeValue> = attrs
                 .as_ref()
@@ -612,10 +607,9 @@ fn process_group<W: Write>(
 #[derive(Debug, Clone)]
 struct LineString2DWithMetadata<T: GeoFloat> {
     line_string: LineString2D<T>,
-    /// Number of original entries that contributed to this line string.
-    overlay_count: usize,
-    /// Indices into the `entries` slice passed to `overlay_entries`.
-    overlay_ids: Vec<usize>,
+    /// feature_idx of each source feature that contributed to this segment.
+    /// Deduplicated — each feature appears at most once.
+    source_feature_idxs: Vec<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -625,16 +619,17 @@ struct OverlayResult {
 }
 
 fn overlay_entries(
-    entries: &[AabbEntry],
+    entries: Vec<AabbEntry>,
     lss_per_feature: &[Vec<LineString2D<f64>>],
     tolerance: f64,
 ) -> OverlayResult {
-    let rtree: RTree<AabbEntry> = RTree::bulk_load(entries.to_vec());
+    let rtree: RTree<AabbEntry> = RTree::bulk_load(entries);
+    let rtree_items: Vec<&AabbEntry> = rtree.iter().collect();
 
     type PerEntryResult = (Vec<(usize, LineString2D<f64>)>, Vec<Coordinate2D<f64>>);
-    let per_entry_results: Vec<PerEntryResult> = entries
+    let per_entry_results: Vec<PerEntryResult> = rtree_items
         .par_iter()
-        .map(|entry_i| {
+        .map(|&entry_i| {
             let self_ls = &lss_per_feature[entry_i.feature_idx][entry_i.ls_local_idx];
             let packed = LineStringWithTree2D::new(self_ls.clone());
 
@@ -665,7 +660,7 @@ fn overlay_entries(
 
             let segs: Vec<(usize, LineString2D<f64>)> = split_line_strings
                 .into_iter()
-                .map(|l| (entry_i.entry_idx, l))
+                .map(|l| (entry_i.feature_idx, l))
                 .collect();
 
             (segs, split_coords)
@@ -712,13 +707,11 @@ fn overlay_entries(
         if processed[i] {
             continue;
         }
-        let (idx1, ls1) = segments[i].clone();
-        let feat_i = entries[idx1].feature_idx;
-        let mut overlay_count = 1;
-        let mut overlay_ids = vec![idx1];
+        let (feat_i, ls1) = segments[i].clone();
         // A single feature may contribute multiple matching segments (e.g. a closed ring
         // whose split produces several arcs that all coincide with the rep segment). Count
         // each feature at most once; extra matching segments dedupe silently.
+        let mut source_feature_idxs = vec![feat_i];
         let mut included_feats: std::collections::HashSet<usize> =
             std::collections::HashSet::from([feat_i]);
 
@@ -727,23 +720,20 @@ fn overlay_entries(
             if j <= i || processed[j] {
                 continue;
             }
-            let (idx2, ls2) = (segments[j].0, &segments[j].1);
+            let (feat_j, ls2) = (segments[j].0, &segments[j].1);
             if segments_match(&ls1, ls2, tolerance) {
-                let cand_feat = entries[idx2].feature_idx;
-                if !included_feats.insert(cand_feat) {
+                if !included_feats.insert(feat_j) {
                     processed[j] = true;
                     continue;
                 }
-                overlay_count += 1;
-                overlay_ids.push(idx2);
+                source_feature_idxs.push(feat_j);
                 processed[j] = true;
             }
         }
 
         line_strings_with_metadata.push(LineString2DWithMetadata {
             line_string: ls1,
-            overlay_count,
-            overlay_ids,
+            source_feature_idxs,
         });
     }
 
@@ -837,13 +827,12 @@ fn line_string_intersection_2d(
         .iter()
         .enumerate()
         .map(|(i, ls)| AabbEntry {
-            entry_idx: i,
             feature_idx: i,
             ls_local_idx: 0,
             aabb: ls.envelope(),
         })
         .collect();
-    overlay_entries(&entries, &lss_per_feature, tolerance)
+    overlay_entries(entries, &lss_per_feature, tolerance)
 }
 
 #[cfg(test)]
@@ -900,7 +889,7 @@ mod tests {
         assert_eq!(line_strings_with_metadata.len(), 4);
         let mut overlay_counts = line_strings_with_metadata
             .iter()
-            .map(|ls| ls.overlay_count)
+            .map(|ls| ls.source_feature_idxs.len())
             .collect::<Vec<_>>();
         overlay_counts.sort();
         assert_eq!(overlay_counts, vec![1, 2, 2, 3]);
@@ -953,7 +942,7 @@ mod tests {
         assert_eq!(line_strings_with_metadata.len(), 4);
         assert!(line_strings_with_metadata
             .iter()
-            .all(|ls| ls.overlay_count == 1));
+            .all(|ls| ls.source_feature_idxs.len() == 1));
         assert_eq!(split_coords.len(), 1);
     }
 
@@ -988,7 +977,7 @@ mod tests {
         assert_eq!(line_strings_with_metadata.len(), 5);
         let mut overlap_counts = line_strings_with_metadata
             .iter()
-            .map(|ls| ls.overlay_count)
+            .map(|ls| ls.source_feature_idxs.len())
             .collect::<Vec<_>>();
         overlap_counts.sort();
         assert_eq!(overlap_counts, vec![1, 1, 1, 2, 2]);
@@ -1018,7 +1007,7 @@ mod tests {
         assert!(result
             .line_strings_with_metadata
             .iter()
-            .all(|m| m.overlay_count == 1));
+            .all(|m| m.source_feature_idxs.len() == 1));
     }
 
     #[test]
@@ -1039,50 +1028,42 @@ mod tests {
         let lss_per_feature = vec![vec![f0_a.clone(), f0_b.clone()], vec![f1.clone()]];
         let entries = vec![
             AabbEntry {
-                entry_idx: 0,
                 feature_idx: 0,
                 ls_local_idx: 0,
                 aabb: f0_a.envelope(),
             },
             AabbEntry {
-                entry_idx: 1,
                 feature_idx: 0,
                 ls_local_idx: 1,
                 aabb: f0_b.envelope(),
             },
             AabbEntry {
-                entry_idx: 2,
                 feature_idx: 1,
                 ls_local_idx: 0,
                 aabb: f1.envelope(),
             },
         ];
 
-        let result = overlay_entries(&entries, &lss_per_feature, 0.01);
+        let result = overlay_entries(entries, &lss_per_feature, 0.01);
 
         for meta in &result.line_strings_with_metadata {
-            let feats: Vec<usize> = meta
-                .overlay_ids
-                .iter()
-                .map(|&e| entries[e].feature_idx)
-                .collect();
+            let feats = &meta.source_feature_idxs;
             let unique: std::collections::HashSet<_> = feats.iter().copied().collect();
             assert_eq!(
                 feats.len(),
                 unique.len(),
-                "overlay_ids contains duplicate feature_idx: {feats:?}"
+                "source_feature_idxs contains duplicates: {feats:?}"
             );
-            assert_eq!(meta.overlay_count, meta.overlay_ids.len());
         }
 
         let overlapping: Vec<_> = result
             .line_strings_with_metadata
             .iter()
-            .filter(|m| m.overlay_count >= 2)
+            .filter(|m| m.source_feature_idxs.len() >= 2)
             .collect();
         assert!(!overlapping.is_empty(), "expected an overlap segment");
         for m in &overlapping {
-            assert_eq!(m.overlay_count, 2);
+            assert_eq!(m.source_feature_idxs.len(), 2);
         }
     }
 
@@ -1104,49 +1085,40 @@ mod tests {
         let lss_per_feature = vec![vec![f0.clone()], vec![f1_a.clone(), f1_b.clone()]];
         let entries = vec![
             AabbEntry {
-                entry_idx: 0,
                 feature_idx: 0,
                 ls_local_idx: 0,
                 aabb: f0.envelope(),
             },
             AabbEntry {
-                entry_idx: 1,
                 feature_idx: 1,
                 ls_local_idx: 0,
                 aabb: f1_a.envelope(),
             },
             AabbEntry {
-                entry_idx: 2,
                 feature_idx: 1,
                 ls_local_idx: 1,
                 aabb: f1_b.envelope(),
             },
         ];
 
-        let result = overlay_entries(&entries, &lss_per_feature, 0.01);
+        let result = overlay_entries(entries, &lss_per_feature, 0.01);
 
         let overlap: Vec<_> = result
             .line_strings_with_metadata
             .iter()
-            .filter(|m| m.overlay_count >= 2)
+            .filter(|m| m.source_feature_idxs.len() >= 2)
             .collect();
         assert!(!overlap.is_empty(), "expected an overlap segment");
         for m in &overlap {
-            let feats: std::collections::HashSet<usize> = m
-                .overlay_ids
-                .iter()
-                .map(|&e| entries[e].feature_idx)
-                .collect();
+            let feats: std::collections::HashSet<usize> =
+                m.source_feature_idxs.iter().copied().collect();
             assert_eq!(
                 feats.len(),
-                m.overlay_ids.len(),
-                "duplicate feature_idx in overlay_ids: {:?}",
-                m.overlay_ids
-                    .iter()
-                    .map(|&e| entries[e].feature_idx)
-                    .collect::<Vec<_>>()
+                m.source_feature_idxs.len(),
+                "duplicate feature_idx in source_feature_idxs: {:?}",
+                m.source_feature_idxs
             );
-            assert_eq!(m.overlay_count, 2);
+            assert_eq!(m.source_feature_idxs.len(), 2);
         }
     }
 
