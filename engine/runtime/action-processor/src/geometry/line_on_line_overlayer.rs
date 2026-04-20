@@ -123,7 +123,7 @@ pub struct LineOnLineOverlayer {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,
     overlaid_lists_attr_name: String,
-    // Disk-backed state (mirrors AreaOnAreaOverlayer).
+    // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
@@ -738,8 +738,7 @@ fn overlay_entries(
     }
 
     // Each physical intersection is discovered by both sides of the crossing plus extras
-    // from 3+-way near-coincidences, so dedup by tolerance-expanded envelope. Sources are
-    // discarded by design, matching pre-rewrite behavior.
+    // from 3+-way near-coincidences, so dedup by tolerance-expanded envelope.
     #[derive(Clone, Copy)]
     struct PointEntry {
         idx: usize,
