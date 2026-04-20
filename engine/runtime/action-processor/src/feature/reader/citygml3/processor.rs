@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::{HashMap, HashSet}, str::FromStr, sync::Arc};
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -22,8 +22,10 @@ use reearth_flow_types::{CityGmlGeometry, Geometry, GeometryType, GeometryValue,
 use crate::feature::errors::FeatureProcessorError;
 
 use super::{
+    flatten,
     geometry,
     parser::{self, RawNode, RawRegistry},
+    utils::XmlNode,
     xlink,
 };
 
@@ -84,10 +86,13 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             .compile(params.dataset.as_ref())
             .map_err(|e| FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}")))?;
 
+        let extracted_tags: HashSet<String> = params.extracted_tags.into_iter().collect();
+
         Ok(Box::new(FeatureCityGml3Reader {
             global_params: with,
             dataset_ast,
             original_dataset: params.dataset,
+            extracted_tags,
             raw_registry: RawRegistry::new(),
             pending: Vec::new(),
         }))
@@ -101,12 +106,19 @@ pub struct FeatureCityGml3ReaderParam {
     /// # Dataset
     /// Path expression resolving to the CityGML 3.0 file to read.
     dataset: Expr,
+    /// # Extracted Tags
+    /// Tag names to extract as individual features. Accepts qualified (`bldg:Building`), local
+    /// (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level
+    /// city objects unchanged.
+    #[serde(default)]
+    extracted_tags: Vec<String>,
 }
 
 pub struct FeatureCityGml3Reader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     dataset_ast: rhai::AST,
     original_dataset: Expr,
+    extracted_tags: HashSet<String>,
     raw_registry: RawRegistry,
     pending: Vec<Arc<RawNode>>,
 }
@@ -126,6 +138,7 @@ impl Clone for FeatureCityGml3Reader {
             global_params: self.global_params.clone(),
             dataset_ast: self.dataset_ast.clone(),
             original_dataset: self.original_dataset.clone(),
+            extracted_tags: self.extracted_tags.clone(),
             raw_registry: RawRegistry::new(),
             pending: Vec::new(),
         }
@@ -176,20 +189,20 @@ impl Processor for FeatureCityGml3Reader {
     ) -> Result<(), BoxedError> {
         let registry = std::mem::take(&mut self.raw_registry);
         for feature_root in xlink::resolve(std::mem::take(&mut self.pending), &registry) {
-            let (stripped, raw_geoms) = geometry::extract_geometries(&feature_root);
-            let mut feature = parser::to_feature(&stripped);
+            if self.extracted_tags.is_empty() {
+                emit_node(&feature_root, &ctx, fw);
+            } else {
+                let root_matches = flatten::tag_matches(&feature_root, &self.extracted_tags);
+                let (stripped_root, extracted) =
+                    flatten::extract_by_types(&feature_root, &self.extracted_tags);
 
-            if !raw_geoms.is_empty() {
-                *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
-                    build_citygml_geometry(raw_geoms),
-                ));
+                for node in extracted {
+                    emit_node(&node, &ctx, fw);
+                }
+                if root_matches {
+                    emit_node(&stripped_root, &ctx, fw);
+                }
             }
-
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
         }
         Ok(())
     }
@@ -197,6 +210,21 @@ impl Processor for FeatureCityGml3Reader {
     fn name(&self) -> &str {
         "FeatureCityGml3Reader"
     }
+}
+
+fn emit_node(node: &Arc<XmlNode>, ctx: &NodeContext, fw: &ProcessorChannelForwarder) {
+    let (stripped, raw_geoms) = geometry::extract_geometries(node);
+    let mut feature = parser::to_feature(&stripped);
+    if !raw_geoms.is_empty() {
+        *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
+            build_citygml_geometry(raw_geoms),
+        ));
+    }
+    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+        ctx,
+        feature,
+        DEFAULT_PORT.clone(),
+    ));
 }
 
 // pos is assigned here; neutral appearance arrays prevent out-of-bounds access in downstream consumers.
