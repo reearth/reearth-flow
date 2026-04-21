@@ -92,14 +92,14 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             .compile(params.dataset.as_ref())
             .map_err(|e| FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}")))?;
 
-        let flatten_feature_types: HashSet<String> =
-            params.flatten_feature_types.into_iter().collect();
+        let extract_tags: HashSet<String> =
+            params.extract_tags.into_iter().collect();
 
         Ok(Box::new(FeatureCityGml3Reader {
             global_params: with,
             dataset_ast,
             original_dataset: params.dataset,
-            flatten_feature_types,
+            extract_tags,
             parser: Parser::new(),
         }))
     }
@@ -112,19 +112,19 @@ pub struct FeatureCityGml3ReaderParam {
     /// # Dataset
     /// Path expression resolving to the CityGML 3.0 file to read.
     dataset: Expr,
-    /// # Flatten Feature Types
+    /// # Extract Tags
     /// Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`),
     /// local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all
     /// top-level city objects unchanged.
     #[serde(default)]
-    flatten_feature_types: Vec<String>,
+    extract_tags: Vec<String>,
 }
 
 pub struct FeatureCityGml3Reader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     dataset_ast: rhai::AST,
     original_dataset: Expr,
-    flatten_feature_types: HashSet<String>,
+    extract_tags: HashSet<String>,
     parser: Parser,
 }
 
@@ -142,7 +142,7 @@ impl Clone for FeatureCityGml3Reader {
             global_params: self.global_params.clone(),
             dataset_ast: self.dataset_ast.clone(),
             original_dataset: self.original_dataset.clone(),
-            flatten_feature_types: self.flatten_feature_types.clone(),
+            extract_tags: self.extract_tags.clone(),
             parser: Parser::new(),
         }
     }
@@ -191,7 +191,7 @@ impl Processor for FeatureCityGml3Reader {
     ) -> Result<(), BoxedError> {
         let (pending, raw_registry, ns_registry) = std::mem::take(&mut self.parser).finish();
         for feature_root in xlink::resolve(pending, &raw_registry) {
-            if self.flatten_feature_types.is_empty() {
+            if self.extract_tags.is_empty() {
                 let feature = build_feature(&feature_root);
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
@@ -202,7 +202,7 @@ impl Processor for FeatureCityGml3Reader {
                 let root_gml_id = gml_id_attr(&feature_root);
 
                 for (node, parent_id) in
-                    flatten::extract(&feature_root, &self.flatten_feature_types, &ns_registry)
+                    flatten::extract(&feature_root, &self.extract_tags, &ns_registry)
                 {
                     let mut feature = build_feature(&node);
                     if let Some(id) = parent_id {
