@@ -48,7 +48,7 @@ graphs:
         with:
           dataset: |
             env.get("__value")["path"]
-          extractedTags:
+          extractTags:
             - bldg:Building
             - con:FloorSurface
             - tran:Road
