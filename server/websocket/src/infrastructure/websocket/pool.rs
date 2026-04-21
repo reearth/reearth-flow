@@ -223,9 +223,9 @@ impl BroadcastPool {
 
     /// Force-evict a BroadcastGroup regardless of active connections.
     /// Used after rollback: the rolled-back state has already been persisted
-    /// to GCS, so we skip the normal shutdown flush. Dropping the group
-    /// closes the broadcast sender, which terminates all client sink tasks
-    /// and closes WebSocket connections.
+    /// to GCS, so we skip the normal shutdown flush. Cancels all per-connection
+    /// tasks via CancellationToken, then deletes the Redis stream under the
+    /// lock to prevent evicted tasks from recreating it.
     pub async fn force_evict_group(&self, doc_id: &str) {
         let lock = self.get_or_create_lock(doc_id);
         let guard = lock.lock_owned().await;
@@ -238,6 +238,15 @@ impl BroadcastPool {
                 );
             }
             info!("Force-evicted BroadcastGroup for doc_id: {}", doc_id);
+        }
+
+        // Delete Redis stream under the lock even when no in-memory group exists,
+        // so stale updates cannot survive a rollback/force-eviction path.
+        if let Err(e) = self.storage.redis_store().delete_stream(doc_id).await {
+            warn!(
+                "Failed to delete Redis stream during force-evict for '{}': {}",
+                doc_id, e
+            );
         }
 
         drop(guard);

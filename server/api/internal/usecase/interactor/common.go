@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -99,31 +98,18 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 		return nil
 	}
 
-	authInfo := adapter.GetAuthInfo(ctx)
-	if authInfo == nil {
-		log.Printf("WARNING: AuthInfo not found for resource=%s action=%s", resource, action)
-		return nil
-	}
-
-	user := adapter.ReearthxUser(ctx)
-	if user == nil {
-		log.Printf("WARNING: User not found for resource=%s action=%s", resource, action)
-		return nil
-	}
-
-	// Once the operation check in the oss environment is completed, delete the log output and
-	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, user.ID().String(), resource, action)
+	hasPermission, err := permissionChecker.CheckPermission(ctx, resource, action)
 	if err != nil {
-		log.Printf("WARNING: Permission check error for user=%s resource=%s action=%s: %v", user.ID().String(), resource, action, err)
-		return nil
+		log.Printf("WARNING: Permission check error for resource=%s action=%s: %v", resource, action, err)
+		return err
 	}
 
 	if !hasPermission {
-		log.Printf("WARNING: Permission denied for user=%s resource=%s action=%s", user.ID().String(), resource, action)
-		return nil
+		log.Printf("WARNING: Permission denied for resource=%s action=%s", resource, action)
+		return interfaces.ErrOperationDenied
 	}
 
-	log.Printf("DEBUG: Permission granted for user=%s resource=%s action=%s", user.ID().String(), resource, action)
+	log.Printf("DEBUG: Permission granted for resource=%s action=%s", resource, action)
 
 	return nil
 }

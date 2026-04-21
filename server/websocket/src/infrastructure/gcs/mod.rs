@@ -22,7 +22,7 @@ use google_cloud_storage::{
 use hex;
 use serde::Deserialize;
 use time::OffsetDateTime;
-use tracing::{debug, error};
+use tracing::{debug, error, info, warn};
 use yrs::{
     updates::decoder::Decode, updates::encoder::Encode, Doc, ReadTxn, StateVector, Transact, Update,
 };
@@ -333,6 +333,111 @@ impl GcsStore {
 
         drop(txn);
         Ok(doc)
+    }
+
+    /// Delete all GCS update objects with clock > target_clock.
+    /// Used after rollback to remove stale "future" versions so that
+    /// `get_updates()` / `get_history()` only return valid versions.
+    pub async fn delete_updates_after(&self, doc_id: &str, target_clock: u32) -> Result<usize> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(0),
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(prefix_str.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+            all_objects.extend(items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        let mut to_delete = Vec::new();
+        for obj in &all_objects {
+            let key_bytes = match hex::decode(&obj.name) {
+                Ok(b) => b,
+                Err(e) => {
+                    warn!(
+                        "Skipping update object with non-hex name '{}' for doc '{}': {}",
+                        obj.name, doc_id, e
+                    );
+                    continue;
+                }
+            };
+            if key_bytes.len() < 12 {
+                warn!(
+                    "Skipping update object with unexpected key length '{}' for doc '{}': got {} bytes",
+                    obj.name, doc_id, key_bytes.len()
+                );
+                continue;
+            }
+            let clock_bytes: [u8; 4] = match key_bytes[7..11].try_into() {
+                Ok(b) => b,
+                Err(_) => {
+                    warn!(
+                        "Skipping update object with unreadable clock bytes '{}' for doc '{}'",
+                        obj.name, doc_id
+                    );
+                    continue;
+                }
+            };
+            let clock = u32::from_be_bytes(clock_bytes);
+            if clock > target_clock {
+                to_delete.push(obj.name.clone());
+            }
+        }
+
+        let count = to_delete.len();
+        for chunk in to_delete.chunks(BATCH_SIZE) {
+            let delete_futures = chunk.iter().map(|obj_name| {
+                let bucket = self.bucket.clone();
+                let object = obj_name.clone();
+                async move {
+                    self.client
+                        .delete_object(&DeleteObjectRequest {
+                            bucket,
+                            object,
+                            ..Default::default()
+                        })
+                        .await
+                }
+            });
+            let delete_results = join_all(delete_futures).await;
+            for result in delete_results {
+                result?;
+            }
+        }
+
+        if count > 0 {
+            info!(
+                "Deleted {} update objects after clock {} for doc '{}'",
+                count, target_clock, doc_id
+            );
+        }
+
+        Ok(count)
     }
 
     pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>> {
