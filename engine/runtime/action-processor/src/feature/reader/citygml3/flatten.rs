@@ -15,6 +15,7 @@ struct MatchSets {
 
 impl MatchSets {
     fn new(included: &HashSet<String>, ns_reg: &NamespaceRegistry) -> Self {
+        let mut raw: HashSet<String> = HashSet::new();
         let mut clark: HashMap<NsId, HashSet<String>> = HashMap::new();
         for s in included {
             if let Some(rest) = s.strip_prefix('{') {
@@ -25,12 +26,11 @@ impl MatchSets {
                         clark.entry(id).or_default().insert(local);
                     }
                 }
+            } else {
+                raw.insert(s.clone());
             }
         }
-        Self {
-            raw: included.clone(),
-            clark,
-        }
+        Self { raw, clark }
     }
 }
 
