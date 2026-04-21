@@ -142,7 +142,9 @@ fn extract_recursive(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::feature::reader::citygml3::utils::{NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID};
+    use crate::feature::reader::citygml3::utils::{
+        NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID,
+    };
 
     fn node(name: &str, children: Vec<XmlChild>) -> Arc<XmlNode> {
         Arc::new(XmlNode {
@@ -236,7 +238,13 @@ mod tests {
 
         assert_eq!(extracted.len(), 2);
         let parents: Vec<_> = extracted.iter().map(|(_, p)| p.as_deref()).collect();
-        assert!(parents.contains(&Some("a")), "first emission should have parent a");
-        assert!(parents.contains(&Some("b")), "second emission should have parent b");
+        assert!(
+            parents.contains(&Some("a")),
+            "first emission should have parent a"
+        );
+        assert!(
+            parents.contains(&Some("b")),
+            "second emission should have parent b"
+        );
     }
 }
