@@ -79,7 +79,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
             if (element)
               element.style.setProperty(
                 "color",
-                data.customizations?.textColor || "",
+                data.customizations?.titleColor || "",
                 "important",
               );
           }}>

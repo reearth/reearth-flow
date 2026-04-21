@@ -32,7 +32,7 @@ export default (
       content: {
         default: "",
         type: "string",
-        format: "textarea",
+        format: "wysiwyg",
         title: t("Content"),
         description: t("The content shown on the note"),
       },
@@ -43,12 +43,12 @@ export default (
         title: t("Background Color"),
         description: t("The background color shown on the note"),
       },
-      textColor: {
+      titleColor: {
         type: "string",
         format: "color",
         default: "#fafafa",
-        title: t("Text Color"),
-        description: t("The text color shown on the note"),
+        title: t("Title Color"),
+        description: t("The title color shown on the note"),
       },
     },
   };
@@ -64,11 +64,11 @@ export default (
         title: t("Background Color"),
         description: t("The background color shown on the batch action"),
       },
-      textColor: {
+      titleColor: {
         type: "string",
         format: "color",
-        title: t("Text Color"),
-        description: t("The text color shown on the batch action"),
+        title: t("Title Color"),
+        description: t("The title color shown on the batch action"),
         default: "#fafafa",
       },
     },
