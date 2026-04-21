@@ -25,8 +25,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Input,
   IconButton,
-  RadioGroup,
-  RadioGroupItem,
   Label,
   Switch,
   Select,
@@ -34,9 +32,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Checkbox,
   Button,
   CmsLogo,
+  CheckboxDefaultInput,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { AnyWorkflowVariable, ChoiceConfig } from "@flow/types";
@@ -221,31 +219,6 @@ export const ChoiceEditor: React.FC<Props> = ({
     }
   };
 
-  // Helper functions for multiple selection handling
-  const getCurrentSelection = (): string[] => {
-    if (choiceConfig.allowMultiple) {
-      return Array.isArray(variable.defaultValue) ? variable.defaultValue : [];
-    }
-    return typeof variable.defaultValue === "string" && variable.defaultValue
-      ? [variable.defaultValue]
-      : [];
-  };
-
-  const handleMultipleSelection = (option: string, checked: boolean) => {
-    const currentSelection = getCurrentSelection();
-    let newSelection: string[];
-
-    if (checked) {
-      newSelection = [...currentSelection, option];
-    } else {
-      newSelection = currentSelection.filter((item) => item !== option);
-    }
-
-    handleSelectDefault(
-      choiceConfig.allowMultiple ? newSelection : newSelection[0] || "",
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Configuration Options */}
@@ -362,57 +335,21 @@ export const ChoiceEditor: React.FC<Props> = ({
         <div>
           <h3 className="mb-4 text-lg font-medium">{t("Default Selection")}</h3>
 
-          {choiceConfig.allowMultiple ? (
-            // Multiple selection with checkboxes
-            <div className="space-y-2">
-              <p className="mb-3 text-sm text-muted-foreground">
-                {t("Select default options (multiple allowed)")}
-              </p>
-              {choiceConfig.choices.map((option, index) => {
-                const currentSelection = getCurrentSelection();
-                const isChecked = currentSelection.includes(option);
-
-                return (
-                  <div
-                    key={`checkbox-${option}-${index}`}
-                    className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`default-option-${index}`}
-                      checked={isChecked}
-                      onCheckedChange={(checked) =>
-                        handleMultipleSelection(option, !!checked)
-                      }
-                    />
-                    <Label htmlFor={`default-option-${index}`}>{option}</Label>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            // Single selection with radio buttons
-            <RadioGroup
-              value={
-                typeof variable.defaultValue === "string"
-                  ? variable.defaultValue
-                  : ""
-              }
-              onValueChange={handleSelectDefault}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="" id="no-default" />
-                <Label htmlFor="no-default" className="text-muted-foreground">
-                  {t("No default")}
-                </Label>
-              </div>
-              {choiceConfig.choices.map((option, index) => (
-                <div
-                  key={`radio-${option}-${index}`}
-                  className="flex items-center space-x-2">
-                  <RadioGroupItem value={option} id={`option-${index}`} />
-                  <Label htmlFor={`option-${index}`}>{option}</Label>
-                </div>
-              ))}
-            </RadioGroup>
+          {choiceConfig.allowMultiple && (
+            <p className="mb-3 text-sm text-muted-foreground">
+              {t("Select default options (multiple allowed)")}
+            </p>
           )}
+          <CheckboxDefaultInput
+            choices={choiceConfig.choices.map((option) => ({
+              value: option,
+              label: option,
+            }))}
+            noDefaultOption
+            allowMultiple={choiceConfig.allowMultiple}
+            value={variable.defaultValue}
+            onChange={handleSelectDefault}
+          />
         </div>
       )}
     </div>
