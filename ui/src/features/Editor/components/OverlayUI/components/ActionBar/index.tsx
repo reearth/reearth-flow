@@ -111,7 +111,10 @@ const ActionBar: React.FC<Props> = ({
           collisionPadding={5}
           className="bg-primary/50 backdrop-blur">
           {showDialog === "share" && (
-            <SharePopover sharingUrl={sharingUrl} onProjectShare={onProjectShare} />
+            <SharePopover
+              sharingUrl={sharingUrl}
+              onProjectShare={onProjectShare}
+            />
           )}
         </PopoverContent>
       </Popover>

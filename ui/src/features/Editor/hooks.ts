@@ -16,7 +16,12 @@ import {
   DEFAULT_ENTRY_GRAPH_ID,
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
-import { useProjectExport, useProjectLock, useProjectSave, useProjectShare } from "@flow/hooks";
+import {
+  useProjectExport,
+  useProjectLock,
+  useProjectSave,
+  useProjectShare,
+} from "@flow/hooks";
 import {
   useAwarenessPresence,
   useSpotlightUser,
