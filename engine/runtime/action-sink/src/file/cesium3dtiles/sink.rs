@@ -192,18 +192,16 @@ impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
-            return Err(SinkError::Cesium3DTilesWriter(
-                "Unsupported input".to_string(),
-            ));
+            tracing::warn!("Cesium3DTilesWriter: skipping feature with no geometry");
+            return Ok(());
         };
         let geometry_value = &geometry.value;
         if !matches!(
             geometry_value,
             geometry_types::GeometryValue::CityGmlGeometry(_)
         ) {
-            return Err(SinkError::Cesium3DTilesWriter(
-                "Unsupported input".to_string(),
-            ));
+            tracing::warn!("Cesium3DTilesWriter: skipping feature with non-CityGML geometry");
+            return Ok(());
         }
 
         let filename = self
