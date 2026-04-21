@@ -20,8 +20,8 @@ func wsInitFunc(ctx context.Context, initPayload transport.InitPayload) (context
 			}
 		}
 	}
-	if auth != "" {
-		ctx = adapter.AttachJWT(ctx, strings.TrimPrefix(auth, "Bearer "))
+	if token := strings.TrimPrefix(auth, "Bearer "); token != "" {
+		ctx = adapter.AttachJWT(ctx, token)
 	}
 	return ctx, &initPayload, nil
 }

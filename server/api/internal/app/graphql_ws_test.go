@@ -67,6 +67,11 @@ func TestWsInitFunc(t *testing.T) {
 			wantToken: "raw-token",
 		},
 		{
+			name:      "bare Bearer with no token",
+			payload:   transport.InitPayload{"Authorization": "Bearer "},
+			wantToken: "",
+		},
+		{
 			name:      "nil payload",
 			payload:   nil,
 			wantToken: "",
