@@ -3,6 +3,7 @@ import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type {
   ActionNodeType,
@@ -87,7 +88,6 @@ type OverlayUIProps = {
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onProjectSnapshotSave: () => Promise<void>;
-  isLocked: boolean;
   onProjectLockChange: (lock: boolean) => void;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
@@ -139,7 +139,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onDebugRunVariableValueChange,
   onDebugRunJoin,
   onProjectSnapshotSave,
-  isLocked,
   onProjectLockChange,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
@@ -148,6 +147,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   showSearchPanel,
   onShowSearchPanel,
 }) => {
+  const { isLocked } = useEditorContext();
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
 
@@ -170,7 +170,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             canUndo={canUndo}
             canRedo={canRedo}
             isMainWorkflow={isMainWorkflow}
-            isLocked={isLocked}
             onLayoutChange={handleLayoutOptionsToggle}
             onRedo={onWorkflowRedo}
             onUndo={onWorkflowUndo}
@@ -196,7 +195,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             spotlightUserClientId={spotlightUserClientId}
             currentWorkflowId={currentWorkflowId}
             openWorkflows={openWorkflows}
-            isLocked={isLocked}
             onWorkflowChange={onWorkflowChange}
             onWorkflowClose={onWorkflowClose}
             onSpotlightUserSelect={onSpotlightUserSelect}
@@ -211,7 +209,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               selectedNodeIds={selectedNodeIds}
               edges={edges}
               isSaving={isSaving}
-              isLocked={isLocked}
               onDebugRunJoin={onDebugRunJoin}
               onDebugRunStart={onDebugRunStart}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
@@ -232,7 +229,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onProjectExport={onProjectExport}
               onWorkflowDeployment={onWorkflowDeployment}
               onProjectLockChange={onProjectLockChange}
-              isLocked={isLocked}
               onProjectSnapshotSave={onProjectSnapshotSave}
             />
           </div>
@@ -240,7 +236,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {showDialog === "version" && (
           <VersionDialog
             project={project}
-            isLocked={isLocked}
             yDoc={yDoc}
             onDialogClose={handleDialogClose}
           />

@@ -20,6 +20,7 @@ import {
   PopoverTrigger,
 } from "@flow/components";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { JobState, useCurrentProject } from "@flow/stores";
@@ -40,7 +41,6 @@ type Props = {
   selectedNodeIds: string[];
   edges?: Edge[];
   isSaving: boolean;
-  isLocked: boolean;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStartFromSelectedNode?: (
@@ -58,7 +58,6 @@ const DebugActionBar: React.FC<Props> = ({
   selectedNodeIds,
   edges,
   isSaving,
-  isLocked,
   customDebugRunWorkflowVariables,
   onDebugRunJoin,
   onDebugRunStart,
@@ -94,7 +93,6 @@ const DebugActionBar: React.FC<Props> = ({
         selectedNodeIds={selectedNodeIds}
         edges={edges}
         isSaving={isSaving}
-        isLocked={isLocked}
         onShowDebugStartPopover={handleShowDebugStartPopover}
         onShowDebugWorkflowVariablesDialog={
           handleShowDebugWorkflowVariablesDialog
@@ -151,7 +149,6 @@ const StartButton: React.FC<{
   selectedNodeIds: string[];
   edges?: Edge[];
   isSaving: boolean;
-  isLocked: boolean;
   showPopover: string | undefined;
   onShowDebugStartPopover: () => void;
   onShowDebugWorkflowVariablesDialog: () => void;
@@ -166,7 +163,6 @@ const StartButton: React.FC<{
   selectedNodeIds,
   edges,
   isSaving,
-  isLocked,
   showPopover,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
@@ -174,6 +170,7 @@ const StartButton: React.FC<{
   onPopoverClose,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
   const [currentProject] = useCurrentProject();
 
   const { value: debugRunState } = useIndexedDB("debugRun");
@@ -246,7 +243,6 @@ const StartButton: React.FC<{
               selectedNodeIds={selectedNodeIds}
               edges={edges}
               isSaving={isSaving}
-              isLocked={isLocked}
               jobStatus={jobStatus}
               debugJob={debugJob}
               showPopover={showPopover}
@@ -318,8 +314,6 @@ const DebugRunDropDownMenu: React.FC<{
   debugRunStarted: boolean;
   selectedNodeIds: string[];
   edges?: Edge[];
-  isLocked: boolean;
-
   showPopover: string | undefined;
   isSaving: boolean;
   jobStatus: string | undefined;
@@ -335,13 +329,13 @@ const DebugRunDropDownMenu: React.FC<{
   selectedNodeIds,
   edges,
   isSaving,
-  isLocked,
   jobStatus,
   debugJob,
   onDebugRunStartFromSelectedNode,
   onShowDebugStartPopover,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
   const [showDropDownMenu, setShowDropDownMenu] = useState<boolean>(false);
   const { getNodes } = useReactFlow();
   const selectedNode =

@@ -23,6 +23,7 @@ import {
   Switch,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { AnyWorkflowVariable, VarType } from "@flow/types";
 
@@ -33,7 +34,6 @@ import { WorkflowVariablesTable } from "./WorkflowVariablesTable";
 
 type Props = {
   currentWorkflowVariables?: AnyWorkflowVariable[];
-  isLocked: boolean;
   onClose: () => void;
   onAdd: (workflowVariable: AnyWorkflowVariable) => Promise<void>;
   onChange: (workflowVariable: AnyWorkflowVariable) => Promise<void>;
@@ -86,7 +86,6 @@ const allVarTypes: VarType[] = [
 
 const WorkflowVariablesDialog: React.FC<Props> = ({
   currentWorkflowVariables,
-  isLocked,
   projectId,
   onClose,
   onAdd,
@@ -96,6 +95,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
   onBatchUpdate,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
 
   const {
     localWorkflowVariables,

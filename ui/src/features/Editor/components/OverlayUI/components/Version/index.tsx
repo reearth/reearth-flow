@@ -3,6 +3,7 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
 import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
 
@@ -13,7 +14,6 @@ import useHooks from "./hooks";
 type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
-  isLocked?: boolean;
   onDialogClose: () => void;
   onErrorReset?: () => void;
 };
@@ -21,11 +21,11 @@ type Props = {
 const VersionDialog: React.FC<Props> = ({
   project,
   yDoc,
-  isLocked,
   onDialogClose,
   onErrorReset,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const {

@@ -13,6 +13,7 @@ import { memo, type DragEvent } from "react";
 import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { NodeType } from "@flow/types";
 
@@ -35,7 +36,6 @@ type Props = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
-  isLocked: boolean;
   onRedo: () => void;
   onUndo: () => void;
   onLayoutChange: () => void;
@@ -45,12 +45,12 @@ const Toolbox: React.FC<Props> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
-  isLocked,
   onRedo,
   onUndo,
   onLayoutChange,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
   const availableTools: Tool[] = [
     {
       id: "reader" as const,

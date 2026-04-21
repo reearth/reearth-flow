@@ -22,6 +22,8 @@ import {
 import createFullNodeTypes from "@flow/lib/reactFlow/nodeTypes";
 import type { ActionNodeType, AwarenessUser, Edge, Node } from "@flow/types";
 
+import { useEditorContext } from "@flow/features/Editor/editorContext";
+
 import { CanvasContextMenu } from "./components";
 import Awareness from "./components/Awareness";
 import useHooks, { defaultEdgeOptions } from "./hooks";
@@ -33,7 +35,6 @@ const gridSize = 16.5;
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
 type Props = {
-  readonly?: boolean;
   nodes: Node[];
   edges: Edge[];
   yDoc?: Doc | null;
@@ -69,7 +70,6 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({
-  readonly,
   nodes,
   edges,
   users,
@@ -95,6 +95,7 @@ const Canvas: React.FC<Props> = ({
   onConnectEnd,
   onPointerDown,
 }) => {
+  const { isLocked: readonly } = useEditorContext();
   const {
     handleNodesDeleteCleanup,
     handleNodeDragOver,

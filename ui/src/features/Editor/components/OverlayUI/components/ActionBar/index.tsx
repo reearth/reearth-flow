@@ -21,6 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 
 import { DialogOptions } from "../../types";
@@ -43,7 +44,6 @@ type Props = {
   onProjectShare: (share: boolean) => void;
   onProjectExport: () => void;
   onProjectSnapshotSave: () => Promise<void>;
-  isLocked: boolean;
   onProjectLockChange: (lock: boolean) => void;
 };
 
@@ -58,10 +58,10 @@ const ActionBar: React.FC<Props> = ({
   onProjectShare,
   onProjectExport,
   onProjectSnapshotSave,
-  isLocked,
   onProjectLockChange,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
 
   return (
     <div className="flex gap-2 align-middle">
@@ -103,7 +103,6 @@ const ActionBar: React.FC<Props> = ({
             tooltipOffset={tooltipOffset}
             icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
             onClick={() => onDialogOpen("share")}
-            disabled={isLocked}
           />
         </PopoverTrigger>
         <PopoverContent
