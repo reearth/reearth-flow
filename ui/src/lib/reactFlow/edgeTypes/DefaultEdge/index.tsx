@@ -61,14 +61,9 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
         ))}
       {jobStatus === "queued" &&
         (selected ? (
-          <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
+          <path d={edgePath} stroke="#555" fill="none" />
         ) : (
-          <path
-            d={edgePath}
-            stroke="#27272A"
-            fill="none"
-            className="stroke-dashed"
-          />
+          <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
         ))}
       {jobStatus === "running" && (
         <>
@@ -107,9 +102,12 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           </g>
         </>
       )}
-      {/* {sourceNodeStatus === "failed" && (
+      {jobStatus === "cancelled" && (
+        <path d={edgePath} stroke="#ee9733" strokeWidth="1" fill="none" />
+      )}
+      {jobStatus === "failed" && (
         <path d={edgePath} stroke="#fc4444" strokeWidth="1" fill="none" />
-      )} */}
+      )}
     </>
   );
 };
