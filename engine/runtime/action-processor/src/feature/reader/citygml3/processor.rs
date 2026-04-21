@@ -29,7 +29,7 @@ use reearth_flow_types::{
 use crate::feature::errors::FeatureProcessorError;
 
 use super::{
-    flatten::{self, ParentIdTracker},
+    flatten,
     geometry,
     parser::{self, Parser},
     utils::{gml_id_attr, XmlNode},
@@ -200,15 +200,13 @@ impl Processor for FeatureCityGml3Reader {
                 ));
             } else {
                 let root_gml_id = gml_id_attr(&feature_root);
-                let mut tracker = ParentIdTracker::new();
-                tracker.collect(&feature_root);
 
-                for node in flatten::extract(&feature_root, &self.extracted_tags, &ns_registry) {
+                for (node, parent_id) in flatten::extract(&feature_root, &self.extracted_tags, &ns_registry) {
                     let mut feature = build_feature(&node);
-                    if let Some(id) = gml_id_attr(&node).and_then(|id| tracker.parent_gml_id(&id)) {
+                    if let Some(id) = parent_id {
                         feature.insert(
                             CITYGML_PARENT_GML_ID_KEY,
-                            AttributeValue::String(id.to_string()),
+                            AttributeValue::String(id),
                         );
                     }
                     if let Some(ref id) = root_gml_id {
