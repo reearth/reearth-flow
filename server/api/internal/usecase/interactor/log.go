@@ -99,10 +99,6 @@ func (li *LogInteractor) startWatchingLogsIfNeeded(jobID id.JobID, since time.Ti
 }
 
 func (li *LogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobID, since time.Time) {
-	if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return
-	}
-
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
@@ -131,6 +127,10 @@ func (li *LogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobI
 					status == job.StatusCancelled {
 					reearth_log.Debugfc(ctx, "log: job %s is in terminal state %s, stopping log monitoring",
 						jobID, status)
+					now := time.Now().UTC()
+					if finalLogs, err := li.logsGatewayRedis.GetLogs(ctx, latest, now, jobID); err == nil && len(finalLogs) > 0 {
+						li.subscriptions.Notify(jobKey, finalLogs)
+					}
 					li.stopWatchingLogs(jobKey)
 					return
 				}

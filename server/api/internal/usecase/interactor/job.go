@@ -520,7 +520,7 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 	ch := i.subscriptions.Subscribe(jobID.String())
 
 	go func() {
-		j, err := i.FindByID(context.Background(), jobID)
+		j, err := i.jobRepo.FindByID(context.Background(), jobID)
 		if err == nil {
 			i.subscriptions.Notify(jobID.String(), j.Status())
 		}
