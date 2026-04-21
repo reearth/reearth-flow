@@ -4,8 +4,8 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use crate::{
-    attribute, echo::EchoProcessorFactory, feature, file, geometry, http,
-    noop::NoopProcessorFactory, xml,
+    attribute, echo::EchoProcessorFactory, feature, file, flow_expr_test::FlowExprTestFactory,
+    geometry, http, noop::NoopProcessorFactory, xml,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -13,6 +13,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<EchoProcessorFactory>::default(),
         Box::<NoopProcessorFactory>::default(),
+        Box::<FlowExprTestFactory>::default(),
     ];
     mapping.extend(
         factories
