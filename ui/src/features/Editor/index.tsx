@@ -57,6 +57,7 @@ export default function Editor({
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
+    sharingUrl,
     handleProjectShare,
     handleCurrentProjectExport,
     handleWorkflowOpen,
@@ -160,6 +161,7 @@ export default function Editor({
             onEdgesChange={handleEdgesChange}
             onWorkflowRedo={handleWorkflowRedo}
             onWorkflowUndo={handleWorkflowUndo}
+            sharingUrl={sharingUrl}
             onProjectShare={handleProjectShare}
             onProjectExport={handleCurrentProjectExport}
             onWorkflowDeployment={handleWorkflowDeployment}

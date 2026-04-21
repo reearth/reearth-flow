@@ -39,6 +39,7 @@ type Props = {
     description: string,
     deploymentId?: string,
   ) => Promise<void>;
+  sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
   onProjectExport: () => void;
   onProjectSnapshotSave: () => Promise<void>;
@@ -53,6 +54,7 @@ const ActionBar: React.FC<Props> = ({
   onDialogOpen,
   onDialogClose,
   onWorkflowDeployment,
+  sharingUrl,
   onProjectShare,
   onProjectExport,
   onProjectSnapshotSave,
@@ -109,7 +111,7 @@ const ActionBar: React.FC<Props> = ({
           collisionPadding={5}
           className="bg-primary/50 backdrop-blur">
           {showDialog === "share" && (
-            <SharePopover onProjectShare={onProjectShare} />
+            <SharePopover sharingUrl={sharingUrl} onProjectShare={onProjectShare} />
           )}
         </PopoverContent>
       </Popover>

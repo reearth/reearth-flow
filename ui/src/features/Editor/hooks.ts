@@ -16,8 +16,7 @@ import {
   DEFAULT_ENTRY_GRAPH_ID,
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
-import { useProjectExport, useProjectLock, useProjectSave } from "@flow/hooks";
-import { useSharedProject } from "@flow/lib/gql";
+import { useProjectExport, useProjectLock, useProjectSave, useProjectShare } from "@flow/hooks";
 import {
   useAwarenessPresence,
   useSpotlightUser,
@@ -92,8 +91,6 @@ export default ({
   });
 
   const { handleProjectExport } = useProjectExport();
-
-  const { shareProject, unshareProject } = useSharedProject();
 
   const [currentProject] = useCurrentProject();
 
@@ -225,26 +222,13 @@ export default ({
 
   const { isLocked, handleProjectLockChange } = useProjectLock({
     currentProject,
+    yDoc,
   });
 
-  const handleProjectShare = useCallback(
-    (share: boolean) => {
-      if (!currentProject) return;
-
-      if (share) {
-        shareProject({
-          projectId: currentProject.id,
-          workspaceId: currentProject.workspaceId,
-        });
-      } else {
-        unshareProject({
-          projectId: currentProject.id,
-          workspaceId: currentProject.workspaceId,
-        });
-      }
-    },
-    [currentProject, shareProject, unshareProject],
-  );
+  const { sharingUrl, handleProjectShare } = useProjectShare({
+    currentProject,
+    yDoc,
+  });
 
   const handleLayoutChange = useCallback(
     async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
@@ -463,6 +447,7 @@ export default ({
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowDeployment,
+    sharingUrl,
     handleProjectShare,
     handleCurrentProjectExport,
     handleWorkflowAdd: handleYWorkflowAdd,

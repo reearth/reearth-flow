@@ -1,49 +1,23 @@
 import { PaperclipIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
 
 import { Button, Switch } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { useDebouncedCallback } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentProject } from "@flow/stores";
 
 type Props = {
+  sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
 };
 
-const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
+const SharePopover: React.FC<Props> = ({ sharingUrl, onProjectShare }) => {
   const t = useT();
   const { toast } = useToast();
-  const [currentProject] = useCurrentProject();
-  const BASE_URL = window.location.origin;
-  const sharedToken = currentProject?.sharedToken;
-  const sharedUrl = sharedToken
-    ? BASE_URL + "/shared/" + sharedToken
-    : undefined;
 
-  const [isSharing, setIsSharing] = useState<boolean>(
-    !!currentProject?.sharedToken,
-  );
-
-  useEffect(() => {
-    setIsSharing(!!currentProject?.sharedToken);
-  }, [currentProject?.sharedToken]);
-
-  const debouncedHandleSharingChange = useDebouncedCallback(
-    (checked: boolean) => {
-      onProjectShare(checked);
-    },
-    2000,
-  );
-
-  const handleSharingChange = (checked: boolean) => {
-    setIsSharing(checked);
-    debouncedHandleSharingChange(checked);
-  };
+  const isSharing = !!sharingUrl;
 
   const handleCopyUrl = () => {
     navigator.clipboard
-      .writeText(sharedUrl || "")
+      .writeText(sharingUrl || "")
       .then(() => {
         toast({
           title: t("URL Copied."),
@@ -69,7 +43,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
         <Button
           className="flex gap-2"
           variant="outline"
-          disabled={!currentProject?.sharedToken}
+          disabled={!sharingUrl}
           onClick={handleCopyUrl}>
           <PaperclipIcon weight="thin" />
           <p className="text-xs dark:font-light">{t("Copy URL")}</p>
@@ -82,7 +56,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
           )}
         </p>
         <div className="flex items-center gap-2">
-          <Switch checked={isSharing} onCheckedChange={handleSharingChange} />
+          <Switch checked={isSharing} onCheckedChange={onProjectShare} />
           <span className="text-sm dark:font-light">{t("Sharing")}</span>
         </div>
       </div>
