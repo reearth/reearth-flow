@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser, Node } from "@flow/types";
 
@@ -27,7 +28,6 @@ import {
 } from "./utils/paramsAwareness";
 
 type Props = {
-  readonly?: boolean;
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
   openNode?: Node;
@@ -44,7 +44,6 @@ type Props = {
 };
 
 const ParamsDialog: React.FC<Props> = ({
-  readonly,
   yDoc,
   users = {},
   openNode,
@@ -54,6 +53,7 @@ const ParamsDialog: React.FC<Props> = ({
   onParamFieldFocus,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
   const clientId = String(yDoc?.clientID ?? "local");
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
@@ -306,7 +306,7 @@ const ParamsDialog: React.FC<Props> = ({
           </DialogHeader>
           {openNode && (
             <ParamEditor
-              readonly={readonly}
+              readonly={isLocked}
               nodeId={openNode.id}
               nodeMeta={openNode.data}
               nodeType={openNode.type}

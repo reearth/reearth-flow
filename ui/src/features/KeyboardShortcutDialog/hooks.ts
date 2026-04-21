@@ -25,6 +25,10 @@ export default () => {
         keyBinding: GeneralKeyBindings["save"],
         description: t("Manually Save the Project"),
       },
+      {
+        keyBinding: GeneralKeyBindings["lockProject"],
+        description: t("Lock/Unlock the Project"),
+      },
     ],
   };
 
