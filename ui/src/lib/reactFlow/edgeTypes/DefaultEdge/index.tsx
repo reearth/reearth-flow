@@ -102,9 +102,12 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           </g>
         </>
       )}
-      {/* {jobStatus === "failed" && (
+      {jobStatus === "cancelled" && (
+        <path d={edgePath} stroke="#ee9733" strokeWidth="1" fill="none" />
+      )}
+      {jobStatus === "failed" && (
         <path d={edgePath} stroke="#fc4444" strokeWidth="1" fill="none" />
-      )} */}
+      )}
     </>
   );
 };
