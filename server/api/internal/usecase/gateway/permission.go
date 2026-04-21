@@ -1,11 +1,7 @@
 package gateway
 
-import (
-	"context"
-
-	"github.com/reearth/reearthx/appx"
-)
+import "context"
 
 type PermissionChecker interface {
-	CheckPermission(ctx context.Context, authInfo *appx.AuthInfo, userId string, resource string, action string) (bool, error)
+	CheckPermission(ctx context.Context, resource string, action string) (bool, error)
 }
