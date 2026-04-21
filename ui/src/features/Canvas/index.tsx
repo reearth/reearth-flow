@@ -12,6 +12,7 @@ import {
 import { MouseEvent, memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import {
   isValidConnection,
   CustomConnectionLine,
@@ -21,8 +22,6 @@ import {
 } from "@flow/lib/reactFlow";
 import createFullNodeTypes from "@flow/lib/reactFlow/nodeTypes";
 import type { ActionNodeType, AwarenessUser, Edge, Node } from "@flow/types";
-
-import { useEditorContext } from "@flow/features/Editor/editorContext";
 
 import { CanvasContextMenu } from "./components";
 import Awareness from "./components/Awareness";
@@ -189,7 +188,7 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 1)"
       />
-      {!readonly && users && currentWorkflowId && (
+      {users && currentWorkflowId && (
         <Awareness users={users} currentWorkflowId={currentWorkflowId} />
       )}
       {contextMenu && (

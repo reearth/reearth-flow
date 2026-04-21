@@ -101,6 +101,7 @@ const ActionBar: React.FC<Props> = ({
           <IconButton
             tooltipText={t("Share Project")}
             tooltipOffset={tooltipOffset}
+            disabled={isLocked}
             icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
             onClick={() => onDialogOpen("share")}
           />
