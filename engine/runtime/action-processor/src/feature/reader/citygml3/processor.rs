@@ -92,8 +92,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             .compile(params.dataset.as_ref())
             .map_err(|e| FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}")))?;
 
-        let extract_tags: HashSet<String> =
-            params.extract_tags.into_iter().collect();
+        let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
 
         Ok(Box::new(FeatureCityGml3Reader {
             global_params: with,
