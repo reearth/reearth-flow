@@ -197,7 +197,6 @@ const Canvas: React.FC<Props> = ({
           edges={edges}
           allNodes={nodes}
           isMainWorkflow={isMainWorkflow}
-          isLocked={readonly}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
           onNodesChange={onNodesChange}

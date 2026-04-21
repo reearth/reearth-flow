@@ -19,6 +19,7 @@ import {
   ContextMenuMeta,
   ContextMenuShortcut,
 } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
@@ -30,7 +31,6 @@ type Props = {
   edges: Edge[];
   allNodes: Node[];
   isMainWorkflow: boolean;
-  isLocked?: boolean;
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
@@ -55,7 +55,6 @@ const CanvasContextMenu: React.FC<Props> = ({
   edges,
   allNodes,
   isMainWorkflow,
-  isLocked,
   onWorkflowOpen,
   onWorkflowAddFromSelection,
   onNodeSettings,
@@ -73,6 +72,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   const t = useT();
   const { value } = useIndexedDB("general");
   const [currentProject] = useCurrentProject();
+  const { isLocked } = useEditorContext();
 
   const { value: debugRunState } = useIndexedDB("debugRun");
 
