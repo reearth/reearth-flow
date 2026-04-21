@@ -49,6 +49,8 @@ fn tag_matches(node: &XmlNode, sets: &MatchSets) -> bool {
 /// deepest-first. Each extracted node has its own matching descendants stripped out.
 /// Returns `(node, nearest_ancestor_gml_id)` pairs; the parent ID is correct even when the same
 /// node is reached via multiple paths (e.g. shared xlink targets).
+/// Note: if a parent and a descendant tag both appear in `included`, the descendant's geometry
+/// and attributes are stripped from the parent and emitted separately.
 pub(super) fn extract(
     node: &Arc<XmlNode>,
     included: &HashSet<String>,
