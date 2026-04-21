@@ -31,6 +31,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
 
   const editorContext = useMemo(
     (): EditorContextType => ({
+      isLocked: true,
       onNodeSettings:
         handleNodeSettings as unknown as EditorContextType["onNodeSettings"],
     }),
@@ -57,7 +58,6 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
               <div className="relative flex flex-1 flex-col">
                 <Canvas
                   isMainWorkflow={isMainWorkflow}
-                  readonly
                   onWorkflowOpen={handleWorkflowOpen}
                   nodes={nodes}
                   edges={edges}
@@ -66,11 +66,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
               </div>
             </div>
             {openNode && (
-              <ParamsDialog
-                readonly
-                openNode={openNode}
-                onOpenNode={handleOpenNode}
-              />
+              <ParamsDialog openNode={openNode} onOpenNode={handleOpenNode} />
             )}
           </div>
         </div>

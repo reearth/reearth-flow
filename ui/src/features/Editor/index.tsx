@@ -57,6 +57,7 @@ export default function Editor({
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
+    sharingUrl,
     handleProjectShare,
     handleCurrentProjectExport,
     handleWorkflowOpen,
@@ -85,6 +86,8 @@ export default function Editor({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    isLocked,
+    handleProjectLockChange,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handleNodesDisable,
@@ -106,6 +109,7 @@ export default function Editor({
 
   const editorContext = useMemo(
     (): EditorContextType => ({
+      isLocked,
       onNodesChange: handleNodesChange,
       onNodeSettings: handleNodeSettings,
       currentYWorkflow,
@@ -113,6 +117,7 @@ export default function Editor({
       awarenessSelectionsMap,
     }),
     [
+      isLocked,
       handleNodesChange,
       handleNodeSettings,
       currentYWorkflow,
@@ -158,6 +163,7 @@ export default function Editor({
             onEdgesChange={handleEdgesChange}
             onWorkflowRedo={handleWorkflowRedo}
             onWorkflowUndo={handleWorkflowUndo}
+            sharingUrl={sharingUrl}
             onProjectShare={handleProjectShare}
             onProjectExport={handleCurrentProjectExport}
             onWorkflowDeployment={handleWorkflowDeployment}
@@ -168,6 +174,7 @@ export default function Editor({
             onDebugRunStop={handleDebugRunStop}
             onDebugRunVariableValueChange={handleDebugRunVariableValueChange}
             onProjectSnapshotSave={handleProjectSnapshotSave}
+            onProjectLockChange={handleProjectLockChange}
             onSpotlightUserSelect={handleSpotlightUserSelect}
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}

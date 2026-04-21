@@ -1,7 +1,10 @@
+import { LockIcon } from "@phosphor-icons/react";
 import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 import { Doc } from "yjs";
 
+import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useT } from "@flow/lib/i18n";
 import type {
   ActionNodeType,
   Algorithm,
@@ -74,6 +77,7 @@ type OverlayUIProps = {
     deploymentId?: string,
   ) => Promise<void>;
   onProjectExport: () => void;
+  sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStartFromSelectedNode?: (
@@ -84,6 +88,7 @@ type OverlayUIProps = {
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onProjectSnapshotSave: () => Promise<void>;
+  onProjectLockChange: (lock: boolean) => void;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
   activeUsersDebugRuns?: AwarenessUser[];
@@ -125,6 +130,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onWorkflowClose,
   onLayoutChange,
   onWorkflowDeployment,
+  sharingUrl,
   onProjectExport,
   onProjectShare,
   onDebugRunStart,
@@ -133,6 +139,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onDebugRunVariableValueChange,
   onDebugRunJoin,
   onProjectSnapshotSave,
+  onProjectLockChange,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
   children: canvas,
@@ -140,12 +147,15 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   showSearchPanel,
   onShowSearchPanel,
 }) => {
+  const { isLocked } = useEditorContext();
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
 
   const handleLayoutOptionsToggle = useCallback(() => {
     setShowLayoutOptions((prev) => !prev);
   }, []);
+
+  const t = useT();
 
   return (
     <>
@@ -164,6 +174,16 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onRedo={onWorkflowRedo}
             onUndo={onWorkflowUndo}
           />
+          {isLocked && (
+            <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
+              <div className="flex items-center gap-2 rounded p-2 text-xs">
+                <LockIcon weight="thin" size={18} />
+                <p className="font-light text-accent-foreground select-none">
+                  {t("Locked")}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         <div
           id="left-top"
@@ -204,9 +224,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               showDialog={showDialog}
               onDialogOpen={handleDialogOpen}
               onDialogClose={handleDialogClose}
+              sharingUrl={sharingUrl}
               onProjectShare={onProjectShare}
               onProjectExport={onProjectExport}
               onWorkflowDeployment={onWorkflowDeployment}
+              onProjectLockChange={onProjectLockChange}
               onProjectSnapshotSave={onProjectSnapshotSave}
             />
           </div>
