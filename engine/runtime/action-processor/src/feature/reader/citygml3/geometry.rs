@@ -5,7 +5,7 @@ use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::{GeometryType, GmlGeometry};
 
-use super::utils::{local_name, XmlChild, XmlNode, GML_NS};
+use super::utils::{local_name, XmlChild, XmlNode, GML_NS_ID};
 
 pub fn extract_geometries(node: &Arc<XmlNode>) -> (Arc<XmlNode>, Vec<GmlGeometry>) {
     let mut out: Vec<GmlGeometry> = Vec::new();
@@ -503,7 +503,7 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
 fn gml_id(node: &XmlNode) -> Option<String> {
     node.attrs
         .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && ns == GML_NS)
+        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
         .map(|(_, v)| v.clone())
 }
 
@@ -533,18 +533,28 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::feature::reader::citygml3::utils::XmlChild;
+    use crate::feature::reader::citygml3::utils::{
+        NsId, XmlChild, EMPTY_NS_ID, GML_NS, GML_NS_ID, XLINK_NS, XLINK_NS_ID,
+    };
 
     fn text_node(t: &str) -> XmlChild {
         XmlChild::Text(t.to_string())
     }
 
+    fn ns_id(ns: &str) -> NsId {
+        match ns {
+            GML_NS => GML_NS_ID,
+            XLINK_NS => XLINK_NS_ID,
+            _ => EMPTY_NS_ID,
+        }
+    }
+
     fn elem(name: &str, attrs: Vec<(&str, &str, &str)>, children: Vec<XmlChild>) -> XmlNode {
         XmlNode {
-            name: (name.to_string(), String::new()),
+            name: (name.to_string(), EMPTY_NS_ID),
             attrs: attrs
                 .into_iter()
-                .map(|(q, ns, v)| ((q.to_string(), ns.to_string()), v.to_string()))
+                .map(|(q, ns, v)| ((q.to_string(), ns_id(ns)), v.to_string()))
                 .collect(),
             children,
         }

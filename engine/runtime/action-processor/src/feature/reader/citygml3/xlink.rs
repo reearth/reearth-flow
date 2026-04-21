@@ -80,11 +80,18 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::feature::reader::citygml3::parser::{parse, RawRegistry};
+    use crate::feature::reader::citygml3::parser::{Parser, RawNode, RawRegistry};
     use crate::feature::reader::citygml3::utils::{local_name, XmlChild};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()
+    }
+
+    fn parse_test(xml: &[u8], url: &Url) -> (Vec<Arc<RawNode>>, RawRegistry) {
+        let mut parser = Parser::new();
+        parser.parse(xml, url).unwrap();
+        let (pending, raw_reg, _) = parser.finish();
+        (pending, raw_reg)
     }
 
     #[test]
@@ -105,8 +112,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"##;
 
-        let mut reg = RawRegistry::new();
-        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let (raw, reg) = parse_test(xml, &dummy_url());
         let resolved = resolve(raw, &reg);
         assert_eq!(resolved.len(), 1);
         let tlf = &resolved[0];
@@ -142,8 +148,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"##;
 
-        let mut reg = RawRegistry::new();
-        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let (raw, reg) = parse_test(xml, &dummy_url());
         let resolved = resolve(raw, &reg);
         assert_eq!(resolved.len(), 1);
         let tlf = &resolved[0];
@@ -177,8 +182,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"##;
 
-        let mut reg = RawRegistry::new();
-        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let (raw, reg) = parse_test(xml, &dummy_url());
         let resolved = resolve(raw, &reg);
         assert_eq!(resolved.len(), 1);
         let tlf = &resolved[0];
@@ -211,8 +215,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"##;
 
-        let mut reg = RawRegistry::new();
-        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let (raw, reg) = parse_test(xml, &dummy_url());
         let resolved = resolve(raw, &reg);
         assert_eq!(resolved.len(), 1);
         let tlf = &resolved[0];
@@ -255,9 +258,9 @@ mod tests {
         let url_a = Url::parse("file:///a.gml").unwrap();
         let url_b = Url::parse("file:///b.gml").unwrap();
 
-        let mut reg = RawRegistry::new();
-        let raw_a = parse(xml_a, &url_a, &mut reg).unwrap();
-        parse(xml_b, &url_b, &mut reg).unwrap();
+        let (raw_a, mut reg) = parse_test(xml_a, &url_a);
+        let (_, reg_b) = parse_test(xml_b, &url_b);
+        reg.extend(reg_b);
 
         let resolved = resolve(raw_a, &reg);
         assert_eq!(resolved.len(), 1);
@@ -292,8 +295,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"##;
 
-        let mut reg = RawRegistry::new();
-        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let (raw, reg) = parse_test(xml, &dummy_url());
         let resolved = resolve(raw, &reg);
         assert_eq!(resolved.len(), 2);
         let _ = resolved;
@@ -322,8 +324,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"##;
 
-        let mut reg = RawRegistry::new();
-        let raw = parse(xml, &dummy_url(), &mut reg).unwrap();
+        let (raw, reg) = parse_test(xml, &dummy_url());
         let resolved = resolve(raw, &reg);
 
         let polygon_arc = |feature: &Arc<XmlNode>| match &feature.children[0] {

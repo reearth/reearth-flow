@@ -31,7 +31,7 @@ use crate::feature::errors::FeatureProcessorError;
 use super::{
     flatten::{self, ParentIdTracker},
     geometry,
-    parser::{self, RawNode, RawRegistry},
+    parser::{self, Parser},
     utils::{gml_id_attr, XmlNode},
     xlink,
 };
@@ -100,8 +100,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             dataset_ast,
             original_dataset: params.dataset,
             extracted_tags,
-            raw_registry: RawRegistry::new(),
-            pending: Vec::new(),
+            parser: Parser::new(),
         }))
     }
 }
@@ -126,15 +125,13 @@ pub struct FeatureCityGml3Reader {
     dataset_ast: rhai::AST,
     original_dataset: Expr,
     extracted_tags: HashSet<String>,
-    raw_registry: RawRegistry,
-    pending: Vec<Arc<RawNode>>,
+    parser: Parser,
 }
 
 impl std::fmt::Debug for FeatureCityGml3Reader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FeatureCityGml3Reader")
-            .field("pending", &self.pending.len())
-            .field("raw_registry", &self.raw_registry.len())
+            .field("parser", &self.parser)
             .finish_non_exhaustive()
     }
 }
@@ -146,8 +143,7 @@ impl Clone for FeatureCityGml3Reader {
             dataset_ast: self.dataset_ast.clone(),
             original_dataset: self.original_dataset.clone(),
             extracted_tags: self.extracted_tags.clone(),
-            raw_registry: RawRegistry::new(),
-            pending: Vec::new(),
+            parser: Parser::new(),
         }
     }
 }
@@ -182,10 +178,9 @@ impl Processor for FeatureCityGml3Reader {
             FeatureProcessorError::FileCityGml3Reader(format!("File read error: {e}"))
         })?;
 
-        let mut features = parser::parse(&bytes, &source_url, &mut self.raw_registry)
+        self.parser
+            .parse(&bytes, &source_url)
             .map_err(|e| FeatureProcessorError::FileCityGml3Reader(format!("{e}")))?;
-
-        self.pending.append(&mut features);
         Ok(())
     }
 
@@ -194,8 +189,8 @@ impl Processor for FeatureCityGml3Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let registry = std::mem::take(&mut self.raw_registry);
-        for feature_root in xlink::resolve(std::mem::take(&mut self.pending), &registry) {
+        let (pending, raw_registry, ns_registry) = std::mem::take(&mut self.parser).finish();
+        for feature_root in xlink::resolve(pending, &raw_registry) {
             if self.extracted_tags.is_empty() {
                 let feature = build_feature(&feature_root);
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -208,7 +203,7 @@ impl Processor for FeatureCityGml3Reader {
                 let mut tracker = ParentIdTracker::new();
                 tracker.collect(&feature_root);
 
-                for node in flatten::extract(&feature_root, &self.extracted_tags) {
+                for node in flatten::extract(&feature_root, &self.extracted_tags, &ns_registry) {
                     let mut feature = build_feature(&node);
                     if let Some(id) = gml_id_attr(&node).and_then(|id| tracker.parent_gml_id(&id)) {
                         feature.insert(

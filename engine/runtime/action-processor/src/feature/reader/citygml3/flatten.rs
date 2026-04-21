@@ -1,42 +1,82 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use super::utils::{gml_id_attr, local_name, XmlChild, XmlNode};
+use super::utils::{
+    gml_id_attr, local_name, NamespaceRegistry, NsId, XmlChild, XmlNode, EMPTY_NS_ID,
+};
+
+/// Pre-processed form of the `included` tag set that avoids per-node allocation.
+/// Clark-notation entries (`{ns}local`) are resolved to `(NsId, local)` pairs once at the
+/// `extract()` boundary, so matching is a cheap integer + string-ref comparison.
+struct MatchSets {
+    raw: HashSet<String>,
+    clark: HashMap<NsId, HashSet<String>>,
+}
+
+impl MatchSets {
+    fn new(included: &HashSet<String>, ns_reg: &NamespaceRegistry) -> Self {
+        let mut clark: HashMap<NsId, HashSet<String>> = HashMap::new();
+        for s in included {
+            if let Some(rest) = s.strip_prefix('{') {
+                if let Some(end) = rest.find('}') {
+                    let uri = &rest[..end];
+                    let local = rest[end + 1..].to_string();
+                    if let Some(id) = ns_reg.get(uri) {
+                        clark.entry(id).or_default().insert(local);
+                    }
+                }
+            }
+        }
+        Self {
+            raw: included.clone(),
+            clark,
+        }
+    }
+}
+
+fn tag_matches(node: &XmlNode, sets: &MatchSets) -> bool {
+    let ln = local_name(&node.name.0);
+    sets.raw.contains(node.name.0.as_str())
+        || sets.raw.contains(ln)
+        || (node.name.1 != EMPTY_NS_ID
+            && sets
+                .clark
+                .get(&node.name.1)
+                .is_some_and(|locals| locals.contains(ln)))
+}
 
 /// Extracts all nodes whose tag is in `included` from `node`'s subtree (including `node` itself),
 /// deepest-first. Each extracted node has its own matching descendants stripped out.
-pub fn extract(node: &Arc<XmlNode>, included: &HashSet<String>) -> Vec<Arc<XmlNode>> {
+pub(super) fn extract(
+    node: &Arc<XmlNode>,
+    included: &HashSet<String>,
+    ns_registry: &NamespaceRegistry,
+) -> Vec<Arc<XmlNode>> {
     if included.is_empty() {
         return Vec::new();
     }
+    let sets = MatchSets::new(included, ns_registry);
     let mut out = Vec::new();
-    extract_inner(node, included, &mut out);
+    extract_inner(node, &sets, &mut out);
     out
 }
 
-fn extract_inner(node: &Arc<XmlNode>, included: &HashSet<String>, out: &mut Vec<Arc<XmlNode>>) {
-    if tag_matches(node, included) {
-        let stripped = extract_recursive(node, included, out);
+fn extract_inner(node: &Arc<XmlNode>, sets: &MatchSets, out: &mut Vec<Arc<XmlNode>>) {
+    if tag_matches(node, sets) {
+        let stripped = extract_recursive(node, sets, out);
         out.push(stripped);
     } else {
         for child in &node.children {
             if let XmlChild::Element(e) = child {
-                extract_inner(e, included, out);
+                extract_inner(e, sets, out);
             }
         }
     }
 }
 
-pub fn tag_matches(node: &XmlNode, included: &HashSet<String>) -> bool {
-    let ln = local_name(&node.name.0);
-    included.contains(node.name.0.as_str())
-        || included.contains(ln)
-        || (!node.name.1.is_empty() && included.contains(&format!("{{{}}}{ln}", node.name.1)))
-}
-
 /// Tracks the nearest ancestor `gml:id` for every node in a tree.
 /// Build with [`ParentIdTracker::collect`], then query with [`ParentIdTracker::parent_gml_id`].
-pub struct ParentIdTracker {
+pub(super) struct ParentIdTracker {
     /// node gml:id → nearest ancestor gml:id (None when the node is a root)
     map: HashMap<String, Option<String>>,
 }
@@ -76,7 +116,7 @@ impl ParentIdTracker {
 
 fn extract_recursive(
     node: &Arc<XmlNode>,
-    included: &HashSet<String>,
+    sets: &MatchSets,
     out: &mut Vec<Arc<XmlNode>>,
 ) -> Arc<XmlNode> {
     let mut new_children: Option<Vec<XmlChild>> = None;
@@ -84,9 +124,8 @@ fn extract_recursive(
     for (i, child) in node.children.iter().enumerate() {
         match child {
             XmlChild::Element(e) => {
-                if tag_matches(e, included) {
-                    // Process the child's own subtree first (bottom-up), then lift the child out.
-                    let stripped_child = extract_recursive(e, included, out);
+                if tag_matches(e, sets) {
+                    let stripped_child = extract_recursive(e, sets, out);
                     out.push(stripped_child);
 
                     if new_children.is_none() {
@@ -94,7 +133,7 @@ fn extract_recursive(
                     }
                     // deliberately not pushed into new_children — it is extracted
                 } else {
-                    let stripped_child = extract_recursive(e, included, out);
+                    let stripped_child = extract_recursive(e, sets, out);
                     match new_children {
                         None => {
                             if !Arc::ptr_eq(&stripped_child, e) {
@@ -130,11 +169,11 @@ fn extract_recursive(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::feature::reader::citygml3::utils::XmlChild;
+    use crate::feature::reader::citygml3::utils::{NamespaceRegistry, XmlChild, EMPTY_NS_ID};
 
     fn node(name: &str, children: Vec<XmlChild>) -> Arc<XmlNode> {
         Arc::new(XmlNode {
-            name: (name.to_string(), String::new()),
+            name: (name.to_string(), EMPTY_NS_ID),
             attrs: Vec::new(),
             children,
         })
@@ -150,22 +189,26 @@ mod tests {
 
     #[test]
     fn matching_child_extracted_from_parent() {
+        let ns_reg = NamespaceRegistry::new();
         let part = node("bldg:BuildingPart", vec![]);
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
-        let extracted = extract(&root, &included(&["bldg:BuildingPart"]));
+        let extracted = extract(&root, &included(&["bldg:BuildingPart"]), &ns_reg);
         assert_eq!(extracted.len(), 1);
         assert!(Arc::ptr_eq(&extracted[0], &part));
     }
 
     #[test]
     fn deep_match_extracted_before_shallow() {
-        // Building > BuildingPart > Room — inclusion: BuildingPart, Room
-        // Expect: Room first (deepest), BuildingPart second, BuildingPart no longer contains Room
+        let ns_reg = NamespaceRegistry::new();
         let room = node("bldg:Room", vec![]);
         let part = node("bldg:BuildingPart", vec![elem(Arc::clone(&room))]);
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
 
-        let extracted = extract(&root, &included(&["bldg:BuildingPart", "bldg:Room"]));
+        let extracted = extract(
+            &root,
+            &included(&["bldg:BuildingPart", "bldg:Room"]),
+            &ns_reg,
+        );
 
         assert_eq!(extracted.len(), 2);
         assert_eq!(extracted[0].name.0, "bldg:Room");
@@ -175,23 +218,26 @@ mod tests {
 
     #[test]
     fn local_name_match() {
+        let ns_reg = NamespaceRegistry::new();
         let part = node("bldg:BuildingPart", vec![]);
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
-        let extracted = extract(&root, &included(&["BuildingPart"]));
+        let extracted = extract(&root, &included(&["BuildingPart"]), &ns_reg);
         assert_eq!(extracted.len(), 1);
     }
 
     #[test]
     fn clark_notation_match() {
+        let mut ns_reg = NamespaceRegistry::new();
         let ns = "http://www.opengis.net/citygml/building/3.0";
+        let ns_id = ns_reg.intern(ns);
         let part = Arc::new(XmlNode {
-            name: ("bldg:BuildingPart".to_string(), ns.to_string()),
+            name: ("bldg:BuildingPart".to_string(), ns_id),
             attrs: Vec::new(),
             children: Vec::new(),
         });
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
         let clark = format!("{{{ns}}}BuildingPart");
-        let extracted = extract(&root, &included(&[&clark]));
+        let extracted = extract(&root, &included(&[&clark]), &ns_reg);
         assert_eq!(extracted.len(), 1);
     }
 }
