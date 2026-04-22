@@ -1,3 +1,9 @@
+---
+name: add-action
+description: Step-by-step guide for adding or modifying a Rust action in the engine. Use when creating a new SourceFactory, ProcessorFactory, or SinkFactory, registering an action, or updating action schemas and i18n files.
+user-invocable: true
+---
+
 # Add a New Engine Action
 
 Follow these steps when adding or modifying an action in the engine.
