@@ -16,8 +16,12 @@ import {
   DEFAULT_ENTRY_GRAPH_ID,
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
-import { useProjectExport, useProjectSave } from "@flow/hooks";
-import { useSharedProject } from "@flow/lib/gql";
+import {
+  useProjectExport,
+  useProjectLock,
+  useProjectSave,
+  useProjectShare,
+} from "@flow/hooks";
 import {
   useAwarenessPresence,
   useSpotlightUser,
@@ -92,8 +96,6 @@ export default ({
   });
 
   const { handleProjectExport } = useProjectExport();
-
-  const { shareProject, unshareProject } = useSharedProject();
 
   const [currentProject] = useCurrentProject();
 
@@ -223,24 +225,15 @@ export default ({
     yWorkflows,
   });
 
-  const handleProjectShare = useCallback(
-    (share: boolean) => {
-      if (!currentProject) return;
+  const { isLocked, handleProjectLockChange } = useProjectLock({
+    currentProject,
+    yDoc,
+  });
 
-      if (share) {
-        shareProject({
-          projectId: currentProject.id,
-          workspaceId: currentProject.workspaceId,
-        });
-      } else {
-        unshareProject({
-          projectId: currentProject.id,
-          workspaceId: currentProject.workspaceId,
-        });
-      }
-    },
-    [currentProject, shareProject, unshareProject],
-  );
+  const { sharingUrl, handleProjectShare } = useProjectShare({
+    currentProject,
+    yDoc,
+  });
 
   const handleLayoutChange = useCallback(
     async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
@@ -265,7 +258,6 @@ export default ({
   } = useDebugRun({
     rawWorkflows,
     yAwareness,
-    onProjectSnapshotSave: handleProjectSnapshotSave,
   });
 
   const handleBeforeDeleteNodes = useCallback(
@@ -321,10 +313,13 @@ export default ({
 
       switch (handler.keys?.join("")) {
         case "s":
-          if (hasModifier && !isSaving && !hasShift)
+          if (hasModifier && !isSaving && !hasShift && !isLocked)
             handleProjectSnapshotSave?.();
-          if (hasModifier && hasShift)
+          if (hasModifier && hasShift && !isLocked)
             handleYWorkflowAddFromSelection(nodes, edges);
+          break;
+        case "l":
+          if (hasModifier) handleProjectLockChange?.(!isLocked);
           break;
         case "k":
           if (hasModifier && !showSearchPanel) setShowSearchPanel(true);
@@ -332,8 +327,8 @@ export default ({
 
           break;
         case "z":
-          if (hasModifier && hasShift) handleYWorkflowRedo?.();
-          if (hasModifier && !hasShift) handleYWorkflowUndo?.();
+          if (hasModifier && hasShift && !isLocked) handleYWorkflowRedo?.();
+          if (hasModifier && !hasShift && !isLocked) handleYWorkflowUndo?.();
           break;
       }
     },
@@ -457,6 +452,7 @@ export default ({
     handleDebugRunVariableValueChange,
     loadExternalDebugJob,
     handleWorkflowDeployment,
+    sharingUrl,
     handleProjectShare,
     handleCurrentProjectExport,
     handleWorkflowAdd: handleYWorkflowAdd,
@@ -487,6 +483,8 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    handleProjectLockChange,
+    isLocked,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,

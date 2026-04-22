@@ -51,6 +51,10 @@ func (i *Websocket) ImportProject(ctx context.Context, id string, data []byte) e
 	return i.client.ImportDocument(ctx, id, data)
 }
 
+func (i *Websocket) DeleteDocument(ctx context.Context, id string) error {
+	return i.client.DeleteDocument(ctx, id)
+}
+
 func (i *Websocket) Close() error {
 	return i.client.Close()
 }

@@ -7,6 +7,7 @@ type Project implements Node {
   id: ID!
   isArchived: Boolean!
   isBasicAuthActive: Boolean!
+  isLocked: Boolean!
   name: String!
   parameters: [Parameter!]!
   updatedAt: DateTime!
@@ -20,6 +21,7 @@ enum ProjectSortField {
   NAME
   CREATED_AT
   UPDATED_AT
+  IS_LOCKED
 }
 
 # InputType
@@ -37,6 +39,7 @@ input UpdateProjectInput {
   description: String
   archived: Boolean
   isBasicAuthActive: Boolean
+  isLocked: Boolean
   basicAuthUsername: String
   basicAuthPassword: String
 }
@@ -51,6 +54,7 @@ input RunProjectInput {
   file: Upload!
   previousJobId: ID
   startNodeId: ID
+  parameters: [RunParameterInput!]
 }
 
 # Payload

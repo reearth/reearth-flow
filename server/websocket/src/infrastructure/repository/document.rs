@@ -159,8 +159,26 @@ impl DocumentRepository for DocumentRepositoryImpl {
     }
 
     async fn rollback(&self, doc_id: &str, version: u64) -> Result<Document> {
+        anyhow::ensure!(
+            version <= u32::MAX as u64,
+            "version {} exceeds maximum supported value ({})",
+            version,
+            u32::MAX
+        );
         let store = self.store();
         let doc = store.rollback_to(doc_id, version as u32).await?;
+
+        // Persist the rolled-back state to GCS so that new BroadcastGroups
+        // (created on client reconnect) load the correct state.
+        {
+            let txn = doc.transact();
+            store.flush_doc_v2(doc_id, &txn).await?;
+        }
+
+        // Delete stale update objects beyond the target version so that
+        // get_history() only returns valid versions.
+        store.delete_updates_after(doc_id, version as u32).await?;
+
         let document = Self::to_document(doc_id, doc, version, Utc::now());
         Ok(document)
     }
@@ -183,5 +201,27 @@ impl DocumentRepository for DocumentRepositoryImpl {
         let store = self.store();
         store.import_document(doc_id, data).await?;
         Ok(())
+    }
+
+    async fn cleanup_old_updates(&self, doc_id: &str, max_keep: usize) -> Result<usize> {
+        let store = self.store();
+        store.cleanup_old_updates(doc_id, max_keep).await
+    }
+
+    async fn delete_document(&self, doc_id: &str) -> Result<()> {
+        let store = self.store();
+        store.delete_all_doc_data(doc_id).await?;
+
+        // Also clean up Redis stream
+        let redis_store = self.collaborative_storage.redis_store();
+        if let Err(e) = redis_store.delete_stream(doc_id).await {
+            tracing::warn!("Failed to delete Redis stream for doc '{}': {}", doc_id, e);
+        }
+        Ok(())
+    }
+
+    async fn cleanup_all_documents(&self, max_keep: usize) -> Result<(usize, usize)> {
+        let store = self.store();
+        store.cleanup_all_documents(max_keep).await
     }
 }

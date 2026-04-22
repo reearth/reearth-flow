@@ -3,6 +3,7 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
 import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
 
@@ -24,6 +25,7 @@ const VersionDialog: React.FC<Props> = ({
   onErrorReset,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const {
@@ -149,7 +151,8 @@ const VersionDialog: React.FC<Props> = ({
                 disabled={
                   !selectedProjectSnapshotVersion ||
                   isLoadingPreview ||
-                  isCorruptedVersion
+                  isCorruptedVersion ||
+                  isLocked
                 }
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>

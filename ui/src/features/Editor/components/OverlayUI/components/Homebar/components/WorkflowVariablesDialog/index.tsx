@@ -23,6 +23,7 @@ import {
   Switch,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { AnyWorkflowVariable, VarType } from "@flow/types";
 
@@ -50,11 +51,11 @@ type Props = {
     }[];
     updates?: {
       paramId: string;
-      name?: string;
-      defaultValue?: any;
-      type?: VarType;
-      required?: boolean;
-      publicValue?: boolean;
+      name: string;
+      defaultValue: any;
+      type: VarType;
+      required: boolean;
+      publicValue: boolean;
     }[];
     deletes?: string[];
     reorders?: {
@@ -94,6 +95,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
   onBatchUpdate,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
 
   const {
     localWorkflowVariables,
@@ -130,6 +132,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
           return (
             <NameInput
               variable={variable}
+              disabled={isLocked}
               onUpdate={handleLocalUpdate}
               placeholder={t("Enter name")}
             />
@@ -161,6 +164,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                 projectVar.required = !isChecked;
                 handleLocalUpdate(projectVar);
               }}
+              disabled={isLocked}
             />
           );
         },
@@ -178,6 +182,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                 projectVar.public = !variable.public;
                 handleLocalUpdate(projectVar);
               }}
+              disabled={isLocked}
             />
           );
         },
@@ -199,6 +204,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                 }}
                 tooltipText={t("Edit default value and advanced options")}
                 className="hover:bg-accent"
+                disabled={isLocked}
               />
               <IconButton
                 icon={<TrashIcon size={18} />}
@@ -210,6 +216,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                 }}
                 tooltipText={t("Delete variable")}
                 className="hover:bg-accent"
+                disabled={isLocked}
               />
             </div>
           );
@@ -219,6 +226,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     ],
     [
       localWorkflowVariables,
+      isLocked,
       handleLocalUpdate,
       handleEditVariable,
       handleDeleteSingle,
@@ -245,7 +253,11 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="default" size="sm" className="gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-2"
+                        disabled={isLocked}>
                         <PlusIcon size={16} />
                         {t("Add Variable")}
                       </Button>

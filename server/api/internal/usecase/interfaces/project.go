@@ -9,6 +9,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 )
 
@@ -24,6 +25,7 @@ type UpdateProjectParam struct {
 	Description       *string
 	Archived          *bool
 	IsBasicAuthActive *bool
+	IsLocked          *bool
 	BasicAuthUsername *string
 	BasicAuthPassword *string
 	ID                id.ProjectID
@@ -34,6 +36,7 @@ type RunProjectParam struct {
 	ProjectID     id.ProjectID
 	PreviousJobID *id.JobID
 	StartNodeID   *uuid.UUID
+	Parameters    []*parameter.Parameter
 }
 
 var (

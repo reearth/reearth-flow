@@ -19,7 +19,7 @@ import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
 
 const defaultCesiumProps: Partial<ViewerProps> = {
-  // timeline: false,
+  timeline: false,
   // baseLayerPicker: false,
   // sceneModePicker: false,
   fullscreenButton: false,

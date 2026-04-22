@@ -24,6 +24,7 @@ import {
 import { useState, useEffect, useCallback } from "react";
 
 import {
+  ArrayDefaultItemInput,
   Input,
   IconButton,
   Label,
@@ -153,13 +154,9 @@ export const ArrayEditor: React.FC<Props> = ({
     updateVariable(arrayConfig, newItems);
   };
 
-  const handleUpdateItem = (index: number, value: string) => {
-    const convertedValue = convertValue(
-      value,
-      arrayConfig.itemType || "string",
-    );
+  const handleUpdateItem = (index: number, value: any) => {
     const newItems = [...arrayItems];
-    newItems[index] = convertedValue;
+    newItems[index] = value;
     setArrayItems(newItems);
     updateVariable(arrayConfig, newItems);
   };
@@ -204,43 +201,6 @@ export const ArrayEditor: React.FC<Props> = ({
     if (e.key === "Enter") {
       e.preventDefault();
       handleAddItem();
-    }
-  };
-
-  const renderItemInput = (item: any, index: number) => {
-    const stringValue = String(item);
-
-    switch (arrayConfig.itemType) {
-      case "boolean":
-        return (
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              checked={!!item}
-              onCheckedChange={(checked) =>
-                handleUpdateItem(index, checked ? "true" : "false")
-              }
-            />
-            <span>{item ? "true" : "false"}</span>
-          </div>
-        );
-      case "number":
-        return (
-          <Input
-            type="number"
-            value={stringValue}
-            onChange={(e) => handleUpdateItem(index, e.target.value)}
-            className="flex-1"
-          />
-        );
-      case "string":
-      default:
-        return (
-          <Input
-            value={stringValue}
-            onChange={(e) => handleUpdateItem(index, e.target.value)}
-            className="flex-1"
-          />
-        );
     }
   };
 
@@ -400,11 +360,15 @@ export const ArrayEditor: React.FC<Props> = ({
                 {arrayItems.map((item, index) => (
                   <SortableArrayItem
                     key={`item-${index}`}
-                    item={item}
                     index={index}
-                    onUpdate={(value) => handleUpdateItem(index, value)}
                     onRemove={() => handleRemoveItem(index)}
-                    renderInput={() => renderItemInput(item, index)}
+                    renderInput={() => (
+                      <ArrayDefaultItemInput
+                        value={item}
+                        itemType={arrayConfig.itemType}
+                        onChange={(v) => handleUpdateItem(index, v)}
+                      />
+                    )}
                   />
                 ))}
               </SortableContext>
@@ -426,9 +390,7 @@ export const ArrayEditor: React.FC<Props> = ({
 
 // Sortable array item component
 const SortableArrayItem: React.FC<{
-  item: any;
   index: number;
-  onUpdate: (value: string) => void;
   onRemove: () => void;
   renderInput: () => React.ReactNode;
 }> = ({ index, onRemove, renderInput }) => {

@@ -41,6 +41,10 @@ pub struct Config {
     pub auth: AuthConfig,
     pub app: AppConfig,
     pub ws_port: String,
+    /// Optional shared secret for HTTP API authentication.
+    /// When set, all `/api/document/*` requests must include a matching `X-API-Secret` header.
+    /// When unset, all requests are allowed (development mode).
+    pub api_secret: Option<String>,
 }
 
 impl Config {
@@ -106,6 +110,12 @@ impl Config {
             }
         }
 
+        if let Ok(secret) = env::var("REEARTH_FLOW_API_SECRET") {
+            if !secret.is_empty() {
+                builder = builder.api_secret(Some(secret));
+            }
+        }
+
         let config = builder.build();
 
         info!("Final configuration:");
@@ -137,6 +147,7 @@ pub struct ConfigBuilder {
     app_origins: Option<Vec<String>>,
     ws_port: Option<String>,
     grpc_port: Option<String>,
+    api_secret: Option<String>,
 }
 
 impl ConfigBuilder {
@@ -207,6 +218,11 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn api_secret(mut self, secret: Option<String>) -> Self {
+        self.api_secret = secret;
+        self
+    }
+
     pub fn build(self) -> Config {
         Config {
             redis: RedisConfig {
@@ -243,6 +259,7 @@ impl ConfigBuilder {
                     .unwrap_or_else(|| DEFAULT_ORIGINS.iter().map(|s| s.to_string()).collect()),
             },
             ws_port: self.ws_port.unwrap_or_else(|| DEFAULT_WS_PORT.to_string()),
+            api_secret: self.api_secret,
         }
     }
 }

@@ -805,6 +805,7 @@ export const resolvers = {
         workspaceId: input.workspaceId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        isLocked: false,
       };
 
       projects.push(newProject);

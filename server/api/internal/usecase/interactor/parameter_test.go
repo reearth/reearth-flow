@@ -46,7 +46,7 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 	prj := project.New().ID(pid).Workspace(accountsworkspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = projectRepo.Save(ctx, prj)
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 
@@ -393,13 +393,13 @@ func TestParameter_UpdateParameters(t *testing.T) {
 				Public:       false,
 			},
 		},
-		Updates: []interfaces.UpdateParameterBatchItemParam{
+		Updates: []interfaces.UpdateParameterParam{
 			{
 				ParamID:       p1.ID(),
-				NameValue:     &newName,
-				TypeValue:     &newType,
-				RequiredValue: &newRequired,
-				PublicValue:   &newPublic,
+				NameValue:     newName,
+				TypeValue:     newType,
+				RequiredValue: newRequired,
+				PublicValue:   newPublic,
 				DefaultValue:  "newDefaultValue",
 			},
 		},
@@ -459,16 +459,18 @@ func TestParameter_UpdateParameters_PartialUpdates(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Test partial update (only update name and defaultValue)
+	// Test update providing only name and defaultValue while keeping other fields the same
 	newName := "updatedName"
 	result, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
 		ProjectID: pid,
-		Updates: []interfaces.UpdateParameterBatchItemParam{
+		Updates: []interfaces.UpdateParameterParam{
 			{
-				ParamID:      p1.ID(),
-				NameValue:    &newName,
-				DefaultValue: "newValue",
-				// Don't provide Type, Required, Public - should preserve original values
+				ParamID:       p1.ID(),
+				NameValue:     newName,
+				DefaultValue:  "newValue",
+				TypeValue:     parameter.TypeText,
+				RequiredValue: true,
+				PublicValue:   false,
 			},
 		},
 	})
@@ -481,7 +483,6 @@ func TestParameter_UpdateParameters_PartialUpdates(t *testing.T) {
 	assert.NotNil(t, updatedP1)
 	assert.Equal(t, newName, updatedP1.Name())
 	assert.Equal(t, "newValue", updatedP1.DefaultValue())
-	// These should be preserved from original
 	assert.Equal(t, parameter.TypeText, updatedP1.Type())
 	assert.Equal(t, true, updatedP1.Required())
 	assert.Equal(t, false, updatedP1.Public())

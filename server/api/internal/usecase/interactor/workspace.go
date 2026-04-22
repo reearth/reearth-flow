@@ -39,7 +39,7 @@ func (i *Workspace) Create(ctx context.Context, name string) (*accountsworkspace
 func (i *Workspace) Update(ctx context.Context, wid accountsid.WorkspaceID, name string) (*accountsworkspace.Workspace, error) {
 	return i.workspaceRepo.UpdateWorkspace(ctx, gqlworkspace.UpdateWorkspaceInput{
 		WorkspaceID: wid.String(),
-		Name:        name,
+		Name:        &name,
 	})
 }
 

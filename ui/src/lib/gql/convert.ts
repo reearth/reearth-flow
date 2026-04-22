@@ -63,6 +63,7 @@ export const toProject = (project: ProjectFragment): Project => ({
   workspaceId: project.workspaceId,
   sharedToken: project.sharedToken ?? undefined,
   deployment: project.deployment ? toDeployment(project.deployment) : undefined,
+  isLocked: project.isLocked,
 });
 
 export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({

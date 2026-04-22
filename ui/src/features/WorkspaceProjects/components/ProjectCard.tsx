@@ -6,6 +6,7 @@ import {
   PencilSimpleIcon,
   PaperPlaneTiltIcon,
   TrashIcon,
+  LockIcon,
 } from "@phosphor-icons/react";
 import { MouseEvent, useState } from "react";
 
@@ -169,17 +170,28 @@ const ProjectCard: React.FC<Props> = ({
           </DropdownMenu>
         </div>
       </div>
-      {sharedUrl && (
-        <Tooltip>
-          {/* <TooltipTrigger className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"> */}
-          <TooltipTrigger
-            className="absolute top-1 right-1 rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary"
-            onClick={handleOpenSharedProject}>
-            <PaperPlaneTiltIcon />
-          </TooltipTrigger>
-          <TooltipContent>{t("Public Read Access")}</TooltipContent>
-        </Tooltip>
-      )}
+      <div className="flex">
+        <div className="absolute top-1 right-1 flex gap-1">
+          {project.isLocked && (
+            <Tooltip>
+              <TooltipTrigger className="rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary">
+                <LockIcon />
+              </TooltipTrigger>
+              <TooltipContent>{t("Locked")}</TooltipContent>
+            </Tooltip>
+          )}
+          {sharedUrl && (
+            <Tooltip>
+              <TooltipTrigger
+                className="rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary"
+                onClick={handleOpenSharedProject}>
+                <PaperPlaneTiltIcon />
+              </TooltipTrigger>
+              <TooltipContent>{t("Public Read Access")}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </div>
     </Card>
   );
 };

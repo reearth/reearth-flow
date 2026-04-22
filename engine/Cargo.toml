@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.357"
+version = "0.0.362"
 
 [profile.dev]
 opt-level = 0
@@ -54,6 +54,7 @@ reearth-flow-action-processor = { path = "runtime/action-processor", default-fea
 reearth-flow-action-python-processor = { path = "runtime/action-python-processor" }
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
+reearth-flow-atlas = { path = "runtime/atlas" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-eval-expr = { path = "runtime/eval-expr" }
 reearth-flow-geometry = { path = "runtime/geometry" }
@@ -83,7 +84,6 @@ async-recursion = "1.1.1"
 async-stream = "0.3.6"
 async-trait = "0.1.89"
 async_zip = { version = "0.0.18", features = ["full"] }
-atlas-packer = { git = "https://github.com/reearth/atlas-packer", tag = "v0.0.3" }
 base64 = "0.22.1"
 bincode = { version = "2.0.1", default-features = false, features = [
   "serde",

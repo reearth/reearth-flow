@@ -107,6 +107,7 @@ const NumberInput = <
         <ActionArea
           value={value}
           defaultValue={defaultValue}
+          readonly={readonly}
           onEditorOpen={onEditorOpen}
           onReset={handleReset}
         />

@@ -39,6 +39,8 @@ export const EDITOR_HOT_KEYS = [
   "ctrl+s", // save win
   "shift+meta+s", // add subworkflow from selection mac
   "shift+ctrl+s", // add subworkflow from selection win
+  "meta+l", // lock/unlock project mac
+  "ctrl+l", // lock/unlock project win
   "meta+k", // open search mac
   "ctrl+k", // open search win
 ];

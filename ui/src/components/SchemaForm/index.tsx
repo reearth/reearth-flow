@@ -39,11 +39,16 @@ const buildExprUiSchema = (
   if (!schemaObj || typeof schemaObj !== "object") return {};
   const uiSchema: any = {};
 
+  if (schemaObj.format === "wysiwyg") {
+    return { "ui:widget": "WysiwygWidget" };
+  }
+
   // Determine if this is a Python script field or regular Rhai expression
 
   const isExprType =
     schemaObj.$ref === "#/definitions/Expr" ||
-    schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr");
+    schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr") ||
+    schemaObj.anyOf?.some((item: any) => item.$ref === "#/definitions/Expr");
 
   // Check if this schema references any definition that contains expressions
   let referencesExprDefinition = false;
@@ -54,7 +59,10 @@ const buildExprUiSchema = (
       referencesExprDefinition = Object.values(referencedDef.properties).some(
         (prop: any) =>
           prop?.$ref === "#/definitions/Expr" ||
-          prop?.allOf?.some((item: any) => item.$ref === "#/definitions/Expr"),
+          prop?.allOf?.some(
+            (item: any) => item.$ref === "#/definitions/Expr",
+          ) ||
+          prop?.anyOf?.some((item: any) => item.$ref === "#/definitions/Expr"),
       );
     }
   }
@@ -71,6 +79,9 @@ const buildExprUiSchema = (
               const propHasExpr =
                 prop?.$ref === "#/definitions/Expr" ||
                 prop?.allOf?.some(
+                  (item: any) => item.$ref === "#/definitions/Expr",
+                ) ||
+                prop?.anyOf?.some(
                   (item: any) => item.$ref === "#/definitions/Expr",
                 );
 

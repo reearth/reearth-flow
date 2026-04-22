@@ -308,7 +308,7 @@ type GetHeadInput struct {
 type Job struct {
 	CompletedAt       *time.Time  `json:"completedAt,omitempty"`
 	Deployment        *Deployment `json:"deployment,omitempty"`
-	DeploymentID      ID          `json:"deploymentId"`
+	DeploymentID      *ID         `json:"deploymentId,omitempty"`
 	Debug             *bool       `json:"debug,omitempty"`
 	ID                ID          `json:"id"`
 	LogsURL           *string     `json:"logsURL,omitempty"`
@@ -414,13 +414,13 @@ type ParameterBatchInput struct {
 }
 
 type ParameterUpdateItem struct {
-	ParamID      ID             `json:"paramId"`
-	Name         *string        `json:"name,omitempty"`
-	Type         *ParameterType `json:"type,omitempty"`
-	Required     *bool          `json:"required,omitempty"`
-	Public       *bool          `json:"public,omitempty"`
-	DefaultValue any            `json:"defaultValue,omitempty"`
-	Config       JSON           `json:"config,omitempty"`
+	ParamID      ID            `json:"paramId"`
+	Name         string        `json:"name"`
+	Type         ParameterType `json:"type"`
+	Required     bool          `json:"required"`
+	Public       bool          `json:"public"`
+	DefaultValue any           `json:"defaultValue,omitempty"`
+	Config       JSON          `json:"config,omitempty"`
 }
 
 type PreviewSnapshot struct {
@@ -440,6 +440,7 @@ type Project struct {
 	ID                ID           `json:"id"`
 	IsArchived        bool         `json:"isArchived"`
 	IsBasicAuthActive bool         `json:"isBasicAuthActive"`
+	IsLocked          bool         `json:"isLocked"`
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
@@ -512,12 +513,24 @@ type RemoveParametersInput struct {
 	ParamIds []ID `json:"paramIds"`
 }
 
+type RunParameterInput struct {
+	ID       ID            `json:"id"`
+	Name     string        `json:"name"`
+	Type     ParameterType `json:"type"`
+	Required bool          `json:"required"`
+	Public   bool          `json:"public"`
+	Value    any           `json:"value"`
+	Config   JSON          `json:"config,omitempty"`
+	Index    int           `json:"index"`
+}
+
 type RunProjectInput struct {
-	ProjectID     ID             `json:"projectId"`
-	WorkspaceID   ID             `json:"workspaceId"`
-	File          graphql.Upload `json:"file"`
-	PreviousJobID *ID            `json:"previousJobId,omitempty"`
-	StartNodeID   *ID            `json:"startNodeId,omitempty"`
+	ProjectID     ID                   `json:"projectId"`
+	WorkspaceID   ID                   `json:"workspaceId"`
+	File          graphql.Upload       `json:"file"`
+	PreviousJobID *ID                  `json:"previousJobId,omitempty"`
+	StartNodeID   *ID                  `json:"startNodeId,omitempty"`
+	Parameters    []*RunParameterInput `json:"parameters,omitempty"`
 }
 
 type RunProjectPayload struct {
@@ -627,7 +640,7 @@ type UpdateMemberOfWorkspacePayload struct {
 }
 
 type UpdateParameterInput struct {
-	DefaultValue any           `json:"defaultValue"`
+	DefaultValue any           `json:"defaultValue,omitempty"`
 	Name         string        `json:"name"`
 	Required     bool          `json:"required"`
 	Public       bool          `json:"public"`
@@ -646,6 +659,7 @@ type UpdateProjectInput struct {
 	Description       *string `json:"description,omitempty"`
 	Archived          *bool   `json:"archived,omitempty"`
 	IsBasicAuthActive *bool   `json:"isBasicAuthActive,omitempty"`
+	IsLocked          *bool   `json:"isLocked,omitempty"`
 	BasicAuthUsername *string `json:"basicAuthUsername,omitempty"`
 	BasicAuthPassword *string `json:"basicAuthPassword,omitempty"`
 }
@@ -1613,17 +1627,19 @@ const (
 	ProjectSortFieldName      ProjectSortField = "NAME"
 	ProjectSortFieldCreatedAt ProjectSortField = "CREATED_AT"
 	ProjectSortFieldUpdatedAt ProjectSortField = "UPDATED_AT"
+	ProjectSortFieldIsLocked  ProjectSortField = "IS_LOCKED"
 )
 
 var AllProjectSortField = []ProjectSortField{
 	ProjectSortFieldName,
 	ProjectSortFieldCreatedAt,
 	ProjectSortFieldUpdatedAt,
+	ProjectSortFieldIsLocked,
 }
 
 func (e ProjectSortField) IsValid() bool {
 	switch e {
-	case ProjectSortFieldName, ProjectSortFieldCreatedAt, ProjectSortFieldUpdatedAt:
+	case ProjectSortFieldName, ProjectSortFieldCreatedAt, ProjectSortFieldUpdatedAt, ProjectSortFieldIsLocked:
 		return true
 	}
 	return false
