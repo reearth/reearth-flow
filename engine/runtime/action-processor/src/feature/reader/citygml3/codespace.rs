@@ -31,7 +31,16 @@ impl CodelistResolver {
             }
         };
         if !self.cache.contains_key(&dict_url) {
-            let dict = load_dictionary(&dict_url).unwrap_or_default();
+            let dict = match load_dictionary(&dict_url) {
+                Some(d) => d,
+                None => {
+                    tracing::error!(
+                        dict_url = dict_url.as_str(),
+                        "citygml3: failed to load codelist dictionary"
+                    );
+                    HashMap::new()
+                }
+            };
             self.cache.insert(dict_url.clone(), dict);
         }
         let dict = self.cache.get(&dict_url)?;
