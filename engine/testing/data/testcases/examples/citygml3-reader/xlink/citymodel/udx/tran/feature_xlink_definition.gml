@@ -21,7 +21,7 @@
     <tran:Road gml:id="road1">
       <core:boundary>
         <tran:TrafficArea gml:id="trafficarea1">
-          <tran:surfaceMaterial>asphalt</tran:surfaceMaterial>
+          <tran:surfaceMaterial codeSpace="../../codelists/TrafficArea_surfaceMaterial.xml">1000</tran:surfaceMaterial>
           <core:lod2MultiSurface>
             <gml:MultiSurface>
               <gml:surfaceMember>
