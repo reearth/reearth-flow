@@ -55,11 +55,7 @@ fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<Xml
 
     match new_children {
         None => Arc::clone(node),
-        Some(children) => Arc::new(XmlNode {
-            name: node.name.clone(),
-            attrs: node.attrs.clone(),
-            children,
-        }),
+        Some(children) => node.with_children(children),
     }
 }
 
@@ -534,7 +530,7 @@ mod tests {
 
     use super::*;
     use crate::feature::reader::citygml3::utils::{
-        NsId, XmlChild, EMPTY_NS_ID, GML_NS, GML_NS_ID, XLINK_NS, XLINK_NS_ID,
+        test_url, NsId, XmlChild, EMPTY_NS_ID, GML_NS, GML_NS_ID, XLINK_NS, XLINK_NS_ID,
     };
 
     fn text_node(t: &str) -> XmlChild {
@@ -557,6 +553,7 @@ mod tests {
                 .map(|(q, ns, v)| ((q.to_string(), ns_id(ns)), v.to_string()))
                 .collect(),
             children,
+            source_url: test_url(),
         }
     }
 
