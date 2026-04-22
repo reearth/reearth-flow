@@ -22,6 +22,8 @@
       <core:boundary>
         <tran:TrafficArea gml:id="trafficarea1">
           <tran:surfaceMaterial codeSpace="../../codelists/TrafficArea_surfaceMaterial.xml">1000</tran:surfaceMaterial>
+          <!-- repeated intentially to test code array unzipping -->
+          <tran:surfaceMaterial codeSpace="../../codelists/TrafficArea_surfaceMaterial.xml">1000</tran:surfaceMaterial>
           <core:lod2MultiSurface>
             <gml:MultiSurface>
               <gml:surfaceMember>

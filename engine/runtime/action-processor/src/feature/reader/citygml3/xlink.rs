@@ -64,7 +64,12 @@ fn convert_node(
         })
         .collect();
 
-    let node = raw.with_children(children);
+    let node = Arc::new(XmlNode {
+        name: raw.name.clone(),
+        attrs: raw.attrs.clone(),
+        children,
+        source_url: raw.source_url.clone(),
+    });
     in_progress.remove(&ptr);
     cache.insert(ptr, Arc::clone(&node));
     Some(node)
