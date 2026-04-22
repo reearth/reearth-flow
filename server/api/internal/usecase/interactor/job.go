@@ -387,10 +387,6 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("job cannot be nil")
 	}
 
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
 	jobID := j.ID().String()
 	log.Debugfc(ctx, "job: handling completion for jobID=%s with status=%s", jobID, j.Status())
 
