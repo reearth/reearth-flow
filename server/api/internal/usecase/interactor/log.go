@@ -127,10 +127,7 @@ func (li *LogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobI
 					status == job.StatusCancelled {
 					reearth_log.Debugfc(ctx, "log: job %s is in terminal state %s, stopping log monitoring",
 						jobID, status)
-					now := time.Now().UTC()
-					if finalLogs, err := li.logsGatewayRedis.GetLogs(ctx, latest, now, jobID); err == nil && len(finalLogs) > 0 {
-						li.subscriptions.Notify(jobKey, finalLogs)
-					}
+					li.flushFinalLogs(ctx, jobKey, jobID, latest)
 					li.stopWatchingLogs(jobKey)
 					return
 				}
@@ -147,6 +144,18 @@ func (li *LogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobI
 			}
 			latest = now
 		}
+	}
+}
+
+func (li *LogInteractor) flushFinalLogs(ctx context.Context, jobKey string, jobID id.JobID, since time.Time) {
+	now := time.Now().UTC()
+	finalLogs, err := li.logsGatewayRedis.GetLogs(ctx, since, now, jobID)
+	if err != nil {
+		reearth_log.Warnfc(ctx, "log: failed to get final logs in subscription: %v", err)
+		return
+	}
+	if len(finalLogs) > 0 {
+		li.subscriptions.Notify(jobKey, finalLogs)
 	}
 }
 

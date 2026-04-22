@@ -521,7 +521,11 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 
 	go func() {
 		j, err := i.jobRepo.FindByID(context.Background(), jobID)
-		if err == nil {
+		if err != nil {
+			log.Warnfc(context.Background(), "job: failed to fetch initial status for subscription: %v", err)
+			return
+		}
+		if j != nil {
 			i.subscriptions.Notify(jobID.String(), j.Status())
 		}
 	}()
