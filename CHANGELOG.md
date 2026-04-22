@@ -2,6 +2,92 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.14 - 2026-04-22
+
+### api
+
+#### 🚀 Features
+
+- Add isLocked field to Project ([#2052](https://github.com/reearth/reearth-flow/pull/2052)) [`f0f8fa`](https://github.com/reearth/reearth-flow/commit/f0f8fa)
+
+#### 🔧 Bug Fixes
+
+- Improve job log monitoring and subscription notifications ([#2064](https://github.com/reearth/reearth-flow/pull/2064)) [`6505dc`](https://github.com/reearth/reearth-flow/commit/6505dc)
+- Subscriptions failing due to unauthorization error ([#2061](https://github.com/reearth/reearth-flow/pull/2061)) [`f0937e`](https://github.com/reearth/reearth-flow/commit/f0937e)
+- Enhance authInfo retrieval in checkPermission function ([#2058](https://github.com/reearth/reearth-flow/pull/2058)) [`a3c417`](https://github.com/reearth/reearth-flow/commit/a3c417)
+- Some graphql operations not being permitted despite authentication [`447d3d`](https://github.com/reearth/reearth-flow/commit/447d3d)
+- Return specific error for denied operations in checkPermission function ([#2053](https://github.com/reearth/reearth-flow/pull/2053)) [`9726de`](https://github.com/reearth/reearth-flow/commit/9726de)
+
+#### Miscellaneous Tasks
+
+- Update reearth-accounts and various dependencies to latest versions ([#2037](https://github.com/reearth/reearth-flow/pull/2037)) [`1b360c`](https://github.com/reearth/reearth-flow/commit/1b360c)
+
+### api, ui
+
+#### 🔧 Bug Fixes
+
+- Allow for null defaultValues in parameters[FLOW-DEV-60] ([#2032](https://github.com/reearth/reearth-flow/pull/2032)) [`4bf103`](https://github.com/reearth/reearth-flow/commit/4bf103)
+
+#### ✨ Refactor
+
+- Move snapshot saving on debug run from ui to server within RunProject[FLOW-DEV-61] ([#2034](https://github.com/reearth/reearth-flow/pull/2034)) [`d5c5ec`](https://github.com/reearth/reearth-flow/commit/d5c5ec)
+
+### deployment
+
+#### 🔧 Bug Fixes
+
+- Add nil checks and corresponding error messages for deployment operations ([#2060](https://github.com/reearth/reearth-flow/pull/2060)) [`659e6d`](https://github.com/reearth/reearth-flow/commit/659e6d)
+
+### engine
+
+#### 🚀 Features
+
+- CityGML 3.0 child feature extraction ([#2056](https://github.com/reearth/reearth-flow/pull/2056)) [`e4b5ba`](https://github.com/reearth/reearth-flow/commit/e4b5ba)
+- Implement skyline packer with iterative downsampling and damage tracking ([#2047](https://github.com/reearth/reearth-flow/pull/2047)) [`99cba4`](https://github.com/reearth/reearth-flow/commit/99cba4)
+- Basic CityGML 3.0 reader ([#2036](https://github.com/reearth/reearth-flow/pull/2036)) [`a1eda4`](https://github.com/reearth/reearth-flow/commit/a1eda4)
+
+#### 🔧 Bug Fixes
+
+- Line on line overlayer performance improvements ([#2054](https://github.com/reearth/reearth-flow/pull/2054)) [`6a034c`](https://github.com/reearth/reearth-flow/commit/6a034c)
+- Correct &#x60;_lod&#x60; attribute using both feature and branch info ([#2050](https://github.com/reearth/reearth-flow/pull/2050)) [`731bde`](https://github.com/reearth/reearth-flow/commit/731bde)
+
+### permission
+
+#### 🔧 Bug Fixes
+
+- Refactor permission checking logic and update related tests ([#2059](https://github.com/reearth/reearth-flow/pull/2059)) [`c7c53e`](https://github.com/reearth/reearth-flow/commit/c7c53e)
+
+### ui
+
+#### 🚀 Features
+
+- Implement project lock&#x2F;unlock functionality [FLOW-DEV-23] ([#2048](https://github.com/reearth/reearth-flow/pull/2048)) [`352707`](https://github.com/reearth/reearth-flow/commit/352707)
+- Wysiwyg text editor for note node [FLOW-DEV-28] ([#2055](https://github.com/reearth/reearth-flow/pull/2055)) [`e5b914`](https://github.com/reearth/reearth-flow/commit/e5b914)
+
+#### 🔧 Bug Fixes
+
+- Improve synchronization handling and rollback visibility in useYjsSetup [FLOW-DEV-74] ([#2046](https://github.com/reearth/reearth-flow/pull/2046)) [`cdaa05`](https://github.com/reearth/reearth-flow/commit/cdaa05)
+- Update CSS class for empty paragraph styling in NoteNode component ([#2063](https://github.com/reearth/reearth-flow/pull/2063)) [`556a6d`](https://github.com/reearth/reearth-flow/commit/556a6d)
+- Update edge styling for queued job status in DefaultEdge component [FLOW-DEV-22] ([#2062](https://github.com/reearth/reearth-flow/pull/2062)) [`b51f5e`](https://github.com/reearth/reearth-flow/commit/b51f5e)
+- Debug Workflow Variables Number Constraints and Choice Config Additions [FLOW-DEV-19] ([#2013](https://github.com/reearth/reearth-flow/pull/2013)) [`5a526b`](https://github.com/reearth/reearth-flow/commit/5a526b)
+- Implement paste prevention mechanism in useCanvasCopyPaste [FLOW-DEV-73] ([#2044](https://github.com/reearth/reearth-flow/pull/2044)) [`1dc021`](https://github.com/reearth/reearth-flow/commit/1dc021)
+- Add anyOf for Expr definitions check for RJSF fields [FLOW-DEV-70] ([#2042](https://github.com/reearth/reearth-flow/pull/2042)) [`be1ea9`](https://github.com/reearth/reearth-flow/commit/be1ea9)
+
+#### Miscellaneous Tasks
+
+- April 2026 Dependencies Updates [FLOW-DEV-68] ([#2039](https://github.com/reearth/reearth-flow/pull/2039)) [`8de073`](https://github.com/reearth/reearth-flow/commit/8de073)
+
+### websocket
+
+#### 🔧 Bug Fixes
+
+- Drop sync_task write lock (rebuild from [#2040](https://github.com/reearth/reearth-flow/pull/2040) baseline) ([#2057](https://github.com/reearth/reearth-flow/pull/2057)) [`cf4348`](https://github.com/reearth/reearth-flow/commit/cf4348)
+- Minimize write lock duration in sync_task to prevent update contention [`04b212`](https://github.com/reearth/reearth-flow/commit/04b212)
+- Revert sync_task to read lock — write lock caused update contention [`6c9e26`](https://github.com/reearth/reearth-flow/commit/6c9e26)
+- Fix versioning, race condition, and position drift after rollback ([#2051](https://github.com/reearth/reearth-flow/pull/2051)) [`a4c92a`](https://github.com/reearth/reearth-flow/commit/a4c92a)
+- Prevent data corruption on rollback with concurrent editors ([#2045](https://github.com/reearth/reearth-flow/pull/2045)) [`44a927`](https://github.com/reearth/reearth-flow/commit/44a927)
+- Improve collaborative editing reliability and security ([#2040](https://github.com/reearth/reearth-flow/pull/2040)) [`bc3eb0`](https://github.com/reearth/reearth-flow/commit/bc3eb0)
+
 ## 0.1.0-alpha.13 - 2026-04-07
 
 ### engine

@@ -374,6 +374,7 @@ type ComplexityRoot struct {
 		ID                func(childComplexity int) int
 		IsArchived        func(childComplexity int) int
 		IsBasicAuthActive func(childComplexity int) int
+		IsLocked          func(childComplexity int) int
 		Name              func(childComplexity int) int
 		Parameters        func(childComplexity int) int
 		SharedToken       func(childComplexity int) int
@@ -2215,6 +2216,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.IsBasicAuthActive(childComplexity), true
+	case "Project.isLocked":
+		if e.complexity.Project.IsLocked == nil {
+			break
+		}
+
+		return e.complexity.Project.IsLocked(childComplexity), true
 	case "Project.name":
 		if e.complexity.Project.Name == nil {
 			break
@@ -4034,6 +4041,7 @@ extend type Mutation {
   id: ID!
   isArchived: Boolean!
   isBasicAuthActive: Boolean!
+  isLocked: Boolean!
   name: String!
   parameters: [Parameter!]!
   updatedAt: DateTime!
@@ -4047,6 +4055,7 @@ enum ProjectSortField {
   NAME
   CREATED_AT
   UPDATED_AT
+  IS_LOCKED
 }
 
 # InputType
@@ -4064,6 +4073,7 @@ input UpdateProjectInput {
   description: String
   archived: Boolean
   isBasicAuthActive: Boolean
+  isLocked: Boolean
   basicAuthUsername: String
   basicAuthPassword: String
 }
@@ -8490,6 +8500,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_isArchived(ctx, field)
 			case "isBasicAuthActive":
 				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_Project_isLocked(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "parameters":
@@ -12954,6 +12966,35 @@ func (ec *executionContext) fieldContext_Project_isBasicAuthActive(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_isLocked(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_isLocked,
+		func(ctx context.Context) (any, error) {
+			return obj.IsLocked, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_isLocked(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_name(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13235,6 +13276,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_isArchived(ctx, field)
 			case "isBasicAuthActive":
 				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_Project_isLocked(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "parameters":
@@ -13478,6 +13521,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_isArchived(ctx, field)
 			case "isBasicAuthActive":
 				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_Project_isLocked(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "parameters":
@@ -15577,6 +15622,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_isArchived(ctx, field)
 			case "isBasicAuthActive":
 				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_Project_isLocked(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "parameters":
@@ -20994,7 +21041,7 @@ func (ec *executionContext) unmarshalInputUpdateProjectInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "name", "description", "archived", "isBasicAuthActive", "basicAuthUsername", "basicAuthPassword"}
+	fieldsInOrder := [...]string{"projectId", "name", "description", "archived", "isBasicAuthActive", "isLocked", "basicAuthUsername", "basicAuthPassword"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -21036,6 +21083,13 @@ func (ec *executionContext) unmarshalInputUpdateProjectInput(ctx context.Context
 				return it, err
 			}
 			it.IsBasicAuthActive = data
+		case "isLocked":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isLocked"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsLocked = data
 		case "basicAuthUsername":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("basicAuthUsername"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -23788,6 +23842,11 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "isBasicAuthActive":
 			out.Values[i] = ec._Project_isBasicAuthActive(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "isLocked":
+			out.Values[i] = ec._Project_isLocked(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

@@ -14,6 +14,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
@@ -200,4 +201,62 @@ func TestUserFacingLogInteractor_Unsubscribe(t *testing.T) {
 		// Channel is not closed immediately in our implementation
 		// This is acceptable behavior
 	}
+}
+
+func TestUserFacingLogInteractor_FlushFinalLogs(t *testing.T) {
+	t.Parallel()
+
+	jobID := id.NewJobID()
+	finalLog := userfacinglog.NewUserFacingLog(jobID, time.Now(), "final log", nil)
+
+	t.Run("notifies subscribers with final logs on terminal state", func(t *testing.T) {
+		t.Parallel()
+
+		redisMock := &mockUserFacingLogGateway{logs: []*userfacinglog.UserFacingLog{finalLog}}
+		li := &UserFacingLogInteractor{
+			logsGatewayRedis:  redisMock,
+			subscriptions:     subscription.NewUserFacingLogManager(),
+			permissionChecker: NewMockPermissionChecker(func(_ context.Context, _, _ string) (bool, error) { return true, nil }),
+		}
+
+		ch := li.subscriptions.Subscribe(jobID.String())
+		li.flushFinalLogs(context.Background(), jobID.String(), jobID, time.Now().Add(-time.Minute))
+
+		select {
+		case got := <-ch:
+			assert.Equal(t, finalLog, got)
+		case <-time.After(500 * time.Millisecond):
+			t.Fatal("subscriber did not receive final log")
+		}
+
+		select {
+		case extra, ok := <-ch:
+			if ok && extra != nil {
+				t.Fatalf("received unexpected second message: %v", extra)
+			}
+		default:
+		}
+	})
+
+	t.Run("does not notify when final fetch returns no logs", func(t *testing.T) {
+		t.Parallel()
+
+		redisMock := &mockUserFacingLogGateway{logs: []*userfacinglog.UserFacingLog{}}
+		li := &UserFacingLogInteractor{
+			logsGatewayRedis:  redisMock,
+			subscriptions:     subscription.NewUserFacingLogManager(),
+			permissionChecker: NewMockPermissionChecker(func(_ context.Context, _, _ string) (bool, error) { return true, nil }),
+		}
+
+		ch := li.subscriptions.Subscribe(jobID.String())
+		li.flushFinalLogs(context.Background(), jobID.String(), jobID, time.Now().Add(-time.Minute))
+
+		select {
+		case msg, ok := <-ch:
+			if ok && msg != nil {
+				t.Fatalf("expected no notification but got: %v", msg)
+			}
+		case <-time.After(100 * time.Millisecond):
+		}
+	})
 }

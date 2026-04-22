@@ -5,6 +5,8 @@ import {
   PaperPlaneTiltIcon,
   RocketIcon,
   FloppyDiskIcon,
+  LockIcon,
+  LockOpenIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
@@ -19,6 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 
 import { DialogOptions } from "../../types";
@@ -37,9 +40,11 @@ type Props = {
     description: string,
     deploymentId?: string,
   ) => Promise<void>;
+  sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
   onProjectExport: () => void;
   onProjectSnapshotSave: () => Promise<void>;
+  onProjectLockChange: (lock: boolean) => void;
 };
 
 const ActionBar: React.FC<Props> = ({
@@ -49,11 +54,14 @@ const ActionBar: React.FC<Props> = ({
   onDialogOpen,
   onDialogClose,
   onWorkflowDeployment,
+  sharingUrl,
   onProjectShare,
   onProjectExport,
   onProjectSnapshotSave,
+  onProjectLockChange,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
 
   return (
     <div className="flex gap-2 align-middle">
@@ -68,6 +76,7 @@ const ActionBar: React.FC<Props> = ({
             tooltipOffset={tooltipOffset}
             icon={<RocketIcon weight="thin" size={18} />}
             onClick={() => onDialogOpen("deploy")}
+            disabled={isLocked}
           />
         </PopoverTrigger>
         <PopoverContent
@@ -92,6 +101,7 @@ const ActionBar: React.FC<Props> = ({
           <IconButton
             tooltipText={t("Share Project")}
             tooltipOffset={tooltipOffset}
+            disabled={isLocked}
             icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
             onClick={() => onDialogOpen("share")}
           />
@@ -101,7 +111,10 @@ const ActionBar: React.FC<Props> = ({
           collisionPadding={5}
           className="bg-primary/50 backdrop-blur">
           {showDialog === "share" && (
-            <SharePopover onProjectShare={onProjectShare} />
+            <SharePopover
+              sharingUrl={sharingUrl}
+              onProjectShare={onProjectShare}
+            />
           )}
         </PopoverContent>
       </Popover>
@@ -124,16 +137,35 @@ const ActionBar: React.FC<Props> = ({
             onSelect={(e) => {
               e.preventDefault();
             }}
-            disabled={isSaving}
+            disabled={isSaving || isLocked}
             onClick={onProjectSnapshotSave}>
             <div className="flex items-center gap-1">
               <FloppyDiskIcon weight="light" />
               <p>{t("Manual Save")}</p>
             </div>
-
             <div className="flex flex-row gap-1">
               <ContextMenuShortcut
                 keyBinding={{ key: "s", commandKey: true }}
+              />
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="flex items-center justify-between"
+            onSelect={(e) => {
+              e.preventDefault();
+            }}
+            onClick={onProjectLockChange?.bind(null, !isLocked)}>
+            <div className="flex items-center gap-1">
+              {isLocked ? (
+                <LockIcon weight="light" />
+              ) : (
+                <LockOpenIcon weight="light" />
+              )}
+              <p>{isLocked ? t("Unlock Project") : t("Lock Project")}</p>
+            </div>
+            <div className="flex flex-row gap-1">
+              <ContextMenuShortcut
+                keyBinding={{ key: "l", commandKey: true }}
               />
             </div>
           </DropdownMenuItem>

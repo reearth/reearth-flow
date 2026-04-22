@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
@@ -93,7 +94,7 @@ func TestNewLogInteractor(t *testing.T) {
 	t.Run("successfully create LogInteractor", func(t *testing.T) {
 		redisMock := &mockLogGateway{}
 		jobRepoMock := &mockJobRepo{}
-		mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 			return true, nil
 		})
 		li := NewLogInteractor(redisMock, jobRepoMock, mockPermissionCheckerTrue)
@@ -119,7 +120,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 	}
 	redisMock := &mockLogGateway{logs: redisLogs}
 	jobRepoMock := &mockJobRepo{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 
@@ -161,7 +162,7 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 		logs: []*log.Log{initialLog},
 	}
 	jobRepoMock := &mockJobRepo{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 	li := NewLogInteractor(redisMock, jobRepoMock, mockPermissionCheckerTrue)
@@ -191,7 +192,7 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 func TestLogInteractor_Unsubscribe(t *testing.T) {
 	redisMock := &mockLogGateway{}
 	jobRepoMock := &mockJobRepo{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 	liInterface := NewLogInteractor(redisMock, jobRepoMock, mockPermissionCheckerTrue)
@@ -251,7 +252,7 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 		job: completedJob,
 	}
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 
@@ -280,6 +281,64 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 		case <-done:
 		case <-time.After(5 * time.Second):
 			t.Fatal("Log monitoring loop did not stop when job was completed")
+		}
+	})
+}
+
+func TestLogInteractor_FlushFinalLogs(t *testing.T) {
+	t.Parallel()
+
+	jobID := id.NewJobID()
+	finalLog := log.NewLog(jobID, nil, time.Now(), log.LevelInfo, "final log")
+
+	t.Run("notifies subscribers with final logs on terminal state", func(t *testing.T) {
+		t.Parallel()
+
+		redisMock := &mockLogGateway{logs: []*log.Log{finalLog}}
+		li := &LogInteractor{
+			logsGatewayRedis:  redisMock,
+			subscriptions:     subscription.NewLogManager(),
+			permissionChecker: NewMockPermissionChecker(func(_ context.Context, _, _ string) (bool, error) { return true, nil }),
+		}
+
+		ch := li.subscriptions.Subscribe(jobID.String())
+		li.flushFinalLogs(context.Background(), jobID.String(), jobID, time.Now().Add(-time.Minute))
+
+		select {
+		case got := <-ch:
+			assert.Equal(t, finalLog, got)
+		case <-time.After(500 * time.Millisecond):
+			t.Fatal("subscriber did not receive final log")
+		}
+
+		select {
+		case extra, ok := <-ch:
+			if ok && extra != nil {
+				t.Fatalf("received unexpected second message: %v", extra)
+			}
+		default:
+		}
+	})
+
+	t.Run("does not notify when final fetch returns no logs", func(t *testing.T) {
+		t.Parallel()
+
+		redisMock := &mockLogGateway{logs: []*log.Log{}}
+		li := &LogInteractor{
+			logsGatewayRedis:  redisMock,
+			subscriptions:     subscription.NewLogManager(),
+			permissionChecker: NewMockPermissionChecker(func(_ context.Context, _, _ string) (bool, error) { return true, nil }),
+		}
+
+		ch := li.subscriptions.Subscribe(jobID.String())
+		li.flushFinalLogs(context.Background(), jobID.String(), jobID, time.Now().Add(-time.Minute))
+
+		select {
+		case msg, ok := <-ch:
+			if ok && msg != nil {
+				t.Fatalf("expected no notification but got: %v", msg)
+			}
+		case <-time.After(100 * time.Millisecond):
 		}
 	})
 }

@@ -1,4 +1,4 @@
-import { Input, Label } from "@flow/components";
+import { ColorDefaultValueInput, Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { WorkflowVariable } from "@flow/types";
 
@@ -24,12 +24,11 @@ export const ColorEditor: React.FC<Props> = ({ variable, onUpdate }) => {
           {t("Default Color")}
         </Label>
         <div className="mt-1 flex items-center gap-3">
-          <Input
+          <ColorDefaultValueInput
             id="color-picker"
-            type="color"
-            value={variable.defaultValue || "#000000"}
-            onChange={(e) => handleColorChange(e.target.value)}
             className="h-10 w-16 rounded border p-1"
+            variable={variable}
+            onDefaultValueChange={(newValue) => handleColorChange(newValue)}
           />
           <Input
             value={variable.defaultValue || ""}

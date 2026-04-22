@@ -9,6 +9,7 @@ export const mockProjects: ProjectFragment[] = [
     sharedToken: "shared-token-1",
     createdAt: "2024-01-01T10:00:00Z",
     updatedAt: "2024-01-15T10:00:00Z",
+    isLocked: false,
   },
   {
     id: "project-2",
@@ -17,6 +18,7 @@ export const mockProjects: ProjectFragment[] = [
     workspaceId: "workspace-2",
     createdAt: "2024-01-05T14:30:00Z",
     updatedAt: "2024-01-20T09:15:00Z",
+    isLocked: true,
   },
   {
     id: "project-3",
@@ -26,6 +28,7 @@ export const mockProjects: ProjectFragment[] = [
     sharedToken: "shared-token-3",
     createdAt: "2024-01-10T16:45:00Z",
     updatedAt: "2024-01-25T11:20:00Z",
+    isLocked: true,
   },
   {
     id: "project-4",
@@ -34,6 +37,7 @@ export const mockProjects: ProjectFragment[] = [
     workspaceId: "workspace-3",
     createdAt: "2024-01-12T09:00:00Z",
     updatedAt: "2024-01-28T15:30:00Z",
+    isLocked: false,
   },
   {
     id: "project-5",
@@ -42,6 +46,7 @@ export const mockProjects: ProjectFragment[] = [
     workspaceId: "workspace-1",
     createdAt: "2023-12-01T08:00:00Z",
     updatedAt: "2023-12-15T17:00:00Z",
+    isLocked: true,
   },
   {
     id: "project-6",
@@ -50,5 +55,6 @@ export const mockProjects: ProjectFragment[] = [
     workspaceId: "workspace-4",
     createdAt: "2024-01-08T12:00:00Z",
     updatedAt: "2024-01-22T14:45:00Z",
+    isLocked: false,
   },
 ];

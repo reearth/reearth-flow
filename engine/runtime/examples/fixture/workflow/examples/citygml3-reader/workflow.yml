@@ -48,6 +48,12 @@ graphs:
         with:
           dataset: |
             env.get("__value")["path"]
+          extractTags:
+            - bldg:Building
+            - con:FloorSurface
+            - tran:Road
+            - tran:TrafficArea
+            - frn:CityFurniture
 
       # PLATEAU CityGML 3 coordinates are in JGD2011 geographic (lat/lon/ellipsoidal-height).
       # Shift ellipsoidal height → WGS84 orthometric height before tile output.

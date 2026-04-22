@@ -6,7 +6,9 @@ import (
 
 	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
 	workspacemockrepo "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace/mockrepo"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -33,9 +35,14 @@ func setupProject(t *testing.T, permissionChecker *mockPermissionChecker, worksp
 func TestProject_Create(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	ctx := context.Background()
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+	mockAuthInfo := &appx.AuthInfo{Token: "token"}
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		return true, nil
 	})
 
@@ -83,7 +90,7 @@ func TestProject_Create(t *testing.T) {
 		// 		Description: lo.ToPtr("ddd"),
 		// 		Archived:    lo.ToPtr(false),
 		// 	},
-		// 	permission: NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		// 	permission: NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
 		// 		return false, nil
 		// 	}),
 		// 	wantErr: errors.New("permission denied"),

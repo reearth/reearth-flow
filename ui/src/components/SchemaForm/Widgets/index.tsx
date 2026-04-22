@@ -11,6 +11,7 @@ import { RadioWidget } from "./RadioWidget";
 import { RangeWidget } from "./RangeWidget";
 import { SelectWidget } from "./SelectWidget";
 import { TextareaWidget } from "./TextareaWidget";
+import { WysiwygWidget } from "./WysiwygWidget";
 
 export function generateWidgets<
   T = any,
@@ -25,6 +26,7 @@ export function generateWidgets<
     RangeWidget,
     SelectWidget,
     TextareaWidget,
+    WysiwygWidget,
     // Note: Basic inputs (text, number, color) are now handled by BaseInputTemplate
   };
 }

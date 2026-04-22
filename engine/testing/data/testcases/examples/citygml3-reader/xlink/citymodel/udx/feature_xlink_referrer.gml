@@ -23,6 +23,20 @@
 
   <core:cityObjectMember>
     <bldg:Building gml:id="building1">
+      <core:lod1MultiSurface>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <!-- building footprint at ground level -->
+                  <gml:posList>139.7454 35.6586 0.0 139.7455 35.6586 0.0 139.7455 35.6587 0.0 139.7454 35.6587 0.0 139.7454 35.6586 0.0</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </core:lod1MultiSurface>
       <core:boundary>
         <con:FloorSurface gml:id="floorsurface1">
           <core:relatedTo>
