@@ -99,10 +99,6 @@ func (li *UserFacingLogInteractor) startWatchingLogsIfNeeded(jobID id.JobID, sin
 }
 
 func (li *UserFacingLogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobID, since time.Time) {
-	if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return
-	}
-
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
@@ -131,6 +127,7 @@ func (li *UserFacingLogInteractor) runLogMonitoringLoop(ctx context.Context, job
 					status == job.StatusCancelled {
 					reearth_log.Debugfc(ctx, "userfacinglog: job %s is in terminal state %s, stopping log monitoring",
 						jobID, status)
+					li.flushFinalLogs(ctx, jobKey, jobID, latest)
 					li.stopWatchingLogs(jobKey)
 					return
 				}
@@ -147,6 +144,18 @@ func (li *UserFacingLogInteractor) runLogMonitoringLoop(ctx context.Context, job
 			}
 			latest = now
 		}
+	}
+}
+
+func (li *UserFacingLogInteractor) flushFinalLogs(ctx context.Context, jobKey string, jobID id.JobID, since time.Time) {
+	now := time.Now().UTC()
+	finalLogs, err := li.logsGatewayRedis.GetUserFacingLogs(ctx, since, now, jobID)
+	if err != nil {
+		reearth_log.Warnfc(ctx, "userfacinglog: failed to get final logs in subscription: %v", err)
+		return
+	}
+	if len(finalLogs) > 0 {
+		li.subscriptions.Notify(jobKey, finalLogs)
 	}
 }
 

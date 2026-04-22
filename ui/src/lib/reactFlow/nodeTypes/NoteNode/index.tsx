@@ -8,11 +8,19 @@ import type { Node } from "@flow/types";
 
 import { convertHextoRgba } from "../utils";
 
-export type NoteNodeProps = NodeProps<Node>;
+export type NoteNodeProps = NodeProps<Node> & {
+  readonly?: boolean;
+};
 
 const minSize = { width: 250, height: 150 };
 
-const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
+const NoteNode: React.FC<NoteNodeProps> = ({
+  id,
+  type,
+  data,
+  readonly = false,
+  ...props
+}) => {
   // background color will always be a hex color, therefore needs to be converted to rgba
   const backgroundColor = data.customizations?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
@@ -45,6 +53,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
             background: "none",
             zIndex: 0,
           }}
+          shouldResize={() => !readonly}
           lineClassName="border-none rounded"
           handleStyle={{
             background: "none",
@@ -59,7 +68,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
         />
       )}
       <div
-        className={`relative z-0 h-full rounded-b-lg p-1 shadow-md shadow-secondary backdrop-blur-xs ${gradientStyles ? "" : `border-x border-b bg-secondary/50 ${props.selected ? "border-border" : "border-transparent"}`}`}
+        className={`relative z-0 h-full rounded-b-lg p-1 shadow-md shadow-secondary backdrop-blur-xs ${gradientStyles ? "" : `border-x border-b bg-secondary/50 ${props.selected ? "border-border" : "border-transparent"}`} ${readonly ? "nopan" : ""}`}
         ref={(element) => {
           if (element && !gradientStyles) {
             element.style.setProperty(
@@ -97,7 +106,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
         </div>
         <div>
           <div
-            className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-hidden [&_a]:text-blue-400 [&_a]:underline [&_b]:font-bold [&_i]:italic [&_li]:ml-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-1 [&_pre]:font-mono [&_s]:line-through [&_u]:underline [&_ul]:list-disc [&_ul]:pl-4"
+            className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-hidden [&_a]:text-blue-400 [&_a]:underline [&_b]:font-bold [&_i]:italic [&_li]:ml-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_p:empty]:pt-1 [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-1 [&_pre]:font-mono [&_s]:line-through [&_u]:underline [&_ul]:list-disc [&_ul]:pl-4"
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(data.customizations?.content ?? "", {
                 ALLOWED_TAGS: [

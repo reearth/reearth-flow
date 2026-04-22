@@ -20,6 +20,7 @@ import {
   PopoverTrigger,
 } from "@flow/components";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { JobState, useCurrentProject } from "@flow/stores";
@@ -169,6 +170,7 @@ const StartButton: React.FC<{
   onPopoverClose,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
   const [currentProject] = useCurrentProject();
 
   const { value: debugRunState } = useIndexedDB("debugRun");
@@ -202,6 +204,7 @@ const StartButton: React.FC<{
               }`}
               disabled={
                 isSaving ||
+                isLocked ||
                 debugRunStarted ||
                 jobStatus === "running" ||
                 jobStatus === "queued"
@@ -311,7 +314,6 @@ const DebugRunDropDownMenu: React.FC<{
   debugRunStarted: boolean;
   selectedNodeIds: string[];
   edges?: Edge[];
-
   showPopover: string | undefined;
   isSaving: boolean;
   jobStatus: string | undefined;
@@ -333,6 +335,7 @@ const DebugRunDropDownMenu: React.FC<{
   onShowDebugStartPopover,
 }) => {
   const t = useT();
+  const { isLocked } = useEditorContext();
   const [showDropDownMenu, setShowDropDownMenu] = useState<boolean>(false);
   const { getNodes } = useReactFlow();
   const selectedNode =
@@ -357,6 +360,7 @@ const DebugRunDropDownMenu: React.FC<{
               : "h-[36px] w-3"
           }
         `}
+          disabled={isLocked}
           tooltipText={t("Additional Debug Actions")}
           tooltipOffset={tooltipOffset}
           icon={<CaretDownIcon size={18} weight="light" />}

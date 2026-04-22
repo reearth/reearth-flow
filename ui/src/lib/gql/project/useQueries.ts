@@ -101,11 +101,15 @@ export const useQueries = () => {
         return toProject(data.updateProject.project);
       }
     },
-    onSuccess: (project) =>
+    onSuccess: (project) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
         queryKey: [ProjectQueryKeys.GetWorkspaceProjects, project?.workspaceId],
-      }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject, project?.id],
+      });
+    },
   });
 
   const deleteProjectMutation = useMutation({
