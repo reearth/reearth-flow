@@ -42,7 +42,7 @@
           <core:relatedTo>
             <core:CityObjectRelation>
               <core:relationType>equal</core:relationType>
-              <core:relatedTo xlink:href="feature_xlink_definition.gml#trafficarea1"/>
+              <core:relatedTo xlink:href="../tran/feature_xlink_definition.gml#trafficarea1"/>
             </core:CityObjectRelation>
           </core:relatedTo>
           <core:lod2MultiSurface>
