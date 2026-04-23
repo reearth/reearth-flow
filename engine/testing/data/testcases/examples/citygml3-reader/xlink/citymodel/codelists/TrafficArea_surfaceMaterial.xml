@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:gml="http://www.opengis.net/gml" gml:id="TrafficArea_surfaceMaterial">
+  <gml:name>TrafficArea_surfaceMaterial</gml:name>
+  <gml:dictionaryEntry>
+    <gml:Definition gml:id="id1">
+      <gml:description>アスファルト舗装</gml:description>
+      <gml:name>1000</gml:name>
+    </gml:Definition>
+  </gml:dictionaryEntry>
+  <gml:dictionaryEntry>
+    <gml:Definition gml:id="id2">
+      <gml:description>コンクリート舗装</gml:description>
+      <gml:name>1010</gml:name>
+    </gml:Definition>
+  </gml:dictionaryEntry>
+</gml:Dictionary>

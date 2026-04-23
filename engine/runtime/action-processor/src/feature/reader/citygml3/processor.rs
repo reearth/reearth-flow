@@ -29,7 +29,7 @@ use reearth_flow_types::{
 use crate::feature::errors::FeatureProcessorError;
 
 use super::{
-    flatten, geometry,
+    codespace, flatten, geometry,
     parser::{self, Parser},
     utils::{gml_id_attr, XmlNode},
     xlink,
@@ -189,7 +189,11 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let (pending, raw_registry, ns_registry) = std::mem::take(&mut self.parser).finish();
-        for feature_root in xlink::resolve(pending, &raw_registry) {
+        let mut codelist_resolver = codespace::CodelistResolver::new();
+        for feature_root in codespace::resolve(
+            xlink::resolve(pending, &raw_registry),
+            &mut codelist_resolver,
+        ) {
             if self.extract_tags.is_empty() {
                 let feature = build_feature(&feature_root);
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(

@@ -20,6 +20,7 @@ pub(crate) struct RawNode {
     pub(crate) name: QName,
     pub(crate) attrs: Vec<(QName, String)>,
     pub(crate) children: Vec<RawChild>,
+    pub(crate) source_url: Arc<Url>,
 }
 
 pub(crate) enum RawChild {
@@ -81,6 +82,7 @@ impl Parser {
             .map_err(|e| ParseError::Encoding(format!("Non-UTF-8 content: {e}")))?;
         let mut reader = NsReader::from_str(src);
         let mut buf = Vec::new();
+        let source_url_arc = Arc::new(source_url.clone());
 
         loop {
             match next_event(&mut reader, &mut buf, &mut self.ns_registry)? {
@@ -100,7 +102,7 @@ impl Parser {
                             &mut buf,
                             name,
                             attrs,
-                            source_url,
+                            &source_url_arc,
                             &mut self.ns_registry,
                         )?;
                         if let Some(feature_node) =
@@ -109,7 +111,11 @@ impl Parser {
                                 _ => None,
                             })
                         {
-                            collect_ids(&feature_node, source_url.as_str(), &mut self.raw_registry);
+                            collect_ids(
+                                &feature_node,
+                                source_url_arc.as_str(),
+                                &mut self.raw_registry,
+                            );
                             self.pending.push(feature_node);
                         } else {
                             tracing::warn!(
@@ -273,11 +279,11 @@ fn parse_element<R: BufRead>(
     buf: &mut Vec<u8>,
     name: QName,
     attrs: Vec<(QName, String)>,
-    source_url: &Url,
+    source_url_arc: &Arc<Url>,
     ns_reg: &mut NamespaceRegistry,
 ) -> Result<RawNode, ParseError> {
     let href = xlink_href_attr(&attrs)
-        .and_then(|href| href_to_key(href, source_url))
+        .and_then(|href| href_to_key(href, source_url_arc.as_ref()))
         .map(|key| {
             let filtered = attrs
                 .iter()
@@ -294,7 +300,7 @@ fn parse_element<R: BufRead>(
                 name: cn,
                 attrs: ca,
             } => {
-                let child = parse_element(reader, buf, cn, ca, source_url, ns_reg)?;
+                let child = parse_element(reader, buf, cn, ca, source_url_arc, ns_reg)?;
                 children.push(RawChild::Element(Arc::new(child)));
             }
             OwnedEvent::Empty {
@@ -302,7 +308,7 @@ fn parse_element<R: BufRead>(
                 attrs: ca,
             } => {
                 if let Some(href) = xlink_href_attr(&ca) {
-                    if let Some(key) = href_to_key(href, source_url) {
+                    if let Some(key) = href_to_key(href, source_url_arc.as_ref()) {
                         let filtered: Vec<(QName, String)> = ca
                             .into_iter()
                             .filter(|((q, ns), _)| !(local_name(q) == "href" && *ns == XLINK_NS_ID))
@@ -311,12 +317,14 @@ fn parse_element<R: BufRead>(
                             name: cn,
                             attrs: filtered,
                             children: vec![RawChild::Ref(key)],
+                            source_url: Arc::clone(source_url_arc),
                         })));
                     } else {
                         children.push(RawChild::Element(Arc::new(RawNode {
                             name: cn,
                             attrs: ca,
                             children: Vec::new(),
+                            source_url: Arc::clone(source_url_arc),
                         })));
                     }
                 } else {
@@ -324,6 +332,7 @@ fn parse_element<R: BufRead>(
                         name: cn,
                         attrs: ca,
                         children: Vec::new(),
+                        source_url: Arc::clone(source_url_arc),
                     })));
                 }
             }
@@ -348,6 +357,7 @@ fn parse_element<R: BufRead>(
             name,
             attrs: filtered_attrs,
             children: vec![RawChild::Ref(key)],
+            source_url: Arc::clone(source_url_arc),
         });
     }
 
@@ -355,6 +365,7 @@ fn parse_element<R: BufRead>(
         name,
         attrs,
         children,
+        source_url: Arc::clone(source_url_arc),
     })
 }
 
@@ -441,7 +452,9 @@ mod tests {
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
 
-    use crate::feature::reader::citygml3::utils::{XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID};
+    use crate::feature::reader::citygml3::utils::{
+        test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID,
+    };
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()
@@ -460,6 +473,7 @@ mod tests {
                 .map(|(q, ns, v)| ((q.to_string(), ns), v.to_string()))
                 .collect(),
             children,
+            source_url: test_url(),
         }
     }
 

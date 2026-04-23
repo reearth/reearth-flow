@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use url::Url;
+
 pub(super) const GML_NS: &str = "http://www.opengis.net/gml/3.2";
 pub(super) const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
 
@@ -17,6 +19,19 @@ pub struct XmlNode {
     pub name: QName,
     pub attrs: Vec<(QName, String)>,
     pub children: Vec<XmlChild>,
+    /// Source file URL this node was parsed from. Shared across all nodes from the same file.
+    pub source_url: Arc<Url>,
+}
+
+impl XmlNode {
+    pub fn with_children(&self, children: Vec<XmlChild>) -> Arc<Self> {
+        Arc::new(Self {
+            name: self.name.clone(),
+            attrs: self.attrs.clone(),
+            children,
+            source_url: Arc::clone(&self.source_url),
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -78,4 +93,9 @@ pub(super) fn xlink_href_attr(attrs: &[(QName, String)]) -> Option<&str> {
         .iter()
         .find(|((q, ns), _)| local_name(q) == "href" && *ns == XLINK_NS_ID)
         .map(|(_, v)| v.as_str())
+}
+
+#[cfg(test)]
+pub(crate) fn test_url() -> Arc<Url> {
+    Arc::new(Url::parse("file:///test.gml").unwrap())
 }
