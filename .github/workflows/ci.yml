@@ -4,10 +4,6 @@ on:
     branches: [main, release/*, release]
   pull_request:
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -184,6 +180,9 @@ jobs:
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
   build-and-deploy-subscriber:
     needs:
       - ci
@@ -198,6 +197,9 @@ jobs:
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
   build-and-deploy-ui:
     needs:
       - ci
@@ -212,6 +214,9 @@ jobs:
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
   build-and-deploy-websocket:
     needs:
       - ci
@@ -226,6 +231,9 @@ jobs:
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
+    permissions:
+      contents: read
+      id-token: write 
   build-docker-push-worker:
     needs:
       - ci
@@ -240,6 +248,9 @@ jobs:
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
   update-policies-and-deploy-cerbos:
     needs:
       - ci
