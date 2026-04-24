@@ -11,10 +11,10 @@ jobs:
         with:
           egress-policy: audit
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: set up
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: 'server/api/go.mod'
           check-latest: true
@@ -47,7 +47,7 @@ jobs:
         working-directory: server/api
 
       - name: Setup Cerbos
-        uses: cerbos/cerbos-setup-action@v1
+        uses: cerbos/cerbos-setup-action@53d0a0d03111685bd355b2be6d75a2d0948c22de # v1.9.8
         with:
           version: '0.40.0'
 
