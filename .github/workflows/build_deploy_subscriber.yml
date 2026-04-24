@@ -19,10 +19,6 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   build-subscriber:
     name: Build Subscriber
