@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -79,9 +81,9 @@ type SegregatedActions struct {
 }
 
 var (
-	actionsData    ActionsData
 	actionsDataMap = make(map[string]ActionsData)
 	mutex          sync.RWMutex
+	httpClient     = &http.Client{Timeout: 10 * time.Second}
 	supportedLangs = map[string]bool{
 		"en": true,
 		"es": true,
@@ -91,9 +93,9 @@ var (
 	}
 )
 
-func loadActionsData(lang string) error {
+func loadActionsData(lang string) (ActionsData, error) {
 	if lang != "" && !supportedLangs[lang] {
-		return fmt.Errorf("unsupported language: %s", lang)
+		return ActionsData{}, fmt.Errorf("unsupported language: %s", lang)
 	}
 
 	cacheKey := lang
@@ -101,31 +103,29 @@ func loadActionsData(lang string) error {
 	// Try to get from cache first using read lock
 	mutex.RLock()
 	if data, exists := actionsDataMap[cacheKey]; exists {
-		actionsData = data
 		mutex.RUnlock()
-		return nil
+		return data, nil
 	}
 	mutex.RUnlock()
 
-	// If not in cache, acquire write lock
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	// Double-check after acquiring write lock
-	if data, exists := actionsDataMap[cacheKey]; exists {
-		actionsData = data
-		return nil
-	}
-
+	// Fetch from GitHub without holding any lock so other requests are not blocked.
 	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
 	filename := "actions.json"
 	if lang != "" {
 		filename = fmt.Sprintf("actions_%s.json", lang)
 	}
 
-	resp, err := http.Get(baseURL + filename)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+filename, nil)
 	if err != nil {
-		return err
+		return ActionsData{}, err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return ActionsData{}, err
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -135,23 +135,27 @@ func loadActionsData(lang string) error {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return ActionsData{}, err
 	}
 
 	var newData ActionsData
 	if err := json.Unmarshal(body, &newData); err != nil {
-		return err
+		return ActionsData{}, err
 	}
 
 	if err := newData.Validate(); err != nil {
-		return err
+		return ActionsData{}, err
 	}
 
-	// Store in cache and set current actionsData
+	// Store in cache under write lock; double-check in case a concurrent
+	// goroutine already populated the same key while we were fetching.
+	mutex.Lock()
+	defer mutex.Unlock()
+	if data, exists := actionsDataMap[cacheKey]; exists {
+		return data, nil
+	}
 	actionsDataMap[cacheKey] = newData
-	actionsData = newData
-
-	return nil
+	return newData, nil
 }
 
 // listActions godoc
@@ -172,13 +176,14 @@ func listActions(c echo.Context) error {
 	actionType := c.QueryParam("type")
 	lang := c.QueryParam("lang")
 
-	if err := loadActionsData(lang); err != nil {
+	data, err := loadActionsData(lang)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	var summaries []ActionSummary
 
-	for _, action := range actionsData.Actions {
+	for _, action := range data.Actions {
 		if matchesSearch(action, query, category, actionType) {
 			summaries = append(summaries, ActionSummary{
 				Name:        action.Name,
@@ -206,7 +211,8 @@ func getSegregatedActions(c echo.Context) error {
 	query := c.QueryParam("q")
 	lang := c.QueryParam("lang")
 
-	if err := loadActionsData(lang); err != nil {
+	data, err := loadActionsData(lang)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -215,7 +221,7 @@ func getSegregatedActions(c echo.Context) error {
 		ByType:     make(map[string][]ActionSummary),
 	}
 
-	for _, action := range actionsData.Actions {
+	for _, action := range data.Actions {
 		if matchesSearch(action, query, "", "") {
 			summary := ActionSummary{
 				Name:        action.Name,
@@ -314,11 +320,12 @@ func getActionDetails(c echo.Context) error {
 	id := c.Param("id")
 	lang := c.QueryParam("lang")
 
-	if err := loadActionsData(lang); err != nil {
+	data, err := loadActionsData(lang)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	for _, action := range actionsData.Actions {
+	for _, action := range data.Actions {
 		if action.Name == id {
 			return c.JSON(http.StatusOK, action)
 		}
