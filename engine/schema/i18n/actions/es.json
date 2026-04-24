@@ -1000,6 +1000,10 @@
         "dataset": {
           "title": "Dataset",
           "description": "Path expression resolving to the CityGML 3.0 file to read."
+        },
+        "extractTags": {
+          "title": "Extraer Etiquetas",
+          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         }
       }
     },

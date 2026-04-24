@@ -1000,6 +1000,10 @@
         "dataset": {
           "title": "Dataset",
           "description": "Path expression resolving to the CityGML 3.0 file to read."
+        },
+        "extractTags": {
+          "title": "提取标签",
+          "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         }
       }
     },

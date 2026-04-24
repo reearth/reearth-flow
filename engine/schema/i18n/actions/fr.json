@@ -1000,6 +1000,10 @@
         "dataset": {
           "title": "Dataset",
           "description": "Path expression resolving to the CityGML 3.0 file to read."
+        },
+        "extractTags": {
+          "title": "Extraire les Balises",
+          "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         }
       }
     },
