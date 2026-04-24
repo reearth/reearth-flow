@@ -3,7 +3,7 @@
     {
       "name": "AppearanceRemover",
       "type": "processor",
-      "description": "Removes appearance information (materials, textures) from CityGML geometry",
+      "description": "Elimina información de apariencia (materiales, texturas) de la geometría CityGML",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -19,7 +19,7 @@
     {
       "name": "AreaCalculator",
       "type": "processor",
-      "description": "Calculates the planar or sloped area of polygon geometries and adds the results as attributes",
+      "description": "Calcula el área plana o inclinada de geometrías de polígono y agrega los resultados como atributos",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AreaCalculator Parameters",
@@ -827,7 +827,7 @@
     {
       "name": "BoundaryExtractor",
       "type": "processor",
-      "description": "Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry",
+      "description": "Extrae el límite de geometrías. Para sólidos/mallas devuelve superficies delimitadoras, para superficies devuelve aristas de límite, para superficies cerradas devuelve geometría vacía",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BoundaryExtractor Parameters",
@@ -1160,7 +1160,7 @@
     {
       "name": "CSGBuilder",
       "type": "processor",
-      "description": "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator.",
+      "description": "Construye una representación de Geometría Sólida Constructiva (CSG) a partir de un par (Izquierda, Derecha) de geometrías sólidas. Detecta unión, intersección y diferencia (Izq - Der), pero no calcula la geometría resultante. Use CSGEvaluator para evaluar el árbol CSG.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Builder Parameters",
@@ -1220,7 +1220,7 @@
     {
       "name": "CSGEvaluator",
       "type": "processor",
-      "description": "Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.",
+      "description": "Evalúa un árbol de Geometría Sólida Constructiva (CSG) para producir una geometría sólida. Toma una representación CSG y calcula la malla resultante de las operaciones booleanas.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Evaluator Parameters",
@@ -1420,7 +1420,7 @@
     {
       "name": "CityGmlReader",
       "type": "source",
-      "description": "Reads 3D city models from CityGML files.",
+      "description": "Lee modelos de ciudad 3D desde archivos CityGML",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlReader Parameters",
@@ -1476,7 +1476,7 @@
     {
       "name": "CityGmlWriter",
       "type": "sink",
-      "description": "Writes features to CityGML 2.0 files",
+      "description": "Escribe entidades en archivos CityGML 2.0",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -1619,7 +1619,7 @@
     {
       "name": "CoordinateExtractor",
       "type": "processor",
-      "description": "Extracts coordinates from geometry vertices into feature attributes",
+      "description": "Extrae coordenadas de vértices de geometría como atributos de entidad",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Coordinate Extractor Parameters",
@@ -1935,7 +1935,7 @@
     {
       "name": "CsvWriter",
       "type": "sink",
-      "description": "Writes features to CSV or TSV files.",
+      "description": "Escribe entidades en archivos CSV o TSV",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvWriter Parameters",
@@ -2322,7 +2322,7 @@
     {
       "name": "DateTimeConverter",
       "type": "processor",
-      "description": "Convert datetime values between different formats",
+      "description": "Convierte valores de fecha y hora entre diferentes formatos",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "DateTimeConverter Parameters",
@@ -2708,7 +2708,7 @@
     {
       "name": "ExcelWriter",
       "type": "sink",
-      "description": "Writes features to Microsoft Excel format (.xlsx files).",
+      "description": "Escribe entidades en formato Microsoft Excel (.xlsx)",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ExcelWriter Parameters",
@@ -2792,7 +2792,7 @@
     {
       "name": "FeatureCityGml3Reader",
       "type": "processor",
-      "description": "Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across files",
+      "description": "Lee archivos CityGML 3.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCityGml3Reader Parameters",
@@ -3131,7 +3131,7 @@
     {
       "name": "FeatureJoiner",
       "type": "processor",
-      "description": "Joins requestor and supplier features based on matching attribute values with configurable join types",
+      "description": "Une entidades solicitantes y proveedoras basándose en valores de atributos coincidentes con tipos de unión configurables",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureJoiner Parameters",
@@ -3937,7 +3937,7 @@
     {
       "name": "FootprintReplacer",
       "type": "processor",
-      "description": "Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)",
+      "description": "Proyecta la geometría 3D al plano XY y calcula el polígono base unificado (compatible con sólidos, superficies y CityGML)",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4403,7 +4403,7 @@
     {
       "name": "GeometryPartExtractor",
       "type": "processor",
-      "description": "Extract geometry parts (surfaces) from 3D geometries as separate features",
+      "description": "Extrae partes de geometría (superficies) de geometrías 3D como entidades separadas",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Part Extractor Parameters",
@@ -4451,7 +4451,7 @@
     {
       "name": "GeometryRemover",
       "type": "processor",
-      "description": "Removes geometry from a feature",
+      "description": "Elimina la geometría de una entidad",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4674,7 +4674,7 @@
     {
       "name": "GltfReader",
       "type": "source",
-      "description": "Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives",
+      "description": "Lee modelos 3D desde archivos glTF 2.0, compatible con mallas, nodos, escenas y primitivas de geometría",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GltfReaderParam",
@@ -4800,7 +4800,7 @@
     {
       "name": "GridDivider",
       "type": "processor",
-      "description": "Divide Polygons into Regular Grid Cells",
+      "description": "Divide polígonos en celdas de cuadrícula regulares",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GridDivider Parameters",
@@ -6149,7 +6149,7 @@
     {
       "name": "ImageRasterizer",
       "type": "processor",
-      "description": "Convert vector geometries to raster image format",
+      "description": "Convierte geometrías vectoriales a formato de imagen raster",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Image Rasterizer Parameters",
@@ -6299,7 +6299,7 @@
     {
       "name": "JSONFragmenter",
       "type": "processor",
-      "description": "Fragments JSON documents into individual features based on a JSONPath query",
+      "description": "Fragmenta documentos JSON en entidades individuales basándose en una consulta JSONPath",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JSONFragmenter Parameters",
@@ -6434,7 +6434,7 @@
     {
       "name": "JsonReader",
       "type": "source",
-      "description": "Reads features from JSON files, supporting both single objects and arrays of objects.",
+      "description": "Lee entidades desde archivos JSON, compatible con objetos individuales y arrays de objetos",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JsonReader Parameters",
@@ -6484,7 +6484,7 @@
     {
       "name": "JsonWriter",
       "type": "sink",
-      "description": "Writes features to JSON files.",
+      "description": "Escribe entidades en archivos JSON",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JsonWriter Parameters",
@@ -6585,7 +6585,7 @@
     {
       "name": "ListConcatenator",
       "type": "processor",
-      "description": "Extracts a specific attribute from each element in a list and concatenates them into a single string",
+      "description": "Extrae un atributo específico de cada elemento de una lista y los concatena en una sola cadena de texto",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ListConcatenator Parameters",
@@ -6686,7 +6686,7 @@
     {
       "name": "ListIndexer",
       "type": "processor",
-      "description": "Copies attributes from a specific list element to become the main attributes of a feature",
+      "description": "Copia los atributos de un elemento de lista específico para convertirlos en los atributos principales de una entidad",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ListIndexer Parameters",
@@ -6859,7 +6859,7 @@
     {
       "name": "NeighborFinder",
       "type": "processor",
-      "description": "Finds the closest candidate features for each base feature based on spatial proximity",
+      "description": "Encuentra las entidades candidatas más cercanas para cada entidad base basándose en proximidad espacial",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "NeighborFinder Parameters",
@@ -7036,7 +7036,7 @@
     {
       "name": "NullAttributeMapper",
       "type": "processor",
-      "description": "Replace null-like attribute values with configured defaults",
+      "description": "Reemplaza valores de atributos nulos con valores predeterminados configurados",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "NullAttributeMapperParams",
@@ -7189,7 +7189,7 @@
     {
       "name": "ObjReader",
       "type": "source",
-      "description": "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials",
+      "description": "Lee modelos 3D desde archivos Wavefront OBJ, compatible con vértices, caras, normales, coordenadas de textura y materiales",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ObjReader Parameters",
@@ -7283,7 +7283,7 @@
     {
       "name": "ObjWriter",
       "type": "sink",
-      "description": "Writes 3D features to Wavefront OBJ format with optional material (MTL) files",
+      "description": "Escribe entidades 3D en formato Wavefront OBJ con archivos de material (MTL) opcionales",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "OBJ Writer Parameters",
@@ -7722,7 +7722,7 @@
     {
       "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
       "type": "processor",
-      "description": "Checks BuildingInstallation's geometry type",
+      "description": "Verifica el tipo de geometría de BuildingInstallation",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -7738,7 +7738,7 @@
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
       "type": "processor",
-      "description": "Check connectivity between BuildingParts within the same Building using 3D boundary surface matching",
+      "description": "Verifica la conectividad entre BuildingParts dentro del mismo edificio mediante la coincidencia de superficies de límite 3D",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BuildingPartConnectivityChecker Parameters",
@@ -7807,7 +7807,7 @@
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
-      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
+      "description": "Valida los atributos de uso del edificio verificando la presencia de atributos requeridos y la exactitud de los códigos de ciudad. Los errores se emiten por los puertos lBldgError y codeError.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BuildingUsageAttributeValidatorParam",
@@ -7890,7 +7890,7 @@
     {
       "name": "PLATEAU4.CityGmlMeshBuilder",
       "type": "processor",
-      "description": "Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exactly 4 vertices, (2) each triangle is closed (first vertex equals last vertex)",
+      "description": "Valida los triángulos de malla CityGML analizando el XML sin procesar: (1) cada triángulo tiene exactamente 4 vértices, (2) cada triángulo está cerrado (el primer vértice es igual al último)",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGML Mesh Builder Parameters",
@@ -7950,7 +7950,7 @@
     {
       "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
       "type": "processor",
-      "description": "Checks if a CompositeSurface is continuous (all parts share edges)",
+      "description": "Verifica si una CompositeSurface es continua (todas las partes comparten aristas)",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -7968,7 +7968,7 @@
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
       "type": "processor",
-      "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
+      "description": "Extrae el código de malla regional estándar japonés para archivos de destino PLATEAU y lo agrega como atributo",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "PLATEAU Destination MeshCode Extractor Parameters",
@@ -8062,7 +8062,7 @@
     {
       "name": "PLATEAU4.FaceExtractor",
       "type": "processor",
-      "description": "Validates individual surfaces of WaterBody features for TIN mesh quality",
+      "description": "Valida las superficies individuales de entidades WaterBody para la calidad de malla TIN",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FaceExtractor Parameters",
@@ -8102,7 +8102,7 @@
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
       "type": "processor",
-      "description": "Generates TIN-based surfaces from flood area polygons for efficient 3D tile generation. Optionally groups features by attribute before combining and triangulating.",
+      "description": "Genera superficies basadas en TIN a partir de polígonos de áreas inundadas para la generación eficiente de tiles 3D. Opcionalmente agrupa entidades por atributo antes de combinar y triangular.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FloodingAreaSurfaceGenerator Parameters",
@@ -8157,7 +8157,7 @@
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
       "type": "processor",
-      "description": "Validates that gml:name elements have codeSpace attributes (coded values)",
+      "description": "Valida que los elementos gml:name tengan atributos codeSpace (valores codificados)",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GmlNameCodeSpaceValidator Parameters",
@@ -8308,7 +8308,7 @@
     {
       "name": "PLATEAU4.SolarCityGmlAttributeInserter",
       "type": "processor",
-      "description": "Inserts solar radiation measurement attributes into original CityGML files",
+      "description": "Inserta atributos de medición de radiación solar en archivos CityGML originales",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlAttributeInserterParam",
@@ -8420,7 +8420,7 @@
     {
       "name": "PLATEAU4.SolarPositionCalculator",
       "type": "processor",
-      "description": "Calculates solar position (altitude and azimuth) for geographic features using Spencer's algorithm",
+      "description": "Calcula la posición solar (altitud y azimut) para entidades geográficas usando el algoritmo de Spencer",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolarPositionCalculatorParam",
@@ -8625,7 +8625,7 @@
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
       "type": "processor",
-      "description": "Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing",
+      "description": "Crea pares de entidades a partir de la salida de AreaOnAreaOverlayer para pruebas de intersección de sólidos",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolidIntersectionTestPairCreatorParam",
@@ -8663,7 +8663,7 @@
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "type": "processor",
-      "description": "Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)",
+      "description": "Detecta superficies sin referencia en modelos de transporte PLATEAU (L-TRAN-03)",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "TransportationXlinkDetectorParam",
@@ -8755,7 +8755,7 @@
     {
       "name": "PLATEAU4.UnmatchedXlinkDetector",
       "type": "processor",
-      "description": "Detect unmatched Xlinks for PLATEAU",
+      "description": "Detecta Xlinks sin coincidencia para PLATEAU",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -8773,7 +8773,7 @@
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
       "type": "processor",
-      "description": "Detect unshared edges in triangular meshes - edges that appear only once. REQUIRES: Input geometries must be in a projected coordinate system (meters). Use HorizontalReprojector before this action if input is in geographic coordinates.",
+      "description": "Detecta aristas no compartidas en mallas triangulares — aristas que aparecen solo una vez. REQUIERE: Las geometrías de entrada deben estar en un sistema de coordenadas proyectado (metros). Use HorizontalReprojector antes si la entrada está en coordenadas geográficas.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "UnsharedEdgeDetector Parameters",
@@ -8888,7 +8888,7 @@
     {
       "name": "PolygonNormalExtractor",
       "type": "processor",
-      "description": "Extract normal vectors and other properties for polygon features",
+      "description": "Extrae vectores normales y otras propiedades de entidades de polígono",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -8904,7 +8904,7 @@
     {
       "name": "PythonScriptProcessor",
       "type": "processor",
-      "description": "Execute Python Scripts with Geospatial Data Processing",
+      "description": "Ejecuta scripts Python para el procesamiento de datos geoespaciales",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "PythonScriptProcessorParam",
@@ -8974,7 +8974,7 @@
     {
       "name": "RayIntersector",
       "type": "processor",
-      "description": "Computes intersection points between rays and geometries",
+      "description": "Calcula los puntos de intersección entre rayos y geometrías",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "RayIntersectorParams",
@@ -9231,7 +9231,7 @@
     {
       "name": "Rotator3D",
       "type": "processor",
-      "description": "Rotate a 3D polygon using from/to vectors or axis-angle specification",
+      "description": "Rota un polígono 3D usando vectores de origen/destino o especificación de eje-ángulo",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Rotator3D Parameters",
@@ -9397,7 +9397,7 @@
     {
       "name": "ShapefileReader",
       "type": "source",
-      "description": "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)",
+      "description": "Lee entidades geográficas desde archivos Shapefile (.zip que contiene .shp, .dbf, .shx)",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileReader Parameters",
@@ -9517,7 +9517,7 @@
     {
       "name": "SolidBoundaryValidator",
       "type": "processor",
-      "description": "Validates the Solid Boundary Geometry",
+      "description": "Valida la geometría del límite del sólido",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Solid Boundary Validator Parameters",
@@ -9559,7 +9559,7 @@
     {
       "name": "SpatialFilter",
       "type": "processor",
-      "description": "Filter Features by Spatial Relationship",
+      "description": "Filtra entidades por relación espacial",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SpatialFilter Parameters",
@@ -9930,7 +9930,7 @@
     {
       "name": "ThreeDimensionForcer",
       "type": "processor",
-      "description": "Convert 2D Geometry to 3D by Adding Z-Coordinates",
+      "description": "Convierte geometrías 2D a 3D añadiendo coordenadas Z (elevación)",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ThreeDimensionForcer Parameters",
@@ -10109,7 +10109,7 @@
     {
       "name": "VertexCounter",
       "type": "processor",
-      "description": "Count Geometry Vertices to Attribute",
+      "description": "Cuenta los vértices de geometría y los almacena como atributo",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Vertex Counter Parameters",
@@ -10323,7 +10323,7 @@
     {
       "name": "XmlWriter",
       "type": "sink",
-      "description": "Writes features to XML files.",
+      "description": "Escribe entidades en archivos XML",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XmlWriter Parameters",

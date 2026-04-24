@@ -12,22 +12,28 @@ cargo fmt --all ${@:-}
 ''']
 
 [tasks.check]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
-''']
+''',
+]
 
 [tasks.clippy]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker -- -D warnings
-''']
+''',
+]
 
 [tasks.clippy-fix]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@:-}
-''']
+''',
+]
 
 [tasks.test]
 script = ['''
@@ -38,10 +44,12 @@ cargo make test-conv ${@:-}
 ''']
 
 [tasks.test-rs]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
-''']
+''',
+]
 
 [tasks.test-qc]
 script = ['''
@@ -65,7 +73,8 @@ cargo doc --no-deps --all-features
 ''']
 
 [tasks.coverage]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 rm -rf target/debug/deps/${PROJ_NAME}-*
 
@@ -77,7 +86,8 @@ cargo build --workspace --verbose
 cargo test --workspace --verbose
 
 grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o lcov.info
-''']
+''',
+]
 
 [tasks.check-easy-panic]
 script = ['''
@@ -86,11 +96,24 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'unimplemented!')
 git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 ''']
 
-[tasks.doc-action]
+# Generates actions.json (base English schema) and syncs i18n skeleton files.
+# Run this after adding or modifying any action. Then fill in translations and run schema-translated.
+[tasks.schema-base]
+script = [
+  '''
+#!/usr/bin/env bash -eux
+rm -rf "./schema/actions.json"
+cargo run --package reearth-flow-cli -- schema-action > ./schema/actions.json
+cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/actions"
+''',
+]
+
+# Generates translated schema files and docs from the current i18n source files.
+# Run after filling in translations in schema/i18n/actions/.
+[tasks.schema-translated]
 script = ['''
 #!/usr/bin/env bash -eux
 FILES=(
-  "./schema/actions.json"
   "./schema/actions_en.json"
   "./schema/actions_es.json"
   "./schema/actions_fr.json"
@@ -102,8 +125,6 @@ FILES=(
 for f in "${FILES[@]}"; do
   rm -rf "$f"
 done
-
-cargo run --package reearth-flow-cli -- schema-action > ./schema/actions.json
 
 LANGS=(en es fr ja zh)
 
@@ -118,18 +139,21 @@ cargo run --package reearth-flow-cli -- doc-action > ./docs/mdbook/src/action.md
 ''']
 
 [tasks.check-doc-action]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 
-cargo make doc-action
+cargo make schema-base
+cargo make schema-translated
 git add -N .
 line=$(git diff | wc -l)
 if [ "$line" -gt 0 ]; then
-  echo "Please run 'cargo make doc-action' and commit the changes."
+  echo "Please run 'cargo make schema-base' and 'cargo make schema-translated' and commit the changes."
   git --no-pager diff
   exit 1
 fi
-''']
+''',
+]
 
 [tasks.doc-workflow]
 script = ['''
@@ -154,7 +178,8 @@ taplo fmt ${@:-}
 ''']
 
 [tasks.generate-cms-workflow]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 FEATURES=(
   "bldg"
@@ -171,10 +196,12 @@ for feature_type in "${FEATURES[@]}"; do
   fi
 done
 
-''']
+''',
+]
 
 [tasks.generate-examples-cms-workflow]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 
 BASEPATH_CONV=./runtime/examples/fixture/workflow/data-convert/plateau4/
@@ -225,10 +252,12 @@ process_workflows "$BASEPATH_QC" "${WORKFLOW_QC[@]}"
 
 # Solar radiation workflow
 yaml-include ./runtime/examples/fixture/workflow/solar-radiation/workflow.yml > ./runtime/examples/fixture/workflow/solar-radiation/solar-radiation.yml
-''']
+''',
+]
 
 [tasks.check-generate-examples-cms-workflow]
-script = ['''
+script = [
+  '''
 #!/usr/bin/env bash -eux
 
 cargo make generate-examples-cms-workflow
@@ -239,7 +268,8 @@ if [ "$line" -gt 0 ]; then
   git --no-pager diff
   exit 1
 fi
-''']
+''',
+]
 
 [tasks.ci]
 script = ['''
