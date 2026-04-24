@@ -11,7 +11,6 @@ import (
 )
 
 func resetTestData() {
-	actionsData = ActionsData{}
 	actionsDataMap = make(map[string]ActionsData)
 }
 
@@ -30,16 +29,16 @@ func TestLoadActionsData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
-			err := loadActionsData(tt.lang)
+			data, err := loadActionsData(tt.lang)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.NotEmpty(t, actionsData.Actions)
+				assert.NotEmpty(t, data.Actions)
 
 				// Verify cache
 				assert.NotNil(t, actionsDataMap[tt.lang])
-				assert.Equal(t, actionsData, actionsDataMap[tt.lang])
+				assert.Equal(t, data, actionsDataMap[tt.lang])
 			}
 		})
 	}
@@ -110,8 +109,7 @@ func TestGetSegregatedActions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
-			actionsData = ActionsData{Actions: testActions}
-			actionsDataMap[tt.lang] = actionsData
+			actionsDataMap[tt.lang] = ActionsData{Actions: testActions}
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/actions/segregated?lang="+tt.lang, nil)
@@ -157,8 +155,7 @@ func TestGetActionDetails(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
-			actionsData = ActionsData{Actions: []Action{testAction}}
-			actionsDataMap[tt.lang] = actionsData
+			actionsDataMap[tt.lang] = ActionsData{Actions: []Action{testAction}}
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/?lang="+tt.lang, nil)

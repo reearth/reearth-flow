@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/reearth/reearthx/log"
 )
 
 type ActionType string
@@ -80,6 +81,14 @@ type SegregatedActions struct {
 	ByType     map[string][]ActionSummary `json:"byType"`
 }
 
+type loadError struct {
+	status int
+	err    error
+}
+
+func (e *loadError) Error() string { return e.err.Error() }
+func (e *loadError) Unwrap() error { return e.err }
+
 var (
 	actionsDataMap = make(map[string]ActionsData)
 	mutex          sync.RWMutex
@@ -95,7 +104,7 @@ var (
 
 func loadActionsData(lang string) (ActionsData, error) {
 	if lang != "" && !supportedLangs[lang] {
-		return ActionsData{}, fmt.Errorf("unsupported language: %s", lang)
+		return ActionsData{}, &loadError{http.StatusBadRequest, fmt.Errorf("unsupported language: %s", lang)}
 	}
 
 	cacheKey := lang
@@ -120,35 +129,35 @@ func loadActionsData(lang string) (ActionsData, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+filename, nil)
 	if err != nil {
-		return ActionsData{}, err
+		return ActionsData{}, &loadError{http.StatusBadGateway, err}
 	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return ActionsData{}, err
+		return ActionsData{}, &loadError{http.StatusBadGateway, err}
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			fmt.Println("Error closing response body:", err)
+			log.Warnf("actions: error closing response body: %v", err)
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return ActionsData{}, fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, baseURL+filename)
+		return ActionsData{}, &loadError{http.StatusBadGateway, fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, baseURL+filename)}
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return ActionsData{}, err
+		return ActionsData{}, &loadError{http.StatusInternalServerError, err}
 	}
 
 	var newData ActionsData
 	if err := json.Unmarshal(body, &newData); err != nil {
-		return ActionsData{}, err
+		return ActionsData{}, &loadError{http.StatusInternalServerError, err}
 	}
 
 	if err := newData.Validate(); err != nil {
-		return ActionsData{}, err
+		return ActionsData{}, &loadError{http.StatusInternalServerError, err}
 	}
 
 	// Store in cache under write lock; double-check in case a concurrent
@@ -172,7 +181,9 @@ func loadActionsData(lang string) (ActionsData, error) {
 // @Param        type      query     string  false  "Filter by action type (processor, source, sink)"
 // @Param        lang      query     string  false  "Language code (en, es, fr, ja, zh)"
 // @Success      200       {array}   ActionSummary  "List of actions"
-// @Failure      400       {object}  object         "Invalid request"
+// @Failure      400       {object}  object         "Invalid language"
+// @Failure      500       {object}  object         "Internal server error"
+// @Failure      502       {object}  object         "Upstream fetch error"
 // @Router       /actions [get]
 func listActions(c echo.Context) error {
 	query := c.QueryParam("q")
@@ -182,7 +193,12 @@ func listActions(c echo.Context) error {
 
 	data, err := loadActionsData(lang)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		status := http.StatusInternalServerError
+		var le *loadError
+		if errors.As(err, &le) {
+			status = le.status
+		}
+		return c.JSON(status, map[string]string{"error": err.Error()})
 	}
 
 	var summaries []ActionSummary
@@ -209,7 +225,9 @@ func listActions(c echo.Context) error {
 // @Param        q     query     string  false  "Search query"
 // @Param        lang  query     string  false  "Language code (en, es, fr, ja, zh)"
 // @Success      200   {object}  SegregatedActions  "Actions segregated by category and type"
-// @Failure      400   {object}  object             "Invalid request"
+// @Failure      400   {object}  object             "Invalid language"
+// @Failure      500   {object}  object             "Internal server error"
+// @Failure      502   {object}  object             "Upstream fetch error"
 // @Router       /actions/segregated [get]
 func getSegregatedActions(c echo.Context) error {
 	query := c.QueryParam("q")
@@ -217,7 +235,12 @@ func getSegregatedActions(c echo.Context) error {
 
 	data, err := loadActionsData(lang)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		status := http.StatusInternalServerError
+		var le *loadError
+		if errors.As(err, &le) {
+			status = le.status
+		}
+		return c.JSON(status, map[string]string{"error": err.Error()})
 	}
 
 	segregated := SegregatedActions{
@@ -317,8 +340,10 @@ func containsCaseInsensitive(slice []string, s string) bool {
 // @Param        id    path      string  true   "Action ID/Name"
 // @Param        lang  query     string  false  "Language code (en, es, fr, ja, zh)"
 // @Success      200   {object}  Action  "Action details"
-// @Failure      400   {object}  object  "Invalid request"
+// @Failure      400   {object}  object  "Invalid language"
 // @Failure      404   {object}  object  "Action not found"
+// @Failure      500   {object}  object  "Internal server error"
+// @Failure      502   {object}  object  "Upstream fetch error"
 // @Router       /actions/{id} [get]
 func getActionDetails(c echo.Context) error {
 	id := c.Param("id")
@@ -326,7 +351,12 @@ func getActionDetails(c echo.Context) error {
 
 	data, err := loadActionsData(lang)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		status := http.StatusInternalServerError
+		var le *loadError
+		if errors.As(err, &le) {
+			status = le.status
+		}
+		return c.JSON(status, map[string]string{"error": err.Error()})
 	}
 
 	for _, action := range data.Actions {
