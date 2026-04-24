@@ -133,6 +133,10 @@ func loadActionsData(lang string) (ActionsData, error) {
 		}
 	}()
 
+	if resp.StatusCode != http.StatusOK {
+		return ActionsData{}, fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, baseURL+filename)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ActionsData{}, err
