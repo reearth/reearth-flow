@@ -2811,8 +2811,8 @@
             ]
           },
           "extractTags": {
-            "title": "Extract Tags",
-            "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+            "title": "Extraer Etiquetas",
+            "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios.",
             "default": [],
             "type": "array",
             "items": {
