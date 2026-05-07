@@ -55,7 +55,10 @@ pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> cra
             }
             let Some(base) = base_path else {
                 return Err(crate::Error::Serde(format!(
-                    "!include {file_path_str} requires a workflow base directory"
+                    "!include {file_path_str} cannot be expanded: workflow has \
+                     no base directory. Load the workflow from a file path \
+                     (not stdin or cloud storage), or remove the !include \
+                     directive."
                 )));
             };
             let mut resolved_path = PathBuf::from(base);
@@ -219,6 +222,8 @@ mod tests {
         let path = dir.path().join("inc.txt");
         let mut f = std::fs::File::create(&path).unwrap();
         write!(f, "hello").unwrap();
+        f.flush().unwrap();
+        drop(f);
 
         let yaml = "x: !include inc.txt\n";
         let out = expand_yaml_includes(yaml, Some(dir.path())).unwrap();
