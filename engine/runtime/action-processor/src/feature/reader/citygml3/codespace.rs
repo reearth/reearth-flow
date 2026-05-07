@@ -19,6 +19,9 @@ impl CodelistResolver {
     }
 
     fn lookup(&mut self, source_url: &Url, code_space: &str, code: &str) -> Option<String> {
+        // codeSpace is joined without restricting absolute URLs or path traversal.
+        // This is intentional: the engine assumes trusted input GML running in a controlled environment,
+        // consistent with how xlink resolution and zip extraction are handled elsewhere. See PR #2066.
         let dict_url = match source_url.join(code_space) {
             Ok(u) => u,
             Err(e) => {
