@@ -30,7 +30,8 @@ use crate::feature::errors::FeatureProcessorError;
 
 use super::{
     codespace, flatten, geometry,
-    parser::{self, Parser},
+    parser::{self, ParsedFile, Parser},
+    srsname,
     utils::{gml_id_attr, XmlNode},
     xlink,
 };
@@ -100,6 +101,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             original_dataset: params.dataset,
             extract_tags,
             parser: Parser::new(),
+            file_batches: Vec::new(),
         }))
     }
 }
@@ -125,6 +127,7 @@ pub struct FeatureCityGml3Reader {
     original_dataset: Expr,
     extract_tags: HashSet<String>,
     parser: Parser,
+    file_batches: Vec<ParsedFile>,
 }
 
 impl std::fmt::Debug for FeatureCityGml3Reader {
@@ -143,6 +146,7 @@ impl Clone for FeatureCityGml3Reader {
             original_dataset: self.original_dataset.clone(),
             extract_tags: self.extract_tags.clone(),
             parser: Parser::new(),
+            file_batches: Vec::new(),
         }
     }
 }
@@ -177,9 +181,11 @@ impl Processor for FeatureCityGml3Reader {
             FeatureProcessorError::FileCityGml3Reader(format!("File read error: {e}"))
         })?;
 
-        self.parser
+        let parsed = self
+            .parser
             .parse(&bytes, &source_url)
             .map_err(|e| FeatureProcessorError::FileCityGml3Reader(format!("{e}")))?;
+        self.file_batches.push(parsed);
         Ok(())
     }
 
@@ -188,37 +194,56 @@ impl Processor for FeatureCityGml3Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let (pending, raw_registry, ns_registry) = std::mem::take(&mut self.parser).finish();
+        let (raw_registry, ns_registry) = std::mem::take(&mut self.parser).finish();
+        let file_batches = std::mem::take(&mut self.file_batches);
         let mut codelist_resolver = codespace::CodelistResolver::new();
-        for feature_root in codespace::resolve(
-            xlink::resolve(pending, &raw_registry),
-            &mut codelist_resolver,
-        ) {
-            if self.extract_tags.is_empty() {
-                let feature = build_feature(&feature_root);
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    DEFAULT_PORT.clone(),
-                ));
-            } else {
-                let root_gml_id = gml_id_attr(&feature_root);
 
-                for (node, parent_id) in
-                    flatten::extract(&feature_root, &self.extract_tags, &ns_registry)
-                {
-                    let mut feature = build_feature(&node);
-                    if let Some(id) = parent_id {
-                        feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
-                    }
-                    if let Some(ref id) = root_gml_id {
-                        feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
+        for batch in file_batches {
+            let epsg = batch
+                .bounded_by
+                .as_deref()
+                .and_then(|n| srsname::from_bounded_by(n))
+                .and_then(|s| srsname::epsg_from_srs_name(s));
+
+            for feature_root in codespace::resolve(
+                xlink::resolve(batch.city_objects, &raw_registry),
+                &mut codelist_resolver,
+            ) {
+                if self.extract_tags.is_empty() {
+                    let mut feature = build_feature(&feature_root);
+                    if let Some(e) = epsg {
+                        feature.geometry_mut().epsg = Some(e);
                     }
                     fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                         &ctx,
                         feature,
                         DEFAULT_PORT.clone(),
                     ));
+                } else {
+                    let root_gml_id = gml_id_attr(&feature_root);
+
+                    for (node, parent_id) in
+                        flatten::extract(&feature_root, &self.extract_tags, &ns_registry)
+                    {
+                        let mut feature = build_feature(&node);
+                        if let Some(e) = epsg {
+                            feature.geometry_mut().epsg = Some(e);
+                        }
+                        if let Some(id) = parent_id {
+                            feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
+                        }
+                        if let Some(ref id) = root_gml_id {
+                            feature.insert(
+                                CITYGML_ROOT_GML_ID_KEY,
+                                AttributeValue::String(id.clone()),
+                            );
+                        }
+                        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                            &ctx,
+                            feature,
+                            DEFAULT_PORT.clone(),
+                        ));
+                    }
                 }
             }
         }

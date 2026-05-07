@@ -16,6 +16,11 @@ use super::utils::{
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
 
+pub(super) struct ParsedFile {
+    pub(super) city_objects: Vec<Arc<RawNode>>,
+    pub(super) bounded_by: Option<Arc<RawNode>>,
+}
+
 pub(crate) struct RawNode {
     pub(crate) name: QName,
     pub(crate) attrs: Vec<(QName, String)>,
@@ -50,7 +55,6 @@ pub enum ParseError {
 pub(super) struct Parser {
     raw_registry: RawRegistry,
     pub(super) ns_registry: NamespaceRegistry,
-    pending: Vec<Arc<RawNode>>,
 }
 
 impl Default for Parser {
@@ -62,7 +66,6 @@ impl Default for Parser {
 impl std::fmt::Debug for Parser {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Parser")
-            .field("pending", &self.pending.len())
             .field("raw_registry", &self.raw_registry.len())
             .finish_non_exhaustive()
     }
@@ -73,11 +76,14 @@ impl Parser {
         Self {
             raw_registry: RawRegistry::new(),
             ns_registry: NamespaceRegistry::new(),
-            pending: Vec::new(),
         }
     }
 
-    pub(super) fn parse(&mut self, source: &[u8], source_url: &Url) -> Result<(), ParseError> {
+    pub(super) fn parse(
+        &mut self,
+        source: &[u8],
+        source_url: &Url,
+    ) -> Result<ParsedFile, ParseError> {
         let src = std::str::from_utf8(source)
             .map_err(|e| ParseError::Encoding(format!("Non-UTF-8 content: {e}")))?;
         let mut reader = NsReader::from_str(src);
@@ -91,6 +97,9 @@ impl Parser {
                 _ => {}
             }
         }
+
+        let mut city_objects: Vec<Arc<RawNode>> = Vec::new();
+        let mut bounded_by: Option<Arc<RawNode>> = None;
 
         loop {
             match next_event(&mut reader, &mut buf, &mut self.ns_registry)? {
@@ -116,12 +125,22 @@ impl Parser {
                                 source_url_arc.as_str(),
                                 &mut self.raw_registry,
                             );
-                            self.pending.push(feature_node);
+                            city_objects.push(feature_node);
                         } else {
                             tracing::warn!(
                                 "citygml3: empty cityObjectMember/featureMember, skipped"
                             );
                         }
+                    } else if ln == "boundedBy" {
+                        let node = parse_element(
+                            &mut reader,
+                            &mut buf,
+                            name,
+                            attrs,
+                            &source_url_arc,
+                            &mut self.ns_registry,
+                        )?;
+                        bounded_by = Some(Arc::new(node));
                     } else {
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
                     }
@@ -132,13 +151,16 @@ impl Parser {
             }
         }
 
-        Ok(())
+        Ok(ParsedFile {
+            city_objects,
+            bounded_by,
+        })
     }
 
     /// Consume the parser and return raw state for xlink resolution and downstream processing.
-    /// Caller is responsible for running `xlink::resolve(pending, &raw_registry)`.
-    pub(super) fn finish(self) -> (Vec<Arc<RawNode>>, RawRegistry, NamespaceRegistry) {
-        (self.pending, self.raw_registry, self.ns_registry)
+    /// Caller is responsible for running `xlink::resolve(city_objects, &raw_registry)` per batch.
+    pub(super) fn finish(self) -> (RawRegistry, NamespaceRegistry) {
+        (self.raw_registry, self.ns_registry)
     }
 }
 
@@ -487,7 +509,7 @@ mod tests {
 
     fn parse_test(xml: &[u8]) -> Result<(), ParseError> {
         let mut parser = Parser::new();
-        parser.parse(xml, &dummy_url())
+        parser.parse(xml, &dummy_url()).map(|_| ())
     }
 
     #[test]
@@ -516,13 +538,18 @@ mod tests {
 </core:CityModel>"#;
 
         let mut parser = Parser::new();
-        parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _) = parser.finish();
+        let parsed = parser.parse(xml, &dummy_url()).unwrap();
 
-        assert_eq!(pending.len(), 2);
-        assert_eq!(raw_gml_id(&pending[0]), Some("bldg001".to_string()));
-        assert_eq!(raw_gml_id(&pending[1]), Some("bldg002".to_string()));
-        assert_eq!(pending[0].name.0, "bldg:Building");
+        assert_eq!(parsed.city_objects.len(), 2);
+        assert_eq!(
+            raw_gml_id(&parsed.city_objects[0]),
+            Some("bldg001".to_string())
+        );
+        assert_eq!(
+            raw_gml_id(&parsed.city_objects[1]),
+            Some("bldg002".to_string())
+        );
+        assert_eq!(parsed.city_objects[0].name.0, "bldg:Building");
     }
 
     #[test]
@@ -538,9 +565,12 @@ mod tests {
 </core:CityModel>"#;
 
         let mut parser = Parser::new();
-        parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, raw_reg, _) = parser.finish();
-        assert_eq!(raw_gml_id(&pending[0]), Some("bldg001".to_string()));
+        let parsed = parser.parse(xml, &dummy_url()).unwrap();
+        let (raw_reg, _) = parser.finish();
+        assert_eq!(
+            raw_gml_id(&parsed.city_objects[0]),
+            Some("bldg001".to_string())
+        );
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
 
@@ -560,7 +590,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (_, raw_reg, _) = parser.finish();
+        let (raw_reg, _) = parser.finish();
 
         let url = dummy_url().to_string();
         assert!(raw_reg.contains_key(&(url.clone(), "bldg001".to_string())));
@@ -585,7 +615,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
-        let (_, raw_reg, _) = parser.finish();
+        let (raw_reg, _) = parser.finish();
 
         assert_eq!(raw_reg.len(), 2);
         assert!(raw_reg.contains_key(&(url_a.to_string(), "shared001".to_string())));
@@ -613,9 +643,8 @@ mod tests {
 </core:CityModel>"#;
 
         let mut parser = Parser::new();
-        parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _) = parser.finish();
-        assert_eq!(pending.len(), 1);
+        let parsed = parser.parse(xml, &dummy_url()).unwrap();
+        assert_eq!(parsed.city_objects.len(), 1);
     }
 
     #[test]
@@ -646,9 +675,8 @@ mod tests {
 </core:CityModel>"#;
 
         let mut parser = Parser::new();
-        parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _) = parser.finish();
-        assert_eq!(pending.len(), 1);
+        let parsed = parser.parse(xml, &dummy_url()).unwrap();
+        assert_eq!(parsed.city_objects.len(), 1);
     }
 
     #[test]
@@ -710,11 +738,10 @@ mod tests {
 </core:CityModel>"#;
 
         let mut parser = Parser::new();
-        parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _) = parser.finish();
+        let parsed = parser.parse(xml, &dummy_url()).unwrap();
 
         assert_eq!(
-            pending[0]
+            parsed.city_objects[0]
                 .attrs
                 .iter()
                 .find(|((q, _), _)| q == "codeSpace")

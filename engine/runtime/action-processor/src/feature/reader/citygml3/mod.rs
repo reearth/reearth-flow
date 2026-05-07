@@ -3,5 +3,6 @@ pub(crate) mod flatten;
 pub(crate) mod geometry;
 pub(crate) mod parser;
 pub(crate) mod processor;
+pub(crate) mod srsname;
 pub(crate) mod utils;
 pub(crate) mod xlink;

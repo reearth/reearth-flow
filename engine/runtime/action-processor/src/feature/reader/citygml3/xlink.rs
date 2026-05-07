@@ -90,9 +90,9 @@ mod tests {
 
     fn parse_test(xml: &[u8], url: &Url) -> (Vec<Arc<RawNode>>, RawRegistry) {
         let mut parser = Parser::new();
-        parser.parse(xml, url).unwrap();
-        let (pending, raw_reg, _) = parser.finish();
-        (pending, raw_reg)
+        let parsed = parser.parse(xml, url).unwrap();
+        let (raw_reg, _) = parser.finish();
+        (parsed.city_objects, raw_reg)
     }
 
     #[test]
