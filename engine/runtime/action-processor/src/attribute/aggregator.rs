@@ -178,7 +178,7 @@ enum Method {
 
 impl Processor for AttributeAggregator {
     fn is_accumulating(&self) -> bool {
-        false
+        true
     }
 
     fn num_threads(&self) -> usize {
@@ -188,7 +188,7 @@ impl Processor for AttributeAggregator {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -224,10 +224,6 @@ impl Processor for AttributeAggregator {
             );
         };
         let key = AttributeValue::Array(aggregates);
-        if !self.buffer.contains_key(&key) {
-            self.flush_buffer(ctx.as_context(), fw);
-            self.buffer.clear();
-        }
         match &self.method {
             Method::Max => {
                 let value = self.buffer.entry(key).or_insert(0);
@@ -251,6 +247,7 @@ impl Processor for AttributeAggregator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context(), fw);
+        self.buffer.clear();
         Ok(())
     }
 
@@ -282,5 +279,112 @@ impl AttributeAggregator {
                 DEFAULT_PORT.clone(),
             ));
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use indexmap::IndexMap;
+    use reearth_flow_eval_expr::engine::Engine;
+    use reearth_flow_runtime::{
+        event::EventHub, forwarder::NoopChannelForwarder, kvs, node::DEFAULT_PORT,
+    };
+    use reearth_flow_storage::resolve::StorageResolver;
+    use reearth_flow_types::Feature;
+
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+
+    fn make_processor() -> AttributeAggregator {
+        AttributeAggregator {
+            global_params: None,
+            aggregate_attributes: vec![CompliledAggregateAttribute {
+                new_attribute: Attribute::new("file"),
+                attribute: Some(Attribute::new("file")),
+                attribute_value: None,
+            }],
+            calculation: None,
+            calculation_value: Some(1),
+            calculation_attribute: Attribute::new("count"),
+            method: Method::Count,
+            buffer: HashMap::new(),
+        }
+    }
+
+    fn make_feature(file: &str) -> Feature {
+        let mut attrs: IndexMap<Attribute, AttributeValue> = IndexMap::new();
+        attrs.insert(
+            Attribute::new("file"),
+            AttributeValue::String(file.to_string()),
+        );
+        Feature::from(attrs)
+    }
+
+    fn collect_counts(noop: &NoopChannelForwarder) -> Vec<(String, i64)> {
+        let features = noop.send_features.lock().unwrap();
+        let ports = noop.send_ports.lock().unwrap();
+        assert!(
+            ports.iter().all(|p| *p == *DEFAULT_PORT),
+            "all emissions should go to DEFAULT port"
+        );
+        features
+            .iter()
+            .map(|f| {
+                let file = match f.attributes.get(&Attribute::new("file")) {
+                    Some(AttributeValue::String(s)) => s.clone(),
+                    other => panic!("missing/invalid 'file' attr: {other:?}"),
+                };
+                let count = match f.attributes.get(&Attribute::new("count")) {
+                    Some(AttributeValue::Number(n)) => n.as_i64().unwrap(),
+                    other => panic!("missing/invalid 'count' attr: {other:?}"),
+                };
+                (file, count)
+            })
+            .collect()
+    }
+
+    fn make_node_context() -> NodeContext {
+        NodeContext::new(
+            Arc::new(Engine::new()),
+            Arc::new(StorageResolver::new()),
+            Arc::new(kvs::create_kv_store()),
+            EventHub::new(30),
+        )
+    }
+
+    /// Regression test for the flush-on-new-key bug.
+    ///
+    /// Before the fix, `process()` flushed-and-cleared the buffer whenever a new
+    /// key arrived, splitting each key's count across multiple partial emissions.
+    /// Downstream consumers (e.g. `FeatureMerger`) would then see only the LAST
+    /// partial value per key (= 1 in this case), not the true total.
+    ///
+    /// With the fix, all keys accumulate until `finish()`, which emits one
+    /// feature per key with the correct total.
+    #[test]
+    fn count_aggregates_correctly_with_interleaved_keys() {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let mut processor = make_processor();
+
+        // A, B, A, B — each key 2x, fully interleaved.
+        for file in ["A", "B", "A", "B"] {
+            let feature = make_feature(file);
+            let ctx = create_default_execute_context(&feature);
+            processor.process(ctx, &fw).unwrap();
+        }
+        processor.finish(make_node_context(), &fw).unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!()
+        };
+        let mut counts = collect_counts(&noop);
+        counts.sort();
+        assert_eq!(
+            counts,
+            vec![("A".to_string(), 2), ("B".to_string(), 2)],
+            "expected one totalled feature per key; before the fix this emitted multiple partial features (e.g. A=1, B=1, A=1, B=1)"
+        );
     }
 }

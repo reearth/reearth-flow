@@ -142,25 +142,18 @@ impl Processor for ConvexHullAccumulator {
                     AttributeValue::Null
                 };
 
-                if !self.buffer.contains_key(&key) {
-                    for hull in self.create_hull() {
-                        fw.send(ctx.new_with_feature_and_port(hull, DEFAULT_PORT.clone()));
-                    }
-                    self.buffer.clear();
-
-                    let common_attr = if let Some(group_by) = &self.group_by {
+                let common_attr: IndexMap<Attribute, AttributeValue> =
+                    if let Some(group_by) = &self.group_by {
                         let vals = key.as_vec().unwrap();
                         group_by.iter().cloned().zip(vals).collect()
                     } else {
                         IndexMap::new()
                     };
-                    self.buffer
-                        .insert(key.clone(), GroupBuffer::new(common_attr));
-                }
-
                 self.buffer
                     .entry(key)
-                    .and_modify(|b| b.geometries.push(ctx.feature.geometry));
+                    .or_insert_with(|| GroupBuffer::new(common_attr))
+                    .geometries
+                    .push(ctx.feature.geometry);
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
