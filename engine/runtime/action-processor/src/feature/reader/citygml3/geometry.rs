@@ -455,7 +455,7 @@ fn parse_pos_list(text: &str) -> Result<Vec<Coordinate3D<f64>>, &'static str> {
 
     Ok(values
         .chunks_exact(3)
-        .map(|c| Coordinate3D::new__(c[0], c[1], c[2]))
+        .map(|c| Coordinate3D::new__(c[1], c[0], c[2]))
         .collect())
 }
 
@@ -469,7 +469,7 @@ fn parse_single_pos(text: &str) -> Result<Coordinate3D<f64>, &'static str> {
         return Err("invalid gml:pos content");
     }
 
-    Ok(Coordinate3D::new__(vals[0], vals[1], vals[2]))
+    Ok(Coordinate3D::new__(vals[1], vals[0], vals[2]))
 }
 
 fn extract_lod(local: &str) -> Option<u8> {
