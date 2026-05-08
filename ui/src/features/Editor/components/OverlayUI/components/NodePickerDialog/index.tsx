@@ -1,21 +1,12 @@
 import { EdgeChange } from "@xyflow/react";
 import { Fragment, memo } from "react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@flow/components";
+import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
 import { useT } from "@flow/lib/i18n";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
+import ActionFilters from "./ActionFilters";
 import useHooks from "./hooks";
 
 export type XYPosition = {
@@ -58,11 +49,14 @@ const NodePickerDialog: React.FC<Props> = ({
     itemRefs,
     selected,
     actionTypes,
+    actionCategories,
     currentActionByType,
+    currentCategory,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
     handleActionByTypeChange,
+    handleCategoryChange,
   } = useHooks({
     openedActionType,
     isMainWorkflow,
@@ -79,34 +73,22 @@ const NodePickerDialog: React.FC<Props> = ({
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogTitle>{t("Choose Action")}</DialogTitle>
-        <div className="flex items-center gap-2 p-2">
-          <Input
-            className="mx-auto w-full focus-visible:ring-0"
-            placeholder={t("Search")}
-            autoFocus
-            onChange={(e) => handleSearchTerm(e.target.value)}
-          />
-          <Select
-            value={currentActionByType}
-            onValueChange={handleActionByTypeChange}>
-            <SelectTrigger className="h-[32px] min-w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {actionTypes.map((actionType) => (
-                <SelectItem
-                  key={actionType.value}
-                  value={actionType.value}
-                  disabled={
-                    (actionType.value === "reader" ||
-                      actionType.value === "writer") &&
-                    !isMainWorkflow
-                  }>
-                  {actionType.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="p-2">
+          <ActionFilters
+            currentActionByType={currentActionByType}
+            currentCategory={currentCategory}
+            actionTypes={actionTypes}
+            actionCategories={actionCategories}
+            isMainWorkflow={isMainWorkflow}
+            onActionByTypeChange={handleActionByTypeChange}
+            onCategoryChange={handleCategoryChange}>
+            <Input
+              className="mx-auto w-full focus-visible:ring-0"
+              placeholder={t("Search")}
+              autoFocus
+              onChange={(e) => handleSearchTerm(e.target.value)}
+            />
+          </ActionFilters>
         </div>
 
         <div ref={containerRef} className="max-h-[50vh] overflow-scroll">

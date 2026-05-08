@@ -46,6 +46,7 @@ export const useAction = (lang: string) => {
     isMainWorkflow: boolean;
     searchTerm?: string;
     type?: string;
+    category?: string;
     nodes?: Node[];
   }): GetActionsSegregated => {
     const { data, ...rest } = useGetActionsSegregatedFetch(lang);
@@ -55,16 +56,17 @@ export const useAction = (lang: string) => {
 
       let result = { ...data };
 
+      const hasActiveFilter = !!filter?.searchTerm || !!filter?.category;
       result = {
         byCategory: filterActionsByPredicate(
           result.byCategory,
           (action) => combinedFilter(action, filter),
-          !!filter?.searchTerm,
+          hasActiveFilter,
         ),
         byType: filterActionsByPredicate(
           result.byType,
           (action) => combinedFilter(action, filter),
-          !!filter?.searchTerm,
+          hasActiveFilter,
         ),
       };
 
@@ -98,6 +100,7 @@ const combinedFilter = (
   filter?: {
     isMainWorkflow: boolean;
     searchTerm?: string;
+    category?: string;
     nodes?: Node[];
   },
 ) => {
@@ -107,6 +110,16 @@ const combinedFilter = (
     }
   } else {
     if (action.type === "reader" || action.type === "writer") {
+      return false;
+    }
+  }
+
+  if (filter?.category) {
+    if (
+      !action.categories.some(
+        (c) => c.toLowerCase() === filter.category?.toLowerCase(),
+      )
+    ) {
       return false;
     }
   }
