@@ -23,7 +23,7 @@ pub struct Expr(String);
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum StringOrExprType {
+pub enum CodeKind {
     /// Evaluated as a Flow expression at runtime
     Expr,
     /// Used as a plain string literal
@@ -33,17 +33,17 @@ pub enum StringOrExprType {
 /// A value that is either a Flow expression or a plain string literal
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct StringOrExpr {
+pub struct Code {
     #[serde(rename = "type")]
-    pub kind: StringOrExprType,
+    pub kind: CodeKind,
     pub value: String,
 }
 
-impl StringOrExpr {
+impl Code {
     pub fn to_rhai_src(&self) -> String {
         match self.kind {
-            StringOrExprType::Expr => self.value.clone(),
-            StringOrExprType::String => format!("{:?}", self.value),
+            CodeKind::Expr => self.value.clone(),
+            CodeKind::String => format!("{:?}", self.value),
         }
     }
 }
