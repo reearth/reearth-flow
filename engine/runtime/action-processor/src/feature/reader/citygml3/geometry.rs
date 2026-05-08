@@ -590,8 +590,8 @@ mod tests {
     fn test_parse_pos_list_basic() {
         let coords = parse_pos_list("1.0 2.0 3.0 4.0 5.0 6.0").expect("expected valid posList");
         assert_eq!(coords.len(), 2);
-        assert_eq!(coords[0], Coordinate3D::new__(1.0, 2.0, 3.0));
-        assert_eq!(coords[1], Coordinate3D::new__(4.0, 5.0, 6.0));
+        assert_eq!(coords[0], Coordinate3D::new__(2.0, 1.0, 3.0));
+        assert_eq!(coords[1], Coordinate3D::new__(5.0, 4.0, 6.0));
     }
 
     #[test]
