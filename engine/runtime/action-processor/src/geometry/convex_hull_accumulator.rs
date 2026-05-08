@@ -142,16 +142,28 @@ impl Processor for ConvexHullAccumulator {
                     AttributeValue::Null
                 };
 
-                let common_attr: IndexMap<Attribute, AttributeValue> =
-                    if let Some(group_by) = &self.group_by {
-                        let vals = key.as_vec().unwrap();
-                        group_by.iter().cloned().zip(vals).collect()
-                    } else {
-                        IndexMap::new()
-                    };
+                let group_by = &self.group_by;
+                let feature_attrs = &ctx.feature.attributes;
                 self.buffer
                     .entry(key)
-                    .or_insert_with(|| GroupBuffer::new(common_attr))
+                    .or_insert_with(|| {
+                        let common_attr: IndexMap<Attribute, AttributeValue> = match group_by {
+                            Some(group_by) => group_by
+                                .iter()
+                                .map(|attr| {
+                                    (
+                                        attr.clone(),
+                                        feature_attrs
+                                            .get(attr)
+                                            .cloned()
+                                            .unwrap_or(AttributeValue::Null),
+                                    )
+                                })
+                                .collect(),
+                            None => IndexMap::new(),
+                        };
+                        GroupBuffer::new(common_attr)
+                    })
                     .geometries
                     .push(ctx.feature.geometry);
             }
