@@ -284,13 +284,9 @@ impl AttributeAggregator {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use indexmap::IndexMap;
     use reearth_flow_eval_expr::engine::Engine;
-    use reearth_flow_runtime::{
-        event::EventHub, forwarder::NoopChannelForwarder, kvs, node::DEFAULT_PORT,
-    };
+    use reearth_flow_runtime::{forwarder::NoopChannelForwarder, kvs};
     use reearth_flow_storage::resolve::StorageResolver;
     use reearth_flow_types::Feature;
 
