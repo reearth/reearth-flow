@@ -605,6 +605,12 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_single_pos_basic() {
+        let coord = parse_single_pos("35.0 139.0 34.5").expect("expected valid pos");
+        assert_eq!(coord, Coordinate3D::new__(139.0, 35.0, 34.5));
+    }
+
+    #[test]
     fn test_parse_single_pos_requires_exactly_three_ordinates() {
         assert!(parse_single_pos("1.0 2.0 3.0 4.0").is_err());
     }
