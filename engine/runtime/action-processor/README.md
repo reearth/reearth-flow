@@ -220,7 +220,7 @@ This package includes many other geometry processing actions. For complete docum
 2. Implement `ProcessorFactory` and `Processor` traits
 3. Add action to mapping in `src/geometry/mapping.rs`
 4. Add tests in the same file or separate test module
-5. Run `cargo make doc-action` to update generated documentation
+5. Run `cargo make schema-base` then `cargo make schema-translated` to update generated documentation
 
 ### Testing
 

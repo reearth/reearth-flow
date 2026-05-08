@@ -20,8 +20,10 @@ cargo make doc
 
 # CLI commands
 cargo run --package reearth-flow-cli -- run --workflow path/to/workflow.yml
-cargo run --package reearth-flow-cli -- schema-action
-cargo run --package reearth-flow-cli -- doc-action
+
+# Action schema generation (run in order when adding/modifying actions)
+cargo make schema-base        # generates actions.json + syncs i18n skeletons
+cargo make schema-translated  # generates actions_{lang}.json + docs from i18n files
 ```
 
 ## Development Dependencies
@@ -55,12 +57,7 @@ Each action defines input/output ports, JSON schema for validation, and paramete
 
 ### Adding New Actions
 
-1. Create factory struct implementing appropriate trait
-2. Define parameter struct with `serde` + `schemars` derives
-3. Implement `build()` method returning action instance
-4. Register in appropriate mapping file
-5. Add i18n entries in `schema/i18n/actions/`
-6. Run `cargo make doc-action` to update schemas
+Use the `add-action` skill for a full step-by-step guide including i18n workflow.
 
 ## Key Constraints
 

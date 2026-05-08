@@ -98,7 +98,7 @@ jobs:
       - name: taplo
         run: cargo make format-taplo --check
       - name: check generated schema
-        run: cargo make check-doc-action
+        run: cargo make check-schema
       - name: check generated cms workflows
         run: cargo make check-generate-examples-cms-workflow
       - name: run tests
