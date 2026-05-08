@@ -350,15 +350,6 @@ mod tests {
         )
     }
 
-    /// Regression test for the flush-on-new-key bug.
-    ///
-    /// Before the fix, `process()` flushed-and-cleared the buffer whenever a new
-    /// key arrived, splitting each key's count across multiple partial emissions.
-    /// Downstream consumers (e.g. `FeatureMerger`) would then see only the LAST
-    /// partial value per key (= 1 in this case), not the true total.
-    ///
-    /// With the fix, all keys accumulate until `finish()`, which emits one
-    /// feature per key with the correct total.
     #[test]
     fn count_aggregates_correctly_with_interleaved_keys() {
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
