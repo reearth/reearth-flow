@@ -289,7 +289,7 @@ export const ChoiceEditor: React.FC<Props> = ({
                 onClick={() => onDialogOpen("cms")}
                 variant="outline"
                 size="sm">
-                <CmsLogo className="h-4 w-4 text-white" />
+                <CmsLogo className="h-4 w-4" />
                 {t("CMS Integration")}
               </Button>
             </div>

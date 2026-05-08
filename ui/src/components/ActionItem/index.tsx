@@ -48,6 +48,8 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
       [onCategoryClick],
     );
 
+    // console.log("TEST", action.categories);
+
     return (
       <div
         ref={ref}
@@ -80,7 +82,7 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
                 className="rounded border bg-popover p-[2px]"
                 key={c}
                 onClick={handleCategoryClick(c)}>
-                <p className="text-black dark:text-zinc-400">{c}</p>
+                <p>{c}</p>
               </div>
             ))}
           </div>

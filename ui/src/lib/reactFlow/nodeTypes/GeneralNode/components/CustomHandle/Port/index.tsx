@@ -41,9 +41,9 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
         </p>
         {hasIntermediateData && jobStatus === "completed" ? (
           <IconButton
-            className={`z-11 h-3 w-3 shrink-0 hover:bg-transparent hover:text-success ${
+            className={`z-11 h-3 w-3 shrink-0 ${isSelected ? "hover:bg-success/40 hover:text-success" : "hover:bg-transparent hover:text-success"} ${
               jobStatus === "completed" && isSelected
-                ? "text-success"
+                ? "rounded-sm bg-success/40 text-success"
                 : "text-success/60"
             } `}
             aria-label={`View intermediate data for ${portName}`}
