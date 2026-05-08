@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, StringOrExpr, StringOrExprType};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeKind};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -59,7 +59,7 @@ impl ProcessorFactory for FlowExprTestFactory {
         let mut mappings = Vec::new();
         for m in params.mappings {
             let compiled = match m.value.kind {
-                StringOrExprType::Expr => {
+                CodeKind::Expr => {
                     let ast = reearth_flow_expr::compile(&m.value.value)
                         .map_err(|e| format!("Failed to parse expression: {e}"))?;
                     CompiledMapping {
@@ -67,7 +67,7 @@ impl ProcessorFactory for FlowExprTestFactory {
                         kind: CompiledValue::Expr(ast),
                     }
                 }
-                StringOrExprType::String => CompiledMapping {
+                CodeKind::String => CompiledMapping {
                     attribute: m.attribute,
                     kind: CompiledValue::Literal(m.value.value),
                 },
@@ -89,7 +89,7 @@ struct FlowExprTestParam {
 #[serde(rename_all = "camelCase")]
 struct Mapping {
     attribute: String,
-    value: StringOrExpr,
+    value: Code,
 }
 
 #[derive(Debug, Clone)]
