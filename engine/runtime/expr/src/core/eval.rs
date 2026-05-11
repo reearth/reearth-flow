@@ -298,9 +298,7 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> Result<Value> 
         }
         "replace" => {
             let (from, to) = match (args.first(), args.get(1)) {
-                (Some(Value::String(f)), Some(Value::String(t))) => {
-                    (f.as_str(), t.as_str())
-                }
+                (Some(Value::String(f)), Some(Value::String(t))) => (f.as_str(), t.as_str()),
                 _ => {
                     return Err(Error::Eval {
                         msg: "replace() requires two string arguments: replace(from, to)".into(),
@@ -932,10 +930,22 @@ mod tests {
 
     #[test]
     fn test_string_contains_starts_ends_with() {
-        assert_eq!(run(r#""hello world".contains("world")"#, &[]), Value::from(true));
-        assert_eq!(run(r#""hello world".contains("xyz")"#, &[]), Value::from(false));
-        assert_eq!(run(r#""bldg_lod1".starts_with("tran")"#, &[]), Value::from(false));
-        assert_eq!(run(r#""bldg_lod1".ends_with("lod1")"#, &[]), Value::from(true));
+        assert_eq!(
+            run(r#""hello world".contains("world")"#, &[]),
+            Value::from(true)
+        );
+        assert_eq!(
+            run(r#""hello world".contains("xyz")"#, &[]),
+            Value::from(false)
+        );
+        assert_eq!(
+            run(r#""bldg_lod1".starts_with("tran")"#, &[]),
+            Value::from(false)
+        );
+        assert_eq!(
+            run(r#""bldg_lod1".ends_with("lod1")"#, &[]),
+            Value::from(true)
+        );
         // workflow pattern: strip suffix via slice when ends_with matches
         assert_eq!(
             run(
@@ -949,18 +959,33 @@ mod tests {
     #[test]
     fn test_string_replace() {
         // replaces ALL occurrences (not just first)
-        assert_eq!(run(r#""a/b/c".replace("/", "_")"#, &[]), Value::from("a_b_c"));
+        assert_eq!(
+            run(r#""a/b/c".replace("/", "_")"#, &[]),
+            Value::from("a_b_c")
+        );
         // multi-char pattern (not char-only)
-        assert_eq!(run(r#""foo_op_bar_op_baz".replace("_op_", "/")"#, &[]), Value::from("foo/bar/baz"));
+        assert_eq!(
+            run(r#""foo_op_bar_op_baz".replace("_op_", "/")"#, &[]),
+            Value::from("foo/bar/baz")
+        );
         // no match → unchanged
-        assert_eq!(run(r#""hello".replace("x", "y")"#, &[]), Value::from("hello"));
+        assert_eq!(
+            run(r#""hello".replace("x", "y")"#, &[]),
+            Value::from("hello")
+        );
     }
 
     #[test]
     fn test_array_contains() {
         let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
-        assert_eq!(run(r#"pkgs.contains("bldg")"#, &[("pkgs", pkgs.clone())]), Value::from(true));
-        assert_eq!(run(r#"pkgs.contains("fld")"#, &[("pkgs", pkgs)]), Value::from(false));
+        assert_eq!(
+            run(r#"pkgs.contains("bldg")"#, &[("pkgs", pkgs.clone())]),
+            Value::from(true)
+        );
+        assert_eq!(
+            run(r#"pkgs.contains("fld")"#, &[("pkgs", pkgs)]),
+            Value::from(false)
+        );
     }
 
     #[test]
