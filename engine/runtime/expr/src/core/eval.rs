@@ -112,12 +112,9 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
             Ok(Value::Map(map))
         }
         Expr::Var(name) => {
-            // Lexical env takes priority; fall through to __resolve for external vars.
-            if let Some(v) = env_lookup(env, name) {
-                Ok(v)
-            } else {
-                ctx.call("__resolve", vec![Value::String(name.clone())])
-            }
+            env_lookup(env, name).ok_or_else(|| Error::Eval {
+                msg: format!("unknown variable '{name}'"),
+            })
         }
         Expr::Index(target, key) => {
             let target = eval_inner(target, ctx, env)?;
@@ -747,34 +744,12 @@ mod tests {
     use super::super::parser::parse;
     use super::*;
 
-    fn ctx_with_vars(vars: &[(&str, Value)]) -> Context {
-        let map: HashMap<String, Value> = vars
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.clone()))
-            .collect();
-        let map = Arc::new(map);
-        let mut ctx = Context::new();
-        ctx.register(
-            "__resolve",
-            Box::new(move |args| {
-                let name = args
-                    .first()
-                    .and_then(|v| {
-                        if let Value::String(s) = v {
-                            Some(s.as_str())
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap_or("");
-                Ok(map.get(name).cloned().unwrap_or(Value::Null))
-            }),
-        );
-        ctx
-    }
-
     fn run(input: &str, vars: &[(&str, Value)]) -> Value {
-        eval(&parse(input).unwrap(), &ctx_with_vars(vars)).unwrap()
+        let ctx = Context::new();
+        let env = vars
+            .iter()
+            .fold(None, |env, (name, val)| env_extend(&env, name.to_string(), val.clone()));
+        eval_inner(&parse(input).unwrap(), &ctx, &env).unwrap()
     }
 
     #[test]
@@ -999,7 +974,7 @@ mod tests {
         );
         // shadow
         assert_eq!(run("let x = 1; let x = 99; x", &[]), Value::from(99i64));
-        // shadows external var — lexical binding wins over __resolve
+        // lexical binding shadows outer scope
         assert_eq!(
             run("let x = 7; x", &[("x", Value::from(999i64))]),
             Value::from(7i64)
@@ -1165,9 +1140,7 @@ mod tests {
 
     #[test]
     fn test_var() {
-        // unknown var with resolver → Null
-        assert_eq!(run("missing", &[]), Value::Null);
-        // no resolver registered → error
+        // unknown variable → error
         let ctx = Context::new();
         assert!(eval(&parse("missing").unwrap(), &ctx).is_err());
     }
