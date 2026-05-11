@@ -455,7 +455,7 @@ fn parse_pos_list(text: &str) -> Result<Vec<Coordinate3D<f64>>, &'static str> {
 
     Ok(values
         .chunks_exact(3)
-        .map(|c| Coordinate3D::new__(c[0], c[1], c[2]))
+        .map(|c| Coordinate3D::new__(c[1], c[0], c[2]))
         .collect())
 }
 
@@ -469,7 +469,7 @@ fn parse_single_pos(text: &str) -> Result<Coordinate3D<f64>, &'static str> {
         return Err("invalid gml:pos content");
     }
 
-    Ok(Coordinate3D::new__(vals[0], vals[1], vals[2]))
+    Ok(Coordinate3D::new__(vals[1], vals[0], vals[2]))
 }
 
 fn extract_lod(local: &str) -> Option<u8> {
@@ -590,8 +590,8 @@ mod tests {
     fn test_parse_pos_list_basic() {
         let coords = parse_pos_list("1.0 2.0 3.0 4.0 5.0 6.0").expect("expected valid posList");
         assert_eq!(coords.len(), 2);
-        assert_eq!(coords[0], Coordinate3D::new__(1.0, 2.0, 3.0));
-        assert_eq!(coords[1], Coordinate3D::new__(4.0, 5.0, 6.0));
+        assert_eq!(coords[0], Coordinate3D::new__(2.0, 1.0, 3.0));
+        assert_eq!(coords[1], Coordinate3D::new__(5.0, 4.0, 6.0));
     }
 
     #[test]
@@ -602,6 +602,12 @@ mod tests {
     #[test]
     fn test_parse_pos_list_invalid_number_errors() {
         assert!(parse_pos_list("1.0 2.0 nope").is_err());
+    }
+
+    #[test]
+    fn test_parse_single_pos_basic() {
+        let coord = parse_single_pos("35.0 139.0 34.5").expect("expected valid pos");
+        assert_eq!(coord, Coordinate3D::new__(139.0, 35.0, 34.5));
     }
 
     #[test]

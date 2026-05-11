@@ -322,13 +322,6 @@ impl Processor for Dissolver {
                     AttributeValue::Null
                 };
 
-                // If the key is new, dissolve all current groups first
-                if !self.group_map.contains_key(&key) {
-                    for dissolved in self.dissolve_all_groups()? {
-                        fw.send(ctx.new_with_feature_and_port(dissolved, AREA_PORT.clone()));
-                    }
-                }
-
                 // Get or create group index for this key
                 let group_idx = if let Some(&idx) = self.group_map.get(&key) {
                     idx
