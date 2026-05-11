@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 reearth-flow-common.workspace = true
-reearth-flow-types.workspace = true
 
 indexmap.workspace = true
 lalrpop-util = "0.22"
