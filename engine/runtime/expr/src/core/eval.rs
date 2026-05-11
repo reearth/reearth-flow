@@ -230,6 +230,85 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> Result<Value> 
             let _ = args;
             Ok(Value::String(s.trim().to_string()))
         }
+        "split" => {
+            let sep = match args.first() {
+                Some(Value::String(sep)) => sep.as_str(),
+                Some(v) => {
+                    return Err(Error::Eval {
+                        msg: format!("split() separator must be a string, got {v:?}"),
+                    })
+                }
+                None => {
+                    return Err(Error::Eval {
+                        msg: "split() requires a separator argument".into(),
+                    })
+                }
+            };
+            Ok(Value::Array(
+                s.split(sep).map(|p| Value::String(p.to_string())).collect(),
+            ))
+        }
+        "contains" => {
+            let needle = match args.first() {
+                Some(Value::String(n)) => n.as_str(),
+                Some(v) => {
+                    return Err(Error::Eval {
+                        msg: format!("contains() argument must be a string, got {v:?}"),
+                    })
+                }
+                None => {
+                    return Err(Error::Eval {
+                        msg: "contains() requires an argument".into(),
+                    })
+                }
+            };
+            Ok(Value::Bool(s.contains(needle)))
+        }
+        "starts_with" => {
+            let prefix = match args.first() {
+                Some(Value::String(p)) => p.as_str(),
+                Some(v) => {
+                    return Err(Error::Eval {
+                        msg: format!("starts_with() argument must be a string, got {v:?}"),
+                    })
+                }
+                None => {
+                    return Err(Error::Eval {
+                        msg: "starts_with() requires an argument".into(),
+                    })
+                }
+            };
+            Ok(Value::Bool(s.starts_with(prefix)))
+        }
+        "ends_with" => {
+            let suffix = match args.first() {
+                Some(Value::String(suf)) => suf.as_str(),
+                Some(v) => {
+                    return Err(Error::Eval {
+                        msg: format!("ends_with() argument must be a string, got {v:?}"),
+                    })
+                }
+                None => {
+                    return Err(Error::Eval {
+                        msg: "ends_with() requires an argument".into(),
+                    })
+                }
+            };
+            Ok(Value::Bool(s.ends_with(suffix)))
+        }
+        "replace" => {
+            let (from, to) = match (args.first(), args.get(1)) {
+                (Some(Value::String(f)), Some(Value::String(t))) => {
+                    (f.as_str(), t.as_str())
+                }
+                _ => {
+                    return Err(Error::Eval {
+                        msg: "replace() requires two string arguments: replace(from, to)".into(),
+                    })
+                }
+            };
+            Ok(Value::String(s.replace(from, to)))
+        }
         m => Err(Error::Eval {
             msg: format!("String has no method '{m}'"),
         }),
@@ -241,6 +320,10 @@ fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> Result<Valu
         "len" => {
             let _ = args;
             Ok(Value::Int(a.len() as i64))
+        }
+        "contains" => {
+            let needle = args.first().unwrap_or(&Value::Null);
+            Ok(Value::Bool(a.iter().any(|v| values_equal(v, needle))))
         }
         m => Err(Error::Eval {
             msg: format!("Array has no method '{m}'"),
@@ -821,6 +904,63 @@ mod tests {
             Value::from(3i64),
         ]);
         assert_eq!(run("arr.len()", &[("arr", arr)]), Value::from(3i64));
+    }
+
+    #[test]
+    fn test_string_split() {
+        // basic split and index — common workflow pattern: namespace prefix/suffix
+        assert_eq!(
+            run(r#""bldg:Building".split(":")[0]"#, &[]),
+            Value::from("bldg")
+        );
+        // negative index to get last segment
+        assert_eq!(
+            run(r#""bldg:Building".split(":")[-1]"#, &[]),
+            Value::from("Building")
+        );
+        // separator not present → single-element array
+        assert_eq!(
+            run(r#""hello".split(":")"#, &[]),
+            Value::Array(vec![Value::from("hello")])
+        );
+        // consecutive separators produce empty strings
+        assert_eq!(
+            run(r#""a::b".split(":")"#, &[]),
+            Value::Array(vec![Value::from("a"), Value::from(""), Value::from("b")])
+        );
+    }
+
+    #[test]
+    fn test_string_contains_starts_ends_with() {
+        assert_eq!(run(r#""hello world".contains("world")"#, &[]), Value::from(true));
+        assert_eq!(run(r#""hello world".contains("xyz")"#, &[]), Value::from(false));
+        assert_eq!(run(r#""bldg_lod1".starts_with("tran")"#, &[]), Value::from(false));
+        assert_eq!(run(r#""bldg_lod1".ends_with("lod1")"#, &[]), Value::from(true));
+        // workflow pattern: strip suffix via slice when ends_with matches
+        assert_eq!(
+            run(
+                r#"let s = "city_bldg"; let sfx = "_bldg"; if s.ends_with(sfx) { s[:s.len() - sfx.len()] } else { s }"#,
+                &[]
+            ),
+            Value::from("city")
+        );
+    }
+
+    #[test]
+    fn test_string_replace() {
+        // replaces ALL occurrences (not just first)
+        assert_eq!(run(r#""a/b/c".replace("/", "_")"#, &[]), Value::from("a_b_c"));
+        // multi-char pattern (not char-only)
+        assert_eq!(run(r#""foo_op_bar_op_baz".replace("_op_", "/")"#, &[]), Value::from("foo/bar/baz"));
+        // no match → unchanged
+        assert_eq!(run(r#""hello".replace("x", "y")"#, &[]), Value::from("hello"));
+    }
+
+    #[test]
+    fn test_array_contains() {
+        let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
+        assert_eq!(run(r#"pkgs.contains("bldg")"#, &[("pkgs", pkgs.clone())]), Value::from(true));
+        assert_eq!(run(r#"pkgs.contains("fld")"#, &[("pkgs", pkgs)]), Value::from(false));
     }
 
     #[test]
