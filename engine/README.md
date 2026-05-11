@@ -241,5 +241,6 @@ Whenever you add, update, or delete an action, make sure to update these schema 
 To do so, run the following command:
 
 ```console
-$ cargo make doc-action
+$ cargo make schema-base
+$ cargo make schema-translated
 ```

@@ -9,7 +9,7 @@ const CmsLogo: React.FC<{
   return (
     <div id={id} className={wrapperClassName}>
       <svg
-        className={`text-[#F7B502] ${className}`}
+        className={className}
         style={style}
         width="136"
         height="136"
