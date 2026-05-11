@@ -48,8 +48,6 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
       [onCategoryClick],
     );
 
-    // console.log("TEST", action.categories);
-
     return (
       <div
         ref={ref}
