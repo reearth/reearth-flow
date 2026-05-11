@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -7,7 +8,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, CodeKind};
+use reearth_flow_types::{
+    attribute_value_from_eval, context_from_feature, Attribute, AttributeValue, Code, CompiledCode,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -56,24 +59,17 @@ impl ProcessorFactory for FlowExprTestFactory {
             return Err("Missing required parameter `with`".into());
         };
 
-        let mut mappings = Vec::new();
-        for m in params.mappings {
-            let compiled = match m.value.kind {
-                CodeKind::Expr => {
-                    let ast = reearth_flow_expr::compile(&m.value.value)
-                        .map_err(|e| format!("Failed to parse expression: {e}"))?;
-                    CompiledMapping {
-                        attribute: m.attribute,
-                        kind: CompiledValue::Expr(ast),
-                    }
-                }
-                CodeKind::String => CompiledMapping {
-                    attribute: m.attribute,
-                    kind: CompiledValue::Literal(m.value.value),
-                },
-            };
-            mappings.push(compiled);
-        }
+        let mappings = params
+            .mappings
+            .into_iter()
+            .map(|m| -> Result<(String, CompiledCode), BoxedError> {
+                let compiled = m
+                    .value
+                    .compile()
+                    .map_err(|e| format!("Failed to compile expression: {e}"))?;
+                Ok((m.attribute, compiled))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Box::new(FlowExprTest { mappings }))
     }
@@ -93,20 +89,8 @@ struct Mapping {
 }
 
 #[derive(Debug, Clone)]
-enum CompiledValue {
-    Expr(reearth_flow_expr::CompiledExpr),
-    Literal(String),
-}
-
-#[derive(Debug, Clone)]
-struct CompiledMapping {
-    attribute: String,
-    kind: CompiledValue,
-}
-
-#[derive(Debug, Clone)]
 struct FlowExprTest {
-    mappings: Vec<CompiledMapping>,
+    mappings: Vec<(String, CompiledCode)>,
 }
 
 impl Processor for FlowExprTest {
@@ -116,27 +100,21 @@ impl Processor for FlowExprTest {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let eval_ctx = reearth_flow_expr::flow::context_from_feature(
-            feature,
-            std::sync::Arc::new(ctx.expr_engine.vars()),
-        );
+        let eval_ctx = context_from_feature(feature, Arc::new(ctx.expr_engine.vars()));
         let mut feature = feature.clone();
 
-        for mapping in &self.mappings {
-            let value = match &mapping.kind {
-                CompiledValue::Expr(ast) => match reearth_flow_expr::eval(ast, &eval_ctx) {
-                    Ok(v) => reearth_flow_expr::flow::attribute_value_from_eval(v),
-                    Err(e) => {
-                        ctx.event_hub.error_log(
-                            Some(ctx.error_span()),
-                            format!("FlowExprTest eval error for '{}': {e}", mapping.attribute),
-                        );
-                        AttributeValue::Null
-                    }
-                },
-                CompiledValue::Literal(s) => AttributeValue::String(s.clone()),
+        for (attr, code) in &self.mappings {
+            let value = match code.eval(&eval_ctx) {
+                Ok(v) => attribute_value_from_eval(v),
+                Err(e) => {
+                    ctx.event_hub.error_log(
+                        Some(ctx.error_span()),
+                        format!("FlowExprTest eval error for '{attr}': {e}"),
+                    );
+                    AttributeValue::Null
+                }
             };
-            feature.insert(Attribute::new(mapping.attribute.clone()), value);
+            feature.insert(Attribute::new(attr.clone()), value);
         }
 
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));

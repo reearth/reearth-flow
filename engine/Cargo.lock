@@ -7026,7 +7026,6 @@ dependencies = [
  "lalrpop-util",
  "logos",
  "reearth-flow-common",
- "reearth-flow-types",
  "serde_json",
  "thiserror 2.0.18",
 ]
@@ -7305,6 +7304,7 @@ dependencies = [
  "once_cell",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
+ "reearth-flow-expr",
  "reearth-flow-geometry",
  "rhai",
  "schemars 0.8.22",
