@@ -72,17 +72,12 @@ export default ({
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   // const { handleNodeDropInBatch } = useBatch();
   const { screenToFlowPosition } = useReactFlow();
-  const { useGetActionsSegregated, useGetActions } = useAction(i18n.language);
+  const { useGetActionsSegregated } = useAction(i18n.language);
   const { actions: segregatedActions } = useGetActionsSegregated({
     isMainWorkflow,
     searchTerm,
     type: currentActionByType !== "all" ? currentActionByType : undefined,
     category: currentCategory !== "all" ? currentCategory : undefined,
-  });
-
-  const { actions } = useGetActions({
-    isMainWorkflow,
-    searchTerm,
   });
 
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -204,17 +199,17 @@ export default ({
     },
   );
 
-  const actionsList = useMemo(
-    () =>
-      currentActionByType !== "all" || currentCategory !== "all"
-        ? currentActionByType !== "all"
-          ? segregatedActions?.byType[currentActionByType]
-          : Object.values(segregatedActions?.byCategory ?? {}).flatMap(
-              (a) => a ?? [],
-            )
-        : actions || [],
-    [currentActionByType, currentCategory, segregatedActions, actions],
-  );
+  const actionsList = useMemo(() => {
+    if (currentActionByType !== "all") {
+      return segregatedActions?.byType[currentActionByType] ?? [];
+    }
+    if (currentCategory !== "all") {
+      return segregatedActions?.byCategory[currentCategory] ?? [];
+    }
+    return Object.values(segregatedActions?.byType ?? {}).flatMap(
+      (a) => a ?? [],
+    );
+  }, [currentActionByType, currentCategory, segregatedActions]);
 
   useEffect(() => {
     setSelected(actionsList?.[selectedIndex]?.name ?? "");
