@@ -138,27 +138,7 @@ pub fn context_from_feature(
 ) -> reearth_flow_expr::Context {
     use reearth_flow_expr::Value;
     let attrs = Arc::clone(&feature.attributes);
-    let attrs2 = Arc::clone(&feature.attributes);
     let mut ctx = reearth_flow_expr::Context::new();
-    ctx.register(
-        "__resolve",
-        Box::new(move |args| {
-            let name = args
-                .first()
-                .and_then(|v| {
-                    if let Value::String(s) = v {
-                        Some(s.as_str())
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or("");
-            Ok(attrs
-                .get(&Attribute::new(name))
-                .map(|v| json_to_value(serde_json::Value::from(v.clone())))
-                .unwrap_or(Value::Null))
-        }),
-    );
     ctx.register(
         "value",
         Box::new(move |args| {
@@ -172,7 +152,7 @@ pub fn context_from_feature(
                     }
                 })
                 .unwrap_or("");
-            Ok(attrs2
+            Ok(attrs
                 .get(&Attribute::new(name))
                 .map(|v| json_to_value(serde_json::Value::from(v.clone())))
                 .unwrap_or(Value::Null))
