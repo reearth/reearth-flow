@@ -82,8 +82,8 @@ type SegregatedActions struct {
 }
 
 type loadError struct {
-	status int
 	err    error
+	status int
 }
 
 func (e *loadError) Error() string { return e.err.Error() }
@@ -104,7 +104,7 @@ var (
 
 func loadActionsData(lang string) (ActionsData, error) {
 	if lang != "" && !supportedLangs[lang] {
-		return ActionsData{}, &loadError{http.StatusBadRequest, fmt.Errorf("unsupported language: %s", lang)}
+		return ActionsData{}, &loadError{err: fmt.Errorf("unsupported language: %s", lang), status: http.StatusBadRequest}
 	}
 
 	cacheKey := lang
@@ -129,12 +129,12 @@ func loadActionsData(lang string) (ActionsData, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+filename, nil)
 	if err != nil {
-		return ActionsData{}, &loadError{http.StatusBadGateway, err}
+		return ActionsData{}, &loadError{err: err, status: http.StatusBadGateway}
 	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return ActionsData{}, &loadError{http.StatusBadGateway, err}
+		return ActionsData{}, &loadError{err: err, status: http.StatusBadGateway}
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -143,21 +143,21 @@ func loadActionsData(lang string) (ActionsData, error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return ActionsData{}, &loadError{http.StatusBadGateway, fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, baseURL+filename)}
+		return ActionsData{}, &loadError{err: fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, baseURL+filename), status: http.StatusBadGateway}
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return ActionsData{}, &loadError{http.StatusInternalServerError, err}
+		return ActionsData{}, &loadError{err: err, status: http.StatusInternalServerError}
 	}
 
 	var newData ActionsData
 	if err := json.Unmarshal(body, &newData); err != nil {
-		return ActionsData{}, &loadError{http.StatusInternalServerError, err}
+		return ActionsData{}, &loadError{err: err, status: http.StatusInternalServerError}
 	}
 
 	if err := newData.Validate(); err != nil {
-		return ActionsData{}, &loadError{http.StatusInternalServerError, err}
+		return ActionsData{}, &loadError{err: err, status: http.StatusInternalServerError}
 	}
 
 	// Store in cache under write lock; double-check in case a concurrent
