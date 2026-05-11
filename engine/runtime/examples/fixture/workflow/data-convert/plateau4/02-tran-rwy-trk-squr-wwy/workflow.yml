@@ -201,10 +201,10 @@ graphs:
           attachTexture: true
           output:
             type: flowExpr
-            value: 'Url(env("workerArtifactPath")) / (__package + "_lod3")'
+            value: 'Url(env("workerArtifactPath")) / (value("__package") + "_lod3")'
           compressOutput:
             type: flowExpr
-            value: 'Url(env("workerArtifactPath")) / (cityGmlStem + "_" + __package + "_3dtiles_lod3.zip")'
+            value: 'Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("__package") + "_3dtiles_lod3.zip")'
 
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeManagerByLod0-2
