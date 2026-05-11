@@ -86,7 +86,6 @@ export default ({
   const handleSearchTerm = (newSearchTerm: string) => {
     setSearchTerm(newSearchTerm);
     setSelectedIndex(-1);
-    setSelected(undefined);
   };
 
   useEffect(() => {
@@ -212,7 +211,7 @@ export default ({
   }, [currentActionByType, currentCategory, segregatedActions]);
 
   useEffect(() => {
-    setSelected(actionsList?.[selectedIndex]?.name ?? "");
+    setSelected(actionsList?.[selectedIndex]?.name || undefined);
   }, [selectedIndex, actionsList]);
 
   useEffect(() => {
@@ -235,28 +234,18 @@ export default ({
           handleDoubleClick(selected);
           break;
         case "ArrowUp":
-          {
-            e.preventDefault();
-            const newUpIndex =
-              selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
-            setSelectedIndex(newUpIndex);
-            if (currentActionsList && currentActionsList[newUpIndex]) {
-              setSelected(currentActionsList[newUpIndex].name);
-            }
-          }
+          e.preventDefault();
+          setSelectedIndex(
+            selectedIndex === 0 ? selectedIndex : selectedIndex - 1,
+          );
           break;
         case "ArrowDown":
-          {
-            e.preventDefault();
-            const newDownIndex =
-              selectedIndex === (currentActionsList?.length || 1) - 1
-                ? selectedIndex
-                : selectedIndex + 1;
-            setSelectedIndex(newDownIndex);
-            if (currentActionsList && currentActionsList[newDownIndex]) {
-              setSelected(currentActionsList[newDownIndex].name);
-            }
-          }
+          e.preventDefault();
+          setSelectedIndex(
+            selectedIndex === (currentActionsList?.length || 1) - 1
+              ? selectedIndex
+              : selectedIndex + 1,
+          );
           break;
       }
     };
@@ -270,14 +259,12 @@ export default ({
   const handleActionByTypeChange = useCallback((actionByType: string) => {
     setCurrentActionByType(actionByType as ActionTypeFiltering);
     setSelectedIndex(-1);
-    setSelected(undefined);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   const handleCategoryChange = useCallback((category: CategoryFiltering) => {
     setCurrentCategory(category);
     setSelectedIndex(-1);
-    setSelected(undefined);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
