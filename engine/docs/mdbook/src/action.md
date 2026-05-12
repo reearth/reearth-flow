@@ -1404,7 +1404,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
   },
   "definitions": {
     "Code": {
-      "description": "A value that is either a Flow expression or a plain string literal",
+      "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
       "type": "object",
       "required": [
         "type",
