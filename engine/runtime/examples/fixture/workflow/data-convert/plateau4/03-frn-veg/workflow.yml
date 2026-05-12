@@ -393,7 +393,12 @@ graphs:
             file::join_path(env.get("workerArtifactPath"), "frn_dm_geometric_attributes")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
-            file::join_path(artifact, env.get("__value").cityGmlStem + "_frn_dm_geometric_attributes.zip")
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let suffix = "_frn";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_frn_dm_geometric_attributes.zip")
           colonToUnderscore: true
 
       # veg_SolitaryVegetationObject nodes
@@ -649,7 +654,12 @@ graphs:
             file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_dm_geometric_attributes")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
-            file::join_path(artifact, env.get("__value").cityGmlStem + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip")
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let suffix = "_veg";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip")
           colonToUnderscore: true
 
       # veg_PlantCover nodes
@@ -870,7 +880,12 @@ graphs:
             file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_dm_geometric_attributes")
           compressOutput: |
             let artifact = env.get("workerArtifactPath");
-            file::join_path(artifact, env.get("__value").cityGmlStem + "_veg_PlantCover_dm_geometric_attributes.zip")
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let suffix = "_veg";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_veg_PlantCover_dm_geometric_attributes.zip")
           colonToUnderscore: true
 
     edges:
