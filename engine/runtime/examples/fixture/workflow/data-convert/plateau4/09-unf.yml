@@ -383,6 +383,17 @@ graphs:
       - attribute: feature_type
         method: create
         value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+      - attribute: cityGmlStem
+        method: create
+        value: |
+          let pkg = env.get("__value")["package"];
+          let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+          let suffix = "_" + pkg;
+          if city_gml.ends_with(suffix) {
+            city_gml.sub_string(0, city_gml.len() - suffix.len())
+          } else {
+            city_gml
+          }
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -454,22 +465,16 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["package"];
-        let ft = env.get("__value")["feature_type"].split(":").pop();
-        let lod = env.get("__value").lod;
-        file::join_path(artifact, pkg + "_" + ft + "_lod" + lod)
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["package"];
-        let ft = env.get("__value")["feature_type"].split(":").pop();
-        let lod = env.get("__value").lod;
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod" + lod + ".zip")
+      output:
+        type: flowExpr
+        value: |
+          let ft = value("feature_type").split(":")[-1];
+          Url(env("workerArtifactPath")) / (value("package") + "_" + ft + "_lod" + value("lod"))
+      compressOutput:
+        type: flowExpr
+        value: |
+          let ft = value("feature_type").split(":")[-1];
+          Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("package") + "_" + ft + "_3dtiles_lod" + value("lod") + ".zip")
   - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
     name: FeatureSorterDmGeometricAttribute
     type: action
