@@ -8,7 +8,7 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import ActionFilters from "./ActionFilters";
 import useHooks from "./hooks";
-import NodePickerDetail from "./NodePickerDetail";
+import ActionPickerDetail from "./NodePickerDetail";
 
 export type XYPosition = {
   x: number;
@@ -79,7 +79,8 @@ const NodePickerDialog: React.FC<Props> = ({
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         size="2xl"
-        className="flex max-h-[80vh] flex-col gap-0 overflow-hidden p-0">
+        position="top"
+        className="flex h-[75vh] flex-col gap-0 overflow-hidden p-0">
         <div className="px-4 pt-4 pb-2">
           <DialogTitle>{t("Choose Action")}</DialogTitle>
         </div>
@@ -127,7 +128,7 @@ const NodePickerDialog: React.FC<Props> = ({
 
           {/* Right panel — detail */}
           <div className="min-w-0 flex-1 overflow-y-auto">
-            <NodePickerDetail action={selectedAction} />
+            <ActionPickerDetail action={selectedAction} />
           </div>
         </div>
       </DialogContent>

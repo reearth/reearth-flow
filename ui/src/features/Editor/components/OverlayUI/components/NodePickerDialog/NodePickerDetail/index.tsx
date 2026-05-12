@@ -20,7 +20,7 @@ type Props = {
   action?: Action;
 };
 
-const NodePickerDetail = ({ action }: Props) => {
+const ActionPickerDetail = ({ action }: Props) => {
   const t = useT();
 
   if (!action) {
@@ -46,15 +46,20 @@ const NodePickerDetail = ({ action }: Props) => {
       <div className="flex flex-wrap gap-1.5">
         <div
           className={`self-center rounded border  ${action.type === "transformer" ? "bg-node-transformer/95 dark:bg-node-transformer/60" : action.type === "reader" ? "bg-node-reader/95 dark:bg-node-reader/60" : action.type === "writer" ? "bg-node-writer/85 dark:bg-node-writer/30" : "bg-popover"} p-0.5 align-middle`}>
-          <p className="self-center text-xs text-zinc-200 capitalize">
-            {action.type}
-          </p>
+          <p className="self-center text-xs capitalize">{action.type}</p>
         </div>
-        {action.categories.map((c) => (
-          <div className="self-center rounded border bg-secondary/80 p-0.5 align-middle">
-            <p className="self-center text-xs ">{c}</p>
-          </div>
-        ))}
+      </div>
+      <div className="flex flex-col flex-wrap  gap-1.5">
+        <p className="items-center text-xs font-semibold tracking-wide text-muted-foreground">
+          {t("Categories")}
+        </p>
+        <div className="flex">
+          {action.categories.map((c) => (
+            <div className="w-fit rounded border bg-secondary/80 p-0.5">
+              <p className="self-center text-xs ">{c}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {action.description && (
@@ -69,4 +74,4 @@ const NodePickerDetail = ({ action }: Props) => {
   );
 };
 
-export default NodePickerDetail;
+export default ActionPickerDetail;

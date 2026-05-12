@@ -105,7 +105,7 @@ const DialogContent = forwardRef<
           onCloseAutoFocus ? onCloseAutoFocus(e) : e.preventDefault()
         }
         {...props}>
-        <div className="overflow-hidden rounded-lg">
+        <div className="flex h-full flex-col overflow-hidden rounded-lg">
           {children}
           {!hideCloseButton && (
             <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
