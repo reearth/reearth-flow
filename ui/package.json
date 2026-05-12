@@ -7,6 +7,7 @@
   "private": true,
   "scripts": {
     "start": "yarn && vite",
+    "dev:secure": "op run --env-file=.env -- yarn start",
     "serve": "vite preview",
     "storybook": "storybook dev -p 6006 --no-open",
     "build": "tsc && vite build",
