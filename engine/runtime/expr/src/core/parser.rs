@@ -43,7 +43,7 @@ mod tests {
     #[test]
     fn test_literal() {
         assert_eq!(parse("42").unwrap(), Expr::Int(42));
-        assert_eq!(parse("3.14").unwrap(), Expr::Float(3.14));
+        assert_eq!(parse("1.5").unwrap(), Expr::Float(1.5));
         assert_eq!(parse("true").unwrap(), Expr::Bool(true));
         assert_eq!(parse("null").unwrap(), Expr::Null);
         assert_eq!(parse(r#""hello""#).unwrap(), Expr::Str("hello".into()));
