@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.15 - 2026-05-12
+
+### Misc
+
+
+### api
+
+#### 🔧 Bug Fixes
+
+- LoadActionsData to return ActionsData and handle unexpected status codes [FLOW DEV 84] ([#2068](https://github.com/reearth/reearth-flow/pull/2068)) [`bff9b8`](https://github.com/reearth/reearth-flow/commit/bff9b8)
+- GCS setup issue [FLOW DEV 83] ([#2067](https://github.com/reearth/reearth-flow/pull/2067)) [`7bc176`](https://github.com/reearth/reearth-flow/commit/7bc176)
+
+### engine
+
+#### 🚀 Features
+
+- CityGML 3.0 code resolution ([#2066](https://github.com/reearth/reearth-flow/pull/2066)) [`dcd69f`](https://github.com/reearth/reearth-flow/commit/dcd69f)
+
+#### 🔧 Bug Fixes
+
+- Order contract on input features are removed for some accumulating processors with group-by ([#2074](https://github.com/reearth/reearth-flow/pull/2074)) [`d43c68`](https://github.com/reearth/reearth-flow/commit/d43c68)
+- Swap lat&#x2F;lon order in CityGML 3.0 reader and add ADE example ([#2076](https://github.com/reearth/reearth-flow/pull/2076)) [`9fc08b`](https://github.com/reearth/reearth-flow/commit/9fc08b)
+- Action schemas not having working internationalization support [FLOW-DEV-72] ([#2043](https://github.com/reearth/reearth-flow/pull/2043)) [`394171`](https://github.com/reearth/reearth-flow/commit/394171)
+- Reject absolute paths and missing base in expand_yaml_includes ([#2073](https://github.com/reearth/reearth-flow/pull/2073)) [`60cd25`](https://github.com/reearth/reearth-flow/commit/60cd25)
+- Add comment to suppress false positive traversal risk report ([#2071](https://github.com/reearth/reearth-flow/pull/2071)) [`f5a876`](https://github.com/reearth/reearth-flow/commit/f5a876)
+
+### ui
+
+#### 🚀 Features
+
+- Action dialogue advanced filtering by category [FLOW-DEV-87] ([#2078](https://github.com/reearth/reearth-flow/pull/2078)) [`07f4e0`](https://github.com/reearth/reearth-flow/commit/07f4e0)
+
+#### 🔧 Bug Fixes
+
+- Update Port component to conditionally handle click events based on data availability ([#2082](https://github.com/reearth/reearth-flow/pull/2082)) [`c6de77`](https://github.com/reearth/reearth-flow/commit/c6de77)
+- Intermediate data icon highlighted background and various ui fixes [FLOW-DEV-86] ([#2077](https://github.com/reearth/reearth-flow/pull/2077)) [`58cd31`](https://github.com/reearth/reearth-flow/commit/58cd31)
+
+#### Miscellaneous Tasks
+
+- May Dependencies Update [FLOW-DEV-85] ([#2072](https://github.com/reearth/reearth-flow/pull/2072)) [`c298bc`](https://github.com/reearth/reearth-flow/commit/c298bc)
+
+###
+
 ## 0.1.0-alpha.14 - 2026-04-22
 
 ### api
