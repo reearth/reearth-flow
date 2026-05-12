@@ -111,11 +111,9 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
             }
             Ok(Value::Map(map))
         }
-        Expr::Var(name) => {
-            env_lookup(env, name).ok_or_else(|| Error::Eval {
-                msg: format!("unknown variable '{name}'"),
-            })
-        }
+        Expr::Var(name) => env_lookup(env, name).ok_or_else(|| Error::Eval {
+            msg: format!("unknown variable '{name}'"),
+        }),
         Expr::Index(target, key) => {
             let target = eval_inner(target, ctx, env)?;
             let key = eval_inner(key, ctx, env)?;
@@ -746,9 +744,9 @@ mod tests {
 
     fn run(input: &str, vars: &[(&str, Value)]) -> Value {
         let ctx = Context::new();
-        let env = vars
-            .iter()
-            .fold(None, |env, (name, val)| env_extend(&env, name.to_string(), val.clone()));
+        let env = vars.iter().fold(None, |env, (name, val)| {
+            env_extend(&env, name.to_string(), val.clone())
+        });
         eval_inner(&parse(input).unwrap(), &ctx, &env).unwrap()
     }
 
