@@ -1318,35 +1318,6 @@
       }
     },
     {
-      "name": "FlowExprTest",
-      "parameterI18n": {
-        "": {
-          "title": "FlowExprTestParam"
-        },
-        "mappings": {}
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
-        "Mapping": {
-          "attribute": {},
-          "value": {}
-        }
-      },
-      "enumI18n": {
-        "CodeType": {
-          "flowExpr": {
-            "description": "Evaluated as a Flow expression at runtime"
-          },
-          "string": {
-            "description": "Used as a plain string literal"
-          }
-        }
-      }
-    },
-    {
       "name": "FootprintReplacer",
       "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）"
     },
