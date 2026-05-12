@@ -7019,7 +7019,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-expr"
-version = "0.0.1"
+version = "0.0.368"
 dependencies = [
  "indexmap 2.13.0",
  "lalrpop",
