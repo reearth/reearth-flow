@@ -1,91 +1,78 @@
-import { DragEvent, MouseEvent, useCallback, forwardRef } from "react";
+import { forwardRef } from "react";
 
+import { cn } from "@flow/lib/utils";
 import { Action } from "@flow/types";
+import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
 type Props = {
-  className?: string;
+  itemRefs: React.RefObject<(HTMLDivElement | null)[]>;
+  actionsList: Action[];
+  idx: number;
   action: Action;
-  selected: boolean | undefined;
-  draggable?: boolean;
-  onMouseDown?: () => void;
-  onTypeClick?: (type: string) => void;
-  onCategoryClick?: (category: string) => void;
-  onDragStart?: (event: DragEvent<HTMLDivElement>, actionName: string) => void;
-  onSingleClick?: (name?: string) => void;
-  onDoubleClick?: (name?: string) => void;
+  isSelected?: boolean;
+  onSingleClick?: (actionName: string) => void;
+  onDoubleClick?: (actionName: string) => void;
+};
+
+const typeColorClass = (type: string) => {
+  switch (type) {
+    case "transformer":
+      return "bg-node-transformer/80";
+    case "reader":
+      return "bg-node-reader/80";
+    case "writer":
+      return "bg-node-writer/80";
+    default:
+      return "bg-secondary";
+  }
 };
 
 const ActionItem = forwardRef<HTMLDivElement, Props>(
-  (
-    {
-      className,
-      action,
-      selected,
-      draggable,
-      onMouseDown,
-      onTypeClick,
-      onCategoryClick,
-      onDragStart,
-      onSingleClick,
-      onDoubleClick,
-    },
-    ref,
-  ) => {
-    const handleTypeClick = useCallback(
-      (type: string) => (e: MouseEvent) => {
-        if (!onTypeClick) return;
-        e.stopPropagation();
-        onTypeClick(type);
-      },
-      [onTypeClick],
-    );
-
-    const handleCategoryClick = useCallback(
-      (category: string) => (e: MouseEvent) => {
-        e.stopPropagation();
-        onCategoryClick?.(category);
-      },
-      [onCategoryClick],
-    );
+  ({
+    itemRefs,
+    idx,
+    action,
+    isSelected,
+    actionsList,
+    onSingleClick,
+    onDoubleClick,
+  }) => {
+    const Icon = getNodeIcon(action.type);
 
     return (
-      <div
-        ref={ref}
-        key={action.name}
-        className={`group cursor-pointer rounded p-2 ${selected ? "bg-primary text-accent-foreground" : "hover:bg-primary hover:text-accent-foreground"} ${className}`}
-        onClick={() => onSingleClick?.(action.name)}
-        onDoubleClick={() => onDoubleClick?.(action.name)}
-        draggable={draggable}
-        onMouseDown={onMouseDown}
-        onDragStart={(e) => onDragStart?.(e, action.name)}>
-        <div className="flex w-full justify-between gap-1 pb-2">
-          <div className="w-3/5 self-center text-sm break-words">
-            <p className="self-center dark:text-zinc-200">{action.name}</p>
-          </div>
+      <>
+        <div
+          ref={(el) => {
+            itemRefs.current[idx] = el;
+          }}
+          className={cn(
+            "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5",
+            isSelected
+              ? "bg-primary text-accent-foreground"
+              : "hover:bg-primary hover:text-accent-foreground",
+          )}
+          onClick={() => onSingleClick?.(action.name)}
+          onDoubleClick={() => onDoubleClick?.(action.name)}>
           <div
-            className={`self-center rounded border ${action.type === "transformer" ? "bg-node-transformer/95 dark:bg-node-transformer/60" : action.type === "reader" ? "bg-node-reader/95 dark:bg-node-reader/60" : action.type === "writer" ? "bg-node-writer/85 dark:bg-node-writer/30" : "bg-popover"} p-1 align-middle`}
-            onClick={handleTypeClick(action.type)}>
+            className={cn(
+              "shrink-0 rounded p-0.5",
+              typeColorClass(action.type),
+            )}>
+            <Icon size={12} weight="thin" className="text-white" />
+          </div>
+          <span className="flex-1 truncate text-sm">{action.name}</span>
+          {/* <span className="shrink-0 text-xs capitalize opacity-60">
+                              {action.type}
+                            </span> */}
+          <div
+            className={`self-center rounded border  ${action.type === "transformer" ? "bg-node-transformer/95 dark:bg-node-transformer/60" : action.type === "reader" ? "bg-node-reader/95 dark:bg-node-reader/60" : action.type === "writer" ? "bg-node-writer/85 dark:bg-node-writer/30" : "bg-popover"} p-0.5 align-middle`}>
             <p className="self-center text-xs text-zinc-200 capitalize">
               {action.type}
             </p>
           </div>
         </div>
-        <div className="group-hover:block">
-          <div className="mb-2 text-xs leading-[0.85rem]">
-            {action.description}
-          </div>
-          <div className="flex flex-wrap gap-1 text-xs">
-            {action.categories.map((c) => (
-              <div
-                className="rounded border bg-popover p-[2px]"
-                key={c}
-                onClick={handleCategoryClick(c)}>
-                <p>{c}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+        {idx !== actionsList.length - 1 && <div className="mx-1 border-b" />}
+      </>
     );
   },
 );

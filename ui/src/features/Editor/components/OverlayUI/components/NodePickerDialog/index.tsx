@@ -1,5 +1,5 @@
 import { EdgeChange } from "@xyflow/react";
-import { Fragment, memo } from "react";
+import { memo } from "react";
 
 import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
@@ -8,11 +8,13 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import ActionFilters from "./ActionFilters";
 import useHooks from "./hooks";
+import NodePickerDetail from "./NodePickerDetail";
 
 export type XYPosition = {
   x: number;
   y: number;
 };
+
 type Props = {
   openedActionType: {
     position: XYPosition;
@@ -50,13 +52,14 @@ const NodePickerDialog: React.FC<Props> = ({
     selected,
     actionTypes,
     actionCategories,
-    currentActionByType,
-    currentCategory,
+    currentActionByTypes,
+    currentCategories,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
-    handleActionByTypeChange,
-    handleCategoryChange,
+    handleActionTypeToggle,
+    handleCategoryToggle,
+    handleClearFilters,
   } = useHooks({
     openedActionType,
     isMainWorkflow,
@@ -69,46 +72,63 @@ const NodePickerDialog: React.FC<Props> = ({
     onEdgesChange,
     onClose,
   });
+
+  const selectedAction = actionsList?.find((a) => a.name === selected);
+
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogTitle>{t("Choose Action")}</DialogTitle>
-        <div className="p-2">
-          <ActionFilters
-            currentActionByType={currentActionByType}
-            currentCategory={currentCategory}
-            actionTypes={actionTypes}
-            actionCategories={actionCategories}
-            isMainWorkflow={isMainWorkflow}
-            onActionByTypeChange={handleActionByTypeChange}
-            onCategoryChange={handleCategoryChange}>
-            <Input
-              className="mx-auto w-full focus-visible:ring-0"
-              placeholder={t("Search")}
-              autoFocus
-              onChange={(e) => handleSearchTerm(e.target.value)}
-            />
-          </ActionFilters>
+      <DialogContent
+        size="2xl"
+        className="flex max-h-[80vh] flex-col gap-0 overflow-hidden p-0">
+        <div className="px-4 pt-4 pb-2">
+          <DialogTitle>{t("Choose Action")}</DialogTitle>
         </div>
+        <div className="flex min-h-0 flex-1 overflow-hidden border-t">
+          {/* Left panel — filters + list */}
+          <div className="flex w-2/5 min-w-0 flex-col border-r">
+            <div className="p-3">
+              <ActionFilters
+                currentActionByTypes={currentActionByTypes}
+                currentCategories={currentCategories}
+                actionTypes={actionTypes}
+                actionCategories={actionCategories}
+                isMainWorkflow={isMainWorkflow}
+                onActionTypeToggle={handleActionTypeToggle}
+                onCategoryToggle={handleCategoryToggle}
+                onClearFilters={handleClearFilters}>
+                <Input
+                  className="mx-auto w-full focus-visible:ring-0"
+                  placeholder={t("Search")}
+                  autoFocus
+                  onChange={(e) => handleSearchTerm(e.target.value)}
+                />
+              </ActionFilters>
+            </div>
+            <div
+              ref={containerRef}
+              className="max-h-[50vh] flex-1 overflow-scroll px-2 pb-4">
+              {actionsList?.map((action, idx) => {
+                const isSelected = selected === action.name;
+                return (
+                  <ActionItem
+                    key={action.name}
+                    itemRefs={itemRefs}
+                    idx={idx}
+                    action={action}
+                    isSelected={isSelected}
+                    actionsList={actionsList}
+                    onSingleClick={handleSingleClick}
+                    onDoubleClick={handleDoubleClick}
+                  />
+                );
+              })}
+            </div>
+          </div>
 
-        <div ref={containerRef} className="max-h-[50vh] overflow-scroll">
-          {actionsList?.map((action, idx) => (
-            <Fragment key={action.name}>
-              <ActionItem
-                ref={(el) => {
-                  itemRefs.current[idx] = el;
-                }}
-                className={"m-1"}
-                action={action}
-                selected={selected === action.name}
-                onSingleClick={handleSingleClick}
-                onDoubleClick={handleDoubleClick}
-              />
-              {idx !== actionsList.length - 1 && (
-                <div className="mx-1 border-b" />
-              )}
-            </Fragment>
-          ))}
+          {/* Right panel — detail */}
+          <div className="min-w-0 flex-1 overflow-y-auto">
+            <NodePickerDetail action={selectedAction} />
+          </div>
         </div>
       </DialogContent>
     </Dialog>

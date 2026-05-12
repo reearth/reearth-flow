@@ -1,106 +1,80 @@
-import { FunnelSimpleIcon, StackIcon, TagIcon } from "@phosphor-icons/react";
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  IconButton,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@flow/components";
+import { Badge } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { cn } from "@flow/lib/utils";
 
 type Props = {
   children: ReactNode;
-  currentActionByType: string;
-  currentCategory: string;
+  currentActionByTypes: string[];
+  currentCategories: string[];
   actionTypes: { value: string; label: string }[];
   actionCategories: { value: string; label: string }[];
   isMainWorkflow: boolean;
-  onActionByTypeChange: (value: string) => void;
-  onCategoryChange: (value: string) => void;
+  onActionTypeToggle: (value: string) => void;
+  onCategoryToggle: (value: string) => void;
+  onClearFilters: () => void;
 };
 
 const ActionFilters = ({
   children,
-  currentActionByType,
-  currentCategory,
+  currentActionByTypes,
+  currentCategories,
   actionTypes,
   actionCategories,
   isMainWorkflow,
-  onActionByTypeChange,
-  onCategoryChange,
+  onActionTypeToggle,
+  onCategoryToggle,
+  onClearFilters,
 }: Props) => {
   const t = useT();
-  const [isOpen, setIsOpen] = useState(false);
+  const hasActiveFilters =
+    currentActionByTypes.length > 0 || currentCategories.length > 0;
 
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        {children}
-        <CollapsibleTrigger asChild>
-          <IconButton
-            variant="ghost"
-            size="icon"
-            className="size-8 shrink-0"
-            tooltipText={t("Filters")}
-            icon={<FunnelSimpleIcon size={16} weight="light" />}
-          />
-        </CollapsibleTrigger>
+    <div className="flex flex-col gap-2">
+      {children}
+      <div className="flex flex-wrap gap-1.5 border-b pb-2">
+        {actionTypes.map(({ value, label }) => {
+          const isSelected = currentActionByTypes.includes(value);
+          const isDisabled =
+            (value === "reader" || value === "writer") && !isMainWorkflow;
+          return (
+            <Badge
+              key={value}
+              variant={isSelected ? "default" : "secondary"}
+              className={cn(
+                "cursor-pointer select-none",
+                isDisabled && "pointer-events-none opacity-40",
+              )}
+              onClick={() => onActionTypeToggle(value)}>
+              {label}
+            </Badge>
+          );
+        })}
       </div>
-      <CollapsibleContent className="flex gap-2">
-        <Select
-          value={currentActionByType}
-          onValueChange={onActionByTypeChange}>
-          <SelectTrigger className="h-7 w-full min-w-0">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <StackIcon weight="light" size={14} className="shrink-0" />
-              <div className="min-w-0 flex-1 text-left [&>span]:block [&>span]:truncate">
-                <SelectValue />
-              </div>
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            {actionTypes.map((actionType) => (
-              <SelectItem
-                key={actionType.value}
-                value={actionType.value}
-                disabled={
-                  (actionType.value === "reader" ||
-                    actionType.value === "writer") &&
-                  !isMainWorkflow
-                }>
-                {actionType.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={currentCategory} onValueChange={onCategoryChange}>
-          <SelectTrigger className="h-7 w-full min-w-0">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <TagIcon weight="light" size={14} className="shrink-0" />
-              <div className="min-w-0 flex-1 text-left [&>span]:block [&>span]:truncate">
-                <SelectValue />
-              </div>
-            </div>
-          </SelectTrigger>
-          <SelectContent>
-            {actionCategories.map((category) => (
-              <SelectItem key={category.value} value={category.value}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </CollapsibleContent>
-    </Collapsible>
+      <div className="flex flex-wrap gap-1.5 border-b pb-2">
+        {actionCategories.map(({ value, label }) => {
+          const isSelected = currentCategories.includes(value);
+          return (
+            <Badge
+              key={value}
+              variant={isSelected ? "default" : "secondary"}
+              className="cursor-pointer select-none"
+              onClick={() => onCategoryToggle(value)}>
+              {label}
+            </Badge>
+          );
+        })}
+      </div>
+      {hasActiveFilters && (
+        <button
+          className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline"
+          onClick={onClearFilters}>
+          {t("Clear filters")}
+        </button>
+      )}
+    </div>
   );
 };
 

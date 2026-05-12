@@ -10,8 +10,7 @@ import { ActionNodeType, Edge, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
-type ActionTypeFiltering = "all" | ActionNodeType;
-type CategoryFiltering = "all" | string;
+type CategoryFiltering = string;
 
 export default ({
   openedActionType,
@@ -41,20 +40,20 @@ export default ({
 }) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentActionByType, setCurrentActionByType] =
-    useState<ActionTypeFiltering>(openedActionType.nodeType);
-  const [currentCategory, setCurrentCategory] =
-    useState<CategoryFiltering>("all");
+  const [currentActionByTypes, setCurrentActionByTypes] = useState<
+    ActionNodeType[]
+  >([openedActionType.nodeType]);
+  const [currentCategories, setCurrentCategories] = useState<
+    CategoryFiltering[]
+  >([]);
 
-  const actionTypes: { value: ActionTypeFiltering; label: string }[] = [
-    { value: "all", label: t("All Actions") },
-    { value: "reader", label: t("Readers") },
-    { value: "transformer", label: t("Transformers") },
-    { value: "writer", label: t("Writers") },
+  const actionTypes: { value: ActionNodeType; label: string }[] = [
+    { value: "reader", label: t("Reader") },
+    { value: "transformer", label: t("Transformer") },
+    { value: "writer", label: t("Writer") },
   ];
 
   const actionCategories: { value: CategoryFiltering; label: string }[] = [
-    { value: "all", label: t("All Categories") },
     { value: "3D", label: t("3D") },
     { value: "Attribute", label: t("Attribute") },
     { value: "Database", label: t("Database") },
@@ -73,12 +72,27 @@ export default ({
   // const { handleNodeDropInBatch } = useBatch();
   const { screenToFlowPosition } = useReactFlow();
   const { useGetActionsSegregated } = useAction(i18n.language);
-  const { actions: segregatedActions } = useGetActionsSegregated({
-    isMainWorkflow,
-    searchTerm,
-    type: currentActionByType !== "all" ? currentActionByType : undefined,
-    category: currentCategory !== "all" ? currentCategory : undefined,
-  });
+  const filterConfig = useMemo(
+    () => ({
+      isMainWorkflow,
+      searchTerm,
+      types: currentActionByTypes.length ? currentActionByTypes : undefined,
+      categories: currentCategories.length ? currentCategories : undefined,
+    }),
+    [isMainWorkflow, searchTerm, currentActionByTypes, currentCategories],
+  );
+  const { actions: segregatedActions } = useGetActionsSegregated(filterConfig);
+
+  const actionsList = useMemo(() => {
+    if (currentActionByTypes.length) {
+      return currentActionByTypes.flatMap(
+        (type) => segregatedActions?.byType[type] ?? [],
+      );
+    }
+    return Object.values(segregatedActions?.byType ?? {}).flatMap(
+      (a) => a ?? [],
+    );
+  }, [currentActionByTypes, segregatedActions]);
 
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selected, setSelected] = useState<string | undefined>();
@@ -103,7 +117,9 @@ export default ({
 
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
-      setSelected((prevName) => (prevName === name ? undefined : name));
+      if (!name) return;
+      const idx = actionsList.findIndex((a) => a.name === name);
+      setSelectedIndex((prev) => (prev === idx ? -1 : idx));
     },
     async (name?: string) => {
       if (!name) return;
@@ -198,18 +214,6 @@ export default ({
     },
   );
 
-  const actionsList = useMemo(() => {
-    if (currentActionByType !== "all") {
-      return segregatedActions?.byType[currentActionByType] ?? [];
-    }
-    if (currentCategory !== "all") {
-      return segregatedActions?.byCategory[currentCategory] ?? [];
-    }
-    return Object.values(segregatedActions?.byType ?? {}).flatMap(
-      (a) => a ?? [],
-    );
-  }, [currentActionByType, currentCategory, segregatedActions]);
-
   useEffect(() => {
     setSelected(actionsList?.[selectedIndex]?.name || undefined);
   }, [selectedIndex, actionsList]);
@@ -256,14 +260,30 @@ export default ({
     };
   }, [actionsList, selectedIndex, selected, handleDoubleClick]);
 
-  const handleActionByTypeChange = useCallback((actionByType: string) => {
-    setCurrentActionByType(actionByType as ActionTypeFiltering);
+  const handleActionTypeToggle = useCallback((type: string) => {
+    const nodeType = type as ActionNodeType;
+    setCurrentActionByTypes((prev) =>
+      prev.includes(nodeType)
+        ? prev.filter((t) => t !== nodeType)
+        : [...prev, nodeType],
+    );
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const handleCategoryChange = useCallback((category: CategoryFiltering) => {
-    setCurrentCategory(category);
+  const handleCategoryToggle = useCallback((category: CategoryFiltering) => {
+    setCurrentCategories((prev) =>
+      prev.includes(category)
+        ? prev.filter((c) => c !== category)
+        : [...prev, category],
+    );
+    setSelectedIndex(-1);
+    containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setCurrentActionByTypes([]);
+    setCurrentCategories([]);
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
@@ -273,14 +293,15 @@ export default ({
     containerRef,
     itemRefs,
     selected,
-    currentActionByType,
-    currentCategory,
+    currentActionByTypes,
+    currentCategories,
     actionTypes,
     actionCategories,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
-    handleActionByTypeChange,
-    handleCategoryChange,
+    handleActionTypeToggle,
+    handleCategoryToggle,
+    handleClearFilters,
   };
 };
