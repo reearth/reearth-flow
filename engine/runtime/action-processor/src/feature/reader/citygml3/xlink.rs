@@ -68,6 +68,7 @@ fn convert_node(
         name: raw.name.clone(),
         attrs: raw.attrs.clone(),
         children,
+        source_url: raw.source_url.clone(),
     });
     in_progress.remove(&ptr);
     cache.insert(ptr, Arc::clone(&node));

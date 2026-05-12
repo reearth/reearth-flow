@@ -10,6 +10,7 @@ export const mockDeployments: DeploymentFragment[] = [
     workflowUrl: "https://workflow-1.reearth-flow.com",
     createdAt: "2024-01-15T09:45:00Z",
     updatedAt: "2024-01-15T09:55:00Z",
+    project: null,
   },
   {
     id: "deployment-2",
@@ -20,6 +21,7 @@ export const mockDeployments: DeploymentFragment[] = [
     workflowUrl: "https://workflow-2.reearth-flow.com",
     createdAt: "2024-01-28T14:00:00Z",
     updatedAt: "2024-01-28T14:10:00Z",
+    project: null,
   },
   {
     id: "deployment-3",
@@ -30,6 +32,7 @@ export const mockDeployments: DeploymentFragment[] = [
     workflowUrl: "https://workflow-3.reearth-flow.com",
     createdAt: "2024-01-25T09:00:00Z",
     updatedAt: "2024-01-25T09:20:00Z",
+    project: null,
   },
   {
     id: "deployment-4",
@@ -40,6 +43,7 @@ export const mockDeployments: DeploymentFragment[] = [
     workflowUrl: "https://workflow-4.reearth-flow.com",
     createdAt: "2024-01-28T15:50:00Z",
     updatedAt: "2024-01-28T15:50:00Z",
+    project: null,
   },
   {
     id: "deployment-5",
@@ -50,6 +54,7 @@ export const mockDeployments: DeploymentFragment[] = [
     workflowUrl: "https://workflow-5.reearth-flow.com",
     createdAt: "2023-12-15T16:30:00Z",
     updatedAt: "2023-12-15T16:45:00Z",
+    project: null,
   },
   {
     id: "deployment-6",
@@ -60,5 +65,6 @@ export const mockDeployments: DeploymentFragment[] = [
     workflowUrl: "https://workflow-6.reearth-flow.com",
     createdAt: "2024-01-22T14:30:00Z",
     updatedAt: "2024-01-22T14:40:00Z",
+    project: null,
   },
 ];

@@ -6,9 +6,8 @@ import { isDefined } from "@flow/utils";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 import {
-  DeleteDeploymentInput,
-  OrderDirection,
-  UpdateDeploymentInput,
+  type DeleteDeploymentInput,
+  type UpdateDeploymentInput,
 } from "../__gen__/plugins/graphql-request";
 import { toDeployment, toJob } from "../convert";
 import { JobQueryKeys } from "../job/useQueries";
@@ -166,7 +165,7 @@ export const useQueries = () => {
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: DEPLOYMENT_FETCH_RATE,
-            orderDir: paginationOptions?.orderDir ?? OrderDirection.Desc,
+            orderDir: paginationOptions?.orderDir ?? "DESC",
             orderBy: paginationOptions?.orderBy ?? "updatedAt",
           },
         });

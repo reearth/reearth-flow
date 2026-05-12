@@ -1,5 +1,5 @@
 import { EdgeChange, useReactFlow, XYPosition } from "@xyflow/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
@@ -11,6 +11,8 @@ import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 type ActionTypeFiltering = "all" | ActionNodeType;
+type CategoryFiltering = "all" | string;
+
 export default ({
   openedActionType,
   isMainWorkflow,
@@ -41,6 +43,8 @@ export default ({
   const [searchTerm, setSearchTerm] = useState("");
   const [currentActionByType, setCurrentActionByType] =
     useState<ActionTypeFiltering>(openedActionType.nodeType);
+  const [currentCategory, setCurrentCategory] =
+    useState<CategoryFiltering>("all");
 
   const actionTypes: { value: ActionTypeFiltering; label: string }[] = [
     { value: "all", label: t("All Actions") },
@@ -49,38 +53,39 @@ export default ({
     { value: "writer", label: t("Writers") },
   ];
 
+  const actionCategories: { value: CategoryFiltering; label: string }[] = [
+    { value: "all", label: t("All Categories") },
+    { value: "3D", label: t("3D") },
+    { value: "Attribute", label: t("Attribute") },
+    { value: "Database", label: t("Database") },
+    { value: "Debug", label: t("Debug") },
+    { value: "Feature", label: t("Feature") },
+    { value: "File", label: t("File") },
+    { value: "Geometry", label: t("Geometry") },
+    { value: "Noop", label: t("Noop") },
+    { value: "PLATEAU", label: t("PLATEAU") },
+    { value: "Web", label: t("Web") },
+    { value: "XML", label: t("XML") },
+  ];
+
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   // const { handleNodeDropInBatch } = useBatch();
   const { screenToFlowPosition } = useReactFlow();
-  const { useGetActionsSegregated, useGetActions } = useAction(i18n.language);
+  const { useGetActionsSegregated } = useAction(i18n.language);
   const { actions: segregatedActions } = useGetActionsSegregated({
     isMainWorkflow,
     searchTerm,
-    type: currentActionByType,
-  });
-
-  const { actions } = useGetActions({
-    isMainWorkflow,
-    searchTerm,
+    type: currentActionByType !== "all" ? currentActionByType : undefined,
+    category: currentCategory !== "all" ? currentCategory : undefined,
   });
 
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selected, setSelected] = useState<string | undefined>();
 
-  useEffect(() => {
-    if (currentActionByType !== "all" && segregatedActions) {
-      const actionsList = segregatedActions.byType[currentActionByType];
-      setSelected(actionsList?.[selectedIndex]?.name ?? "");
-    } else {
-      setSelected(actions?.[selectedIndex]?.name ?? "");
-    }
-  }, [selectedIndex, segregatedActions, actions, currentActionByType]);
-
   const handleSearchTerm = (newSearchTerm: string) => {
     setSearchTerm(newSearchTerm);
     setSelectedIndex(-1);
-    setSelected(undefined);
   };
 
   useEffect(() => {
@@ -193,10 +198,21 @@ export default ({
     },
   );
 
-  const actionsList =
-    currentActionByType !== "all"
-      ? segregatedActions?.byType[currentActionByType]
-      : actions || [];
+  const actionsList = useMemo(() => {
+    if (currentActionByType !== "all") {
+      return segregatedActions?.byType[currentActionByType] ?? [];
+    }
+    if (currentCategory !== "all") {
+      return segregatedActions?.byCategory[currentCategory] ?? [];
+    }
+    return Object.values(segregatedActions?.byType ?? {}).flatMap(
+      (a) => a ?? [],
+    );
+  }, [currentActionByType, currentCategory, segregatedActions]);
+
+  useEffect(() => {
+    setSelected(actionsList?.[selectedIndex]?.name || undefined);
+  }, [selectedIndex, actionsList]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -210,10 +226,7 @@ export default ({
         return;
       }
 
-      const currentActionsList =
-        currentActionByType !== "all"
-          ? segregatedActions?.byType[currentActionByType]
-          : actions || [];
+      const currentActionsList = actionsList || [];
 
       switch (e.key) {
         case "Enter":
@@ -221,28 +234,18 @@ export default ({
           handleDoubleClick(selected);
           break;
         case "ArrowUp":
-          {
-            e.preventDefault();
-            const newUpIndex =
-              selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
-            setSelectedIndex(newUpIndex);
-            if (currentActionsList && currentActionsList[newUpIndex]) {
-              setSelected(currentActionsList[newUpIndex].name);
-            }
-          }
+          e.preventDefault();
+          setSelectedIndex(
+            selectedIndex === 0 ? selectedIndex : selectedIndex - 1,
+          );
           break;
         case "ArrowDown":
-          {
-            e.preventDefault();
-            const newDownIndex =
-              selectedIndex === (currentActionsList?.length || 1) - 1
-                ? selectedIndex
-                : selectedIndex + 1;
-            setSelectedIndex(newDownIndex);
-            if (currentActionsList && currentActionsList[newDownIndex]) {
-              setSelected(currentActionsList[newDownIndex].name);
-            }
-          }
+          e.preventDefault();
+          setSelectedIndex(
+            selectedIndex === (currentActionsList?.length || 1) - 1
+              ? selectedIndex
+              : selectedIndex + 1,
+          );
           break;
       }
     };
@@ -251,26 +254,19 @@ export default ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [
-    actions,
-    segregatedActions,
-    currentActionByType,
-    selectedIndex,
-    selected,
-    handleDoubleClick,
-    setSelectedIndex,
-    setSelected,
-  ]);
+  }, [actionsList, selectedIndex, selected, handleDoubleClick]);
 
-  const handleActionByTypeChange = useCallback(
-    (actionByType: ActionTypeFiltering) => {
-      setCurrentActionByType(actionByType);
-      setSelectedIndex(-1);
-      setSelected(undefined);
-      containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    [],
-  );
+  const handleActionByTypeChange = useCallback((actionByType: string) => {
+    setCurrentActionByType(actionByType as ActionTypeFiltering);
+    setSelectedIndex(-1);
+    containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const handleCategoryChange = useCallback((category: CategoryFiltering) => {
+    setCurrentCategory(category);
+    setSelectedIndex(-1);
+    containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   return {
     actionsList,
@@ -278,10 +274,13 @@ export default ({
     itemRefs,
     selected,
     currentActionByType,
+    currentCategory,
     actionTypes,
+    actionCategories,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
     handleActionByTypeChange,
+    handleCategoryChange,
   };
 };

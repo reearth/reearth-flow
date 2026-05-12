@@ -133,11 +133,7 @@ fn extract_recursive(
 
     match new_children {
         None => Arc::clone(node),
-        Some(children) => Arc::new(XmlNode {
-            name: node.name.clone(),
-            attrs: node.attrs.clone(),
-            children,
-        }),
+        Some(children) => node.with_children(children),
     }
 }
 
@@ -145,7 +141,7 @@ fn extract_recursive(
 mod tests {
     use super::*;
     use crate::feature::reader::citygml3::utils::{
-        NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID,
+        test_url, NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID,
     };
 
     fn node(name: &str, children: Vec<XmlChild>) -> Arc<XmlNode> {
@@ -153,6 +149,7 @@ mod tests {
             name: (name.to_string(), EMPTY_NS_ID),
             attrs: Vec::new(),
             children,
+            source_url: test_url(),
         })
     }
 
@@ -169,6 +166,7 @@ mod tests {
             name: (name.to_string(), EMPTY_NS_ID),
             attrs: vec![(("gml:id".to_string(), GML_NS_ID), id.to_string())],
             children,
+            source_url: test_url(),
         })
     }
 
@@ -219,6 +217,7 @@ mod tests {
             name: ("bldg:BuildingPart".to_string(), ns_id),
             attrs: Vec::new(),
             children: Vec::new(),
+            source_url: test_url(),
         });
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
         let clark = format!("{{{ns}}}BuildingPart");
