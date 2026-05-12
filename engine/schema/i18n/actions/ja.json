@@ -1321,35 +1321,6 @@
       }
     },
     {
-      "name": "FlowExprTest",
-      "parameterI18n": {
-        "": {
-          "title": "FlowExprTestParam"
-        },
-        "mappings": {}
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
-        "Mapping": {
-          "attribute": {},
-          "value": {}
-        }
-      },
-      "enumI18n": {
-        "CodeType": {
-          "flowExpr": {
-            "description": "Evaluated as a Flow expression at runtime"
-          },
-          "string": {
-            "description": "Used as a plain string literal"
-          }
-        }
-      }
-    },
-    {
       "name": "FootprintReplacer",
       "description": "3DジオメトリをXY平面に投影して結合フットプリントを計算する（ソリッド、サーフェス、CityGML対応）"
     },
