@@ -63,7 +63,7 @@ pub enum Expr {
     Block(Vec<Expr>),
     /// `{ key: value, ... }` — map literal; key is any expr (must eval to string at runtime)
     Map(Vec<(Expr, Expr)>),
-    /// `if cond { then } else { else_ }` — expression; else branch required
+    /// `if cond { then } [else { else_ }]` — else_ is Null if omitted
     If {
         cond: Box<Expr>,
         then: Box<Expr>,
