@@ -1110,8 +1110,8 @@ mod tests {
         assert_eq!(run(r#"int(false)"#, &[]), Value::from(0i64));
         // float()
         assert_eq!(run(r#"float(42)"#, &[]), Value::from(42.0f64));
-        assert_eq!(run(r#"float(3.14)"#, &[]), Value::from(3.14f64));
-        assert_eq!(run(r#"float("3.14")"#, &[]), Value::from(3.14f64));
+        assert_eq!(run(r#"float(1.5)"#, &[]), Value::from(1.5f64));
+        assert_eq!(run(r#"float("1.5")"#, &[]), Value::from(1.5f64));
         assert_eq!(run(r#"float(true)"#, &[]), Value::from(1.0f64));
         assert_eq!(run(r#"float(false)"#, &[]), Value::from(0.0f64));
         // bool()
