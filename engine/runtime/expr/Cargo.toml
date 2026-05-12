@@ -1,7 +1,14 @@
 [package]
-edition = "2021"
+description = "Re:Earth Flow Expression Evaluator"
 name = "reearth-flow-expr"
-version = "0.0.1"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
 reearth-flow-common.workspace = true
