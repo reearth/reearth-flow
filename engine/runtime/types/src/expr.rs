@@ -98,8 +98,11 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
         serde_json::Value::Number(n) => {
             if let Some(i) = n.as_i64() {
                 Value::Int(i)
+            } else if let Some(f) = n.as_f64() {
+                Value::Float(f)
             } else {
-                Value::Float(n.as_f64().unwrap_or(0.0))
+                tracing::warn!(value = %n, "flow expr unrepresentable number converted to null");
+                Value::Null
             }
         }
         serde_json::Value::String(s) => Value::String(s),
@@ -120,7 +123,10 @@ pub fn value_to_json(v: reearth_flow_expr::Value) -> serde_json::Value {
         Value::Int(n) => serde_json::Value::Number(n.into()),
         Value::Float(f) => serde_json::Number::from_f64(f)
             .map(serde_json::Value::Number)
-            .unwrap_or(serde_json::Value::Null),
+            .unwrap_or_else(|| {
+                tracing::warn!(value = f, "flow expr nan/inf float converted to null");
+                serde_json::Value::Null
+            }),
         Value::String(s) => serde_json::Value::String(s),
         Value::Array(arr) => serde_json::Value::Array(arr.into_iter().map(value_to_json).collect()),
         Value::Map(map) => serde_json::Value::Object(
@@ -128,7 +134,13 @@ pub fn value_to_json(v: reearth_flow_expr::Value) -> serde_json::Value {
                 .map(|(k, v)| (k, value_to_json(v)))
                 .collect(),
         ),
-        Value::Object(obj) => serde_json::Value::String(format!("<{}>", obj.type_name())),
+        Value::Object(obj) => {
+            tracing::warn!(
+                type_name = obj.type_name(),
+                "flow expr object converted to type-name string"
+            );
+            serde_json::Value::String(format!("<{}>", obj.type_name()))
+        }
     }
 }
 
@@ -142,16 +154,9 @@ pub fn context_from_feature(
     ctx.register(
         "value",
         Box::new(move |args| {
-            let name = args
-                .first()
-                .and_then(|v| {
-                    if let Value::String(s) = v {
-                        Some(s.as_str())
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or("");
+            let Some(Value::String(name)) = args.first() else {
+                return Ok(Value::Null);
+            };
             Ok(attrs
                 .get(&Attribute::new(name))
                 .map(|v| json_to_value(serde_json::Value::from(v.clone())))
@@ -161,18 +166,11 @@ pub fn context_from_feature(
     ctx.register(
         "env",
         Box::new(move |args| {
-            let name = args
-                .first()
-                .and_then(|v| {
-                    if let Value::String(s) = v {
-                        Some(s.as_str())
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or("");
+            let Some(Value::String(name)) = args.first() else {
+                return Ok(Value::Null);
+            };
             Ok(env_vars
-                .get(name)
+                .get(name.as_str())
                 .cloned()
                 .map(json_to_value)
                 .unwrap_or(Value::Null))
@@ -187,9 +185,15 @@ pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue 
         Value::Null => AttributeValue::Null,
         Value::Bool(b) => AttributeValue::Bool(b),
         Value::Int(n) => AttributeValue::Number(n.into()),
-        Value::Float(f) => {
-            AttributeValue::Number(serde_json::Number::from_f64(f).unwrap_or_else(|| 0i64.into()))
-        }
+        Value::Float(f) => serde_json::Number::from_f64(f)
+            .map(AttributeValue::Number)
+            .unwrap_or_else(|| {
+                tracing::warn!(
+                    value = f,
+                    "flow expr nan/inf float converted to null attribute"
+                );
+                AttributeValue::Null
+            }),
         Value::String(s) => AttributeValue::String(s),
         other => AttributeValue::String(value_to_json(other).to_string()),
     }
