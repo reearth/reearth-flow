@@ -1349,7 +1349,7 @@
             "description": "圧縮アーカイブ出力の出力先パス（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -1383,7 +1383,7 @@
             "description": "3D タイルを書き出すディレクトリパス",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -1405,8 +1405,39 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "description": "A value that is either a Flow expression or a plain string literal",
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "oneOf": [
+              {
+                "description": "Evaluated as a Flow expression at runtime",
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              {
+                "description": "Used as a plain string literal",
+                "type": "string",
+                "enum": [
+                  "string"
+                ]
+              }
+            ]
           }
         }
       },
