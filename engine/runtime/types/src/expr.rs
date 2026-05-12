@@ -43,7 +43,7 @@ pub enum CodeType {
     String,
 }
 
-/// A value that is either a Flow expression or a plain string literal
+/// A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Code {
