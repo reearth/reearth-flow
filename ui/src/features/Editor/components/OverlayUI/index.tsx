@@ -21,7 +21,7 @@ import {
   DebugActionBar,
   CanvasActionBar,
   Toolbox,
-  NodePickerDialog,
+  ActionPickerDialog,
   LayoutOptionsDialog,
   DebugPanel,
   Homebar,
@@ -271,7 +271,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         onClose={handleLayoutOptionsToggle}
       />
       {nodePickerOpen && (
-        <NodePickerDialog
+        <ActionPickerDialog
           openedActionType={nodePickerOpen}
           isMainWorkflow={isMainWorkflow}
           nodes={nodes}
