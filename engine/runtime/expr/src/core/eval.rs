@@ -243,22 +243,6 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> Result<Value> 
                 s.split(sep).map(|p| Value::String(p.to_string())).collect(),
             ))
         }
-        "contains" => {
-            let needle = match args.first() {
-                Some(Value::String(n)) => n.as_str(),
-                Some(v) => {
-                    return Err(Error::Eval {
-                        msg: format!("contains() argument must be a string, got {v:?}"),
-                    })
-                }
-                None => {
-                    return Err(Error::Eval {
-                        msg: "contains() requires an argument".into(),
-                    })
-                }
-            };
-            Ok(Value::Bool(s.contains(needle)))
-        }
         "starts_with" => {
             let prefix = match args.first() {
                 Some(Value::String(p)) => p.as_str(),
@@ -313,10 +297,6 @@ fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> Result<Valu
         "len" => {
             let _ = args;
             Ok(Value::Int(a.len() as i64))
-        }
-        "contains" => {
-            let needle = args.first().unwrap_or(&Value::Null);
-            Ok(Value::Bool(a.iter().any(|v| values_equal(v, needle))))
         }
         m => Err(Error::Eval {
             msg: format!("Array has no method '{m}'"),
@@ -502,27 +482,39 @@ fn numeric_op(
 
 fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
     match op {
-        BinOp::Add => match (left, right) {
-            (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
-            (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
-            (Value::Array(mut a), Value::Array(b)) => {
-                a.extend(b);
-                Ok(Value::Array(a))
+        BinOp::Add => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
             }
-            (a, b) => match coerce_numeric(a, b) {
-                Ok((Numeric::Int(a), Numeric::Int(b))) => Ok(Value::Int(a + b)),
-                Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
-                Ok(_) => unreachable!(),
-                Err(_) => {
-                    // re-construct originals is not possible after move; surface as object op error
-                    Err(Error::Eval {
-                        msg: "'+' not supported for these types".into(),
-                    })
+            match (left, right) {
+                (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
+                (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
+                (Value::Array(mut a), Value::Array(b)) => {
+                    a.extend(b);
+                    Ok(Value::Array(a))
                 }
-            },
-        },
-        BinOp::Sub => numeric_op(left, right, |a, b| a - b, |a, b| a - b),
-        BinOp::Mul => numeric_op(left, right, |a, b| a * b, |a, b| a * b),
+                (a, b) => match coerce_numeric(a, b) {
+                    Ok((Numeric::Int(a), Numeric::Int(b))) => Ok(Value::Int(a + b)),
+                    Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
+                    Ok(_) => unreachable!(),
+                    Err(_) => Err(Error::Eval {
+                        msg: "'+' not supported for these types".into(),
+                    }),
+                },
+            }
+        }
+        BinOp::Sub => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
+            }
+            numeric_op(left, right, |a, b| a - b, |a, b| a - b)
+        }
+        BinOp::Mul => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
+            }
+            numeric_op(left, right, |a, b| a * b, |a, b| a * b)
+        }
         BinOp::Div => match coerce_numeric(left.clone(), right.clone()) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
                 if b == 0 {
@@ -547,12 +539,42 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
             Ok(_) => unreachable!(),
             Err(_) => try_object_op(op, left, right),
         },
-        BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
-        BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
-        BinOp::Lt => compare_values(left, right, |o| o == std::cmp::Ordering::Less),
-        BinOp::Le => compare_values(left, right, |o| o != std::cmp::Ordering::Greater),
-        BinOp::Gt => compare_values(left, right, |o| o == std::cmp::Ordering::Greater),
-        BinOp::Ge => compare_values(left, right, |o| o != std::cmp::Ordering::Less),
+        BinOp::Eq => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
+            }
+            Ok(Value::Bool(values_equal(&left, &right)))
+        }
+        BinOp::Ne => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
+            }
+            Ok(Value::Bool(!values_equal(&left, &right)))
+        }
+        BinOp::Lt => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
+            }
+            compare_values(left, right, |o| o == std::cmp::Ordering::Less)
+        }
+        BinOp::Le => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
+            }
+            compare_values(left, right, |o| o != std::cmp::Ordering::Greater)
+        }
+        BinOp::Gt => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
+            }
+            compare_values(left, right, |o| o == std::cmp::Ordering::Greater)
+        }
+        BinOp::Ge => {
+            if matches!(left, Value::Object(_)) {
+                return try_object_op(op, left, right);
+            }
+            compare_values(left, right, |o| o != std::cmp::Ordering::Less)
+        }
         BinOp::In => match (left, right) {
             (left, Value::Array(arr)) => {
                 Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left))))
@@ -566,7 +588,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
                 msg: format!("'in' not supported between {l:?} and {r:?}"),
             }),
         },
-        BinOp::And | BinOp::Or => unreachable!("handled with short-circuit above"),
+        BinOp::And | BinOp::Or => unreachable!("short-circuited in eval_inner before eval_binary is called"),
     }
 }
 
@@ -789,6 +811,7 @@ mod tests {
 
     #[test]
     fn test_in_operator() {
+        // array membership
         let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
             run(r#""bldg" in packages"#, &[("packages", pkgs.clone())]),
@@ -798,6 +821,19 @@ mod tests {
             run(r#""fld" in packages"#, &[("packages", pkgs)]),
             Value::from(false)
         );
+        // string substring
+        assert_eq!(run(r#""world" in "hello world""#, &[]), Value::from(true));
+        assert_eq!(run(r#""xyz" in "hello world""#, &[]), Value::from(false));
+        assert_eq!(run(r#""" in "hello""#, &[]), Value::from(true));
+        // map key existence
+        let m = Value::Map(indexmap::indexmap! {
+            "a".into() => Value::from(1i64),
+            "b".into() => Value::from(2i64),
+        });
+        assert_eq!(run(r#""a" in m"#, &[("m", m.clone())]), Value::from(true));
+        assert_eq!(run(r#""c" in m"#, &[("m", m)]), Value::from(false));
+        // null rhs is always false
+        assert_eq!(run(r#""x" in null"#, &[]), Value::from(false));
     }
 
     #[test]
@@ -899,15 +935,7 @@ mod tests {
     }
 
     #[test]
-    fn test_string_contains_starts_ends_with() {
-        assert_eq!(
-            run(r#""hello world".contains("world")"#, &[]),
-            Value::from(true)
-        );
-        assert_eq!(
-            run(r#""hello world".contains("xyz")"#, &[]),
-            Value::from(false)
-        );
+    fn test_string_starts_ends_with() {
         assert_eq!(
             run(r#""bldg_lod1".starts_with("tran")"#, &[]),
             Value::from(false)
@@ -942,19 +970,6 @@ mod tests {
         assert_eq!(
             run(r#""hello".replace("x", "y")"#, &[]),
             Value::from("hello")
-        );
-    }
-
-    #[test]
-    fn test_array_contains() {
-        let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
-        assert_eq!(
-            run(r#"pkgs.contains("bldg")"#, &[("pkgs", pkgs.clone())]),
-            Value::from(true)
-        );
-        assert_eq!(
-            run(r#"pkgs.contains("fld")"#, &[("pkgs", pkgs)]),
-            Value::from(false)
         );
     }
 
@@ -1137,7 +1152,13 @@ mod tests {
     fn test_nan_comparisons() {
         let nan = Value::Float(f64::NAN);
         // IEEE 754: all ordered comparisons with NaN are false
-        for expr in &["nan < 1.0", "nan > 1.0", "nan <= 1.0", "nan >= 1.0", "1.0 < nan"] {
+        for expr in &[
+            "nan < 1.0",
+            "nan > 1.0",
+            "nan <= 1.0",
+            "nan >= 1.0",
+            "1.0 < nan",
+        ] {
             assert_eq!(
                 run(expr, &[("nan", nan.clone())]),
                 Value::Bool(false),
@@ -1145,7 +1166,10 @@ mod tests {
             );
         }
         // NaN != NaN (via values_equal / PartialEq on f64)
-        assert_eq!(run("nan == nan", &[("nan", nan.clone())]), Value::Bool(false));
+        assert_eq!(
+            run("nan == nan", &[("nan", nan.clone())]),
+            Value::Bool(false)
+        );
         assert_eq!(run("nan != nan", &[("nan", nan)]), Value::Bool(true));
     }
 

@@ -47,7 +47,7 @@ nodes:
         - attribute: FeatureType
           expr: |
             let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
+            if ":" in ft {
               ft.split(":")[1]
             } else {
               ft
@@ -89,7 +89,7 @@ nodes:
         - attribute: FeatureType
           expr: |
             let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
+            if ":" in ft {
               ft.split(":")[1]
             } else {
               ft
@@ -166,7 +166,7 @@ nodes:
         - attribute: feature_type
           expr: |
             let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
+            if ":" in ft {
               ft.split(":")[1]
             } else {
               ft
@@ -223,7 +223,7 @@ nodes:
         - attribute: feature_type
           expr: |
             let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
+            if ":" in ft {
               ft.split(":")[1]
             } else {
               ft
@@ -291,7 +291,7 @@ nodes:
         - attribute: FeatureType
           expr: |
             let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
+            if ":" in ft {
               ft.split(":")[1]
             } else {
               ft
@@ -369,7 +369,7 @@ nodes:
         - attribute: FeatureType
           expr: |
             let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
+            if ":" in ft {
               ft.split(":")[1]
             } else {
               ft
@@ -447,7 +447,7 @@ nodes:
         - attribute: FeatureType
           expr: |
             let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
+            if ":" in ft {
               ft.split(":")[1]
             } else {
               ft
