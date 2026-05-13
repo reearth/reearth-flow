@@ -449,7 +449,7 @@ fn binop_dunder(op: &BinOp) -> Option<&'static str> {
         BinOp::Mul => Some("__mul__"),
         BinOp::Div => Some("__div__"),
         BinOp::Eq => Some("__eq__"),
-        BinOp::Ne => Some("__ne__"),
+        BinOp::Ne => None, // derived as !__eq__ in eval_binary
         BinOp::Lt => Some("__lt__"),
         BinOp::Le => Some("__le__"),
         BinOp::Gt => Some("__gt__"),
@@ -501,8 +501,19 @@ fn numeric_op(
 }
 
 fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
-    if matches!(left, Value::Object(_)) && binop_dunder(op).is_some() {
-        return try_object_op(op, left, right);
+    if matches!(left, Value::Object(_)) {
+        if op == &BinOp::Ne {
+            let eq = try_object_op(&BinOp::Eq, left, right)?;
+            return match eq {
+                Value::Bool(b) => Ok(Value::Bool(!b)),
+                _ => Err(Error::Eval {
+                    msg: "__eq__ must return a bool".into(),
+                }),
+            };
+        }
+        if binop_dunder(op).is_some() {
+            return try_object_op(op, left, right);
+        }
     }
     match op {
         BinOp::Add => match (left, right) {

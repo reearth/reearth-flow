@@ -44,6 +44,17 @@ impl ValueObject for UrlObject {
                 };
                 Ok(Value::String(stem.to_string()))
             }
+            "__eq__" => {
+                let rhs = args.first().ok_or_else(|| Error::Eval {
+                    msg: "Url == requires an argument".into(),
+                })?;
+                match rhs {
+                    Value::Object(obj) if obj.type_name() == "Url" => {
+                        Ok(Value::Bool(self.0.as_str() == obj.display()))
+                    }
+                    _ => Ok(Value::Bool(false)),
+                }
+            }
             "__str__" => Ok(Value::String(self.0.as_str().to_string())),
             "__div__" => {
                 let rhs = args
@@ -172,5 +183,17 @@ mod tests {
     #[test]
     fn test_url_stem() {
         assert_eq!(run(r#"Url("/foo/bar.gml").stem()"#), Value::from("bar"));
+    }
+
+    #[test]
+    fn test_url_eq() {
+        assert_eq!(
+            run(r#"Url("/foo/bar") == Url("/foo/bar")"#),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            run(r#"Url("/foo/bar") == Url("/foo/baz")"#),
+            Value::Bool(false)
+        );
     }
 }
