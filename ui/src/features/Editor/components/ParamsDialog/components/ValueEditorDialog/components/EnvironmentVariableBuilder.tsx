@@ -45,21 +45,21 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
       label: t("Workflow Variables"),
       description: t("Access variables defined in the project"),
       icon: <CircleIcon weight="thin" className="h-4 w-4" />,
-      example: 'env.get("outputPath")',
+      example: 'env("outputPath")',
     },
     {
       value: "custom_variable" as const,
       label: t("Custom Variable"),
       description: t("Access any environment variable by name"),
       icon: <CircleIcon weight="thin" className="h-4 w-4" />,
-      example: 'env.get("CUSTOM_VAR")',
+      example: 'env("CUSTOM_VAR")',
     },
     {
       value: "workflow_parameter" as const,
       label: t("Workflow Parameters"),
       description: t("Access common workflow parameters"),
       icon: <CircleIcon weight="thin" className="h-4 w-4" />,
-      example: 'env.get("__workflow_id")',
+      example: 'env("__workflow_id")',
     },
   ];
 
@@ -83,17 +83,17 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
     switch (accessType) {
       case "project_variable":
         if (selectedVariable) {
-          expr = `env.get("${selectedVariable}")`;
+          expr = `env("${selectedVariable}")`;
         }
         break;
       case "custom_variable":
         if (customVariableName) {
-          expr = `env.get("${customVariableName}")`;
+          expr = `env("${customVariableName}")`;
         }
         break;
       case "workflow_parameter":
         if (selectedVariable) {
-          expr = `env.get("${selectedVariable}")`;
+          expr = `env("${selectedVariable}")`;
         }
         break;
     }

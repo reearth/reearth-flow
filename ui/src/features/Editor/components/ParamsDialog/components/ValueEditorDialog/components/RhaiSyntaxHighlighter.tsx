@@ -1,11 +1,6 @@
 import { useMemo } from "react";
 
-import {
-  RHAI_FUNCTIONS,
-  RHAI_KEYWORDS,
-  RHAI_NAMESPACES,
-  RHAI_OPERATORS,
-} from "./constants";
+import { RHAI_FUNCTIONS, RHAI_KEYWORDS, RHAI_OPERATORS } from "./constants";
 
 type TokenType =
   | "keyword"
@@ -133,23 +128,16 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
           i++;
         }
 
-        // Check if it's followed by :: (namespace)
-        if (
-          code.substring(i, i + 2) === "::" &&
-          RHAI_NAMESPACES.includes(identifier)
-        ) {
-          result.push({ type: "namespace", content: identifier });
-          result.push({ type: "operator", content: "::" });
-          i += 2;
-          continue;
-        }
-
         // Determine token type
         let tokenType: TokenType = "identifier";
         if (RHAI_KEYWORDS.includes(identifier)) {
           tokenType = "keyword";
         } else if (RHAI_FUNCTIONS.includes(identifier)) {
-          tokenType = "function";
+          // value() and env() get a distinct "namespace" colour to stand out
+          tokenType =
+            identifier === "value" || identifier === "env"
+              ? "namespace"
+              : "function";
         }
 
         result.push({ type: tokenType, content: identifier });

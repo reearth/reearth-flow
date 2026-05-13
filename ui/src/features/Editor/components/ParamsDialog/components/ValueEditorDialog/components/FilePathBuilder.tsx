@@ -14,10 +14,7 @@ import { useT } from "@flow/lib/i18n";
 
 import ExpressionInput from "./ExpressionInput";
 
-type FilePathOperation =
-  | "join_path"
-  | "extract_filename"
-  | "extract_filename_without_ext";
+type FilePathOperation = "join_path" | "name" | "stem" | "extension" | "parent";
 
 type Props = {
   onExpressionChange: (expression: string) => void;
@@ -27,62 +24,79 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
   const t = useT();
 
   const [operation, setOperation] = useState<FilePathOperation>("join_path");
-  const [path1, setPath1] = useState("");
-  const [path2, setPath2] = useState("");
+  const [basePath, setBasePath] = useState("");
+  const [joinSuffix, setJoinSuffix] = useState("");
 
   const operations = [
     {
       value: "join_path" as const,
       label: t("Join Paths"),
-      description: t("Combine directory and filename"),
+      description: t("Combine base path with a sub-path or filename"),
       icon: <FolderIcon weight="thin" className="h-4 w-4" />,
-      example: 'file::join_path("/output", "result.zip")',
+      example: 'str(Url(env("basePath")) / "result.zip")',
     },
     {
-      value: "extract_filename" as const,
+      value: "name" as const,
       label: t("Extract Filename"),
-      description: t("Get filename with extension"),
+      description: t("Get filename including extension"),
       icon: <FileIcon weight="thin" className="h-4 w-4" />,
-      example: "file::extract_filename(path)",
+      example: 'Url(value("path")).name()',
     },
     {
-      value: "extract_filename_without_ext" as const,
+      value: "stem" as const,
       label: t("Extract Name Only"),
       description: t("Get filename without extension"),
       icon: <FileIcon weight="thin" className="h-4 w-4" />,
-      example: "file::extract_filename_without_ext(path)",
+      example: 'Url(value("path")).stem()',
+    },
+    {
+      value: "extension" as const,
+      label: t("Extract Extension"),
+      description: t("Get file extension without leading dot"),
+      icon: <FileIcon weight="thin" className="h-4 w-4" />,
+      example: 'Url(value("path")).extension()',
+    },
+    {
+      value: "parent" as const,
+      label: t("Parent Directory"),
+      description: t("Get the parent directory as a Url"),
+      icon: <FolderIcon weight="thin" className="h-4 w-4" />,
+      example: 'Url(value("path")).parent()',
     },
   ];
 
-  // Generate expression for preview only - don't auto-insert
   const [currentExpression, setCurrentExpression] = useState("");
 
   useEffect(() => {
+    if (!basePath) {
+      setCurrentExpression("");
+      return;
+    }
+
     let expr = "";
 
     switch (operation) {
-      case "join_path":
-        if (path1 && path2) {
-          expr = `file::join_path(${path1}, ${path2})`;
-        } else if (path1) {
-          // Show partial preview
-          expr = `file::join_path(${path1}, "filename")`;
-        }
+      case "join_path": {
+        const suffix = joinSuffix || '"filename"';
+        expr = `str(Url(${basePath}) / ${suffix})`;
         break;
-      case "extract_filename":
-        if (path1) {
-          expr = `file::extract_filename(${path1})`;
-        }
+      }
+      case "name":
+        expr = `Url(${basePath}).name()`;
         break;
-      case "extract_filename_without_ext":
-        if (path1) {
-          expr = `file::extract_filename_without_ext(${path1})`;
-        }
+      case "stem":
+        expr = `Url(${basePath}).stem()`;
+        break;
+      case "extension":
+        expr = `Url(${basePath}).extension()`;
+        break;
+      case "parent":
+        expr = `Url(${basePath}).parent()`;
         break;
     }
 
     setCurrentExpression(expr);
-  }, [operation, path1, path2]);
+  }, [operation, basePath, joinSuffix]);
 
   const handleInsertExpression = useCallback(() => {
     if (currentExpression.trim()) {
@@ -97,12 +111,11 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
       <div className="flex-shrink-0">
         <h4 className="text-sm font-medium">{t("File Path Operations")}</h4>
         <p className="text-xs text-muted-foreground">
-          {t("Build expressions for file path manipulation")}
+          {t("Build expressions for file path manipulation using the Url type")}
         </p>
       </div>
 
       <div className="space-y-4">
-        {/* Two-column layout for operation selection and example */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="operation-select" className="text-xs">
@@ -147,65 +160,56 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
           )}
         </div>
 
-        {/* Input fields with improved horizontal layout */}
         <div className="space-y-3">
-          {operation === "join_path" && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="text-xs">{t("Base Path")}</Label>
+              <ExpressionInput
+                placeholder='env("basePath")'
+                value={basePath}
+                onChange={setBasePath}
+                className="text-sm"
+                label={t("Base Path")}
+                allowedExpressionTypes={[
+                  "environment-variable",
+                  "feature-attribute",
+                ]}
+              />
+            </div>
+            {operation === "join_path" && (
               <div className="space-y-2">
-                <Label className="text-xs">{t("Directory Path")}</Label>
-                <ExpressionInput
-                  placeholder='"/output"'
-                  value={path1}
-                  onChange={setPath1}
-                  className="text-sm"
-                  label={t("Directory Path")}
-                  allowedExpressionTypes={[
-                    "environment-variable",
-                    "feature-attribute",
-                  ]}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">{t("Filename")}</Label>
+                <Label className="text-xs">{t("Suffix / Filename")}</Label>
                 <ExpressionInput
                   placeholder='"result.zip"'
-                  value={path2}
-                  onChange={setPath2}
+                  value={joinSuffix}
+                  onChange={setJoinSuffix}
                   className="text-sm"
-                  label={t("Filename")}
+                  label={t("Suffix")}
                   allowedExpressionTypes={[
                     "environment-variable",
                     "feature-attribute",
                   ]}
                 />
               </div>
-            </div>
-          )}
+            )}
+            {operation !== "join_path" && <div />}
+          </div>
 
-          {(operation === "extract_filename" ||
-            operation === "extract_filename_without_ext") && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-xs">{t("File Path")}</Label>
-                <ExpressionInput
-                  placeholder='"/path/to/file.txt"'
-                  value={path1}
-                  onChange={setPath1}
-                  className="text-sm"
-                  label={t("File Path")}
-                  allowedExpressionTypes={[
-                    "environment-variable",
-                    "feature-attribute",
-                  ]}
-                />
+          {operation === "join_path" && (
+            <div className="rounded border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <div className="space-y-1">
+                <div>
+                  •{" "}
+                  {t(
+                    "The / operator joins path segments — use str() to convert back to a string",
+                  )}
+                </div>
+                <div>• {t("Chain multiple: Url(base) / sub / file")}</div>
               </div>
-              {/* Empty column for consistent layout */}
-              <div />
             </div>
           )}
         </div>
 
-        {/* Preview and Insert Section */}
         {currentExpression && (
           <div className="mt-6 border-t pt-4">
             <div className="mb-3">

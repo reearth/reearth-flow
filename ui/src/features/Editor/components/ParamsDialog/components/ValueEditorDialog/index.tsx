@@ -50,7 +50,6 @@ import ExpressionTypePicker, {
 } from "./components/ExpressionTypePicker";
 import FeatureAttributeBuilder from "./components/FeatureAttributeBuilder";
 import FilePathBuilder from "./components/FilePathBuilder";
-import JsonQueryBuilder from "./components/JsonQueryBuilder";
 import MathBuilder from "./components/MathBuilder";
 import RhaiCodeEditor, {
   type RhaiCodeEditorRef,
@@ -149,7 +148,7 @@ const ValueEditorDialog: React.FC<Props> = ({
   const fieldType = getFieldTypeDisplay(fieldContext.schema);
 
   const handleWorkflowVariableSet = useCallback((variable: any) => {
-    const v = `env.get("${variable.name}")`;
+    const v = `env("${variable.name}")`;
     setValue(v);
   }, []);
 
@@ -402,18 +401,12 @@ const ValueEditorDialog: React.FC<Props> = ({
                               onExpressionChange={handleExpressionBuilderChange}
                             />
                           )}
-                          {selectedExpressionType === "json-query" && (
-                            <JsonQueryBuilder
-                              onExpressionChange={handleExpressionBuilderChange}
-                            />
-                          )}
                           {![
                             "file-path",
                             "feature-attribute",
                             "conditional",
                             "math",
                             "environment-variable",
-                            "json-query",
                           ].includes(selectedExpressionType) && (
                             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
                               <p className="mb-4">
