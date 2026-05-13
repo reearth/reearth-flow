@@ -3,18 +3,7 @@ import { cn } from "@flow/lib/utils";
 import type { Action } from "@flow/types";
 import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
-const typeColorClass = (type: string) => {
-  switch (type) {
-    case "transformer":
-      return "bg-node-transformer/80";
-    case "reader":
-      return "bg-node-reader/80";
-    case "writer":
-      return "bg-node-writer/80";
-    default:
-      return "bg-secondary";
-  }
-};
+import { typeColorClass } from "../utils";
 
 type Props = {
   action?: Action;
@@ -45,8 +34,13 @@ const ActionPickerDetail = ({ action }: Props) => {
 
       <div className="flex flex-wrap gap-1.5">
         <div
-          className={`self-center rounded border  ${action.type === "transformer" ? "bg-node-transformer/95 dark:bg-node-transformer/60" : action.type === "reader" ? "bg-node-reader/95 dark:bg-node-reader/60" : action.type === "writer" ? "bg-node-writer/85 dark:bg-node-writer/30" : "bg-popover"} p-0.5 align-middle`}>
-          <p className="self-center text-xs capitalize">{action.type}</p>
+          className={cn(
+            "self-center rounded border p-1 align-middle",
+            typeColorClass(action.type),
+          )}>
+          <p className="self-center text-xs text-zinc-200 capitalize">
+            {action.type}
+          </p>
         </div>
       </div>
       <div className="flex flex-col flex-wrap  gap-1.5">

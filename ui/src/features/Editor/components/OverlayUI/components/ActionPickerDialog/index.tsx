@@ -7,8 +7,8 @@ import { useT } from "@flow/lib/i18n";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import ActionFilters from "./ActionFilters";
+import ActionPickerDetail from "./ActionPickerDetail";
 import useHooks from "./hooks";
-import ActionPickerDetail from "./NodePickerDetail";
 
 export type XYPosition = {
   x: number;
