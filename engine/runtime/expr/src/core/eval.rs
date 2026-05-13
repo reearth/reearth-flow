@@ -577,9 +577,10 @@ fn compare_values(
 ) -> Result<Value> {
     let ord = match coerce_numeric(left.clone(), right.clone()) {
         Ok((Numeric::Int(a), Numeric::Int(b))) => a.cmp(&b),
-        Ok((Numeric::Float(a), Numeric::Float(b))) => {
-            a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal)
-        }
+        Ok((Numeric::Float(a), Numeric::Float(b))) => match a.partial_cmp(&b) {
+            Some(ord) => ord,
+            None => return Ok(Value::Bool(false)),
+        },
         Ok(_) => unreachable!(),
         Err(_) => match (&left, &right) {
             (Value::String(a), Value::String(b)) => a.as_str().cmp(b.as_str()),
@@ -1130,6 +1131,22 @@ mod tests {
             run("list(m)", &[("m", m)]),
             Value::Array(vec![Value::from("x"), Value::from("y")])
         );
+    }
+
+    #[test]
+    fn test_nan_comparisons() {
+        let nan = Value::Float(f64::NAN);
+        // IEEE 754: all ordered comparisons with NaN are false
+        for expr in &["nan < 1.0", "nan > 1.0", "nan <= 1.0", "nan >= 1.0", "1.0 < nan"] {
+            assert_eq!(
+                run(expr, &[("nan", nan.clone())]),
+                Value::Bool(false),
+                "expected false for: {expr}"
+            );
+        }
+        // NaN != NaN (via values_equal / PartialEq on f64)
+        assert_eq!(run("nan == nan", &[("nan", nan.clone())]), Value::Bool(false));
+        assert_eq!(run("nan != nan", &[("nan", nan)]), Value::Bool(true));
     }
 
     #[test]
