@@ -87,6 +87,8 @@ jobs:
     name: Build and release server
     runs-on: ubuntu-latest
     needs: release
+    permissions:
+      contents: write
     env:
       ARTIFACTS: server/api/dist/reearth-flow_*.*
     steps:

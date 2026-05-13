@@ -38,8 +38,8 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
       />
       <div className="group flex w-full min-w-0 -translate-x-0.5 items-center justify-end gap-1">
         <div
-          className={`flex items-center gap-1 rounded-sm  px-0.5 group-hover:cursor-pointer group-hover:bg-success/20 ${isSelected ? "bg-success/20" : ""}`}
-          onClick={handleClick}>
+          className={`flex items-center gap-1 rounded-sm  px-0.5 ${hasData ? "group-hover:cursor-pointer group-hover:bg-success/20 " : ""}${isSelected ? "bg-success/20" : ""}`}
+          onClick={hasData ? handleClick : undefined}>
           <p
             className={`min-w-0 text-end text-[10px] ${getBreakClass(portName)} italic dark:font-thin ${
               hasData && isSelected
