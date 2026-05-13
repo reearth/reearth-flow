@@ -202,7 +202,7 @@ graphs:
                   "path", "cityCode", "cityName", "gmlId"
                 ];
                 for key in val.keys() {
-                  if !exclude.contains(key) {
+                  if !key in exclude {
                     result[key] = val[key];
                   }
                 }
