@@ -588,7 +588,9 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
                 msg: format!("'in' not supported between {l:?} and {r:?}"),
             }),
         },
-        BinOp::And | BinOp::Or => unreachable!("short-circuited in eval_inner before eval_binary is called"),
+        BinOp::And | BinOp::Or => {
+            unreachable!("short-circuited in eval_inner before eval_binary is called")
+        }
     }
 }
 
