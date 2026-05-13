@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.1.0-alpha.15 - 2026-05-12
+## 0.1.0-alpha.15 - 2026-05-13
 
 ### Misc
 
@@ -27,6 +27,9 @@ All notable changes to this project will be documented in this file.
 - Action schemas not having working internationalization support [FLOW-DEV-72] ([#2043](https://github.com/reearth/reearth-flow/pull/2043)) [`394171`](https://github.com/reearth/reearth-flow/commit/394171)
 - Reject absolute paths and missing base in expand_yaml_includes ([#2073](https://github.com/reearth/reearth-flow/pull/2073)) [`60cd25`](https://github.com/reearth/reearth-flow/commit/60cd25)
 - Add comment to suppress false positive traversal risk report ([#2071](https://github.com/reearth/reearth-flow/pull/2071)) [`f5a876`](https://github.com/reearth/reearth-flow/commit/f5a876)
+
+### release
+
 
 ### ui
 
