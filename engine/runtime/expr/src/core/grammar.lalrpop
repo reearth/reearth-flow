@@ -14,7 +14,6 @@ extern {
         "true"  => crate::core::lexer::Token::True,
         "false" => crate::core::lexer::Token::False,
         "null"  => crate::core::lexer::Token::Null,
-        "in"    => crate::core::lexer::Token::In,
         "let"   => crate::core::lexer::Token::Let,
         "if"    => crate::core::lexer::Token::If,
         "else"  => crate::core::lexer::Token::Else,
@@ -71,7 +70,6 @@ And: Expr = {
 Equality: Expr = {
     <l:Equality> "==" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::Eq, Box::new(r)),
     <l:Equality> "!=" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::Ne, Box::new(r)),
-    <l:Equality> "in" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::In, Box::new(r)),
     Comparison,
 };
 

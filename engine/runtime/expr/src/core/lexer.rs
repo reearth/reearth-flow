@@ -44,8 +44,6 @@ pub enum Token {
     False,
     #[token("null")]
     Null,
-    #[token("in")]
-    In,
     #[token("let")]
     Let,
     #[token("if")]
@@ -238,18 +236,6 @@ mod tests {
         // keywords embedded in identifiers remain identifiers
         assert_eq!(tokenize("inline"), vec![Token::Ident("inline".into())]);
         assert_eq!(tokenize("trueish"), vec![Token::Ident("trueish".into())]);
-    }
-
-    #[test]
-    fn test_in_keyword() {
-        assert_eq!(
-            tokenize("x in arr"),
-            vec![
-                Token::Ident("x".into()),
-                Token::In,
-                Token::Ident("arr".into())
-            ]
-        );
     }
 
     #[test]
