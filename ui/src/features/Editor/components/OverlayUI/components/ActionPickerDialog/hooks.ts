@@ -220,9 +220,9 @@ export default ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent hotkeys from triggering when Select dropdown is open
       const target = e.target as HTMLElement;
       if (
+        target.closest("[data-filter-area]") ||
         target.closest('[role="combobox"]') ||
         target.closest('[role="listbox"]') ||
         target.closest('[role="option"]')
