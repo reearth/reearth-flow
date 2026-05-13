@@ -328,12 +328,8 @@ fn eval_index(target: Value, key: Value) -> Result<Value> {
     match (target, key) {
         (Value::Map(map), Value::String(k)) => Ok(map.get(&k).cloned().unwrap_or(Value::Null)),
         (Value::Array(arr), Value::Int(i)) => {
-            let len = arr.len() as i64;
-            let i = if i < 0 { len + i } else { i };
-            if i < 0 || i >= len {
-                return Ok(Value::Null);
-            }
-            Ok(arr.into_iter().nth(i as usize).unwrap_or(Value::Null))
+            let i = if i < 0 { arr.len() as i64 + i } else { i };
+            Ok(arr.get(i as usize).cloned().unwrap_or(Value::Null))
         }
         (Value::String(s), Value::Int(i)) => {
             let chars: Vec<char> = s.chars().collect();
