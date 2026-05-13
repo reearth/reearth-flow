@@ -111,18 +111,6 @@ mod tests {
     }
 
     #[test]
-    fn test_in_operator() {
-        assert_eq!(
-            parse("x in arr").unwrap(),
-            Expr::Binary(
-                Box::new(Expr::Var("x".into())),
-                BinOp::In,
-                Box::new(Expr::Var("arr".into()))
-            )
-        );
-    }
-
-    #[test]
     fn test_slice() {
         use crate::core::ast::Expr;
         assert_eq!(

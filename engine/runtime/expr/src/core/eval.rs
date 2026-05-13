@@ -243,6 +243,22 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> Result<Value> 
                 s.split(sep).map(|p| Value::String(p.to_string())).collect(),
             ))
         }
+        "contains" => {
+            let needle = match args.first() {
+                Some(Value::String(n)) => n.as_str(),
+                Some(v) => {
+                    return Err(Error::Eval {
+                        msg: format!("contains() argument must be a string, got {v:?}"),
+                    })
+                }
+                None => {
+                    return Err(Error::Eval {
+                        msg: "contains() requires an argument".into(),
+                    })
+                }
+            };
+            Ok(Value::Bool(s.contains(needle)))
+        }
         "starts_with" => {
             let prefix = match args.first() {
                 Some(Value::String(p)) => p.as_str(),
@@ -297,6 +313,10 @@ fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> Result<Valu
         "len" => {
             let _ = args;
             Ok(Value::Int(a.len() as i64))
+        }
+        "contains" => {
+            let needle = args.first().unwrap_or(&Value::Null);
+            Ok(Value::Bool(a.iter().any(|v| values_equal(v, needle))))
         }
         m => Err(Error::Eval {
             msg: format!("Array has no method '{m}'"),
@@ -434,7 +454,7 @@ fn binop_dunder(op: &BinOp) -> Option<&'static str> {
         BinOp::Le => Some("__le__"),
         BinOp::Gt => Some("__gt__"),
         BinOp::Ge => Some("__ge__"),
-        BinOp::In | BinOp::And | BinOp::Or => None,
+        BinOp::And | BinOp::Or => None,
     }
 }
 
@@ -535,19 +555,6 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
         BinOp::Le => compare_values(left, right, |o| o != std::cmp::Ordering::Greater),
         BinOp::Gt => compare_values(left, right, |o| o == std::cmp::Ordering::Greater),
         BinOp::Ge => compare_values(left, right, |o| o != std::cmp::Ordering::Less),
-        BinOp::In => match (left, right) {
-            (left, Value::Array(arr)) => {
-                Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left))))
-            }
-            (Value::String(needle), Value::String(haystack)) => {
-                Ok(Value::Bool(haystack.contains(needle.as_str())))
-            }
-            (Value::String(key), Value::Map(map)) => Ok(Value::Bool(map.contains_key(&key))),
-            (_, Value::Null) => Ok(Value::Bool(false)),
-            (l, r) => Err(Error::Eval {
-                msg: format!("'in' not supported between {l:?} and {r:?}"),
-            }),
-        },
         BinOp::And | BinOp::Or => {
             unreachable!("short-circuited in eval_inner before eval_binary is called")
         }
@@ -772,33 +779,6 @@ mod tests {
     }
 
     #[test]
-    fn test_in_operator() {
-        // array membership
-        let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
-        assert_eq!(
-            run(r#""bldg" in packages"#, &[("packages", pkgs.clone())]),
-            Value::from(true)
-        );
-        assert_eq!(
-            run(r#""fld" in packages"#, &[("packages", pkgs)]),
-            Value::from(false)
-        );
-        // string substring
-        assert_eq!(run(r#""world" in "hello world""#, &[]), Value::from(true));
-        assert_eq!(run(r#""xyz" in "hello world""#, &[]), Value::from(false));
-        assert_eq!(run(r#""" in "hello""#, &[]), Value::from(true));
-        // map key existence
-        let m = Value::Map(indexmap::indexmap! {
-            "a".into() => Value::from(1i64),
-            "b".into() => Value::from(2i64),
-        });
-        assert_eq!(run(r#""a" in m"#, &[("m", m.clone())]), Value::from(true));
-        assert_eq!(run(r#""c" in m"#, &[("m", m)]), Value::from(false));
-        // null rhs is always false
-        assert_eq!(run(r#""x" in null"#, &[]), Value::from(false));
-    }
-
-    #[test]
     fn test_index() {
         let feature = Value::Map(indexmap::indexmap! {
             "package".into() => Value::from("bldg"),
@@ -897,7 +877,28 @@ mod tests {
     }
 
     #[test]
-    fn test_string_starts_ends_with() {
+    fn test_array_contains() {
+        let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
+        assert_eq!(
+            run(r#"pkgs.contains("bldg")"#, &[("pkgs", pkgs.clone())]),
+            Value::from(true)
+        );
+        assert_eq!(
+            run(r#"pkgs.contains("fld")"#, &[("pkgs", pkgs)]),
+            Value::from(false)
+        );
+    }
+
+    #[test]
+    fn test_string_contains_starts_ends_with() {
+        assert_eq!(
+            run(r#""hello world".contains("world")"#, &[]),
+            Value::from(true)
+        );
+        assert_eq!(
+            run(r#""hello world".contains("xyz")"#, &[]),
+            Value::from(false)
+        );
         assert_eq!(
             run(r#""bldg_lod1".starts_with("tran")"#, &[]),
             Value::from(false)
@@ -1236,7 +1237,7 @@ mod tests {
         let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
             run(
-                r#"feature["extension"] == "gml" && feature["package"] in packages"#,
+                r#"feature["extension"] == "gml" && packages.contains(feature["package"])"#,
                 &[("feature", feature), ("packages", pkgs)]
             ),
             Value::from(true)
