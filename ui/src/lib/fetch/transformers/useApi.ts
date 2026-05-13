@@ -78,7 +78,7 @@ export const useAction = (lang: string) => {
         return {
           ...result,
           byType: Object.fromEntries(
-            filter.types.map((t) => [t, result.byType[t]]),
+            filter.types.map((t) => [t, result.byType[t] ?? []]),
           ),
         };
       }

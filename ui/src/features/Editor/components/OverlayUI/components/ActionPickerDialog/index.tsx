@@ -31,7 +31,7 @@ type Props = {
   onClose: () => void;
 };
 
-const NodePickerDialog: React.FC<Props> = ({
+const ActionPickerDialog: React.FC<Props> = ({
   openedActionType,
   nodes,
   selectedNodeIds,
@@ -81,7 +81,7 @@ const NodePickerDialog: React.FC<Props> = ({
         size="2xl"
         position="top"
         className="flex h-[75vh] flex-col gap-0 overflow-hidden p-0">
-        <div className="px-4 pt-4 pb-2">
+        <div className="pt-4 pb-2">
           <DialogTitle>{t("Choose Action")}</DialogTitle>
         </div>
         <div className="flex min-h-0 flex-1 overflow-hidden border-t">
@@ -136,4 +136,4 @@ const NodePickerDialog: React.FC<Props> = ({
   );
 };
 
-export default memo(NodePickerDialog);
+export default memo(ActionPickerDialog);

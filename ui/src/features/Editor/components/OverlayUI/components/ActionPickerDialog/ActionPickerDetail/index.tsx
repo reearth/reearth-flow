@@ -49,7 +49,7 @@ const ActionPickerDetail = ({ action }: Props) => {
         </p>
         <div className="flex">
           {action.categories.map((c) => (
-            <div className="w-fit rounded border bg-secondary/80 p-0.5">
+            <div key={c} className="w-fit rounded border bg-secondary/80 p-0.5">
               <p className="self-center text-xs ">{c}</p>
             </div>
           ))}
