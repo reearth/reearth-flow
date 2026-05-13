@@ -481,41 +481,29 @@ fn numeric_op(
 }
 
 fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
+    if matches!(left, Value::Object(_)) && binop_dunder(op).is_some() {
+        return try_object_op(op, left, right);
+    }
     match op {
-        BinOp::Add => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
+        BinOp::Add => match (left, right) {
+            (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
+            (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
+            (Value::Array(mut a), Value::Array(b)) => {
+                a.extend(b);
+                Ok(Value::Array(a))
             }
-            match (left, right) {
-                (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
-                (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
-                (Value::Array(mut a), Value::Array(b)) => {
-                    a.extend(b);
-                    Ok(Value::Array(a))
-                }
-                (a, b) => match coerce_numeric(a, b) {
-                    Ok((Numeric::Int(a), Numeric::Int(b))) => Ok(Value::Int(a + b)),
-                    Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
-                    Ok(_) => unreachable!(),
-                    Err(_) => Err(Error::Eval {
-                        msg: "'+' not supported for these types".into(),
-                    }),
-                },
-            }
-        }
-        BinOp::Sub => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
-            }
-            numeric_op(left, right, |a, b| a - b, |a, b| a - b)
-        }
-        BinOp::Mul => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
-            }
-            numeric_op(left, right, |a, b| a * b, |a, b| a * b)
-        }
-        BinOp::Div => match coerce_numeric(left.clone(), right.clone()) {
+            (a, b) => match coerce_numeric(a, b) {
+                Ok((Numeric::Int(a), Numeric::Int(b))) => Ok(Value::Int(a + b)),
+                Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
+                Ok(_) => unreachable!(),
+                Err(_) => Err(Error::Eval {
+                    msg: "'+' not supported for these types".into(),
+                }),
+            },
+        },
+        BinOp::Sub => numeric_op(left, right, |a, b| a - b, |a, b| a - b),
+        BinOp::Mul => numeric_op(left, right, |a, b| a * b, |a, b| a * b),
+        BinOp::Div => match coerce_numeric(left, right) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
                 if b == 0 {
                     return Err(Error::Eval {
@@ -537,44 +525,16 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
                 Ok(Value::Float(a / b))
             }
             Ok(_) => unreachable!(),
-            Err(_) => try_object_op(op, left, right),
+            Err(_) => Err(Error::Eval {
+                msg: "'/' not supported for these types".into(),
+            }),
         },
-        BinOp::Eq => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
-            }
-            Ok(Value::Bool(values_equal(&left, &right)))
-        }
-        BinOp::Ne => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
-            }
-            Ok(Value::Bool(!values_equal(&left, &right)))
-        }
-        BinOp::Lt => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
-            }
-            compare_values(left, right, |o| o == std::cmp::Ordering::Less)
-        }
-        BinOp::Le => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
-            }
-            compare_values(left, right, |o| o != std::cmp::Ordering::Greater)
-        }
-        BinOp::Gt => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
-            }
-            compare_values(left, right, |o| o == std::cmp::Ordering::Greater)
-        }
-        BinOp::Ge => {
-            if matches!(left, Value::Object(_)) {
-                return try_object_op(op, left, right);
-            }
-            compare_values(left, right, |o| o != std::cmp::Ordering::Less)
-        }
+        BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
+        BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
+        BinOp::Lt => compare_values(left, right, |o| o == std::cmp::Ordering::Less),
+        BinOp::Le => compare_values(left, right, |o| o != std::cmp::Ordering::Greater),
+        BinOp::Gt => compare_values(left, right, |o| o == std::cmp::Ordering::Greater),
+        BinOp::Ge => compare_values(left, right, |o| o != std::cmp::Ordering::Less),
         BinOp::In => match (left, right) {
             (left, Value::Array(arr)) => {
                 Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left))))
@@ -1173,6 +1133,66 @@ mod tests {
             Value::Bool(false)
         );
         assert_eq!(run("nan != nan", &[("nan", nan)]), Value::Bool(true));
+    }
+
+    #[test]
+    fn test_object_operator_overload() {
+        #[derive(Debug, Clone)]
+        struct Counter(i64);
+
+        impl super::super::value::ValueObject for Counter {
+            fn type_name(&self) -> &'static str {
+                "Counter"
+            }
+            fn call_method(
+                &self,
+                method: &str,
+                args: &[Value],
+            ) -> super::super::error::Result<Value> {
+                match method {
+                    "__add__" => match args.first() {
+                        Some(Value::Int(n)) => Ok(Value::Object(Box::new(Counter(self.0 + n)))),
+                        _ => Err(super::super::error::Error::Eval {
+                            msg: "expected int".into(),
+                        }),
+                    },
+                    "__eq__" => match args.first() {
+                        Some(Value::Object(other)) => {
+                            let other = other.display().parse::<i64>().unwrap_or(i64::MIN);
+                            Ok(Value::Bool(self.0 == other))
+                        }
+                        _ => Ok(Value::Bool(false)),
+                    },
+                    _ => Err(super::super::error::Error::Eval {
+                        msg: format!("no method {method}"),
+                    }),
+                }
+            }
+            fn clone_box(&self) -> Box<dyn super::super::value::ValueObject> {
+                Box::new(self.clone())
+            }
+            fn eq_box(&self, _: &dyn super::super::value::ValueObject) -> bool {
+                false
+            }
+            fn display(&self) -> String {
+                self.0.to_string()
+            }
+        }
+
+        let ctx = Context::new();
+        let env = env_extend(&None, "c".into(), Value::Object(Box::new(Counter(10))));
+
+        // __add__: Counter(10) + 5 → Counter(15)
+        let result = eval_inner(&parse("c + 5").unwrap(), &ctx, &env).unwrap();
+        assert!(matches!(result, Value::Object(_)));
+        assert_eq!(result.to_string(), "15");
+
+        // __eq__: Counter(10) == Counter(10)
+        let env2 = env_extend(&env, "d".into(), Value::Object(Box::new(Counter(10))));
+        assert_eq!(
+            eval_inner(&parse("c == d").unwrap(), &ctx, &env2).unwrap(),
+            Value::Bool(true)
+        );
     }
 
     #[test]
