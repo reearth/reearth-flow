@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-import { Badge } from "@flow/components";
+import { badgeVariants } from "@flow/components/Badge";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 
@@ -16,25 +16,17 @@ type Props = {
   onClearFilters: () => void;
 };
 
-const navigateBadgeRow = (
-  e: React.KeyboardEvent<HTMLDivElement>,
-  onToggle: () => void,
-) => {
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    onToggle();
-    return;
-  }
+const handleRowArrows = (e: React.KeyboardEvent<HTMLButtonElement>) => {
   if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
   e.preventDefault();
   const siblings = Array.from(
-    e.currentTarget.parentElement?.querySelectorAll<HTMLElement>(
-      '[tabindex="0"]',
+    e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+      "button:not(:disabled)",
     ) ?? [],
   );
   const idx = siblings.indexOf(e.currentTarget);
   if (e.key === "ArrowRight") siblings[idx + 1]?.focus();
-  else if (e.key === "ArrowLeft") siblings[idx - 1]?.focus();
+  else siblings[idx - 1]?.focus();
 };
 
 const ActionFilters = ({
@@ -61,22 +53,21 @@ const ActionFilters = ({
           const isDisabled =
             (value === "reader" || value === "writer") && !isMainWorkflow;
           return (
-            <Badge
+            <button
               key={value}
-              tabIndex={isDisabled ? -1 : 0}
-              role="checkbox"
-              aria-checked={isSelected}
-              variant={isSelected ? "default" : "secondary"}
+              type="button"
+              disabled={isDisabled}
+              aria-pressed={isSelected}
               className={cn(
-                "cursor-pointer select-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:outline-none",
-                isDisabled && "pointer-events-none opacity-40",
+                badgeVariants({
+                  variant: isSelected ? "default" : "secondary",
+                }),
+                "cursor-pointer select-none disabled:pointer-events-none disabled:opacity-40",
               )}
               onClick={() => onActionTypeToggle(value)}
-              onKeyDown={(e) =>
-                navigateBadgeRow(e, () => onActionTypeToggle(value))
-              }>
+              onKeyDown={handleRowArrows}>
               {label}
-            </Badge>
+            </button>
           );
         })}
       </div>
@@ -84,25 +75,27 @@ const ActionFilters = ({
         {actionCategories.map(({ value, label }) => {
           const isSelected = currentCategories.includes(value);
           return (
-            <Badge
+            <button
               key={value}
-              tabIndex={0}
-              role="checkbox"
-              aria-checked={isSelected}
-              variant={isSelected ? "default" : "secondary"}
-              className="cursor-pointer select-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:outline-none"
+              type="button"
+              aria-pressed={isSelected}
+              className={cn(
+                badgeVariants({
+                  variant: isSelected ? "default" : "secondary",
+                }),
+                "cursor-pointer select-none",
+              )}
               onClick={() => onCategoryToggle(value)}
-              onKeyDown={(e) =>
-                navigateBadgeRow(e, () => onCategoryToggle(value))
-              }>
+              onKeyDown={handleRowArrows}>
               {label}
-            </Badge>
+            </button>
           );
         })}
       </div>
       {hasActiveFilters && (
         <button
-          className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline focus:outline-none focus:underline"
+          type="button"
+          className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline focus:underline focus:outline-none"
           onClick={onClearFilters}>
           {t("Clear filters")}
         </button>
