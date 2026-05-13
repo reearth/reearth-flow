@@ -78,12 +78,11 @@ const ActionPickerDialog: React.FC<Props> = ({
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        size="2xl"
+        size="3xl"
         position="top"
-        className="flex h-[75vh] flex-col gap-0 overflow-hidden p-0">
-        <div className="pt-4 pb-2">
-          <DialogTitle>{t("Choose Action")}</DialogTitle>
-        </div>
+        className="flex h-[60vh] flex-col gap-0 overflow-hidden p-0">
+        <DialogTitle>{t("Choose Action")}</DialogTitle>
+
         <div className="flex min-h-0 flex-1 overflow-hidden border-t">
           {/* Left panel — filters + list */}
           <div className="flex w-2/5 min-w-0 flex-col border-r">
@@ -107,7 +106,7 @@ const ActionPickerDialog: React.FC<Props> = ({
             </div>
             <div
               ref={containerRef}
-              className="max-h-[50vh] flex-1 overflow-scroll px-2 pb-4">
+              className="flex-1 overflow-y-auto px-2 pb-1">
               {actionsList?.map((action, idx) => {
                 const isSelected = selected === action.name;
                 return (
@@ -125,7 +124,6 @@ const ActionPickerDialog: React.FC<Props> = ({
               })}
             </div>
           </div>
-
           {/* Right panel — detail */}
           <div className="min-w-0 flex-1 overflow-y-auto">
             <ActionPickerDetail action={selectedAction} />
