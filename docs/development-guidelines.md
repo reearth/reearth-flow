@@ -25,6 +25,8 @@ cd server/websocket && cargo run
 
 # Terminal 4: Start UI Development Server
 cd ui && yarn start
+# or, to inject secrets via 1Password CLI:
+cd ui && yarn dev:secure
 ```
 
 ## Cross-Component Workflows
