@@ -3,10 +3,10 @@ import {
   DotsThreeVerticalIcon,
   DownloadIcon,
   FileIcon,
-  PencilIcon,
+  PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Card,
@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@flow/components";
+import { Icon, IconName } from "@flow/components/Icon";
 import { useT } from "@flow/lib/i18n";
 import { Asset } from "@flow/types";
 
@@ -48,13 +49,57 @@ const AssetCard: React.FC<Props> = ({
   const t = useT();
   const [persistOverlay, setPersistOverlay] = useState(false);
 
-  const { id, name, createdAt, size, url } = asset;
+  const { id, name, fileName, createdAt, size, url } = asset;
+
+  const ext = fileName.split(".").pop()?.toLowerCase();
 
   const handleDoubleClick = () => {
     if (onDoubleClick) {
       onDoubleClick(asset);
     }
   };
+  const iconType = useMemo((): IconName | undefined => {
+    switch (ext) {
+      case "csv":
+        return "fileCSV";
+      case "czml":
+        return "fileCzml";
+      case "geojson":
+        return "fileGeoJSON";
+      case "glb":
+        return "fileGlb";
+      case "gltf":
+        return "fileGltf";
+      case "gml":
+        return "fileGml";
+      case "gpkg":
+        return "fileGpkg";
+      case "jpg":
+        return "fileJpg";
+      case "jpeg":
+        return "fileJpeg";
+      case "json":
+        return "fileJson";
+      case "mtl":
+        return "fileMtl";
+      case "obj":
+        return "fileObj";
+      case "png":
+        return "filePng";
+      case "py":
+        return "filePy";
+      case "tif":
+        return "fileTif";
+      case "tiff":
+        return "fileTiff";
+      case "tsv":
+        return "fileTsv";
+      case "zip":
+        return "fileZip";
+      default:
+        return undefined;
+    }
+  }, [ext]);
 
   return (
     <Card
@@ -62,11 +107,18 @@ const AssetCard: React.FC<Props> = ({
       key={id}
       onDoubleClick={handleDoubleClick}>
       <CardContent className="flex items-start justify-center p-2">
-        <FileIcon
-          weight="thin"
-          size={70}
-          className="group:hover:opacity-90 opacity-50"
-        />
+        {iconType ? (
+          <Icon
+            icon={iconType}
+            size={70}
+            className="opacity-50 group-hover:opacity-90"
+          />
+        ) : (
+          <FileIcon
+            weight="thin"
+            className="size-17.5 opacity-50 group-hover:opacity-90"
+          />
+        )}
       </CardContent>
       <CardHeader className="px-1 py-0.5">
         <CardTitle className="truncate text-xs dark:font-extralight">
@@ -97,7 +149,7 @@ const AssetCard: React.FC<Props> = ({
                 disabled={isDeleting || !url}
                 onClick={() => setAssetToBeEdited(asset)}>
                 {t("Edit Asset")}
-                <PencilIcon weight="light" />
+                <PencilLineIcon weight="light" />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

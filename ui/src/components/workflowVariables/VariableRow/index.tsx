@@ -1,4 +1,4 @@
-import { GearIcon, PencilIcon } from "@phosphor-icons/react";
+import { GearIcon, PencilLineIcon } from "@phosphor-icons/react";
 
 import {
   ColorDefaultValueInput,
@@ -166,7 +166,7 @@ const VariableRow: React.FC<Props> = ({
             )}
             <div className="flex items-center gap-0">
               <IconButton
-                icon={<PencilIcon />}
+                icon={<PencilLineIcon />}
                 onClick={() => onVariableDialogOpen?.(index, undefined)}
                 className="ml-2"
               />
