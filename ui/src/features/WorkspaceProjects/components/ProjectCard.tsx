@@ -3,7 +3,7 @@ import {
   CopyIcon,
   DotsThreeVerticalIcon,
   ExportIcon,
-  PencilSimpleIcon,
+  PencilLineIcon,
   PaperPlaneTiltIcon,
   TrashIcon,
   LockIcon,
@@ -133,7 +133,7 @@ const ProjectCard: React.FC<Props> = ({
                 className="justify-between gap-2 text-warning"
                 onClick={() => setEditProject({ ...project })}>
                 {t("Edit Details")}
-                <PencilSimpleIcon />
+                <PencilLineIcon />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

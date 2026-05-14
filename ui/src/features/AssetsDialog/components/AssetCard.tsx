@@ -4,7 +4,7 @@ import {
   DownloadIcon,
   FileIcon,
   // FileIcon,
-  PencilIcon,
+  PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
@@ -149,7 +149,7 @@ const AssetCard: React.FC<Props> = ({
                 disabled={isDeleting || !url}
                 onClick={() => setAssetToBeEdited(asset)}>
                 {t("Edit Asset")}
-                <PencilIcon weight="light" />
+                <PencilLineIcon weight="light" />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
