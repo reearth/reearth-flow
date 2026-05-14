@@ -19,6 +19,7 @@ export type Project = {
   workflows?: Workflow[];
   sharedToken?: string;
   deployment?: Deployment;
+  isLocked?: boolean;
 };
 
 export type ProjectToImport = {

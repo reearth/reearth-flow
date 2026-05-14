@@ -40,6 +40,7 @@ type ProjectDocument struct {
 	// Metadata
 	Archived      bool
 	PublicNoIndex bool
+	IsLocked      bool
 
 	// Analytics
 	EnableGA bool
@@ -68,6 +69,7 @@ func NewProject(project *project.Project) (*ProjectDocument, string) {
 		BasicAuthUsername: project.BasicAuthUsername(),
 		Description:       project.Description(),
 		IsBasicAuthActive: project.IsBasicAuthActive(),
+		IsLocked:          project.IsLocked(),
 		Name:              project.Name(),
 		SharedToken:       sharedToken,
 		UpdatedAt:         project.UpdatedAt(),
@@ -101,6 +103,7 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 		Description(d.Description).
 		IsArchived(d.Archived).
 		IsBasicAuthActive(d.IsBasicAuthActive).
+		IsLocked(d.IsLocked).
 		Name(d.Name).
 		SharedToken(sharedToken).
 		UpdatedAt(d.UpdatedAt).

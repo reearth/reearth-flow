@@ -37,6 +37,7 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.Hand
 	srv.AddTransport(&transport.Websocket{
 		KeepAlivePingInterval: 10 * time.Second,
 		PingPongInterval:      10 * time.Second,
+		InitFunc:              wsInitFunc,
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				origin := r.Header.Get("Origin")

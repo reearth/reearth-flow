@@ -5,7 +5,7 @@ use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::{GeometryType, GmlGeometry};
 
-use super::utils::{local_name, XmlChild, XmlNode, GML_NS};
+use super::utils::{local_name, XmlChild, XmlNode, GML_NS_ID};
 
 pub fn extract_geometries(node: &Arc<XmlNode>) -> (Arc<XmlNode>, Vec<GmlGeometry>) {
     let mut out: Vec<GmlGeometry> = Vec::new();
@@ -55,11 +55,7 @@ fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<Xml
 
     match new_children {
         None => Arc::clone(node),
-        Some(children) => Arc::new(XmlNode {
-            name: node.name.clone(),
-            attrs: node.attrs.clone(),
-            children,
-        }),
+        Some(children) => node.with_children(children),
     }
 }
 
@@ -459,7 +455,7 @@ fn parse_pos_list(text: &str) -> Result<Vec<Coordinate3D<f64>>, &'static str> {
 
     Ok(values
         .chunks_exact(3)
-        .map(|c| Coordinate3D::new__(c[0], c[1], c[2]))
+        .map(|c| Coordinate3D::new__(c[1], c[0], c[2]))
         .collect())
 }
 
@@ -473,7 +469,7 @@ fn parse_single_pos(text: &str) -> Result<Coordinate3D<f64>, &'static str> {
         return Err("invalid gml:pos content");
     }
 
-    Ok(Coordinate3D::new__(vals[0], vals[1], vals[2]))
+    Ok(Coordinate3D::new__(vals[1], vals[0], vals[2]))
 }
 
 fn extract_lod(local: &str) -> Option<u8> {
@@ -503,7 +499,7 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
 fn gml_id(node: &XmlNode) -> Option<String> {
     node.attrs
         .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && ns == GML_NS)
+        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
         .map(|(_, v)| v.clone())
 }
 
@@ -533,20 +529,31 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::feature::reader::citygml3::utils::XmlChild;
+    use crate::feature::reader::citygml3::utils::{
+        test_url, NsId, XmlChild, EMPTY_NS_ID, GML_NS, GML_NS_ID, XLINK_NS, XLINK_NS_ID,
+    };
 
     fn text_node(t: &str) -> XmlChild {
         XmlChild::Text(t.to_string())
     }
 
+    fn ns_id(ns: &str) -> NsId {
+        match ns {
+            GML_NS => GML_NS_ID,
+            XLINK_NS => XLINK_NS_ID,
+            _ => EMPTY_NS_ID,
+        }
+    }
+
     fn elem(name: &str, attrs: Vec<(&str, &str, &str)>, children: Vec<XmlChild>) -> XmlNode {
         XmlNode {
-            name: (name.to_string(), String::new()),
+            name: (name.to_string(), EMPTY_NS_ID),
             attrs: attrs
                 .into_iter()
-                .map(|(q, ns, v)| ((q.to_string(), ns.to_string()), v.to_string()))
+                .map(|(q, ns, v)| ((q.to_string(), ns_id(ns)), v.to_string()))
                 .collect(),
             children,
+            source_url: test_url(),
         }
     }
 
@@ -583,8 +590,8 @@ mod tests {
     fn test_parse_pos_list_basic() {
         let coords = parse_pos_list("1.0 2.0 3.0 4.0 5.0 6.0").expect("expected valid posList");
         assert_eq!(coords.len(), 2);
-        assert_eq!(coords[0], Coordinate3D::new__(1.0, 2.0, 3.0));
-        assert_eq!(coords[1], Coordinate3D::new__(4.0, 5.0, 6.0));
+        assert_eq!(coords[0], Coordinate3D::new__(2.0, 1.0, 3.0));
+        assert_eq!(coords[1], Coordinate3D::new__(5.0, 4.0, 6.0));
     }
 
     #[test]
@@ -595,6 +602,12 @@ mod tests {
     #[test]
     fn test_parse_pos_list_invalid_number_errors() {
         assert!(parse_pos_list("1.0 2.0 nope").is_err());
+    }
+
+    #[test]
+    fn test_parse_single_pos_basic() {
+        let coord = parse_single_pos("35.0 139.0 34.5").expect("expected valid pos");
+        assert_eq!(coord, Coordinate3D::new__(139.0, 35.0, 34.5));
     }
 
     #[test]

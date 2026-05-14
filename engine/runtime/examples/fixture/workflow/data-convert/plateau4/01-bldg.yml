@@ -514,7 +514,15 @@ graphs:
           (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
       - attribute: _lod
         method: create
-        value: '1'
+        value: |
+          let mask = env.get("__value")["__citygml_lod_mask"];
+          let lod = 0;
+          let i = 0;
+          while i <= 4 {
+            if (mask & (1 << i)) != 0 { lod = i; }
+            i += 1;
+          }
+          lod
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojectorByLod1
     type: action
@@ -548,7 +556,15 @@ graphs:
           (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
       - attribute: _lod
         method: create
-        value: '2'
+        value: |
+          let mask = env.get("__value")["__citygml_lod_mask"];
+          let lod = 0;
+          let i = 0;
+          while i <= 4 {
+            if (mask & (1 << i)) != 0 { lod = i; }
+            i += 1;
+          }
+          lod
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
     name: VerticalReprojectorByLod2
     type: action
@@ -582,7 +598,15 @@ graphs:
           (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
       - attribute: _lod
         method: create
-        value: '2'
+        value: |
+          let mask = env.get("__value")["__citygml_lod_mask"];
+          let lod = 0;
+          let i = 0;
+          while i <= 4 {
+            if (mask & (1 << i)) != 0 { lod = i; }
+            i += 1;
+          }
+          lod
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
     name: VerticalReprojectorByLod2NoTexture
     type: action
@@ -616,7 +640,15 @@ graphs:
           (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
       - attribute: _lod
         method: create
-        value: '3'
+        value: |
+          let mask = env.get("__value")["__citygml_lod_mask"];
+          let lod = 0;
+          let i = 0;
+          while i <= 4 {
+            if (mask & (1 << i)) != 0 { lod = i; }
+            i += 1;
+          }
+          lod
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
     name: VerticalReprojectorByLod3
     type: action
@@ -650,7 +682,15 @@ graphs:
           (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
       - attribute: _lod
         method: create
-        value: '3'
+        value: |
+          let mask = env.get("__value")["__citygml_lod_mask"];
+          let lod = 0;
+          let i = 0;
+          while i <= 4 {
+            if (mask & (1 << i)) != 0 { lod = i; }
+            i += 1;
+          }
+          lod
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
     name: VerticalReprojectorByLod3NoTexture
     type: action
@@ -684,7 +724,15 @@ graphs:
           (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
       - attribute: _lod
         method: create
-        value: '4'
+        value: |
+          let mask = env.get("__value")["__citygml_lod_mask"];
+          let lod = 0;
+          let i = 0;
+          while i <= 4 {
+            if (mask & (1 << i)) != 0 { lod = i; }
+            i += 1;
+          }
+          lod
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
     name: VerticalReprojectorByLod4
     type: action
@@ -718,7 +766,15 @@ graphs:
           (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
       - attribute: _lod
         method: create
-        value: '4'
+        value: |
+          let mask = env.get("__value")["__citygml_lod_mask"];
+          let lod = 0;
+          let i = 0;
+          while i <= 4 {
+            if (mask & (1 << i)) != 0 { lod = i; }
+            i += 1;
+          }
+          lod
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
     name: VerticalReprojectorByLod4NoTexture
     type: action

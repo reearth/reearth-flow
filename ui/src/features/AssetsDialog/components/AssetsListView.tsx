@@ -1,7 +1,7 @@
 import {
   CopyIcon,
   DownloadIcon,
-  PencilIcon,
+  PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
@@ -66,7 +66,7 @@ const AssetsListView: React.FC<Props> = ({
       cell: (row) => (
         <div className="flex gap-1">
           <IconButton
-            icon={<PencilIcon />}
+            icon={<PencilLineIcon />}
             onClick={() => setAssetToBeEdited(row.row.original)}
             disabled={isDeleting}
           />

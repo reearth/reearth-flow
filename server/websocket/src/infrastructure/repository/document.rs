@@ -175,6 +175,10 @@ impl DocumentRepository for DocumentRepositoryImpl {
             store.flush_doc_v2(doc_id, &txn).await?;
         }
 
+        // Delete stale update objects beyond the target version so that
+        // get_history() only returns valid versions.
+        store.delete_updates_after(doc_id, version as u32).await?;
+
         let document = Self::to_document(doc_id, doc, version, Utc::now());
         Ok(document)
     }

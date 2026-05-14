@@ -1,0 +1,20 @@
+[package]
+description = "Re:Earth Flow texture atlas library"
+name = "reearth-flow-atlas"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+image.workspace = true
+rstar.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

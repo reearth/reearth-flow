@@ -39,6 +39,10 @@ const buildExprUiSchema = (
   if (!schemaObj || typeof schemaObj !== "object") return {};
   const uiSchema: any = {};
 
+  if (schemaObj.format === "wysiwyg") {
+    return { "ui:widget": "WysiwygWidget" };
+  }
+
   // Determine if this is a Python script field or regular Rhai expression
 
   const isExprType =

@@ -45,7 +45,8 @@ export const useAction = (lang: string) => {
   const useGetActionsSegregated = (filter?: {
     isMainWorkflow: boolean;
     searchTerm?: string;
-    type?: string;
+    types?: string[];
+    categories?: string[];
     nodes?: Node[];
   }): GetActionsSegregated => {
     const { data, ...rest } = useGetActionsSegregatedFetch(lang);
@@ -55,25 +56,30 @@ export const useAction = (lang: string) => {
 
       let result = { ...data };
 
+      const hasActiveFilter =
+        !!filter?.searchTerm ||
+        !!filter?.categories?.length ||
+        !!filter?.types?.length;
+
       result = {
         byCategory: filterActionsByPredicate(
           result.byCategory,
           (action) => combinedFilter(action, filter),
-          !!filter?.searchTerm,
+          hasActiveFilter,
         ),
         byType: filterActionsByPredicate(
           result.byType,
           (action) => combinedFilter(action, filter),
-          !!filter?.searchTerm,
+          hasActiveFilter,
         ),
       };
 
-      if (filter?.type && result.byType) {
+      if (filter?.types?.length && result.byType) {
         return {
           ...result,
-          byType: {
-            [filter.type]: result.byType[filter.type],
-          },
+          byType: Object.fromEntries(
+            filter.types.map((t) => [t, result.byType[t] ?? []]),
+          ),
         };
       }
 
@@ -98,6 +104,8 @@ const combinedFilter = (
   filter?: {
     isMainWorkflow: boolean;
     searchTerm?: string;
+    types?: string[];
+    categories?: string[];
     nodes?: Node[];
   },
 ) => {
@@ -107,6 +115,22 @@ const combinedFilter = (
     }
   } else {
     if (action.type === "reader" || action.type === "writer") {
+      return false;
+    }
+  }
+
+  if (filter?.types?.length) {
+    if (!filter.types.includes(action.type)) {
+      return false;
+    }
+  }
+
+  if (filter?.categories?.length) {
+    if (
+      !action.categories.some((c) =>
+        filter.categories?.some((fc) => fc.toLowerCase() === c.toLowerCase()),
+      )
+    ) {
       return false;
     }
   }

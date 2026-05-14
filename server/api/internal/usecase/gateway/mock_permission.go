@@ -1,10 +1,6 @@
 package gateway
 
-import (
-	"context"
-
-	"github.com/reearth/reearthx/appx"
-)
+import "context"
 
 type MockPermissionChecker struct {
 	Error error
@@ -20,7 +16,7 @@ func NewMockPermissionChecker() *MockPermissionChecker {
 	}
 }
 
-func (m *MockPermissionChecker) CheckPermission(ctx context.Context, authInfo *appx.AuthInfo, userId string, resource string, action string) (bool, error) {
+func (m *MockPermissionChecker) CheckPermission(_ context.Context, _, _ string) (bool, error) {
 	if m.Error != nil {
 		return false, m.Error
 	}

@@ -105,13 +105,9 @@ impl DocumentHandler {
             group.signal_rollback().await;
         }
 
-        if let Err(e) = state.pool.get_redis_store().delete_stream(&doc_id).await {
-            warn!(
-                "Failed to delete Redis stream during rollback for '{}': {}",
-                doc_id, e
-            );
-        }
-
+        // 3. Force-evict the group: cancels all connection tasks, then deletes
+        //    the Redis stream atomically under the lock (prevents evicted tasks
+        //    from recreating the stream).
         state.pool.force_evict_group(&doc_id).await;
 
         Json(DocumentResponse {

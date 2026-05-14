@@ -440,6 +440,7 @@ type Project struct {
 	ID                ID           `json:"id"`
 	IsArchived        bool         `json:"isArchived"`
 	IsBasicAuthActive bool         `json:"isBasicAuthActive"`
+	IsLocked          bool         `json:"isLocked"`
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
@@ -658,6 +659,7 @@ type UpdateProjectInput struct {
 	Description       *string `json:"description,omitempty"`
 	Archived          *bool   `json:"archived,omitempty"`
 	IsBasicAuthActive *bool   `json:"isBasicAuthActive,omitempty"`
+	IsLocked          *bool   `json:"isLocked,omitempty"`
 	BasicAuthUsername *string `json:"basicAuthUsername,omitempty"`
 	BasicAuthPassword *string `json:"basicAuthPassword,omitempty"`
 }
@@ -1625,17 +1627,19 @@ const (
 	ProjectSortFieldName      ProjectSortField = "NAME"
 	ProjectSortFieldCreatedAt ProjectSortField = "CREATED_AT"
 	ProjectSortFieldUpdatedAt ProjectSortField = "UPDATED_AT"
+	ProjectSortFieldIsLocked  ProjectSortField = "IS_LOCKED"
 )
 
 var AllProjectSortField = []ProjectSortField{
 	ProjectSortFieldName,
 	ProjectSortFieldCreatedAt,
 	ProjectSortFieldUpdatedAt,
+	ProjectSortFieldIsLocked,
 }
 
 func (e ProjectSortField) IsValid() bool {
 	switch e {
-	case ProjectSortFieldName, ProjectSortFieldCreatedAt, ProjectSortFieldUpdatedAt:
+	case ProjectSortFieldName, ProjectSortFieldCreatedAt, ProjectSortFieldUpdatedAt, ProjectSortFieldIsLocked:
 		return true
 	}
 	return false

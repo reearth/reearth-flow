@@ -1,7 +1,7 @@
 import { ErrorBoundary } from "react-error-boundary";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
-import { FlowLogo } from "@flow/components/icons";
+import { FlowLogo } from "@flow/components/Icon";
 
 const RenderFallback: React.FC<{
   children: React.ReactNode;

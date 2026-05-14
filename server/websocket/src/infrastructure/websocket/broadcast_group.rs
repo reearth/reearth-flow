@@ -257,14 +257,18 @@ impl BroadcastGroup {
                         break;
                     },
                     _ = interval.tick() => {
-                        let awareness = awareness_clone.read().await;
-                        let txn = awareness.doc().transact();
-                        let state_vector = txn.state_vector();
+                        // Acquire write lock briefly to serialize after redis_subscriber_task,
+                        // ensuring the state vector includes all applied Redis updates.
+                        // Drop the lock immediately after reading to avoid blocking handle_msg.
+                        let state_vector = {
+                            let awareness = awareness_clone.write().await;
+                            let sv = awareness.doc().transact().state_vector();
+                            drop(awareness);
+                            sv
+                        };
 
                         let sync_msg = Message::Sync(SyncMessage::SyncStep1(state_vector));
-                        let encoded_msg = sync_msg.encode_v1();
-
-                        let msg = Bytes::from(encoded_msg);
+                        let msg = Bytes::from(sync_msg.encode_v1());
                         if let Err(e) = sender_clone.send(msg) {
                             warn!("Failed to send periodic sync message: {}", e);
                         }

@@ -7,9 +7,10 @@ import { removeWhiteSpace } from "@flow/utils";
 
 export const NameInput: React.FC<{
   variable: AnyWorkflowVariable;
+  disabled?: boolean;
   onUpdate: (variable: AnyWorkflowVariable) => void;
   placeholder: string;
-}> = ({ variable, onUpdate, placeholder }) => {
+}> = ({ variable, disabled, onUpdate, placeholder }) => {
   const [localValue, setLocalValue] = useState(variable.name);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export const NameInput: React.FC<{
   return (
     <Input
       value={localValue}
+      disabled={disabled}
       onChange={(e) => {
         e.stopPropagation();
         const cleansedValue = removeWhiteSpace(e.currentTarget.value);

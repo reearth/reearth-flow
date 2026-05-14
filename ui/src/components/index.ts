@@ -12,7 +12,7 @@ export * from "./DataTable";
 export * from "./Dialog";
 export * from "./DropdownMenu";
 export * from "./FileTree";
-export * from "./icons";
+export * from "./Icon";
 export * from "./Input";
 export * from "./Label";
 export * from "./Loading";

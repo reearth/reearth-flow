@@ -1,7 +1,4 @@
-import {
-  WorkspaceFragment,
-  Role as GraphqlRole,
-} from "@flow/lib/gql/__gen__/graphql";
+import { WorkspaceFragment } from "@flow/lib/gql/__gen__/graphql";
 
 export const mockWorkspaces: WorkspaceFragment[] = [
   {
@@ -11,7 +8,8 @@ export const mockWorkspaces: WorkspaceFragment[] = [
     members: [
       {
         userId: "user-1",
-        role: GraphqlRole.Owner,
+        role: "owner",
+        user: null,
       },
     ],
   },
@@ -22,15 +20,18 @@ export const mockWorkspaces: WorkspaceFragment[] = [
     members: [
       {
         userId: "user-1",
-        role: GraphqlRole.Owner,
+        role: "owner",
+        user: null,
       },
       {
         userId: "user-2",
-        role: GraphqlRole.Maintainer,
+        role: "maintainer",
+        user: null,
       },
       {
         userId: "user-3",
-        role: GraphqlRole.Writer,
+        role: "writer",
+        user: null,
       },
     ],
   },
@@ -41,15 +42,18 @@ export const mockWorkspaces: WorkspaceFragment[] = [
     members: [
       {
         userId: "user-4",
-        role: GraphqlRole.Owner,
+        role: "owner",
+        user: null,
       },
       {
         userId: "user-1",
-        role: GraphqlRole.Maintainer,
+        role: "maintainer",
+        user: null,
       },
       {
         userId: "user-5",
-        role: GraphqlRole.Reader,
+        role: "reader",
+        user: null,
       },
     ],
   },
@@ -60,11 +64,13 @@ export const mockWorkspaces: WorkspaceFragment[] = [
     members: [
       {
         userId: "user-3",
-        role: GraphqlRole.Owner,
+        role: "owner",
+        user: null,
       },
       {
         userId: "user-2",
-        role: GraphqlRole.Writer,
+        role: "writer",
+        user: null,
       },
     ],
   },

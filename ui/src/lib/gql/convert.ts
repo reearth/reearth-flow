@@ -21,14 +21,15 @@ import {
   type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
   type UserFacingLogLevel as GraphqlUserFacingLogLevel,
   type WorkerConfigFragment,
-  ParameterType,
-  ProjectSnapshotFragment,
+  type ParameterType,
+  type ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Deployment,
   Job,
   JobStatus,
   Project,
+  Role,
   Trigger,
   ProjectDocument,
   NodeExecution,
@@ -63,6 +64,7 @@ export const toProject = (project: ProjectFragment): Project => ({
   workspaceId: project.workspaceId,
   sharedToken: project.sharedToken ?? undefined,
   deployment: project.deployment ? toDeployment(project.deployment) : undefined,
+  isLocked: project.isLocked,
 });
 
 export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
@@ -72,7 +74,7 @@ export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
   members: workspace.members.map(
     (m): Member => ({
       userId: m.userId,
-      role: m.role,
+      role: m.role as Role,
       user: m.user
         ? {
             id: m.user?.id,
@@ -374,19 +376,19 @@ export const toGqlParameterType = (
 ): ParameterType | undefined => {
   switch (type) {
     case "array":
-      return ParameterType.Array;
+      return "ARRAY";
     case "choice":
-      return ParameterType.Choice;
+      return "CHOICE";
     case "color":
-      return ParameterType.Color;
+      return "COLOR";
     case "datetime":
-      return ParameterType.Datetime;
+      return "DATETIME";
     case "number":
-      return ParameterType.Number;
+      return "NUMBER";
     case "text":
-      return ParameterType.Text;
+      return "TEXT";
     case "yes_no":
-      return ParameterType.YesNo;
+      return "YES_NO";
     // case "coordinate_system":
     //   return ParameterType.CoordinateSystem;
     // case "attribute_name":

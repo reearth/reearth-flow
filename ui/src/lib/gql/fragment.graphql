@@ -9,6 +9,7 @@ fragment Project on Project {
   deployment {
     ...Deployment
   }
+  isLocked
 }
 fragment Workspace on Workspace {
   id

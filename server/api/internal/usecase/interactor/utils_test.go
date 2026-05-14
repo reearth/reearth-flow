@@ -8,23 +8,22 @@ import (
 
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
-	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
 
 type mockPermissionChecker struct {
-	checkPermissionFunc func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error)
+	checkPermissionFunc func(ctx context.Context, resource, action string) (bool, error)
 }
 
-func NewMockPermissionChecker(checkFunc func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error)) *mockPermissionChecker {
+func NewMockPermissionChecker(checkFunc func(ctx context.Context, resource, action string) (bool, error)) *mockPermissionChecker {
 	return &mockPermissionChecker{
 		checkPermissionFunc: checkFunc,
 	}
 }
 
-func (m *mockPermissionChecker) CheckPermission(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+func (m *mockPermissionChecker) CheckPermission(ctx context.Context, resource, action string) (bool, error) {
 	if m.checkPermissionFunc != nil {
-		return m.checkPermissionFunc(ctx, authInfo, userId, resource, action)
+		return m.checkPermissionFunc(ctx, resource, action)
 	}
 	return true, nil
 }

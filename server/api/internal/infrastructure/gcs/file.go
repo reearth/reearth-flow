@@ -38,6 +38,7 @@ type fileRepo struct {
 	base             *url.URL
 	cacheControl     string
 	replaceUploadURL bool
+	client           *storage.Client
 }
 
 func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool) (gateway.File, error) {
@@ -56,11 +57,17 @@ func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool
 		return nil, errors.New("invalid base URL")
 	}
 
+	client, err := storage.NewClient(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCS client: %w", err)
+	}
+
 	return &fileRepo{
 		bucketName:       bucketName,
 		base:             u,
 		cacheControl:     cacheControl,
 		replaceUploadURL: replaceUploadURL,
+		client:           client,
 	}, nil
 }
 
@@ -104,10 +111,7 @@ func (f *fileRepo) UploadedAsset(ctx context.Context, u *asset.Upload) (*file.Fi
 		return nil, gateway.ErrInvalidFile
 	}
 	p := path.Join(gcsAssetBasePath, sn)
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		return nil, err
-	}
+	bucket := f.bucket()
 	attrs, err := bucket.Object(p).Attrs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("attrs(object=%s): %w", p, err)
@@ -228,11 +232,7 @@ func (f *fileRepo) ListJobArtifacts(ctx context.Context, jobID string) ([]string
 		return nil, gateway.ErrInvalidFile
 	}
 
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		log.Errorfc(ctx, "gcs: list artifacts bucket err: %+v\n", err)
-		return nil, rerror.ErrInternalByWithContext(ctx, err)
-	}
+	bucket := f.bucket()
 
 	prefix := path.Join(gcsArtifactBasePath, jobID, "artifacts/")
 	query := &storage.Query{
@@ -274,13 +274,10 @@ func (f *fileRepo) GetJobLogURL(jobID string) string {
 }
 
 func (f *fileRepo) CheckJobLogExists(ctx context.Context, jobID string) (bool, error) {
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		return false, err
-	}
+	bucket := f.bucket()
 
 	logPath := path.Join(gcsArtifactBasePath, jobID, "action-log/all.log")
-	_, err = bucket.Object(logPath).Attrs(ctx)
+	_, err := bucket.Object(logPath).Attrs(ctx)
 	if err == storage.ErrObjectNotExist {
 		return false, nil
 	}
@@ -300,13 +297,10 @@ func (f *fileRepo) GetJobWorkerLogURL(jobID string) string {
 }
 
 func (f *fileRepo) CheckJobWorkerLogExists(ctx context.Context, jobID string) (bool, error) {
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		return false, err
-	}
+	bucket := f.bucket()
 
 	logPath := path.Join(gcsArtifactBasePath, jobID, "worker/worker.log")
-	_, err = bucket.Object(logPath).Attrs(ctx)
+	_, err := bucket.Object(logPath).Attrs(ctx)
 	if err == storage.ErrObjectNotExist {
 		return false, nil
 	}
@@ -326,13 +320,10 @@ func (f *fileRepo) GetJobUserFacingLogURL(jobID string) string {
 }
 
 func (f *fileRepo) CheckJobUserFacingLogExists(ctx context.Context, jobID string) (bool, error) {
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		return false, err
-	}
+	bucket := f.bucket()
 
 	logPath := path.Join(gcsArtifactBasePath, jobID, "user-facing-log/user-facing.log")
-	_, err = bucket.Object(logPath).Attrs(ctx)
+	_, err := bucket.Object(logPath).Attrs(ctx)
 	if err == storage.ErrObjectNotExist {
 		return false, nil
 	}
@@ -352,13 +343,10 @@ func (f *fileRepo) GetIntermediateDataURL(ctx context.Context, edgeID, jobID str
 }
 
 func (f *fileRepo) CheckIntermediateDataExists(ctx context.Context, edgeID, jobID string) (bool, error) {
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		return false, err
-	}
+	bucket := f.bucket()
 
 	intermediateDataPath := path.Join(gcsArtifactBasePath, jobID, "feature-store", edgeID+".jsonl")
-	_, err = bucket.Object(intermediateDataPath).Attrs(ctx)
+	_, err := bucket.Object(intermediateDataPath).Attrs(ctx)
 	if err == storage.ErrObjectNotExist {
 		return false, nil
 	}
@@ -369,13 +357,8 @@ func (f *fileRepo) CheckIntermediateDataExists(ctx context.Context, edgeID, jobI
 }
 
 // helpers
-func (f *fileRepo) bucket(ctx context.Context) (*storage.BucketHandle, error) {
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-	bucket := client.Bucket(f.bucketName)
-	return bucket, nil
+func (f *fileRepo) bucket() *storage.BucketHandle {
+	return f.client.Bucket(f.bucketName)
 }
 
 func (f *fileRepo) read(ctx context.Context, filename string) (io.ReadCloser, error) {
@@ -383,11 +366,7 @@ func (f *fileRepo) read(ctx context.Context, filename string) (io.ReadCloser, er
 		return nil, rerror.ErrNotFound
 	}
 
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		log.Errorfc(ctx, "gcs: read bucket err: %+v\n", err)
-		return nil, rerror.ErrInternalByWithContext(ctx, err)
-	}
+	bucket := f.bucket()
 
 	reader, err := bucket.Object(filename).NewReader(ctx)
 	if err != nil {
@@ -406,12 +385,7 @@ func (f *fileRepo) upload(ctx context.Context, filename string, content io.Reade
 		return 0, gateway.ErrInvalidFile
 	}
 
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		log.Errorfc(ctx, "gcs: upload bucket err: %+v\n", err)
-		return 0, rerror.ErrInternalByWithContext(ctx, err)
-	}
-
+	bucket := f.bucket()
 	object := bucket.Object(filename)
 	if err := object.Delete(ctx); err != nil && !errors.Is(err, storage.ErrObjectNotExist) {
 		log.Errorfc(ctx, "gcs: upload delete err: %+v\n", err)
@@ -440,12 +414,7 @@ func (f *fileRepo) delete(ctx context.Context, filename string) error {
 		return gateway.ErrInvalidFile
 	}
 
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		log.Errorfc(ctx, "gcs: delete bucket err: %+v\n", err)
-		return rerror.ErrInternalByWithContext(ctx, err)
-	}
-
+	bucket := f.bucket()
 	object := bucket.Object(filename)
 	if err := object.Delete(ctx); err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
@@ -500,10 +469,7 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 	}
 	p := path.Join(gcsAssetBasePath, sn)
 
-	bucket, err := f.bucket(ctx)
-	if err != nil {
-		return nil, err
-	}
+	bucket := f.bucket()
 	opt := &storage.SignedURLOptions{
 		Scheme:      storage.SigningSchemeV4,
 		Method:      http.MethodPut,

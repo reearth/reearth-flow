@@ -4,9 +4,6 @@ use std::io::BufWriter;
 use std::sync::Mutex;
 use std::{str::FromStr, sync::Arc};
 
-use atlas_packer::export::JpegAtlasExporter;
-use atlas_packer::pack::AtlasPacker;
-use atlas_packer::texture::cache::{TextureCache, TextureSizeCache};
 use flatgeom::{Polygon2, Polygon3};
 use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
@@ -25,10 +22,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tempfile::tempdir;
 
-use crate::atlas::GltfFeature as ClassFeature;
-use crate::atlas::{
-    encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export,
-};
+use crate::atlas::{build_atlas_geometry, GltfFeature as ClassFeature};
 use crate::errors::SinkError;
 use crate::zip_eq_logged::ZipEqLoggedExt;
 use nusamai_citygml::schema::{FeatureTypeDef, Schema};
@@ -214,24 +208,16 @@ impl Sink for GltfWriter {
             .try_for_each(|(typename, features)| {
                 let schema: Schema = features.try_into()?;
 
-                let texture_cache = TextureCache::new(100_000_000);
-                let texture_size_cache = TextureSizeCache::new();
-
                 let mut metadata_encoder = MetadataEncoder::new(&schema);
 
                 let binding = tempdir().unwrap();
                 let folder_path = binding.path();
-                let base_name = typename.as_deref().unwrap_or("").replace(':', "_");
-
-                let texture_folder_name = "textures";
-                let atlas_dir = folder_path.join(texture_folder_name);
+                let atlas_dir = folder_path.join("textures");
                 std::fs::create_dir_all(&atlas_dir).map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(
                         "Failed to create directory {atlas_dir:?} with : {e:?}"
                     ))
                 })?;
-
-                let packer = Mutex::new(AtlasPacker::default());
 
                 let transformed_features = transform_features_to_local_enu(
                     features.features.clone(),
@@ -239,32 +225,31 @@ impl Sink for GltfWriter {
                     &ellipsoid,
                 );
 
-                let filtered_features = encode_metadata(
-                    &transformed_features,
-                    &features.feature_type,
-                    &mut metadata_encoder,
-                );
+                let filtered_features: Vec<&ClassFeature> = transformed_features
+                    .iter()
+                    .filter(|feature| {
+                        match metadata_encoder
+                            .add_feature(&features.feature_type, &feature.attributes)
+                        {
+                            Ok(_) => true,
+                            Err(e) => {
+                                tracing::error!("Failed to add feature with error = {e:?}");
+                                false
+                            }
+                        }
+                    })
+                    .collect();
 
-                let (max_width, max_height) = load_textures_into_packer(
-                    &filtered_features,
-                    &packer,
-                    &texture_size_cache,
-                    &|feature_id, poly_count| {
-                        generate_texture_id(&base_name, feature_id, poly_count)
-                    },
-                    1.0,   // geom_error (dummy value for non-tiled output)
-                    false, // limit_texture_resolution (no downsampling for gltf)
-                )?;
+                let mut primitives: reearth_flow_gltf::Primitives = Default::default();
+                let mut vertices: IndexSet<[u32; 9], ahash::RandomState> = IndexSet::default();
 
-                // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 8192
-                let (primitives, vertices) = process_geometry_with_atlas_export(
+                build_atlas_geometry(
                     &filtered_features,
-                    packer,
-                    (max_width.max(8192), max_height.max(8192)),
-                    JpegAtlasExporter::default(),
                     &atlas_dir,
-                    &texture_cache,
-                    |feature_id, poly_count| format!("{base_name}_{feature_id}_{poly_count}"),
+                    image::ImageFormat::Jpeg,
+                    "jpg",
+                    &mut primitives,
+                    &mut vertices,
                 )?;
 
                 let file_path = match typename {
@@ -311,10 +296,6 @@ impl Sink for GltfWriter {
 
         Ok(())
     }
-}
-
-fn generate_texture_id(folder_name: &str, feature_id: usize, poly_count: usize) -> String {
-    format!("{folder_name}_{feature_id}_{poly_count}")
 }
 
 fn compute_transform_matrix(

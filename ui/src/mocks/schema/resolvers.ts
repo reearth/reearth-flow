@@ -1,20 +1,14 @@
 import {
-  AssetFragment,
-  CmsItemFragment,
-  CmsModelFragment,
-  CmsProjectFragment,
-  DeploymentFragment,
-  JobFragment,
-  JobStatus as GraphqlJobStatus,
-  UserFacingLogLevel as GraphqlUserFacingLogLevel,
-  ProjectFragment,
-  WorkspaceFragment,
-  Role as GraphqlRole,
-  Theme,
-  User as GraphqlUser,
-  UserFacingLogFragment,
+  type AssetFragment,
+  type CmsItemFragment,
+  type CmsModelFragment,
+  type CmsProjectFragment,
+  type DeploymentFragment,
+  type JobFragment,
+  type ProjectFragment,
+  type WorkspaceFragment,
+  type UserFacingLogFragment,
 } from "@flow/lib/gql/__gen__/graphql";
-
 import { mockAssets } from "../data/asset";
 import {
   mockCmsProjects,
@@ -29,6 +23,8 @@ import {
   getCurrentUser,
   getCurrentMe,
   type MockMe,
+  type MockUser,
+  Theme as ThemeValues,
 } from "../data/users";
 import { mockWorkspaces } from "../data/workspaces";
 
@@ -163,10 +159,10 @@ export const resolvers = {
 
   // Type resolvers
   User: {
-    id: (user: GraphqlUser) => user.id,
-    name: (user: GraphqlUser) => user.name,
-    email: (user: GraphqlUser) => user.email,
-    host: (user: GraphqlUser) => user.host,
+    id: (user: MockUser) => user.id,
+    name: (user: MockUser) => user.name,
+    email: (user: MockUser) => user.email,
+    host: (user: MockUser) => user.host,
   },
 
   Me: {
@@ -494,7 +490,7 @@ export const resolvers = {
         id: `exec-${args.jobId}-${args.nodeId}`,
         nodeId: args.nodeId,
         jobId: args.jobId,
-        status: GraphqlJobStatus.Completed,
+        status: "COMPLETED",
         startedAt: "2024-01-28T10:00:00Z",
         completedAt: "2024-01-28T10:05:00Z",
         logs: logs.filter(
@@ -646,7 +642,7 @@ export const resolvers = {
   Mutation: {
     // User mutations
     signup: () => {
-      const newUser: GraphqlUser = {
+      const newUser: MockUser = {
         id: generateId("user"),
         name: "New User",
         email: "newuser@reearth.io",
@@ -655,17 +651,16 @@ export const resolvers = {
           description: "user description",
           website: "https://example.com/user",
           photoURL: "https://example.com/user/analyst.png",
-          theme: Theme.Default,
+          theme: ThemeValues.Default,
           lang: "en",
         },
       };
 
-      const newWorkspace = {
+      const newWorkspace: WorkspaceFragment = {
         id: generateId("workspace"),
         name: "Personal Workspace",
         personal: true,
-        members: [{ userId: newUser.id, role: GraphqlRole.Owner }],
-        createdAt: new Date().toISOString(),
+        members: [{ userId: newUser.id, role: "owner", user: null }],
       };
 
       users.push(newUser);
@@ -696,17 +691,17 @@ export const resolvers = {
       const { input } = args;
       const currentUser = getCurrentUser();
 
-      const newWorkspace = {
+      const newWorkspace: WorkspaceFragment = {
         id: generateId("workspace"),
         name: input.name,
         personal: false,
         members: [
           {
             userId: currentUser.id,
-            role: GraphqlRole.Owner,
+            role: "owner",
+            user: null,
           },
         ],
-        createdAt: new Date().toISOString(),
       };
 
       workspaces.push(newWorkspace);
@@ -752,6 +747,7 @@ export const resolvers = {
       workspaces[workspaceIndex].members.push({
         userId: input.userId,
         role: input.role,
+        user: null,
       });
 
       return { workspace: workspaces[workspaceIndex] };
@@ -803,8 +799,11 @@ export const resolvers = {
         name: input.name || "New Project",
         description: input.description || "",
         workspaceId: input.workspaceId,
+        sharedToken: null,
+        deployment: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        isLocked: false,
       };
 
       projects.push(newProject);
@@ -866,6 +865,7 @@ export const resolvers = {
           version: "1.0.0",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          project: null,
         };
         if (deployment) {
           deployments.push(deployment);
@@ -876,10 +876,13 @@ export const resolvers = {
       const newJob: JobFragment = {
         id: generateId("job"),
         workspaceId: input.workspaceId,
-        status: GraphqlJobStatus.Pending,
+        status: "PENDING",
         debug: false,
         startedAt: new Date().toISOString(),
+        completedAt: null,
         outputURLs: [],
+        userFacingLogsURL: null,
+        deployment: null,
       };
 
       jobs.push(newJob);
@@ -888,7 +891,9 @@ export const resolvers = {
       logs.push({
         jobId: newJob.id,
         timestamp: new Date().toISOString(),
-        level: GraphqlUserFacingLogLevel.Info,
+        nodeId: null,
+        nodeName: null,
+        level: "INFO",
         message: "Job queued for execution",
       });
 
@@ -896,11 +901,13 @@ export const resolvers = {
       setTimeout(() => {
         const jobIndex = jobs.findIndex((j) => j.id === newJob.id);
         if (jobIndex !== -1) {
-          jobs[jobIndex].status = GraphqlJobStatus.Running;
+          jobs[jobIndex].status = "RUNNING";
           logs.push({
             jobId: newJob.id,
             timestamp: new Date().toISOString(),
-            level: GraphqlUserFacingLogLevel.Info,
+            nodeId: null,
+            nodeName: null,
+            level: "INFO",
             message: "Job started",
           });
         }
@@ -1000,6 +1007,7 @@ export const resolvers = {
         uuid: "uuid-1",
         flatFiles: false,
         public: true,
+        archiveExtractionStatus: null,
       };
 
       assets.push(newAsset);
@@ -1046,6 +1054,7 @@ export const resolvers = {
         workflowUrl: `https://workflow-${generateId("flow")}.reearth-flow.com`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        project: null,
       };
 
       deployments.push(newDeployment);
@@ -1087,10 +1096,13 @@ export const resolvers = {
       const newJob: JobFragment = {
         id: generateId("job"),
         workspaceId: deployment.workspaceId,
-        status: GraphqlJobStatus.Pending,
+        status: "PENDING",
         debug: false,
         startedAt: new Date().toISOString(),
+        completedAt: null,
         outputURLs: [],
+        userFacingLogsURL: null,
+        deployment: null,
       };
 
       jobs.push(newJob);
@@ -1107,16 +1119,18 @@ export const resolvers = {
       }
 
       if (
-        jobs[jobIndex].status === GraphqlJobStatus.Pending ||
-        jobs[jobIndex].status === GraphqlJobStatus.Running
+        jobs[jobIndex].status === "PENDING" ||
+        jobs[jobIndex].status === "RUNNING"
       ) {
-        jobs[jobIndex].status = GraphqlJobStatus.Cancelled;
+        jobs[jobIndex].status = "CANCELLED";
         jobs[jobIndex].completedAt = new Date().toISOString();
 
         logs.push({
           jobId: input.jobId,
           timestamp: new Date().toISOString(),
-          level: GraphqlUserFacingLogLevel.Error,
+          nodeId: null,
+          nodeName: null,
+          level: "ERROR",
           message: "Job cancelled by user request",
         });
       }
@@ -1138,11 +1152,11 @@ export const resolvers = {
               // Simulate status changes
               if (job.status === "PENDING") {
                 await new Promise((resolve) => setTimeout(resolve, 2000));
-                job.status = GraphqlJobStatus.Running;
+                job.status = "RUNNING";
                 yield { jobStatus: job.status };
 
                 await new Promise((resolve) => setTimeout(resolve, 5000));
-                job.status = GraphqlJobStatus.Completed;
+                job.status = "COMPLETED";
                 job.completedAt = new Date().toISOString();
                 yield { jobStatus: job.status };
               }

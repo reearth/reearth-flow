@@ -22,6 +22,8 @@ use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, lod::L
 pub(crate) const CITYGML_GML_ID_KEY: &str = "__citygml_gml_id";
 pub(crate) const CITYGML_FEATURE_TYPE_KEY: &str = "__citygml_feature_type";
 pub(crate) const CITYGML_LOD_MASK_KEY: &str = "__citygml_lod_mask";
+pub const CITYGML_PARENT_GML_ID_KEY: &str = "__citygml_parent_gml_id";
+pub const CITYGML_ROOT_GML_ID_KEY: &str = "__citygml_root_gml_id";
 
 #[nutype(
     sanitize(trim),
