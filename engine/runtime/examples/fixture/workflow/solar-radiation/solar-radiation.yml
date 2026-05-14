@@ -2191,10 +2191,12 @@ graphs:
       maxZoom: 18
       attachTexture: true
       dracoCompression: false
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles")
-      compressOutput: |
-        file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles.zip")
+      output:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / "textured_roof_3dtiles"
+      compressOutput:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / "textured_roof_3dtiles.zip"
   - id: 00000004-0000-0000-0000-000000000010
     name: ReflectionOutputFilter
     type: action
@@ -2497,10 +2499,12 @@ graphs:
       maxZoom: 18
       attachTexture: false
       dracoCompression: false
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "bldg_lod1")
-      compressOutput: |
-        file::join_path(env.get("workerArtifactPath"), "bldg_lod1.zip")
+      output:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / "bldg_lod1"
+      compressOutput:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / "bldg_lod1.zip"
   - id: 00000001-0000-0000-0000-0000000000a4
     name: BoundsExtractorByLod3
     type: action
@@ -2542,10 +2546,12 @@ graphs:
       maxZoom: 18
       attachTexture: false
       dracoCompression: false
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "bldg_lod3")
-      compressOutput: |
-        file::join_path(env.get("workerArtifactPath"), "bldg_lod3.zip")
+      output:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / "bldg_lod3"
+      compressOutput:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / "bldg_lod3.zip"
   - id: 00000001-0000-0000-0000-0000000000a8
     name: BoundsExtractorByLod4
     type: action
@@ -2587,10 +2593,12 @@ graphs:
       maxZoom: 18
       attachTexture: false
       dracoCompression: false
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "bldg_lod4")
-      compressOutput: |
-        file::join_path(env.get("workerArtifactPath"), "bldg_lod4.zip")
+      output:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / "bldg_lod4"
+      compressOutput:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / "bldg_lod4.zip"
   - id: 00000001-0000-0000-0000-0000000000e0
     name: CityGmlAttributeInserter
     type: action
