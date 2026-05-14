@@ -1318,6 +1318,35 @@
       }
     },
     {
+      "name": "FlowExprTest",
+      "parameterI18n": {
+        "": {
+          "title": "FlowExprTestParam"
+        },
+        "mappings": {}
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
+        "Mapping": {
+          "attribute": {},
+          "value": {}
+        }
+      },
+      "enumI18n": {
+        "CodeType": {
+          "flowExpr": {
+            "description": "Evaluated as a Flow expression at runtime"
+          },
+          "string": {
+            "description": "Used as a plain string literal"
+          }
+        }
+      }
+    },
+    {
       "name": "FootprintReplacer",
       "description": "Proyecta la geometría 3D al plano XY y calcula el polígono base unificado (compatible con sólidos, superficies y CityGML)"
     },
