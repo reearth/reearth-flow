@@ -34,7 +34,7 @@ impl Expr {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum CodeType {
     /// Evaluated as a Flow expression at runtime
