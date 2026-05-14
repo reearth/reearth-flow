@@ -1318,6 +1318,35 @@
       }
     },
     {
+      "name": "FlowExprTest",
+      "parameterI18n": {
+        "": {
+          "title": "FlowExprTestParam"
+        },
+        "mappings": {}
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
+        "Mapping": {
+          "attribute": {},
+          "value": {}
+        }
+      },
+      "enumI18n": {
+        "CodeType": {
+          "flowExpr": {
+            "description": "Evaluated as a Flow expression at runtime"
+          },
+          "string": {
+            "description": "Used as a plain string literal"
+          }
+        }
+      }
+    },
+    {
       "name": "FootprintReplacer",
       "description": "Projette la géométrie 3D sur le plan XY et calcule l'empreinte union (supporte les solides, surfaces et CityGML)"
     },
