@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{context_from_feature, Code, CompiledCode, Feature};
+use reearth_flow_types::{Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -54,12 +54,12 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, JsonValue>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: Cesium3DTilesWriterParam = if let Some(with) = with {
+        let params: Cesium3DTilesWriterParam = if let Some(with) = with.clone() {
             let value: serde_json::Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::Cesium3DTilesWriterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -77,20 +77,22 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             .into());
         };
 
-        let output = params
-            .output
-            .compile()
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let expr_output = &params.output;
+        let output = expr_engine
+            .compile(expr_output.as_ref())
             .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{e:?}")))?;
-        let compress_output = params
-            .compress_output
-            .as_ref()
-            .map(|c| {
-                c.compile()
-                    .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{e:?}")))
-            })
-            .transpose()?;
+        let compress_output = if let Some(compress_output) = &params.compress_output {
+            let compress_output = expr_engine
+                .compile(compress_output.as_ref())
+                .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{e:?}")))?;
+            Some(compress_output)
+        } else {
+            None
+        };
 
         let sink = Cesium3DTilesWriter {
+            global_params: with,
             buffer: HashMap::new(),
             schema: Default::default(),
             params: Cesium3DTilesWriterCompiledParam {
@@ -112,6 +114,7 @@ type BufferKey = (Uri, Option<String>, Option<Uri>); // (output, filename, compr
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
+    pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
     pub(super) schema: Schema,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
@@ -123,7 +126,7 @@ pub struct Cesium3DTilesWriter {
 pub struct Cesium3DTilesWriterParam {
     /// # Output Path
     /// Directory path where the 3D tiles will be written
-    pub(super) output: Code,
+    pub(super) output: Expr,
     /// # Minimum Zoom Level
     /// Minimum zoom level for tile generation (0-24)
     pub(super) min_zoom: u8,
@@ -135,7 +138,7 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) attach_texture: Option<bool>,
     /// # Compressed Output Path
     /// Optional path for compressed archive output
-    pub(super) compress_output: Option<Code>,
+    pub(super) compress_output: Option<Expr>,
     /// # Draco Compression
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
@@ -151,11 +154,11 @@ pub struct Cesium3DTilesWriterParam {
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriterCompiledParam {
-    pub(super) output: CompiledCode,
+    pub(super) output: rhai::AST,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
     pub(super) attach_texture: Option<bool>,
-    pub(super) compress_output: Option<CompiledCode>,
+    pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
@@ -207,24 +210,23 @@ impl Cesium3DTilesWriter {
             .as_ref()
             .and_then(|key| ctx.feature.get(key).and_then(|v| v.as_string()));
 
-        let eval_ctx = context_from_feature(&ctx.feature, Arc::new(ctx.expr_engine.vars()));
-        let path = self
-            .params
-            .output
-            .eval_string(&eval_ctx)
+        let output = self.params.output.clone();
+        let scope = ctx
+            .feature
+            .new_scope(ctx.expr_engine.clone(), &self.global_params);
+        let path = scope
+            .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
         let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
-        let compress_output = self
-            .params
-            .compress_output
-            .as_ref()
-            .map(|c| -> crate::errors::Result<Uri> {
-                let path = c
-                    .eval_string(&eval_ctx)
-                    .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-                Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)
-            })
-            .transpose()?;
+        let compress_output = if let Some(compress_output) = &self.params.compress_output {
+            let compress_output = compress_output.clone();
+            let path = scope
+                .eval_ast::<String>(&compress_output)
+                .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
+            Some(Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?)
+        } else {
+            None
+        };
 
         let feature = {
             let mut attrs = crate::schema::filter_and_cast_attributes(
