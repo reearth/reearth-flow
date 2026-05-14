@@ -1,4 +1,4 @@
-import { DatabaseIcon, DotIcon } from "@phosphor-icons/react";
+import { DatabaseIcon } from "@phosphor-icons/react";
 import { useCallback, useState, useEffect } from "react";
 
 import {
@@ -14,14 +14,7 @@ import { useT } from "@flow/lib/i18n";
 
 import ExpressionInput from "./ExpressionInput";
 
-type AttributeAccess =
-  | "env_value_direct"
-  | "env_value_indexed"
-  | "env_feature_type"
-  | "env_feature_id"
-  | "env_lod"
-  | "feature_attributes"
-  | "custom_path";
+type AttributeAccess = "named" | "indexed";
 
 type Props = {
   onExpressionChange: (expression: string) => void;
@@ -30,97 +23,45 @@ type Props = {
 const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
   const t = useT();
 
-  const [accessType, setAccessType] =
-    useState<AttributeAccess>("env_value_direct");
+  const [accessType, setAccessType] = useState<AttributeAccess>("named");
   const [attributeName, setAttributeName] = useState("");
   const [indexKey, setIndexKey] = useState("");
 
   const accessMethods = [
     {
-      value: "env_value_direct" as const,
-      label: t("Environment Value (Direct)"),
-      description: t("Access current feature value directly"),
+      value: "named" as const,
+      label: t("Named Attribute"),
+      description: t("Read a feature attribute by name"),
       icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
-      example: 'env.get("__value").cityCode',
+      example: 'value("cityCode")',
     },
     {
-      value: "env_value_indexed" as const,
-      label: t("Environment Value (Indexed)"),
-      description: t("Access current feature value with bracket notation"),
+      value: "indexed" as const,
+      label: t("Indexed Access"),
+      description: t("Read an attribute then index into it"),
       icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
-      example: 'env.get("__value")["path"]',
-    },
-    {
-      value: "env_feature_type" as const,
-      label: t("Feature Type"),
-      description: t("Get the current feature type"),
-      icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
-      example: 'env.get("__feature_type")',
-    },
-    {
-      value: "env_feature_id" as const,
-      label: t("Feature ID"),
-      description: t("Get the current feature identifier"),
-      icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
-      example: 'env.get("__feature_id")',
-    },
-    {
-      value: "env_lod" as const,
-      label: t("Level of Detail"),
-      description: t("Get the current level of detail value"),
-      icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
-      example: 'env.get("__lod")',
-    },
-    {
-      value: "feature_attributes" as const,
-      label: t("Feature Attributes"),
-      description: t("Access feature attributes directly"),
-      icon: <DotIcon weight="thin" className="h-4 w-4" />,
-      example: "feature.attributes.name",
-    },
-    {
-      value: "custom_path" as const,
-      label: t("Custom Property Path"),
-      description: t("Access nested properties with custom path"),
-      icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
-      example: "data.geometry.coordinates[0]",
+      example: 'value("coordinates")[0]',
     },
   ];
 
-  // Generate expression for preview only - don't auto-insert
   const [currentExpression, setCurrentExpression] = useState("");
 
   useEffect(() => {
     let expr = "";
 
     switch (accessType) {
-      case "env_value_direct":
+      case "named":
         if (attributeName) {
-          expr = `env.get("__value").${attributeName}`;
+          expr = `value("${attributeName}")`;
         }
         break;
-      case "env_value_indexed":
-        if (indexKey) {
-          expr = `env.get("__value")["${indexKey}"]`;
-        }
-        break;
-      case "env_feature_type":
-        expr = 'env.get("__feature_type")';
-        break;
-      case "env_feature_id":
-        expr = 'env.get("__feature_id")';
-        break;
-      case "env_lod":
-        expr = 'env.get("__lod")';
-        break;
-      case "feature_attributes":
+      case "indexed":
         if (attributeName) {
-          expr = `feature.attributes.${attributeName}`;
-        }
-        break;
-      case "custom_path":
-        if (attributeName) {
-          expr = attributeName;
+          const idx = indexKey || "0";
+          const numericIdx = /^\d+$/.test(idx);
+          expr = numericIdx
+            ? `value("${attributeName}")[${idx}]`
+            : `value("${attributeName}")["${idx}"]`;
         }
         break;
     }
@@ -138,7 +79,6 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
     (method) => method.value === accessType,
   );
 
-  // Common attribute suggestions
   const commonAttributes = [
     "id",
     "name",
@@ -164,7 +104,6 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
       </div>
 
       <div className="space-y-4">
-        {/* Two-column layout for method selection and example */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="access-method-select" className="text-xs">
@@ -209,109 +148,62 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
           )}
         </div>
 
-        {/* Input fields with improved horizontal layout */}
         <div className="space-y-3">
-          {(accessType === "env_value_direct" ||
-            accessType === "feature_attributes") && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="attribute-name" className="text-xs">
-                  {t("Attribute Name")}
-                </Label>
-                <ExpressionInput
-                  placeholder="cityCode"
-                  value={attributeName}
-                  onChange={setAttributeName}
-                  className="text-sm"
-                  label={t("Attribute Name")}
-                  allowedExpressionTypes={["environment-variable"]}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  {t("Common Attributes")}
-                </Label>
-                <div className="flex flex-wrap gap-1 pt-2">
-                  {commonAttributes.slice(0, 8).map((attr) => (
-                    <button
-                      key={attr}
-                      onClick={() => setAttributeName(attr)}
-                      className="rounded bg-muted px-2 py-1 text-xs transition-colors hover:bg-accent">
-                      {attr}
-                    </button>
-                  ))}
-                </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="attribute-name" className="text-xs">
+                {t("Attribute Name")}
+              </Label>
+              <ExpressionInput
+                placeholder="cityCode"
+                value={attributeName}
+                onChange={setAttributeName}
+                className="text-sm"
+                label={t("Attribute Name")}
+                allowedExpressionTypes={["environment-variable"]}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">
+                {t("Common Attributes")}
+              </Label>
+              <div className="flex flex-wrap gap-1 pt-2">
+                {commonAttributes.slice(0, 8).map((attr) => (
+                  <button
+                    key={attr}
+                    onClick={() => setAttributeName(attr)}
+                    className="rounded bg-muted px-2 py-1 text-xs transition-colors hover:bg-accent">
+                    {attr}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
+          </div>
 
-          {accessType === "env_value_indexed" && (
+          {accessType === "indexed" && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="index-key" className="text-xs">
-                  {t("Index Key")}
+                  {t("Index / Key")}
                 </Label>
                 <ExpressionInput
-                  placeholder="path"
+                  placeholder="0"
                   value={indexKey}
                   onChange={setIndexKey}
                   className="text-sm"
-                  label={t("Index Key")}
-                  allowedExpressionTypes={["environment-variable"]}
+                  label={t("Index / Key")}
+                  allowedExpressionTypes={["environment-variable", "math"]}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">
-                  {t("Common Keys")}
+                  {t("Tips")}
                 </Label>
-                <div className="flex flex-wrap gap-1 pt-2">
-                  {["path", "id", "name", "type", "code", "status"].map(
-                    (key) => (
-                      <button
-                        key={key}
-                        onClick={() => setIndexKey(key)}
-                        className="rounded bg-muted px-2 py-1 text-xs transition-colors hover:bg-accent">
-                        {key}
-                      </button>
-                    ),
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {accessType === "custom_path" && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="custom-path" className="text-xs">
-                  {t("Custom Property Path")}
-                </Label>
-                <ExpressionInput
-                  placeholder="data.geometry.coordinates[0]"
-                  value={attributeName}
-                  onChange={setAttributeName}
-                  className="text-sm"
-                  label={t("Custom Property Path")}
-                  allowedExpressionTypes={[
-                    "environment-variable",
-                    "feature-attribute",
-                    "math",
-                  ]}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  {t("Path Examples")}
-                </Label>
-                <div className="space-y-1 pt-2 text-xs text-muted-foreground">
-                  <div>
-                    <code>data.properties.name</code>
-                  </div>
-                  <div>
-                    <code>geometry.coordinates[0]</code>
-                  </div>
-                  <div>
-                    <code>feature.metadata.timestamp</code>
+                <div className="rounded border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <div className="space-y-1">
+                    <div>• {t("Integer → positional index (0-based)")}</div>
+                    <div>• {t("Negative integer → from end (-1 = last)")}</div>
+                    <div>• {t("Non-numeric → map key lookup")}</div>
                   </div>
                 </div>
               </div>
@@ -319,7 +211,6 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
           )}
         </div>
 
-        {/* Preview and Insert Section */}
         {currentExpression && (
           <div className="mt-6 border-t pt-4">
             <div className="mb-3">

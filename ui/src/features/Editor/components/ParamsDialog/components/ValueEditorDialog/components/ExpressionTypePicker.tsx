@@ -21,8 +21,7 @@ export type ExpressionType =
   | "feature-attribute"
   | "conditional"
   | "math"
-  | "environment-variable"
-  | "json-query";
+  | "environment-variable";
 
 type ExpressionTypeOption = {
   type: ExpressionType;
@@ -57,9 +56,9 @@ const ExpressionTypePicker: React.FC<Props> = ({
       description: t("Build file paths, extract filenames, join directories"),
       icon: <FileIcon weight="thin" className="h-6 w-6" />,
       examples: [
-        'file::join_path("/output", "result.zip")',
-        "file::extract_filename(path)",
-        "file::extract_filename_without_ext(path)",
+        'str(Url(env("basePath")) / "result.zip")',
+        'Url(value("path")).name()',
+        'Url(value("path")).stem()',
       ],
     },
     {
@@ -68,9 +67,9 @@ const ExpressionTypePicker: React.FC<Props> = ({
       description: t("Access and manipulate current feature attributes"),
       icon: <DatabaseIcon weight="thin" className="h-6 w-6" />,
       examples: [
-        'env.get("__value").cityCode',
-        'env.get("__value")["path"]',
-        "feature.attributes.name",
+        'value("cityCode")',
+        'value("path")[0]',
+        'value("type") in ["bldg", "tran"]',
       ],
     },
     {
@@ -79,9 +78,9 @@ const ExpressionTypePicker: React.FC<Props> = ({
       description: t("Create if-then-else expressions for dynamic behavior"),
       icon: <GitBranchIcon weight="thin" className="h-6 w-6" />,
       examples: [
-        'if condition { "result" } else { "default" }',
-        'city == "Tokyo" ? "JP" : "Other"',
-        'value > 100 ? "High" : "Low"',
+        'if value("lod") >= 2 { "high" } else { "low" }',
+        'if value("type") in ["bldg", "tran"] { "match" } else { "other" }',
+        'if value("active") { "yes" } else { "no" }',
       ],
     },
     {
@@ -90,9 +89,9 @@ const ExpressionTypePicker: React.FC<Props> = ({
       description: t("Perform calculations on numeric values"),
       icon: <MathOperationsIcon weight="thin" className="h-6 w-6" />,
       examples: [
-        "(xmin + xmax) / 2.0",
-        "area * 0.0001", // Convert to hectares
-        "round(distance, 2)",
+        '(value("xmin") + value("xmax")) / 2.0',
+        'value("area") * 0.0001',
+        'int(value("score")) + 1',
       ],
     },
     {
@@ -101,20 +100,9 @@ const ExpressionTypePicker: React.FC<Props> = ({
       description: t("Access workflow variables and workflow parameters"),
       icon: <CircleIcon weight="thin" className="h-6 w-6" />,
       examples: [
-        'env.get("outputPath")',
-        'env.get("cityGmlPath")',
-        'env.get("targetPackages")',
-      ],
-    },
-    {
-      type: "json-query",
-      title: t("JSON Data Query"),
-      description: t("Query and extract data from JSON using JSONPath"),
-      icon: <DatabaseIcon weight="thin" className="h-6 w-6" />,
-      examples: [
-        'json::find_value_by_json_path(data, "$.items[0].name")',
-        'json::exists_value_by_json_path(data, "$.user")',
-        'json::find_value_by_json_path(env.get("__value"), "$.attributes")',
+        'env("outputPath")',
+        'env("cityGmlPath")',
+        'env("targetPackages")',
       ],
     },
   ];
