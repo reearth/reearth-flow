@@ -41,13 +41,18 @@ export class HomePage {
   sidebarItem(name: SidebarItem): Locator {
     return this.page
       .locator("div.cursor-pointer")
-      .filter({ has: this.page.locator("p", { hasText: new RegExp(`^${name}$`) }) })
+      .filter({
+        has: this.page.locator("p", { hasText: new RegExp(`^${name}$`) }),
+      })
       .first();
   }
 
   async waitForLoaded() {
     await this.brandText.waitFor({ state: "visible", timeout: 30_000 });
-    await this.currentWorkspaceLabel.waitFor({ state: "visible", timeout: 30_000 });
+    await this.currentWorkspaceLabel.waitFor({
+      state: "visible",
+      timeout: 30_000,
+    });
   }
 
   async isLoaded() {
