@@ -115,35 +115,6 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
     }
 }
 
-pub fn value_to_json(v: reearth_flow_expr::Value) -> serde_json::Value {
-    use reearth_flow_expr::Value;
-    match v {
-        Value::Null => serde_json::Value::Null,
-        Value::Bool(b) => serde_json::Value::Bool(b),
-        Value::Int(n) => serde_json::Value::Number(n.into()),
-        Value::Float(f) => serde_json::Number::from_f64(f)
-            .map(serde_json::Value::Number)
-            .unwrap_or_else(|| {
-                tracing::warn!(value = f, "flow expr nan/inf float converted to null");
-                serde_json::Value::Null
-            }),
-        Value::String(s) => serde_json::Value::String(s),
-        Value::Array(arr) => serde_json::Value::Array(arr.into_iter().map(value_to_json).collect()),
-        Value::Map(map) => serde_json::Value::Object(
-            map.into_iter()
-                .map(|(k, v)| (k, value_to_json(v)))
-                .collect(),
-        ),
-        Value::Object(obj) => {
-            tracing::warn!(
-                type_name = obj.type_name(),
-                "flow expr object converted to type-name string"
-            );
-            serde_json::Value::String(format!("<{}>", obj.type_name()))
-        }
-    }
-}
-
 pub fn context_from_feature(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
@@ -195,6 +166,24 @@ pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue 
                 AttributeValue::Null
             }),
         Value::String(s) => AttributeValue::String(s),
-        other => AttributeValue::String(value_to_json(other).to_string()),
+        Value::Array(arr) => {
+            AttributeValue::Array(arr.into_iter().map(attribute_value_from_eval).collect())
+        }
+        Value::Map(map) => AttributeValue::Map(
+            map.into_iter()
+                .map(|(k, v)| (k, attribute_value_from_eval(v)))
+                .collect(),
+        ),
+        Value::Object(obj) => {
+            if let Some(v) = obj.serialize() {
+                attribute_value_from_eval(v)
+            } else {
+                tracing::warn!(
+                    type_name = obj.type_name(),
+                    "flow expr object converted to type-name string"
+                );
+                AttributeValue::String(format!("<{}>", obj.type_name()))
+            }
+        }
     }
 }

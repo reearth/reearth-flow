@@ -7026,7 +7026,6 @@ dependencies = [
  "lalrpop-util",
  "logos",
  "reearth-flow-common",
- "serde_json",
  "thiserror 2.0.18",
 ]
 
