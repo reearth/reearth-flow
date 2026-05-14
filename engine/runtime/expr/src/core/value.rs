@@ -16,6 +16,10 @@ pub trait ValueObject: std::fmt::Debug + Send + Sync {
     fn display(&self) -> String {
         format!("<{}>", self.type_name())
     }
+    /// Serialization hint. If `Some`, used by consumers instead of falling back to `"<TypeName>"`.
+    fn serialize(&self) -> Option<Value> {
+        None
+    }
 }
 
 impl Clone for Box<dyn ValueObject> {

@@ -92,6 +92,10 @@ impl ValueObject for UrlObject {
     fn display(&self) -> String {
         self.0.as_str().to_string()
     }
+
+    fn serialize(&self) -> Option<Value> {
+        Some(Value::String(self.0.as_str().to_string()))
+    }
 }
 
 pub fn builtin_url(args: &[Value]) -> Result<Value> {

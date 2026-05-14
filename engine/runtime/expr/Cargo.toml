@@ -16,7 +16,6 @@ reearth-flow-common.workspace = true
 indexmap.workspace = true
 lalrpop-util = "0.22"
 logos = "0.15"
-serde_json.workspace = true
 thiserror.workspace = true
 
 [build-dependencies]
