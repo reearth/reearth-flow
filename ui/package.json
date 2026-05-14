@@ -107,6 +107,7 @@
     "three": "0.184.0",
     "use-resize-observer": "9.1.0",
     "uuid": "14.0.0",
+    "vite-plugin-svgr": "5.2.0",
     "y-presence": "0.2.3",
     "y-websocket": "3.0.0",
     "yjs": "13.6.30"
