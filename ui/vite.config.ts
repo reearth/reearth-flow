@@ -20,7 +20,14 @@ export default defineConfig(() => {
       port: 3000,
     },
     envPrefix: "FLOW_",
-    plugins: [svgr(), react(), TanStackRouterVite(), cesium(), config(), tailwindcss()],
+    plugins: [
+      svgr(),
+      react(),
+      TanStackRouterVite(),
+      cesium(),
+      config(),
+      tailwindcss(),
+    ],
     build: {
       target: "esnext",
       assetsDir: "static", // avoid conflicts with backend asset endpoints
