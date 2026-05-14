@@ -15,7 +15,7 @@ cargo fmt --all ${@:-}
 script = [
   '''
 #!/usr/bin/env bash -eux
-cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
+cargo check --workspace --all-targets --all-features
 ''',
 ]
 
@@ -23,7 +23,7 @@ cargo check --workspace --all-targets --all-features --exclude plateau-gis-quali
 script = [
   '''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker -- -D warnings
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 ''',
 ]
 
@@ -31,7 +31,7 @@ cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-qual
 script = [
   '''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@:-}
+cargo clippy --workspace --all-targets --all-features --fix ${@:-}
 ''',
 ]
 
@@ -47,7 +47,7 @@ cargo make test-conv ${@:-}
 script = [
   '''
 #!/usr/bin/env bash -eux
-cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
+cargo test --workspace --all-targets --all-features --exclude workflow-tests ${@:-}
 ''',
 ]
 
