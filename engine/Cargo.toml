@@ -2,7 +2,7 @@
 exclude = ["runtime/action-wasm-processor"]
 members = [
   "cli",
-"runtime/*",
+  "runtime/*",
   "testing/plateau-tiles-test",
   "testing/workflow-tests",
   "worker",
