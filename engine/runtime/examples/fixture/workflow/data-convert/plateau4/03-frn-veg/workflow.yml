@@ -141,15 +141,6 @@ graphs:
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
-            - attribute: cityGmlStem
-              method: create
-              value: |
-                let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-                let suffix = "_" + env.get("__value")["package"];
-                if city_gml.ends_with(suffix) {
-                  city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-                }
-                city_gml
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -262,14 +253,17 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          output:
-            type: flowExpr
-            value: |
-              Url(env("workerArtifactPath")) / ("frn_lod" + value("lod"))
-          compressOutput:
-            type: flowExpr
-            value: |
-              Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_frn_3dtiles_lod" + value("lod") + ".zip")
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "frn_lod" + env.get("__value").lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let lod = env.get("__value").lod;
+            let suffix = "_frn";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_frn_3dtiles_lod" + lod + ".zip")
 
       - id: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
         name: AttributeManagerByDmGeometricAttributeFrn
@@ -505,14 +499,17 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          output:
-            type: flowExpr
-            value: |
-              Url(env("workerArtifactPath")) / ("veg_SolitaryVegetationObject_lod" + value("lod"))
-          compressOutput:
-            type: flowExpr
-            value: |
-              Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_veg_SolitaryVegetationObject_3dtiles_lod" + value("lod") + ".zip")
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_lod" + env.get("__value").lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let lod = env.get("__value").lod;
+            let suffix = "_veg";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip")
 
       - id: 591050d4-8284-4708-a3e3-0bcb99bbd83c
         name: AttributeManagerByDmGeometricAttributeVeg1
@@ -739,14 +736,17 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          output:
-            type: flowExpr
-            value: |
-              Url(env("workerArtifactPath")) / ("veg_PlantCover_lod" + value("lod"))
-          compressOutput:
-            type: flowExpr
-            value: |
-              Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_veg_PlantCover_3dtiles_lod" + value("lod") + ".zip")
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_lod" + env.get("__value").lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let lod = env.get("__value").lod;
+            let suffix = "_veg";
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_veg_PlantCover_3dtiles_lod" + lod + ".zip")
 
       - id: aa9b681b-0cc1-4445-bff6-be41bb9c764f
         name: AttributeManagerByDmGeometricAttributeVeg2

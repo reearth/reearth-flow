@@ -2282,7 +2282,7 @@ graphs:
       - attribute: FeatureType
         expr: |
           let ft = env.get("__value").featureType ?? "UndergroundFacility";
-          if ":" in ft {
+          if ft.contains(":") {
             ft.split(":")[1]
           } else {
             ft
@@ -2320,7 +2320,7 @@ graphs:
       - attribute: FeatureType
         expr: |
           let ft = env.get("__value").featureType ?? "UndergroundFacility";
-          if ":" in ft {
+          if ft.contains(":") {
             ft.split(":")[1]
           } else {
             ft
@@ -2389,7 +2389,7 @@ graphs:
       - attribute: feature_type
         expr: |
           let ft = env.get("__value").featureType ?? "UndergroundFacility";
-          if ":" in ft {
+          if ft.contains(":") {
             ft.split(":")[1]
           } else {
             ft
@@ -2441,7 +2441,7 @@ graphs:
       - attribute: feature_type
         expr: |
           let ft = env.get("__value").featureType ?? "UndergroundFacility";
-          if ":" in ft {
+          if ft.contains(":") {
             ft.split(":")[1]
           } else {
             ft
@@ -2503,7 +2503,7 @@ graphs:
       - attribute: FeatureType
         expr: |
           let ft = env.get("__value").featureType ?? "UndergroundFacility";
-          if ":" in ft {
+          if ft.contains(":") {
             ft.split(":")[1]
           } else {
             ft
@@ -2575,7 +2575,7 @@ graphs:
       - attribute: FeatureType
         expr: |
           let ft = env.get("__value").featureType ?? "UndergroundFacility";
-          if ":" in ft {
+          if ft.contains(":") {
             ft.split(":")[1]
           } else {
             ft
@@ -2647,7 +2647,7 @@ graphs:
       - attribute: FeatureType
         expr: |
           let ft = env.get("__value").featureType ?? "UndergroundFacility";
-          if ":" in ft {
+          if ft.contains(":") {
             ft.split(":")[1]
           } else {
             ft
@@ -3114,7 +3114,7 @@ graphs:
         method: create
         value: |
           let ft = env.get("__value")["__citygml_feature_type"] ?? "";
-          if ":" in ft {
+          if ft.contains(":") {
             ft.split(":")[1]
           } else {
             ft
