@@ -350,7 +350,6 @@ fn eval_index(target: Value, key: Value) -> Result<Value> {
 fn as_slice_index(v: Value, what: &str) -> Result<i64> {
     match v {
         Value::Int(n) => Ok(n),
-        Value::Float(f) if f.fract() == 0.0 => Ok(f as i64),
         v => Err(Error::Eval {
             msg: format!("slice {what} must be an integer, got {v:?}"),
         }),
@@ -665,7 +664,16 @@ fn builtin_str(args: &[Value]) -> Result<Value> {
 fn builtin_int(args: &[Value]) -> Result<Value> {
     match args.first() {
         Some(Value::Int(n)) => Ok(Value::Int(*n)),
-        Some(Value::Float(f)) => Ok(Value::Int(f.trunc() as i64)),
+        Some(Value::Float(f)) => {
+            let t = f.trunc();
+            if !t.is_finite() || t < i64::MIN as f64 || t >= -(i64::MIN as f64) {
+                Err(Error::Eval {
+                    msg: format!("int() value out of range: {f}"),
+                })
+            } else {
+                Ok(Value::Int(t as i64))
+            }
+        }
         Some(Value::Bool(b)) => Ok(Value::Int(*b as i64)),
         Some(Value::String(s)) => {
             s.trim()
@@ -904,9 +912,13 @@ mod tests {
             Value::Array(vec![Value::from(3i64), Value::from(4i64)])
         );
         assert_eq!(
-            run("arr[::-1]", &[("arr", arr)]),
+            run("arr[::-1]", &[("arr", arr.clone())]),
             Value::Array((0i64..5).rev().map(Value::from).collect())
         );
+        // float slice indices are rejected even when whole-number
+        assert!(try_run("arr[s:]", &[("arr", arr.clone()), ("s", Value::Float(1.0))]).is_err());
+        assert!(try_run("arr[:s]", &[("arr", arr.clone()), ("s", Value::Float(3.0))]).is_err());
+        assert!(try_run("arr[::s]", &[("arr", arr), ("s", Value::Float(2.0))]).is_err());
     }
 
     #[test]
@@ -1155,6 +1167,16 @@ mod tests {
         assert_eq!(run(r#"int("42")"#, &[]), Value::from(42i64));
         assert_eq!(run(r#"int(true)"#, &[]), Value::from(1i64));
         assert_eq!(run(r#"int(false)"#, &[]), Value::from(0i64));
+        // int() rejects NaN, infinity, and out-of-range floats
+        assert!(try_run("int(f)", &[("f", Value::Float(f64::NAN))]).is_err());
+        assert!(try_run("int(f)", &[("f", Value::Float(f64::INFINITY))]).is_err());
+        assert!(try_run("int(f)", &[("f", Value::Float(f64::NEG_INFINITY))]).is_err());
+        assert!(try_run("int(f)", &[("f", Value::Float(1e100))]).is_err());
+        // i64::MIN is exactly representable as f64 so it round-trips
+        assert_eq!(
+            try_run("int(f)", &[("f", Value::Float(i64::MIN as f64))]).unwrap(),
+            Value::from(i64::MIN)
+        );
         // float()
         assert_eq!(run(r#"float(42)"#, &[]), Value::from(42.0f64));
         assert_eq!(run(r#"float(1.5)"#, &[]), Value::from(1.5f64));
