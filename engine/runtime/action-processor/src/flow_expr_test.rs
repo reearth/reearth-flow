@@ -63,10 +63,9 @@ impl ProcessorFactory for FlowExprTestFactory {
             .mappings
             .into_iter()
             .map(|m| -> Result<(String, CompiledCode), BoxedError> {
-                let compiled = m
-                    .value
-                    .compile()
-                    .map_err(|e| format!("Failed to compile expression: {e}"))?;
+                let compiled = m.value.compile().map_err(|e| {
+                    format!("Failed to compile expression for '{}': {e}", m.attribute)
+                })?;
                 Ok((m.attribute, compiled))
             })
             .collect::<Result<Vec<_>, _>>()?;
