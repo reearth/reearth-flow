@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 
-use crate::core::error::Result;
+use crate::core::error::HResult;
 
 /// Trait for typed objects that can respond to method calls.
 ///
@@ -8,7 +8,7 @@ use crate::core::error::Result;
 /// that expression users can construct and call methods on.
 pub trait ValueObject: std::fmt::Debug + Send + Sync {
     fn type_name(&self) -> &'static str;
-    fn call_method(&self, method: &str, args: &[Value]) -> Result<Value>;
+    fn call_method(&self, method: &str, args: &[Value]) -> HResult<Value>;
     fn clone_box(&self) -> Box<dyn ValueObject>;
     /// Object equality — implementations may compare by content or return false.
     fn eq_box(&self, other: &dyn ValueObject) -> bool;
