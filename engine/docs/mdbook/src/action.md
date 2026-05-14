@@ -1347,7 +1347,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Optional path for compressed archive output",
       "anyOf": [
         {
-          "$ref": "#/definitions/Code"
+          "$ref": "#/definitions/Expr"
         },
         {
           "type": "null"
@@ -1381,7 +1381,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Directory path where the 3D tiles will be written",
       "allOf": [
         {
-          "$ref": "#/definitions/Code"
+          "$ref": "#/definitions/Expr"
         }
       ]
     },
@@ -1403,39 +1403,8 @@ Export Features as Cesium 3D Tiles for Web Visualization
     }
   },
   "definitions": {
-    "Code": {
-      "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "CodeType": {
-      "oneOf": [
-        {
-          "description": "Evaluated as a Flow expression at runtime",
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        {
-          "description": "Used as a plain string literal",
-          "type": "string",
-          "enum": [
-            "string"
-          ]
-        }
-      ]
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -3961,6 +3930,88 @@ Extracts file system properties (type, size, timestamps) from files
 * rejected
 ### Category
 * File
+
+## FlowExprTest
+### Type
+* processor
+### Description
+Experimental testbed for the Flow expression engine
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FlowExprTestParam",
+  "type": "object",
+  "required": [
+    "mappings"
+  ],
+  "properties": {
+    "mappings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Mapping"
+      }
+    }
+  },
+  "definitions": {
+    "Code": {
+      "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "oneOf": [
+        {
+          "description": "Evaluated as a Flow expression at runtime",
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        {
+          "description": "Used as a plain string literal",
+          "type": "string",
+          "enum": [
+            "string"
+          ]
+        }
+      ]
+    },
+    "Mapping": {
+      "type": "object",
+      "required": [
+        "attribute",
+        "value"
+      ],
+      "properties": {
+        "attribute": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/Code"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
 
 ## FootprintReplacer
 ### Type

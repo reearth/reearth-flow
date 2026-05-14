@@ -1346,7 +1346,7 @@
             "description": "Optional path for compressed archive output",
             "anyOf": [
               {
-                "$ref": "#/definitions/Code"
+                "$ref": "#/definitions/Expr"
               },
               {
                 "type": "null"
@@ -1380,7 +1380,7 @@
             "description": "Directory path where the 3D tiles will be written",
             "allOf": [
               {
-                "$ref": "#/definitions/Code"
+                "$ref": "#/definitions/Expr"
               }
             ]
           },
@@ -1402,39 +1402,8 @@
           }
         },
         "definitions": {
-          "Code": {
-            "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "oneOf": [
-              {
-                "description": "Evaluated as a Flow expression at runtime",
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              {
-                "description": "Used as a plain string literal",
-                "type": "string",
-                "enum": [
-                  "string"
-                ]
-              }
-            ]
+          "Expr": {
+            "type": "string"
           }
         }
       },
@@ -3963,6 +3932,88 @@
       ],
       "categories": [
         "File"
+      ]
+    },
+    {
+      "name": "FlowExprTest",
+      "type": "processor",
+      "description": "Experimental testbed for the Flow expression engine",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FlowExprTestParam",
+        "type": "object",
+        "required": [
+          "mappings"
+        ],
+        "properties": {
+          "mappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Mapping"
+            }
+          }
+        },
+        "definitions": {
+          "Code": {
+            "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "oneOf": [
+              {
+                "description": "Evaluated as a Flow expression at runtime",
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              {
+                "description": "Used as a plain string literal",
+                "type": "string",
+                "enum": [
+                  "string"
+                ]
+              }
+            ]
+          },
+          "Mapping": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "value"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "value": {
+                "$ref": "#/definitions/Code"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
       ]
     },
     {
