@@ -80,7 +80,7 @@ const AssetsManager: React.FC = () => {
           disabled={isCreatingAsset}
           onClick={handleAssetUploadClick}>
           <FileArrowUpIcon weight="thin" />
-          <p className="text-xs dark:font-light">{t("Upload")}</p>
+          <p className="text-xs">{t("Upload")}</p>
         </Button>
       </div>
       <div className="mt-4 flex min-h-0 w-full flex-1 flex-col gap-4">
