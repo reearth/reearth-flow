@@ -34,7 +34,7 @@ const Icon: FC<IconProps> = ({
       style={{ width: px, height: px, color }}
       className={className}
       aria-label={ariaLabel}
-      aria-hidden={!ariaLabel ? "true" : undefined}
+      aria-hidden={!ariaLabel ? true : undefined}
       data-testid={dataTestId}
     />
   );

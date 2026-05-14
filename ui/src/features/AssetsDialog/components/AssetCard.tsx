@@ -3,7 +3,6 @@ import {
   DotsThreeVerticalIcon,
   DownloadIcon,
   FileIcon,
-  // FileIcon,
   PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
@@ -50,8 +49,9 @@ const AssetCard: React.FC<Props> = ({
   const t = useT();
   const [persistOverlay, setPersistOverlay] = useState(false);
 
-  const { id, name, createdAt, size, url } = asset;
-  const ext = url.split(".").pop()?.toLowerCase();
+  const { id, name, fileName, createdAt, size, url } = asset;
+
+  const ext = fileName.split(".").pop()?.toLowerCase();
 
   const handleDoubleClick = () => {
     if (onDoubleClick) {
