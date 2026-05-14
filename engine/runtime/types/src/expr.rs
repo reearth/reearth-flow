@@ -99,6 +99,8 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
             if let Some(i) = n.as_i64() {
                 Value::Int(i)
             } else if let Some(f) = n.as_f64() {
+                // while it is possible to specially match big integer (>=2^63) to report lossy conversion warning
+                // such big numbers are considered rare in GIS context so not handled for now
                 Value::Float(f)
             } else {
                 tracing::warn!(value = %n, "flow expr unrepresentable number converted to null");
