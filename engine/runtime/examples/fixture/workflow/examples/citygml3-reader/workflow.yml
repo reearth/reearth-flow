@@ -93,9 +93,8 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          output:
-            type: flowExpr
-            value: Url(env("workerArtifactPath")) / "citygml3-3dtiles"
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "citygml3-3dtiles")
           minZoom: 15
           maxZoom: 18
 
