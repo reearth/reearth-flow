@@ -433,7 +433,9 @@ fn eval_unary(op: &UnaryOp, val: Value) -> Result<Value> {
     match op {
         UnaryOp::Not => Ok(Value::Bool(!is_truthy(&val))),
         UnaryOp::Neg => match val {
-            Value::Int(n) => Ok(Value::Int(-n)),
+            Value::Int(n) => n.checked_neg().map(Value::Int).ok_or_else(|| Error::Eval {
+                msg: "integer overflow".into(),
+            }),
             Value::Float(f) => Ok(Value::Float(-f)),
             v => Err(Error::Eval {
                 msg: format!("cannot negate {v:?}"),
@@ -487,14 +489,20 @@ fn coerce_numeric(a: Value, b: Value) -> Result<(Numeric, Numeric)> {
     }
 }
 
+fn int_overflow() -> Error {
+    Error::Eval {
+        msg: "integer overflow".into(),
+    }
+}
+
 fn numeric_op(
     left: Value,
     right: Value,
-    int_op: impl Fn(i64, i64) -> i64,
+    int_op: impl Fn(i64, i64) -> Result<i64>,
     float_op: impl Fn(f64, f64) -> f64,
 ) -> Result<Value> {
     match coerce_numeric(left, right)? {
-        (Numeric::Int(a), Numeric::Int(b)) => Ok(Value::Int(int_op(a, b))),
+        (Numeric::Int(a), Numeric::Int(b)) => Ok(Value::Int(int_op(a, b)?)),
         (Numeric::Float(a), Numeric::Float(b)) => Ok(Value::Float(float_op(a, b))),
         _ => unreachable!(),
     }
@@ -524,7 +532,9 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
                 Ok(Value::Array(a))
             }
             (a, b) => match coerce_numeric(a, b) {
-                Ok((Numeric::Int(a), Numeric::Int(b))) => Ok(Value::Int(a + b)),
+                Ok((Numeric::Int(a), Numeric::Int(b))) => {
+                    a.checked_add(b).map(Value::Int).ok_or_else(int_overflow)
+                }
                 Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
                 Ok(_) => unreachable!(),
                 Err(_) => Err(Error::Eval {
@@ -532,14 +542,27 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> Result<Value> {
                 }),
             },
         },
-        BinOp::Sub => numeric_op(left, right, |a, b| a - b, |a, b| a - b),
-        BinOp::Mul => numeric_op(left, right, |a, b| a * b, |a, b| a * b),
+        BinOp::Sub => numeric_op(
+            left,
+            right,
+            |a, b| a.checked_sub(b).ok_or_else(int_overflow),
+            |a, b| a - b,
+        ),
+        BinOp::Mul => numeric_op(
+            left,
+            right,
+            |a, b| a.checked_mul(b).ok_or_else(int_overflow),
+            |a, b| a * b,
+        ),
         BinOp::Div => match coerce_numeric(left, right) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
                 if b == 0 {
                     return Err(Error::Eval {
                         msg: "division by zero".into(),
                     });
+                }
+                if b == -1 {
+                    return a.checked_neg().map(Value::Int).ok_or_else(int_overflow);
                 }
                 if a % b == 0 {
                     Ok(Value::Int(a / b))
@@ -742,11 +765,15 @@ mod tests {
     use super::*;
 
     fn run(input: &str, vars: &[(&str, Value)]) -> Value {
+        try_run(input, vars).unwrap()
+    }
+
+    fn try_run(input: &str, vars: &[(&str, Value)]) -> Result<Value> {
         let ctx = Context::new();
         let env = vars.iter().fold(None, |env, (name, val)| {
             env_extend(&env, name.to_string(), val.clone())
         });
-        eval_inner(&parse(input).unwrap(), &ctx, &env).unwrap()
+        eval_inner(&parse(input).unwrap(), &ctx, &env)
     }
 
     #[test]
@@ -771,6 +798,40 @@ mod tests {
                 Value::from(3i64),
                 Value::from(4i64)
             ])
+        );
+    }
+
+    #[test]
+    fn test_integer_overflow() {
+        let max = Value::Int(i64::MAX);
+        let min = Value::Int(i64::MIN);
+
+        // overflow → error
+        assert!(try_run("a + b", &[("a", max.clone()), ("b", Value::Int(1))]).is_err());
+        assert!(try_run("a - b", &[("a", min.clone()), ("b", Value::Int(1))]).is_err());
+        assert!(try_run("a * b", &[("a", max.clone()), ("b", Value::Int(2))]).is_err());
+        assert!(try_run("-a", &[("a", min.clone())]).is_err());
+        // i64::MIN / -1 overflows
+        assert!(try_run("a / b", &[("a", min.clone()), ("b", Value::Int(-1))]).is_err());
+
+        // non-overflowing ops still produce Int
+        assert_eq!(
+            try_run("a + b", &[("a", max.clone()), ("b", Value::Int(0))]).unwrap(),
+            max
+        );
+        assert_eq!(
+            try_run("a / b", &[("a", Value::Int(6)), ("b", Value::Int(-1))]).unwrap(),
+            Value::Int(-6)
+        );
+        assert_eq!(
+            try_run("-a", &[("a", Value::Int(5))]).unwrap(),
+            Value::Int(-5)
+        );
+
+        // int ops that would overflow promote to float via mixed arithmetic
+        assert_eq!(
+            try_run("a + b", &[("a", max.clone()), ("b", Value::Float(1.0))]).unwrap(),
+            Value::Float(i64::MAX as f64 + 1.0)
         );
     }
 
