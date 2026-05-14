@@ -2,8 +2,7 @@
 exclude = ["runtime/action-wasm-processor"]
 members = [
   "cli",
-  "plateau-gis-quality-checker/src-tauri",
-  "runtime/*",
+"runtime/*",
   "testing/plateau-tiles-test",
   "testing/workflow-tests",
   "worker",
