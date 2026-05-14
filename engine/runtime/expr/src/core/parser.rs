@@ -38,144 +38,168 @@ pub fn parse(input: &str) -> Result<Expr> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::ast::{BinOp, Expr, UnaryOp};
+    use crate::core::ast::test_util::{e, exprs_eq};
+    use crate::core::ast::{BinOp, ExprKind, UnaryOp};
+
+    fn assert_parse(input: &str, expected: crate::core::ast::Expr) {
+        let got = parse(input).unwrap_or_else(|err| panic!("parse({input:?}) failed: {err}"));
+        assert!(
+            exprs_eq(&got, &expected),
+            "parse({input:?})\n  got:      {:?}\n  expected: {:?}",
+            got.kind,
+            expected.kind
+        );
+    }
 
     #[test]
     fn test_literal() {
-        assert_eq!(parse("42").unwrap(), Expr::Int(42));
-        assert_eq!(parse("1.5").unwrap(), Expr::Float(1.5));
-        assert_eq!(parse("true").unwrap(), Expr::Bool(true));
-        assert_eq!(parse("null").unwrap(), Expr::Null);
-        assert_eq!(parse(r#""hello""#).unwrap(), Expr::Str("hello".into()));
+        assert_parse("42", e(ExprKind::Int(42)));
+        assert_parse("1.5", e(ExprKind::Float(1.5)));
+        assert_parse("true", e(ExprKind::Bool(true)));
+        assert_parse("null", e(ExprKind::Null));
+        assert_parse(r#""hello""#, e(ExprKind::Str("hello".into())));
     }
 
     #[test]
     fn test_binary_ops() {
-        assert_eq!(
-            parse("1 + 2").unwrap(),
-            Expr::Binary(Box::new(Expr::Int(1)), BinOp::Add, Box::new(Expr::Int(2)))
+        assert_parse(
+            "1 + 2",
+            e(ExprKind::Binary(
+                Box::new(e(ExprKind::Int(1))),
+                BinOp::Add,
+                Box::new(e(ExprKind::Int(2))),
+            )),
         );
     }
 
     #[test]
     fn test_precedence() {
         // 1 + 2 * 3 should parse as 1 + (2 * 3)
-        assert_eq!(
-            parse("1 + 2 * 3").unwrap(),
-            Expr::Binary(
-                Box::new(Expr::Int(1)),
+        assert_parse(
+            "1 + 2 * 3",
+            e(ExprKind::Binary(
+                Box::new(e(ExprKind::Int(1))),
                 BinOp::Add,
-                Box::new(Expr::Binary(
-                    Box::new(Expr::Int(2)),
+                Box::new(e(ExprKind::Binary(
+                    Box::new(e(ExprKind::Int(2))),
                     BinOp::Mul,
-                    Box::new(Expr::Int(3))
-                ))
-            )
+                    Box::new(e(ExprKind::Int(3))),
+                ))),
+            )),
         );
     }
 
     #[test]
     fn test_index_access() {
-        assert_eq!(
-            parse(r#"feature["package"]"#).unwrap(),
-            Expr::Index(
-                Box::new(Expr::Var("feature".into())),
-                Box::new(Expr::Str("package".into()))
-            )
+        assert_parse(
+            r#"feature["package"]"#,
+            e(ExprKind::Index(
+                Box::new(e(ExprKind::Var("feature".into()))),
+                Box::new(e(ExprKind::Str("package".into()))),
+            )),
         );
     }
 
     #[test]
     fn test_chained_index() {
-        assert_eq!(
-            parse(r#"a["b"]["c"]"#).unwrap(),
-            Expr::Index(
-                Box::new(Expr::Index(
-                    Box::new(Expr::Var("a".into())),
-                    Box::new(Expr::Str("b".into()))
-                )),
-                Box::new(Expr::Str("c".into()))
-            )
+        assert_parse(
+            r#"a["b"]["c"]"#,
+            e(ExprKind::Index(
+                Box::new(e(ExprKind::Index(
+                    Box::new(e(ExprKind::Var("a".into()))),
+                    Box::new(e(ExprKind::Str("b".into()))),
+                ))),
+                Box::new(e(ExprKind::Str("c".into()))),
+            )),
         );
     }
 
     #[test]
     fn test_func_call() {
-        assert_eq!(
-            parse(r#"value("package")"#).unwrap(),
-            Expr::FuncCall {
+        assert_parse(
+            r#"value("package")"#,
+            e(ExprKind::FuncCall {
                 name: "value".into(),
-                args: vec![Expr::Str("package".into())],
-            }
+                args: vec![e(ExprKind::Str("package".into()))],
+            }),
         );
     }
 
     #[test]
     fn test_slice() {
-        use crate::core::ast::Expr;
-        assert_eq!(
-            parse(r#""abc"[1:2]"#).unwrap(),
-            Expr::Slice {
-                target: Box::new(Expr::Str("abc".into())),
-                start: Some(Box::new(Expr::Int(1))),
-                stop: Some(Box::new(Expr::Int(2))),
+        assert_parse(
+            r#""abc"[1:2]"#,
+            e(ExprKind::Slice {
+                target: Box::new(e(ExprKind::Str("abc".into()))),
+                start: Some(Box::new(e(ExprKind::Int(1)))),
+                stop: Some(Box::new(e(ExprKind::Int(2)))),
                 step: None,
-            }
+            }),
         );
-        assert_eq!(
-            parse(r#""abc"[::-1]"#).unwrap(),
-            Expr::Slice {
-                target: Box::new(Expr::Str("abc".into())),
+        assert_parse(
+            r#""abc"[::-1]"#,
+            e(ExprKind::Slice {
+                target: Box::new(e(ExprKind::Str("abc".into()))),
                 start: None,
                 stop: None,
-                step: Some(Box::new(Expr::Unary(UnaryOp::Neg, Box::new(Expr::Int(1))))),
-            }
+                step: Some(Box::new(e(ExprKind::Unary(
+                    UnaryOp::Neg,
+                    Box::new(e(ExprKind::Int(1))),
+                )))),
+            }),
         );
-        assert_eq!(
-            parse(r#""abc"[:]"#).unwrap(),
-            Expr::Slice {
-                target: Box::new(Expr::Str("abc".into())),
+        assert_parse(
+            r#""abc"[:]"#,
+            e(ExprKind::Slice {
+                target: Box::new(e(ExprKind::Str("abc".into()))),
                 start: None,
                 stop: None,
                 step: None,
-            }
+            }),
         );
     }
 
     #[test]
     fn test_array_literal() {
-        assert_eq!(
-            parse("[1, 2, 3]").unwrap(),
-            Expr::Array(vec![Expr::Int(1), Expr::Int(2), Expr::Int(3)])
+        assert_parse(
+            "[1, 2, 3]",
+            e(ExprKind::Array(vec![
+                e(ExprKind::Int(1)),
+                e(ExprKind::Int(2)),
+                e(ExprKind::Int(3)),
+            ])),
         );
-        assert_eq!(parse("[]").unwrap(), Expr::Array(vec![]));
+        assert_parse("[]", e(ExprKind::Array(vec![])));
     }
 
     #[test]
     fn test_unary() {
-        assert_eq!(
-            parse("!true").unwrap(),
-            Expr::Unary(UnaryOp::Not, Box::new(Expr::Bool(true)))
+        assert_parse(
+            "!true",
+            e(ExprKind::Unary(
+                UnaryOp::Not,
+                Box::new(e(ExprKind::Bool(true))),
+            )),
         );
-        assert_eq!(
-            parse("-1").unwrap(),
-            Expr::Unary(UnaryOp::Neg, Box::new(Expr::Int(1)))
+        assert_parse(
+            "-1",
+            e(ExprKind::Unary(UnaryOp::Neg, Box::new(e(ExprKind::Int(1))))),
         );
     }
 
     #[test]
     fn test_grouping() {
-        assert_eq!(
-            parse("(1 + 2) * 3").unwrap(),
-            Expr::Binary(
-                Box::new(Expr::Binary(
-                    Box::new(Expr::Int(1)),
+        assert_parse(
+            "(1 + 2) * 3",
+            e(ExprKind::Binary(
+                Box::new(e(ExprKind::Binary(
+                    Box::new(e(ExprKind::Int(1))),
                     BinOp::Add,
-                    Box::new(Expr::Int(2))
-                )),
+                    Box::new(e(ExprKind::Int(2))),
+                ))),
                 BinOp::Mul,
-                Box::new(Expr::Int(3))
-            )
+                Box::new(e(ExprKind::Int(3))),
+            )),
         );
     }
 }

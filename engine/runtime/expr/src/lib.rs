@@ -16,13 +16,16 @@ pub fn eval(expr: &CompiledExpr, ctx: &Context) -> Result<Value> {
 
 /// Evaluate and coerce the result to a `String` via the `str()` builtin.
 pub fn eval_string(expr: &CompiledExpr, ctx: &Context) -> Result<String> {
-    let wrapped = CompiledExpr(core::ast::Expr::FuncCall {
-        name: "str".to_string(),
-        args: vec![expr.0.clone()],
-    });
+    let wrapped = CompiledExpr(core::ast::Expr::new(
+        expr.0.span,
+        core::ast::ExprKind::FuncCall {
+            name: "str".to_string(),
+            args: vec![expr.0.clone()],
+        },
+    ));
     match eval(&wrapped, ctx)? {
         Value::String(s) => Ok(s),
-        v => Err(Error::Eval {
+        v => Err(Error::EvalString {
             msg: format!("str() must return a string, got {v:?}"),
         }),
     }

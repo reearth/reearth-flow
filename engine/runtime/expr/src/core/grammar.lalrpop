@@ -1,4 +1,4 @@
-use crate::core::ast::{BinOp, Expr, UnaryOp};
+use crate::core::ast::{BinOp, Expr, ExprKind, Span, UnaryOp};
 
 grammar;
 
@@ -52,62 +52,76 @@ extern {
 
 // Top-level: let is lowest precedence, right-recursive so its body captures everything after.
 pub Expr: Expr = {
-    "let" <n:"ident"> "=" <v:Or> ";" <body:Expr>
-        => Expr::Let { name: n, value: Box::new(v), body: Box::new(body) },
+    <l:@L> "let" <n:"ident"> "=" <v:Or> ";" <body:Expr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Let { name: n, value: Box::new(v), body: Box::new(body) }),
     Or,
 };
 
 Or: Expr = {
-    <l:Or> "||" <r:And> => Expr::Binary(Box::new(l), BinOp::Or, Box::new(r)),
+    <l:@L> <lhs:Or> "||" <rhs:And> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Or, Box::new(rhs))),
     And,
 };
 
 And: Expr = {
-    <l:And> "&&" <r:Equality> => Expr::Binary(Box::new(l), BinOp::And, Box::new(r)),
+    <l:@L> <lhs:And> "&&" <rhs:Equality> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::And, Box::new(rhs))),
     Equality,
 };
 
 Equality: Expr = {
-    <l:Equality> "==" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::Eq, Box::new(r)),
-    <l:Equality> "!=" <r:Comparison> => Expr::Binary(Box::new(l), BinOp::Ne, Box::new(r)),
+    <l:@L> <lhs:Equality> "==" <rhs:Comparison> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Eq, Box::new(rhs))),
+    <l:@L> <lhs:Equality> "!=" <rhs:Comparison> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Ne, Box::new(rhs))),
     Comparison,
 };
 
 Comparison: Expr = {
-    <l:Comparison> "<"  <r:Add> => Expr::Binary(Box::new(l), BinOp::Lt, Box::new(r)),
-    <l:Comparison> "<=" <r:Add> => Expr::Binary(Box::new(l), BinOp::Le, Box::new(r)),
-    <l:Comparison> ">"  <r:Add> => Expr::Binary(Box::new(l), BinOp::Gt, Box::new(r)),
-    <l:Comparison> ">=" <r:Add> => Expr::Binary(Box::new(l), BinOp::Ge, Box::new(r)),
+    <l:@L> <lhs:Comparison> "<"  <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Lt, Box::new(rhs))),
+    <l:@L> <lhs:Comparison> "<=" <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Le, Box::new(rhs))),
+    <l:@L> <lhs:Comparison> ">"  <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Gt, Box::new(rhs))),
+    <l:@L> <lhs:Comparison> ">=" <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Ge, Box::new(rhs))),
     Add,
 };
 
 Add: Expr = {
-    <l:Add> "+" <r:Mul> => Expr::Binary(Box::new(l), BinOp::Add, Box::new(r)),
-    <l:Add> "-" <r:Mul> => Expr::Binary(Box::new(l), BinOp::Sub, Box::new(r)),
+    <l:@L> <lhs:Add> "+" <rhs:Mul> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Add, Box::new(rhs))),
+    <l:@L> <lhs:Add> "-" <rhs:Mul> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Sub, Box::new(rhs))),
     Mul,
 };
 
 Mul: Expr = {
-    <l:Mul> "*" <r:Unary> => Expr::Binary(Box::new(l), BinOp::Mul, Box::new(r)),
-    <l:Mul> "/" <r:Unary> => Expr::Binary(Box::new(l), BinOp::Div, Box::new(r)),
+    <l:@L> <lhs:Mul> "*" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Mul, Box::new(rhs))),
+    <l:@L> <lhs:Mul> "/" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Div, Box::new(rhs))),
     Unary,
 };
 
 Unary: Expr = {
-    "!" <e:Unary> => Expr::Unary(UnaryOp::Not, Box::new(e)),
-    "-" <e:Unary> => Expr::Unary(UnaryOp::Neg, Box::new(e)),
+    <l:@L> "!" <e:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Not, Box::new(e))),
+    <l:@L> "-" <e:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Neg, Box::new(e))),
     Postfix,
 };
 
 Postfix: Expr = {
-    <e:Postfix> "[" <k:Or> "]"
-        => Expr::Index(Box::new(e), Box::new(k)),
-    <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> "]"
-        => Expr::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: None },
-    <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> ":" <step:OptExpr> "]"
-        => Expr::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: step.map(Box::new) },
-    <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")"
-        => Expr::MethodCall { receiver: Box::new(e), method: name, args },
+    <l:@L> <e:Postfix> "[" <k:Or> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Index(Box::new(e), Box::new(k))),
+    <l:@L> <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: None }),
+    <l:@L> <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> ":" <step:OptExpr> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: step.map(Box::new) }),
+    <l:@L> <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::MethodCall { receiver: Box::new(e), method: name, args }),
     Primary,
 };
 
@@ -117,17 +131,20 @@ OptExpr: Option<Expr> = {
 };
 
 Primary: Expr = {
-    "int"   => Expr::Int(<>),
-    "float" => Expr::Float(<>),
-    "str"   => Expr::Str(<>),
-    "true"  => Expr::Bool(true),
-    "false" => Expr::Bool(false),
-    "null"  => Expr::Null,
-    <name:"ident"> "(" <args:Comma<Or>> ")" => Expr::FuncCall { name, args },
-    "ident" => Expr::Var(<>),
+    <l:@L> <n:"int">   <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Int(n)),
+    <l:@L> <n:"float"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Float(n)),
+    <l:@L> <s:"str">   <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Str(s)),
+    <l:@L> "true"  <r:@R>     => Expr::new(Span { start: l, end: r }, ExprKind::Bool(true)),
+    <l:@L> "false" <r:@R>     => Expr::new(Span { start: l, end: r }, ExprKind::Bool(false)),
+    <l:@L> "null"  <r:@R>     => Expr::new(Span { start: l, end: r }, ExprKind::Null),
+    <l:@L> <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::FuncCall { name, args }),
+    <l:@L> <name:"ident"> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Var(name)),
     // parens now accept full Expr so `let` works inside: (let x = 1; x)
     "(" <Expr> ")",
-    "[" <items:Comma<Or>> "]" => Expr::Array(items),
+    <l:@L> "[" <items:Comma<Or>> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Array(items)),
     BlockExpr,
     MapExpr,
     IfExpr,
@@ -136,10 +153,10 @@ Primary: Expr = {
 // if <cond> { <then> } else <branch>
 // ElseBranch is either a block or another `if`, enabling natural `else if` chains.
 IfExpr: Expr = {
-    "if" <cond:Or> <then:BlockExpr> "else" <else_:ElseBranch>
-        => Expr::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(else_) },
-    "if" <cond:Or> <then:BlockExpr>
-        => Expr::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(Expr::Null) },
+    <l:@L> "if" <cond:Or> <then:BlockExpr> "else" <else_:ElseBranch> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(else_) }),
+    <l:@L> "if" <cond:Or> <then:BlockExpr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(Expr::new(Span { start: r, end: r }, ExprKind::Null)) }),
 };
 
 ElseBranch: Expr = {
@@ -150,7 +167,7 @@ ElseBranch: Expr = {
 // Block expression: { } or { seq_body }
 // Braces are purely grouping + sequencing — scope is created only by `let`.
 BlockExpr: Expr = {
-    "{" "}" => Expr::Null,
+    <l:@L> "{" "}" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
     "{" <s:SeqBody> "}" => s,
 };
 
@@ -169,20 +186,25 @@ SeqBody: Expr = {
     <e:Or> => e,
 
     // Trailing semicolon: evaluate e for effects, block returns Null.
-    <e:Or> ";" => Expr::Block(vec![e, Expr::Null]),
+    <l:@L> <e:Or> ";" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Block(vec![e, Expr::new(Span { start: r, end: r }, ExprKind::Null)])),
 
     // let binding at end of block (degenerate but consistent): returns Null.
-    "let" <n:"ident"> "=" <v:Or> ";"
-        => Expr::Let { name: n, value: Box::new(v), body: Box::new(Expr::Null) },
+    <l:@L> "let" <n:"ident"> "=" <v:Or> ";" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Let { name: n, value: Box::new(v), body: Box::new(Expr::new(Span { start: r, end: r }, ExprKind::Null)) }),
 
     // let binding scoping over the rest of the block.
-    "let" <n:"ident"> "=" <v:Or> ";" <rest:SeqBody>
-        => Expr::Let { name: n, value: Box::new(v), body: Box::new(rest) },
+    <l:@L> "let" <n:"ident"> "=" <v:Or> ";" <rest:SeqBody> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Let { name: n, value: Box::new(v), body: Box::new(rest) }),
 
     // Expression followed by more: build a flat Block by prepending.
-    <e:Or> ";" <rest:SeqBody> => match rest {
-        Expr::Block(mut items) => { items.insert(0, e); Expr::Block(items) }
-        other => Expr::Block(vec![e, other]),
+    <l:@L> <e:Or> ";" <rest:SeqBody> <r:@R> => {
+        let span = Span { start: l, end: r };
+        let rest_span = rest.span;
+        match rest.kind {
+            ExprKind::Block(mut items) => { items.insert(0, e); Expr::new(span, ExprKind::Block(items)) }
+            other => Expr::new(span, ExprKind::Block(vec![e, Expr::new(rest_span, other)])),
+        }
     },
 };
 
@@ -190,15 +212,15 @@ SeqBody: Expr = {
 // After reducing the key `Or`, lookahead `:` is never valid in SeqBody context,
 // so LR(1) disambiguates map vs block without any grammar conflict.
 MapExpr: Expr = {
-    "{" <e:MapEntry> <rest:("," <MapEntry>)*> "}" => {
+    <l:@L> "{" <e:MapEntry> <rest:("," <MapEntry>)*> "}" <r:@R> => {
         let mut entries = vec![e];
         entries.extend(rest);
-        Expr::Map(entries)
+        Expr::new(Span { start: l, end: r }, ExprKind::Map(entries))
     },
-    "{" <e:MapEntry> <rest:("," <MapEntry>)*> "," "}" => {
+    <l:@L> "{" <e:MapEntry> <rest:("," <MapEntry>)*> "," "}" <r:@R> => {
         let mut entries = vec![e];
         entries.extend(rest);
-        Expr::Map(entries)
+        Expr::new(Span { start: l, end: r }, ExprKind::Map(entries))
     },
 };
 

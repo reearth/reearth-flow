@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use reearth_flow_common::uri::Uri;
 
-use crate::core::error::{Error, Result};
+use crate::core::error::{EvalHelperError, HResult};
 use crate::core::value::{Value, ValueObject};
 
 #[derive(Debug)]
@@ -13,12 +13,12 @@ impl ValueObject for UrlObject {
         "Url"
     }
 
-    fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
+    fn call_method(&self, method: &str, args: &[Value]) -> HResult<Value> {
         let _ = args;
         match method {
             "parent" => {
-                let uri = self.0.parent().ok_or_else(|| Error::Eval {
-                    msg: format!("Url has no parent: {}", self.0.as_str()),
+                let uri = self.0.parent().ok_or_else(|| {
+                    EvalHelperError::new(format!("Url has no parent: {}", self.0.as_str()))
                 })?;
                 Ok(Value::Object(Box::new(UrlObject(uri))))
             }
@@ -45,9 +45,9 @@ impl ValueObject for UrlObject {
                 Ok(Value::String(stem.to_string()))
             }
             "__eq__" => {
-                let rhs = args.first().ok_or_else(|| Error::Eval {
-                    msg: "Url == requires an argument".into(),
-                })?;
+                let rhs = args
+                    .first()
+                    .ok_or_else(|| EvalHelperError::new("Url == requires an argument"))?;
                 match rhs {
                     Value::Object(obj) if obj.type_name() == "Url" => {
                         Ok(Value::Bool(self.0.as_str() == obj.display()))
@@ -66,18 +66,14 @@ impl ValueObject for UrlObject {
                             None
                         }
                     })
-                    .ok_or_else(|| Error::Eval {
-                        msg: "Url / requires a string".into(),
-                    })?;
+                    .ok_or_else(|| EvalHelperError::new("Url / requires a string"))?;
                 let joined = self
                     .0
                     .join(rhs)
-                    .map_err(|e| Error::Eval { msg: e.to_string() })?;
+                    .map_err(|e| EvalHelperError::new(e.to_string()))?;
                 Ok(Value::Object(Box::new(UrlObject(joined))))
             }
-            m => Err(Error::Eval {
-                msg: format!("Url has no method '{m}'"),
-            }),
+            m => Err(EvalHelperError::new(format!("Url has no method '{m}'"))),
         }
     }
 
@@ -98,22 +94,18 @@ impl ValueObject for UrlObject {
     }
 }
 
-pub fn builtin_url(args: &[Value]) -> Result<Value> {
+pub fn builtin_url(args: &[Value]) -> HResult<Value> {
     let s = match args.first() {
-        None => {
-            return Err(Error::Eval {
-                msg: "Url() requires a string argument".into(),
-            })
-        }
+        None => return Err(EvalHelperError::new("Url() requires a string argument")),
         Some(Value::String(s)) => s.clone(),
         Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
         Some(v) => {
-            return Err(Error::Eval {
-                msg: format!("Url() expects a string, got {v:?}"),
-            })
+            return Err(EvalHelperError::new(format!(
+                "Url() expects a string, got {v:?}"
+            )))
         }
     };
-    let uri = Uri::from_str(&s).map_err(|e| Error::Eval { msg: e.to_string() })?;
+    let uri = Uri::from_str(&s).map_err(|e| EvalHelperError::new(e.to_string()))?;
     Ok(Value::Object(Box::new(UrlObject(uri))))
 }
 
