@@ -79,7 +79,7 @@ fn env_extend(parent: &Env, name: String, value: Value) -> Env {
 }
 
 // Public entry point — env starts empty.
-pub(crate) fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
+pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
     eval_inner(expr, ctx, &None)
 }
 

@@ -1,4 +1,4 @@
-pub mod core;
+mod core;
 
 pub use core::error::{Error, Result};
 pub use core::eval::Context;
