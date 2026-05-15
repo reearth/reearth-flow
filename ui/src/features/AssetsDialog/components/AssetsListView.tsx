@@ -14,6 +14,7 @@ import type { Asset } from "@flow/types";
 
 type Props = {
   assets?: Asset[];
+  readonly?: boolean;
   isFetching: boolean;
   isDebouncingSearch?: boolean;
   isDeleting: boolean;
@@ -32,6 +33,7 @@ type Props = {
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
+  readonly,
   currentPage,
   isFetching,
   isDebouncingSearch,
@@ -68,7 +70,7 @@ const AssetsListView: React.FC<Props> = ({
           <IconButton
             icon={<PencilLineIcon />}
             onClick={() => setAssetToBeEdited(row.row.original)}
-            disabled={isDeleting}
+            disabled={isDeleting || readonly}
           />
           <IconButton
             icon={<CopyIcon />}
@@ -85,7 +87,7 @@ const AssetsListView: React.FC<Props> = ({
           </a>
           <IconButton
             icon={<TrashIcon />}
-            disabled={isDeleting}
+            disabled={isDeleting || readonly}
             onClick={() => setAssetToBeDeleted(row.row.original.id)}
           />
         </div>
@@ -106,7 +108,7 @@ const AssetsListView: React.FC<Props> = ({
           setCurrentPage={setCurrentPage}
           totalPages={totalPages}
           resultsPerPage={resultsPerPage}
-          onRowDoubleClick={onAssetDoubleClick}
+          onRowDoubleClick={readonly ? undefined : onAssetDoubleClick}
         />
       )}
     </div>

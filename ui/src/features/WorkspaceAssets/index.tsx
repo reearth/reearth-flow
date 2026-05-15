@@ -19,8 +19,8 @@ import {
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentWorkspace } from "@flow/stores";
-import type { Asset } from "@flow/types";
+import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
+import { Role, type Asset } from "@flow/types";
 
 import {
   AssetDeletionDialog,
@@ -32,6 +32,8 @@ import {
 const AssetsManager: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
+  const [currentUserRole] = useCurrentUserRole();
+  const disabled = currentUserRole === Role.Reader;
   const {
     assets,
     isFetching,
@@ -77,7 +79,7 @@ const AssetsManager: React.FC = () => {
         <Button
           className="flex gap-2"
           variant="default"
-          disabled={isCreatingAsset}
+          disabled={isCreatingAsset || disabled}
           onClick={handleAssetUploadClick}>
           <FileArrowUpIcon weight="thin" />
           <p className="text-xs">{t("Upload")}</p>
@@ -129,6 +131,7 @@ const AssetsManager: React.FC = () => {
             {layoutView === "list" ? (
               <AssetsListView
                 assets={assets}
+                readonly={disabled}
                 isFetching={isFetching}
                 isDebouncingSearch={isDebouncingSearch}
                 isDeleting={isDeleting}
@@ -145,6 +148,7 @@ const AssetsManager: React.FC = () => {
             ) : (
               <AssetsGridView
                 assets={assets}
+                readonly={disabled}
                 isFetching={isFetching}
                 isDebouncingSearch={isDebouncingSearch}
                 isDeleting={isDeleting}
