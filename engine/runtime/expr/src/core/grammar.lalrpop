@@ -54,7 +54,13 @@ extern {
 
 // Top-level: a sequence of semicolon-separated Assign-level expressions.
 pub Expr: Expr = {
-    SeqBody,
+    <l:@L> <mut items:SeqBody> <r:@R> => {
+        if items.len() == 1 {
+            items.pop().unwrap()
+        } else {
+            Expr::new(Span { start: l, end: r }, ExprKind::Block(items))
+        }
+    },
 };
 
 // Assign: lowest precedence, right-recursive so `a = b = 1` chains correctly.
@@ -183,28 +189,27 @@ ElseBranch: Expr = {
 // Braces are purely grouping + sequencing.
 BlockExpr: Expr = {
     <l:@L> "{" "}" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
-    "{" <s:SeqBody> "}" => s,
-};
-
-// SeqBody: right-recursive sequence of Assign-level expressions separated by `;`.
-// Returns the last expression's value; trailing `;` returns Null.
-SeqBody: Expr = {
-    // Single expression — the value of the block.
-    <e:Assign> => e,
-
-    // Trailing semicolon: evaluate e, block returns Null.
-    <l:@L> <e:Assign> ";" <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::Block(vec![e, Expr::new(Span { start: r, end: r }, ExprKind::Null)])),
-
-    // Expression followed by more: build a flat Block by prepending.
-    <l:@L> <e:Assign> ";" <rest:SeqBody> <r:@R> => {
+    <l:@L> "{" <mut items:SeqBody> "}" <r:@R> => {
         let span = Span { start: l, end: r };
-        let rest_span = rest.span;
-        match rest.kind {
-            ExprKind::Block(mut items) => { items.insert(0, e); Expr::new(span, ExprKind::Block(items)) }
-            other => Expr::new(span, ExprKind::Block(vec![e, Expr::new(rest_span, other)])),
+        if items.len() == 1 {
+            items.pop().unwrap()
+        } else {
+            Expr::new(span, ExprKind::Block(items))
         }
     },
+};
+
+// SeqBody: left-recursive sequence of Assign-level expressions separated by `;`.
+// Left recursion reduces left-to-right, so push() naturally gives correct order — no reversal needed.
+SeqBody: Vec<Expr> = {
+    // Base: single expression.
+    <e:Assign> => vec![e],
+
+    // More expressions: append to already-correct left-hand side.
+    <mut rest:SeqBody> ";" <e:Assign> => { rest.push(e); rest },
+
+    // Trailing semicolon: block returns Null.
+    <mut rest:SeqBody> ";" <r:@R> => { rest.push(Expr::new(Span { start: r, end: r }, ExprKind::Null)); rest },
 };
 
 // Map literal: { key: value, ... } — at least one entry so {} stays unambiguous (Null).
