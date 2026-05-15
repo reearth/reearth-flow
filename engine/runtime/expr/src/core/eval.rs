@@ -1085,7 +1085,7 @@ mod tests {
         #[derive(Debug, Clone)]
         struct Counter(i64);
 
-        impl super::super::value::ValueObject for Counter {
+        impl super::super::value::Object for Counter {
             fn type_name(&self) -> &'static str {
                 "Counter"
             }
@@ -1105,10 +1105,10 @@ mod tests {
                     m => Err(EvalHelperError::new(format!("no method {m}"))),
                 }
             }
-            fn clone_box(&self) -> Box<dyn super::super::value::ValueObject> {
+            fn clone_box(&self) -> Box<dyn super::super::value::Object> {
                 Box::new(self.clone())
             }
-            fn eq_box(&self, _: &dyn super::super::value::ValueObject) -> bool {
+            fn eq_box(&self, _: &dyn super::super::value::Object) -> bool {
                 false
             }
             fn display(&self) -> String {

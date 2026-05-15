@@ -29,9 +29,9 @@ macro_rules! unpack_args {
     };
 }
 
-pub use core::error::{Error, Result};
+pub use core::error::{Error, EvalHelperError, Result};
 pub use core::eval::{default_env, Env};
-pub use core::value::{NativeFn, Value};
+pub use core::value::{NativeFn, Object, Value};
 
 /// Compile an expression string into an opaque [`CompiledExpr`].
 pub fn compile(input: &str) -> Result<CompiledExpr> {

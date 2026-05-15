@@ -8,12 +8,12 @@ use crate::core::error::HResult;
 ///
 /// Implement this to introduce new object types (e.g. `Url`, `DateTime`)
 /// that expression users can construct and call methods on.
-pub trait ValueObject: std::fmt::Debug + Send + Sync {
+pub trait Object: std::fmt::Debug + Send + Sync {
     fn type_name(&self) -> &'static str;
     fn call_method(&self, method: &str, args: &[Value]) -> HResult<Value>;
-    fn clone_box(&self) -> Box<dyn ValueObject>;
+    fn clone_box(&self) -> Box<dyn Object>;
     /// Object equality — implementations may compare by content or return false.
-    fn eq_box(&self, other: &dyn ValueObject) -> bool;
+    fn eq_box(&self, other: &dyn Object) -> bool;
     /// Human-readable representation. Defaults to `<TypeName>`.
     fn display(&self) -> String {
         format!("<{}>", self.type_name())
@@ -24,13 +24,13 @@ pub trait ValueObject: std::fmt::Debug + Send + Sync {
     }
 }
 
-impl Clone for Box<dyn ValueObject> {
+impl Clone for Box<dyn Object> {
     fn clone(&self) -> Self {
         self.clone_box()
     }
 }
 
-impl PartialEq for Box<dyn ValueObject> {
+impl PartialEq for Box<dyn Object> {
     fn eq(&self, other: &Self) -> bool {
         self.eq_box(other.as_ref())
     }
@@ -76,8 +76,8 @@ pub enum Value {
     Map(IndexMap<String, Value>),
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
-    /// A typed object that can respond to method calls via [`ValueObject`].
-    Object(Box<dyn ValueObject>),
+    /// A typed object that can respond to method calls via [`Object`].
+    Object(Box<dyn Object>),
 }
 
 impl std::fmt::Display for Value {

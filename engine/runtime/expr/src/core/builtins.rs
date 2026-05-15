@@ -3,13 +3,13 @@ use std::str::FromStr;
 use reearth_flow_common::uri::Uri;
 
 use crate::core::error::{EvalHelperError, HResult};
-use crate::core::value::{Value, ValueObject};
+use crate::core::value::{Object, Value};
 use crate::unpack_args;
 
 #[derive(Debug)]
 pub struct UrlObject(pub Uri);
 
-impl ValueObject for UrlObject {
+impl Object for UrlObject {
     fn type_name(&self) -> &'static str {
         "Url"
     }
@@ -88,11 +88,11 @@ impl ValueObject for UrlObject {
         }
     }
 
-    fn clone_box(&self) -> Box<dyn ValueObject> {
+    fn clone_box(&self) -> Box<dyn Object> {
         Box::new(UrlObject(self.0.clone()))
     }
 
-    fn eq_box(&self, other: &dyn ValueObject) -> bool {
+    fn eq_box(&self, other: &dyn Object) -> bool {
         other.type_name() == "Url" && other.display() == self.0.as_str()
     }
 
