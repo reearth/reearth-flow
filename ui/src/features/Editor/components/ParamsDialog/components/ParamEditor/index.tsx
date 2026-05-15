@@ -5,7 +5,7 @@ import {
   QuestionIcon,
 } from "@phosphor-icons/react";
 import { RJSFSchema } from "@rjsf/utils";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import {
   SchemaForm,
@@ -93,8 +93,13 @@ const ParamEditor: React.FC<Props> = ({
   const needsMigration =
     !!createdAction?.parameter &&
     !schemasMatch(nodeMeta.paramsSchema, createdAction.parameter);
+  // const needsMigration = !!createdAction?.parameter; // uncomment to test migration view without schema changes
+  const [migrationComplete, setMigrationComplete] = useState(false);
 
-  // const needsMigration = !!createdAction?.parameter; // TEST: forces migration on any node with params
+  useEffect(() => {
+    setMigrationComplete(false);
+  }, [nodeId]);
+
   const [isParamsValid, setIsParamsValid] = useState(true);
   const [isCustomizationsValid, setIsCustomizationsValid] = useState(true);
 
@@ -125,6 +130,7 @@ const ParamEditor: React.FC<Props> = ({
   };
 
   const handleMigrate = (newParams: NodeParams) => {
+    setMigrationComplete(true);
     onMigrate(nodeId, newParams, createdAction?.parameter);
   };
 
@@ -294,7 +300,7 @@ const ParamEditor: React.FC<Props> = ({
         </TabsContent>
       </Tabs>
 
-      {needsMigration && (
+      {needsMigration && !migrationComplete && (
         <div className="absolute inset-0 z-10 rounded bg-background">
           <SchemaMigrationView
             readonly={readonly}

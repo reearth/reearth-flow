@@ -197,9 +197,9 @@ const ParamsDialog: React.FC<Props> = ({
       }, "params");
 
       removeMyDraft(id);
-      onOpenNode();
+      // Dialog stays open — user reviews migrated values in normal editor and saves explicitly
     },
-    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
+    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft],
   );
 
   const { getViewport, setViewport } = useReactFlow();
