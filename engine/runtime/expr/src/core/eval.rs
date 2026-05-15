@@ -6,6 +6,7 @@ use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::builtin_url;
 use super::error::{Error, EvalHelperError, HResult, Result};
 use super::value::{NativeFn, Value};
+use crate::unpack_args;
 
 trait ToEvalError<T> {
     fn to_eval_error(self, pos: usize) -> Result<T>;
@@ -185,77 +186,61 @@ fn eval_method(recv: Value, method: &str, args: &[Value]) -> HResult<Value> {
 fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value> {
     match method {
         "len" => {
-            let _ = args;
+            unpack_args!(args =>);
             Ok(Value::Int(s.chars().count() as i64))
         }
         "trim" => {
-            let _ = args;
+            unpack_args!(args =>);
             Ok(Value::String(s.trim().to_string()))
         }
         "split" => {
-            let sep = match args.first() {
-                Some(Value::String(sep)) => sep.as_str(),
-                Some(v) => {
-                    return Err(EvalHelperError::new(format!(
-                        "split() separator must be a string, got {v:?}"
-                    )))
-                }
-                None => {
-                    return Err(EvalHelperError::new(
-                        "split() requires a separator argument",
-                    ))
-                }
+            unpack_args!(args => sep);
+            let Value::String(sep) = sep else {
+                return Err(EvalHelperError::new(format!(
+                    "split() separator must be a string, got {sep:?}"
+                )));
             };
             Ok(Value::Array(
-                s.split(sep).map(|p| Value::String(p.to_string())).collect(),
+                s.split(sep.as_str())
+                    .map(|p| Value::String(p.to_string()))
+                    .collect(),
             ))
         }
         "contains" => {
-            let needle = match args.first() {
-                Some(Value::String(n)) => n.as_str(),
-                Some(v) => {
-                    return Err(EvalHelperError::new(format!(
-                        "contains() argument must be a string, got {v:?}"
-                    )))
-                }
-                None => return Err(EvalHelperError::new("contains() requires an argument")),
+            unpack_args!(args => needle);
+            let Value::String(needle) = needle else {
+                return Err(EvalHelperError::new(format!(
+                    "contains() argument must be a string, got {needle:?}"
+                )));
             };
-            Ok(Value::Bool(s.contains(needle)))
+            Ok(Value::Bool(s.contains(needle.as_str())))
         }
         "starts_with" => {
-            let prefix = match args.first() {
-                Some(Value::String(p)) => p.as_str(),
-                Some(v) => {
-                    return Err(EvalHelperError::new(format!(
-                        "starts_with() argument must be a string, got {v:?}"
-                    )))
-                }
-                None => return Err(EvalHelperError::new("starts_with() requires an argument")),
+            unpack_args!(args => prefix);
+            let Value::String(prefix) = prefix else {
+                return Err(EvalHelperError::new(format!(
+                    "starts_with() argument must be a string, got {prefix:?}"
+                )));
             };
-            Ok(Value::Bool(s.starts_with(prefix)))
+            Ok(Value::Bool(s.starts_with(prefix.as_str())))
         }
         "ends_with" => {
-            let suffix = match args.first() {
-                Some(Value::String(suf)) => suf.as_str(),
-                Some(v) => {
-                    return Err(EvalHelperError::new(format!(
-                        "ends_with() argument must be a string, got {v:?}"
-                    )))
-                }
-                None => return Err(EvalHelperError::new("ends_with() requires an argument")),
+            unpack_args!(args => suffix);
+            let Value::String(suffix) = suffix else {
+                return Err(EvalHelperError::new(format!(
+                    "ends_with() argument must be a string, got {suffix:?}"
+                )));
             };
-            Ok(Value::Bool(s.ends_with(suffix)))
+            Ok(Value::Bool(s.ends_with(suffix.as_str())))
         }
         "replace" => {
-            let (from, to) = match (args.first(), args.get(1)) {
-                (Some(Value::String(f)), Some(Value::String(t))) => (f.as_str(), t.as_str()),
-                _ => {
-                    return Err(EvalHelperError::new(
-                        "replace() requires two string arguments: replace(from, to)",
-                    ))
-                }
+            unpack_args!(args => from, to);
+            let (Value::String(from), Value::String(to)) = (from, to) else {
+                return Err(EvalHelperError::new(
+                    "replace() requires two string arguments: replace(from, to)",
+                ));
             };
-            Ok(Value::String(s.replace(from, to)))
+            Ok(Value::String(s.replace(from.as_str(), to.as_str())))
         }
         m => Err(EvalHelperError::new(format!("String has no method '{m}'"))),
     }
@@ -264,11 +249,11 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
 fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> HResult<Value> {
     match method {
         "len" => {
-            let _ = args;
+            unpack_args!(args =>);
             Ok(Value::Int(a.len() as i64))
         }
         "contains" => {
-            let needle = args.first().unwrap_or(&Value::Null);
+            unpack_args!(args => needle);
             Ok(Value::Bool(a.iter().any(|v| values_equal(v, needle))))
         }
         m => Err(EvalHelperError::new(format!("Array has no method '{m}'"))),
