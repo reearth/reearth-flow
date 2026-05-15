@@ -26,6 +26,7 @@ import { Asset } from "@flow/types";
 
 type Props = {
   asset: Asset;
+  readonly?: boolean;
   isDeleting?: boolean;
   onCopyUrlToClipBoard: (url: string) => void;
   onAssetDownload: (
@@ -39,6 +40,7 @@ type Props = {
 
 const AssetCard: React.FC<Props> = ({
   asset,
+  readonly,
   isDeleting,
   onCopyUrlToClipBoard,
   onAssetDownload,
@@ -105,7 +107,7 @@ const AssetCard: React.FC<Props> = ({
     <Card
       className="group relative cursor-pointer border-transparent bg-card hover:border-border"
       key={id}
-      onDoubleClick={handleDoubleClick}>
+      onDoubleClick={readonly ? undefined : handleDoubleClick}>
       <CardContent className="flex items-start justify-center p-2">
         {iconType ? (
           <Icon
@@ -146,7 +148,7 @@ const AssetCard: React.FC<Props> = ({
               onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem
                 className="justify-between gap-2 text-warning"
-                disabled={isDeleting || !url}
+                disabled={isDeleting || !url || readonly}
                 onClick={() => setAssetToBeEdited(asset)}>
                 {t("Edit Asset")}
                 <PencilLineIcon weight="light" />
@@ -170,7 +172,7 @@ const AssetCard: React.FC<Props> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-4 text-destructive"
-                disabled={isDeleting}
+                disabled={isDeleting || readonly}
                 onClick={(e) => {
                   e.stopPropagation();
                   setAssetToBeDeleted(id);

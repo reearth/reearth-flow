@@ -28,6 +28,8 @@ import {
 } from "@flow/global-constants";
 import { useWorkflowImport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
+import { useCurrentUserRole } from "@flow/stores";
+import { Role } from "@flow/types";
 
 import {
   ProjectAddDialog,
@@ -42,7 +44,7 @@ import useProjectImportFromFile from "./useProjectImportFromFile";
 
 const ProjectsManager: React.FC = () => {
   const t = useT();
-
+  const [currentUserRole] = useCurrentUserRole();
   const {
     projects,
     ref,
@@ -93,7 +95,7 @@ const ProjectsManager: React.FC = () => {
     handleVariableMappingConfirm,
     handleVariableMappingCancel,
   } = useWorkflowImport();
-
+  const readonly = currentUserRole === Role.Reader;
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll pt-4 pr-3 pb-2 pl-2">
@@ -103,9 +105,12 @@ const ProjectsManager: React.FC = () => {
           </p>
           <div className="flex gap-2">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-1 rounded-md p-2 hover:bg-primary">
+              <DropdownMenuTrigger
+                className="flex items-center gap-1 rounded-md p-2 hover:bg-primary"
+                disabled={readonly}>
                 <ArrowSquareInIcon weight="thin" />
-                <p className="line-clamp-2 text-xs dark:font-extralight">
+                <p
+                  className={`line-clamp-2 text-xs dark:font-extralight ${readonly ? "opacity-50" : ""}`}>
                   {t("Import")}
                 </p>
                 <div className="shrink-0">
@@ -132,6 +137,7 @@ const ProjectsManager: React.FC = () => {
             <Button
               className="flex gap-2"
               variant="default"
+              disabled={readonly}
               onClick={() => setOpenProjectAddDialog(true)}>
               <PlusIcon weight="thin" />
               <p className="text-xs dark:font-light">{t("New Project")}</p>
@@ -173,6 +179,7 @@ const ProjectsManager: React.FC = () => {
               <ProjectCard
                 key={p.id}
                 project={p}
+                readonly={readonly}
                 isDuplicating={isDuplicating}
                 setEditProject={setEditProject}
                 setDuplicateProject={setDuplicateProject}
