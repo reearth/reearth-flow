@@ -207,17 +207,30 @@ mod tests {
 #[cfg(test)]
 mod parse_smoke {
     use super::*;
+    use crate::core::ast::ExprKind;
+
     #[test]
-    fn smoke_let_forms() {
+    fn smoke_assign_forms() {
         let cases = [
-            ("let x = 1 + 1; x", true),
-            ("let x = { 1 + 1 }; x", true),
-            ("let x = 1 + 1;", false),    // trailing semi, no body
-            ("let x = { 1 + 1 }", false), // no semi, no body
+            ("x = 1 + 1; x", true),
+            ("x = { 1 + 1 }; x", true),
+            ("x = 1 + 1;", true),   // trailing semi returns Null
+            ("x = 1", true),        // assign alone is a valid expr
+            ("x = y = 2; x", true), // chained assign
         ];
         for (src, should_ok) in cases {
             let r = parse(src);
             assert_eq!(r.is_ok(), should_ok, "input={src:?}  result={r:?}");
         }
+    }
+
+    #[test]
+    fn smoke_assign_ast() {
+        let expr = parse("x = 42").unwrap();
+        assert!(
+            matches!(expr.kind, ExprKind::Assign { ref name, .. } if name == "x"),
+            "expected Assign, got {:?}",
+            expr.kind
+        );
     }
 }
