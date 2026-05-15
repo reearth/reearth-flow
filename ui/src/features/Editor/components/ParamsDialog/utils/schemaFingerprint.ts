@@ -10,20 +10,27 @@ function simpleHash(str: string): string {
   return hash.toString(36);
 }
 
+function sortDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortDeep);
+  if (value !== null && typeof value === "object") {
+    return Object.keys(value as object)
+      .sort()
+      .reduce(
+        (acc, key) => {
+          acc[key] = sortDeep((value as Record<string, unknown>)[key]);
+          return acc;
+        },
+        {} as Record<string, unknown>,
+      );
+  }
+  return value;
+}
+
 export function computeSchemaFingerprint(
   schema?: RJSFSchema,
 ): string | undefined {
   if (!schema?.properties) return undefined;
-  const sortedKeys = Object.keys(schema.properties).sort();
-  const properties = schema.properties;
-  const normalized = sortedKeys.reduce(
-    (acc, key) => {
-      acc[key] = properties[key];
-      return acc;
-    },
-    {} as Record<string, unknown>,
-  );
-  return simpleHash(JSON.stringify(normalized));
+  return simpleHash(JSON.stringify(sortDeep(schema.properties)));
 }
 
 // Returns true (no migration needed) when:
