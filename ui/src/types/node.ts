@@ -1,3 +1,4 @@
+import type { RJSFSchema } from "@rjsf/utils";
 import type {
   Node as ReactFlowNode,
   NodeChange as ReactFlowNodeChange,
@@ -23,7 +24,7 @@ export type NodeData = {
   inputs?: string[];
   outputs?: string[];
   params?: NodeParams;
-  paramsSchemaHash?: string;
+  paramsSchema?: RJSFSchema;
   customizations?: NodeCustomizations;
   workflowPath?: string;
   isCollapsed?: boolean;

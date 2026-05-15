@@ -1,3 +1,4 @@
+import { RJSFSchema } from "@rjsf/utils";
 import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -37,7 +38,7 @@ type Props = {
       nodeId: string;
       updatedParams: any;
       updatedCustomizations: any;
-      paramsSchemaHash?: string;
+      paramsSchema?: RJSFSchema;
     }[],
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
@@ -138,7 +139,7 @@ const ParamsDialog: React.FC<Props> = ({
       id: string,
       _updatedParams: any,
       _updatedCustomizations: any,
-      paramsSchemaHash?: string,
+      paramsSchema?: RJSFSchema,
     ) => {
       if (!openNode || openNode.id !== id) return;
 
@@ -162,7 +163,7 @@ const ParamsDialog: React.FC<Props> = ({
             nodeId: id,
             updatedParams,
             updatedCustomizations,
-            paramsSchemaHash,
+            paramsSchema,
           },
         ]);
       }, "params");
@@ -174,7 +175,7 @@ const ParamsDialog: React.FC<Props> = ({
   );
 
   const handleMigrate = useCallback(
-    (id: string, newParams: any, paramsSchemaHash?: string) => {
+    (id: string, newParams: any, paramsSchema?: RJSFSchema) => {
       if (!openNode || openNode.id !== id) return;
 
       const latestNodeDrafts = rawDrafts[id] ?? {};
@@ -190,7 +191,7 @@ const ParamsDialog: React.FC<Props> = ({
             nodeId: id,
             updatedParams: newParams,
             updatedCustomizations,
-            paramsSchemaHash,
+            paramsSchema,
           },
         ]);
       }, "params");
