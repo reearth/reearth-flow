@@ -1,5 +1,34 @@
 mod core;
 
+/// Unpack a fixed number of arguments from a method `args: &[Value]` slice,
+/// binding each to a named variable. Generates an arity error if the count
+/// doesn't match.
+///
+/// Usage:
+/// - `unpack_args!(args =>)` — expect 0 arguments
+/// - `unpack_args!(args => x)` — expect 1, bind to `x: &Value`
+/// - `unpack_args!(args => x, y)` — expect 2, bind to `x`, `y`
+#[macro_export]
+macro_rules! unpack_args {
+    ($args:expr =>) => {
+        if !$args.is_empty() {
+            return Err($crate::core::error::EvalHelperError::new(format!(
+                "expected 0 argument(s), got {}",
+                $args.len()
+            )));
+        }
+    };
+    ($args:expr => $($var:ident),+) => {
+        let [$($var),+] = $args else {
+            return Err($crate::core::error::EvalHelperError::new(format!(
+                "expected {} argument(s), got {}",
+                [$(stringify!($var)),+].len(),
+                $args.len()
+            )));
+        };
+    };
+}
+
 pub use core::error::{Error, Result};
 pub use core::eval::{default_env, Env};
 pub use core::value::{NativeFn, Value};

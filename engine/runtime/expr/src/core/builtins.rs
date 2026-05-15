@@ -4,6 +4,7 @@ use reearth_flow_common::uri::Uri;
 
 use crate::core::error::{EvalHelperError, HResult};
 use crate::core::value::{Value, ValueObject};
+use crate::unpack_args;
 
 #[derive(Debug)]
 pub struct UrlObject(pub Uri);
@@ -14,34 +15,41 @@ impl ValueObject for UrlObject {
     }
 
     fn call_method(&self, method: &str, args: &[Value]) -> HResult<Value> {
-        let _ = args;
         match method {
             "parent" => {
+                unpack_args!(args =>);
                 let uri = self.0.parent().ok_or_else(|| {
                     EvalHelperError::new(format!("Url has no parent: {}", self.0.as_str()))
                 })?;
                 Ok(Value::Object(Box::new(UrlObject(uri))))
             }
-            "extension" => Ok(Value::String(
-                self.0.extension().unwrap_or_default().to_string(),
-            )),
-            "name" => Ok(Value::String(
-                self.0
-                    .file_name()
-                    .and_then(|p| p.to_str())
-                    .unwrap_or_default()
-                    .to_string(),
-            )),
+            "extension" => {
+                unpack_args!(args =>);
+                Ok(Value::String(
+                    self.0.extension().unwrap_or_default().to_string(),
+                ))
+            }
+            "name" => {
+                unpack_args!(args =>);
+                Ok(Value::String(
+                    self.0
+                        .file_name()
+                        .and_then(|p| p.to_str())
+                        .unwrap_or_default()
+                        .to_string(),
+                ))
+            }
             "stem" => {
+                unpack_args!(args =>);
                 let name = self
                     .0
                     .file_name()
                     .and_then(|p| p.to_str())
                     .unwrap_or_default();
-                let stem = match name.rfind('.') {
-                    Some(i) => &name[..i],
-                    None => name,
-                };
+                let stem = std::path::Path::new(name)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(name);
                 Ok(Value::String(stem.to_string()))
             }
             "__eq__" => {
@@ -55,7 +63,10 @@ impl ValueObject for UrlObject {
                     _ => Ok(Value::Bool(false)),
                 }
             }
-            "__str__" => Ok(Value::String(self.0.as_str().to_string())),
+            "__str__" => {
+                unpack_args!(args =>);
+                Ok(Value::String(self.0.as_str().to_string()))
+            }
             "__div__" => {
                 let rhs = args
                     .first()
