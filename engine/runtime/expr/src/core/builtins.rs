@@ -1,13 +1,33 @@
-use std::str::FromStr;
-
-use reearth_flow_common::uri::Uri;
-
 use crate::core::error::{EvalHelperError, HResult};
 use crate::core::value::{Object, Value};
 use crate::unpack_args;
 
-#[derive(Debug)]
-pub struct UrlObject(pub Uri);
+fn parse_url(s: &str) -> Result<String, String> {
+    if s.contains("://") {
+        Ok(s.to_string())
+    } else if s.starts_with('/') {
+        Ok(format!("file://{s}"))
+    } else {
+        Err(format!("not a valid URI: {s}"))
+    }
+}
+
+fn url_tail(s: &str) -> &str {
+    s.rsplit('/').next().unwrap_or(s)
+}
+
+fn url_parent(s: &str) -> Option<String> {
+    let s = s.trim_end_matches('/');
+    let min = s.find("://").map(|i| i + 3).unwrap_or(0);
+    let last = s[min..].rfind('/')? + min;
+    if last <= min {
+        return None;
+    }
+    Some(s[..last].to_string())
+}
+
+#[derive(Debug, Clone)]
+pub struct UrlObject(pub String);
 
 impl Object for UrlObject {
     fn type_name(&self) -> &'static str {
@@ -18,38 +38,30 @@ impl Object for UrlObject {
         match method {
             "parent" => {
                 unpack_args!(args =>);
-                let uri = self.0.parent().ok_or_else(|| {
-                    EvalHelperError::new(format!("Url has no parent: {}", self.0.as_str()))
+                let s = url_parent(&self.0).ok_or_else(|| {
+                    EvalHelperError::new(format!("Url has no parent: {}", self.0))
                 })?;
-                Ok(Value::Object(Box::new(UrlObject(uri))))
+                Ok(Value::Object(Box::new(UrlObject(s))))
             }
             "extension" => {
                 unpack_args!(args =>);
-                Ok(Value::String(
-                    self.0.extension().unwrap_or_default().to_string(),
-                ))
+                let ext = std::path::Path::new(url_tail(&self.0))
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("");
+                Ok(Value::String(ext.to_string()))
             }
             "name" => {
                 unpack_args!(args =>);
-                Ok(Value::String(
-                    self.0
-                        .file_name()
-                        .and_then(|p| p.to_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                ))
+                Ok(Value::String(url_tail(&self.0).to_string()))
             }
             "stem" => {
                 unpack_args!(args =>);
-                let name = self
-                    .0
-                    .file_name()
-                    .and_then(|p| p.to_str())
-                    .unwrap_or_default();
-                let stem = std::path::Path::new(name)
+                let tail = url_tail(&self.0);
+                let stem = std::path::Path::new(tail)
                     .file_stem()
                     .and_then(|s| s.to_str())
-                    .unwrap_or(name);
+                    .unwrap_or(tail);
                 Ok(Value::String(stem.to_string()))
             }
             "__eq__" => {
@@ -58,14 +70,14 @@ impl Object for UrlObject {
                     .ok_or_else(|| EvalHelperError::new("Url == requires an argument"))?;
                 match rhs {
                     Value::Object(obj) if obj.type_name() == "Url" => {
-                        Ok(Value::Bool(self.0.as_str() == obj.display()))
+                        Ok(Value::Bool(self.0 == obj.display()))
                     }
                     _ => Ok(Value::Bool(false)),
                 }
             }
             "__str__" => {
                 unpack_args!(args =>);
-                Ok(Value::String(self.0.as_str().to_string()))
+                Ok(Value::String(self.0.clone()))
             }
             "__div__" => {
                 let rhs = args
@@ -78,10 +90,7 @@ impl Object for UrlObject {
                         }
                     })
                     .ok_or_else(|| EvalHelperError::new("Url / requires a string"))?;
-                let joined = self
-                    .0
-                    .join(rhs)
-                    .map_err(|e| EvalHelperError::new(e.to_string()))?;
+                let joined = format!("{}/{rhs}", self.0.trim_end_matches('/'));
                 Ok(Value::Object(Box::new(UrlObject(joined))))
             }
             m => Err(EvalHelperError::new(format!("Url has no method '{m}'"))),
@@ -89,19 +98,19 @@ impl Object for UrlObject {
     }
 
     fn clone_box(&self) -> Box<dyn Object> {
-        Box::new(UrlObject(self.0.clone()))
+        Box::new(self.clone())
     }
 
     fn eq_box(&self, other: &dyn Object) -> bool {
-        other.type_name() == "Url" && other.display() == self.0.as_str()
+        other.type_name() == "Url" && other.display() == self.0
     }
 
     fn display(&self) -> String {
-        self.0.as_str().to_string()
+        self.0.clone()
     }
 
     fn serialize(&self) -> Option<Value> {
-        Some(Value::String(self.0.as_str().to_string()))
+        Some(Value::String(self.0.clone()))
     }
 }
 
@@ -116,8 +125,8 @@ pub fn builtin_url(args: &[Value]) -> HResult<Value> {
             )))
         }
     };
-    let uri = Uri::from_str(&s).map_err(|e| EvalHelperError::new(e.to_string()))?;
-    Ok(Value::Object(Box::new(UrlObject(uri))))
+    let url = parse_url(&s).map_err(EvalHelperError::new)?;
+    Ok(Value::Object(Box::new(UrlObject(url))))
 }
 
 #[cfg(test)]

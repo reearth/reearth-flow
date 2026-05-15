@@ -44,6 +44,14 @@ pub enum Token {
     False,
     #[token("null")]
     Null,
+    #[token("in")]
+    In,
+    #[token("not")]
+    Not,
+    #[token("and")]
+    And,
+    #[token("or")]
+    Or,
     #[token("if")]
     If,
     #[token("else")]
@@ -101,14 +109,6 @@ pub enum Token {
     Ge,
     #[token(">")]
     Gt,
-
-    // logical
-    #[token("&&")]
-    And,
-    #[token("||")]
-    Or,
-    #[token("!")]
-    Bang,
 }
 
 pub struct Tokens<'src> {
@@ -213,14 +213,35 @@ mod tests {
     #[test]
     fn test_logical() {
         assert_eq!(
-            tokenize("a && b || !c"),
+            tokenize("a and b or not c"),
             vec![
                 Token::Ident("a".into()),
                 Token::And,
                 Token::Ident("b".into()),
                 Token::Or,
-                Token::Bang,
+                Token::Not,
                 Token::Ident("c".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_in_keyword() {
+        assert_eq!(
+            tokenize("x in arr"),
+            vec![
+                Token::Ident("x".into()),
+                Token::In,
+                Token::Ident("arr".into())
+            ]
+        );
+        assert_eq!(
+            tokenize("x not in arr"),
+            vec![
+                Token::Ident("x".into()),
+                Token::Not,
+                Token::In,
+                Token::Ident("arr".into()),
             ]
         );
     }
@@ -234,6 +255,10 @@ mod tests {
         // keywords embedded in identifiers remain identifiers
         assert_eq!(tokenize("inline"), vec![Token::Ident("inline".into())]);
         assert_eq!(tokenize("trueish"), vec![Token::Ident("trueish".into())]);
+        assert_eq!(tokenize("inside"), vec![Token::Ident("inside".into())]);
+        assert_eq!(tokenize("notify"), vec![Token::Ident("notify".into())]);
+        assert_eq!(tokenize("android"), vec![Token::Ident("android".into())]);
+        assert_eq!(tokenize("order"), vec![Token::Ident("order".into())]);
     }
 
     #[test]

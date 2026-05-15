@@ -11,8 +11,6 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-reearth-flow-common.workspace = true
-
 indexmap.workspace = true
 lalrpop-util = "0.22"
 logos = "0.15"
