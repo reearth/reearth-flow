@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use indexmap::IndexMap;
 
 use crate::core::error::HResult;
@@ -34,6 +36,34 @@ impl PartialEq for Box<dyn ValueObject> {
     }
 }
 
+type NativeFnInner = Arc<dyn Fn(&[Value]) -> HResult<Value> + Send + Sync>;
+
+/// A native (Rust) function callable from the expression language.
+#[derive(Clone)]
+pub struct NativeFn(pub NativeFnInner);
+
+impl NativeFn {
+    pub fn new(f: impl Fn(&[Value]) -> HResult<Value> + Send + Sync + 'static) -> Self {
+        Self(Arc::new(f))
+    }
+
+    pub fn call(&self, args: &[Value]) -> HResult<Value> {
+        (self.0)(args)
+    }
+}
+
+impl std::fmt::Debug for NativeFn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<fn>")
+    }
+}
+
+impl PartialEq for NativeFn {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
 /// Runtime value type for the expression evaluator.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -44,6 +74,8 @@ pub enum Value {
     String(String),
     Array(Vec<Value>),
     Map(IndexMap<String, Value>),
+    /// A native Rust function seeded into the environment.
+    Fn(NativeFn),
     /// A typed object that can respond to method calls via [`ValueObject`].
     Object(Box<dyn ValueObject>),
 }
@@ -76,6 +108,7 @@ impl std::fmt::Display for Value {
                 }
                 write!(f, "}}")
             }
+            Value::Fn(_) => write!(f, "<fn>"),
             Value::Object(obj) => write!(f, "{}", obj.display()),
         }
     }

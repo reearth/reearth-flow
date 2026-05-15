@@ -112,13 +112,12 @@ pub fn builtin_url(args: &[Value]) -> HResult<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::eval::{eval, Context};
+    use crate::core::eval::{default_env, eval};
     use crate::core::parser::parse;
 
     fn run(input: &str) -> Value {
-        let mut ctx = Context::new();
-        ctx.register("Url", Box::new(builtin_url));
-        eval(&parse(input).unwrap(), &ctx).unwrap()
+        let mut env = default_env();
+        eval(&parse(input).unwrap(), &mut env).unwrap()
     }
 
     #[test]

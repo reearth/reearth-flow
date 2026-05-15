@@ -58,11 +58,10 @@ pub enum ExprKind {
     },
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinOp, Box<Expr>),
-    /// `let name = value; body` — lexically scoped binding; evaluates to body
-    Let {
+    /// `name = value` — assigns value to name in current scope; evaluates to value
+    Assign {
         name: String,
         value: Box<Expr>,
-        body: Box<Expr>,
     },
     /// `{ e1; e2; e3 }` — sequence expression; evaluates each, returns last
     Block(Vec<Expr>),
@@ -170,17 +169,15 @@ pub mod test_util {
                 ao == bo && exprs_eq(al, bl) && exprs_eq(ar, br)
             }
             (
-                ExprKind::Let {
+                ExprKind::Assign {
                     name: an,
                     value: av,
-                    body: ab,
                 },
-                ExprKind::Let {
+                ExprKind::Assign {
                     name: bn,
                     value: bv,
-                    body: bb,
                 },
-            ) => an == bn && exprs_eq(av, bv) && exprs_eq(ab, bb),
+            ) => an == bn && exprs_eq(av, bv),
             (ExprKind::Block(a), ExprKind::Block(b)) => vec_eq(a, b),
             (ExprKind::Map(a), ExprKind::Map(b)) => pair_vec_eq(a, b),
             (

@@ -71,20 +71,20 @@ pub enum CompiledCode {
 impl CompiledCode {
     pub fn eval(
         &self,
-        ctx: &reearth_flow_expr::Context,
+        env: &mut reearth_flow_expr::Env,
     ) -> reearth_flow_expr::Result<reearth_flow_expr::Value> {
         match self {
-            CompiledCode::Expr(e) => eval(e, ctx),
+            CompiledCode::Expr(e) => eval(e, env),
             CompiledCode::Literal(s) => Ok(reearth_flow_expr::Value::String(s.clone())),
         }
     }
 
     pub fn eval_string(
         &self,
-        ctx: &reearth_flow_expr::Context,
+        env: &mut reearth_flow_expr::Env,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval_string(e, ctx),
+            CompiledCode::Expr(e) => eval_string(e, env),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
     }
@@ -99,8 +99,6 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
             if let Some(i) = n.as_i64() {
                 Value::Int(i)
             } else if let Some(f) = n.as_f64() {
-                // while it is possible to specially match big integer (>=2^63) to report lossy conversion warning
-                // such big numbers are considered rare in GIS context so not handled for now
                 Value::Float(f)
             } else {
                 tracing::warn!(value = %n, "flow expr unrepresentable number converted to null");
@@ -117,16 +115,16 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
     }
 }
 
-pub fn context_from_feature(
+pub fn env_from_feature(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
-) -> reearth_flow_expr::Context {
-    use reearth_flow_expr::Value;
+) -> reearth_flow_expr::Env {
+    use reearth_flow_expr::{NativeFn, Value};
+    let mut env = reearth_flow_expr::default_env();
     let attrs = Arc::clone(&feature.attributes);
-    let mut ctx = reearth_flow_expr::Context::new();
-    ctx.register(
-        "value",
-        Box::new(move |args| {
+    env.insert(
+        "value".into(),
+        Value::Fn(NativeFn::new(move |args| {
             let Some(Value::String(name)) = args.first() else {
                 return Ok(Value::Null);
             };
@@ -134,11 +132,11 @@ pub fn context_from_feature(
                 .get(&Attribute::new(name))
                 .map(|v| json_to_value(serde_json::Value::from(v.clone())))
                 .unwrap_or(Value::Null))
-        }),
+        })),
     );
-    ctx.register(
-        "env",
-        Box::new(move |args| {
+    env.insert(
+        "env".into(),
+        Value::Fn(NativeFn::new(move |args| {
             let Some(Value::String(name)) = args.first() else {
                 return Ok(Value::Null);
             };
@@ -147,9 +145,9 @@ pub fn context_from_feature(
                 .cloned()
                 .map(json_to_value)
                 .unwrap_or(Value::Null))
-        }),
+        })),
     );
-    ctx
+    env
 }
 
 pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue {
@@ -176,6 +174,7 @@ pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue 
                 .map(|(k, v)| (k, attribute_value_from_eval(v)))
                 .collect(),
         ),
+        Value::Fn(_) => AttributeValue::Null,
         Value::Object(obj) => {
             if let Some(v) = obj.serialize() {
                 attribute_value_from_eval(v)

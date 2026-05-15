@@ -1,9 +1,9 @@
 use std::io::{self, BufRead, Write};
 
-use reearth_flow_expr::{compile, eval, Context};
+use reearth_flow_expr::{compile, default_env, eval};
 
 fn main() {
-    let ctx = Context::new();
+    let mut env = default_env();
     let stdin = io::stdin();
     print!("> ");
     io::stdout().flush().unwrap();
@@ -17,7 +17,7 @@ fn main() {
         };
         let line = line.trim();
         if !line.is_empty() {
-            match compile(line).and_then(|e| eval(&e, &ctx)) {
+            match compile(line).and_then(|e| eval(&e, &mut env)) {
                 Ok(v) => println!("{v}"),
                 Err(e) => println!("error: {e}"),
             }

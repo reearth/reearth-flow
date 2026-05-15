@@ -44,8 +44,6 @@ pub enum Token {
     False,
     #[token("null")]
     Null,
-    #[token("let")]
-    Let,
     #[token("if")]
     If,
     #[token("else")]

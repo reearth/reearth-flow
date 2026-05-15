@@ -14,7 +14,6 @@ extern {
         "true"  => crate::core::lexer::Token::True,
         "false" => crate::core::lexer::Token::False,
         "null"  => crate::core::lexer::Token::Null,
-        "let"   => crate::core::lexer::Token::Let,
         "if"    => crate::core::lexer::Token::If,
         "else"  => crate::core::lexer::Token::Else,
         "."     => crate::core::lexer::Token::Dot,
@@ -45,15 +44,21 @@ extern {
 }
 
 // precedence levels (lowest → highest):
-// Expr (let) → Or → And → Equality → Comparison → Add → Mul → Unary → Postfix → Primary
+// Assign → Or → And → Equality → Comparison → Add → Mul → Unary → Postfix → Primary
 //
 // All binary levels use left recursion — the LALR table-driven stack handles
 // arbitrarily deep nesting without touching the Rust call stack.
 
-// Top-level: let is lowest precedence, right-recursive so its body captures everything after.
+// Top-level: a sequence of semicolon-separated Assign-level expressions.
 pub Expr: Expr = {
-    <l:@L> "let" <n:"ident"> "=" <v:Or> ";" <body:Expr> <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::Let { name: n, value: Box::new(v), body: Box::new(body) }),
+    SeqBody,
+};
+
+// Assign: lowest precedence, right-recursive so `a = b = 1` chains correctly.
+// Extends naturally to `+=`, `-=`, etc.
+Assign: Expr = {
+    <l:@L> <n:"ident"> "=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Assign { name: n, value: Box::new(v) }),
     Or,
 };
 
@@ -165,40 +170,24 @@ ElseBranch: Expr = {
 };
 
 // Block expression: { } or { seq_body }
-// Braces are purely grouping + sequencing — scope is created only by `let`.
+// Braces are purely grouping + sequencing.
 BlockExpr: Expr = {
     <l:@L> "{" "}" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
     "{" <s:SeqBody> "}" => s,
 };
 
-// SeqBody: right-recursive sequence inside a block.
-//
-// Each rule reads lookahead to decide:
-//   `}` after Or         → terminal expression  (block value)
-//   `;` then `}`         → trailing semi         (discard, return Null)
-//   `;` then something   → expression continues
-//   `let` anywhere       → binding; rest of block is its body
-//
-// `let x = v` uses `Or` for v so bare `let` can't nest on the RHS without
-// braces — use `{ let ... }` to nest. This matches Rust's design.
+// SeqBody: right-recursive sequence of Assign-level expressions separated by `;`.
+// Returns the last expression's value; trailing `;` returns Null.
 SeqBody: Expr = {
-    // Single expression — block value (no trailing semi).
-    <e:Or> => e,
+    // Single expression — the value of the block.
+    <e:Assign> => e,
 
-    // Trailing semicolon: evaluate e for effects, block returns Null.
-    <l:@L> <e:Or> ";" <r:@R>
+    // Trailing semicolon: evaluate e, block returns Null.
+    <l:@L> <e:Assign> ";" <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Block(vec![e, Expr::new(Span { start: r, end: r }, ExprKind::Null)])),
 
-    // let binding at end of block (degenerate but consistent): returns Null.
-    <l:@L> "let" <n:"ident"> "=" <v:Or> ";" <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::Let { name: n, value: Box::new(v), body: Box::new(Expr::new(Span { start: r, end: r }, ExprKind::Null)) }),
-
-    // let binding scoping over the rest of the block.
-    <l:@L> "let" <n:"ident"> "=" <v:Or> ";" <rest:SeqBody> <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::Let { name: n, value: Box::new(v), body: Box::new(rest) }),
-
     // Expression followed by more: build a flat Block by prepending.
-    <l:@L> <e:Or> ";" <rest:SeqBody> <r:@R> => {
+    <l:@L> <e:Assign> ";" <rest:SeqBody> <r:@R> => {
         let span = Span { start: l, end: r };
         let rest_span = rest.span;
         match rest.kind {

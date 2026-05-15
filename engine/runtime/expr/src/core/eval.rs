@@ -1,14 +1,11 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::builtin_url;
 use super::error::{Error, EvalHelperError, HResult, Result};
-use super::value::Value;
-
-pub type NativeFn = Box<dyn Fn(&[Value]) -> HResult<Value> + Send + Sync>;
+use super::value::{NativeFn, Value};
 
 trait ToEvalError<T> {
     fn to_eval_error(self, pos: usize) -> Result<T>;
@@ -20,78 +17,25 @@ impl<T> ToEvalError<T> for HResult<T> {
     }
 }
 
-pub struct Context {
-    funcs: HashMap<String, NativeFn>,
+pub type Env = HashMap<String, Value>;
+
+pub fn default_env() -> Env {
+    let mut env = Env::new();
+    env.insert("str".into(), Value::Fn(NativeFn::new(builtin_str)));
+    env.insert("int".into(), Value::Fn(NativeFn::new(builtin_int)));
+    env.insert("float".into(), Value::Fn(NativeFn::new(builtin_float)));
+    env.insert("bool".into(), Value::Fn(NativeFn::new(builtin_bool)));
+    env.insert("list".into(), Value::Fn(NativeFn::new(builtin_list)));
+    env.insert("map".into(), Value::Fn(NativeFn::new(builtin_map)));
+    env.insert("Url".into(), Value::Fn(NativeFn::new(builtin_url)));
+    env
 }
 
-impl Context {
-    pub fn new() -> Self {
-        let mut ctx = Self {
-            funcs: HashMap::new(),
-        };
-        ctx.register("map", Box::new(builtin_map));
-        ctx.register("str", Box::new(builtin_str));
-        ctx.register("int", Box::new(builtin_int));
-        ctx.register("float", Box::new(builtin_float));
-        ctx.register("bool", Box::new(builtin_bool));
-        ctx.register("list", Box::new(builtin_list));
-        ctx.register("Url", Box::new(builtin_url));
-        ctx
-    }
-
-    pub fn register(&mut self, name: impl Into<String>, f: NativeFn) {
-        self.funcs.insert(name.into(), f);
-    }
-
-    fn call(&self, name: &str, args: Vec<Value>) -> HResult<Value> {
-        match self.funcs.get(name) {
-            Some(f) => f(&args),
-            None => Err(EvalHelperError::new(format!("unknown function '{name}'"))),
-        }
-    }
+pub fn eval(expr: &Expr, env: &mut Env) -> Result<Value> {
+    eval_inner(expr, env)
 }
 
-impl Default for Context {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// Lexical environment: immutable linked list via Arc.
-// Each `let` evaluation prepends one frame; lookup walks the chain.
-struct EnvFrame {
-    name: String,
-    value: Value,
-    parent: Env,
-}
-
-type Env = Option<Arc<EnvFrame>>;
-
-fn env_lookup(env: &Env, name: &str) -> Option<Value> {
-    let mut cur = env.as_deref();
-    while let Some(frame) = cur {
-        if frame.name == name {
-            return Some(frame.value.clone());
-        }
-        cur = frame.parent.as_deref();
-    }
-    None
-}
-
-fn env_extend(parent: &Env, name: String, value: Value) -> Env {
-    Some(Arc::new(EnvFrame {
-        name,
-        value,
-        parent: parent.clone(),
-    }))
-}
-
-// Public entry point — env starts empty.
-pub fn eval(expr: &Expr, ctx: &Context) -> Result<Value> {
-    eval_inner(expr, ctx, &None)
-}
-
-fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
+fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
     let pos = expr.span.start;
     match &expr.kind {
         ExprKind::Null => Ok(Value::Null),
@@ -100,13 +44,16 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
         ExprKind::Float(f) => Ok(Value::Float(*f)),
         ExprKind::Str(s) => Ok(Value::String(s.clone())),
         ExprKind::Array(items) => {
-            let values: Result<Vec<_>> = items.iter().map(|e| eval_inner(e, ctx, env)).collect();
-            Ok(Value::Array(values?))
+            let mut values = Vec::with_capacity(items.len());
+            for e in items {
+                values.push(eval_inner(e, env)?);
+            }
+            Ok(Value::Array(values))
         }
         ExprKind::Map(entries) => {
             let mut map = IndexMap::new();
             for (k, v) in entries {
-                let key = eval_inner(k, ctx, env)?;
+                let key = eval_inner(k, env)?;
                 let key_str = match key {
                     Value::String(s) => s,
                     Value::Int(n) => n.to_string(),
@@ -117,17 +64,17 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
                         })
                     }
                 };
-                map.insert(key_str, eval_inner(v, ctx, env)?);
+                map.insert(key_str, eval_inner(v, env)?);
             }
             Ok(Value::Map(map))
         }
-        ExprKind::Var(name) => env_lookup(env, name).ok_or_else(|| Error::Eval {
+        ExprKind::Var(name) => env.get(name.as_str()).cloned().ok_or_else(|| Error::Eval {
             pos,
             msg: format!("unknown variable '{name}'"),
         }),
         ExprKind::Index(target, key) => {
-            let target = eval_inner(target, ctx, env)?;
-            let key = eval_inner(key, ctx, env)?;
+            let target = eval_inner(target, env)?;
+            let key = eval_inner(key, env)?;
             eval_index(target, key).to_eval_error(pos)
         }
         ExprKind::Slice {
@@ -136,27 +83,33 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
             stop,
             step,
         } => {
-            let target = eval_inner(target, ctx, env)?;
-            let start = start
-                .as_deref()
-                .map(|e| eval_inner(e, ctx, env))
-                .transpose()?;
-            let stop = stop
-                .as_deref()
-                .map(|e| eval_inner(e, ctx, env))
-                .transpose()?;
-            let step = step
-                .as_deref()
-                .map(|e| eval_inner(e, ctx, env))
-                .transpose()?;
+            let target = eval_inner(target, env)?;
+            let start = start.as_deref().map(|e| eval_inner(e, env)).transpose()?;
+            let stop = stop.as_deref().map(|e| eval_inner(e, env)).transpose()?;
+            let step = step.as_deref().map(|e| eval_inner(e, env)).transpose()?;
             eval_slice(target, start, stop, step).to_eval_error(pos)
         }
         ExprKind::FuncCall { name, args } => {
-            let args: Result<Vec<_>> = args.iter().map(|e| eval_inner(e, ctx, env)).collect();
-            ctx.call(name, args?).to_eval_error(pos)
+            let f = env.get(name.as_str()).cloned().ok_or_else(|| Error::Eval {
+                pos,
+                msg: format!("unknown function '{name}'"),
+            })?;
+            match f {
+                Value::Fn(native_fn) => {
+                    let mut evaled = Vec::with_capacity(args.len());
+                    for a in args {
+                        evaled.push(eval_inner(a, env)?);
+                    }
+                    native_fn.call(&evaled).to_eval_error(pos)
+                }
+                _ => Err(Error::Eval {
+                    pos,
+                    msg: format!("'{name}' is not a function"),
+                }),
+            }
         }
         ExprKind::Unary(op, e) => {
-            let val = eval_inner(e, ctx, env)?;
+            let val = eval_inner(e, env)?;
             eval_unary(op, val).to_eval_error(pos)
         }
         ExprKind::MethodCall {
@@ -164,52 +117,55 @@ fn eval_inner(expr: &Expr, ctx: &Context, env: &Env) -> Result<Value> {
             method,
             args,
         } => {
-            let recv = eval_inner(receiver, ctx, env)?;
-            let evaled: Result<Vec<_>> = args.iter().map(|e| eval_inner(e, ctx, env)).collect();
-            eval_method(recv, method, &evaled?).to_eval_error(pos)
+            let recv = eval_inner(receiver, env)?;
+            let mut evaled = Vec::with_capacity(args.len());
+            for a in args {
+                evaled.push(eval_inner(a, env)?);
+            }
+            eval_method(recv, method, &evaled).to_eval_error(pos)
         }
         ExprKind::Binary(left, op, right) => {
             match op {
                 BinOp::And => {
-                    let l = eval_inner(left, ctx, env)?;
+                    let l = eval_inner(left, env)?;
                     if !is_truthy(&l) {
                         return Ok(Value::Bool(false));
                     }
-                    let r = eval_inner(right, ctx, env)?;
+                    let r = eval_inner(right, env)?;
                     return Ok(Value::Bool(is_truthy(&r)));
                 }
                 BinOp::Or => {
-                    let l = eval_inner(left, ctx, env)?;
+                    let l = eval_inner(left, env)?;
                     if is_truthy(&l) {
                         return Ok(Value::Bool(true));
                     }
-                    let r = eval_inner(right, ctx, env)?;
+                    let r = eval_inner(right, env)?;
                     return Ok(Value::Bool(is_truthy(&r)));
                 }
                 _ => {}
             }
-            let left = eval_inner(left, ctx, env)?;
-            let right = eval_inner(right, ctx, env)?;
+            let left = eval_inner(left, env)?;
+            let right = eval_inner(right, env)?;
             eval_binary(op, left, right).to_eval_error(pos)
         }
-        ExprKind::Let { name, value, body } => {
-            let v = eval_inner(value, ctx, env)?;
-            let new_env = env_extend(env, name.clone(), v);
-            eval_inner(body, ctx, &new_env)
+        ExprKind::Assign { name, value } => {
+            let v = eval_inner(value, env)?;
+            env.insert(name.clone(), v.clone());
+            Ok(v)
         }
         ExprKind::Block(exprs) => {
             let mut result = Value::Null;
             for e in exprs {
-                result = eval_inner(e, ctx, env)?;
+                result = eval_inner(e, env)?;
             }
             Ok(result)
         }
         ExprKind::If { cond, then, else_ } => {
-            let c = eval_inner(cond, ctx, env)?;
+            let c = eval_inner(cond, env)?;
             if is_truthy(&c) {
-                eval_inner(then, ctx, env)
+                eval_inner(then, env)
             } else {
-                eval_inner(else_, ctx, env)
+                eval_inner(else_, env)
             }
         }
     }
@@ -608,7 +564,7 @@ fn is_truthy(v: &Value) -> bool {
         Value::String(s) => !s.is_empty(),
         Value::Array(a) => !a.is_empty(),
         Value::Map(o) => !o.is_empty(),
-        Value::Object(_) => true,
+        Value::Fn(_) | Value::Object(_) => true,
     }
 }
 
@@ -620,6 +576,7 @@ fn value_to_string(v: &Value) -> String {
         Value::Int(n) => n.to_string(),
         Value::Float(f) => f.to_string(),
         Value::Array(_) | Value::Map(_) => format!("{v:?}"),
+        Value::Fn(_) => "<fn>".into(),
         Value::Object(obj) => obj.display(),
     }
 }
@@ -744,11 +701,11 @@ mod tests {
     }
 
     fn try_run(input: &str, vars: &[(&str, Value)]) -> Result<Value> {
-        let ctx = Context::new();
-        let env = vars.iter().fold(None, |env, (name, val)| {
-            env_extend(&env, name.to_string(), val.clone())
-        });
-        eval_inner(&parse(input).unwrap(), &ctx, &env)
+        let mut env = default_env();
+        for (k, v) in vars {
+            env.insert(k.to_string(), v.clone());
+        }
+        eval_inner(&parse(input).unwrap(), &mut env)
     }
 
     #[test]
@@ -948,7 +905,7 @@ mod tests {
         );
         assert_eq!(
             run(
-                r#"let s = "city_bldg"; let sfx = "_bldg"; if s.ends_with(sfx) { s[:s.len() - sfx.len()] } else { s }"#,
+                r#"s = "city_bldg"; sfx = "_bldg"; if s.ends_with(sfx) { s[:s.len() - sfx.len()] } else { s }"#,
                 &[]
             ),
             Value::from("city")
@@ -972,27 +929,21 @@ mod tests {
     }
 
     #[test]
-    fn test_let() {
-        assert_eq!(run("let x = 42; x", &[]), Value::from(42i64));
-        assert_eq!(run("let x = 3; x * x", &[]), Value::from(9i64));
+    fn test_assign() {
+        assert_eq!(run("x = 42; x", &[]), Value::from(42i64));
+        assert_eq!(run("x = 3; x * x", &[]), Value::from(9i64));
+        assert_eq!(run("x = 2; y = x + 1; x * y", &[]), Value::from(6i64));
+        // reassignment overwrites
+        assert_eq!(run("x = 1; x = 99; x", &[]), Value::from(99i64));
+        // assign shadows outer env binding
         assert_eq!(
-            run("let x = 2; let y = x + 1; x * y", &[]),
-            Value::from(6i64)
-        );
-        assert_eq!(run("let x = 1; let x = 99; x", &[]), Value::from(99i64));
-        assert_eq!(
-            run("let x = 7; x", &[("x", Value::from(999i64))]),
+            run("x = 7; x", &[("x", Value::from(999i64))]),
             Value::from(7i64)
         );
-        assert_eq!(
-            run("let x = 10; (let x = 99; x) + x", &[]),
-            Value::from(109i64)
-        );
-        assert_eq!(
-            run("let x = 10; { let x = 99; x } + x", &[]),
-            Value::from(109i64)
-        );
-        assert_eq!(run("(let x = 10; x) * 2", &[]), Value::from(20i64));
+        // assign returns the value
+        assert_eq!(run("(x = 10) * 2", &[]), Value::from(20i64));
+        // function-scoped: inner block mutates outer x
+        assert_eq!(run("x = 10; { x = 99 }; x", &[]), Value::from(99i64));
     }
 
     #[test]
@@ -1000,20 +951,15 @@ mod tests {
         assert_eq!(run("{ 1; 2; 3 }", &[]), Value::from(3i64));
         assert_eq!(run("{ 42; }", &[]), Value::Null);
         assert_eq!(run("{}", &[]), Value::Null);
-        assert_eq!(run("{ let x = 5; x * 2 }", &[]), Value::from(10i64));
+        assert_eq!(run("{ x = 5; x * 2 }", &[]), Value::from(10i64));
         assert_eq!(
-            run("{ let a = 3; let b = 4; a * a + b * b }", &[]),
+            run("{ a = 3; b = 4; a * a + b * b }", &[]),
             Value::from(25i64)
         );
-        assert_eq!(run("{ let x = 1; }", &[]), Value::Null);
-        assert_eq!(
-            run("{ let x = 3; x } + { let y = 4; y }", &[]),
-            Value::from(7i64)
-        );
-        assert_eq!(
-            run("{ let x = 1; { let y = 2; x + y } }", &[]),
-            Value::from(3i64)
-        );
+        assert_eq!(run("{ x = 1; }", &[]), Value::Null);
+        // function-scoped: x leaks out of inner block
+        assert_eq!(run("{ x = 3 } + { y = 4 }", &[]), Value::from(7i64));
+        assert_eq!(run("{ x = 1; { y = 2; x + y } }", &[]), Value::from(3i64));
     }
 
     #[test]
@@ -1039,7 +985,7 @@ mod tests {
             Value::from(15i64)
         );
         assert_eq!(
-            run("if true { let x = 7; x * 2 } else { 0 }", &[]),
+            run("if true { x = 7; x * 2 } else { 0 }", &[]),
             Value::from(14i64)
         );
         assert_eq!(run("if true { 42 }", &[]), Value::from(42i64));
@@ -1185,30 +1131,30 @@ mod tests {
             }
         }
 
-        let ctx = Context::new();
-        let env = env_extend(&None, "c".into(), Value::Object(Box::new(Counter(10))));
-        let result = eval_inner(&parse("c + 5").unwrap(), &ctx, &env).unwrap();
+        let mut env = default_env();
+        env.insert("c".to_string(), Value::Object(Box::new(Counter(10))));
+        let result = eval_inner(&parse("c + 5").unwrap(), &mut env).unwrap();
         assert!(matches!(result, Value::Object(_)));
         assert_eq!(result.to_string(), "15");
-        let env2 = env_extend(&env, "d".into(), Value::Object(Box::new(Counter(10))));
+        env.insert("d".to_string(), Value::Object(Box::new(Counter(10))));
         assert_eq!(
-            eval_inner(&parse("c == d").unwrap(), &ctx, &env2).unwrap(),
+            eval_inner(&parse("c == d").unwrap(), &mut env).unwrap(),
             Value::Bool(true)
         );
     }
 
     #[test]
     fn test_var() {
-        let ctx = Context::new();
-        assert!(eval(&parse("missing").unwrap(), &ctx).is_err());
+        let mut env = default_env();
+        assert!(eval(&parse("missing").unwrap(), &mut env).is_err());
     }
 
     #[test]
     fn test_native_func() {
-        let mut ctx = Context::new();
-        ctx.register(
-            "join_path",
-            Box::new(|args: &[Value]| {
+        let mut env = default_env();
+        env.insert(
+            "join_path".into(),
+            Value::Fn(NativeFn::new(|args: &[Value]| {
                 let parts: Vec<&str> = args
                     .iter()
                     .map(|v| {
@@ -1220,10 +1166,14 @@ mod tests {
                     })
                     .collect();
                 Ok(Value::String(parts.join("/")))
-            }),
+            })),
         );
         assert_eq!(
-            eval(&parse(r#"join_path("base", "file.json")"#).unwrap(), &ctx).unwrap(),
+            eval(
+                &parse(r#"join_path("base", "file.json")"#).unwrap(),
+                &mut env
+            )
+            .unwrap(),
             Value::from("base/file.json")
         );
     }
