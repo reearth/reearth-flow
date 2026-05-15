@@ -339,12 +339,12 @@ fn slice_indices(len: usize, start: Option<i64>, stop: Option<i64>, step: i64) -
     if step > 0 {
         while i < stop {
             indices.push(i as usize);
-            i += step;
+            i = i.saturating_add(step);
         }
     } else {
         while i > stop {
             indices.push(i as usize);
-            i += step;
+            i = i.saturating_add(step);
         }
     }
     indices
