@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
@@ -7,6 +8,42 @@ use super::builtins::builtin_url;
 use super::error::{Error, EvalHelperError, HResult, Result};
 use super::value::{NativeFn, Value};
 use crate::unpack_args;
+
+#[cfg(debug_assertions)]
+const MAX_EVAL_DEPTH: usize = 64;
+#[cfg(not(debug_assertions))]
+const MAX_EVAL_DEPTH: usize = 1024;
+
+thread_local! {
+    static EVAL_DEPTH: Cell<usize> = Cell::new(0);
+}
+
+struct DepthGuard;
+
+impl DepthGuard {
+    fn enter(pos: usize) -> Result<Self> {
+        let depth = EVAL_DEPTH.with(|d| {
+            let v = d.get() + 1;
+            d.set(v);
+            v
+        });
+        if depth > MAX_EVAL_DEPTH {
+            EVAL_DEPTH.with(|d| d.set(d.get() - 1));
+            Err(Error::Eval {
+                pos,
+                msg: format!("expression exceeds maximum evaluation depth ({MAX_EVAL_DEPTH})"),
+            })
+        } else {
+            Ok(DepthGuard)
+        }
+    }
+}
+
+impl Drop for DepthGuard {
+    fn drop(&mut self) {
+        EVAL_DEPTH.with(|d| d.set(d.get() - 1));
+    }
+}
 
 trait ToEvalError<T> {
     fn to_eval_error(self, pos: usize) -> Result<T>;
@@ -38,6 +75,7 @@ pub fn eval(expr: &Expr, env: &mut Env) -> Result<Value> {
 
 fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
     let pos = expr.span.start;
+    let _depth = DepthGuard::enter(pos)?;
     match &expr.kind {
         ExprKind::Null => Ok(Value::Null),
         ExprKind::Bool(b) => Ok(Value::Bool(*b)),
@@ -205,15 +243,6 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
                     .collect(),
             ))
         }
-        "contains" => {
-            unpack_args!(args => needle);
-            let Value::String(needle) = needle else {
-                return Err(EvalHelperError::new(format!(
-                    "contains() argument must be a string, got {needle:?}"
-                )));
-            };
-            Ok(Value::Bool(s.contains(needle.as_str())))
-        }
         "starts_with" => {
             unpack_args!(args => prefix);
             let Value::String(prefix) = prefix else {
@@ -250,10 +279,6 @@ fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> HResult<Val
         "len" => {
             unpack_args!(args =>);
             Ok(Value::Int(a.len() as i64))
-        }
-        "contains" => {
-            unpack_args!(args => needle);
-            Ok(Value::Bool(a.iter().any(|v| values_equal(v, needle))))
         }
         m => Err(EvalHelperError::new(format!("Array has no method '{m}'"))),
     }
@@ -385,7 +410,7 @@ fn binop_dunder(op: &BinOp) -> Option<&'static str> {
         BinOp::Le => Some("__le__"),
         BinOp::Gt => Some("__gt__"),
         BinOp::Ge => Some("__ge__"),
-        BinOp::And | BinOp::Or => None,
+        BinOp::And | BinOp::Or | BinOp::In | BinOp::NotIn => None,
     }
 }
 
@@ -505,6 +530,32 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
         BinOp::Le => compare_values(left, right, |o| o != std::cmp::Ordering::Greater),
         BinOp::Gt => compare_values(left, right, |o| o == std::cmp::Ordering::Greater),
         BinOp::Ge => compare_values(left, right, |o| o != std::cmp::Ordering::Less),
+        BinOp::In => match (left, right) {
+            (left, Value::Array(arr)) => {
+                Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left))))
+            }
+            (Value::String(s), Value::String(haystack)) => {
+                Ok(Value::Bool(haystack.contains(s.as_str())))
+            }
+            (Value::String(key), Value::Map(map)) => Ok(Value::Bool(map.contains_key(&key))),
+            (_, Value::Null) => Ok(Value::Bool(false)),
+            (l, r) => Err(EvalHelperError::new(format!(
+                "'in' not supported between {l:?} and {r:?}"
+            ))),
+        },
+        BinOp::NotIn => match (left, right) {
+            (left, Value::Array(arr)) => {
+                Ok(Value::Bool(!arr.iter().any(|v| values_equal(v, &left))))
+            }
+            (Value::String(s), Value::String(haystack)) => {
+                Ok(Value::Bool(!haystack.contains(s.as_str())))
+            }
+            (Value::String(key), Value::Map(map)) => Ok(Value::Bool(!map.contains_key(&key))),
+            (_, Value::Null) => Ok(Value::Bool(true)),
+            (l, r) => Err(EvalHelperError::new(format!(
+                "'not in' not supported between {l:?} and {r:?}"
+            ))),
+        },
         BinOp::And | BinOp::Or => {
             unreachable!("short-circuited in eval_inner before eval_binary is called")
         }
@@ -765,9 +816,9 @@ mod tests {
 
     #[test]
     fn test_logical() {
-        assert_eq!(run("true && false", &[]), Value::from(false));
-        assert_eq!(run("true || false", &[]), Value::from(true));
-        assert_eq!(run("!true", &[]), Value::from(false));
+        assert_eq!(run("true and false", &[]), Value::from(false));
+        assert_eq!(run("true or false", &[]), Value::from(true));
+        assert_eq!(run("not true", &[]), Value::from(false));
     }
 
     #[test]
@@ -861,28 +912,47 @@ mod tests {
     }
 
     #[test]
-    fn test_array_contains() {
+    fn test_in_operator() {
         let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
-            run(r#"pkgs.contains("bldg")"#, &[("pkgs", pkgs.clone())]),
+            run(r#""bldg" in pkgs"#, &[("pkgs", pkgs.clone())]),
             Value::from(true)
         );
         assert_eq!(
-            run(r#"pkgs.contains("fld")"#, &[("pkgs", pkgs)]),
+            run(r#""fld" in pkgs"#, &[("pkgs", pkgs.clone())]),
+            Value::from(false)
+        );
+        assert_eq!(
+            run(r#""bldg" not in pkgs"#, &[("pkgs", pkgs.clone())]),
+            Value::from(false)
+        );
+        assert_eq!(
+            run(r#""fld" not in pkgs"#, &[("pkgs", pkgs)]),
+            Value::from(true)
+        );
+        assert_eq!(run(r#""world" in "hello world""#, &[]), Value::from(true));
+        assert_eq!(run(r#""xyz" in "hello world""#, &[]), Value::from(false));
+        assert_eq!(run(r#""xyz" not in "hello world""#, &[]), Value::from(true));
+        assert_eq!(run(r#""" in "hello""#, &[]), Value::from(true));
+        let m = Value::Map(indexmap::indexmap! {
+            "a".into() => Value::from(1i64),
+            "b".into() => Value::from(2i64),
+        });
+        assert_eq!(run(r#""a" in m"#, &[("m", m.clone())]), Value::from(true));
+        assert_eq!(run(r#""c" in m"#, &[("m", m.clone())]), Value::from(false));
+        assert_eq!(run(r#""a" not in m"#, &[("m", m)]), Value::from(false));
+        assert_eq!(run(r#""x" in null"#, &[]), Value::from(false));
+        assert_eq!(run(r#""x" not in null"#, &[]), Value::from(true));
+        // not applies to the whole comparison: `not ("a" in pkgs)`
+        let pkgs2 = Value::Array(vec![Value::from("a")]);
+        assert_eq!(
+            run(r#"not "a" in pkgs"#, &[("pkgs", pkgs2)]),
             Value::from(false)
         );
     }
 
     #[test]
-    fn test_string_contains_starts_ends_with() {
-        assert_eq!(
-            run(r#""hello world".contains("world")"#, &[]),
-            Value::from(true)
-        );
-        assert_eq!(
-            run(r#""hello world".contains("xyz")"#, &[]),
-            Value::from(false)
-        );
+    fn test_string_starts_ends_with() {
         assert_eq!(
             run(r#""bldg_lod1".starts_with("tran")"#, &[]),
             Value::from(false)
@@ -1175,10 +1245,20 @@ mod tests {
         let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
             run(
-                r#"feature["extension"] == "gml" && packages.contains(feature["package"])"#,
+                r#"feature["extension"] == "gml" and feature["package"] in packages"#,
                 &[("feature", feature), ("packages", pkgs)]
             ),
             Value::from(true)
+        );
+    }
+
+    #[test]
+    fn test_depth_limit_ok() {
+        let n = MAX_EVAL_DEPTH - 1;
+        let expr = format!("1{}", "+1".repeat(n));
+        assert_eq!(
+            eval(&parse(&expr).unwrap(), &mut default_env()).unwrap(),
+            Value::Int(n as i64 + 1)
         );
     }
 

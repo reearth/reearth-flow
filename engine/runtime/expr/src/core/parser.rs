@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn test_unary() {
         assert_parse(
-            "!true",
+            "not true",
             e(ExprKind::Unary(
                 UnaryOp::Not,
                 Box::new(e(ExprKind::Bool(true))),

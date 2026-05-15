@@ -14,6 +14,10 @@ extern {
         "true"  => crate::core::lexer::Token::True,
         "false" => crate::core::lexer::Token::False,
         "null"  => crate::core::lexer::Token::Null,
+        "in"    => crate::core::lexer::Token::In,
+        "not"   => crate::core::lexer::Token::Not,
+        "and"   => crate::core::lexer::Token::And,
+        "or"    => crate::core::lexer::Token::Or,
         "if"    => crate::core::lexer::Token::If,
         "else"  => crate::core::lexer::Token::Else,
         "."     => crate::core::lexer::Token::Dot,
@@ -37,17 +41,16 @@ extern {
         "<="    => crate::core::lexer::Token::Le,
         ">"     => crate::core::lexer::Token::Gt,
         ">="    => crate::core::lexer::Token::Ge,
-        "&&"    => crate::core::lexer::Token::And,
-        "||"    => crate::core::lexer::Token::Or,
-        "!"     => crate::core::lexer::Token::Bang,
     }
 }
 
 // precedence levels (lowest → highest):
-// Assign → Or → And → Equality → Comparison → Add → Mul → Unary → Postfix → Primary
+// Assign → Or → And → Not → Equality → Comparison → Add → Mul → Unary → Postfix → Primary
 //
 // All binary levels use left recursion — the LALR table-driven stack handles
 // arbitrarily deep nesting without touching the Rust call stack.
+//
+// `not` follows Python precedence: lower than comparisons, so `not a in b` == `not (a in b)`.
 
 // Top-level: a sequence of semicolon-separated Assign-level expressions.
 pub Expr: Expr = {
@@ -55,7 +58,6 @@ pub Expr: Expr = {
 };
 
 // Assign: lowest precedence, right-recursive so `a = b = 1` chains correctly.
-// Extends naturally to `+=`, `-=`, etc.
 Assign: Expr = {
     <l:@L> <n:"ident"> "=" <v:Assign> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Assign { name: n, value: Box::new(v) }),
@@ -63,14 +65,21 @@ Assign: Expr = {
 };
 
 Or: Expr = {
-    <l:@L> <lhs:Or> "||" <rhs:And> <r:@R>
+    <l:@L> <lhs:Or> "or" <rhs:And> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Or, Box::new(rhs))),
     And,
 };
 
 And: Expr = {
-    <l:@L> <lhs:And> "&&" <rhs:Equality> <r:@R>
+    <l:@L> <lhs:And> "and" <rhs:Not> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::And, Box::new(rhs))),
+    Not,
+};
+
+// Unary `not` — lower precedence than comparisons (Python-style).
+Not: Expr = {
+    <l:@L> "not" <e:Not> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Not, Box::new(e))),
     Equality,
 };
 
@@ -79,6 +88,10 @@ Equality: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Eq, Box::new(rhs))),
     <l:@L> <lhs:Equality> "!=" <rhs:Comparison> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Ne, Box::new(rhs))),
+    <l:@L> <lhs:Equality> "in" <rhs:Comparison> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::In, Box::new(rhs))),
+    <l:@L> <lhs:Equality> "not" "in" <rhs:Comparison> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::NotIn, Box::new(rhs))),
     Comparison,
 };
 
@@ -111,8 +124,6 @@ Mul: Expr = {
 };
 
 Unary: Expr = {
-    <l:@L> "!" <e:Unary> <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Not, Box::new(e))),
     <l:@L> "-" <e:Unary> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Neg, Box::new(e))),
     Postfix,

@@ -7023,7 +7023,6 @@ dependencies = [
  "lalrpop",
  "lalrpop-util",
  "logos",
- "reearth-flow-common",
  "thiserror 2.0.18",
 ]
 
