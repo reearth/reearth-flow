@@ -405,12 +405,12 @@ enum Numeric {
     Float(f64),
 }
 
-fn coerce_numeric(a: Value, b: Value) -> HResult<(Numeric, Numeric)> {
+fn coerce_numeric(a: &Value, b: &Value) -> HResult<(Numeric, Numeric)> {
     match (a, b) {
-        (Value::Int(a), Value::Int(b)) => Ok((Numeric::Int(a), Numeric::Int(b))),
-        (Value::Int(a), Value::Float(b)) => Ok((Numeric::Float(a as f64), Numeric::Float(b))),
-        (Value::Float(a), Value::Int(b)) => Ok((Numeric::Float(a), Numeric::Float(b as f64))),
-        (Value::Float(a), Value::Float(b)) => Ok((Numeric::Float(a), Numeric::Float(b))),
+        (Value::Int(a), Value::Int(b)) => Ok((Numeric::Int(*a), Numeric::Int(*b))),
+        (Value::Int(a), Value::Float(b)) => Ok((Numeric::Float(*a as f64), Numeric::Float(*b))),
+        (Value::Float(a), Value::Int(b)) => Ok((Numeric::Float(*a), Numeric::Float(*b as f64))),
+        (Value::Float(a), Value::Float(b)) => Ok((Numeric::Float(*a), Numeric::Float(*b))),
         (a, b) => Err(EvalHelperError::new(format!(
             "cannot apply numeric op to {a:?} and {b:?}"
         ))),
@@ -427,7 +427,7 @@ fn numeric_op(
     int_op: impl Fn(i64, i64) -> HResult<i64>,
     float_op: impl Fn(f64, f64) -> f64,
 ) -> HResult<Value> {
-    match coerce_numeric(left, right)? {
+    match coerce_numeric(&left, &right)? {
         (Numeric::Int(a), Numeric::Int(b)) => Ok(Value::Int(int_op(a, b)?)),
         (Numeric::Float(a), Numeric::Float(b)) => Ok(Value::Float(float_op(a, b))),
         _ => unreachable!(),
@@ -455,7 +455,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
                 a.extend(b);
                 Ok(Value::Array(a))
             }
-            (a, b) => match coerce_numeric(a, b) {
+            (a, b) => match coerce_numeric(&a, &b) {
                 Ok((Numeric::Int(a), Numeric::Int(b))) => {
                     a.checked_add(b).map(Value::Int).ok_or_else(int_overflow)
                 }
@@ -476,7 +476,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
             |a, b| a.checked_mul(b).ok_or_else(int_overflow),
             |a, b| a * b,
         ),
-        BinOp::Div => match coerce_numeric(left, right) {
+        BinOp::Div => match coerce_numeric(&left, &right) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
                 if b == 0 {
                     return Err(EvalHelperError::new("division by zero"));
@@ -516,7 +516,7 @@ fn compare_values(
     right: Value,
     pred: impl Fn(std::cmp::Ordering) -> bool,
 ) -> HResult<Value> {
-    let ord = match coerce_numeric(left.clone(), right.clone()) {
+    let ord = match coerce_numeric(&left, &right) {
         Ok((Numeric::Int(a), Numeric::Int(b))) => a.cmp(&b),
         Ok((Numeric::Float(a), Numeric::Float(b))) => match a.partial_cmp(&b) {
             Some(ord) => ord,
@@ -536,7 +536,11 @@ fn compare_values(
 }
 
 fn values_equal(a: &Value, b: &Value) -> bool {
-    a == b
+    match coerce_numeric(a, b) {
+        Ok((Numeric::Int(x), Numeric::Int(y))) => x == y,
+        Ok((Numeric::Float(x), Numeric::Float(y))) => x == y,
+        _ => a == b,
+    }
 }
 
 fn is_truthy(v: &Value) -> bool {
