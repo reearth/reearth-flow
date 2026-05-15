@@ -57,11 +57,10 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                 let key = eval_inner(k, env)?;
                 let key_str = match key {
                     Value::String(s) => s,
-                    Value::Int(n) => n.to_string(),
                     other => {
                         return Err(Error::Eval {
                             pos,
-                            msg: format!("map key must evaluate to a string, got {other:?}"),
+                            msg: format!("map key must be a string, got {other:?}"),
                         })
                     }
                 };
