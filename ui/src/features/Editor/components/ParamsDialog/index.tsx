@@ -37,6 +37,7 @@ type Props = {
       nodeId: string;
       updatedParams: any;
       updatedCustomizations: any;
+      paramsSchemaHash?: string;
     }[],
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
@@ -133,7 +134,12 @@ const ParamsDialog: React.FC<Props> = ({
   );
 
   const handleUpdate = useCallback(
-    async (id: string, _updatedParams: any, _updatedCustomizations: any) => {
+    async (
+      id: string,
+      _updatedParams: any,
+      _updatedCustomizations: any,
+      paramsSchemaHash?: string,
+    ) => {
       if (!openNode || openNode.id !== id) return;
 
       const latestNodeDrafts = rawDrafts[id] ?? {};
@@ -151,7 +157,42 @@ const ParamsDialog: React.FC<Props> = ({
       );
 
       yDoc?.transact(() => {
-        onDataSubmit?.([{ nodeId: id, updatedParams, updatedCustomizations }]);
+        onDataSubmit?.([
+          {
+            nodeId: id,
+            updatedParams,
+            updatedCustomizations,
+            paramsSchemaHash,
+          },
+        ]);
+      }, "params");
+
+      removeMyDraft(id);
+      onOpenNode();
+    },
+    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
+  );
+
+  const handleMigrate = useCallback(
+    (id: string, newParams: any, paramsSchemaHash?: string) => {
+      if (!openNode || openNode.id !== id) return;
+
+      const latestNodeDrafts = rawDrafts[id] ?? {};
+      const updatedCustomizations = applyMergedPatch(
+        openNode.data.customizations,
+        latestNodeDrafts,
+        "customizationsPatch",
+      );
+
+      yDoc?.transact(() => {
+        onDataSubmit?.([
+          {
+            nodeId: id,
+            updatedParams: newParams,
+            updatedCustomizations,
+            paramsSchemaHash,
+          },
+        ]);
       }, "params");
 
       removeMyDraft(id);
@@ -316,6 +357,7 @@ const ParamsDialog: React.FC<Props> = ({
               onParamsUpdate={handleParamChange}
               onCustomizationsUpdate={handleCustomizationChange}
               onUpdate={handleUpdate}
+              onMigrate={handleMigrate}
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}
               onValueEditorOpen={(fieldContext) => {

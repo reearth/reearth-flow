@@ -27,6 +27,12 @@ import type { AwarenessUser, NodeData, NodeParams } from "@flow/types";
 
 import { extractDescriptions } from "../../utils/extractDescriptions";
 import { FieldContext } from "../../utils/fieldUtils";
+import {
+  computeSchemaFingerprint,
+  schemasMatch,
+} from "../../utils/schemaFingerprint";
+
+import SchemaMigrationView from "./SchemaMigrationView";
 
 type Props = {
   readonly?: boolean;
@@ -42,7 +48,13 @@ type Props = {
     nodeId: string,
     updatedParams: any,
     updatedCustomizations: any,
+    paramsSchemaHash?: string,
   ) => Promise<void>;
+  onMigrate: (
+    nodeId: string,
+    newParams: NodeParams,
+    paramsSchemaHash?: string,
+  ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
   onParamFieldFocus?: (fieldId: string | null) => void;
   onValueEditorOpen: (fieldContext: FieldContext) => void;
@@ -60,6 +72,7 @@ const ParamEditor: React.FC<Props> = ({
   onParamsUpdate,
   onCustomizationsUpdate,
   onUpdate,
+  onMigrate,
   onWorkflowRename,
   onParamFieldFocus,
   onValueEditorOpen,
@@ -78,7 +91,12 @@ const ParamEditor: React.FC<Props> = ({
 
   // Generate UI schema from original schema (before patching) to preserve Expr detection
   const originalSchema = createdAction?.parameter;
-
+  // const needsMigration =
+  //     !!createdAction?.parameter &&
+  //     !schemasMatch(nodeMeta.paramsSchemaHash, createdAction.parameter);
+  const needsMigration =
+    !!createdAction?.parameter &&
+    !schemasMatch("stale", createdAction.parameter); // TEST: remove "stale", use nodeMeta.paramsSchemaHash
   const [isParamsValid, setIsParamsValid] = useState(true);
   const [isCustomizationsValid, setIsCustomizationsValid] = useState(true);
 
@@ -105,7 +123,13 @@ const ParamEditor: React.FC<Props> = ({
         nodeCustomizations?.customName || nodeMeta?.officialName,
       );
     }
-    onUpdate(nodeId, nodeParams, nodeCustomizations);
+    const currentHash = computeSchemaFingerprint(createdAction?.parameter);
+    onUpdate(nodeId, nodeParams, nodeCustomizations, currentHash);
+  };
+
+  const handleMigrate = (newParams: NodeParams) => {
+    const currentHash = computeSchemaFingerprint(createdAction?.parameter);
+    onMigrate(nodeId, newParams, currentHash);
   };
 
   const customizationDescriptions = extractDescriptions(
@@ -143,36 +167,52 @@ const ParamEditor: React.FC<Props> = ({
         <div className="h-full self-center border-r dark:border-primary" />
         <TabsContent className="px-6 py-4" value="params" asChild>
           <div className="flex size-full min-h-0 flex-col justify-between gap-4">
-            <div className="min-h-0 overflow-scroll rounded px-2 pt-1">
-              {!createdAction?.parameter && (
-                <BasicBoiler
-                  text={t("No Parameters Available")}
-                  className="size-4 pt-16 [&>div>p]:text-sm"
-                  icon={<FlowLogo className="size-12 text-accent" />}
-                />
-              )}
-              {createdAction && (
-                <SchemaForm
-                  readonly={readonly}
-                  schema={originalSchema}
-                  actionName={nodeMeta.officialName}
-                  defaultFormData={nodeParams}
-                  fieldFocusMap={fieldFocusMap}
-                  onFieldFocus={onParamFieldFocus}
-                  onChange={onParamsUpdate}
-                  onValidationChange={handleParamsValidationChange}
-                  onEditorOpen={onValueEditorOpen}
-                  onPythonEditorOpen={onPythonEditorOpen}
-                />
-              )}
-            </div>
-            <Button
-              className="shrink-0 self-end"
-              size="lg"
-              onClick={handleUpdate}
-              disabled={readonly || !isCurrentTabValid}>
-              {t("Update")}
-            </Button>
+            {needsMigration ? (
+              <SchemaMigrationView
+                readonly={readonly}
+                storedParams={nodeMeta.params}
+                newSchema={originalSchema}
+                actionName={nodeMeta.officialName}
+                fieldFocusMap={fieldFocusMap}
+                onParamFieldFocus={onParamFieldFocus}
+                onMigrate={handleMigrate}
+                onValueEditorOpen={onValueEditorOpen}
+                onPythonEditorOpen={onPythonEditorOpen}
+              />
+            ) : (
+              <>
+                <div className="min-h-0 overflow-scroll rounded px-2 pt-1">
+                  {!createdAction?.parameter && (
+                    <BasicBoiler
+                      text={t("No Parameters Available")}
+                      className="size-4 pt-16 [&>div>p]:text-sm"
+                      icon={<FlowLogo className="size-12 text-accent" />}
+                    />
+                  )}
+                  {createdAction && (
+                    <SchemaForm
+                      readonly={readonly}
+                      schema={originalSchema}
+                      actionName={nodeMeta.officialName}
+                      defaultFormData={nodeParams}
+                      fieldFocusMap={fieldFocusMap}
+                      onFieldFocus={onParamFieldFocus}
+                      onChange={onParamsUpdate}
+                      onValidationChange={handleParamsValidationChange}
+                      onEditorOpen={onValueEditorOpen}
+                      onPythonEditorOpen={onPythonEditorOpen}
+                    />
+                  )}
+                </div>
+                <Button
+                  className="shrink-0 self-end"
+                  size="lg"
+                  onClick={handleUpdate}
+                  disabled={readonly || !isCurrentTabValid}>
+                  {t("Update")}
+                </Button>
+              </>
+            )}
           </div>
         </TabsContent>
         <TabsContent className="px-6 py-4" value="customizations" asChild>

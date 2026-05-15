@@ -23,6 +23,7 @@ export type NodeData = {
   inputs?: string[];
   outputs?: string[];
   params?: NodeParams;
+  paramsSchemaHash?: string;
   customizations?: NodeCustomizations;
   workflowPath?: string;
   isCollapsed?: boolean;
