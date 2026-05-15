@@ -1322,10 +1322,10 @@
       "enumI18n": {
         "CodeType": {
           "flowExpr": {
-            "description": "Evaluated as a Flow expression at runtime"
+            "description": "在运行时作为 Flow 表达式求值"
           },
           "string": {
-            "description": "Used as a plain string literal"
+            "description": "用作纯字符串字面量"
           }
         }
       }

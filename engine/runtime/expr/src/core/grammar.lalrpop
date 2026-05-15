@@ -146,7 +146,6 @@ Primary: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::FuncCall { name, args }),
     <l:@L> <name:"ident"> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Var(name)),
-    // parens now accept full Expr so `let` works inside: (let x = 1; x)
     "(" <Expr> ")",
     <l:@L> "[" <items:Comma<Or>> "]" <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Array(items)),

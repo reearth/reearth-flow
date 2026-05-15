@@ -3973,14 +3973,14 @@
           "CodeType": {
             "oneOf": [
               {
-                "description": "Evaluated as a Flow expression at runtime",
+                "description": "Evaluado como una expresión Flow en tiempo de ejecución",
                 "type": "string",
                 "enum": [
                   "flowExpr"
                 ]
               },
               {
-                "description": "Used as a plain string literal",
+                "description": "Usado como una cadena de texto literal",
                 "type": "string",
                 "enum": [
                   "string"
