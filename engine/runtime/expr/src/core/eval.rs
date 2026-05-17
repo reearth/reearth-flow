@@ -186,9 +186,9 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             let right = eval_inner(right, env)?;
             eval_binary(op, left, right).to_eval_error(pos)
         }
-        ExprKind::Assign { name, value } => {
+        ExprKind::Assign { lvalue, value } => {
             let v = eval_inner(value, env)?;
-            env.insert(name.clone(), v.clone());
+            eval_assign_lvalue(lvalue, v.clone(), env)?;
             Ok(v)
         }
         ExprKind::Block(exprs) => {
@@ -206,6 +206,53 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                 eval_inner(else_, env)
             }
         }
+    }
+}
+
+/// Assign `value` to the lvalue expression, recursing for nested index chains.
+///
+/// For `x[i][j] = v` the algorithm walks the chain outward: it reads the current
+/// container, mutates the element, then recurses to write the modified container
+/// one level up until it reaches a bare `Var` and does `env.insert`.
+/// Returns `()` — the caller is responsible for returning the assigned value.
+fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> {
+    let pos = lvalue.span.start;
+    match &lvalue.kind {
+        ExprKind::Var(name) => {
+            env.insert(name.clone(), value);
+            Ok(())
+        }
+        ExprKind::Index(target, key) => {
+            let key_val = eval_inner(key, env)?;
+            let mut container = eval_inner(target, env)?;
+            match (&mut container, &key_val) {
+                (Value::Array(arr), Value::Int(i)) => {
+                    let len = arr.len() as i64;
+                    let idx = if *i < 0 { len + i } else { *i };
+                    if idx < 0 || idx as usize >= arr.len() {
+                        return Err(Error::Eval {
+                            pos,
+                            msg: format!("array index {} out of range (len {})", i, arr.len()),
+                        });
+                    }
+                    arr[idx as usize] = value;
+                }
+                (Value::Map(map), Value::String(k)) => {
+                    map.insert(k.clone(), value);
+                }
+                (c, k) => {
+                    return Err(Error::Eval {
+                        pos,
+                        msg: format!("cannot index-assign {c:?} with {k:?}"),
+                    })
+                }
+            }
+            eval_assign_lvalue(target, container, env)
+        }
+        _ => Err(Error::Eval {
+            pos,
+            msg: "invalid assignment target".into(),
+        }),
     }
 }
 
@@ -1273,5 +1320,73 @@ mod tests {
             }
             other => panic!("expected Eval error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn test_list_index_assign() {
+        // basic element replacement
+        assert_eq!(
+            run("a = [1, 2, 3]; a[1] = 99; a", &[]),
+            Value::Array(vec![
+                Value::from(1i64),
+                Value::from(99i64),
+                Value::from(3i64)
+            ])
+        );
+        // negative index
+        assert_eq!(
+            run("a = [10, 20, 30]; a[-1] = 99; a", &[]),
+            Value::Array(vec![
+                Value::from(10i64),
+                Value::from(20i64),
+                Value::from(99i64)
+            ])
+        );
+        // assign expression evaluates to the assigned value
+        assert_eq!(run("a = [0]; a[0] = 7", &[]), Value::from(7i64));
+        // nested: a[0][1] = v
+        assert_eq!(
+            run("a = [[1, 2], [3, 4]]; a[0][1] = 99; a[0]", &[]),
+            Value::Array(vec![Value::from(1i64), Value::from(99i64)])
+        );
+    }
+
+    #[test]
+    fn test_list_index_assign_out_of_range() {
+        let err = try_run("a = [1, 2]; a[5] = 9", &[]).unwrap_err();
+        assert!(
+            matches!(&err, Error::Eval { msg, .. } if msg.contains("out of range")),
+            "expected out-of-range error, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_map_index_assign() {
+        // insert new key
+        assert_eq!(
+            run(r#"m = {"a": 1}; m["b"] = 2; m["b"]"#, &[]),
+            Value::from(2i64)
+        );
+        // overwrite existing key
+        assert_eq!(
+            run(r#"m = {"x": 10}; m["x"] = 99; m["x"]"#, &[]),
+            Value::from(99i64)
+        );
+        // nested: m["k"][0] = v
+        assert_eq!(
+            run(r#"m = {"k": [1, 2, 3]}; m["k"][0] = 99; m["k"][0]"#, &[]),
+            Value::from(99i64)
+        );
+        // assign returns the assigned value
+        assert_eq!(run(r#"m = {"a": 0}; m["x"] = 42"#, &[]), Value::from(42i64));
+    }
+
+    #[test]
+    fn test_invalid_lvalue() {
+        let err = try_run("1 = 2", &[]).unwrap_err();
+        assert!(
+            matches!(&err, Error::Eval { msg, .. } if msg.contains("invalid assignment target")),
+            "expected invalid-lvalue error, got {err:?}"
+        );
     }
 }

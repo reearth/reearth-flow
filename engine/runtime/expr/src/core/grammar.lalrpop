@@ -44,15 +44,11 @@ extern {
     }
 }
 
-// precedence levels (lowest → highest):
+// Precedence (lowest → highest):
 // Assign → Or → And → Not → Equality → Comparison → Add → Mul → Unary → Postfix → Primary
 //
-// All binary levels use left recursion — the LALR table-driven stack handles
-// arbitrarily deep nesting without touching the Rust call stack.
-//
-// `not` follows Python precedence: lower than comparisons, so `not a in b` == `not (a in b)`.
+// `not` has lower precedence than comparisons (Python-style): `not a in b` == `not (a in b)`.
 
-// Top-level: a sequence of semicolon-separated Assign-level expressions.
 pub Expr: Expr = {
     <l:@L> <mut items:SeqBody> <r:@R> => {
         if items.len() == 1 {
@@ -63,10 +59,11 @@ pub Expr: Expr = {
     },
 };
 
-// Assign: lowest precedence, right-recursive so `a = b = 1` chains correctly.
+// Right-recursive so `a = b = 1` chains correctly.
+// LHS is a Postfix expression; the evaluator validates it is a legal lvalue at runtime.
 Assign: Expr = {
-    <l:@L> <n:"ident"> "=" <v:Assign> <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::Assign { name: n, value: Box::new(v) }),
+    <l:@L> <lv:Postfix> "=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Assign { lvalue: Box::new(lv), value: Box::new(v) }),
     Or,
 };
 
@@ -82,7 +79,6 @@ And: Expr = {
     Not,
 };
 
-// Unary `not` — lower precedence than comparisons (Python-style).
 Not: Expr = {
     <l:@L> "not" <e:Not> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Not, Box::new(e))),
@@ -102,11 +98,11 @@ Equality: Expr = {
 };
 
 Comparison: Expr = {
-    <l:@L> <lhs:Comparison> "<"  <rhs:Add> <r:@R>
+    <l:@L> <lhs:Comparison> "<" <rhs:Add> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Lt, Box::new(rhs))),
     <l:@L> <lhs:Comparison> "<=" <rhs:Add> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Le, Box::new(rhs))),
-    <l:@L> <lhs:Comparison> ">"  <rhs:Add> <r:@R>
+    <l:@L> <lhs:Comparison> ">" <rhs:Add> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Gt, Box::new(rhs))),
     <l:@L> <lhs:Comparison> ">=" <rhs:Add> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Ge, Box::new(rhs))),
@@ -153,12 +149,12 @@ OptExpr: Option<Expr> = {
 };
 
 Primary: Expr = {
-    <l:@L> <n:"int">   <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Int(n)),
+    <l:@L> <n:"int"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Int(n)),
     <l:@L> <n:"float"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Float(n)),
-    <l:@L> <s:"str">   <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Str(s)),
-    <l:@L> "true"  <r:@R>     => Expr::new(Span { start: l, end: r }, ExprKind::Bool(true)),
-    <l:@L> "false" <r:@R>     => Expr::new(Span { start: l, end: r }, ExprKind::Bool(false)),
-    <l:@L> "null"  <r:@R>     => Expr::new(Span { start: l, end: r }, ExprKind::Null),
+    <l:@L> <s:"str"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Str(s)),
+    <l:@L> "true" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Bool(true)),
+    <l:@L> "false" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Bool(false)),
+    <l:@L> "null" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
     <l:@L> <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::FuncCall { name, args }),
     <l:@L> <name:"ident"> <r:@R>
@@ -171,8 +167,7 @@ Primary: Expr = {
     IfExpr,
 };
 
-// if <cond> { <then> } else <branch>
-// ElseBranch is either a block or another `if`, enabling natural `else if` chains.
+// ElseBranch is either a block or another `if`, enabling `else if` chains.
 IfExpr: Expr = {
     <l:@L> "if" <cond:Or> <then:BlockExpr> "else" <else_:ElseBranch> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(else_) }),
@@ -185,8 +180,7 @@ ElseBranch: Expr = {
     IfExpr,
 };
 
-// Block expression: { } or { seq_body }
-// Braces are purely grouping + sequencing.
+// `{}` is Null; blocks require at least one expression inside.
 BlockExpr: Expr = {
     <l:@L> "{" "}" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
     <l:@L> "{" <mut items:SeqBody> "}" <r:@R> => {
@@ -199,22 +193,14 @@ BlockExpr: Expr = {
     },
 };
 
-// SeqBody: left-recursive sequence of Assign-level expressions separated by `;`.
-// Left recursion reduces left-to-right, so push() naturally gives correct order — no reversal needed.
 SeqBody: Vec<Expr> = {
-    // Base: single expression.
     <e:Assign> => vec![e],
-
-    // More expressions: append to already-correct left-hand side.
     <mut rest:SeqBody> ";" <e:Assign> => { rest.push(e); rest },
-
-    // Trailing semicolon: block returns Null.
+    // trailing semicolon makes the block evaluate to Null
     <mut rest:SeqBody> ";" <r:@R> => { rest.push(Expr::new(Span { start: r, end: r }, ExprKind::Null)); rest },
 };
 
-// Map literal: { key: value, ... } — at least one entry so {} stays unambiguous (Null).
-// After reducing the key `Or`, lookahead `:` is never valid in SeqBody context,
-// so LR(1) disambiguates map vs block without any grammar conflict.
+// Map literal requires at least one entry so `{}` remains unambiguous (Null).
 MapExpr: Expr = {
     <l:@L> "{" <e:MapEntry> <rest:("," <MapEntry>)*> "}" <r:@R> => {
         let mut entries = vec![e];
