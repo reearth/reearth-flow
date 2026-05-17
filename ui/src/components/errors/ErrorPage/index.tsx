@@ -1,5 +1,5 @@
 import { Button } from "@flow/components/buttons";
-import { FlowLogo } from "@flow/components/icons";
+import { FlowLogo } from "@flow/components/Icon";
 import { useT } from "@flow/lib/i18n";
 
 function ErrorPage({ errorMessage }: { errorMessage?: string }) {

@@ -1,4 +1,4 @@
-import { GearIcon, PencilIcon } from "@phosphor-icons/react";
+import { GearIcon, PencilLineIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -53,7 +53,7 @@ export default function VariableArrayInput({
             />
             {typeof item === "string" && onVariableDialogOpen && (
               <IconButton
-                icon={<PencilIcon />}
+                icon={<PencilLineIcon />}
                 onClick={() => {
                   setActiveItemIndex(index);
                   onVariableDialogOpen(index);
