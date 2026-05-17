@@ -228,8 +228,9 @@ mod parse_smoke {
     fn smoke_assign_ast() {
         let expr = parse("x = 42").unwrap();
         assert!(
-            matches!(expr.kind, ExprKind::Assign { ref name, .. } if name == "x"),
-            "expected Assign, got {:?}",
+            matches!(&expr.kind, ExprKind::Assign { lvalue, .. }
+                if matches!(&lvalue.kind, ExprKind::Var(n) if n == "x")),
+            "expected Assign with Var lvalue, got {:?}",
             expr.kind
         );
     }

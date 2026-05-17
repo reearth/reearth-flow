@@ -60,9 +60,10 @@ pub enum ExprKind {
     },
     Unary(UnaryOp, Box<Expr>),
     Binary(Box<Expr>, BinOp, Box<Expr>),
-    /// `name = value` — assigns value to name in current scope; evaluates to value
+    /// `lvalue = value` — assigns value to lvalue in current scope; evaluates to value.
+    /// lvalue must be a Var, Index, or (in the future) a field-access expression.
     Assign {
-        name: String,
+        lvalue: Box<Expr>,
         value: Box<Expr>,
     },
     /// `{ e1; e2; e3 }` — sequence expression; evaluates each, returns last
@@ -172,14 +173,14 @@ pub mod test_util {
             }
             (
                 ExprKind::Assign {
-                    name: an,
+                    lvalue: al,
                     value: av,
                 },
                 ExprKind::Assign {
-                    name: bn,
+                    lvalue: bl,
                     value: bv,
                 },
-            ) => an == bn && exprs_eq(av, bv),
+            ) => exprs_eq(al, bl) && exprs_eq(av, bv),
             (ExprKind::Block(a), ExprKind::Block(b)) => vec_eq(a, b),
             (ExprKind::Map(a), ExprKind::Map(b)) => pair_vec_eq(a, b),
             (
