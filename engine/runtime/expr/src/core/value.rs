@@ -80,6 +80,22 @@ pub enum Value {
     Object(Box<dyn Object>),
 }
 
+impl Value {
+    pub fn type_name(&self) -> &str {
+        match self {
+            Value::Null => "null",
+            Value::Bool(_) => "bool",
+            Value::Int(_) => "int",
+            Value::Float(_) => "float",
+            Value::String(_) => "string",
+            Value::Array(_) => "list",
+            Value::Map(_) => "map",
+            Value::Fn(_) => "function",
+            Value::Object(obj) => obj.type_name(),
+        }
+    }
+}
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
