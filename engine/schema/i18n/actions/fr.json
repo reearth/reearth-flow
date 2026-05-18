@@ -1303,9 +1303,10 @@
     },
     {
       "name": "FlowExprTest",
+      "description": "Banc d'essai expérimental pour le moteur d'expressions Flow",
       "parameterI18n": {
         "": {
-          "title": "FlowExprTestParam"
+          "title": "Paramètres FlowExprTest"
         },
         "mappings": {}
       },

@@ -1306,9 +1306,10 @@
     },
     {
       "name": "FlowExprTest",
+      "description": "Flow式エンジンの実験的テストベッド",
       "parameterI18n": {
         "": {
-          "title": "FlowExprTestParam"
+          "title": "FlowExprTestParam パラメータ"
         },
         "mappings": {}
       },

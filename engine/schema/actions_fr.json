@@ -3937,10 +3937,10 @@
     {
       "name": "FlowExprTest",
       "type": "processor",
-      "description": "Experimental testbed for the Flow expression engine",
+      "description": "Banc d'essai expérimental pour le moteur d'expressions Flow",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FlowExprTestParam",
+        "title": "Paramètres FlowExprTest",
         "type": "object",
         "required": [
           "mappings"
