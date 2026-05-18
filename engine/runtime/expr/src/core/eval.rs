@@ -1471,7 +1471,11 @@ mod tests {
         );
         assert_eval("{}", &[], Value::Null);
         // insertion order must not affect equality
-        assert_eval(r#"{"a": 1, "b": 2} == {"b": 2, "a": 1}"#, &[], Value::Bool(true));
+        assert_eval(
+            r#"{"a": 1, "b": 2} == {"b": 2, "a": 1}"#,
+            &[],
+            Value::Bool(true),
+        );
     }
 
     #[test]
