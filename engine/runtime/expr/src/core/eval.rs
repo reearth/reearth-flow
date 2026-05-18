@@ -67,6 +67,7 @@ pub fn default_env() -> Env {
     env.insert("list".into(), Value::Fn(NativeFn::new(builtin_list)));
     env.insert("map".into(), Value::Fn(NativeFn::new(builtin_map)));
     env.insert("Url".into(), Value::Fn(NativeFn::new(builtin_url)));
+    env.insert("print".into(), Value::Fn(NativeFn::new(builtin_print)));
     env
 }
 
@@ -934,6 +935,18 @@ fn builtin_map(args: &[Value]) -> HResult<Value> {
         }
     }
     Ok(Value::map(out))
+}
+
+fn builtin_print(args: &[Value]) -> HResult<Value> {
+    let parts: Vec<String> = args
+        .iter()
+        .map(|v| match v {
+            Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
+        .collect();
+    println!("{}", parts.join(" "));
+    Ok(Value::Null)
 }
 
 #[cfg(test)]
