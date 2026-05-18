@@ -25,7 +25,7 @@ import {
 import { Button } from "@flow/components/buttons/BaseButton";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, VarType } from "@flow/types";
+import { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
 import useWorkflowVariablesDialog from "./hooks";
@@ -34,6 +34,7 @@ import { WorkflowVariablesTable } from "./WorkflowVariablesTable";
 
 type Props = {
   currentWorkflowVariables?: AnyWorkflowVariable[];
+  users: Record<string, AwarenessUser>;
   onClose: () => void;
   onAdd: (workflowVariable: AnyWorkflowVariable) => Promise<void>;
   onChange: (workflowVariable: AnyWorkflowVariable) => Promise<void>;
@@ -86,6 +87,7 @@ const allVarTypes: VarType[] = [
 
 const WorkflowVariablesDialog: React.FC<Props> = ({
   currentWorkflowVariables,
+  users,
   projectId,
   onClose,
   onAdd,
@@ -95,7 +97,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
   onBatchUpdate,
 }) => {
   const t = useT();
-  const { isLocked } = useEditorContext();
+  const { isLocked, workflowVarAwareness } = useEditorContext();
 
   const {
     localWorkflowVariables,
@@ -105,6 +107,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     getUserFacingName,
     handleLocalAdd,
     handleLocalUpdate,
+    handleVariableLiveUpdate,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,
@@ -122,6 +125,41 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     onBatchUpdate,
   });
 
+  // Users who have the dialog open (shown as avatars in the header)
+  const dialogUsers = useMemo(
+    () =>
+      Object.values(users).filter(
+        (u) => u.openWorkflowVariablesDialog === true,
+      ),
+    [users],
+  );
+
+  // Map of variableId → users focused on that row
+  const variableFocusMap = useMemo(() => {
+    const map: Record<string, AwarenessUser[]> = {};
+    Object.values(users).forEach((user) => {
+      if (user.openWorkflowVariablesDialog && user.focusedVariableId) {
+        const id = user.focusedVariableId;
+        if (!map[id]) map[id] = [];
+        map[id].push(user);
+      }
+    });
+    return map;
+  }, [users]);
+
+  // Map of variableId → users currently in VariableEditDialog for that variable
+  const variableEditMap = useMemo(() => {
+    const map: Record<string, AwarenessUser[]> = {};
+    Object.values(users).forEach((user) => {
+      if (user.openWorkflowVariablesDialog && user.editingVariableId) {
+        const id = user.editingVariableId;
+        if (!map[id]) map[id] = [];
+        map[id].push(user);
+      }
+    });
+    return map;
+  }, [users]);
+
   const columns: ColumnDef<AnyWorkflowVariable>[] = useMemo(
     () => [
       {
@@ -134,6 +172,10 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               variable={variable}
               disabled={isLocked}
               onUpdate={handleLocalUpdate}
+              onFocus={() =>
+                workflowVarAwareness?.onFieldFocus(variable.id, "name")
+              }
+              onBlur={() => workflowVarAwareness?.onFieldFocus(null, null)}
               placeholder={t("Enter name")}
             />
           );
@@ -230,6 +272,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
       handleLocalUpdate,
       handleEditVariable,
       handleDeleteSingle,
+      workflowVarAwareness,
       t,
     ],
   );
@@ -250,6 +293,29 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                   <div className="flex items-center gap-2">
                     <ChalkboardTeacherIcon />
                     {t("Workflow Variables")}
+                    {dialogUsers.length > 0 && (
+                      <div className="flex items-center -space-x-2">
+                        {dialogUsers.slice(0, 3).map((user) => (
+                          <div
+                            key={user.clientId}
+                            className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                            style={{ backgroundColor: user.color || undefined }}
+                            title={user.userName}>
+                            <span className="text-xs font-medium text-white select-none">
+                              {user.userName.charAt(0).toUpperCase()}
+                              {user.userName.charAt(1)}
+                            </span>
+                          </div>
+                        ))}
+                        {dialogUsers.length > 3 && (
+                          <div className="z-10 flex size-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
+                            <span className="text-[10px] font-medium text-white">
+                              +{dialogUsers.length - 3}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -287,6 +353,8 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                     workflowVariables={localWorkflowVariables}
                     columns={columns}
                     onReorder={handleReorder}
+                    variableFocusMap={variableFocusMap}
+                    variableEditMap={variableEditMap}
                   />
                 </DialogContentSection>
               </DialogContentSection>
@@ -310,8 +378,12 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
       <VariableEditDialog
         isOpen={!!editingVariable}
         variable={editingVariable}
+        editingUsers={
+          editingVariable ? (variableEditMap[editingVariable.id] ?? []) : []
+        }
         onClose={handleCloseEdit}
         onUpdate={handleLocalUpdate}
+        onLiveUpdate={handleVariableLiveUpdate}
       />
     </>
   );

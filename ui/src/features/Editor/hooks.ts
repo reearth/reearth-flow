@@ -357,6 +357,10 @@ export default ({
     awarenessSelectionsMap,
     handlePointerDown,
     handleParamFieldFocus,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
     setDraggingEdge,
     clearDraggingEdge,
   } = useAwarenessPresence({
@@ -495,5 +499,9 @@ export default ({
     handleConnectEnd,
     awarenessSelectionsMap,
     handleParamFieldFocus,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
   };
 };

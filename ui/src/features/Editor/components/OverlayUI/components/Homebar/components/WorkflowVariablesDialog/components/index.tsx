@@ -9,8 +9,10 @@ export const NameInput: React.FC<{
   variable: AnyWorkflowVariable;
   disabled?: boolean;
   onUpdate: (variable: AnyWorkflowVariable) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   placeholder: string;
-}> = ({ variable, disabled, onUpdate, placeholder }) => {
+}> = ({ variable, disabled, onUpdate, onFocus, onBlur, placeholder }) => {
   const [localValue, setLocalValue] = useState(variable.name);
 
   useEffect(() => {
@@ -18,6 +20,7 @@ export const NameInput: React.FC<{
   }, [variable.name]);
 
   const handleBlur = () => {
+    onBlur?.();
     if (localValue !== variable.name) {
       onUpdate({ ...variable, name: localValue });
     }
@@ -41,7 +44,10 @@ export const NameInput: React.FC<{
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       onClick={(e) => e.stopPropagation()}
-      onFocus={(e) => e.stopPropagation()}
+      onFocus={(e) => {
+        e.stopPropagation();
+        onFocus?.();
+      }}
       placeholder={placeholder}
     />
   );

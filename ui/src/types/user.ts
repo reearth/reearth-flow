@@ -55,6 +55,10 @@ export type AwarenessUser = {
   };
   openNodeId?: string | null;
   focusedParamField?: string | null;
+  openWorkflowVariablesDialog?: boolean | null;
+  focusedVariableId?: string | null;
+  focusedVariableField?: string | null;
+  editingVariableId?: string | null;
   color: string;
   userName: string;
   currentWorkflowId?: string;

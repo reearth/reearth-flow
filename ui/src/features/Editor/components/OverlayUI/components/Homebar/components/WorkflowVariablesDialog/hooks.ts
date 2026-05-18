@@ -1,7 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useY } from "react-yjs";
+import { Map as YMap } from "yjs";
 
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
+import {
+  WorkflowVarDraft,
+  WorkflowVarDraftStore,
+  getMostRecentOtherDraft,
+} from "@flow/lib/yjs/workflowVarDrafts";
 import { WorkflowVariable, VarType } from "@flow/types";
 import {
   generateUUID,
@@ -72,6 +80,16 @@ export default ({
   }) => Promise<void>;
 }) => {
   const t = useT();
+  const { yDoc, workflowVarAwareness } = useEditorContext();
+
+  const myClientId = String(yDoc?.clientID ?? "local");
+
+  const yVarDrafts = useMemo(
+    () => yDoc?.getMap<WorkflowVarDraft>("workflowVarDrafts"),
+    [yDoc],
+  );
+  const rawDrafts = useY(yVarDrafts ?? new YMap()) as WorkflowVarDraftStore;
+
   const [localWorkflowVariables, setLocalWorkflowVariables] = useState<
     WorkflowVariable[]
   >([]);
@@ -82,12 +100,67 @@ export default ({
 
   const { getUserFacingName } = useWorkflowVars();
 
+  // Broadcast the current local variable list to Yjs so other users can see it
+  const broadcastDraft = useCallback(
+    (
+      variables: WorkflowVariable[],
+      currentEditingVariableId: string | null = null,
+    ) => {
+      if (!yVarDrafts) return;
+      yVarDrafts.set(myClientId, {
+        variables,
+        timestamp: Date.now(),
+        editingVariableId: currentEditingVariableId,
+      });
+    },
+    [yVarDrafts, myClientId],
+  );
+
+  // Remove own draft from Yjs when dialog closes
+  const removeDraft = useCallback(() => {
+    if (!yVarDrafts) return;
+    yVarDrafts.delete(myClientId);
+  }, [yVarDrafts, myClientId]);
+
+  // Initialize local state from server variables + any existing Yjs drafts
   useEffect(() => {
     if (currentWorkflowVariables) {
       setLocalWorkflowVariables([...currentWorkflowVariables]);
       setPendingChanges([]);
     }
-  }, [currentWorkflowVariables, getUserFacingName]);
+  }, [currentWorkflowVariables]);
+
+  // Track whether the dialog has been opened so we can broadcast on first render
+  const hasOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!hasOpenedRef.current && currentWorkflowVariables !== undefined) {
+      hasOpenedRef.current = true;
+      workflowVarAwareness?.onDialogOpen();
+      broadcastDraft(currentWorkflowVariables, null);
+    }
+  }, [currentWorkflowVariables, workflowVarAwareness, broadcastDraft]);
+
+  // Cleanup on unmount
+  const removeDraftRef = useRef(removeDraft);
+  removeDraftRef.current = removeDraft;
+  const workflowVarAwarenessRef = useRef(workflowVarAwareness);
+  workflowVarAwarenessRef.current = workflowVarAwareness;
+  useEffect(() => {
+    return () => {
+      removeDraftRef.current();
+      workflowVarAwarenessRef.current?.onDialogClose();
+    };
+  }, []);
+
+  // Passive viewer sync: when another user changes something and we have no
+  // pending edits of our own, update our display to reflect their live state
+  useEffect(() => {
+    if (pendingChanges.length > 0) return;
+    const otherDraft = getMostRecentOtherDraft(myClientId, rawDrafts);
+    if (otherDraft) {
+      setLocalWorkflowVariables(otherDraft.variables);
+    }
+  }, [rawDrafts, myClientId, pendingChanges.length]);
 
   const handleLocalAdd = useCallback(
     (type: VarType) => {
@@ -102,66 +175,72 @@ export default ({
         public: true,
       };
 
-      setLocalWorkflowVariables((prev) => [...prev, newVariable]);
+      setLocalWorkflowVariables((prev) => {
+        const next = [...prev, newVariable];
+        broadcastDraft(next, editingVariable?.id ?? null);
+        return next;
+      });
       setPendingChanges((prev) => [
         ...prev,
         { type: "add", tempId, workflowVariable: newVariable },
       ]);
     },
-    [t],
+    [t, broadcastDraft, editingVariable],
   );
 
-  const handleLocalUpdate = useCallback((updatedVariable: WorkflowVariable) => {
-    setLocalWorkflowVariables((prev) =>
-      prev.map((variable) =>
-        variable.id === updatedVariable.id ? updatedVariable : variable,
-      ),
-    );
-
-    // Handle pending changes differently for new vs existing variables
-    setPendingChanges((prev) => {
-      // If this is a new variable (temp ID), update the "add" change
-      if (updatedVariable.id.startsWith("temp_")) {
-        const existingAddIndex = prev.findIndex(
-          (change) =>
-            change.type === "add" && change.tempId === updatedVariable.id,
+  const handleLocalUpdate = useCallback(
+    (updatedVariable: WorkflowVariable) => {
+      setLocalWorkflowVariables((prev) => {
+        const next = prev.map((variable) =>
+          variable.id === updatedVariable.id ? updatedVariable : variable,
         );
+        broadcastDraft(next, editingVariable?.id ?? null);
+        return next;
+      });
 
-        if (existingAddIndex >= 0) {
-          const newChanges = [...prev];
-          newChanges[existingAddIndex] = {
-            type: "add",
-            tempId: updatedVariable.id,
-            workflowVariable: updatedVariable,
-          };
-          return newChanges;
-        }
-      } else {
-        // For existing variables, handle as update
-        const existingUpdateIndex = prev.findIndex(
-          (change) =>
-            change.type === "update" &&
-            change.workflowVariable.id === updatedVariable.id,
-        );
+      setPendingChanges((prev) => {
+        if (updatedVariable.id.startsWith("temp_")) {
+          const existingAddIndex = prev.findIndex(
+            (change) =>
+              change.type === "add" && change.tempId === updatedVariable.id,
+          );
 
-        if (existingUpdateIndex >= 0) {
-          const newChanges = [...prev];
-          newChanges[existingUpdateIndex] = {
-            type: "update",
-            workflowVariable: updatedVariable,
-          };
-          return newChanges;
+          if (existingAddIndex >= 0) {
+            const newChanges = [...prev];
+            newChanges[existingAddIndex] = {
+              type: "add",
+              tempId: updatedVariable.id,
+              workflowVariable: updatedVariable,
+            };
+            return newChanges;
+          }
         } else {
-          return [
-            ...prev,
-            { type: "update", workflowVariable: updatedVariable },
-          ];
-        }
-      }
+          const existingUpdateIndex = prev.findIndex(
+            (change) =>
+              change.type === "update" &&
+              change.workflowVariable.id === updatedVariable.id,
+          );
 
-      return prev;
-    });
-  }, []);
+          if (existingUpdateIndex >= 0) {
+            const newChanges = [...prev];
+            newChanges[existingUpdateIndex] = {
+              type: "update",
+              workflowVariable: updatedVariable,
+            };
+            return newChanges;
+          } else {
+            return [
+              ...prev,
+              { type: "update", workflowVariable: updatedVariable },
+            ];
+          }
+        }
+
+        return prev;
+      });
+    },
+    [broadcastDraft, editingVariable],
+  );
 
   const handleDeleteSingle = useCallback(
     (variableId: string) => {
@@ -173,9 +252,11 @@ export default ({
 
       const varToDelete = localWorkflowVariables[variableIndex];
 
-      setLocalWorkflowVariables((prev) =>
-        prev.filter((variable) => variable.id !== variableId),
-      );
+      setLocalWorkflowVariables((prev) => {
+        const next = prev.filter((variable) => variable.id !== variableId);
+        broadcastDraft(next, editingVariable?.id ?? null);
+        return next;
+      });
 
       if (!varToDelete.id.startsWith("temp_")) {
         setPendingChanges((prev) => [
@@ -191,7 +272,7 @@ export default ({
         );
       }
     },
-    [localWorkflowVariables],
+    [localWorkflowVariables, broadcastDraft, editingVariable],
   );
 
   const handleReorder = useCallback(
@@ -202,9 +283,9 @@ export default ({
       const [movedItem] = newWorkflowVariables.splice(oldIndex, 1);
       newWorkflowVariables.splice(newIndex, 0, movedItem);
 
+      broadcastDraft(newWorkflowVariables, editingVariable?.id ?? null);
       setLocalWorkflowVariables(newWorkflowVariables);
 
-      // Track reorder changes for all affected non-temp variables
       newWorkflowVariables.forEach((variable, index) => {
         if (!variable.id.startsWith("temp_")) {
           const originalIndex = localWorkflowVariables.findIndex(
@@ -227,7 +308,23 @@ export default ({
         }
       });
     },
-    [localWorkflowVariables],
+    [localWorkflowVariables, broadcastDraft, editingVariable],
+  );
+
+  // Called from VariableEditDialog on every field change (not just Save)
+  const handleVariableLiveUpdate = useCallback(
+    (updatedVariable: WorkflowVariable) => {
+      setLocalWorkflowVariables((prev) => {
+        const next = prev.map((v) =>
+          v.id === updatedVariable.id ? updatedVariable : v,
+        );
+        broadcastDraft(next, updatedVariable.id);
+        return next;
+      });
+      // Also keep editingVariable in sync so the dialog re-renders
+      setEditingVariable(updatedVariable);
+    },
+    [broadcastDraft],
   );
 
   const handleSubmit = useCallback(async () => {
@@ -313,6 +410,8 @@ export default ({
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       setPendingChanges([]);
+      removeDraft();
+      workflowVarAwareness?.onDialogClose();
       onClose();
     } catch (error) {
       console.error("Failed to submit workflow variable changes:", error);
@@ -329,6 +428,8 @@ export default ({
     onDeleteBatch,
     onDelete,
     onClose,
+    removeDraft,
+    workflowVarAwareness,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -336,25 +437,36 @@ export default ({
       setLocalWorkflowVariables([...currentWorkflowVariables]);
     }
     setPendingChanges([]);
+    removeDraft();
+    workflowVarAwareness?.onDialogClose();
     onClose();
-  }, [currentWorkflowVariables, onClose]);
+  }, [currentWorkflowVariables, onClose, removeDraft, workflowVarAwareness]);
 
-  const handleEditVariable = useCallback((variable: WorkflowVariable) => {
-    setEditingVariable(variable);
-  }, []);
+  const handleEditVariable = useCallback(
+    (variable: WorkflowVariable) => {
+      setEditingVariable(variable);
+      workflowVarAwareness?.onEditStart(variable.id);
+      broadcastDraft(localWorkflowVariables, variable.id);
+    },
+    [workflowVarAwareness, broadcastDraft, localWorkflowVariables],
+  );
 
   const handleCloseEdit = useCallback(() => {
     setEditingVariable(null);
-  }, []);
+    workflowVarAwareness?.onEditStart(null);
+    broadcastDraft(localWorkflowVariables, null);
+  }, [workflowVarAwareness, broadcastDraft, localWorkflowVariables]);
 
   return {
     localWorkflowVariables,
     pendingChanges,
     isSubmitting,
     editingVariable,
+    rawDrafts,
     getUserFacingName,
     handleLocalAdd,
     handleLocalUpdate,
+    handleVariableLiveUpdate,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,

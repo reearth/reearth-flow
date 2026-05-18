@@ -179,6 +179,32 @@ export default function useAwarenessPresence({
     [yAwareness],
   );
 
+  const handleWorkflowVarDialogOpen = useCallback(() => {
+    yAwareness.setLocalStateField("openWorkflowVariablesDialog", true);
+  }, [yAwareness]);
+
+  const handleWorkflowVarDialogClose = useCallback(() => {
+    yAwareness.setLocalStateField("openWorkflowVariablesDialog", null);
+    yAwareness.setLocalStateField("focusedVariableId", null);
+    yAwareness.setLocalStateField("focusedVariableField", null);
+    yAwareness.setLocalStateField("editingVariableId", null);
+  }, [yAwareness]);
+
+  const handleWorkflowVarFieldFocus = useCallback(
+    (variableId: string | null, field: string | null) => {
+      yAwareness.setLocalStateField("focusedVariableId", variableId);
+      yAwareness.setLocalStateField("focusedVariableField", field);
+    },
+    [yAwareness],
+  );
+
+  const handleWorkflowVarEditStart = useCallback(
+    (variableId: string | null) => {
+      yAwareness.setLocalStateField("editingVariableId", variableId);
+    },
+    [yAwareness],
+  );
+
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
       throttledPresenceUpdate(event.clientX, event.clientY);
@@ -243,6 +269,10 @@ export default function useAwarenessPresence({
     awarenessSelectionsMap,
     handlePointerDown,
     handleParamFieldFocus,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
     setDraggingEdge,
     clearDraggingEdge,
   };

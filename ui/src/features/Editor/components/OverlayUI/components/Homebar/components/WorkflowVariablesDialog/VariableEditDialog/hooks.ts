@@ -3,14 +3,17 @@ import { useState, useEffect, useCallback } from "react";
 import { Asset, WorkflowVariable } from "@flow/types";
 
 export type DialogOptions = "assets" | "cms" | undefined;
+
 export default ({
   variable,
   onClose,
   onUpdate,
+  onLiveUpdate,
 }: {
   variable: WorkflowVariable | null;
   onClose: () => void;
   onUpdate: (variable: WorkflowVariable) => void;
+  onLiveUpdate?: (variable: WorkflowVariable) => void;
 }) => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [assetUrl, setAssetUrl] = useState<string | null>(null);
@@ -20,10 +23,13 @@ export default ({
     null,
   );
   const [hasChanges, setHasChanges] = useState(false);
+
   const handleAssetDoubleClick = (asset: Asset) => {
     if (localVariable && variable) {
-      setLocalVariable({ ...localVariable, defaultValue: asset.url });
+      const updated = { ...localVariable, defaultValue: asset.url };
+      setLocalVariable(updated);
       setHasChanges(true);
+      onLiveUpdate?.(updated);
     }
     setAssetUrl(asset.url);
     handleDialogClose();
@@ -31,27 +37,35 @@ export default ({
 
   const handleCmsItemValue = (cmsItemAssetUrl: string) => {
     if (localVariable && variable) {
-      setLocalVariable({ ...localVariable, defaultValue: cmsItemAssetUrl });
+      const updated = { ...localVariable, defaultValue: cmsItemAssetUrl };
+      setLocalVariable(updated);
       setHasChanges(true);
+      onLiveUpdate?.(updated);
     }
     setAssetUrl(cmsItemAssetUrl);
     handleDialogClose();
   };
 
+  // Sync from parent when no local edits in progress (passive viewer update)
   useEffect(() => {
     if (variable) {
-      setLocalVariable({ ...variable });
-      setHasChanges(false);
+      if (!hasChanges) {
+        setLocalVariable({ ...variable });
+      }
     } else {
       setLocalVariable(null);
       setHasChanges(false);
     }
-  }, [variable]);
+  }, [variable, hasChanges]);
 
-  const handleFieldUpdate = useCallback((updatedVariable: WorkflowVariable) => {
-    setLocalVariable(updatedVariable);
-    setHasChanges(true);
-  }, []);
+  const handleFieldUpdate = useCallback(
+    (updatedVariable: WorkflowVariable) => {
+      setLocalVariable(updatedVariable);
+      setHasChanges(true);
+      onLiveUpdate?.(updatedVariable);
+    },
+    [onLiveUpdate],
+  );
 
   const handleSave = useCallback(() => {
     if (localVariable && hasChanges) {

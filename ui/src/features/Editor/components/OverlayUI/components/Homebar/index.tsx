@@ -107,6 +107,7 @@ const Homebar: React.FC<Props> = ({
         <WorkflowVariablesDialog
           currentWorkflowVariables={currentWorkflowVariables}
           projectId={currentProject?.id}
+          users={users}
           onClose={handleDialogClose}
           onAdd={handleWorkflowVariableAdd}
           onChange={handleWorkflowVariableChange}
