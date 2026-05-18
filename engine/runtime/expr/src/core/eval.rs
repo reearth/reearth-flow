@@ -798,7 +798,9 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
                 } else if b > u32::MAX as i64 {
                     Err(InnerError::new("exponent too large"))
                 } else {
-                    a.checked_pow(b as u32).map(Value::Int).ok_or_else(int_overflow)
+                    a.checked_pow(b as u32)
+                        .map(Value::Int)
+                        .ok_or_else(int_overflow)
                 }
             }
             Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a.powf(b))),
