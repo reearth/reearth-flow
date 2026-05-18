@@ -125,8 +125,12 @@ pub fn env_from_feature(
     env.insert(
         "value".into(),
         Value::Fn(NativeFn::new(move |args| {
-            let Some(Value::String(name)) = args.first() else {
-                return Ok(Value::Null);
+            reearth_flow_expr::unpack_args!(args => arg);
+            let Value::String(name) = arg else {
+                return Err(reearth_flow_expr::InnerError::new(format!(
+                    "value() expects a string argument, got {}",
+                    arg.type_name()
+                )));
             };
             Ok(attrs
                 .get(&Attribute::new(name))
@@ -137,8 +141,12 @@ pub fn env_from_feature(
     env.insert(
         "env".into(),
         Value::Fn(NativeFn::new(move |args| {
-            let Some(Value::String(name)) = args.first() else {
-                return Ok(Value::Null);
+            reearth_flow_expr::unpack_args!(args => arg);
+            let Value::String(name) = arg else {
+                return Err(reearth_flow_expr::InnerError::new(format!(
+                    "env() expects a string argument, got {}",
+                    arg.type_name()
+                )));
             };
             Ok(env_vars
                 .get(name.as_str())
@@ -178,7 +186,10 @@ pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue 
                 .map(|(k, v)| (k.clone(), attribute_value_from_eval(v.clone())))
                 .collect(),
         ),
-        Value::Fn(_) => AttributeValue::Null,
+        Value::Fn(_) => {
+            tracing::warn!("flow expr function value converted to null attribute");
+            AttributeValue::Null
+        }
         Value::Object(rc) => {
             let borrowed = rc.borrow();
             if let Some(v) = borrowed.serialize() {

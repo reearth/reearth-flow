@@ -940,8 +940,15 @@ fn value_to_string(v: &Value) -> String {
 }
 
 fn builtin_str(args: &[Value]) -> InnerResult<Value> {
+    if args.len() > 1 {
+        return Err(InnerError::new(format!(
+            "str() expected at most 1 argument, got {}",
+            args.len()
+        )));
+    }
     match args.first() {
-        None | Some(Value::Null) => Ok(Value::String("null".into())),
+        None => Ok(Value::String(String::new())),
+        Some(Value::Null) => Ok(Value::String("null".into())),
         Some(Value::String(s)) => Ok(Value::String(s.clone())),
         Some(Value::Bool(b)) => Ok(Value::String(b.to_string())),
         Some(Value::Int(n)) => Ok(Value::String(n.to_string())),
@@ -955,7 +962,14 @@ fn builtin_str(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn builtin_int(args: &[Value]) -> InnerResult<Value> {
+    if args.len() > 1 {
+        return Err(InnerError::new(format!(
+            "int() expected at most 1 argument, got {}",
+            args.len()
+        )));
+    }
     match args.first() {
+        None => Ok(Value::Int(0)),
         Some(Value::Int(n)) => Ok(Value::Int(*n)),
         Some(Value::Float(f)) => {
             let t = f.trunc();
@@ -975,12 +989,18 @@ fn builtin_int(args: &[Value]) -> InnerResult<Value> {
             "int() not supported for {}",
             v.type_name()
         ))),
-        None => Err(InnerError::new("int() requires an argument")),
     }
 }
 
 fn builtin_float(args: &[Value]) -> InnerResult<Value> {
+    if args.len() > 1 {
+        return Err(InnerError::new(format!(
+            "float() expected at most 1 argument, got {}",
+            args.len()
+        )));
+    }
     match args.first() {
+        None => Ok(Value::Float(0.0)),
         Some(Value::Float(f)) => Ok(Value::Float(*f)),
         Some(Value::Int(n)) => Ok(Value::Float(*n as f64)),
         Some(Value::Bool(b)) => Ok(Value::Float(if *b { 1.0 } else { 0.0 })),
@@ -993,15 +1013,26 @@ fn builtin_float(args: &[Value]) -> InnerResult<Value> {
             "float() not supported for {}",
             v.type_name()
         ))),
-        None => Err(InnerError::new("float() requires an argument")),
     }
 }
 
 fn builtin_bool(args: &[Value]) -> InnerResult<Value> {
+    if args.len() > 1 {
+        return Err(InnerError::new(format!(
+            "bool() expected at most 1 argument, got {}",
+            args.len()
+        )));
+    }
     Ok(Value::Bool(args.first().map(is_truthy).unwrap_or(false)))
 }
 
 fn builtin_list(args: &[Value]) -> InnerResult<Value> {
+    if args.len() > 1 {
+        return Err(InnerError::new(format!(
+            "list() expected at most 1 argument, got {}",
+            args.len()
+        )));
+    }
     match args.first() {
         // shallow copy: inner Rc elements share their backing stores
         Some(Value::Array(a)) => Ok(Value::array(a.borrow().clone())),
