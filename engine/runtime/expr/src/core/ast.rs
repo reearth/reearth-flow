@@ -76,6 +76,11 @@ pub enum ExprKind {
         then: Box<Expr>,
         else_: Box<Expr>,
     },
+    /// `while cond { body }` — evaluates to Null
+    While {
+        cond: Box<Expr>,
+        body: Box<Expr>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -195,6 +200,9 @@ pub mod test_util {
                     else_: be,
                 },
             ) => exprs_eq(ac, bc) && exprs_eq(at, bt) && exprs_eq(ae, be),
+            (ExprKind::While { cond: ac, body: ab }, ExprKind::While { cond: bc, body: bb }) => {
+                exprs_eq(ac, bc) && exprs_eq(ab, bb)
+            }
             _ => false,
         }
     }

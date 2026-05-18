@@ -1,24 +1,19 @@
-use std::sync::Arc;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use indexmap::IndexMap;
 
 use crate::core::error::HResult;
 
 /// Trait for typed objects that can respond to method calls.
-///
-/// Implement this to introduce new object types (e.g. `Url`, `DateTime`)
-/// that expression users can construct and call methods on.
-pub trait Object: std::fmt::Debug + Send + Sync {
+pub trait Object: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
     fn call_method(&self, method: &str, args: &[Value]) -> HResult<Value>;
     fn clone_box(&self) -> Box<dyn Object>;
-    /// Object equality — implementations may compare by content or return false.
     fn eq_box(&self, other: &dyn Object) -> bool;
-    /// Human-readable representation. Defaults to `<TypeName>`.
     fn display(&self) -> String {
         format!("<{}>", self.type_name())
     }
-    /// Serialization hint. If `Some`, used by consumers instead of falling back to `"<TypeName>"`.
     fn serialize(&self) -> Option<Value> {
         None
     }
@@ -36,15 +31,15 @@ impl PartialEq for Box<dyn Object> {
     }
 }
 
-type NativeFnInner = Arc<dyn Fn(&[Value]) -> HResult<Value> + Send + Sync>;
+type NativeFnInner = Rc<dyn Fn(&[Value]) -> HResult<Value>>;
 
 /// A native (Rust) function callable from the expression language.
 #[derive(Clone)]
 pub struct NativeFn(pub NativeFnInner);
 
 impl NativeFn {
-    pub fn new(f: impl Fn(&[Value]) -> HResult<Value> + Send + Sync + 'static) -> Self {
-        Self(Arc::new(f))
+    pub fn new(f: impl Fn(&[Value]) -> HResult<Value> + 'static) -> Self {
+        Self(Rc::new(f))
     }
 
     pub fn call(&self, args: &[Value]) -> HResult<Value> {
@@ -60,11 +55,16 @@ impl std::fmt::Debug for NativeFn {
 
 impl PartialEq for NativeFn {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
+        Rc::ptr_eq(&self.0, &other.0)
     }
 }
 
 /// Runtime value type for the expression evaluator.
+///
+/// `Array` and `Map` use `Rc<RefCell<...>>` for reference semantics: cloning a
+/// value shares the same backing allocation, so mutations through one alias are
+/// visible through all others (Python-style).  Circular references are the
+/// caller's responsibility and are not detected.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Null,
@@ -72,8 +72,8 @@ pub enum Value {
     Int(i64),
     Float(f64),
     String(String),
-    Array(Vec<Value>),
-    Map(IndexMap<String, Value>),
+    Array(Rc<RefCell<Vec<Value>>>),
+    Map(Rc<RefCell<IndexMap<String, Value>>>),
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
     /// A typed object that can respond to method calls via [`Object`].
@@ -81,6 +81,16 @@ pub enum Value {
 }
 
 impl Value {
+    /// Construct an array value, wrapping `items` in a fresh shared allocation.
+    pub fn array(items: Vec<Value>) -> Self {
+        Value::Array(Rc::new(RefCell::new(items)))
+    }
+
+    /// Construct a map value, wrapping `entries` in a fresh shared allocation.
+    pub fn map(entries: IndexMap<String, Value>) -> Self {
+        Value::Map(Rc::new(RefCell::new(entries)))
+    }
+
     pub fn type_name(&self) -> &str {
         match self {
             Value::Null => "null",
@@ -105,6 +115,7 @@ impl std::fmt::Display for Value {
             Value::Float(n) => write!(f, "{n}"),
             Value::String(s) => write!(f, "{s:?}"),
             Value::Array(arr) => {
+                let arr = arr.borrow();
                 write!(f, "[")?;
                 for (i, v) in arr.iter().enumerate() {
                     if i > 0 {
@@ -115,6 +126,7 @@ impl std::fmt::Display for Value {
                 write!(f, "]")
             }
             Value::Map(map) => {
+                let map = map.borrow();
                 write!(f, "{{")?;
                 for (i, (k, v)) in map.iter().enumerate() {
                     if i > 0 {

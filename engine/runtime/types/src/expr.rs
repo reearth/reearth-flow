@@ -106,8 +106,8 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
             }
         }
         serde_json::Value::String(s) => Value::String(s),
-        serde_json::Value::Array(arr) => Value::Array(arr.into_iter().map(json_to_value).collect()),
-        serde_json::Value::Object(map) => Value::Map(
+        serde_json::Value::Array(arr) => Value::array(arr.into_iter().map(json_to_value).collect()),
+        serde_json::Value::Object(map) => Value::map(
             map.into_iter()
                 .map(|(k, v)| (k, json_to_value(v)))
                 .collect(),
@@ -166,12 +166,16 @@ pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue 
                 AttributeValue::Null
             }),
         Value::String(s) => AttributeValue::String(s),
-        Value::Array(arr) => {
-            AttributeValue::Array(arr.into_iter().map(attribute_value_from_eval).collect())
-        }
+        Value::Array(arr) => AttributeValue::Array(
+            arr.borrow()
+                .iter()
+                .map(|v| attribute_value_from_eval(v.clone()))
+                .collect(),
+        ),
         Value::Map(map) => AttributeValue::Map(
-            map.into_iter()
-                .map(|(k, v)| (k, attribute_value_from_eval(v)))
+            map.borrow()
+                .iter()
+                .map(|(k, v)| (k.clone(), attribute_value_from_eval(v.clone())))
                 .collect(),
         ),
         Value::Fn(_) => AttributeValue::Null,
