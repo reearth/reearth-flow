@@ -15,7 +15,7 @@ const MAX_EVAL_DEPTH: usize = 64;
 const MAX_EVAL_DEPTH: usize = 1024;
 
 thread_local! {
-    static EVAL_DEPTH: Cell<usize> = Cell::new(0);
+    static EVAL_DEPTH: Cell<usize> = const { Cell::new(0) };
 }
 
 struct DepthGuard;
