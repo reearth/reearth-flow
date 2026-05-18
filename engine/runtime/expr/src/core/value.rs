@@ -8,26 +8,12 @@ use crate::core::error::HResult;
 /// Trait for typed objects that can respond to method calls.
 pub trait Object: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
-    fn call_method(&self, method: &str, args: &[Value]) -> HResult<Value>;
-    fn clone_box(&self) -> Box<dyn Object>;
-    fn eq_box(&self, other: &dyn Object) -> bool;
+    fn call_method(&mut self, method: &str, args: &[Value]) -> HResult<Value>;
     fn display(&self) -> String {
         format!("<{}>", self.type_name())
     }
     fn serialize(&self) -> Option<Value> {
         None
-    }
-}
-
-impl Clone for Box<dyn Object> {
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
-}
-
-impl PartialEq for Box<dyn Object> {
-    fn eq(&self, other: &Self) -> bool {
-        self.eq_box(other.as_ref())
     }
 }
 
@@ -53,19 +39,13 @@ impl std::fmt::Debug for NativeFn {
     }
 }
 
-impl PartialEq for NativeFn {
-    fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.0, &other.0)
-    }
-}
-
 /// Runtime value type for the expression evaluator.
 ///
-/// `Array` and `Map` use `Rc<RefCell<...>>` for reference semantics: cloning a
-/// value shares the same backing allocation, so mutations through one alias are
-/// visible through all others (Python-style).  Circular references are the
-/// caller's responsibility and are not detected.
-#[derive(Debug, Clone, PartialEq)]
+/// `Array`, `Map`, and `Object` use `Rc<RefCell<...>>` for reference semantics:
+/// cloning a value shares the same backing allocation, so mutations through one
+/// alias are visible through all others (Python-style). Circular references are
+/// the caller's responsibility and are not detected.
+#[derive(Debug, Clone)]
 pub enum Value {
     Null,
     Bool(bool),
@@ -77,7 +57,7 @@ pub enum Value {
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
     /// A typed object that can respond to method calls via [`Object`].
-    Object(Box<dyn Object>),
+    Object(Rc<RefCell<dyn Object>>),
 }
 
 impl Value {
@@ -91,6 +71,11 @@ impl Value {
         Value::Map(Rc::new(RefCell::new(entries)))
     }
 
+    /// Construct an object value, wrapping `obj` in a fresh shared allocation.
+    pub fn object(obj: impl Object + 'static) -> Self {
+        Value::Object(Rc::new(RefCell::new(obj)))
+    }
+
     pub fn type_name(&self) -> &str {
         match self {
             Value::Null => "null",
@@ -101,7 +86,7 @@ impl Value {
             Value::Array(_) => "list",
             Value::Map(_) => "map",
             Value::Fn(_) => "function",
-            Value::Object(obj) => obj.type_name(),
+            Value::Object(rc) => rc.borrow().type_name(),
         }
     }
 }
@@ -137,7 +122,7 @@ impl std::fmt::Display for Value {
                 write!(f, "}}")
             }
             Value::Fn(_) => write!(f, "<fn>"),
-            Value::Object(obj) => write!(f, "{}", obj.display()),
+            Value::Object(rc) => write!(f, "{}", rc.borrow().display()),
         }
     }
 }

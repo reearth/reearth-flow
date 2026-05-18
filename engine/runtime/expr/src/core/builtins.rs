@@ -34,14 +34,14 @@ impl Object for UrlObject {
         "Url"
     }
 
-    fn call_method(&self, method: &str, args: &[Value]) -> HResult<Value> {
+    fn call_method(&mut self, method: &str, args: &[Value]) -> HResult<Value> {
         match method {
             "parent" => {
                 unpack_args!(args =>);
                 let s = url_parent(&self.0).ok_or_else(|| {
                     EvalHelperError::new(format!("Url has no parent: {}", self.0))
                 })?;
-                Ok(Value::Object(Box::new(UrlObject(s))))
+                Ok(Value::object(UrlObject(s)))
             }
             "extension" => {
                 unpack_args!(args =>);
@@ -69,8 +69,8 @@ impl Object for UrlObject {
                     .first()
                     .ok_or_else(|| EvalHelperError::new("Url == requires an argument"))?;
                 match rhs {
-                    Value::Object(obj) if obj.type_name() == "Url" => {
-                        Ok(Value::Bool(self.0 == obj.display()))
+                    Value::Object(obj) if obj.borrow().type_name() == "Url" => {
+                        Ok(Value::Bool(self.0 == obj.borrow().display()))
                     }
                     _ => Ok(Value::Bool(false)),
                 }
@@ -91,18 +91,10 @@ impl Object for UrlObject {
                     })
                     .ok_or_else(|| EvalHelperError::new("Url / requires a string"))?;
                 let joined = format!("{}/{rhs}", self.0.trim_end_matches('/'));
-                Ok(Value::Object(Box::new(UrlObject(joined))))
+                Ok(Value::object(UrlObject(joined)))
             }
             m => Err(EvalHelperError::new(format!("Url has no method '{m}'"))),
         }
-    }
-
-    fn clone_box(&self) -> Box<dyn Object> {
-        Box::new(self.clone())
-    }
-
-    fn eq_box(&self, other: &dyn Object) -> bool {
-        other.type_name() == "Url" && other.display() == self.0
     }
 
     fn display(&self) -> String {
@@ -118,7 +110,7 @@ pub fn builtin_url(args: &[Value]) -> HResult<Value> {
     let s = match args.first() {
         None => return Err(EvalHelperError::new("Url() requires a string argument")),
         Some(Value::String(s)) => s.clone(),
-        Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
+        Some(Value::Object(obj)) if obj.borrow().type_name() == "Url" => obj.borrow().display(),
         Some(v) => {
             return Err(EvalHelperError::new(format!(
                 "Url() expects a string, got {v:?}"
@@ -126,13 +118,13 @@ pub fn builtin_url(args: &[Value]) -> HResult<Value> {
         }
     };
     let url = parse_url(&s).map_err(EvalHelperError::new)?;
-    Ok(Value::Object(Box::new(UrlObject(url))))
+    Ok(Value::object(UrlObject(url)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::eval::{default_env, eval};
+    use crate::core::eval::{default_env, eval, values_equal};
     use crate::core::parser::parse;
 
     fn run(input: &str) -> Value {
@@ -140,75 +132,83 @@ mod tests {
         eval(&parse(input).unwrap(), &mut env).unwrap()
     }
 
+    #[track_caller]
+    fn assert_val(a: &Value, b: &Value) {
+        assert!(values_equal(a, b), "\nleft:  {a:?}\nright: {b:?}");
+    }
+
     #[test]
     fn test_url_from_string() {
         let v = run(r#"Url("/foo/bar")"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo/bar"));
+        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///foo/bar"));
     }
 
     #[test]
     fn test_url_rewrap() {
         let v = run(r#"Url(Url("/foo/bar"))"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo/bar"));
+        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///foo/bar"));
     }
 
     #[test]
     fn test_url_str() {
-        assert_eq!(
-            run(r#"str(Url("/foo/bar"))"#),
-            Value::from("file:///foo/bar")
+        assert_val(
+            &run(r#"str(Url("/foo/bar"))"#),
+            &Value::from("file:///foo/bar"),
         );
     }
 
     #[test]
     fn test_url_div() {
-        assert_eq!(
-            run(r#"str(Url("/foo") / "bar" / "baz")"#),
-            Value::from("file:///foo/bar/baz")
+        assert_val(
+            &run(r#"str(Url("/foo") / "bar" / "baz")"#),
+            &Value::from("file:///foo/bar/baz"),
         );
     }
 
     #[test]
     fn test_url_div_gs() {
-        assert_eq!(
-            run(r#"str(Url("gs://bucket/artifacts") / "output")"#),
-            Value::from("gs://bucket/artifacts/output")
+        assert_val(
+            &run(r#"str(Url("gs://bucket/artifacts") / "output")"#),
+            &Value::from("gs://bucket/artifacts/output"),
         );
     }
 
     #[test]
     fn test_url_parent() {
         let v = run(r#"Url("/foo/bar").parent()"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo"));
+        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///foo"));
     }
 
     #[test]
     fn test_url_extension() {
-        assert_eq!(
-            run(r#"Url("/foo/bar.gml").extension()"#),
-            Value::from("gml")
+        assert_val(
+            &run(r#"Url("/foo/bar.gml").extension()"#),
+            &Value::from("gml"),
         );
     }
 
     #[test]
     fn test_url_name() {
-        assert_eq!(run(r#"Url("/foo/bar.gml").name()"#), Value::from("bar.gml"));
+        assert_val(
+            &run(r#"Url("/foo/bar.gml").name()"#),
+            &Value::from("bar.gml"),
+        );
     }
 
     #[test]
     fn test_url_stem() {
-        assert_eq!(run(r#"Url("/foo/bar.gml").stem()"#), Value::from("bar"));
+        assert_val(&run(r#"Url("/foo/bar.gml").stem()"#), &Value::from("bar"));
     }
 
     #[test]
     fn test_url_eq() {
-        assert_eq!(
-            run(r#"Url("/foo/bar") == Url("/foo/bar")"#),
-            Value::Bool(true)
+        assert_val(
+            &run(r#"Url("/foo/bar") == Url("/foo/bar")"#),
+            &Value::Bool(true),
         );
-        assert_eq!(
-            run(r#"Url("/foo/bar") == Url("/foo/baz")"#),
-            Value::Bool(false)
+        assert_val(
+            &run(r#"Url("/foo/bar") == Url("/foo/baz")"#),
+            &Value::Bool(false),
         );
     }
 }
