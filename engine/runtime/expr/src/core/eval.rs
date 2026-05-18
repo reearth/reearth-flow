@@ -87,7 +87,7 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             for e in items {
                 values.push(eval_inner(e, env)?);
             }
-            Ok(Value::Array(values))
+            Ok(Value::array(values))
         }
         ExprKind::Map(entries) => {
             let mut map = IndexMap::new();
@@ -104,7 +104,7 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                 };
                 map.insert(key_str, eval_inner(v, env)?);
             }
-            Ok(Value::Map(map))
+            Ok(Value::map(map))
         }
         ExprKind::Var(name) => env.get(name.as_str()).cloned().ok_or_else(|| Error::Eval {
             pos,
@@ -206,15 +206,23 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                 eval_inner(else_, env)
             }
         }
+        ExprKind::While { cond, body } => {
+            loop {
+                let c = eval_inner(cond, env)?;
+                if !is_truthy(&c) {
+                    break;
+                }
+                eval_inner(body, env)?;
+            }
+            Ok(Value::Null)
+        }
     }
 }
 
-/// Assign `value` to the lvalue expression, recursing for nested index chains.
+/// Assign `value` to the lvalue expression.
 ///
-/// For `x[i][j] = v` the algorithm walks the chain outward: it reads the current
-/// container, mutates the element, then recurses to write the modified container
-/// one level up until it reaches a bare `Var` and does `env.insert`.
-/// Returns `()` — the caller is responsible for returning the assigned value.
+/// Because `Array` and `Map` use `Rc<RefCell<...>>`, index assignment can mutate
+/// the shared backing store directly — no write-back recursion is needed.
 fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> {
     let pos = lvalue.span.start;
     match &lvalue.kind {
@@ -224,21 +232,21 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
         }
         ExprKind::Index(target, key) => {
             let key_val = eval_inner(key, env)?;
-            let mut container = eval_inner(target, env)?;
-            match (&mut container, &key_val) {
-                (Value::Array(arr), Value::Int(i)) => {
-                    let len = arr.len() as i64;
+            let container = eval_inner(target, env)?;
+            match (container, &key_val) {
+                (Value::Array(rc), Value::Int(i)) => {
+                    let len = rc.borrow().len() as i64;
                     let idx = if *i < 0 { len + i } else { *i };
-                    if idx < 0 || idx as usize >= arr.len() {
+                    if idx < 0 || idx as usize >= len as usize {
                         return Err(Error::Eval {
                             pos,
-                            msg: format!("array index {} out of range (len {})", i, arr.len()),
+                            msg: format!("array index {} out of range (len {})", i, len),
                         });
                     }
-                    arr[idx as usize] = value;
+                    rc.borrow_mut()[idx as usize] = value;
                 }
-                (Value::Map(map), Value::String(k)) => {
-                    map.insert(k.clone(), value);
+                (Value::Map(rc), Value::String(k)) => {
+                    rc.borrow_mut().insert(k.clone(), value);
                 }
                 (c, k) => {
                     return Err(Error::Eval {
@@ -251,7 +259,7 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
                     })
                 }
             }
-            eval_assign_lvalue(target, container, env)
+            Ok(())
         }
         _ => Err(Error::Eval {
             pos,
@@ -263,7 +271,7 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
 fn eval_method(recv: Value, method: &str, args: &[Value]) -> HResult<Value> {
     match recv {
         Value::String(s) => eval_string_method(s, method, args),
-        Value::Array(a) => eval_array_method(a, method, args),
+        Value::Array(rc) => eval_array_method(rc, method, args),
         Value::Object(obj) => obj.call_method(method, args),
         v => Err(EvalHelperError::new(format!(
             "{} has no method '{method}'",
@@ -290,7 +298,7 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
                     sep.type_name()
                 )));
             };
-            Ok(Value::Array(
+            Ok(Value::array(
                 s.split(sep.as_str())
                     .map(|p| Value::String(p.to_string()))
                     .collect(),
@@ -329,11 +337,15 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
     }
 }
 
-fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> HResult<Value> {
+fn eval_array_method(
+    rc: std::rc::Rc<std::cell::RefCell<Vec<Value>>>,
+    method: &str,
+    args: &[Value],
+) -> HResult<Value> {
     match method {
         "len" => {
             unpack_args!(args =>);
-            Ok(Value::Int(a.len() as i64))
+            Ok(Value::Int(rc.borrow().len() as i64))
         }
         m => Err(EvalHelperError::new(format!("Array has no method '{m}'"))),
     }
@@ -341,8 +353,11 @@ fn eval_array_method(a: Vec<Value>, method: &str, args: &[Value]) -> HResult<Val
 
 fn eval_index(target: Value, key: Value) -> HResult<Value> {
     match (target, key) {
-        (Value::Map(map), Value::String(k)) => Ok(map.get(&k).cloned().unwrap_or(Value::Null)),
+        (Value::Map(map), Value::String(k)) => {
+            Ok(map.borrow().get(&k).cloned().unwrap_or(Value::Null))
+        }
         (Value::Array(arr), Value::Int(i)) => {
+            let arr = arr.borrow();
             let i = if i < 0 { arr.len() as i64 + i } else { i };
             Ok(arr.get(i as usize).cloned().unwrap_or(Value::Null))
         }
@@ -426,8 +441,9 @@ fn eval_slice(
 
     match target {
         Value::Array(arr) => {
+            let arr = arr.borrow();
             let indices = slice_indices(arr.len(), start, stop, step);
-            Ok(Value::Array(
+            Ok(Value::array(
                 indices.into_iter().map(|i| arr[i].clone()).collect(),
             ))
         }
@@ -548,9 +564,10 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
         BinOp::Add => match (left, right) {
             (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
             (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
-            (Value::Array(mut a), Value::Array(b)) => {
-                a.extend(b);
-                Ok(Value::Array(a))
+            (Value::Array(a), Value::Array(b)) => {
+                let mut new_vec = a.borrow().clone();
+                new_vec.extend(b.borrow().iter().cloned());
+                Ok(Value::array(new_vec))
             }
             (a, b) => match coerce_numeric(&a, &b) {
                 Ok((Numeric::Int(a), Numeric::Int(b))) => {
@@ -603,13 +620,15 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
         BinOp::Gt => compare_values(left, right, |o| o == std::cmp::Ordering::Greater),
         BinOp::Ge => compare_values(left, right, |o| o != std::cmp::Ordering::Less),
         BinOp::In => match (left, right) {
-            (left, Value::Array(arr)) => {
-                Ok(Value::Bool(arr.iter().any(|v| values_equal(v, &left))))
-            }
+            (left, Value::Array(arr)) => Ok(Value::Bool(
+                arr.borrow().iter().any(|v| values_equal(v, &left)),
+            )),
             (Value::String(s), Value::String(haystack)) => {
                 Ok(Value::Bool(haystack.contains(s.as_str())))
             }
-            (Value::String(key), Value::Map(map)) => Ok(Value::Bool(map.contains_key(&key))),
+            (Value::String(key), Value::Map(map)) => {
+                Ok(Value::Bool(map.borrow().contains_key(&key)))
+            }
             (_, Value::Null) => Ok(Value::Bool(false)),
             (l, r) => Err(EvalHelperError::new(format!(
                 "'in' not supported between {} and {}",
@@ -618,13 +637,15 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
             ))),
         },
         BinOp::NotIn => match (left, right) {
-            (left, Value::Array(arr)) => {
-                Ok(Value::Bool(!arr.iter().any(|v| values_equal(v, &left))))
-            }
+            (left, Value::Array(arr)) => Ok(Value::Bool(
+                !arr.borrow().iter().any(|v| values_equal(v, &left)),
+            )),
             (Value::String(s), Value::String(haystack)) => {
                 Ok(Value::Bool(!haystack.contains(s.as_str())))
             }
-            (Value::String(key), Value::Map(map)) => Ok(Value::Bool(!map.contains_key(&key))),
+            (Value::String(key), Value::Map(map)) => {
+                Ok(Value::Bool(!map.borrow().contains_key(&key)))
+            }
             (_, Value::Null) => Ok(Value::Bool(true)),
             (l, r) => Err(EvalHelperError::new(format!(
                 "'not in' not supported between {} and {}",
@@ -679,8 +700,8 @@ fn is_truthy(v: &Value) -> bool {
         Value::Int(n) => *n != 0,
         Value::Float(f) => *f != 0.0,
         Value::String(s) => !s.is_empty(),
-        Value::Array(a) => !a.is_empty(),
-        Value::Map(o) => !o.is_empty(),
+        Value::Array(a) => !a.borrow().is_empty(),
+        Value::Map(o) => !o.borrow().is_empty(),
         Value::Fn(_) | Value::Object(_) => true,
     }
 }
@@ -764,24 +785,28 @@ fn builtin_bool(args: &[Value]) -> HResult<Value> {
 
 fn builtin_list(args: &[Value]) -> HResult<Value> {
     match args.first() {
-        Some(Value::Array(a)) => Ok(Value::Array(a.clone())),
-        Some(Value::String(s)) => Ok(Value::Array(
+        // shallow copy: inner Rc elements share their backing stores
+        Some(Value::Array(a)) => Ok(Value::array(a.borrow().clone())),
+        Some(Value::String(s)) => Ok(Value::array(
             s.chars().map(|c| Value::String(c.to_string())).collect(),
         )),
-        Some(Value::Map(m)) => Ok(Value::Array(
-            m.keys().map(|k| Value::String(k.clone())).collect(),
+        Some(Value::Map(m)) => Ok(Value::array(
+            m.borrow()
+                .keys()
+                .map(|k| Value::String(k.clone()))
+                .collect(),
         )),
         Some(v) => Err(EvalHelperError::new(format!(
             "list() not supported for {}",
             v.type_name()
         ))),
-        None => Ok(Value::Array(vec![])),
+        None => Ok(Value::array(vec![])),
     }
 }
 
 fn builtin_map(args: &[Value]) -> HResult<Value> {
     let pairs = match args.first() {
-        Some(Value::Array(a)) => a,
+        Some(Value::Array(a)) => a.borrow().clone(),
         _ => {
             return Err(EvalHelperError::new(
                 "map() expects an array of [key, value] pairs",
@@ -791,7 +816,13 @@ fn builtin_map(args: &[Value]) -> HResult<Value> {
     let mut out = IndexMap::new();
     for (i, pair) in pairs.iter().enumerate() {
         match pair {
-            Value::Array(kv) if kv.len() == 2 => {
+            Value::Array(kv) => {
+                let kv = kv.borrow();
+                if kv.len() != 2 {
+                    return Err(EvalHelperError::new(format!(
+                        "map() entry at index {i} must be a 2-element array"
+                    )));
+                }
                 let key = match &kv[0] {
                     Value::String(s) => s.clone(),
                     v => {
@@ -810,7 +841,7 @@ fn builtin_map(args: &[Value]) -> HResult<Value> {
             }
         }
     }
-    Ok(Value::Map(out))
+    Ok(Value::map(out))
 }
 
 #[cfg(test)]
@@ -842,11 +873,11 @@ mod tests {
             Value::from("hello_world")
         );
         // array concatenation via +
-        let a = Value::Array(vec![Value::from(1i64), Value::from(2i64)]);
-        let b = Value::Array(vec![Value::from(3i64), Value::from(4i64)]);
+        let a = Value::array(vec![Value::from(1i64), Value::from(2i64)]);
+        let b = Value::array(vec![Value::from(3i64), Value::from(4i64)]);
         assert_eq!(
             run("a + b", &[("a", a), ("b", b)]),
-            Value::Array(vec![
+            Value::array(vec![
                 Value::from(1i64),
                 Value::from(2i64),
                 Value::from(3i64),
@@ -906,7 +937,7 @@ mod tests {
 
     #[test]
     fn test_index() {
-        let feature = Value::Map(indexmap::indexmap! {
+        let feature = Value::map(indexmap::indexmap! {
             "package".into() => Value::from("bldg"),
             "cityGmlPath".into() => Value::from("/data/city.gml"),
         });
@@ -922,7 +953,7 @@ mod tests {
             run(r#"feature["missing"]"#, &[("feature", feature)]),
             Value::Null
         );
-        let arr = Value::Array(vec![
+        let arr = Value::array(vec![
             Value::from(1i64),
             Value::from(2i64),
             Value::from(3i64),
@@ -943,18 +974,18 @@ mod tests {
         assert_eq!(run(r#""abcde"[::-1]"#, &[]), Value::from("edcba"));
         assert_eq!(run(r#""abcde"[-1::-2]"#, &[]), Value::from("eca"));
         assert_eq!(run(r#""abcde"[::2]"#, &[]), Value::from("ace"));
-        let arr = Value::Array((0i64..5).map(Value::from).collect());
+        let arr = Value::array((0i64..5).map(Value::from).collect());
         assert_eq!(
             run("arr[1:3]", &[("arr", arr.clone())]),
-            Value::Array(vec![Value::from(1i64), Value::from(2i64)])
+            Value::array(vec![Value::from(1i64), Value::from(2i64)])
         );
         assert_eq!(
             run("arr[-2:]", &[("arr", arr.clone())]),
-            Value::Array(vec![Value::from(3i64), Value::from(4i64)])
+            Value::array(vec![Value::from(3i64), Value::from(4i64)])
         );
         assert_eq!(
             run("arr[::-1]", &[("arr", arr.clone())]),
-            Value::Array((0i64..5).rev().map(Value::from).collect())
+            Value::array((0i64..5).rev().map(Value::from).collect())
         );
         assert!(try_run("arr[s:]", &[("arr", arr.clone()), ("s", Value::Float(1.0))]).is_err());
         assert!(try_run("arr[:s]", &[("arr", arr.clone()), ("s", Value::Float(3.0))]).is_err());
@@ -966,7 +997,7 @@ mod tests {
         assert_eq!(run(r#""  hello  ".trim()"#, &[]), Value::from("hello"));
         assert_eq!(run(r#""hello".len()"#, &[]), Value::from(5i64));
         assert_eq!(run(r#""".len()"#, &[]), Value::from(0i64));
-        let arr = Value::Array(vec![
+        let arr = Value::array(vec![
             Value::from(1i64),
             Value::from(2i64),
             Value::from(3i64),
@@ -986,17 +1017,17 @@ mod tests {
         );
         assert_eq!(
             run(r#""hello".split(":")"#, &[]),
-            Value::Array(vec![Value::from("hello")])
+            Value::array(vec![Value::from("hello")])
         );
         assert_eq!(
             run(r#""a::b".split(":")"#, &[]),
-            Value::Array(vec![Value::from("a"), Value::from(""), Value::from("b")])
+            Value::array(vec![Value::from("a"), Value::from(""), Value::from("b")])
         );
     }
 
     #[test]
     fn test_in_operator() {
-        let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
+        let pkgs = Value::array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
             run(r#""bldg" in pkgs"#, &[("pkgs", pkgs.clone())]),
             Value::from(true)
@@ -1017,7 +1048,7 @@ mod tests {
         assert_eq!(run(r#""xyz" in "hello world""#, &[]), Value::from(false));
         assert_eq!(run(r#""xyz" not in "hello world""#, &[]), Value::from(true));
         assert_eq!(run(r#""" in "hello""#, &[]), Value::from(true));
-        let m = Value::Map(indexmap::indexmap! {
+        let m = Value::map(indexmap::indexmap! {
             "a".into() => Value::from(1i64),
             "b".into() => Value::from(2i64),
         });
@@ -1027,7 +1058,7 @@ mod tests {
         assert_eq!(run(r#""x" in null"#, &[]), Value::from(false));
         assert_eq!(run(r#""x" not in null"#, &[]), Value::from(true));
         // not applies to the whole comparison: `not ("a" in pkgs)`
-        let pkgs2 = Value::Array(vec![Value::from("a")]);
+        let pkgs2 = Value::array(vec![Value::from("a")]);
         assert_eq!(
             run(r#"not "a" in pkgs"#, &[("pkgs", pkgs2)]),
             Value::from(false)
@@ -1137,21 +1168,21 @@ mod tests {
     fn test_map() {
         assert_eq!(
             run(r#"map([["a", 1], ["b", 2]])"#, &[]),
-            Value::Map(indexmap::indexmap! {
+            Value::map(indexmap::indexmap! {
                 "a".into() => Value::from(1i64),
                 "b".into() => Value::from(2i64),
             })
         );
         assert_eq!(
             run(r#"{"a": 1, "b": 2}"#, &[]),
-            Value::Map(indexmap::indexmap! {
+            Value::map(indexmap::indexmap! {
                 "a".into() => Value::from(1i64),
                 "b".into() => Value::from(2i64),
             })
         );
         assert_eq!(
             run(r#"{"x": true,}"#, &[]),
-            Value::Map(indexmap::indexmap! { "x".into() => Value::Bool(true) })
+            Value::map(indexmap::indexmap! { "x".into() => Value::Bool(true) })
         );
         assert_eq!(
             run(r#"{"pre" + "fix": 9}["prefix"]"#, &[]),
@@ -1159,8 +1190,8 @@ mod tests {
         );
         assert_eq!(
             run(r#"{"a": {"b": 2}}"#, &[]),
-            Value::Map(indexmap::indexmap! {
-                "a".into() => Value::Map(indexmap::indexmap! { "b".into() => Value::from(2i64) }),
+            Value::map(indexmap::indexmap! {
+                "a".into() => Value::map(indexmap::indexmap! { "b".into() => Value::from(2i64) }),
             })
         );
         assert_eq!(run("{}", &[]), Value::Null);
@@ -1200,16 +1231,16 @@ mod tests {
         assert_eq!(run(r#"bool(null)"#, &[]), Value::from(false));
         assert_eq!(
             run(r#"list("abc")"#, &[]),
-            Value::Array(vec![Value::from("a"), Value::from("b"), Value::from("c")])
+            Value::array(vec![Value::from("a"), Value::from("b"), Value::from("c")])
         );
-        let arr = Value::Array(vec![Value::from(1i64), Value::from(2i64)]);
+        let arr = Value::array(vec![Value::from(1i64), Value::from(2i64)]);
         assert_eq!(run("list(arr)", &[("arr", arr.clone())]), arr);
-        let m = Value::Map(
+        let m = Value::map(
             indexmap::indexmap! { "x".into() => Value::from(1i64), "y".into() => Value::from(2i64) },
         );
         assert_eq!(
             run("list(m)", &[("m", m)]),
-            Value::Array(vec![Value::from("x"), Value::from("y")])
+            Value::array(vec![Value::from("x"), Value::from("y")])
         );
     }
 
@@ -1321,11 +1352,11 @@ mod tests {
 
     #[test]
     fn test_complex_expr() {
-        let feature = Value::Map(indexmap::indexmap! {
+        let feature = Value::map(indexmap::indexmap! {
             "extension".into() => Value::from("gml"),
             "package".into() => Value::from("bldg"),
         });
-        let pkgs = Value::Array(vec![Value::from("bldg"), Value::from("tran")]);
+        let pkgs = Value::array(vec![Value::from("bldg"), Value::from("tran")]);
         assert_eq!(
             run(
                 r#"feature["extension"] == "gml" and feature["package"] in packages"#,
@@ -1363,7 +1394,7 @@ mod tests {
         // basic element replacement
         assert_eq!(
             run("a = [1, 2, 3]; a[1] = 99; a", &[]),
-            Value::Array(vec![
+            Value::array(vec![
                 Value::from(1i64),
                 Value::from(99i64),
                 Value::from(3i64)
@@ -1372,7 +1403,7 @@ mod tests {
         // negative index
         assert_eq!(
             run("a = [10, 20, 30]; a[-1] = 99; a", &[]),
-            Value::Array(vec![
+            Value::array(vec![
                 Value::from(10i64),
                 Value::from(20i64),
                 Value::from(99i64)
@@ -1383,7 +1414,7 @@ mod tests {
         // nested: a[0][1] = v
         assert_eq!(
             run("a = [[1, 2], [3, 4]]; a[0][1] = 99; a[0]", &[]),
-            Value::Array(vec![Value::from(1i64), Value::from(99i64)])
+            Value::array(vec![Value::from(1i64), Value::from(99i64)])
         );
     }
 
@@ -1415,6 +1446,41 @@ mod tests {
         );
         // assign returns the assigned value
         assert_eq!(run(r#"m = {"a": 0}; m["x"] = 42"#, &[]), Value::from(42i64));
+    }
+
+    #[test]
+    fn test_reference_semantics() {
+        // Assigning an array to another variable shares the backing store.
+        assert_eq!(run("a = [1, 2, 3]; b = a; b[0] = 99; a[0]", &[]), Value::from(99i64));
+
+        // Same for maps.
+        assert_eq!(
+            run(r#"m = {"x": 1}; n = m; n["x"] = 42; m["x"]"#, &[]),
+            Value::from(42i64)
+        );
+
+        // Passing an array into an env var and mutating through it.
+        let arr = Value::array(vec![Value::from(1i64), Value::from(2i64), Value::from(3i64)]);
+        run("arr[0] = 99", &[("arr", arr.clone())]);
+        assert_eq!(arr, Value::array(vec![Value::from(99i64), Value::from(2i64), Value::from(3i64)]));
+    }
+
+    #[test]
+    fn test_while() {
+        assert_eq!(
+            run("i = 0; while i < 5 { i = i + 1 }; i", &[]),
+            Value::from(5i64)
+        );
+        // while evaluates to Null
+        assert_eq!(run("while false { 1 }", &[]), Value::Null);
+        // accumulate sum
+        assert_eq!(
+            run(
+                "s = 0; i = 1; while i <= 10 { s = s + i; i = i + 1 }; s",
+                &[]
+            ),
+            Value::from(55i64)
+        );
     }
 
     #[test]

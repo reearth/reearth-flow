@@ -20,6 +20,7 @@ extern {
         "or"    => crate::core::lexer::Token::Or,
         "if"    => crate::core::lexer::Token::If,
         "else"  => crate::core::lexer::Token::Else,
+        "while" => crate::core::lexer::Token::While,
         "."     => crate::core::lexer::Token::Dot,
         "["     => crate::core::lexer::Token::LBracket,
         "]"     => crate::core::lexer::Token::RBracket,
@@ -165,6 +166,7 @@ Primary: Expr = {
     BlockExpr,
     MapExpr,
     IfExpr,
+    WhileExpr,
 };
 
 // ElseBranch is either a block or another `if`, enabling `else if` chains.
@@ -173,6 +175,11 @@ IfExpr: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(else_) }),
     <l:@L> "if" <cond:Or> <then:BlockExpr> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(Expr::new(Span { start: r, end: r }, ExprKind::Null)) }),
+};
+
+WhileExpr: Expr = {
+    <l:@L> "while" <cond:Or> <body:BlockExpr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::While { cond: Box::new(cond), body: Box::new(body) }),
 };
 
 ElseBranch: Expr = {
