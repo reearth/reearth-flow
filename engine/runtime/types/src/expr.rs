@@ -158,6 +158,7 @@ pub fn env_from_feature(
     env
 }
 
+/// Cycle detection is not performed; callers are responsible for not passing cyclic values.
 pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue {
     use reearth_flow_expr::Value;
     match v {

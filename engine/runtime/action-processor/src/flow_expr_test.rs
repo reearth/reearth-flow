@@ -106,10 +106,7 @@ impl Processor for FlowExprTest {
             let value = match code.eval(&mut eval_env) {
                 Ok(v) => attribute_value_from_eval(v),
                 Err(e) => {
-                    ctx.event_hub.error_log(
-                        Some(ctx.error_span()),
-                        format!("FlowExprTest eval error for '{attr}': {e}"),
-                    );
+                    tracing::error!(attr, error = %e, "FlowExprTest eval error");
                     AttributeValue::Null
                 }
             };

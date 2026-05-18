@@ -904,8 +904,7 @@ pub(crate) fn values_equal(a: &Value, b: &Value) -> bool {
             let b = b.borrow();
             a.len() == b.len()
                 && a.iter()
-                    .zip(b.iter())
-                    .all(|((ka, va), (kb, vb))| ka == kb && values_equal(va, vb))
+                    .all(|(k, va)| b.get(k).is_some_and(|vb| values_equal(va, vb)))
         }
         (Value::Object(a), Value::Object(b)) => Rc::ptr_eq(a, b),
         (Value::Fn(a), Value::Fn(b)) => Rc::ptr_eq(&a.0, &b.0),
@@ -1471,6 +1470,8 @@ mod tests {
             }),
         );
         assert_eval("{}", &[], Value::Null);
+        // insertion order must not affect equality
+        assert_eval(r#"{"a": 1, "b": 2} == {"b": 2, "a": 1}"#, &[], Value::Bool(true));
     }
 
     #[test]
