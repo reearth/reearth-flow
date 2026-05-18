@@ -2,20 +2,26 @@ import { FileIcon } from "@phosphor-icons/react";
 
 import { Button, CmsLogo, Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { WorkflowVariable } from "@flow/types";
+import type { AwarenessUser, WorkflowVariable } from "@flow/types";
+
+import { paramsAwarenessStyles } from "../SchemaForm/utils/awarenessTemplateStyles";
 
 type Props = {
   id?: string;
   variable: Pick<WorkflowVariable, "defaultValue" | "config">;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onDialogOpen: (dialog: "assets" | "cms") => void;
   onDefaultValueChange: (newValue: string) => void;
+  onFieldFocus?: (field: string | null) => void;
 };
 
 export const AssetDefaultSelectionInput: React.FC<Props> = ({
   id = "default-asset-selection",
   variable,
+  fieldFocusMap,
   onDialogOpen,
   onDefaultValueChange,
+  onFieldFocus,
 }) => {
   const t = useT();
   return (
@@ -47,6 +53,9 @@ export const AssetDefaultSelectionInput: React.FC<Props> = ({
         onChange={(e) => onDefaultValueChange(e.target.value)}
         placeholder={t("Enter default value")}
         className="mt-1"
+        style={paramsAwarenessStyles(fieldFocusMap?.["defaultValue"])}
+        onFocus={() => onFieldFocus?.("defaultValue")}
+        onBlur={() => onFieldFocus?.(null)}
       />
     </div>
   );

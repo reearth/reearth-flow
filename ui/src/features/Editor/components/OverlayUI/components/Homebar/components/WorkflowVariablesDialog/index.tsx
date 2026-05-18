@@ -388,6 +388,12 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         onClose={handleCloseEdit}
         onUpdate={handleLocalUpdate}
         onLiveUpdate={handleVariableLiveUpdate}
+        onFieldFocus={(field) =>
+          workflowVarAwareness?.onFieldFocus(
+            field ? (editingVariable?.id ?? null) : null,
+            field,
+          )
+        }
       />
     </>
   );

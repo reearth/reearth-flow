@@ -79,13 +79,11 @@ export default ({
   // state until the session is first initialised.
   const sessionVars = useMemo<WorkflowVariable[]>(
     () => rawSession?.variables ?? currentWorkflowVariables ?? [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [rawSession?.variables, currentWorkflowVariables],
   );
 
   const sessionBase = useMemo<WorkflowVariable[]>(
     () => rawSession?.base ?? currentWorkflowVariables ?? [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [rawSession?.base, currentWorkflowVariables],
   );
 

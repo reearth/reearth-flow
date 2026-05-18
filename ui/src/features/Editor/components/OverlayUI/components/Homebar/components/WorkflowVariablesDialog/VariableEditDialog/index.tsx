@@ -1,4 +1,5 @@
 import { GearIcon } from "@phosphor-icons/react";
+import { useMemo } from "react";
 
 import {
   Dialog,
@@ -30,6 +31,7 @@ type Props = {
   onClose: () => void;
   onUpdate: (variable: WorkflowVariable) => void;
   onLiveUpdate?: (variable: WorkflowVariable) => void;
+  onFieldFocus?: (field: string | null) => void;
 };
 
 const VariableEditDialog: React.FC<Props> = ({
@@ -39,9 +41,21 @@ const VariableEditDialog: React.FC<Props> = ({
   onClose,
   onUpdate,
   onLiveUpdate,
+  onFieldFocus,
 }) => {
   const t = useT();
-  console.log("EDITING USERS", editingUsers);
+
+  const fieldFocusMap = useMemo(() => {
+    const map: Record<string, AwarenessUser[]> = {};
+    editingUsers.forEach((user) => {
+      if (user.focusedVariableField) {
+        const field = user.focusedVariableField;
+        if (!map[field]) map[field] = [];
+        map[field].push(user);
+      }
+    });
+    return map;
+  }, [editingUsers]);
   const {
     localVariable,
     hasChanges,
@@ -105,13 +119,20 @@ const VariableEditDialog: React.FC<Props> = ({
         return (
           <DefaultEditor
             variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
             onUpdate={handleFieldUpdate}
             onDialogOpen={handleDialogOpen}
+            onFieldFocus={onFieldFocus}
           />
         );
       case "number":
         return (
-          <NumberEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+          <NumberEditor
+            variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
+            onUpdate={handleFieldUpdate}
+            onFieldFocus={onFieldFocus}
+          />
         );
       case "yes_no":
         return (
@@ -121,29 +142,40 @@ const VariableEditDialog: React.FC<Props> = ({
         return (
           <DateTimeEditor
             variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
             onUpdate={handleFieldUpdate}
+            onFieldFocus={onFieldFocus}
           />
         );
       case "choice":
         return (
           <ChoiceEditor
             variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
             onUpdate={handleFieldUpdate}
             onDialogOpen={handleDialogOpen}
+            onFieldFocus={onFieldFocus}
             clearUrl={clearUrl}
             assetUrl={assetUrl}
           />
         );
       case "color":
         return (
-          <ColorEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+          <ColorEditor
+            variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
+            onUpdate={handleFieldUpdate}
+            onFieldFocus={onFieldFocus}
+          />
         );
       default:
         return (
           <DefaultEditor
             variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
             onUpdate={handleFieldUpdate}
             onDialogOpen={handleDialogOpen}
+            onFieldFocus={onFieldFocus}
           />
         );
     }

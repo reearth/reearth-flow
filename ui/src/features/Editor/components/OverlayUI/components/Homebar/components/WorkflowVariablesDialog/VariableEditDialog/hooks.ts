@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 import { Asset, WorkflowVariable } from "@flow/types";
 
@@ -24,6 +24,9 @@ export default ({
   );
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Snapshot of the variable when this edit session opened — used to revert on cancel.
+  const openedVariableRef = useRef<WorkflowVariable | null>(null);
+
   const handleAssetDoubleClick = (asset: Asset) => {
     if (localVariable && variable) {
       const updated = { ...localVariable, defaultValue: asset.url };
@@ -46,15 +49,20 @@ export default ({
     handleDialogClose();
   };
 
-  // Sync from parent when no local edits in progress (passive viewer update)
+  // Sync from parent when no local edits in progress (passive viewer update).
+  // Also captures the opening snapshot the first time variable becomes non-null.
   useEffect(() => {
     if (variable) {
       if (!hasChanges) {
         setLocalVariable({ ...variable });
+        if (!openedVariableRef.current) {
+          openedVariableRef.current = { ...variable };
+        }
       }
     } else {
       setLocalVariable(null);
       setHasChanges(false);
+      openedVariableRef.current = null;
     }
   }, [variable, hasChanges]);
 
@@ -71,13 +79,19 @@ export default ({
     if (localVariable && hasChanges) {
       onUpdate(localVariable);
     }
+    openedVariableRef.current = null;
     onClose();
   }, [localVariable, hasChanges, onUpdate, onClose]);
 
   const handleCancel = useCallback(() => {
+    // Revert any live Yjs writes back to the state when this edit session opened.
+    if (hasChanges && openedVariableRef.current) {
+      onLiveUpdate?.(openedVariableRef.current);
+    }
+    openedVariableRef.current = null;
     setHasChanges(false);
     onClose();
-  }, [onClose]);
+  }, [hasChanges, onLiveUpdate, onClose]);
 
   const clearUrl = () => {
     setAssetUrl(null);

@@ -1,13 +1,21 @@
 import { Input, Label, NumberDefaultValueInput } from "@flow/components";
+import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { useT } from "@flow/lib/i18n";
-import { WorkflowVariable, NumberConfig } from "@flow/types";
+import { AwarenessUser, WorkflowVariable, NumberConfig } from "@flow/types";
 
 type Props = {
   variable: WorkflowVariable;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onUpdate: (variable: WorkflowVariable) => void;
+  onFieldFocus?: (field: string | null) => void;
 };
 
-export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
+export const NumberEditor: React.FC<Props> = ({
+  variable,
+  fieldFocusMap,
+  onUpdate,
+  onFieldFocus,
+}) => {
   const t = useT();
 
   // Get number config with defaults
@@ -42,17 +50,22 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
         <Label htmlFor="default-value" className="text-sm font-medium">
           {t("Default Value")}
         </Label>
-        <NumberDefaultValueInput
-          id="default-value"
-          className="mt-1"
-          variable={variable}
-          onDefaultValueChange={(newValue) =>
-            onUpdate({
-              ...variable,
-              defaultValue: newValue,
-            })
-          }
-        />
+        <div
+          className="mt-1 rounded"
+          style={paramsAwarenessStyles(fieldFocusMap?.["defaultValue"])}
+          onFocus={() => onFieldFocus?.("defaultValue")}
+          onBlur={() => onFieldFocus?.(null)}>
+          <NumberDefaultValueInput
+            id="default-value"
+            variable={variable}
+            onDefaultValueChange={(newValue) =>
+              onUpdate({
+                ...variable,
+                defaultValue: newValue,
+              })
+            }
+          />
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
           {t("The default numeric value to use when this variable is not set")}
           {getConstraintText()}.
@@ -73,7 +86,9 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
                 e.target.value === "" ? undefined : parseFloat(e.target.value);
               handleConfigChange("min", value);
             }}
-            onFocus={(e) => e.stopPropagation()}
+            onFocus={() => onFieldFocus?.("min")}
+            onBlur={() => onFieldFocus?.(null)}
+            style={paramsAwarenessStyles(fieldFocusMap?.["min"])}
             placeholder={t("No minimum")}
             className="mt-1"
           />
@@ -92,7 +107,9 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
                 e.target.value === "" ? undefined : parseFloat(e.target.value);
               handleConfigChange("max", value);
             }}
-            onFocus={(e) => e.stopPropagation()}
+            onFocus={() => onFieldFocus?.("max")}
+            onBlur={() => onFieldFocus?.(null)}
+            style={paramsAwarenessStyles(fieldFocusMap?.["max"])}
             placeholder={t("No maximum")}
             className="mt-1"
           />

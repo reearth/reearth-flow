@@ -1,15 +1,23 @@
 import { Input, Label, Switch } from "@flow/components";
+import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { DateTimeDefaultValueInput } from "@flow/components/workflowVariables";
 import { useT } from "@flow/lib/i18n";
-import { WorkflowVariable, DateTimeConfig } from "@flow/types";
+import { AwarenessUser, WorkflowVariable, DateTimeConfig } from "@flow/types";
 import { formatDateOnly } from "@flow/utils";
 
 type Props = {
   variable: WorkflowVariable;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onUpdate: (variable: WorkflowVariable) => void;
+  onFieldFocus?: (field: string | null) => void;
 };
 
-export const DateTimeEditor: React.FC<Props> = ({ variable, onUpdate }) => {
+export const DateTimeEditor: React.FC<Props> = ({
+  variable,
+  fieldFocusMap,
+  onUpdate,
+  onFieldFocus,
+}) => {
   const t = useT();
 
   // Get datetime config with defaults
@@ -77,7 +85,9 @@ export const DateTimeEditor: React.FC<Props> = ({ variable, onUpdate }) => {
               id="min-date"
               type="date"
               value={formatDateOnly(config.minDate)}
-              onFocus={(e) => e.stopPropagation()}
+              onFocus={() => onFieldFocus?.("minDate")}
+              onBlur={() => onFieldFocus?.(null)}
+              style={paramsAwarenessStyles(fieldFocusMap?.["minDate"])}
               onChange={(e) => {
                 const value = e.target.value || undefined;
                 handleConfigChange("minDate", value);
@@ -96,7 +106,9 @@ export const DateTimeEditor: React.FC<Props> = ({ variable, onUpdate }) => {
               id="max-date"
               type="date"
               value={formatDateOnly(config.maxDate)}
-              onFocus={(e) => e.stopPropagation()}
+              onFocus={() => onFieldFocus?.("maxDate")}
+              onBlur={() => onFieldFocus?.(null)}
+              style={paramsAwarenessStyles(fieldFocusMap?.["maxDate"])}
               onChange={(e) => {
                 const value = e.target.value || undefined;
                 handleConfigChange("maxDate", value);
@@ -122,13 +134,19 @@ export const DateTimeEditor: React.FC<Props> = ({ variable, onUpdate }) => {
             className="mb-2 block text-sm font-medium">
             {allowTime ? t("Default Date & Time") : t("Default Date")}
           </Label>
-          <DateTimeDefaultValueInput
-            id="default-datetime"
-            variable={variable}
-            onDefaultValueChange={(newValue) =>
-              onUpdate({ ...variable, defaultValue: newValue })
-            }
-          />
+          <div
+            className="rounded"
+            style={paramsAwarenessStyles(fieldFocusMap?.["defaultValue"])}
+            onFocus={() => onFieldFocus?.("defaultValue")}
+            onBlur={() => onFieldFocus?.(null)}>
+            <DateTimeDefaultValueInput
+              id="default-datetime"
+              variable={variable}
+              onDefaultValueChange={(newValue) =>
+                onUpdate({ ...variable, defaultValue: newValue })
+              }
+            />
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {allowTime
               ? t(
