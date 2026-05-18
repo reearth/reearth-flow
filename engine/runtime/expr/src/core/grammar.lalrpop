@@ -36,13 +36,17 @@ extern {
         "+="    => crate::core::lexer::Token::PlusAssign,
         "-="    => crate::core::lexer::Token::MinusAssign,
         "*="    => crate::core::lexer::Token::StarAssign,
+        "**="   => crate::core::lexer::Token::DoubleStarAssign,
         "/="    => crate::core::lexer::Token::SlashAssign,
         "//="   => crate::core::lexer::Token::DoubleSlashAssign,
+        "%="    => crate::core::lexer::Token::PercentAssign,
         "+"     => crate::core::lexer::Token::Plus,
         "-"     => crate::core::lexer::Token::Minus,
         "*"     => crate::core::lexer::Token::Star,
+        "**"    => crate::core::lexer::Token::DoubleStar,
         "/"     => crate::core::lexer::Token::Slash,
         "//"    => crate::core::lexer::Token::DoubleSlash,
+        "%"     => crate::core::lexer::Token::Percent,
         "=="    => crate::core::lexer::Token::Eq,
         "!="    => crate::core::lexer::Token::Ne,
         "<"     => crate::core::lexer::Token::Lt,
@@ -82,6 +86,10 @@ Assign: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Div, rhs: Box::new(v) }),
     <l:@L> <lv:Postfix> "//=" <v:Assign> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::FloorDiv, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "%=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Mod, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "**=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Pow, rhs: Box::new(v) }),
     Or,
 };
 
@@ -142,12 +150,21 @@ Mul: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Div, Box::new(rhs))),
     <l:@L> <lhs:Mul> "//" <rhs:Unary> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::FloorDiv, Box::new(rhs))),
+    <l:@L> <lhs:Mul> "%" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Mod, Box::new(rhs))),
     Unary,
 };
 
 Unary: Expr = {
     <l:@L> "-" <e:Unary> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Neg, Box::new(e))),
+    Pow,
+};
+
+// Right-associative; left operand is Postfix (no leading unary minus) so `-2**2 = -(2**2)`.
+Pow: Expr = {
+    <l:@L> <lhs:Postfix> "**" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Pow, Box::new(rhs))),
     Postfix,
 };
 

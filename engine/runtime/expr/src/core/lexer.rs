@@ -93,10 +93,14 @@ pub enum Token {
     Minus,
     #[token("*")]
     Star,
+    #[token("**")]
+    DoubleStar,
     #[token("/")]
     Slash,
     #[token("//")]
     DoubleSlash,
+    #[token("%")]
+    Percent,
 
     // compound assignment (must come before plain `=`, `+`, `-`, `*`, `/` — longer wins)
     #[token("+=")]
@@ -105,10 +109,14 @@ pub enum Token {
     MinusAssign,
     #[token("*=")]
     StarAssign,
+    #[token("**=")]
+    DoubleStarAssign,
     #[token("/=")]
     SlashAssign,
     #[token("//=")]
     DoubleSlashAssign,
+    #[token("%=")]
+    PercentAssign,
 
     // assignment (single `=`; must come after `==` in logos priority — longer wins)
     #[token("=")]

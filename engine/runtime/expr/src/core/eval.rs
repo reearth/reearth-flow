@@ -611,6 +611,8 @@ fn binop_dunder(op: &BinOp) -> Option<&'static str> {
         BinOp::Mul => Some("__mul__"),
         BinOp::Div => Some("__div__"),
         BinOp::FloorDiv => Some("__floordiv__"),
+        BinOp::Mod => Some("__mod__"),
+        BinOp::Pow => Some("__pow__"),
         BinOp::Eq => Some("__eq__"),
         BinOp::Ne => None, // derived as !__eq__ in eval_binary
         BinOp::Lt => Some("__lt__"),
@@ -756,6 +758,52 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
             }
             Ok(_) => unreachable!(),
             Err(_) => Err(InnerError::new("'//' not supported for these types")),
+        },
+        BinOp::Mod => match coerce_numeric(&left, &right) {
+            Ok((Numeric::Int(a), Numeric::Int(b))) => {
+                if b == 0 {
+                    return Err(InnerError::new("modulo by zero"));
+                }
+                if b == -1 {
+                    return Ok(Value::Int(0));
+                }
+                let r = a % b;
+                // Python modulo: sign follows the divisor
+                let result = if r != 0 && (r < 0) != (b < 0) {
+                    r + b
+                } else {
+                    r
+                };
+                Ok(Value::Int(result))
+            }
+            Ok((Numeric::Float(a), Numeric::Float(b))) => {
+                if b == 0.0 {
+                    return Err(InnerError::new("modulo by zero"));
+                }
+                let r = a % b;
+                let result = if r != 0.0 && (r < 0.0) != (b < 0.0) {
+                    r + b
+                } else {
+                    r
+                };
+                Ok(Value::Float(result))
+            }
+            Ok(_) => unreachable!(),
+            Err(_) => Err(InnerError::new("'%' not supported for these types")),
+        },
+        BinOp::Pow => match coerce_numeric(&left, &right) {
+            Ok((Numeric::Int(a), Numeric::Int(b))) => {
+                if b < 0 {
+                    Ok(Value::Float((a as f64).powf(b as f64)))
+                } else if b > u32::MAX as i64 {
+                    Err(InnerError::new("exponent too large"))
+                } else {
+                    a.checked_pow(b as u32).map(Value::Int).ok_or_else(int_overflow)
+                }
+            }
+            Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a.powf(b))),
+            Ok(_) => unreachable!(),
+            Err(_) => Err(InnerError::new("'**' not supported for these types")),
         },
         BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
         BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
@@ -1079,6 +1127,30 @@ mod tests {
                 Value::from(4i64),
             ]),
         );
+    }
+
+    #[test]
+    fn test_pow() {
+        assert_eval("2 ** 10", &[], Value::from(1024i64));
+        assert_eval("2 ** 0", &[], Value::from(1i64));
+        assert_eval("2 ** -1", &[], Value::from(0.5f64));
+        assert_eval("2.0 ** 3", &[], Value::from(8.0f64));
+        // right-associative: 2**3**2 = 2**(3**2) = 512
+        assert_eval("2 ** 3 ** 2", &[], Value::from(512i64));
+        // unary minus: -2**2 = -(2**2) = -4
+        assert_eval("-2 ** 2", &[], Value::from(-4i64));
+        assert!(try_run("2 ** 9999999999", &[]).is_err());
+    }
+
+    #[test]
+    fn test_mod() {
+        assert_eval("7 % 3", &[], Value::from(1i64));
+        assert_eval("-7 % 3", &[], Value::from(2i64));
+        assert_eval("7 % -3", &[], Value::from(-2i64));
+        assert_eval("-7 % -3", &[], Value::from(-1i64));
+        assert_eval("7.5 % 2.5", &[], Value::from(0.0f64));
+        assert_eval("-7.0 % 3.0", &[], Value::from(2.0f64));
+        assert!(try_run("1 % 0", &[]).is_err());
     }
 
     #[test]
