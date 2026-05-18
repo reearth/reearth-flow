@@ -33,6 +33,10 @@ extern {
         ":"     => crate::core::lexer::Token::Colon,
         ";"     => crate::core::lexer::Token::Semi,
         "="     => crate::core::lexer::Token::Assign,
+        "+="    => crate::core::lexer::Token::PlusAssign,
+        "-="    => crate::core::lexer::Token::MinusAssign,
+        "*="    => crate::core::lexer::Token::StarAssign,
+        "/="    => crate::core::lexer::Token::SlashAssign,
         "+"     => crate::core::lexer::Token::Plus,
         "-"     => crate::core::lexer::Token::Minus,
         "*"     => crate::core::lexer::Token::Star,
@@ -66,6 +70,14 @@ pub Expr: Expr = {
 Assign: Expr = {
     <l:@L> <lv:Postfix> "=" <v:Assign> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Assign { lvalue: Box::new(lv), value: Box::new(v) }),
+    <l:@L> <lv:Postfix> "+=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Add, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "-=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Sub, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "*=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Mul, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "/=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Div, rhs: Box::new(v) }),
     Or,
 };
 

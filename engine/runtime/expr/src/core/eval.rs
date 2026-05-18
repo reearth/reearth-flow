@@ -193,6 +193,10 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             eval_assign_lvalue(lvalue, v.clone(), env)?;
             Ok(v)
         }
+        ExprKind::CompoundAssign { lvalue, op, rhs } => {
+            let new_val = eval_compound_assign(lvalue, op, rhs, env, pos)?;
+            Ok(new_val)
+        }
         ExprKind::Block(exprs) => {
             let mut result = Value::Null;
             for e in exprs {
@@ -290,6 +294,67 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
                 }
             }
             Ok(())
+        }
+        _ => Err(Error::Eval {
+            pos,
+            msg: "invalid assignment target".into(),
+        }),
+    }
+}
+
+/// Implements `lvalue op= rhs`: evaluates `lvalue` and `rhs` each exactly once,
+/// applies `op`, writes the result back, and returns the new value.
+fn eval_compound_assign(
+    lvalue: &Expr,
+    op: &BinOp,
+    rhs: &Expr,
+    env: &mut Env,
+    pos: usize,
+) -> Result<Value> {
+    let rhs_val = eval_inner(rhs, env)?;
+    match &lvalue.kind {
+        ExprKind::Var(name) => {
+            let current = env.get(name).cloned().ok_or_else(|| Error::Eval {
+                pos,
+                msg: format!("undefined variable '{name}'"),
+            })?;
+            let new_val = eval_binary(op, current, rhs_val).to_eval_error(pos)?;
+            env.insert(name.clone(), new_val.clone());
+            Ok(new_val)
+        }
+        ExprKind::Index(target, key) => {
+            let key_val = eval_inner(key, env)?;
+            let container = eval_inner(target, env)?;
+            match (container, &key_val) {
+                (Value::Array(rc), Value::Int(i)) => {
+                    let len = rc.borrow().len() as i64;
+                    let idx = if *i < 0 { len + i } else { *i };
+                    if idx < 0 || idx as usize >= len as usize {
+                        return Err(Error::Eval {
+                            pos,
+                            msg: format!("array index {} out of range (len {})", i, len),
+                        });
+                    }
+                    let current = rc.borrow()[idx as usize].clone();
+                    let new_val = eval_binary(op, current, rhs_val).to_eval_error(pos)?;
+                    rc.borrow_mut()[idx as usize] = new_val.clone();
+                    Ok(new_val)
+                }
+                (Value::Map(rc), Value::String(k)) => {
+                    let current = rc.borrow().get(k.as_str()).cloned().unwrap_or(Value::Null);
+                    let new_val = eval_binary(op, current, rhs_val).to_eval_error(pos)?;
+                    rc.borrow_mut().insert(k.clone(), new_val.clone());
+                    Ok(new_val)
+                }
+                (c, k) => Err(Error::Eval {
+                    pos,
+                    msg: format!(
+                        "cannot index-assign {} with {}",
+                        c.type_name(),
+                        k.type_name()
+                    ),
+                }),
+            }
         }
         _ => Err(Error::Eval {
             pos,

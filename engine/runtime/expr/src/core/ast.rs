@@ -66,6 +66,13 @@ pub enum ExprKind {
         lvalue: Box<Expr>,
         value: Box<Expr>,
     },
+    /// `lvalue op= rhs` — reads lvalue, applies op, writes result back; evaluates to new value.
+    /// op is one of Add, Sub, Mul, Div. lvalue is evaluated once (no double-evaluation).
+    CompoundAssign {
+        lvalue: Box<Expr>,
+        op: BinOp,
+        rhs: Box<Expr>,
+    },
     /// `{ e1; e2; e3 }` — sequence expression; evaluates each, returns last
     Block(Vec<Expr>),
     /// `{ key: value, ... }` — map literal; key is any expr (must eval to string at runtime)
@@ -192,6 +199,18 @@ pub mod test_util {
                     value: bv,
                 },
             ) => exprs_eq(al, bl) && exprs_eq(av, bv),
+            (
+                ExprKind::CompoundAssign {
+                    lvalue: al,
+                    op: ao,
+                    rhs: ar,
+                },
+                ExprKind::CompoundAssign {
+                    lvalue: bl,
+                    op: bo,
+                    rhs: br,
+                },
+            ) => ao == bo && exprs_eq(al, bl) && exprs_eq(ar, br),
             (ExprKind::Block(a), ExprKind::Block(b)) => vec_eq(a, b),
             (ExprKind::Map(a), ExprKind::Map(b)) => pair_vec_eq(a, b),
             (

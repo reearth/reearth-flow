@@ -96,6 +96,16 @@ pub enum Token {
     #[token("/")]
     Slash,
 
+    // compound assignment (must come before plain `=`, `+`, `-`, `*`, `/` — longer wins)
+    #[token("+=")]
+    PlusAssign,
+    #[token("-=")]
+    MinusAssign,
+    #[token("*=")]
+    StarAssign,
+    #[token("/=")]
+    SlashAssign,
+
     // assignment (single `=`; must come after `==` in logos priority — longer wins)
     #[token("=")]
     Assign,
