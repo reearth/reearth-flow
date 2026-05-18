@@ -1303,9 +1303,10 @@
     },
     {
       "name": "FlowExprTest",
+      "description": "Flow 表达式引擎的实验性测试平台",
       "parameterI18n": {
         "": {
-          "title": "FlowExprTestParam"
+          "title": "FlowExprTest 参数"
         },
         "mappings": {}
       },
