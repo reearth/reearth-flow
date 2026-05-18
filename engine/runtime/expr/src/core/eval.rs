@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::builtin_url;
 use super::error::{Error, InnerError, InnerResult, Result};
-use super::value::{NativeFn, Value};
+use super::value::{format_float, NativeFn, Value};
 use crate::unpack_args;
 
 #[cfg(debug_assertions)]
@@ -610,6 +610,7 @@ fn binop_dunder(op: &BinOp) -> Option<&'static str> {
         BinOp::Sub => Some("__sub__"),
         BinOp::Mul => Some("__mul__"),
         BinOp::Div => Some("__div__"),
+        BinOp::FloorDiv => Some("__floordiv__"),
         BinOp::Eq => Some("__eq__"),
         BinOp::Ne => None, // derived as !__eq__ in eval_binary
         BinOp::Lt => Some("__lt__"),
@@ -721,14 +722,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
                 if b == 0 {
                     return Err(InnerError::new("division by zero"));
                 }
-                if b == -1 {
-                    return a.checked_neg().map(Value::Int).ok_or_else(int_overflow);
-                }
-                if a % b == 0 {
-                    Ok(Value::Int(a / b))
-                } else {
-                    Ok(Value::Float(a as f64 / b as f64))
-                }
+                Ok(Value::Float(a as f64 / b as f64))
             }
             Ok((Numeric::Float(a), Numeric::Float(b))) => {
                 if b == 0.0 {
@@ -738,6 +732,30 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
             }
             Ok(_) => unreachable!(),
             Err(_) => Err(InnerError::new("'/' not supported for these types")),
+        },
+        BinOp::FloorDiv => match coerce_numeric(&left, &right) {
+            Ok((Numeric::Int(a), Numeric::Int(b))) => {
+                if b == 0 {
+                    return Err(InnerError::new("division by zero"));
+                }
+                let d = a.checked_div(b).ok_or_else(int_overflow)?;
+                let r = a.checked_rem(b).ok_or_else(int_overflow)?;
+                // Python floor division rounds toward negative infinity
+                let floored = if r != 0 && (r < 0) != (b < 0) {
+                    d.checked_sub(1).ok_or_else(int_overflow)?
+                } else {
+                    d
+                };
+                Ok(Value::Int(floored))
+            }
+            Ok((Numeric::Float(a), Numeric::Float(b))) => {
+                if b == 0.0 {
+                    return Err(InnerError::new("division by zero"));
+                }
+                Ok(Value::Float((a / b).floor()))
+            }
+            Ok(_) => unreachable!(),
+            Err(_) => Err(InnerError::new("'//' not supported for these types")),
         },
         BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
         BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
@@ -864,7 +882,7 @@ fn value_to_string(v: &Value) -> String {
         Value::Null => "null".into(),
         Value::Bool(b) => b.to_string(),
         Value::Int(n) => n.to_string(),
-        Value::Float(f) => f.to_string(),
+        Value::Float(f) => format_float(*f),
         Value::Array(_) | Value::Map(_) => format!("{v:?}"),
         Value::Fn(_) => "<fn>".into(),
         Value::Object(rc) => rc.borrow().display(),
@@ -877,7 +895,7 @@ fn builtin_str(args: &[Value]) -> InnerResult<Value> {
         Some(Value::String(s)) => Ok(Value::String(s.clone())),
         Some(Value::Bool(b)) => Ok(Value::String(b.to_string())),
         Some(Value::Int(n)) => Ok(Value::String(n.to_string())),
-        Some(Value::Float(f)) => Ok(Value::String(f.to_string())),
+        Some(Value::Float(f)) => Ok(Value::String(format_float(*f))),
         Some(Value::Object(rc)) => rc.borrow_mut().call_method("__str__", &[]),
         Some(v) => Err(InnerError::new(format!(
             "str() not supported for {}",
@@ -1038,6 +1056,12 @@ mod tests {
         assert_eval("10 - 3", &[], Value::from(7i64));
         assert_eval("2 * 5", &[], Value::from(10i64));
         assert_eval("10 / 4", &[], Value::from(2.5f64));
+        assert_eval("10 / 2", &[], Value::from(5.0f64));
+        assert_eval("10 // 4", &[], Value::from(2i64));
+        assert_eval("10 // 3", &[], Value::from(3i64));
+        assert_eval("-7 // 2", &[], Value::from(-4i64));
+        assert_eval("7 // -2", &[], Value::from(-4i64));
+        assert_eval("7.0 // 2.0", &[], Value::from(3.0f64));
         assert_eval(
             r#""hello" + "_" + "world""#,
             &[],
@@ -1066,13 +1090,13 @@ mod tests {
         assert!(try_run("a - b", &[("a", min.clone()), ("b", Value::Int(1))]).is_err());
         assert!(try_run("a * b", &[("a", max.clone()), ("b", Value::Int(2))]).is_err());
         assert!(try_run("-a", &[("a", min.clone())]).is_err());
-        assert!(try_run("a / b", &[("a", min.clone()), ("b", Value::Int(-1))]).is_err());
+        assert!(try_run("a // b", &[("a", min.clone()), ("b", Value::Int(-1))]).is_err());
 
         assert_eval("a + b", &[("a", max.clone()), ("b", Value::Int(0))], max);
         assert_eval(
             "a / b",
             &[("a", Value::Int(6)), ("b", Value::Int(-1))],
-            Value::Int(-6),
+            Value::Float(-6.0),
         );
         assert_eval("-a", &[("a", Value::Int(5))], Value::Int(-5));
 

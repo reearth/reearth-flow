@@ -91,13 +91,33 @@ impl Value {
     }
 }
 
+/// Format a float the way Python does: always include a decimal point for finite whole numbers.
+pub(crate) fn format_float(n: f64) -> String {
+    if n.is_nan() {
+        return "nan".to_string();
+    }
+    if n.is_infinite() {
+        return if n > 0.0 {
+            "inf".to_string()
+        } else {
+            "-inf".to_string()
+        };
+    }
+    let s = format!("{n}");
+    if s.contains('.') || s.contains('e') || s.contains('E') {
+        s
+    } else {
+        s + ".0"
+    }
+}
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Null => write!(f, "null"),
             Value::Bool(b) => write!(f, "{b}"),
             Value::Int(n) => write!(f, "{n}"),
-            Value::Float(n) => write!(f, "{n}"),
+            Value::Float(n) => write!(f, "{}", format_float(*n)),
             Value::String(s) => write!(f, "{s:?}"),
             Value::Array(arr) => {
                 let arr = arr.borrow();

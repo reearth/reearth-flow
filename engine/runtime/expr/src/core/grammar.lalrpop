@@ -37,10 +37,12 @@ extern {
         "-="    => crate::core::lexer::Token::MinusAssign,
         "*="    => crate::core::lexer::Token::StarAssign,
         "/="    => crate::core::lexer::Token::SlashAssign,
+        "//="   => crate::core::lexer::Token::DoubleSlashAssign,
         "+"     => crate::core::lexer::Token::Plus,
         "-"     => crate::core::lexer::Token::Minus,
         "*"     => crate::core::lexer::Token::Star,
         "/"     => crate::core::lexer::Token::Slash,
+        "//"    => crate::core::lexer::Token::DoubleSlash,
         "=="    => crate::core::lexer::Token::Eq,
         "!="    => crate::core::lexer::Token::Ne,
         "<"     => crate::core::lexer::Token::Lt,
@@ -78,6 +80,8 @@ Assign: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Mul, rhs: Box::new(v) }),
     <l:@L> <lv:Postfix> "/=" <v:Assign> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Div, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "//=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::FloorDiv, rhs: Box::new(v) }),
     Or,
 };
 
@@ -136,6 +140,8 @@ Mul: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Mul, Box::new(rhs))),
     <l:@L> <lhs:Mul> "/" <rhs:Unary> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Div, Box::new(rhs))),
+    <l:@L> <lhs:Mul> "//" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::FloorDiv, Box::new(rhs))),
     Unary,
 };
 
