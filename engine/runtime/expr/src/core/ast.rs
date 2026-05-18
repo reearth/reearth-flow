@@ -81,6 +81,12 @@ pub enum ExprKind {
         cond: Box<Expr>,
         body: Box<Expr>,
     },
+    /// `for var in iterable { body }` — list/map/string iteration, evaluates to Null
+    ForIn {
+        var: String,
+        iterable: Box<Expr>,
+        body: Box<Expr>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -203,6 +209,18 @@ pub mod test_util {
             (ExprKind::While { cond: ac, body: ab }, ExprKind::While { cond: bc, body: bb }) => {
                 exprs_eq(ac, bc) && exprs_eq(ab, bb)
             }
+            (
+                ExprKind::ForIn {
+                    var: av,
+                    iterable: ai,
+                    body: ab,
+                },
+                ExprKind::ForIn {
+                    var: bv,
+                    iterable: bi,
+                    body: bb,
+                },
+            ) => av == bv && exprs_eq(ai, bi) && exprs_eq(ab, bb),
             _ => false,
         }
     }

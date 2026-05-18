@@ -217,6 +217,34 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             }
             Ok(Value::Null)
         }
+        ExprKind::ForIn {
+            var,
+            iterable,
+            body,
+        } => {
+            let iter_val = eval_inner(iterable, env)?;
+            let items: Vec<Value> = match iter_val {
+                Value::Array(rc) => rc.borrow().clone(),
+                Value::Map(rc) => rc
+                    .borrow()
+                    .keys()
+                    .map(|k| Value::String(k.clone()))
+                    .collect(),
+                Value::String(s) => s.chars().map(|c| Value::String(c.to_string())).collect(),
+                Value::Null => vec![],
+                v => {
+                    return Err(Error::Eval {
+                        pos,
+                        msg: format!("{} is not iterable", v.type_name()),
+                    })
+                }
+            };
+            for item in items {
+                env.insert(var.clone(), item);
+                eval_inner(body, env)?;
+            }
+            Ok(Value::Null)
+        }
     }
 }
 
@@ -273,6 +301,7 @@ fn eval_method(recv: Value, method: &str, args: &[Value]) -> HResult<Value> {
     match recv {
         Value::String(s) => eval_string_method(s, method, args),
         Value::Array(rc) => eval_array_method(rc, method, args),
+        Value::Map(rc) => eval_map_method(rc, method, args),
         Value::Object(rc) => rc.borrow_mut().call_method(method, args),
         v => Err(EvalHelperError::new(format!(
             "{} has no method '{method}'",
@@ -335,6 +364,42 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
             Ok(Value::String(s.replace(from.as_str(), to.as_str())))
         }
         m => Err(EvalHelperError::new(format!("String has no method '{m}'"))),
+    }
+}
+
+fn eval_map_method(
+    rc: std::rc::Rc<std::cell::RefCell<IndexMap<String, Value>>>,
+    method: &str,
+    args: &[Value],
+) -> HResult<Value> {
+    match method {
+        "len" => {
+            unpack_args!(args =>);
+            Ok(Value::Int(rc.borrow().len() as i64))
+        }
+        "keys" => {
+            unpack_args!(args =>);
+            Ok(Value::array(
+                rc.borrow()
+                    .keys()
+                    .map(|k| Value::String(k.clone()))
+                    .collect(),
+            ))
+        }
+        "values" => {
+            unpack_args!(args =>);
+            Ok(Value::array(rc.borrow().values().cloned().collect()))
+        }
+        "items" => {
+            unpack_args!(args =>);
+            Ok(Value::array(
+                rc.borrow()
+                    .iter()
+                    .map(|(k, v)| Value::array(vec![Value::String(k.clone()), v.clone()]))
+                    .collect(),
+            ))
+        }
+        m => Err(EvalHelperError::new(format!("Map has no method '{m}'"))),
     }
 }
 
@@ -1505,5 +1570,84 @@ mod tests {
     #[test]
     fn test_invalid_lvalue() {
         assert!(try_run("1 = 2", &[]).is_err());
+    }
+
+    #[test]
+    fn test_for_in_list() {
+        assert_eval(
+            "s = 0; for x in [1, 2, 3] { s = s + x }; s",
+            &[],
+            Value::from(6i64),
+        );
+        assert_eval("for x in [] { x }; 42", &[], Value::from(42i64));
+        // loop variable persists after loop (Python semantics)
+        assert_eval("for x in [10, 20] { x }; x", &[], Value::from(20i64));
+    }
+
+    #[test]
+    fn test_for_in_map_keys() {
+        let m = Value::map(indexmap::indexmap! {
+            "a".into() => Value::from(1i64),
+            "b".into() => Value::from(2i64),
+        });
+        assert_eval(
+            "keys = []; for k in m { keys = keys + [k] }; keys",
+            &[("m", m)],
+            Value::array(vec![Value::from("a"), Value::from("b")]),
+        );
+    }
+
+    #[test]
+    fn test_for_in_string() {
+        assert_eval(
+            r#"n = 0; for c in "abc" { n = n + 1 }; n"#,
+            &[],
+            Value::from(3i64),
+        );
+    }
+
+    #[test]
+    fn test_for_in_null() {
+        assert_eval("for x in null { x }; 1", &[], Value::from(1i64));
+    }
+
+    #[test]
+    fn test_map_methods() {
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eval("m.len()", &[("m", m.clone())], Value::from(2i64));
+        assert_eval(
+            "m.keys()",
+            &[("m", m.clone())],
+            Value::array(vec![Value::from("x"), Value::from("y")]),
+        );
+        assert_eval(
+            "m.values()",
+            &[("m", m.clone())],
+            Value::array(vec![Value::from(1i64), Value::from(2i64)]),
+        );
+        assert_eval(
+            "m.items()",
+            &[("m", m)],
+            Value::array(vec![
+                Value::array(vec![Value::from("x"), Value::from(1i64)]),
+                Value::array(vec![Value::from("y"), Value::from(2i64)]),
+            ]),
+        );
+    }
+
+    #[test]
+    fn test_for_in_map_items() {
+        let m = Value::map(indexmap::indexmap! {
+            "a".into() => Value::from(10i64),
+            "b".into() => Value::from(20i64),
+        });
+        assert_eval(
+            "s = 0; for pair in m.items() { s = s + pair[1] }; s",
+            &[("m", m)],
+            Value::from(30i64),
+        );
     }
 }
