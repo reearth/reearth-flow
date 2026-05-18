@@ -189,10 +189,6 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 }
 
 func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
 	i.watchersMu.Lock()
