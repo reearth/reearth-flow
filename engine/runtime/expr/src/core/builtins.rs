@@ -1,4 +1,4 @@
-use crate::core::error::{EvalHelperError, HResult};
+use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{Object, Value};
 use crate::unpack_args;
 
@@ -34,13 +34,12 @@ impl Object for UrlObject {
         "Url"
     }
 
-    fn call_method(&mut self, method: &str, args: &[Value]) -> HResult<Value> {
+    fn call_method(&mut self, method: &str, args: &[Value]) -> InnerResult<Value> {
         match method {
             "parent" => {
                 unpack_args!(args =>);
-                let s = url_parent(&self.0).ok_or_else(|| {
-                    EvalHelperError::new(format!("Url has no parent: {}", self.0))
-                })?;
+                let s = url_parent(&self.0)
+                    .ok_or_else(|| InnerError::new(format!("Url has no parent: {}", self.0)))?;
                 Ok(Value::object(UrlObject(s)))
             }
             "extension" => {
@@ -67,7 +66,7 @@ impl Object for UrlObject {
             "__eq__" => {
                 let rhs = args
                     .first()
-                    .ok_or_else(|| EvalHelperError::new("Url == requires an argument"))?;
+                    .ok_or_else(|| InnerError::new("Url == requires an argument"))?;
                 match rhs {
                     Value::Object(obj) if obj.borrow().type_name() == "Url" => {
                         Ok(Value::Bool(self.0 == obj.borrow().display()))
@@ -89,11 +88,11 @@ impl Object for UrlObject {
                             None
                         }
                     })
-                    .ok_or_else(|| EvalHelperError::new("Url / requires a string"))?;
+                    .ok_or_else(|| InnerError::new("Url / requires a string"))?;
                 let joined = format!("{}/{rhs}", self.0.trim_end_matches('/'));
                 Ok(Value::object(UrlObject(joined)))
             }
-            m => Err(EvalHelperError::new(format!("Url has no method '{m}'"))),
+            m => Err(InnerError::new(format!("Url has no method '{m}'"))),
         }
     }
 
@@ -106,18 +105,18 @@ impl Object for UrlObject {
     }
 }
 
-pub fn builtin_url(args: &[Value]) -> HResult<Value> {
+pub fn builtin_url(args: &[Value]) -> InnerResult<Value> {
     let s = match args.first() {
-        None => return Err(EvalHelperError::new("Url() requires a string argument")),
+        None => return Err(InnerError::new("Url() requires a string argument")),
         Some(Value::String(s)) => s.clone(),
         Some(Value::Object(obj)) if obj.borrow().type_name() == "Url" => obj.borrow().display(),
         Some(v) => {
-            return Err(EvalHelperError::new(format!(
+            return Err(InnerError::new(format!(
                 "Url() expects a string, got {v:?}"
             )))
         }
     };
-    let url = parse_url(&s).map_err(EvalHelperError::new)?;
+    let url = parse_url(&s).map_err(InnerError::new)?;
     Ok(Value::object(UrlObject(url)))
 }
 

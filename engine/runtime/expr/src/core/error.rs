@@ -2,17 +2,17 @@ use thiserror::Error;
 
 /// Internal error produced by eval helpers; converted to `Error::Eval` with pos by `eval_inner`.
 #[derive(Debug)]
-pub struct EvalHelperError {
+pub struct InnerError {
     pub msg: String,
 }
 
-impl EvalHelperError {
+impl InnerError {
     pub fn new(msg: impl Into<String>) -> Self {
         Self { msg: msg.into() }
     }
 }
 
-pub type HResult<T> = std::result::Result<T, EvalHelperError>;
+pub type InnerResult<T> = std::result::Result<T, InnerError>;
 
 #[derive(Debug, Error)]
 pub enum Error {

@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::builtin_url;
-use super::error::{Error, EvalHelperError, HResult, Result};
+use super::error::{Error, InnerError, InnerResult, Result};
 use super::value::{NativeFn, Value};
 use crate::unpack_args;
 
@@ -50,7 +50,7 @@ trait ToEvalError<T> {
     fn to_eval_error(self, pos: usize) -> Result<T>;
 }
 
-impl<T> ToEvalError<T> for HResult<T> {
+impl<T> ToEvalError<T> for InnerResult<T> {
     fn to_eval_error(self, pos: usize) -> Result<T> {
         self.map_err(|e| Error::Eval { pos, msg: e.msg })
     }
@@ -298,20 +298,20 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
     }
 }
 
-fn eval_method(recv: Value, method: &str, args: &[Value]) -> HResult<Value> {
+fn eval_method(recv: Value, method: &str, args: &[Value]) -> InnerResult<Value> {
     match recv {
         Value::String(s) => eval_string_method(s, method, args),
         Value::Array(rc) => eval_array_method(rc, method, args),
         Value::Map(rc) => eval_map_method(rc, method, args),
         Value::Object(rc) => rc.borrow_mut().call_method(method, args),
-        v => Err(EvalHelperError::new(format!(
+        v => Err(InnerError::new(format!(
             "{} has no method '{method}'",
             v.type_name()
         ))),
     }
 }
 
-fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value> {
+fn eval_string_method(s: String, method: &str, args: &[Value]) -> InnerResult<Value> {
     match method {
         "len" => {
             unpack_args!(args =>);
@@ -324,7 +324,7 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
         "split" => {
             unpack_args!(args => sep);
             let Value::String(sep) = sep else {
-                return Err(EvalHelperError::new(format!(
+                return Err(InnerError::new(format!(
                     "split() separator must be a string, got {}",
                     sep.type_name()
                 )));
@@ -338,7 +338,7 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
         "starts_with" => {
             unpack_args!(args => prefix);
             let Value::String(prefix) = prefix else {
-                return Err(EvalHelperError::new(format!(
+                return Err(InnerError::new(format!(
                     "starts_with() argument must be a string, got {}",
                     prefix.type_name()
                 )));
@@ -348,7 +348,7 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
         "ends_with" => {
             unpack_args!(args => suffix);
             let Value::String(suffix) = suffix else {
-                return Err(EvalHelperError::new(format!(
+                return Err(InnerError::new(format!(
                     "ends_with() argument must be a string, got {}",
                     suffix.type_name()
                 )));
@@ -358,13 +358,13 @@ fn eval_string_method(s: String, method: &str, args: &[Value]) -> HResult<Value>
         "replace" => {
             unpack_args!(args => from, to);
             let (Value::String(from), Value::String(to)) = (from, to) else {
-                return Err(EvalHelperError::new(
+                return Err(InnerError::new(
                     "replace() requires two string arguments: replace(from, to)",
                 ));
             };
             Ok(Value::String(s.replace(from.as_str(), to.as_str())))
         }
-        m => Err(EvalHelperError::new(format!("String has no method '{m}'"))),
+        m => Err(InnerError::new(format!("String has no method '{m}'"))),
     }
 }
 
@@ -372,7 +372,7 @@ fn eval_map_method(
     rc: std::rc::Rc<std::cell::RefCell<IndexMap<String, Value>>>,
     method: &str,
     args: &[Value],
-) -> HResult<Value> {
+) -> InnerResult<Value> {
     match method {
         "len" => {
             unpack_args!(args =>);
@@ -400,7 +400,7 @@ fn eval_map_method(
                     .collect(),
             ))
         }
-        m => Err(EvalHelperError::new(format!("Map has no method '{m}'"))),
+        m => Err(InnerError::new(format!("Map has no method '{m}'"))),
     }
 }
 
@@ -408,17 +408,17 @@ fn eval_array_method(
     rc: std::rc::Rc<std::cell::RefCell<Vec<Value>>>,
     method: &str,
     args: &[Value],
-) -> HResult<Value> {
+) -> InnerResult<Value> {
     match method {
         "len" => {
             unpack_args!(args =>);
             Ok(Value::Int(rc.borrow().len() as i64))
         }
-        m => Err(EvalHelperError::new(format!("Array has no method '{m}'"))),
+        m => Err(InnerError::new(format!("Array has no method '{m}'"))),
     }
 }
 
-fn eval_index(target: Value, key: Value) -> HResult<Value> {
+fn eval_index(target: Value, key: Value) -> InnerResult<Value> {
     match (target, key) {
         (Value::Map(map), Value::String(k)) => {
             Ok(map.borrow().get(&k).cloned().unwrap_or(Value::Null))
@@ -438,7 +438,7 @@ fn eval_index(target: Value, key: Value) -> HResult<Value> {
             Ok(Value::String(chars[i as usize].to_string()))
         }
         (Value::Null, _) => Ok(Value::Null),
-        (target, key) => Err(EvalHelperError::new(format!(
+        (target, key) => Err(InnerError::new(format!(
             "cannot index {} with {}",
             target.type_name(),
             key.type_name()
@@ -446,10 +446,10 @@ fn eval_index(target: Value, key: Value) -> HResult<Value> {
     }
 }
 
-fn as_slice_index(v: Value, what: &str) -> HResult<i64> {
+fn as_slice_index(v: Value, what: &str) -> InnerResult<i64> {
     match v {
         Value::Int(n) => Ok(n),
-        v => Err(EvalHelperError::new(format!(
+        v => Err(InnerError::new(format!(
             "slice {what} must be an integer, got {}",
             v.type_name()
         ))),
@@ -495,13 +495,13 @@ fn eval_slice(
     start: Option<Value>,
     stop: Option<Value>,
     step: Option<Value>,
-) -> HResult<Value> {
+) -> InnerResult<Value> {
     let step = match step {
         None => 1i64,
         Some(v) => as_slice_index(v, "step")?,
     };
     if step == 0 {
-        return Err(EvalHelperError::new("slice step cannot be zero"));
+        return Err(InnerError::new("slice step cannot be zero"));
     }
     let start = start.map(|v| as_slice_index(v, "start")).transpose()?;
     let stop = stop.map(|v| as_slice_index(v, "stop")).transpose()?;
@@ -521,26 +521,20 @@ fn eval_slice(
                 indices.into_iter().map(|i| chars[i]).collect(),
             ))
         }
-        v => Err(EvalHelperError::new(format!(
-            "cannot slice {}",
-            v.type_name()
-        ))),
+        v => Err(InnerError::new(format!("cannot slice {}", v.type_name()))),
     }
 }
 
-fn eval_unary(op: &UnaryOp, val: Value) -> HResult<Value> {
+fn eval_unary(op: &UnaryOp, val: Value) -> InnerResult<Value> {
     match op {
         UnaryOp::Not => Ok(Value::Bool(!is_truthy(&val))),
         UnaryOp::Neg => match val {
             Value::Int(n) => n
                 .checked_neg()
                 .map(Value::Int)
-                .ok_or_else(|| EvalHelperError::new("integer overflow")),
+                .ok_or_else(|| InnerError::new("integer overflow")),
             Value::Float(f) => Ok(Value::Float(-f)),
-            v => Err(EvalHelperError::new(format!(
-                "cannot negate {}",
-                v.type_name()
-            ))),
+            v => Err(InnerError::new(format!("cannot negate {}", v.type_name()))),
         },
     }
 }
@@ -561,9 +555,9 @@ fn binop_dunder(op: &BinOp) -> Option<&'static str> {
     }
 }
 
-fn try_object_op(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
+fn try_object_op(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
     let dunder = binop_dunder(op).ok_or_else(|| {
-        EvalHelperError::new(format!(
+        InnerError::new(format!(
             "operator not overloadable for {}",
             left.type_name()
         ))
@@ -571,7 +565,7 @@ fn try_object_op(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
     if let Value::Object(ref rc) = left {
         return rc.borrow_mut().call_method(dunder, &[right]);
     }
-    Err(EvalHelperError::new(format!(
+    Err(InnerError::new(format!(
         "operator '{dunder}' not supported between {} and {}",
         left.type_name(),
         right.type_name()
@@ -583,13 +577,13 @@ enum Numeric {
     Float(f64),
 }
 
-fn coerce_numeric(a: &Value, b: &Value) -> HResult<(Numeric, Numeric)> {
+fn coerce_numeric(a: &Value, b: &Value) -> InnerResult<(Numeric, Numeric)> {
     match (a, b) {
         (Value::Int(a), Value::Int(b)) => Ok((Numeric::Int(*a), Numeric::Int(*b))),
         (Value::Int(a), Value::Float(b)) => Ok((Numeric::Float(*a as f64), Numeric::Float(*b))),
         (Value::Float(a), Value::Int(b)) => Ok((Numeric::Float(*a), Numeric::Float(*b as f64))),
         (Value::Float(a), Value::Float(b)) => Ok((Numeric::Float(*a), Numeric::Float(*b))),
-        (a, b) => Err(EvalHelperError::new(format!(
+        (a, b) => Err(InnerError::new(format!(
             "cannot apply numeric op to {} and {}",
             a.type_name(),
             b.type_name()
@@ -597,16 +591,16 @@ fn coerce_numeric(a: &Value, b: &Value) -> HResult<(Numeric, Numeric)> {
     }
 }
 
-fn int_overflow() -> EvalHelperError {
-    EvalHelperError::new("integer overflow")
+fn int_overflow() -> InnerError {
+    InnerError::new("integer overflow")
 }
 
 fn numeric_op(
     left: Value,
     right: Value,
-    int_op: impl Fn(i64, i64) -> HResult<i64>,
+    int_op: impl Fn(i64, i64) -> InnerResult<i64>,
     float_op: impl Fn(f64, f64) -> f64,
-) -> HResult<Value> {
+) -> InnerResult<Value> {
     match coerce_numeric(&left, &right)? {
         (Numeric::Int(a), Numeric::Int(b)) => Ok(Value::Int(int_op(a, b)?)),
         (Numeric::Float(a), Numeric::Float(b)) => Ok(Value::Float(float_op(a, b))),
@@ -614,13 +608,13 @@ fn numeric_op(
     }
 }
 
-fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
+fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
     if matches!(left, Value::Object(_)) {
         if op == &BinOp::Ne {
             let eq = try_object_op(&BinOp::Eq, left, right)?;
             return match eq {
                 Value::Bool(b) => Ok(Value::Bool(!b)),
-                _ => Err(EvalHelperError::new("__eq__ must return a bool")),
+                _ => Err(InnerError::new("__eq__ must return a bool")),
             };
         }
         if binop_dunder(op).is_some() {
@@ -642,7 +636,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
                 }
                 Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
                 Ok(_) => unreachable!(),
-                Err(_) => Err(EvalHelperError::new("'+' not supported for these types")),
+                Err(_) => Err(InnerError::new("'+' not supported for these types")),
             },
         },
         BinOp::Sub => numeric_op(
@@ -660,7 +654,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
         BinOp::Div => match coerce_numeric(&left, &right) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
                 if b == 0 {
-                    return Err(EvalHelperError::new("division by zero"));
+                    return Err(InnerError::new("division by zero"));
                 }
                 if b == -1 {
                     return a.checked_neg().map(Value::Int).ok_or_else(int_overflow);
@@ -673,12 +667,12 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
             }
             Ok((Numeric::Float(a), Numeric::Float(b))) => {
                 if b == 0.0 {
-                    return Err(EvalHelperError::new("division by zero"));
+                    return Err(InnerError::new("division by zero"));
                 }
                 Ok(Value::Float(a / b))
             }
             Ok(_) => unreachable!(),
-            Err(_) => Err(EvalHelperError::new("'/' not supported for these types")),
+            Err(_) => Err(InnerError::new("'/' not supported for these types")),
         },
         BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
         BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
@@ -697,7 +691,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
                 Ok(Value::Bool(map.borrow().contains_key(&key)))
             }
             (_, Value::Null) => Ok(Value::Bool(false)),
-            (l, r) => Err(EvalHelperError::new(format!(
+            (l, r) => Err(InnerError::new(format!(
                 "'in' not supported between {} and {}",
                 l.type_name(),
                 r.type_name()
@@ -714,7 +708,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
                 Ok(Value::Bool(!map.borrow().contains_key(&key)))
             }
             (_, Value::Null) => Ok(Value::Bool(true)),
-            (l, r) => Err(EvalHelperError::new(format!(
+            (l, r) => Err(InnerError::new(format!(
                 "'not in' not supported between {} and {}",
                 l.type_name(),
                 r.type_name()
@@ -730,7 +724,7 @@ fn compare_values(
     left: Value,
     right: Value,
     pred: impl Fn(std::cmp::Ordering) -> bool,
-) -> HResult<Value> {
+) -> InnerResult<Value> {
     let ord = match coerce_numeric(&left, &right) {
         Ok((Numeric::Int(a), Numeric::Int(b))) => a.cmp(&b),
         Ok((Numeric::Float(a), Numeric::Float(b))) => match a.partial_cmp(&b) {
@@ -741,7 +735,7 @@ fn compare_values(
         Err(_) => match (&left, &right) {
             (Value::String(a), Value::String(b)) => a.as_str().cmp(b.as_str()),
             _ => {
-                return Err(EvalHelperError::new(format!(
+                return Err(InnerError::new(format!(
                     "cannot compare {} and {}",
                     left.type_name(),
                     right.type_name()
@@ -812,7 +806,7 @@ fn value_to_string(v: &Value) -> String {
     }
 }
 
-fn builtin_str(args: &[Value]) -> HResult<Value> {
+fn builtin_str(args: &[Value]) -> InnerResult<Value> {
     match args.first() {
         None | Some(Value::Null) => Ok(Value::String("null".into())),
         Some(Value::String(s)) => Ok(Value::String(s.clone())),
@@ -820,22 +814,20 @@ fn builtin_str(args: &[Value]) -> HResult<Value> {
         Some(Value::Int(n)) => Ok(Value::String(n.to_string())),
         Some(Value::Float(f)) => Ok(Value::String(f.to_string())),
         Some(Value::Object(rc)) => rc.borrow_mut().call_method("__str__", &[]),
-        Some(v) => Err(EvalHelperError::new(format!(
+        Some(v) => Err(InnerError::new(format!(
             "str() not supported for {}",
             v.type_name()
         ))),
     }
 }
 
-fn builtin_int(args: &[Value]) -> HResult<Value> {
+fn builtin_int(args: &[Value]) -> InnerResult<Value> {
     match args.first() {
         Some(Value::Int(n)) => Ok(Value::Int(*n)),
         Some(Value::Float(f)) => {
             let t = f.trunc();
             if !t.is_finite() || t < i64::MIN as f64 || t >= -(i64::MIN as f64) {
-                Err(EvalHelperError::new(format!(
-                    "int() value out of range: {f}"
-                )))
+                Err(InnerError::new(format!("int() value out of range: {f}")))
             } else {
                 Ok(Value::Int(t as i64))
             }
@@ -845,16 +837,16 @@ fn builtin_int(args: &[Value]) -> HResult<Value> {
             .trim()
             .parse::<i64>()
             .map(Value::Int)
-            .map_err(|_| EvalHelperError::new(format!("int() cannot parse {s:?}"))),
-        Some(v) => Err(EvalHelperError::new(format!(
+            .map_err(|_| InnerError::new(format!("int() cannot parse {s:?}"))),
+        Some(v) => Err(InnerError::new(format!(
             "int() not supported for {}",
             v.type_name()
         ))),
-        None => Err(EvalHelperError::new("int() requires an argument")),
+        None => Err(InnerError::new("int() requires an argument")),
     }
 }
 
-fn builtin_float(args: &[Value]) -> HResult<Value> {
+fn builtin_float(args: &[Value]) -> InnerResult<Value> {
     match args.first() {
         Some(Value::Float(f)) => Ok(Value::Float(*f)),
         Some(Value::Int(n)) => Ok(Value::Float(*n as f64)),
@@ -863,20 +855,20 @@ fn builtin_float(args: &[Value]) -> HResult<Value> {
             .trim()
             .parse::<f64>()
             .map(Value::Float)
-            .map_err(|_| EvalHelperError::new(format!("float() cannot parse {s:?}"))),
-        Some(v) => Err(EvalHelperError::new(format!(
+            .map_err(|_| InnerError::new(format!("float() cannot parse {s:?}"))),
+        Some(v) => Err(InnerError::new(format!(
             "float() not supported for {}",
             v.type_name()
         ))),
-        None => Err(EvalHelperError::new("float() requires an argument")),
+        None => Err(InnerError::new("float() requires an argument")),
     }
 }
 
-fn builtin_bool(args: &[Value]) -> HResult<Value> {
+fn builtin_bool(args: &[Value]) -> InnerResult<Value> {
     Ok(Value::Bool(args.first().map(is_truthy).unwrap_or(false)))
 }
 
-fn builtin_list(args: &[Value]) -> HResult<Value> {
+fn builtin_list(args: &[Value]) -> InnerResult<Value> {
     match args.first() {
         // shallow copy: inner Rc elements share their backing stores
         Some(Value::Array(a)) => Ok(Value::array(a.borrow().clone())),
@@ -889,7 +881,7 @@ fn builtin_list(args: &[Value]) -> HResult<Value> {
                 .map(|k| Value::String(k.clone()))
                 .collect(),
         )),
-        Some(v) => Err(EvalHelperError::new(format!(
+        Some(v) => Err(InnerError::new(format!(
             "list() not supported for {}",
             v.type_name()
         ))),
@@ -897,11 +889,11 @@ fn builtin_list(args: &[Value]) -> HResult<Value> {
     }
 }
 
-fn builtin_map(args: &[Value]) -> HResult<Value> {
+fn builtin_map(args: &[Value]) -> InnerResult<Value> {
     let pairs = match args.first() {
         Some(Value::Array(a)) => a.borrow().clone(),
         _ => {
-            return Err(EvalHelperError::new(
+            return Err(InnerError::new(
                 "map() expects an array of [key, value] pairs",
             ))
         }
@@ -912,14 +904,14 @@ fn builtin_map(args: &[Value]) -> HResult<Value> {
             Value::Array(kv) => {
                 let kv = kv.borrow();
                 if kv.len() != 2 {
-                    return Err(EvalHelperError::new(format!(
+                    return Err(InnerError::new(format!(
                         "map() entry at index {i} must be a 2-element array"
                     )));
                 }
                 let key = match &kv[0] {
                     Value::String(s) => s.clone(),
                     v => {
-                        return Err(EvalHelperError::new(format!(
+                        return Err(InnerError::new(format!(
                             "map() key at index {i} must be a string, got {}",
                             v.type_name()
                         )))
@@ -928,7 +920,7 @@ fn builtin_map(args: &[Value]) -> HResult<Value> {
                 out.insert(key, kv[1].clone());
             }
             _ => {
-                return Err(EvalHelperError::new(format!(
+                return Err(InnerError::new(format!(
                     "map() entry at index {i} must be a 2-element array"
                 )))
             }
@@ -937,7 +929,7 @@ fn builtin_map(args: &[Value]) -> HResult<Value> {
     Ok(Value::map(out))
 }
 
-fn builtin_print(args: &[Value]) -> HResult<Value> {
+fn builtin_print(args: &[Value]) -> InnerResult<Value> {
     let parts: Vec<String> = args
         .iter()
         .map(|v| match v {
@@ -1362,11 +1354,11 @@ mod tests {
             fn type_name(&self) -> &'static str {
                 "Counter"
             }
-            fn call_method(&mut self, method: &str, args: &[Value]) -> HResult<Value> {
+            fn call_method(&mut self, method: &str, args: &[Value]) -> InnerResult<Value> {
                 match method {
                     "__add__" => match args.first() {
                         Some(Value::Int(n)) => Ok(Value::object(Counter(self.0 + n))),
-                        _ => Err(EvalHelperError::new("expected int")),
+                        _ => Err(InnerError::new("expected int")),
                     },
                     "__eq__" => match args.first() {
                         Some(Value::Object(other)) => {
@@ -1375,7 +1367,7 @@ mod tests {
                         }
                         _ => Ok(Value::Bool(false)),
                     },
-                    m => Err(EvalHelperError::new(format!("no method {m}"))),
+                    m => Err(InnerError::new(format!("no method {m}"))),
                 }
             }
             fn display(&self) -> String {
