@@ -96,7 +96,7 @@ const SortableRow: React.FC<{
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </TableCell>
       ))}
-      {editingUsers.length > 0 && (
+      {/* {editingUsers.length > 0 && (
         <TableCell className="w-6 px-1 py-[2px]">
           <div className="flex items-center -space-x-1">
             {editingUsers.slice(0, 2).map((user) => (
@@ -110,7 +110,7 @@ const SortableRow: React.FC<{
             ))}
           </div>
         </TableCell>
-      )}
+      )} */}
     </TableRow>
   );
 };

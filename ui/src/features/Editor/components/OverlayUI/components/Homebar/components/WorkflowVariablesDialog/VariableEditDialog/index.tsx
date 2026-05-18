@@ -41,7 +41,7 @@ const VariableEditDialog: React.FC<Props> = ({
   onLiveUpdate,
 }) => {
   const t = useT();
-
+  console.log("EDITING USERS", editingUsers);
   const {
     localVariable,
     hasChanges,
@@ -158,25 +158,31 @@ const VariableEditDialog: React.FC<Props> = ({
               <GearIcon />
               {t("Edit Variable")} - {localVariable.name}
               {editingUsers.length > 0 && (
-                <div className="flex items-center -space-x-2">
-                  {editingUsers.slice(0, 3).map((user) => (
-                    <div
-                      key={user.clientId}
-                      className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                      style={{ backgroundColor: user.color || undefined }}
-                      title={user.userName}>
-                      <span className="text-xs font-medium text-white select-none">
-                        {user.userName.charAt(0).toUpperCase()}
-                        {user.userName.charAt(1)}
-                      </span>
-                    </div>
-                  ))}
-                  {editingUsers.length > 3 && (
-                    <div className="z-10 flex size-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
-                      <span className="text-[10px] font-medium text-white">
-                        +{editingUsers.length - 3}
-                      </span>
-                    </div>
+                <div className="flex items-center -space-x-4">
+                  {editingUsers.length > 0 && (
+                    <>
+                      {editingUsers.slice(0, 2).map((user) => (
+                        <div key={user.clientId}>
+                          <div
+                            className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                            style={{
+                              backgroundColor: user.color || undefined,
+                            }}>
+                            <span className="text-xs font-medium text-white select-none">
+                              {user.userName.charAt(0).toUpperCase()}
+                              {user.userName.charAt(1)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {editingUsers.length > 2 && (
+                        <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
+                          <span className="text-[10px] font-medium text-white">
+                            + {editingUsers.length - 2}
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

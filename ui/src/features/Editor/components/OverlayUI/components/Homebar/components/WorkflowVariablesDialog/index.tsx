@@ -100,8 +100,8 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
   const { isLocked, workflowVarAwareness } = useEditorContext();
 
   const {
-    localWorkflowVariables,
-    pendingChanges,
+    workflowVariables,
+    hasUnsavedChanges,
     isSubmitting,
     editingVariable,
     getUserFacingName,
@@ -166,7 +166,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         accessorKey: "name",
         header: t("Name"),
         cell: ({ row }) => {
-          const variable = localWorkflowVariables[row.index];
+          const variable = workflowVariables[row.index];
           return (
             <NameInput
               variable={variable}
@@ -189,7 +189,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         accessorKey: "defaultValue",
         header: t("Default Value"),
         cell: ({ row }) => {
-          const variable = localWorkflowVariables[row.index];
+          const variable = workflowVariables[row.index];
           return <DefaultValueDisplay variable={variable} />;
         },
       },
@@ -202,7 +202,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
             <Switch
               checked={isChecked}
               onCheckedChange={() => {
-                const projectVar = { ...localWorkflowVariables[row.index] };
+                const projectVar = { ...workflowVariables[row.index] };
                 projectVar.required = !isChecked;
                 handleLocalUpdate(projectVar);
               }}
@@ -215,7 +215,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         accessorKey: "public",
         header: t("Public"),
         cell: ({ row }) => {
-          const variable = localWorkflowVariables[row.index];
+          const variable = workflowVariables[row.index];
           return (
             <Switch
               checked={variable.public}
@@ -233,7 +233,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         id: "actions",
         header: t("Actions"),
         cell: ({ row }) => {
-          const variable = localWorkflowVariables[row.index];
+          const variable = workflowVariables[row.index];
           return (
             <div className="flex items-center gap-1">
               <IconButton
@@ -267,7 +267,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
       },
     ],
     [
-      localWorkflowVariables,
+      workflowVariables,
       isLocked,
       handleLocalUpdate,
       handleEditVariable,
@@ -293,29 +293,33 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                   <div className="flex items-center gap-2">
                     <ChalkboardTeacherIcon />
                     {t("Workflow Variables")}
-                    {dialogUsers.length > 0 && (
-                      <div className="flex items-center -space-x-2">
-                        {dialogUsers.slice(0, 3).map((user) => (
-                          <div
-                            key={user.clientId}
-                            className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                            style={{ backgroundColor: user.color || undefined }}
-                            title={user.userName}>
-                            <span className="text-xs font-medium text-white select-none">
-                              {user.userName.charAt(0).toUpperCase()}
-                              {user.userName.charAt(1)}
-                            </span>
-                          </div>
-                        ))}
-                        {dialogUsers.length > 3 && (
-                          <div className="z-10 flex size-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
-                            <span className="text-[10px] font-medium text-white">
-                              +{dialogUsers.length - 3}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <div className="flex items-center -space-x-4">
+                      {dialogUsers.length > 0 && (
+                        <>
+                          {dialogUsers.slice(0, 2).map((user) => (
+                            <div key={user.clientId}>
+                              <div
+                                className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                                style={{
+                                  backgroundColor: user.color || undefined,
+                                }}>
+                                <span className="text-xs font-medium text-white select-none">
+                                  {user.userName.charAt(0).toUpperCase()}
+                                  {user.userName.charAt(1)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          {dialogUsers.length > 2 && (
+                            <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
+                              <span className="text-[10px] font-medium text-white">
+                                + {dialogUsers.length - 2}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -350,7 +354,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               <DialogContentSection className="flex min-h-0 flex-3 flex-col">
                 <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
                   <WorkflowVariablesTable
-                    workflowVariables={localWorkflowVariables}
+                    workflowVariables={workflowVariables}
                     columns={columns}
                     onReorder={handleReorder}
                     variableFocusMap={variableFocusMap}
@@ -368,7 +372,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || pendingChanges.length === 0}>
+                disabled={isSubmitting || !hasUnsavedChanges}>
                 {isSubmitting ? t("Saving...") : t("Save Changes")}
               </Button>
             </DialogFooter>
