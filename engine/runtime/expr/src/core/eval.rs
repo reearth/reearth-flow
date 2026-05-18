@@ -1,5 +1,6 @@
 use std::cell::Cell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use indexmap::IndexMap;
 
@@ -272,7 +273,7 @@ fn eval_method(recv: Value, method: &str, args: &[Value]) -> HResult<Value> {
     match recv {
         Value::String(s) => eval_string_method(s, method, args),
         Value::Array(rc) => eval_array_method(rc, method, args),
-        Value::Object(obj) => obj.call_method(method, args),
+        Value::Object(rc) => rc.borrow_mut().call_method(method, args),
         v => Err(EvalHelperError::new(format!(
             "{} has no method '{method}'",
             v.type_name()
@@ -501,8 +502,8 @@ fn try_object_op(op: &BinOp, left: Value, right: Value) -> HResult<Value> {
             left.type_name()
         ))
     })?;
-    if let Value::Object(ref obj) = left {
-        return obj.call_method(dunder, &[right]);
+    if let Value::Object(ref rc) = left {
+        return rc.borrow_mut().call_method(dunder, &[right]);
     }
     Err(EvalHelperError::new(format!(
         "operator '{dunder}' not supported between {} and {}",
@@ -685,11 +686,37 @@ fn compare_values(
     Ok(Value::Bool(pred(ord)))
 }
 
-fn values_equal(a: &Value, b: &Value) -> bool {
-    match coerce_numeric(a, b) {
-        Ok((Numeric::Int(x), Numeric::Int(y))) => x == y,
-        Ok((Numeric::Float(x), Numeric::Float(y))) => x == y,
-        _ => a == b,
+pub(crate) fn values_equal(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Null, Value::Null) => true,
+        (Value::Bool(x), Value::Bool(y)) => x == y,
+        (Value::String(x), Value::String(y)) => x == y,
+        (Value::Int(x), Value::Int(y)) => x == y,
+        (Value::Float(x), Value::Float(y)) => x == y,
+        (Value::Int(x), Value::Float(y)) => (*x as f64) == *y,
+        (Value::Float(x), Value::Int(y)) => *x == (*y as f64),
+        (Value::Array(a), Value::Array(b)) => {
+            if Rc::ptr_eq(a, b) {
+                return true;
+            }
+            let a = a.borrow();
+            let b = b.borrow();
+            a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| values_equal(x, y))
+        }
+        (Value::Map(a), Value::Map(b)) => {
+            if Rc::ptr_eq(a, b) {
+                return true;
+            }
+            let a = a.borrow();
+            let b = b.borrow();
+            a.len() == b.len()
+                && a.iter()
+                    .zip(b.iter())
+                    .all(|((ka, va), (kb, vb))| ka == kb && values_equal(va, vb))
+        }
+        (Value::Object(a), Value::Object(b)) => Rc::ptr_eq(a, b),
+        (Value::Fn(a), Value::Fn(b)) => Rc::ptr_eq(&a.0, &b.0),
+        _ => false,
     }
 }
 
@@ -715,7 +742,7 @@ fn value_to_string(v: &Value) -> String {
         Value::Float(f) => f.to_string(),
         Value::Array(_) | Value::Map(_) => format!("{v:?}"),
         Value::Fn(_) => "<fn>".into(),
-        Value::Object(obj) => obj.display(),
+        Value::Object(rc) => rc.borrow().display(),
     }
 }
 
@@ -726,7 +753,7 @@ fn builtin_str(args: &[Value]) -> HResult<Value> {
         Some(Value::Bool(b)) => Ok(Value::String(b.to_string())),
         Some(Value::Int(n)) => Ok(Value::String(n.to_string())),
         Some(Value::Float(f)) => Ok(Value::String(f.to_string())),
-        Some(Value::Object(obj)) => obj.call_method("__str__", &[]),
+        Some(Value::Object(rc)) => rc.borrow_mut().call_method("__str__", &[]),
         Some(v) => Err(EvalHelperError::new(format!(
             "str() not supported for {}",
             v.type_name()
@@ -861,28 +888,31 @@ mod tests {
         eval_inner(&parse(input).unwrap(), &mut env)
     }
 
+    #[track_caller]
+    fn v(a: Value, b: Value) {
+        assert!(values_equal(&a, &b), "\nleft:  {a:?}\nright: {b:?}");
+    }
+
     #[test]
     fn test_arithmetic() {
-        assert_eq!(run("1 + 2", &[]), Value::from(3i64));
-        assert_eq!(run("10 - 3", &[]), Value::from(7i64));
-        assert_eq!(run("2 * 5", &[]), Value::from(10i64));
-        assert_eq!(run("10 / 4", &[]), Value::from(2.5f64));
-        // string concatenation via +
-        assert_eq!(
+        v(run("1 + 2", &[]), Value::from(3i64));
+        v(run("10 - 3", &[]), Value::from(7i64));
+        v(run("2 * 5", &[]), Value::from(10i64));
+        v(run("10 / 4", &[]), Value::from(2.5f64));
+        v(
             run(r#""hello" + "_" + "world""#, &[]),
-            Value::from("hello_world")
+            Value::from("hello_world"),
         );
-        // array concatenation via +
         let a = Value::array(vec![Value::from(1i64), Value::from(2i64)]);
         let b = Value::array(vec![Value::from(3i64), Value::from(4i64)]);
-        assert_eq!(
+        v(
             run("a + b", &[("a", a), ("b", b)]),
             Value::array(vec![
                 Value::from(1i64),
                 Value::from(2i64),
                 Value::from(3i64),
-                Value::from(4i64)
-            ])
+                Value::from(4i64),
+            ]),
         );
     }
 
@@ -891,48 +921,48 @@ mod tests {
         let max = Value::Int(i64::MAX);
         let min = Value::Int(i64::MIN);
 
-        // overflow → error
         assert!(try_run("a + b", &[("a", max.clone()), ("b", Value::Int(1))]).is_err());
         assert!(try_run("a - b", &[("a", min.clone()), ("b", Value::Int(1))]).is_err());
         assert!(try_run("a * b", &[("a", max.clone()), ("b", Value::Int(2))]).is_err());
         assert!(try_run("-a", &[("a", min.clone())]).is_err());
-        // i64::MIN / -1 overflows
         assert!(try_run("a / b", &[("a", min.clone()), ("b", Value::Int(-1))]).is_err());
 
-        // non-overflowing ops still produce Int
-        assert_eq!(
+        v(
             try_run("a + b", &[("a", max.clone()), ("b", Value::Int(0))]).unwrap(),
-            max
+            max,
         );
-        assert_eq!(
+        v(
             try_run("a / b", &[("a", Value::Int(6)), ("b", Value::Int(-1))]).unwrap(),
-            Value::Int(-6)
+            Value::Int(-6),
         );
-        assert_eq!(
+        v(
             try_run("-a", &[("a", Value::Int(5))]).unwrap(),
-            Value::Int(-5)
+            Value::Int(-5),
         );
 
-        // int ops that would overflow promote to float via mixed arithmetic
-        assert_eq!(
-            try_run("a + b", &[("a", max.clone()), ("b", Value::Float(1.0))]).unwrap(),
-            Value::Float(i64::MAX as f64 + 1.0)
+        v(
+            try_run(
+                "a + b",
+                &[("a", Value::Int(i64::MAX)), ("b", Value::Float(1.0))],
+            )
+            .unwrap(),
+            Value::Float(i64::MAX as f64 + 1.0),
         );
     }
 
     #[test]
     fn test_comparison() {
-        assert_eq!(run("1 == 1", &[]), Value::from(true));
-        assert_eq!(run("1 != 2", &[]), Value::from(true));
-        assert_eq!(run("2 > 1", &[]), Value::from(true));
-        assert_eq!(run("1 >= 1", &[]), Value::from(true));
+        v(run("1 == 1", &[]), Value::from(true));
+        v(run("1 != 2", &[]), Value::from(true));
+        v(run("2 > 1", &[]), Value::from(true));
+        v(run("1 >= 1", &[]), Value::from(true));
     }
 
     #[test]
     fn test_logical() {
-        assert_eq!(run("true and false", &[]), Value::from(false));
-        assert_eq!(run("true or false", &[]), Value::from(true));
-        assert_eq!(run("not true", &[]), Value::from(false));
+        v(run("true and false", &[]), Value::from(false));
+        v(run("true or false", &[]), Value::from(true));
+        v(run("not true", &[]), Value::from(false));
     }
 
     #[test]
@@ -941,51 +971,51 @@ mod tests {
             "package".into() => Value::from("bldg"),
             "cityGmlPath".into() => Value::from("/data/city.gml"),
         });
-        assert_eq!(
+        v(
             run(r#"feature["package"]"#, &[("feature", feature.clone())]),
-            Value::from("bldg")
+            Value::from("bldg"),
         );
-        assert_eq!(
+        v(
             run(r#"feature["cityGmlPath"]"#, &[("feature", feature.clone())]),
-            Value::from("/data/city.gml")
+            Value::from("/data/city.gml"),
         );
-        assert_eq!(
+        v(
             run(r#"feature["missing"]"#, &[("feature", feature)]),
-            Value::Null
+            Value::Null,
         );
         let arr = Value::array(vec![
             Value::from(1i64),
             Value::from(2i64),
             Value::from(3i64),
         ]);
-        assert_eq!(run("arr[0]", &[("arr", arr.clone())]), Value::from(1i64));
-        assert_eq!(run("arr[-1]", &[("arr", arr)]), Value::from(3i64));
-        assert_eq!(run(r#""hello"[0]"#, &[]), Value::from("h"));
-        assert_eq!(run(r#""hello"[4]"#, &[]), Value::from("o"));
-        assert_eq!(run(r#""hello"[-1]"#, &[]), Value::from("o"));
+        v(run("arr[0]", &[("arr", arr.clone())]), Value::from(1i64));
+        v(run("arr[-1]", &[("arr", arr)]), Value::from(3i64));
+        v(run(r#""hello"[0]"#, &[]), Value::from("h"));
+        v(run(r#""hello"[4]"#, &[]), Value::from("o"));
+        v(run(r#""hello"[-1]"#, &[]), Value::from("o"));
     }
 
     #[test]
     fn test_slice() {
-        assert_eq!(run(r#""abcde"[1:3]"#, &[]), Value::from("bc"));
-        assert_eq!(run(r#""abcde"[:3]"#, &[]), Value::from("abc"));
-        assert_eq!(run(r#""abcde"[2:]"#, &[]), Value::from("cde"));
-        assert_eq!(run(r#""abcde"[:]"#, &[]), Value::from("abcde"));
-        assert_eq!(run(r#""abcde"[::-1]"#, &[]), Value::from("edcba"));
-        assert_eq!(run(r#""abcde"[-1::-2]"#, &[]), Value::from("eca"));
-        assert_eq!(run(r#""abcde"[::2]"#, &[]), Value::from("ace"));
+        v(run(r#""abcde"[1:3]"#, &[]), Value::from("bc"));
+        v(run(r#""abcde"[:3]"#, &[]), Value::from("abc"));
+        v(run(r#""abcde"[2:]"#, &[]), Value::from("cde"));
+        v(run(r#""abcde"[:]"#, &[]), Value::from("abcde"));
+        v(run(r#""abcde"[::-1]"#, &[]), Value::from("edcba"));
+        v(run(r#""abcde"[-1::-2]"#, &[]), Value::from("eca"));
+        v(run(r#""abcde"[::2]"#, &[]), Value::from("ace"));
         let arr = Value::array((0i64..5).map(Value::from).collect());
-        assert_eq!(
+        v(
             run("arr[1:3]", &[("arr", arr.clone())]),
-            Value::array(vec![Value::from(1i64), Value::from(2i64)])
+            Value::array(vec![Value::from(1i64), Value::from(2i64)]),
         );
-        assert_eq!(
+        v(
             run("arr[-2:]", &[("arr", arr.clone())]),
-            Value::array(vec![Value::from(3i64), Value::from(4i64)])
+            Value::array(vec![Value::from(3i64), Value::from(4i64)]),
         );
-        assert_eq!(
+        v(
             run("arr[::-1]", &[("arr", arr.clone())]),
-            Value::array((0i64..5).rev().map(Value::from).collect())
+            Value::array((0i64..5).rev().map(Value::from).collect()),
         );
         assert!(try_run("arr[s:]", &[("arr", arr.clone()), ("s", Value::Float(1.0))]).is_err());
         assert!(try_run("arr[:s]", &[("arr", arr.clone()), ("s", Value::Float(3.0))]).is_err());
@@ -994,253 +1024,247 @@ mod tests {
 
     #[test]
     fn test_method_call() {
-        assert_eq!(run(r#""  hello  ".trim()"#, &[]), Value::from("hello"));
-        assert_eq!(run(r#""hello".len()"#, &[]), Value::from(5i64));
-        assert_eq!(run(r#""".len()"#, &[]), Value::from(0i64));
+        v(run(r#""  hello  ".trim()"#, &[]), Value::from("hello"));
+        v(run(r#""hello".len()"#, &[]), Value::from(5i64));
+        v(run(r#""".len()"#, &[]), Value::from(0i64));
         let arr = Value::array(vec![
             Value::from(1i64),
             Value::from(2i64),
             Value::from(3i64),
         ]);
-        assert_eq!(run("arr.len()", &[("arr", arr)]), Value::from(3i64));
+        v(run("arr.len()", &[("arr", arr)]), Value::from(3i64));
     }
 
     #[test]
     fn test_string_split() {
-        assert_eq!(
+        v(
             run(r#""bldg:Building".split(":")[0]"#, &[]),
-            Value::from("bldg")
+            Value::from("bldg"),
         );
-        assert_eq!(
+        v(
             run(r#""bldg:Building".split(":")[-1]"#, &[]),
-            Value::from("Building")
+            Value::from("Building"),
         );
-        assert_eq!(
+        v(
             run(r#""hello".split(":")"#, &[]),
-            Value::array(vec![Value::from("hello")])
+            Value::array(vec![Value::from("hello")]),
         );
-        assert_eq!(
+        v(
             run(r#""a::b".split(":")"#, &[]),
-            Value::array(vec![Value::from("a"), Value::from(""), Value::from("b")])
+            Value::array(vec![Value::from("a"), Value::from(""), Value::from("b")]),
         );
     }
 
     #[test]
     fn test_in_operator() {
         let pkgs = Value::array(vec![Value::from("bldg"), Value::from("tran")]);
-        assert_eq!(
+        v(
             run(r#""bldg" in pkgs"#, &[("pkgs", pkgs.clone())]),
-            Value::from(true)
+            Value::from(true),
         );
-        assert_eq!(
+        v(
             run(r#""fld" in pkgs"#, &[("pkgs", pkgs.clone())]),
-            Value::from(false)
+            Value::from(false),
         );
-        assert_eq!(
+        v(
             run(r#""bldg" not in pkgs"#, &[("pkgs", pkgs.clone())]),
-            Value::from(false)
+            Value::from(false),
         );
-        assert_eq!(
+        v(
             run(r#""fld" not in pkgs"#, &[("pkgs", pkgs)]),
-            Value::from(true)
+            Value::from(true),
         );
-        assert_eq!(run(r#""world" in "hello world""#, &[]), Value::from(true));
-        assert_eq!(run(r#""xyz" in "hello world""#, &[]), Value::from(false));
-        assert_eq!(run(r#""xyz" not in "hello world""#, &[]), Value::from(true));
-        assert_eq!(run(r#""" in "hello""#, &[]), Value::from(true));
+        v(run(r#""world" in "hello world""#, &[]), Value::from(true));
+        v(run(r#""xyz" in "hello world""#, &[]), Value::from(false));
+        v(run(r#""xyz" not in "hello world""#, &[]), Value::from(true));
+        v(run(r#""" in "hello""#, &[]), Value::from(true));
         let m = Value::map(indexmap::indexmap! {
             "a".into() => Value::from(1i64),
             "b".into() => Value::from(2i64),
         });
-        assert_eq!(run(r#""a" in m"#, &[("m", m.clone())]), Value::from(true));
-        assert_eq!(run(r#""c" in m"#, &[("m", m.clone())]), Value::from(false));
-        assert_eq!(run(r#""a" not in m"#, &[("m", m)]), Value::from(false));
-        assert_eq!(run(r#""x" in null"#, &[]), Value::from(false));
-        assert_eq!(run(r#""x" not in null"#, &[]), Value::from(true));
-        // not applies to the whole comparison: `not ("a" in pkgs)`
+        v(run(r#""a" in m"#, &[("m", m.clone())]), Value::from(true));
+        v(run(r#""c" in m"#, &[("m", m.clone())]), Value::from(false));
+        v(run(r#""a" not in m"#, &[("m", m)]), Value::from(false));
+        v(run(r#""x" in null"#, &[]), Value::from(false));
+        v(run(r#""x" not in null"#, &[]), Value::from(true));
         let pkgs2 = Value::array(vec![Value::from("a")]);
-        assert_eq!(
+        v(
             run(r#"not "a" in pkgs"#, &[("pkgs", pkgs2)]),
-            Value::from(false)
+            Value::from(false),
         );
     }
 
     #[test]
     fn test_string_starts_ends_with() {
-        assert_eq!(
+        v(
             run(r#""bldg_lod1".starts_with("tran")"#, &[]),
-            Value::from(false)
+            Value::from(false),
         );
-        assert_eq!(
+        v(
             run(r#""bldg_lod1".ends_with("lod1")"#, &[]),
-            Value::from(true)
+            Value::from(true),
         );
-        assert_eq!(
+        v(
             run(
                 r#"s = "city_bldg"; sfx = "_bldg"; if s.ends_with(sfx) { s[:s.len() - sfx.len()] } else { s }"#,
-                &[]
+                &[],
             ),
-            Value::from("city")
+            Value::from("city"),
         );
     }
 
     #[test]
     fn test_string_replace() {
-        assert_eq!(
+        v(
             run(r#""a/b/c".replace("/", "_")"#, &[]),
-            Value::from("a_b_c")
+            Value::from("a_b_c"),
         );
-        assert_eq!(
+        v(
             run(r#""foo_op_bar_op_baz".replace("_op_", "/")"#, &[]),
-            Value::from("foo/bar/baz")
+            Value::from("foo/bar/baz"),
         );
-        assert_eq!(
+        v(
             run(r#""hello".replace("x", "y")"#, &[]),
-            Value::from("hello")
+            Value::from("hello"),
         );
     }
 
     #[test]
     fn test_assign() {
-        assert_eq!(run("x = 42; x", &[]), Value::from(42i64));
-        assert_eq!(run("x = 3; x * x", &[]), Value::from(9i64));
-        assert_eq!(run("x = 2; y = x + 1; x * y", &[]), Value::from(6i64));
-        // reassignment overwrites
-        assert_eq!(run("x = 1; x = 99; x", &[]), Value::from(99i64));
-        // assign shadows outer env binding
-        assert_eq!(
+        v(run("x = 42; x", &[]), Value::from(42i64));
+        v(run("x = 3; x * x", &[]), Value::from(9i64));
+        v(run("x = 2; y = x + 1; x * y", &[]), Value::from(6i64));
+        v(run("x = 1; x = 99; x", &[]), Value::from(99i64));
+        v(
             run("x = 7; x", &[("x", Value::from(999i64))]),
-            Value::from(7i64)
+            Value::from(7i64),
         );
-        // assign returns the value
-        assert_eq!(run("(x = 10) * 2", &[]), Value::from(20i64));
-        // function-scoped: inner block mutates outer x
-        assert_eq!(run("x = 10; { x = 99 }; x", &[]), Value::from(99i64));
+        v(run("(x = 10) * 2", &[]), Value::from(20i64));
+        v(run("x = 10; { x = 99 }; x", &[]), Value::from(99i64));
     }
 
     #[test]
     fn test_block() {
-        assert_eq!(run("{ 1; 2; 3 }", &[]), Value::from(3i64));
-        assert_eq!(run("{ 42; }", &[]), Value::Null);
-        assert_eq!(run("{}", &[]), Value::Null);
-        assert_eq!(run("{ x = 5; x * 2 }", &[]), Value::from(10i64));
-        assert_eq!(
+        v(run("{ 1; 2; 3 }", &[]), Value::from(3i64));
+        v(run("{ 42; }", &[]), Value::Null);
+        v(run("{}", &[]), Value::Null);
+        v(run("{ x = 5; x * 2 }", &[]), Value::from(10i64));
+        v(
             run("{ a = 3; b = 4; a * a + b * b }", &[]),
-            Value::from(25i64)
+            Value::from(25i64),
         );
-        assert_eq!(run("{ x = 1; }", &[]), Value::Null);
-        // function-scoped: x leaks out of inner block
-        assert_eq!(run("{ x = 3 } + { y = 4 }", &[]), Value::from(7i64));
-        assert_eq!(run("{ x = 1; { y = 2; x + y } }", &[]), Value::from(3i64));
+        v(run("{ x = 1; }", &[]), Value::Null);
+        v(run("{ x = 3 } + { y = 4 }", &[]), Value::from(7i64));
+        v(run("{ x = 1; { y = 2; x + y } }", &[]), Value::from(3i64));
     }
 
     #[test]
     fn test_if() {
-        assert_eq!(run("if true { 1 } else { 2 }", &[]), Value::from(1i64));
-        assert_eq!(run("if false { 1 } else { 2 }", &[]), Value::from(2i64));
-        assert_eq!(run("if 1 == 1 { 42 } else { 0 }", &[]), Value::from(42i64));
-        assert_eq!(run("if 1 == 2 { 42 } else { 0 }", &[]), Value::from(0i64));
-        assert_eq!(run("if null { 1 } else { 2 }", &[]), Value::from(2i64));
-        assert_eq!(
+        v(run("if true { 1 } else { 2 }", &[]), Value::from(1i64));
+        v(run("if false { 1 } else { 2 }", &[]), Value::from(2i64));
+        v(run("if 1 == 1 { 42 } else { 0 }", &[]), Value::from(42i64));
+        v(run("if 1 == 2 { 42 } else { 0 }", &[]), Value::from(0i64));
+        v(run("if null { 1 } else { 2 }", &[]), Value::from(2i64));
+        v(
             run("if false { 1 } else if false { 2 } else { 3 }", &[]),
-            Value::from(3i64)
+            Value::from(3i64),
         );
-        assert_eq!(
+        v(
             run("if false { 1 } else if true { 2 } else { 3 }", &[]),
-            Value::from(2i64)
+            Value::from(2i64),
         );
-        assert_eq!(
+        v(
             run(
                 "(if true { 10 } else { 0 }) + (if false { 0 } else { 5 })",
-                &[]
+                &[],
             ),
-            Value::from(15i64)
+            Value::from(15i64),
         );
-        assert_eq!(
+        v(
             run("if true { x = 7; x * 2 } else { 0 }", &[]),
-            Value::from(14i64)
+            Value::from(14i64),
         );
-        assert_eq!(run("if true { 42 }", &[]), Value::from(42i64));
-        assert_eq!(run("if false { 42 }", &[]), Value::Null);
+        v(run("if true { 42 }", &[]), Value::from(42i64));
+        v(run("if false { 42 }", &[]), Value::Null);
     }
 
     #[test]
     fn test_map() {
-        assert_eq!(
+        v(
             run(r#"map([["a", 1], ["b", 2]])"#, &[]),
             Value::map(indexmap::indexmap! {
                 "a".into() => Value::from(1i64),
                 "b".into() => Value::from(2i64),
-            })
+            }),
         );
-        assert_eq!(
+        v(
             run(r#"{"a": 1, "b": 2}"#, &[]),
             Value::map(indexmap::indexmap! {
                 "a".into() => Value::from(1i64),
                 "b".into() => Value::from(2i64),
-            })
+            }),
         );
-        assert_eq!(
+        v(
             run(r#"{"x": true,}"#, &[]),
-            Value::map(indexmap::indexmap! { "x".into() => Value::Bool(true) })
+            Value::map(indexmap::indexmap! { "x".into() => Value::Bool(true) }),
         );
-        assert_eq!(
+        v(
             run(r#"{"pre" + "fix": 9}["prefix"]"#, &[]),
-            Value::from(9i64)
+            Value::from(9i64),
         );
-        assert_eq!(
+        v(
             run(r#"{"a": {"b": 2}}"#, &[]),
             Value::map(indexmap::indexmap! {
                 "a".into() => Value::map(indexmap::indexmap! { "b".into() => Value::from(2i64) }),
-            })
+            }),
         );
-        assert_eq!(run("{}", &[]), Value::Null);
+        v(run("{}", &[]), Value::Null);
     }
 
     #[test]
     fn test_cast() {
-        assert_eq!(run(r#"str("hello")"#, &[]), Value::from("hello"));
-        assert_eq!(run(r#"str(42)"#, &[]), Value::from("42"));
-        assert_eq!(run(r#"str(3.14)"#, &[]), Value::from("3.14"));
-        assert_eq!(run(r#"str(true)"#, &[]), Value::from("true"));
-        assert_eq!(run(r#"str(false)"#, &[]), Value::from("false"));
-        assert_eq!(run(r#"str(null)"#, &[]), Value::from("null"));
-        assert_eq!(run(r#"int(42)"#, &[]), Value::from(42i64));
-        assert_eq!(run(r#"int(3.9)"#, &[]), Value::from(3i64));
-        assert_eq!(run(r#"int(-3.9)"#, &[]), Value::from(-3i64));
-        assert_eq!(run(r#"int("42")"#, &[]), Value::from(42i64));
-        assert_eq!(run(r#"int(true)"#, &[]), Value::from(1i64));
-        assert_eq!(run(r#"int(false)"#, &[]), Value::from(0i64));
+        v(run(r#"str("hello")"#, &[]), Value::from("hello"));
+        v(run(r#"str(42)"#, &[]), Value::from("42"));
+        v(run(r#"str(3.14)"#, &[]), Value::from("3.14"));
+        v(run(r#"str(true)"#, &[]), Value::from("true"));
+        v(run(r#"str(false)"#, &[]), Value::from("false"));
+        v(run(r#"str(null)"#, &[]), Value::from("null"));
+        v(run(r#"int(42)"#, &[]), Value::from(42i64));
+        v(run(r#"int(3.9)"#, &[]), Value::from(3i64));
+        v(run(r#"int(-3.9)"#, &[]), Value::from(-3i64));
+        v(run(r#"int("42")"#, &[]), Value::from(42i64));
+        v(run(r#"int(true)"#, &[]), Value::from(1i64));
+        v(run(r#"int(false)"#, &[]), Value::from(0i64));
         assert!(try_run("int(f)", &[("f", Value::Float(f64::NAN))]).is_err());
         assert!(try_run("int(f)", &[("f", Value::Float(f64::INFINITY))]).is_err());
         assert!(try_run("int(f)", &[("f", Value::Float(f64::NEG_INFINITY))]).is_err());
         assert!(try_run("int(f)", &[("f", Value::Float(1e100))]).is_err());
-        assert_eq!(
+        v(
             try_run("int(f)", &[("f", Value::Float(i64::MIN as f64))]).unwrap(),
-            Value::from(i64::MIN)
+            Value::from(i64::MIN),
         );
-        assert_eq!(run(r#"float(42)"#, &[]), Value::from(42.0f64));
-        assert_eq!(run(r#"float(1.5)"#, &[]), Value::from(1.5f64));
-        assert_eq!(run(r#"float("1.5")"#, &[]), Value::from(1.5f64));
-        assert_eq!(run(r#"float(true)"#, &[]), Value::from(1.0f64));
-        assert_eq!(run(r#"float(false)"#, &[]), Value::from(0.0f64));
-        assert_eq!(run(r#"bool(1)"#, &[]), Value::from(true));
-        assert_eq!(run(r#"bool(0)"#, &[]), Value::from(false));
-        assert_eq!(run(r#"bool("")"#, &[]), Value::from(false));
-        assert_eq!(run(r#"bool("x")"#, &[]), Value::from(true));
-        assert_eq!(run(r#"bool(null)"#, &[]), Value::from(false));
-        assert_eq!(
+        v(run(r#"float(42)"#, &[]), Value::from(42.0f64));
+        v(run(r#"float(1.5)"#, &[]), Value::from(1.5f64));
+        v(run(r#"float("1.5")"#, &[]), Value::from(1.5f64));
+        v(run(r#"float(true)"#, &[]), Value::from(1.0f64));
+        v(run(r#"float(false)"#, &[]), Value::from(0.0f64));
+        v(run(r#"bool(1)"#, &[]), Value::from(true));
+        v(run(r#"bool(0)"#, &[]), Value::from(false));
+        v(run(r#"bool("")"#, &[]), Value::from(false));
+        v(run(r#"bool("x")"#, &[]), Value::from(true));
+        v(run(r#"bool(null)"#, &[]), Value::from(false));
+        v(
             run(r#"list("abc")"#, &[]),
-            Value::array(vec![Value::from("a"), Value::from("b"), Value::from("c")])
+            Value::array(vec![Value::from("a"), Value::from("b"), Value::from("c")]),
         );
         let arr = Value::array(vec![Value::from(1i64), Value::from(2i64)]);
-        assert_eq!(run("list(arr)", &[("arr", arr.clone())]), arr);
+        v(run("list(arr)", &[("arr", arr.clone())]), arr);
         let m = Value::map(
             indexmap::indexmap! { "x".into() => Value::from(1i64), "y".into() => Value::from(2i64) },
         );
-        assert_eq!(
+        v(
             run("list(m)", &[("m", m)]),
-            Value::array(vec![Value::from("x"), Value::from("y")])
+            Value::array(vec![Value::from("x"), Value::from("y")]),
         );
     }
 
@@ -1254,17 +1278,13 @@ mod tests {
             "nan >= 1.0",
             "1.0 < nan",
         ] {
-            assert_eq!(
-                run(expr, &[("nan", nan.clone())]),
-                Value::Bool(false),
-                "expected false for: {expr}"
-            );
+            v(run(expr, &[("nan", nan.clone())]), Value::Bool(false));
         }
-        assert_eq!(
+        v(
             run("nan == nan", &[("nan", nan.clone())]),
-            Value::Bool(false)
+            Value::Bool(false),
         );
-        assert_eq!(run("nan != nan", &[("nan", nan)]), Value::Bool(true));
+        v(run("nan != nan", &[("nan", nan)]), Value::Bool(true));
     }
 
     #[test]
@@ -1276,15 +1296,15 @@ mod tests {
             fn type_name(&self) -> &'static str {
                 "Counter"
             }
-            fn call_method(&self, method: &str, args: &[Value]) -> HResult<Value> {
+            fn call_method(&mut self, method: &str, args: &[Value]) -> HResult<Value> {
                 match method {
                     "__add__" => match args.first() {
-                        Some(Value::Int(n)) => Ok(Value::Object(Box::new(Counter(self.0 + n)))),
+                        Some(Value::Int(n)) => Ok(Value::object(Counter(self.0 + n))),
                         _ => Err(EvalHelperError::new("expected int")),
                     },
                     "__eq__" => match args.first() {
                         Some(Value::Object(other)) => {
-                            let other = other.display().parse::<i64>().unwrap_or(i64::MIN);
+                            let other = other.borrow().display().parse::<i64>().unwrap_or(i64::MIN);
                             Ok(Value::Bool(self.0 == other))
                         }
                         _ => Ok(Value::Bool(false)),
@@ -1292,26 +1312,20 @@ mod tests {
                     m => Err(EvalHelperError::new(format!("no method {m}"))),
                 }
             }
-            fn clone_box(&self) -> Box<dyn super::super::value::Object> {
-                Box::new(self.clone())
-            }
-            fn eq_box(&self, _: &dyn super::super::value::Object) -> bool {
-                false
-            }
             fn display(&self) -> String {
                 self.0.to_string()
             }
         }
 
         let mut env = default_env();
-        env.insert("c".to_string(), Value::Object(Box::new(Counter(10))));
+        env.insert("c".to_string(), Value::object(Counter(10)));
         let result = eval_inner(&parse("c + 5").unwrap(), &mut env).unwrap();
         assert!(matches!(result, Value::Object(_)));
         assert_eq!(result.to_string(), "15");
-        env.insert("d".to_string(), Value::Object(Box::new(Counter(10))));
-        assert_eq!(
+        env.insert("d".to_string(), Value::object(Counter(10)));
+        v(
             eval_inner(&parse("c == d").unwrap(), &mut env).unwrap(),
-            Value::Bool(true)
+            Value::Bool(true),
         );
     }
 
@@ -1340,13 +1354,13 @@ mod tests {
                 Ok(Value::String(parts.join("/")))
             })),
         );
-        assert_eq!(
+        v(
             eval(
                 &parse(r#"join_path("base", "file.json")"#).unwrap(),
-                &mut env
+                &mut env,
             )
             .unwrap(),
-            Value::from("base/file.json")
+            Value::from("base/file.json"),
         );
     }
 
@@ -1357,12 +1371,12 @@ mod tests {
             "package".into() => Value::from("bldg"),
         });
         let pkgs = Value::array(vec![Value::from("bldg"), Value::from("tran")]);
-        assert_eq!(
+        v(
             run(
                 r#"feature["extension"] == "gml" and feature["package"] in packages"#,
-                &[("feature", feature), ("packages", pkgs)]
+                &[("feature", feature), ("packages", pkgs)],
             ),
-            Value::from(true)
+            Value::from(true),
         );
     }
 
@@ -1370,15 +1384,14 @@ mod tests {
     fn test_depth_limit_ok() {
         let n = MAX_EVAL_DEPTH - 1;
         let expr = format!("1{}", "+1".repeat(n));
-        assert_eq!(
+        v(
             eval(&parse(&expr).unwrap(), &mut default_env()).unwrap(),
-            Value::Int(n as i64 + 1)
+            Value::Int(n as i64 + 1),
         );
     }
 
     #[test]
     fn test_eval_error_pos() {
-        // division by zero: the Binary node for "1 / 0" spans the whole expr, starting at byte 0
         let err = try_run("1 / 0", &[]).unwrap_err();
         match err {
             Error::Eval { pos, msg } => {
@@ -1391,30 +1404,26 @@ mod tests {
 
     #[test]
     fn test_list_index_assign() {
-        // basic element replacement
-        assert_eq!(
+        v(
             run("a = [1, 2, 3]; a[1] = 99; a", &[]),
             Value::array(vec![
                 Value::from(1i64),
                 Value::from(99i64),
-                Value::from(3i64)
-            ])
+                Value::from(3i64),
+            ]),
         );
-        // negative index
-        assert_eq!(
+        v(
             run("a = [10, 20, 30]; a[-1] = 99; a", &[]),
             Value::array(vec![
                 Value::from(10i64),
                 Value::from(20i64),
-                Value::from(99i64)
-            ])
+                Value::from(99i64),
+            ]),
         );
-        // assign expression evaluates to the assigned value
-        assert_eq!(run("a = [0]; a[0] = 7", &[]), Value::from(7i64));
-        // nested: a[0][1] = v
-        assert_eq!(
+        v(run("a = [0]; a[0] = 7", &[]), Value::from(7i64));
+        v(
             run("a = [[1, 2], [3, 4]]; a[0][1] = 99; a[0]", &[]),
-            Value::array(vec![Value::from(1i64), Value::from(99i64)])
+            Value::array(vec![Value::from(1i64), Value::from(99i64)]),
         );
     }
 
@@ -1429,57 +1438,61 @@ mod tests {
 
     #[test]
     fn test_map_index_assign() {
-        // insert new key
-        assert_eq!(
+        v(
             run(r#"m = {"a": 1}; m["b"] = 2; m["b"]"#, &[]),
-            Value::from(2i64)
+            Value::from(2i64),
         );
-        // overwrite existing key
-        assert_eq!(
+        v(
             run(r#"m = {"x": 10}; m["x"] = 99; m["x"]"#, &[]),
-            Value::from(99i64)
+            Value::from(99i64),
         );
-        // nested: m["k"][0] = v
-        assert_eq!(
+        v(
             run(r#"m = {"k": [1, 2, 3]}; m["k"][0] = 99; m["k"][0]"#, &[]),
-            Value::from(99i64)
+            Value::from(99i64),
         );
-        // assign returns the assigned value
-        assert_eq!(run(r#"m = {"a": 0}; m["x"] = 42"#, &[]), Value::from(42i64));
+        v(run(r#"m = {"a": 0}; m["x"] = 42"#, &[]), Value::from(42i64));
     }
 
     #[test]
     fn test_reference_semantics() {
-        // Assigning an array to another variable shares the backing store.
-        assert_eq!(run("a = [1, 2, 3]; b = a; b[0] = 99; a[0]", &[]), Value::from(99i64));
-
-        // Same for maps.
-        assert_eq!(
+        v(
+            run("a = [1, 2, 3]; b = a; b[0] = 99; a[0]", &[]),
+            Value::from(99i64),
+        );
+        v(
             run(r#"m = {"x": 1}; n = m; n["x"] = 42; m["x"]"#, &[]),
-            Value::from(42i64)
+            Value::from(42i64),
         );
 
-        // Passing an array into an env var and mutating through it.
-        let arr = Value::array(vec![Value::from(1i64), Value::from(2i64), Value::from(3i64)]);
+        let arr = Value::array(vec![
+            Value::from(1i64),
+            Value::from(2i64),
+            Value::from(3i64),
+        ]);
         run("arr[0] = 99", &[("arr", arr.clone())]);
-        assert_eq!(arr, Value::array(vec![Value::from(99i64), Value::from(2i64), Value::from(3i64)]));
+        v(
+            arr,
+            Value::array(vec![
+                Value::from(99i64),
+                Value::from(2i64),
+                Value::from(3i64),
+            ]),
+        );
     }
 
     #[test]
     fn test_while() {
-        assert_eq!(
+        v(
             run("i = 0; while i < 5 { i = i + 1 }; i", &[]),
-            Value::from(5i64)
+            Value::from(5i64),
         );
-        // while evaluates to Null
-        assert_eq!(run("while false { 1 }", &[]), Value::Null);
-        // accumulate sum
-        assert_eq!(
+        v(run("while false { 1 }", &[]), Value::Null);
+        v(
             run(
                 "s = 0; i = 1; while i <= 10 { s = s + i; i = i + 1 }; s",
-                &[]
+                &[],
             ),
-            Value::from(55i64)
+            Value::from(55i64),
         );
     }
 

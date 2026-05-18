@@ -179,15 +179,17 @@ pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue 
                 .collect(),
         ),
         Value::Fn(_) => AttributeValue::Null,
-        Value::Object(obj) => {
-            if let Some(v) = obj.serialize() {
+        Value::Object(rc) => {
+            let borrowed = rc.borrow();
+            if let Some(v) = borrowed.serialize() {
+                drop(borrowed);
                 attribute_value_from_eval(v)
             } else {
                 tracing::warn!(
-                    type_name = obj.type_name(),
+                    type_name = borrowed.type_name(),
                     "flow expr object converted to type-name string"
                 );
-                AttributeValue::String(format!("<{}>", obj.type_name()))
+                AttributeValue::String(format!("<{}>", borrowed.type_name()))
             }
         }
     }
