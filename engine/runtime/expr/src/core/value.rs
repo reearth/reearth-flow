@@ -3,12 +3,12 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 
-use crate::core::error::HResult;
+use crate::core::error::InnerResult;
 
 /// Trait for typed objects that can respond to method calls.
 pub trait Object: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
-    fn call_method(&mut self, method: &str, args: &[Value]) -> HResult<Value>;
+    fn call_method(&mut self, method: &str, args: &[Value]) -> InnerResult<Value>;
     fn display(&self) -> String {
         format!("<{}>", self.type_name())
     }
@@ -17,18 +17,18 @@ pub trait Object: std::fmt::Debug {
     }
 }
 
-type NativeFnInner = Rc<dyn Fn(&[Value]) -> HResult<Value>>;
+type NativeFnInner = Rc<dyn Fn(&[Value]) -> InnerResult<Value>>;
 
 /// A native (Rust) function callable from the expression language.
 #[derive(Clone)]
 pub struct NativeFn(pub NativeFnInner);
 
 impl NativeFn {
-    pub fn new(f: impl Fn(&[Value]) -> HResult<Value> + 'static) -> Self {
+    pub fn new(f: impl Fn(&[Value]) -> InnerResult<Value> + 'static) -> Self {
         Self(Rc::new(f))
     }
 
-    pub fn call(&self, args: &[Value]) -> HResult<Value> {
+    pub fn call(&self, args: &[Value]) -> InnerResult<Value> {
         (self.0)(args)
     }
 }

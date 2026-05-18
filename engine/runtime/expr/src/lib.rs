@@ -12,7 +12,7 @@ mod core;
 macro_rules! unpack_args {
     ($args:expr =>) => {
         if !$args.is_empty() {
-            return Err($crate::core::error::EvalHelperError::new(format!(
+            return Err($crate::core::error::InnerError::new(format!(
                 "expected 0 argument(s), got {}",
                 $args.len()
             )));
@@ -20,7 +20,7 @@ macro_rules! unpack_args {
     };
     ($args:expr => $($var:ident),+) => {
         let [$($var),+] = $args else {
-            return Err($crate::core::error::EvalHelperError::new(format!(
+            return Err($crate::core::error::InnerError::new(format!(
                 "expected {} argument(s), got {}",
                 [$(stringify!($var)),+].len(),
                 $args.len()
@@ -29,7 +29,7 @@ macro_rules! unpack_args {
     };
 }
 
-pub use core::error::{Error, EvalHelperError, Result};
+pub use core::error::{Error, InnerError, InnerResult, Result};
 pub use core::eval::{default_env, Env};
 pub use core::value::{NativeFn, Object, Value};
 
