@@ -1698,6 +1698,21 @@ mod tests {
     }
 
     #[test]
+    fn test_assign_rhs_evaluated_before_index() {
+        // RHS is evaluated before the LHS index. i starts out-of-bounds (-999);
+        // if LHS were captured first this would error on the index before RHS runs.
+        assert_eval(
+            "a = [0, 0, 0]; i = -999; a[i] = (i = 1); a",
+            &[],
+            Value::array(vec![
+                Value::from(0i64),
+                Value::from(1i64),
+                Value::from(0i64),
+            ]),
+        );
+    }
+
+    #[test]
     fn test_list_index_assign_out_of_range() {
         assert!(try_run("a = [1, 2]; a[5] = 9", &[]).is_err());
     }
