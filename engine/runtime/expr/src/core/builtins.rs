@@ -106,6 +106,12 @@ impl Object for UrlObject {
 }
 
 pub fn builtin_url(args: &[Value]) -> InnerResult<Value> {
+    if args.len() > 1 {
+        return Err(InnerError::new(format!(
+            "Url() expected at most 1 argument, got {}",
+            args.len()
+        )));
+    }
     let s = match args.first() {
         None => return Err(InnerError::new("Url() requires a string argument")),
         Some(Value::String(s)) => s.clone(),
