@@ -1,0 +1,21 @@
+{
+  "name": "reearth-flow-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "End-to-end tests for Re:Earth Flow",
+  "type": "commonjs",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:regression": "playwright test --grep @regression",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.7.0",
+    "dotenv": "^17.2.3"
+  }
+}

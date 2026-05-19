@@ -1,6 +1,6 @@
 import {
   ChalkboardTeacherIcon,
-  PencilSimpleIcon,
+  PencilLineIcon,
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
@@ -195,7 +195,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
           return (
             <div className="flex items-center gap-1">
               <IconButton
-                icon={<PencilSimpleIcon size={18} />}
+                icon={<PencilLineIcon size={18} />}
                 size="default"
                 variant="ghost"
                 onClick={(e) => {
