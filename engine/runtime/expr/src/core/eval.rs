@@ -692,7 +692,6 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
     match op {
         BinOp::Add => match (left, right) {
             (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
-            (Value::String(a), b) => Ok(Value::String(a + value_to_string(&b).as_str())),
             (Value::Array(a), Value::Array(b)) => {
                 let mut new_vec = a.borrow().clone();
                 new_vec.extend(b.borrow().iter().cloned());
@@ -933,19 +932,6 @@ fn is_truthy(v: &Value) -> bool {
         Value::Array(a) => !a.borrow().is_empty(),
         Value::Map(o) => !o.borrow().is_empty(),
         Value::Fn(_) | Value::Object(_) => true,
-    }
-}
-
-fn value_to_string(v: &Value) -> String {
-    match v {
-        Value::String(s) => s.clone(),
-        Value::Null => "null".into(),
-        Value::Bool(b) => b.to_string(),
-        Value::Int(n) => n.to_string(),
-        Value::Float(f) => format_float(*f),
-        Value::Array(_) | Value::Map(_) => format!("{v}"),
-        Value::Fn(_) => "<fn>".into(),
-        Value::Object(rc) => rc.borrow().display(),
     }
 }
 
@@ -1543,6 +1529,13 @@ mod tests {
             &[("m", m)],
             Value::array(vec![Value::from("x"), Value::from("y")]),
         );
+    }
+
+    #[test]
+    fn test_string_add_non_string_errors() {
+        assert!(try_run(r#""1" + 1"#, &[]).is_err());
+        assert!(try_run(r#""x" + 1.5"#, &[]).is_err());
+        assert!(try_run(r#""x" + true"#, &[]).is_err());
     }
 
     #[test]
