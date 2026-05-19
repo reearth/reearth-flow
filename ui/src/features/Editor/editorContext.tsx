@@ -5,6 +5,7 @@ import {
   PropsWithChildren,
   useContext,
 } from "react";
+import { Doc } from "yjs";
 
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import {
@@ -12,6 +13,13 @@ import {
   type AwarenessSelection,
   type AwarenessSelectionsMap,
 } from "@flow/types";
+
+export type WorkflowVarAwareness = {
+  onDialogOpen: () => void;
+  onDialogClose: () => void;
+  onFieldFocus: (variableId: string | null, field: string | null) => void;
+  onEditStart: (variableId: string | null) => void;
+};
 
 export type EditorContextType = {
   isLocked: boolean;
@@ -23,6 +31,8 @@ export type EditorContextType = {
     originPrepend?: string,
   ) => void;
   awarenessSelectionsMap?: AwarenessSelectionsMap;
+  yDoc?: Doc | null;
+  workflowVarAwareness?: WorkflowVarAwareness;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

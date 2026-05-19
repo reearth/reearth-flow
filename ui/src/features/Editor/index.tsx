@@ -96,6 +96,10 @@ export default function Editor({
     handleConnectStart,
     handleConnectEnd,
     handleParamFieldFocus,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
     awarenessSelectionsMap,
     setShowSearchPanel,
     selectedNodeIds,
@@ -115,6 +119,13 @@ export default function Editor({
       currentYWorkflow,
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
+      yDoc,
+      workflowVarAwareness: {
+        onDialogOpen: handleWorkflowVarDialogOpen,
+        onDialogClose: handleWorkflowVarDialogClose,
+        onFieldFocus: handleWorkflowVarFieldFocus,
+        onEditStart: handleWorkflowVarEditStart,
+      },
     }),
     [
       isLocked,
@@ -123,6 +134,11 @@ export default function Editor({
       currentYWorkflow,
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
+      yDoc,
+      handleWorkflowVarDialogOpen,
+      handleWorkflowVarDialogClose,
+      handleWorkflowVarFieldFocus,
+      handleWorkflowVarEditStart,
     ],
   );
 
