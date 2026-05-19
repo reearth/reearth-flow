@@ -37,7 +37,11 @@ impl UrlObject {
     }
 
     fn name(&self) -> &str {
-        self.path.trim_end_matches('/').rsplit('/').next().unwrap_or("")
+        self.path
+            .trim_end_matches('/')
+            .rsplit('/')
+            .next()
+            .unwrap_or("")
     }
 
     fn parent(&self) -> Self {
@@ -280,7 +284,10 @@ mod tests {
 
     #[test]
     fn test_url_extension_trailing_slash() {
-        assert_val(&run(r#"Url("/foo/bar.gml/").extension()"#), &Value::from("gml"));
+        assert_val(
+            &run(r#"Url("/foo/bar.gml/").extension()"#),
+            &Value::from("gml"),
+        );
     }
 
     #[test]
@@ -291,6 +298,18 @@ mod tests {
         );
         assert_val(
             &run(r#"Url("/foo/bar") == Url("/foo/baz")"#),
+            &Value::Bool(false),
+        );
+    }
+
+    #[test]
+    fn test_url_in_array() {
+        assert_val(
+            &run(r#"Url("/foo/bar") in [Url("/foo/bar")]"#),
+            &Value::Bool(true),
+        );
+        assert_val(
+            &run(r#"Url("/foo/bar") in [Url("/foo/baz")]"#),
             &Value::Bool(false),
         );
     }
