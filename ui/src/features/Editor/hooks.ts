@@ -298,6 +298,29 @@ export default ({
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
   const [showSearchPanel, setShowSearchPanel] = useState<boolean>(false);
 
+  const {
+    self,
+    users,
+    awarenessSelectionsMap,
+    handlePointerDown,
+    handleParamFieldFocus,
+    handleUserFocusedElement,
+    setDraggingEdge,
+    clearDraggingEdge,
+  } = useAwarenessPresence({
+    selectedNodeIds,
+    openNode,
+    yAwareness,
+  });
+
+  const handleShowSearchPanel = useCallback(
+    (open: boolean) => {
+      setShowSearchPanel(open);
+      handleUserFocusedElement?.(open);
+    },
+    [setShowSearchPanel, handleUserFocusedElement],
+  );
+
   useHotkeys(
     EDITOR_HOT_KEYS,
     (event, handler) => {
@@ -343,29 +366,6 @@ export default ({
       handleProjectExport({ yDoc, project: currentProject });
     }
   };
-
-  const {
-    self,
-    users,
-    awarenessSelectionsMap,
-    handlePointerDown,
-    handleParamFieldFocus,
-    handleUserFocusedElement,
-    setDraggingEdge,
-    clearDraggingEdge,
-  } = useAwarenessPresence({
-    selectedNodeIds,
-    openNode,
-    yAwareness,
-  });
-
-  const handleShowSearchPanel = useCallback(
-    (open: boolean) => {
-      setShowSearchPanel(open);
-      handleUserFocusedElement?.(open);
-    },
-    [setShowSearchPanel, handleUserFocusedElement],
-  );
 
   const {
     nodePickerOpen,

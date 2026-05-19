@@ -277,7 +277,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
       </div>
       {showDialog === "layout" && (
         <LayoutOptionsDialog
-          showDialog={showDialog}
           onLayoutChange={onLayoutChange}
           onClose={handleDialogClose}
         />

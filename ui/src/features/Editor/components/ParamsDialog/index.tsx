@@ -136,9 +136,14 @@ const ParamsDialog: React.FC<Props> = ({
     [setMyDraft],
   );
 
+  const onUserFocusedElementRef = useRef(onUserFocusedElement);
+  onUserFocusedElementRef.current = onUserFocusedElement;
   useEffect(() => {
-    onUserFocusedElement?.(!!openNode);
-  }, [openNode, onUserFocusedElement]);
+    onUserFocusedElementRef.current?.(true);
+    return () => {
+      onUserFocusedElementRef.current?.(false);
+    };
+  }, []);
 
   const handleUpdate = useCallback(
     async (
@@ -175,18 +180,9 @@ const ParamsDialog: React.FC<Props> = ({
       }, "params");
 
       removeMyDraft(id);
-      onUserFocusedElement?.(false);
       onOpenNode();
     },
-    [
-      openNode,
-      rawDrafts,
-      onDataSubmit,
-      yDoc,
-      removeMyDraft,
-      onOpenNode,
-      onUserFocusedElement,
-    ],
+    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
   );
 
   const handleMigrate = useCallback(
@@ -318,9 +314,8 @@ const ParamsDialog: React.FC<Props> = ({
   };
 
   const handleOpenNode = useCallback(() => {
-    onUserFocusedElement?.(false);
     onOpenNode();
-  }, [onOpenNode, onUserFocusedElement]);
+  }, [onOpenNode]);
 
   return (
     <>
