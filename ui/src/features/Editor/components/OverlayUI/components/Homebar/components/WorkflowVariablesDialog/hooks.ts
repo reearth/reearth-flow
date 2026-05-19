@@ -129,13 +129,43 @@ export default ({
     if (hasInitRef.current) return;
     hasInitRef.current = true;
 
-    // Only write if nobody has started a session yet
-    if (yVarSession.get("variables") === undefined) {
+    if (yVarSession.get("pendingRefetch") === true) {
+      // A previous save left temp_ IDs; reinitialise from fresh server data.
+      yVarSession.set("variables", [...currentWorkflowVariables]);
+      yVarSession.set("base", [...currentWorkflowVariables]);
+      yVarSession.set("timestamp", Date.now());
+      yVarSession.delete("pendingRefetch");
+    } else if (yVarSession.get("variables") === undefined) {
+      // Fresh session — nobody has started editing yet.
       yVarSession.set("variables", [...currentWorkflowVariables]);
       yVarSession.set("base", [...currentWorkflowVariables]);
       yVarSession.set("timestamp", Date.now());
     }
+    // else: live session already in progress — join it without overwriting.
   }, [yVarSession, currentWorkflowVariables]);
+
+  // After a successful save, wait for TanStack Query to refetch and then
+  // reinitialise the session with real server IDs (resolving any temp_ IDs).
+  // We detect the refetch by tracking when currentWorkflowVariables changes.
+  const prevWorkflowVarsRef = useRef<WorkflowVariable[] | undefined>(undefined);
+  useEffect(() => {
+    if (!yVarSession || currentWorkflowVariables === undefined) return;
+
+    if (!rawSession?.pendingRefetch) {
+      prevWorkflowVarsRef.current = currentWorkflowVariables;
+      return;
+    }
+
+    // pendingRefetch is set — wait until currentWorkflowVariables has actually
+    // changed (i.e. the server has returned fresh data after the save).
+    if (prevWorkflowVarsRef.current === currentWorkflowVariables) return;
+
+    yVarSession.set("variables", [...currentWorkflowVariables]);
+    yVarSession.set("base", [...currentWorkflowVariables]);
+    yVarSession.set("timestamp", Date.now());
+    yVarSession.delete("pendingRefetch");
+    prevWorkflowVarsRef.current = currentWorkflowVariables;
+  }, [yVarSession, currentWorkflowVariables, rawSession?.pendingRefetch]);
 
   // Broadcast awareness that this user has the dialog open, and clean up on
   // unmount (navigation / accidental close without Cancel/Save).
@@ -266,7 +296,20 @@ export default ({
 
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      clearSession();
+      // Write the committed state to Yjs so users who still have the dialog
+      // open see the saved data immediately (instead of the stale server
+      // fallback that clearSession would have caused).
+      // If creates were submitted, mark pendingRefetch so the session is
+      // re-initialised with real server IDs once TanStack Query refetches.
+      if (yVarSession) {
+        yVarSession.set("variables", [...sessionVars]);
+        yVarSession.set("base", [...sessionVars]);
+        yVarSession.set("timestamp", Date.now());
+        if (hasChanges && changes.creates.length > 0) {
+          yVarSession.set("pendingRefetch", true);
+        }
+      }
+
       workflowVarAwareness?.onDialogClose();
       onClose();
     } catch (error) {
@@ -283,7 +326,7 @@ export default ({
     onChange,
     onDeleteBatch,
     onDelete,
-    clearSession,
+    yVarSession,
     workflowVarAwareness,
     onClose,
   ]);

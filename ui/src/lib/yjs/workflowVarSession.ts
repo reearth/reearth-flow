@@ -4,6 +4,9 @@ export type WorkflowVarSession = {
   variables: WorkflowVariable[];
   base: WorkflowVariable[];
   timestamp: number;
+  // Set after a successful save so any still-open user reinitialises from
+  // fresh server data once TanStack Query refetches (resolves temp_ IDs).
+  pendingRefetch?: boolean;
 };
 
 export type SessionCreate = {
