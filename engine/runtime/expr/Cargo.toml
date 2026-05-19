@@ -1,0 +1,20 @@
+[package]
+description = "Re:Earth Flow Expression Evaluator"
+name = "reearth-flow-expr"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+indexmap.workspace = true
+lalrpop-util = "0.22"
+logos = "0.15"
+thiserror.workspace = true
+
+[build-dependencies]
+lalrpop = "0.22"
