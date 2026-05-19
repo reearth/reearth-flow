@@ -86,8 +86,8 @@ impl ImmutableObject for UrlObject {
                     .first()
                     .ok_or_else(|| InnerError::new("Url == requires an argument"))?;
                 match rhs {
-                    Value::Object(obj) if obj.borrow().type_name() == "Url" => {
-                        Ok(Value::Bool(self.url.as_str() == obj.borrow().display()))
+                    Value::Object(obj) if obj.type_name() == "Url" => {
+                        Ok(Value::Bool(self.url.as_str() == obj.display()))
                     }
                     _ => Ok(Value::Bool(false)),
                 }
@@ -135,7 +135,7 @@ pub fn builtin_url(args: &[Value]) -> InnerResult<Value> {
     let s = match args.first() {
         None => return Err(InnerError::new("Url() requires a string argument")),
         Some(Value::String(s)) => s.clone(),
-        Some(Value::Object(obj)) if obj.borrow().type_name() == "Url" => obj.borrow().display(),
+        Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
         Some(v) => {
             return Err(InnerError::new(format!(
                 "Url() expects a string, got {}",
@@ -165,13 +165,13 @@ mod tests {
     #[test]
     fn test_url_from_string() {
         let v = run(r#"Url("/foo/bar")"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///foo/bar"));
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo/bar"));
     }
 
     #[test]
     fn test_url_rewrap() {
         let v = run(r#"Url(Url("/foo/bar"))"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///foo/bar"));
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo/bar"));
     }
 
     #[test]
@@ -201,19 +201,19 @@ mod tests {
     #[test]
     fn test_url_parent() {
         let v = run(r#"Url("/foo/bar").parent()"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///foo"));
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo"));
     }
 
     #[test]
     fn test_url_parent_single_level() {
         let v = run(r#"Url("/foo").parent()"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///"));
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///"));
     }
 
     #[test]
     fn test_url_parent_trailing_slash() {
         let v = run(r#"Url("/foo/bar/").parent()"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///foo/bar"));
+        assert!(matches!(&v, Value::Object(obj) if obj.display() == "file:///foo/bar"));
     }
 
     #[test]

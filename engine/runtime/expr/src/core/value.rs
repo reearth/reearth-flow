@@ -7,9 +7,9 @@ use crate::core::error::InnerResult;
 
 /// Trait for typed objects that can respond to method calls.
 ///
-/// Methods receive `&self` (immutable) so that a value can be passed as both
-/// receiver and argument without triggering a `RefCell` double-borrow panic
-/// (e.g. `u == u`).
+/// All methods take `&self` — objects are immutable from the expression
+/// language's perspective. Implementations that need internal state must use
+/// their own `RefCell` internally.
 pub trait ImmutableObject: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
     fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value>;
@@ -49,10 +49,13 @@ impl std::fmt::Debug for NativeFn {
 
 /// Runtime value type for the expression evaluator.
 ///
-/// `Array`, `Map`, and `Object` use `Rc<RefCell<...>>` for reference semantics:
-/// cloning a value shares the same backing allocation, so mutations through one
-/// alias are visible through all others (Python-style). Circular references are
-/// the caller's responsibility and are not detected.
+/// `Array` and `Map` use `Rc<RefCell<...>>` for reference semantics: cloning a
+/// value shares the same backing allocation, so mutations through one alias are
+/// visible through all others (Python-style). Circular references are the
+/// caller's responsibility and are not detected.
+///
+/// `Object` uses `Rc<dyn ImmutableObject>` without `RefCell` — objects are
+/// immutable from the expression language's perspective.
 #[derive(Debug, Clone)]
 pub enum Value {
     Null,
@@ -65,7 +68,7 @@ pub enum Value {
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
     /// A typed object that can respond to method calls via [`ImmutableObject`].
-    Object(Rc<RefCell<dyn ImmutableObject>>),
+    Object(Rc<dyn ImmutableObject>),
 }
 
 impl Value {
@@ -81,7 +84,7 @@ impl Value {
 
     /// Construct an object value, wrapping `obj` in a fresh shared allocation.
     pub fn object(obj: impl ImmutableObject + 'static) -> Self {
-        Value::Object(Rc::new(RefCell::new(obj)))
+        Value::Object(Rc::new(obj))
     }
 
     pub fn type_name(&self) -> &str {
@@ -94,7 +97,7 @@ impl Value {
             Value::Array(_) => "list",
             Value::Map(_) => "map",
             Value::Fn(_) => "function",
-            Value::Object(rc) => rc.borrow().type_name(),
+            Value::Object(rc) => rc.type_name(),
         }
     }
 }
@@ -150,7 +153,7 @@ impl std::fmt::Display for Value {
                 write!(f, "}}")
             }
             Value::Fn(_) => write!(f, "<fn>"),
-            Value::Object(rc) => write!(f, "{}", rc.borrow().display()),
+            Value::Object(rc) => write!(f, "{}", rc.display()),
         }
     }
 }

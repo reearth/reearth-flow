@@ -367,7 +367,7 @@ fn eval_method(recv: Value, method: &str, args: &[Value]) -> InnerResult<Value> 
         Value::String(s) => eval_string_method(s, method, args),
         Value::Array(rc) => eval_array_method(rc, method, args),
         Value::Map(rc) => eval_map_method(rc, method, args),
-        Value::Object(rc) => rc.borrow().call_method(method, args),
+        Value::Object(rc) => rc.call_method(method, args),
         v => Err(InnerError::new(format!(
             "{} has no method '{method}'",
             v.type_name()
@@ -630,7 +630,7 @@ fn try_object_op(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
         ))
     })?;
     if let Value::Object(ref rc) = left {
-        return rc.borrow().call_method(dunder, &[right]);
+        return rc.call_method(dunder, &[right]);
     }
     Err(InnerError::new(format!(
         "operator '{dunder}' not supported between {} and {}",
@@ -675,6 +675,14 @@ fn numeric_op(
     }
 }
 
+fn binop_type_error(op: &str, l: &Value, r: &Value) -> InnerError {
+    InnerError::new(format!(
+        "'{op}' not supported between {} and {}",
+        l.type_name(),
+        r.type_name()
+    ))
+}
+
 fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
     if matches!(left, Value::Object(_)) {
         if op == &BinOp::Ne {
@@ -702,7 +710,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
                 }
                 Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
                 Ok(_) => unreachable!(),
-                Err(_) => Err(InnerError::new("'+' not supported for these types")),
+                Err(_) => Err(binop_type_error("+", &a, &b)),
             },
         },
         BinOp::Sub => numeric_op(
@@ -731,7 +739,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
                 Ok(Value::Float(a / b))
             }
             Ok(_) => unreachable!(),
-            Err(_) => Err(InnerError::new("'/' not supported for these types")),
+            Err(_) => Err(binop_type_error("/", &left, &right)),
         },
         BinOp::FloorDiv => match coerce_numeric(&left, &right) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
@@ -755,7 +763,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
                 Ok(Value::Float((a / b).floor()))
             }
             Ok(_) => unreachable!(),
-            Err(_) => Err(InnerError::new("'//' not supported for these types")),
+            Err(_) => Err(binop_type_error("//", &left, &right)),
         },
         BinOp::Mod => match coerce_numeric(&left, &right) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
@@ -787,7 +795,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
                 Ok(Value::Float(result))
             }
             Ok(_) => unreachable!(),
-            Err(_) => Err(InnerError::new("'%' not supported for these types")),
+            Err(_) => Err(binop_type_error("%", &left, &right)),
         },
         BinOp::Pow => match coerce_numeric(&left, &right) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
@@ -803,7 +811,7 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
             }
             Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a.powf(b))),
             Ok(_) => unreachable!(),
-            Err(_) => Err(InnerError::new("'**' not supported for these types")),
+            Err(_) => Err(binop_type_error("**", &left, &right)),
         },
         BinOp::Eq => Ok(Value::Bool(values_equal(&left, &right))),
         BinOp::Ne => Ok(Value::Bool(!values_equal(&left, &right))),
@@ -906,10 +914,7 @@ pub(crate) fn values_equal(a: &Value, b: &Value) -> bool {
             if Rc::ptr_eq(a, b) {
                 return true;
             }
-            match a
-                .borrow()
-                .call_method("__eq__", &[Value::Object(b.clone())])
-            {
+            match a.call_method("__eq__", &[Value::Object(b.clone())]) {
                 Ok(Value::Bool(eq)) => eq,
                 _ => false,
             }
@@ -946,11 +951,8 @@ fn builtin_str(args: &[Value]) -> InnerResult<Value> {
         Some(Value::Bool(b)) => Ok(Value::String(b.to_string())),
         Some(Value::Int(n)) => Ok(Value::String(n.to_string())),
         Some(Value::Float(f)) => Ok(Value::String(format_float(*f))),
-        Some(Value::Object(rc)) => rc.borrow().call_method("__str__", &[]),
-        Some(v) => Err(InnerError::new(format!(
-            "str() not supported for {}",
-            v.type_name()
-        ))),
+        Some(Value::Object(rc)) => rc.call_method("__str__", &[]),
+        Some(v) => Ok(Value::String(v.to_string())),
     }
 }
 
@@ -1496,6 +1498,9 @@ mod tests {
         assert_eval(r#"str(true)"#, &[], Value::from("true"));
         assert_eval(r#"str(false)"#, &[], Value::from("false"));
         assert_eval(r#"str(null)"#, &[], Value::from("null"));
+        assert_eval(r#"str([1, 2, 3])"#, &[], Value::from("[1, 2, 3]"));
+        assert_eval(r#"str([])"#, &[], Value::from("[]"));
+        assert_eval(r#"str({"a": 1})"#, &[], Value::from(r#"{"a": 1}"#));
         assert_eval(r#"int(42)"#, &[], Value::from(42i64));
         assert_eval(r#"int(3.9)"#, &[], Value::from(3i64));
         assert_eval(r#"int(-3.9)"#, &[], Value::from(-3i64));
@@ -1578,7 +1583,7 @@ mod tests {
                     },
                     "__eq__" => match args.first() {
                         Some(Value::Object(other)) => {
-                            let other = other.borrow().display().parse::<i64>().unwrap_or(i64::MIN);
+                            let other = other.display().parse::<i64>().unwrap_or(i64::MIN);
                             Ok(Value::Bool(self.0 == other))
                         }
                         _ => Ok(Value::Bool(false)),
