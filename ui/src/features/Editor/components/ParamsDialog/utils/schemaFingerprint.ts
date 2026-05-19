@@ -38,11 +38,10 @@ export function computeSchemaFingerprint(
 // - schemas produce the same fingerprint
 export function schemasMatch(
   storedSchema: RJSFSchema | undefined,
-  currentSchema?: RJSFSchema,
+  currentSchema: RJSFSchema,
 ): boolean {
   if (!storedSchema) return true;
   const storedHash = computeSchemaFingerprint(storedSchema);
   const currentHash = computeSchemaFingerprint(currentSchema);
-  if (!currentHash) return true;
   return storedHash === currentHash;
 }

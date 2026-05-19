@@ -93,7 +93,7 @@ const ParamEditor: React.FC<Props> = ({
   const needsMigration =
     !!createdAction?.parameter &&
     !schemasMatch(nodeMeta.paramsSchema, createdAction.parameter);
-  // const needsMigration = !!createdAction?.parameter; // uncomment to test migration view without schema changes
+
   const [migrationComplete, setMigrationComplete] = useState(false);
 
   useEffect(() => {
