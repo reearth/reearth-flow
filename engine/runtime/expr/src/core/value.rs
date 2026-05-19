@@ -25,7 +25,7 @@ type NativeFnInner = Rc<dyn Fn(&[Value]) -> InnerResult<Value>>;
 
 /// A native (Rust) function callable from the expression language.
 #[derive(Clone)]
-pub struct NativeFn(pub NativeFnInner);
+pub struct NativeFn(NativeFnInner);
 
 impl NativeFn {
     pub fn new(f: impl Fn(&[Value]) -> InnerResult<Value> + 'static) -> Self {
@@ -34,6 +34,10 @@ impl NativeFn {
 
     pub fn call(&self, args: &[Value]) -> InnerResult<Value> {
         (self.0)(args)
+    }
+
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
     }
 }
 
