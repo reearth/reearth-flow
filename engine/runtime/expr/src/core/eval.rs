@@ -1053,6 +1053,12 @@ fn builtin_list(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn builtin_map(args: &[Value]) -> InnerResult<Value> {
+    if args.len() != 1 {
+        return Err(InnerError::new(format!(
+            "map() expects 1 argument, got {}",
+            args.len()
+        )));
+    }
     let pairs = match args.first() {
         Some(Value::Array(a)) => a.borrow().clone(),
         _ => {
