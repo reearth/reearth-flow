@@ -58,13 +58,7 @@ const AssetsListView: React.FC<Props> = ({
         const icon = getIconFileType(ext);
         return (
           <div className="flex items-center gap-1.5">
-            {icon && (
-              <Icon
-                icon={icon}
-                size={25}
-                className="opacity-50 group-hover:opacity-90"
-              />
-            )}
+            {icon && <Icon icon={icon} size={25} className="opacity-50" />}
             <strong>{row.original.name}</strong>
           </div>
         );
