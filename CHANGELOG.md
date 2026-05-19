@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.16 - 2026-05-19
+
+### Misc
+
+#### 
+
+- Set up Playwright test framework ([#2084](https://github.com/reearth/reearth-flow/pull/2084)) [`ca0362`](https://github.com/reearth/reearth-flow/commit/ca0362)
+
+### job
+
+#### 🔧 Bug Fixes
+
+- Remove permission check from StartMonitoring method ([#2095](https://github.com/reearth/reearth-flow/pull/2095)) [`3938af`](https://github.com/reearth/reearth-flow/commit/3938af)
+
+### trigger
+
+#### 🔧 Bug Fixes
+
+- Adjust permission check for API-driven triggers ([#2094](https://github.com/reearth/reearth-flow/pull/2094)) [`a5fbf4`](https://github.com/reearth/reearth-flow/commit/a5fbf4)
+
+### ui
+
+#### 🚀 Features
+
+- Add new custom icons for asset file types [FLOW-DEV-99] ([#2088](https://github.com/reearth/reearth-flow/pull/2088)) [`30c820`](https://github.com/reearth/reearth-flow/commit/30c820)
+- Enhance action filters with multi-select capabilities and improve NodePickerDialog layout [FLOW-DEV-97] ([#2079](https://github.com/reearth/reearth-flow/pull/2079)) [`fc883d`](https://github.com/reearth/reearth-flow/commit/fc883d)
+
+#### 🔧 Bug Fixes
+
+- Ran prettier to fix CI error ([#2086](https://github.com/reearth/reearth-flow/pull/2086)) [`684f82`](https://github.com/reearth/reearth-flow/commit/684f82)
+
+#### Miscellaneous Tasks
+
+- Tanstack packages update ([#2093](https://github.com/reearth/reearth-flow/pull/2093)) [`5dffb0`](https://github.com/reearth/reearth-flow/commit/5dffb0)
+- Add secure development script for local environment [FLOW-DEV-126] ([#2080](https://github.com/reearth/reearth-flow/pull/2080)) [`c086d8`](https://github.com/reearth/reearth-flow/commit/c086d8)
+
+### 
+
+#### 
+
+- Set up Playwright test framework ([#2084](https://github.com/reearth/reearth-flow/pull/2084)) [`ca0362`](https://github.com/reearth/reearth-flow/commit/ca0362)
+
 ## 0.1.0-alpha.15 - 2026-05-13
 
 ### Misc

@@ -7,7 +7,6 @@ React/TypeScript visual workflow builder frontend. See [../AGENTS.md](../AGENTS.
 ```bash
 # Development
 yarn start          # Start dev server on port 3000
-yarn dev:secure     # Start dev server with secrets injected via 1Password CLI (op run)
 yarn test           # Run unit tests with Vitest
 yarn coverage       # Run tests with coverage
 yarn storybook      # Start Storybook on port 6006
