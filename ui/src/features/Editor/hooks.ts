@@ -213,13 +213,6 @@ export default ({
     handleEdgesChange: handleYEdgesChange,
   });
 
-  const {
-    nodePickerOpen,
-    openNodePickerViaShortcut,
-    handleNodePickerOpen,
-    handleNodePickerClose,
-  } = useUIState();
-
   const { allowedToDeploy, handleWorkflowDeployment } = useDeployment({
     currentNodes: nodes,
     yWorkflows,
@@ -357,6 +350,7 @@ export default ({
     awarenessSelectionsMap,
     handlePointerDown,
     handleParamFieldFocus,
+    handleUserFocusedElement,
     setDraggingEdge,
     clearDraggingEdge,
   } = useAwarenessPresence({
@@ -364,6 +358,13 @@ export default ({
     openNode,
     yAwareness,
   });
+
+  const {
+    nodePickerOpen,
+    openNodePickerViaShortcut,
+    handleNodePickerOpen,
+    handleNodePickerClose,
+  } = useUIState({ onUserFocusedElement: handleUserFocusedElement });
 
   const {
     spotlightUser,
@@ -495,5 +496,6 @@ export default ({
     handleConnectEnd,
     awarenessSelectionsMap,
     handleParamFieldFocus,
+    handleUserFocusedElement,
   };
 };

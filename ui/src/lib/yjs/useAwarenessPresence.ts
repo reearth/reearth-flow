@@ -179,6 +179,13 @@ export default function useAwarenessPresence({
     [yAwareness],
   );
 
+  const handleUserFocusedElement = useCallback(
+    (isOpen: boolean) => {
+      yAwareness.setLocalStateField("focusedElement", isOpen);
+    },
+    [yAwareness],
+  );
+
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
       throttledPresenceUpdate(event.clientX, event.clientY);
@@ -243,6 +250,7 @@ export default function useAwarenessPresence({
     awarenessSelectionsMap,
     handlePointerDown,
     handleParamFieldFocus,
+    handleUserFocusedElement,
     setDraggingEdge,
     clearDraggingEdge,
   };

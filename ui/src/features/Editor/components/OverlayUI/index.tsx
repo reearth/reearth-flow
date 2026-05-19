@@ -95,6 +95,7 @@ type OverlayUIProps = {
   children?: React.ReactNode;
   showSearchPanel: boolean;
   onShowSearchPanel: (open: boolean) => void;
+  onUserFocusedElement?: (isOpen: boolean) => void;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
@@ -146,10 +147,13 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   activeUsersDebugRuns,
   showSearchPanel,
   onShowSearchPanel,
+  onUserFocusedElement,
 }) => {
   const { isLocked } = useEditorContext();
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
-  const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
+  const { showDialog, handleDialogOpen, handleDialogClose } = useHooks({
+    onUserFocusedElement,
+  });
 
   const handleLayoutOptionsToggle = useCallback(() => {
     setShowLayoutOptions((prev) => !prev);
@@ -199,6 +203,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onWorkflowClose={onWorkflowClose}
             onSpotlightUserSelect={onSpotlightUserSelect}
             onSpotlightUserDeselect={onSpotlightUserDeselect}
+            onUserFocusedElement={onUserFocusedElement}
           />
         </div>
         <div id="right-top" className="absolute top-2 right-2 h-[42px]">

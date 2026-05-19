@@ -96,6 +96,7 @@ export default function Editor({
     handleConnectStart,
     handleConnectEnd,
     handleParamFieldFocus,
+    handleUserFocusedElement,
     awarenessSelectionsMap,
     setShowSearchPanel,
     selectedNodeIds,
@@ -181,7 +182,8 @@ export default function Editor({
             onDebugRunJoin={loadExternalDebugJob}
             activeUsersDebugRuns={activeUsersDebugRuns}
             showSearchPanel={showSearchPanel}
-            onShowSearchPanel={setShowSearchPanel}>
+            onShowSearchPanel={setShowSearchPanel}
+            onUserFocusedElement={handleUserFocusedElement}>
             <Canvas
               nodes={nodes}
               edges={edges}
@@ -222,6 +224,7 @@ export default function Editor({
               onDataSubmit={handleNodesDataUpdate}
               onWorkflowRename={handleWorkflowRename}
               onParamFieldFocus={handleParamFieldFocus}
+              onUserFocusedElement={handleUserFocusedElement}
             />
           )}
           {showBeforeDeleteDialog && (

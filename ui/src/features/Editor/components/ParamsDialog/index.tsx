@@ -1,5 +1,5 @@
-import { RJSFSchema } from "@rjsf/utils";
 import { GearFineIcon } from "@phosphor-icons/react";
+import { RJSFSchema } from "@rjsf/utils";
 import { useReactFlow } from "@xyflow/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
@@ -43,6 +43,7 @@ type Props = {
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
   onParamFieldFocus?: (fieldId: string | null) => void;
+  onUserFocusedElement?: (isOpen: boolean) => void;
 };
 
 const ParamsDialog: React.FC<Props> = ({
@@ -53,6 +54,7 @@ const ParamsDialog: React.FC<Props> = ({
   onDataSubmit,
   onWorkflowRename,
   onParamFieldFocus,
+  onUserFocusedElement,
 }) => {
   const t = useT();
   const { isLocked } = useEditorContext();
@@ -134,6 +136,10 @@ const ParamsDialog: React.FC<Props> = ({
     [setMyDraft],
   );
 
+  useEffect(() => {
+    onUserFocusedElement?.(!!openNode);
+  }, [openNode, onUserFocusedElement]);
+
   const handleUpdate = useCallback(
     async (
       id: string,
@@ -169,9 +175,18 @@ const ParamsDialog: React.FC<Props> = ({
       }, "params");
 
       removeMyDraft(id);
+      onUserFocusedElement?.(false);
       onOpenNode();
     },
-    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
+    [
+      openNode,
+      rawDrafts,
+      onDataSubmit,
+      yDoc,
+      removeMyDraft,
+      onOpenNode,
+      onUserFocusedElement,
+    ],
   );
 
   const handleMigrate = useCallback(
@@ -302,9 +317,14 @@ const ParamsDialog: React.FC<Props> = ({
     updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
   };
 
+  const handleOpenNode = useCallback(() => {
+    onUserFocusedElement?.(false);
+    onOpenNode();
+  }, [onOpenNode, onUserFocusedElement]);
+
   return (
     <>
-      <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
+      <Dialog open={!!openNode} onOpenChange={handleOpenNode}>
         <DialogContent size="2xl">
           <DialogHeader>
             <DialogTitle>
