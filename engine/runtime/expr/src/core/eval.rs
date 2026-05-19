@@ -169,18 +169,16 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                 BinOp::And => {
                     let l = eval_inner(left, env)?;
                     if !is_truthy(&l) {
-                        return Ok(Value::Bool(false));
+                        return Ok(l);
                     }
-                    let r = eval_inner(right, env)?;
-                    return Ok(Value::Bool(is_truthy(&r)));
+                    return eval_inner(right, env);
                 }
                 BinOp::Or => {
                     let l = eval_inner(left, env)?;
                     if is_truthy(&l) {
-                        return Ok(Value::Bool(true));
+                        return Ok(l);
                     }
-                    let r = eval_inner(right, env)?;
-                    return Ok(Value::Bool(is_truthy(&r)));
+                    return eval_inner(right, env);
                 }
                 _ => {}
             }
@@ -1226,6 +1224,16 @@ mod tests {
         assert_eval("true and false", &[], Value::from(false));
         assert_eval("true or false", &[], Value::from(true));
         assert_eval("not true", &[], Value::from(false));
+    }
+
+    #[test]
+    fn test_logical_return_value() {
+        // `and` returns the left operand when falsy, else the right operand
+        assert_eval("0 and 2", &[], Value::from(0i64));
+        assert_eval("1 and 2", &[], Value::from(2i64));
+        // `or` returns the left operand when truthy, else the right operand
+        assert_eval("1 or 2", &[], Value::from(1i64));
+        assert_eval("0 or 2", &[], Value::from(2i64));
     }
 
     #[test]
