@@ -118,7 +118,8 @@ pub fn builtin_url(args: &[Value]) -> InnerResult<Value> {
         Some(Value::Object(obj)) if obj.borrow().type_name() == "Url" => obj.borrow().display(),
         Some(v) => {
             return Err(InnerError::new(format!(
-                "Url() expects a string, got {v:?}"
+                "Url() expects a string, got {}",
+                v.type_name()
             )))
         }
     };
