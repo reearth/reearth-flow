@@ -12,10 +12,10 @@ version.workspace = true
 
 [dependencies]
 indexmap.workspace = true
-url.workspace = true
 lalrpop-util = "0.22"
 logos = "0.15"
 thiserror.workspace = true
+url.workspace = true
 
 [build-dependencies]
 lalrpop = "0.22"
