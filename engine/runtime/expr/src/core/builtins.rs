@@ -1,5 +1,5 @@
 use crate::core::error::{InnerError, InnerResult};
-use crate::core::value::{Object, Value};
+use crate::core::value::{ImmutableObject, Value};
 use crate::unpack_args;
 
 fn parse_url(s: &str) -> Result<String, String> {
@@ -29,12 +29,12 @@ fn url_parent(s: &str) -> Option<String> {
 #[derive(Debug, Clone)]
 pub struct UrlObject(pub String);
 
-impl Object for UrlObject {
+impl ImmutableObject for UrlObject {
     fn type_name(&self) -> &'static str {
         "Url"
     }
 
-    fn call_method(&mut self, method: &str, args: &[Value]) -> InnerResult<Value> {
+    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
         match method {
             "parent" => {
                 unpack_args!(args =>);

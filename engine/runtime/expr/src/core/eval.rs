@@ -368,7 +368,7 @@ fn eval_method(recv: Value, method: &str, args: &[Value]) -> InnerResult<Value> 
         Value::String(s) => eval_string_method(s, method, args),
         Value::Array(rc) => eval_array_method(rc, method, args),
         Value::Map(rc) => eval_map_method(rc, method, args),
-        Value::Object(rc) => rc.borrow_mut().call_method(method, args),
+        Value::Object(rc) => rc.borrow().call_method(method, args),
         v => Err(InnerError::new(format!(
             "{} has no method '{method}'",
             v.type_name()
@@ -631,7 +631,7 @@ fn try_object_op(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
         ))
     })?;
     if let Value::Object(ref rc) = left {
-        return rc.borrow_mut().call_method(dunder, &[right]);
+        return rc.borrow().call_method(dunder, &[right]);
     }
     Err(InnerError::new(format!(
         "operator '{dunder}' not supported between {} and {}",
@@ -952,7 +952,7 @@ fn builtin_str(args: &[Value]) -> InnerResult<Value> {
         Some(Value::Bool(b)) => Ok(Value::String(b.to_string())),
         Some(Value::Int(n)) => Ok(Value::String(n.to_string())),
         Some(Value::Float(f)) => Ok(Value::String(format_float(*f))),
-        Some(Value::Object(rc)) => rc.borrow_mut().call_method("__str__", &[]),
+        Some(Value::Object(rc)) => rc.borrow().call_method("__str__", &[]),
         Some(v) => Err(InnerError::new(format!(
             "str() not supported for {}",
             v.type_name()
@@ -1549,11 +1549,11 @@ mod tests {
         #[derive(Debug, Clone)]
         struct Counter(i64);
 
-        impl super::super::value::Object for Counter {
+        impl super::super::value::ImmutableObject for Counter {
             fn type_name(&self) -> &'static str {
                 "Counter"
             }
-            fn call_method(&mut self, method: &str, args: &[Value]) -> InnerResult<Value> {
+            fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
                 match method {
                     "__add__" => match args.first() {
                         Some(Value::Int(n)) => Ok(Value::object(Counter(self.0 + n))),

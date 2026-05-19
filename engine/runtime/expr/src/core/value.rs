@@ -6,9 +6,13 @@ use indexmap::IndexMap;
 use crate::core::error::InnerResult;
 
 /// Trait for typed objects that can respond to method calls.
-pub trait Object: std::fmt::Debug {
+///
+/// Methods receive `&self` (immutable) so that a value can be passed as both
+/// receiver and argument without triggering a `RefCell` double-borrow panic
+/// (e.g. `u == u`).
+pub trait ImmutableObject: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
-    fn call_method(&mut self, method: &str, args: &[Value]) -> InnerResult<Value>;
+    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value>;
     fn display(&self) -> String {
         format!("<{}>", self.type_name())
     }
@@ -56,8 +60,8 @@ pub enum Value {
     Map(Rc<RefCell<IndexMap<String, Value>>>),
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
-    /// A typed object that can respond to method calls via [`Object`].
-    Object(Rc<RefCell<dyn Object>>),
+    /// A typed object that can respond to method calls via [`ImmutableObject`].
+    Object(Rc<RefCell<dyn ImmutableObject>>),
 }
 
 impl Value {
@@ -72,7 +76,7 @@ impl Value {
     }
 
     /// Construct an object value, wrapping `obj` in a fresh shared allocation.
-    pub fn object(obj: impl Object + 'static) -> Self {
+    pub fn object(obj: impl ImmutableObject + 'static) -> Self {
         Value::Object(Rc::new(RefCell::new(obj)))
     }
 
