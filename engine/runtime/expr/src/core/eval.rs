@@ -906,7 +906,18 @@ pub(crate) fn values_equal(a: &Value, b: &Value) -> bool {
                 && a.iter()
                     .all(|(k, va)| b.get(k).is_some_and(|vb| values_equal(va, vb)))
         }
-        (Value::Object(a), Value::Object(b)) => Rc::ptr_eq(a, b),
+        (Value::Object(a), Value::Object(b)) => {
+            if Rc::ptr_eq(a, b) {
+                return true;
+            }
+            match a
+                .borrow()
+                .call_method("__eq__", &[Value::Object(b.clone())])
+            {
+                Ok(Value::Bool(eq)) => eq,
+                _ => false,
+            }
+        }
         (Value::Fn(a), Value::Fn(b)) => a.ptr_eq(b),
         _ => false,
     }
