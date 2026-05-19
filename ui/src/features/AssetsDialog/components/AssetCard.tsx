@@ -3,7 +3,7 @@ import {
   DotsThreeVerticalIcon,
   DownloadIcon,
   FileIcon,
-  PencilIcon,
+  PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
@@ -20,8 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@flow/components";
+import { Icon } from "@flow/components/Icon";
 import { useT } from "@flow/lib/i18n";
 import { Asset } from "@flow/types";
+
+import { getIconFileType } from "./utils";
 
 type Props = {
   asset: Asset;
@@ -48,13 +51,16 @@ const AssetCard: React.FC<Props> = ({
   const t = useT();
   const [persistOverlay, setPersistOverlay] = useState(false);
 
-  const { id, name, createdAt, size, url } = asset;
+  const { id, name, fileName, createdAt, size, url } = asset;
+
+  const ext = fileName.split(".").pop()?.toLowerCase();
 
   const handleDoubleClick = () => {
     if (onDoubleClick) {
       onDoubleClick(asset);
     }
   };
+  const fileIcon = getIconFileType(ext);
 
   return (
     <Card
@@ -62,11 +68,18 @@ const AssetCard: React.FC<Props> = ({
       key={id}
       onDoubleClick={handleDoubleClick}>
       <CardContent className="flex items-start justify-center p-2">
-        <FileIcon
-          weight="thin"
-          size={70}
-          className="group:hover:opacity-90 opacity-50"
-        />
+        {fileIcon ? (
+          <Icon
+            icon={fileIcon}
+            size={70}
+            className="opacity-50 group-hover:opacity-90"
+          />
+        ) : (
+          <FileIcon
+            weight="thin"
+            className="size-17.5 opacity-50 group-hover:opacity-90"
+          />
+        )}
       </CardContent>
       <CardHeader className="px-1 py-0.5">
         <CardTitle className="truncate text-xs dark:font-extralight">
@@ -97,7 +110,7 @@ const AssetCard: React.FC<Props> = ({
                 disabled={isDeleting || !url}
                 onClick={() => setAssetToBeEdited(asset)}>
                 {t("Edit Asset")}
-                <PencilIcon weight="light" />
+                <PencilLineIcon weight="light" />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

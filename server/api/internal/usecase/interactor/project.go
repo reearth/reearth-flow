@@ -156,6 +156,10 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 		prj.SetIsBasicAuthActive(*p.IsBasicAuthActive)
 	}
 
+	if p.IsLocked != nil {
+		prj.SetIsLocked(*p.IsLocked)
+	}
+
 	if p.BasicAuthUsername != nil {
 		prj.SetBasicAuthUsername(*p.BasicAuthUsername)
 	}

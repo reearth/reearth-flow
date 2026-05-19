@@ -16,6 +16,7 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   isMainWorkflow: boolean;
+  readonly?: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
@@ -54,6 +55,7 @@ export default ({
   nodes,
   edges,
   isMainWorkflow,
+  readonly,
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
@@ -165,27 +167,29 @@ export default ({
     switch (handler.keys?.join("")) {
       case "r":
         event.preventDefault();
-        if (isMainWorkflow) onNodePickerOpen?.({ x: 0, y: 0 }, "reader", true);
+        if (isMainWorkflow && !readonly)
+          onNodePickerOpen?.({ x: 0, y: 0 }, "reader", true);
         break;
       case "t":
         event.preventDefault();
-        onNodePickerOpen?.({ x: 0, y: 0 }, "transformer", true);
+        if (!readonly) onNodePickerOpen?.({ x: 0, y: 0 }, "transformer", true);
         break;
       case "w":
         event.preventDefault();
-        if (isMainWorkflow) onNodePickerOpen?.({ x: 0, y: 0 }, "writer", true);
+        if (isMainWorkflow && !readonly)
+          onNodePickerOpen?.({ x: 0, y: 0 }, "writer", true);
         break;
       case "c":
-        if (hasModifier) onCopy?.();
+        if (hasModifier || !readonly) onCopy?.();
         break;
       case "x":
-        if (hasModifier) onCut?.();
+        if (hasModifier && !readonly) onCut?.();
         break;
       case "v":
-        if (hasModifier) onPaste?.();
+        if (hasModifier && !readonly) onPaste?.();
         break;
       case "e":
-        if (hasModifier) onNodesDisable?.();
+        if (hasModifier && !readonly) onNodesDisable?.();
         break;
     }
   });

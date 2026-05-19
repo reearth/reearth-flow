@@ -19,6 +19,7 @@ func ToProject(p *project.Project) *Project {
 		CreatedAt:         p.CreatedAt(),
 		IsArchived:        p.IsArchived(),
 		IsBasicAuthActive: p.IsBasicAuthActive(),
+		IsLocked:          p.IsLocked(),
 		BasicAuthUsername: p.BasicAuthUsername(),
 		BasicAuthPassword: p.BasicAuthPassword(),
 		Name:              p.Name(),

@@ -19,6 +19,7 @@ type Project struct {
 	workspace         WorkspaceID
 	isArchived        bool
 	isBasicAuthActive bool
+	isLocked          bool
 }
 
 func (p *Project) BasicAuthPassword() string {
@@ -49,6 +50,10 @@ func (p *Project) IsBasicAuthActive() bool {
 	return p.isBasicAuthActive
 }
 
+func (p *Project) IsLocked() bool {
+	return p.isLocked
+}
+
 func (p *Project) Name() string {
 	return p.name
 }
@@ -74,6 +79,11 @@ func (p *Project) SetBasicAuthUsername(basicAuthUsername string) {
 
 func (p *Project) SetIsBasicAuthActive(isBasicAuthActive bool) {
 	p.isBasicAuthActive = isBasicAuthActive
+	p.updatedAt = time.Now()
+}
+
+func (p *Project) SetIsLocked(isLocked bool) {
+	p.isLocked = isLocked
 	p.updatedAt = time.Now()
 }
 

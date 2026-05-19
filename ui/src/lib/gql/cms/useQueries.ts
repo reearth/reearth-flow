@@ -57,9 +57,7 @@ export const useQueries = () => {
         }),
       enabled: !!projectIdOrAlias,
       select: (data) =>
-        data?.cmsProject?.__typename === "CMSProject"
-          ? toCmsProject(data.cmsProject)
-          : undefined,
+        data?.cmsProject ? toCmsProject(data.cmsProject) : undefined,
     });
 
   const useGetCmsModelsQuery = (

@@ -189,10 +189,6 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 }
 
 func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
 	i.watchersMu.Lock()
@@ -387,10 +383,6 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("job cannot be nil")
 	}
 
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
 	jobID := j.ID().String()
 	log.Debugfc(ctx, "job: handling completion for jobID=%s with status=%s", jobID, j.Status())
 
@@ -520,8 +512,12 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 	ch := i.subscriptions.Subscribe(jobID.String())
 
 	go func() {
-		j, err := i.FindByID(context.Background(), jobID)
-		if err == nil {
+		j, err := i.jobRepo.FindByID(context.Background(), jobID)
+		if err != nil {
+			log.Warnfc(context.Background(), "job: failed to fetch initial status for subscription: %v", err)
+			return
+		}
+		if j != nil {
 			i.subscriptions.Notify(jobID.String(), j.Status())
 		}
 	}()

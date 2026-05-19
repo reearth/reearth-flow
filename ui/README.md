@@ -25,6 +25,7 @@ yarn
 yarn start
 // or
 yarn storybook
+
 ```
 
 For an optimal development experience, make sure you use these vscode settings ([reference]("https://github.com/reearth/eslint-config-reearth/blob/main/.vscode/settings.json")):

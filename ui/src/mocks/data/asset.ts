@@ -13,6 +13,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-1",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-2",
@@ -26,6 +27,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-2",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-3",
@@ -39,6 +41,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-3",
     flatFiles: false,
     public: false,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-4",
@@ -52,6 +55,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-4",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-5",
@@ -65,6 +69,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-5",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-6",
@@ -78,6 +83,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-6",
     flatFiles: false,
     public: false,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-7",
@@ -91,6 +97,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-7",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-8",
@@ -104,6 +111,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-8",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-9",
@@ -117,6 +125,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-9",
     flatFiles: true,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-10",
@@ -130,6 +139,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-10",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-11",
@@ -143,6 +153,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-11",
     flatFiles: true,
     public: false,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-12",
@@ -156,6 +167,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-12",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-13",
@@ -169,6 +181,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-13",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-14",
@@ -182,6 +195,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-14",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-15",
@@ -195,6 +209,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-15",
     flatFiles: false,
     public: false,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-16",
@@ -208,6 +223,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-16",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-17",
@@ -221,6 +237,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-17",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-18",
@@ -234,6 +251,7 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-18",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
   {
     id: "asset-19",
@@ -247,5 +265,6 @@ export const mockAssets: AssetFragment[] = [
     uuid: "uuid-19",
     flatFiles: false,
     public: true,
+    archiveExtractionStatus: null,
   },
 ];

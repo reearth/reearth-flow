@@ -1,4 +1,4 @@
-import { Input, Label } from "@flow/components";
+import { Input, Label, NumberDefaultValueInput } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { WorkflowVariable, NumberConfig } from "@flow/types";
 
@@ -12,40 +12,6 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
 
   // Get number config with defaults
   const config = (variable.config as NumberConfig) || {};
-
-  const handleDefaultValueChange = (value: string) => {
-    // Allow empty string for clearing the field
-    if (value === "") {
-      onUpdate({
-        ...variable,
-        defaultValue: null,
-      });
-      return;
-    }
-
-    // Only allow valid number formats (including decimals and negative numbers)
-    const numberRegex = /^-?\d*\.?\d*$/;
-    if (numberRegex.test(value)) {
-      // Validate against min/max constraints
-      const numValue = parseFloat(value);
-
-      // Only update if it's a valid complete number (not partial input like "1." or "-")
-      if (!isNaN(numValue) && value !== "-" && !value.endsWith(".")) {
-        if (config.min !== undefined && numValue < config.min) {
-          return; // Block input if below minimum
-        }
-        if (config.max !== undefined && numValue > config.max) {
-          return; // Block input if above maximum
-        }
-
-        onUpdate({
-          ...variable,
-          defaultValue: numValue,
-        });
-      }
-    }
-    // If invalid number format, don't update (effectively blocks the input)
-  };
 
   const handleConfigChange = (
     configKey: keyof NumberConfig,
@@ -62,35 +28,6 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Allow: backspace, delete, tab, escape, enter
-    if (
-      [8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
-      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-      (e.keyCode === 65 && e.ctrlKey === true) ||
-      (e.keyCode === 67 && e.ctrlKey === true) ||
-      (e.keyCode === 86 && e.ctrlKey === true) ||
-      (e.keyCode === 88 && e.ctrlKey === true) ||
-      // Allow: home, end, left, right
-      (e.keyCode >= 35 && e.keyCode <= 39)
-    ) {
-      return;
-    }
-
-    // Ensure that it is a number or decimal point or minus sign
-    if (
-      (e.shiftKey || e.keyCode < 48 || e.keyCode > 57) &&
-      (e.keyCode < 96 || e.keyCode > 105) &&
-      e.keyCode !== 190 &&
-      e.keyCode !== 110 && // decimal point
-      e.keyCode !== 189 &&
-      e.keyCode !== 109
-    ) {
-      // minus sign
-      e.preventDefault();
-    }
-  };
-
   // Helper to format constraint info
   const getConstraintText = () => {
     const constraints = [];
@@ -105,15 +42,16 @@ export const NumberEditor: React.FC<Props> = ({ variable, onUpdate }) => {
         <Label htmlFor="default-value" className="text-sm font-medium">
           {t("Default Value")}
         </Label>
-        <Input
+        <NumberDefaultValueInput
           id="default-value"
-          type="number"
-          value={variable.defaultValue ?? ""}
-          onChange={(e) => handleDefaultValueChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={(e) => e.stopPropagation()}
-          placeholder={t("Enter numeric value")}
           className="mt-1"
+          variable={variable}
+          onDefaultValueChange={(newValue) =>
+            onUpdate({
+              ...variable,
+              defaultValue: newValue,
+            })
+          }
         />
         <p className="mt-1 text-sm text-muted-foreground">
           {t("The default numeric value to use when this variable is not set")}

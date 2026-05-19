@@ -77,8 +77,6 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     { value: "system", label: t("System"), icon: <GearIcon /> },
   ];
 
-  console.log("themes", themes);
-
   const { theme, setTheme, previewTheme } = useTheme();
   const currentTheme = themes.filter((t) => t.value === theme)[0];
   const [selectedTheme, setSelectedTheme] = useState<Theme>(theme);

@@ -38,7 +38,7 @@ describe("rebuildWorkflow", () => {
             customName: "Custom Name",
             content: "Content",
             backgroundColor: "#000000",
-            textColor: "#FFFFFF",
+            titleColor: "#FFFFFF",
           },
           pseudoInputs: [
             { nodeId: "node-2", portName: "port1" },

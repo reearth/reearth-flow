@@ -55,6 +55,7 @@ const SharedCanvas: React.FC<Props> = ({
 
   const editorContext = useMemo(
     (): EditorContextType => ({
+      isLocked: true,
       onNodeSettings: handleNodeSettings,
     }),
     [handleNodeSettings],
@@ -124,7 +125,6 @@ const SharedCanvas: React.FC<Props> = ({
                 </div>
                 <Canvas
                   isMainWorkflow={isMainWorkflow}
-                  readonly
                   onWorkflowOpen={handleWorkflowOpen}
                   nodes={nodes}
                   edges={edges}
@@ -133,11 +133,7 @@ const SharedCanvas: React.FC<Props> = ({
               </div>
             </div>
             {openNode && (
-              <ParamsDialog
-                readonly
-                openNode={openNode}
-                onOpenNode={handleOpenNode}
-              />
+              <ParamsDialog openNode={openNode} onOpenNode={handleOpenNode} />
             )}
           </div>
         </div>

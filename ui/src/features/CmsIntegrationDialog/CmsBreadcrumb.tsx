@@ -25,7 +25,7 @@ const CmsBreadcrumb: React.FC<Props> = ({
 
   return (
     <div className="flex min-w-0 items-center font-normal">
-      <CmsLogo className="h-4 w-4 text-white" />
+      <CmsLogo className="h-4 w-4" />
       <span className="shrink-0 px-4 py-2 pr-1 pl-1">
         {t("CMS Integration")}
       </span>

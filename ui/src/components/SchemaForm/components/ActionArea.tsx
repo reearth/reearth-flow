@@ -11,6 +11,7 @@ import { useT } from "@flow/lib/i18n";
 type Props = {
   value?: any;
   defaultValue?: RefObject<any>;
+  readonly?: boolean;
   onEditorOpen?: () => void;
   onPythonEditorOpen?: () => void;
   onReset?: () => void;
@@ -19,6 +20,7 @@ type Props = {
 const ActionArea: React.FC<Props> = ({
   value,
   defaultValue,
+  readonly,
   onEditorOpen,
   onPythonEditorOpen,
   onReset,
@@ -48,7 +50,7 @@ const ActionArea: React.FC<Props> = ({
           icon={<PencilLineIcon />}
           tooltipText={t("Open Rhai Editor")}
           onClick={handleEditorOpen}
-          disabled={!onEditorOpen}
+          disabled={!onEditorOpen || readonly}
         />
       )}
       {onPythonEditorOpen && (
@@ -56,13 +58,13 @@ const ActionArea: React.FC<Props> = ({
           icon={<CodeBlockIcon />}
           tooltipText={t("Open Python Editor")}
           onClick={handlePythonEditorOpen}
-          disabled={!onPythonEditorOpen}
+          disabled={!onPythonEditorOpen || readonly}
         />
       )}
       {onReset && (
         <IconButton
           icon={<ArrowUDownLeftIcon />}
-          disabled={value === defaultValue?.current}
+          disabled={value === defaultValue?.current || readonly}
           tooltipText={t("Reset to Default")}
           aria-label={`Reset value to default: ${defaultValue?.current}`}
           onClick={onReset}

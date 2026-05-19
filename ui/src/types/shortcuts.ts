@@ -2,6 +2,7 @@ export type GeneralKeys =
   | "f" // fullscreen
   | "/" // keyboard shortcuts dialog
   | "s" // manual hard save
+  | "l" // lock/unlock project
   | "r" // reader dialog
   | "t" // transformer dialog
   | "w" // writer dialog
@@ -46,6 +47,7 @@ type PossibleActions =
   | "fullscreen"
   | "shortcutsDialog"
   | "save"
+  | "lockProject"
   | "readerDialog"
   | "transformerDialog"
   | "writerDialog"
@@ -77,6 +79,7 @@ export const GeneralKeyBindings: Partial<
 > = {
   shortcutsDialog: { key: "/", commandKey: true },
   save: { key: "s", commandKey: true },
+  lockProject: { key: "l", commandKey: true },
 };
 
 export const EditorKeyBindings: Partial<

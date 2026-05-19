@@ -25,6 +25,7 @@ type UpdateProjectParam struct {
 	Description       *string
 	Archived          *bool
 	IsBasicAuthActive *bool
+	IsLocked          *bool
 	BasicAuthUsername *string
 	BasicAuthPassword *string
 	ID                id.ProjectID

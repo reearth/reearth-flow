@@ -11,11 +11,6 @@ use std::{
 
 use nusamai_citygml::schema::{Schema, TypeDef, TypeRef};
 
-use atlas_packer::{
-    export::WebpAtlasExporter,
-    pack::AtlasPacker,
-    texture::cache::{TextureCache, TextureSizeCache},
-};
 use bytemuck::Zeroable;
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
@@ -28,9 +23,7 @@ use tempfile::tempdir;
 
 use super::tiling::{TileContent, TileTree};
 use super::{slice::slice_to_tiles, tiling};
-use crate::atlas::{
-    encode_metadata, load_textures_into_packer, process_geometry_with_atlas_export, GltfFeature,
-};
+use crate::atlas::{build_atlas_geometry, GltfFeature};
 use crate::file::mvt::tileid::TileIdMethod;
 
 type FeatureBuffer<T> = (u64, Option<String>, Vec<T>);
@@ -375,7 +368,6 @@ pub(super) fn tile_writing_stage(
     receiver_sorted: mpsc::Receiver<FeatureBuffer<Vec<u8>>>,
     tile_id_conv: TileIdMethod,
     schema: &Schema,
-    limit_texture_resolution: Option<bool>,
     draco_compression: bool,
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
@@ -393,16 +385,11 @@ pub(super) fn tile_writing_stage(
         Arc::new(Mutex::new(stats))
     };
 
-    // Texture cache (use default cache size)
-    let texture_cache = TextureCache::new(200_000_000);
-    let texture_size_cache = TextureSizeCache::new();
-
     // Use a temporary directory for embedding in glb
     let binding =
         tempdir().map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
     let folder_path = binding.path();
-    let texture_folder_name = "textures";
-    let atlas_dir = folder_path.join(texture_folder_name);
+    let atlas_dir = folder_path.join("textures");
     std::fs::create_dir_all(&atlas_dir).map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
     // Make a glTF (.glb) file for each tile
@@ -410,8 +397,6 @@ pub(super) fn tile_writing_stage(
         .into_iter()
         .par_bridge()
         .try_for_each(|(tile_id, typename, feats)| {
-            let (tile_zoom, _tile_x, tile_y) = tile_id_conv.id_to_zxy(tile_id);
-
             // Initialize tile context
             let mut tile_ctx = initialize_tile_context(&tile_id_conv, tile_id, typename.as_deref());
 
@@ -422,44 +407,42 @@ pub(super) fn tile_writing_stage(
             let features = transform_features(feats, &mut tile_ctx.content, tile_ctx.translation)?;
 
             // Encode metadata and filter valid features
-            let valid_features = encode_metadata(&features, typename, &mut metadata_encoder);
+            let valid_features: Vec<&GltfFeature> = features
+                .iter()
+                .filter(|feature| {
+                    match metadata_encoder.add_feature(typename, &feature.attributes) {
+                        Ok(_) => true,
+                        Err(e) => {
+                            tracing::error!("Failed to add feature with error = {e:?}");
+                            false
+                        }
+                    }
+                })
+                .collect();
 
             // Collect property stats from valid features only
             let tile_stats = collect_property_stats(&valid_features, schema);
             merge_property_stats(&mut property_stats.lock().unwrap(), tile_stats);
 
-            // Prepare texture packing
             let (z, x, y) = tile_id_conv.id_to_zxy(tile_id);
-            let geom_error = tiling::geometric_error(tile_zoom, tile_y);
-
-            let packer = Mutex::new(AtlasPacker::default());
-
-            let (max_width, max_height) = load_textures_into_packer(
-                &valid_features,
-                &packer,
-                &texture_size_cache,
-                &|feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
-                geom_error,
-                limit_texture_resolution.unwrap_or(false),
-            )?;
-
-            // Export atlas textures
-            let atlas_path = atlas_dir
+            let tile_atlas_dir = atlas_dir
                 .join(z.to_string())
                 .join(x.to_string())
                 .join(y.to_string());
-            fs::create_dir_all(&atlas_path)
+            fs::create_dir_all(&tile_atlas_dir)
                 .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
-            // To reduce unnecessary draw calls, set the lower limit for max_width and max_height to 1024
-            let (primitives, vertices) = process_geometry_with_atlas_export(
+            let mut primitives: reearth_flow_gltf::Primitives = Default::default();
+            let mut vertices: indexmap::IndexSet<[u32; 9], ahash::RandomState> =
+                indexmap::IndexSet::default();
+
+            build_atlas_geometry(
                 &valid_features,
-                packer,
-                (max_width.max(1024), max_height.max(1024)),
-                WebpAtlasExporter::default(),
-                &atlas_path,
-                &texture_cache,
-                |feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}"),
+                &tile_atlas_dir,
+                image::ImageFormat::WebP,
+                "webp",
+                &mut primitives,
+                &mut vertices,
             )?;
 
             // Write glTF to storage

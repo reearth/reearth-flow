@@ -55,7 +55,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   return (
     <div
       style={gradientBorderStyle}
-      className={`max-w-[200px] min-w-[150px] rounded-lg bg-secondary shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${gradientBorderStyle ? "" : `border ${selected ? selectedColor : borderColor}`} ${data.isDisabled ? "opacity-70" : ""}`}>
+      className={`max-w-[200px] min-w-[150px] rounded-lg bg-secondary shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${gradientBorderStyle ? "" : `border ${selected ? selectedColor : borderColor}`} ${data.isDisabled ? "opacity-70" : ""} ${readonly ? "nopan" : ""}`}>
       <div
         style={
           !gradientBorderStyle && remoteColor

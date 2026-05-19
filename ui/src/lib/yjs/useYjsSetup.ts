@@ -69,9 +69,9 @@ export default ({
         }
 
         setYAwareness(yWebSocketProvider.awareness);
+        const metadata = yDoc.getMap("metadata");
 
-        yWebSocketProvider.once("sync", () => {
-          const metadata = yDoc.getMap("metadata");
+        yWebSocketProvider.on("sync", () => {
           if (!metadata.get("initialized")) {
             // Within a transaction, set the flag and perform initialization.
             yDoc.transact(() => {
@@ -90,6 +90,25 @@ export default ({
             });
           }
           setIsSynced(true); // Mark as synced
+        });
+
+        // When a rollback is in progress, hide the canvas until the fresh
+        // state arrives. The sync handler above will set isSynced back to
+        // true once the provider reconnects with the rolled-back snapshot.
+        // The rolled-back state won't carry the flag, so this only fires once.
+        const handleRollbackInProgress = (event: Y.YMapEvent<any>) => {
+          if (
+            event.changes.keys.has("rollbackInProgress") &&
+            metadata.get("rollbackInProgress") === true
+          ) {
+            setIsSynced(false);
+          }
+        };
+
+        metadata.observe(handleRollbackInProgress);
+
+        yDoc.on("destroy", () => {
+          metadata.unobserve(handleRollbackInProgress);
         });
       })();
     }

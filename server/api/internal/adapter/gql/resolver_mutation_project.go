@@ -42,6 +42,7 @@ func (r *mutationResolver) UpdateProject(ctx context.Context, input gqlmodel.Upd
 		Description:       input.Description,
 		ID:                pid,
 		IsBasicAuthActive: input.IsBasicAuthActive,
+		IsLocked:          input.IsLocked,
 		Name:              input.Name,
 	})
 	if err != nil {

@@ -203,6 +203,9 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 	if err != nil {
 		return nil, err
 	}
+	if d == nil {
+		return nil, fmt.Errorf("deployment not found: %s", dp.ID)
+	}
 
 	if dp.Workflow != nil {
 		if url, _ := url.Parse(d.WorkflowURL()); url != nil {
@@ -276,6 +279,9 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 	if err != nil {
 		return err
 	}
+	if dep == nil {
+		return fmt.Errorf("deployment not found: %s", deploymentID)
+	}
 
 	if dep.Project() != nil {
 		versions, err := i.deploymentRepo.FindVersions(ctx, dep.Workspace(), dep.Project())
@@ -330,6 +336,9 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	d, err := i.deploymentRepo.FindByID(ctx, p.DeploymentID)
 	if err != nil {
 		return nil, err
+	}
+	if d == nil {
+		return nil, fmt.Errorf("deployment not found: %s", p.DeploymentID)
 	}
 
 	debug := false

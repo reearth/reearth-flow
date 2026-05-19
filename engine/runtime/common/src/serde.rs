@@ -40,14 +40,29 @@ pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> cra
             // Add content before this match
             new_content.push_str(&expanded[last_end..match_start]);
 
-            // Resolve the file path
-            let resolved_path = if let Some(base) = base_path {
-                let mut path = PathBuf::from(base);
-                path.push(file_path_str);
-                path
-            } else {
-                PathBuf::from(file_path_str)
+            // Resolve the file path with two minimal validations:
+            //   1. Reject absolute paths so attackers cannot read arbitrary
+            //      files like /proc/self/environ or /var/secrets/*.
+            //   2. Require base_path to be Some, since cloud-stored or
+            //      stdin-fed workflows have no meaningful local base; reading
+            //      worker-local files via !include in those paths is never a
+            //      legitimate use case.
+            let raw = Path::new(file_path_str);
+            if raw.is_absolute() {
+                return Err(crate::Error::Serde(format!(
+                    "!include rejects absolute paths: {file_path_str}"
+                )));
+            }
+            let Some(base) = base_path else {
+                return Err(crate::Error::Serde(format!(
+                    "!include {file_path_str} cannot be expanded: workflow has \
+                     no base directory. Load the workflow from a file path \
+                     (not stdin or cloud storage), or remove the !include \
+                     directive."
+                )));
             };
+            let mut resolved_path = PathBuf::from(base);
+            resolved_path.push(raw);
 
             // Read the included file
             let included_content = std::fs::read_to_string(&resolved_path).map_err(|e| {
@@ -168,5 +183,60 @@ pub fn merge_value(a: &mut JsonValue, b: JsonValue) {
             }
         }
         (a, b) => *a = b,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::Builder;
+
+    // /etc/passwd is absolute on Unix; on Windows is_absolute checks for a
+    // drive-rooted path, which this string lacks. The engine targets Unix in
+    // production (Cloud Batch + Linux containers), so we gate the test there.
+    #[cfg(unix)]
+    #[test]
+    fn rejects_absolute_path() {
+        let yaml = "x: !include /etc/passwd\n";
+        let err = expand_yaml_includes(yaml, Some(Path::new("/tmp"))).unwrap_err();
+        assert!(
+            err.to_string().contains("absolute paths"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn rejects_include_without_base_path() {
+        let yaml = "x: !include foo.yml\n";
+        let err = expand_yaml_includes(yaml, None).unwrap_err();
+        assert!(
+            err.to_string().contains("base directory"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn allows_relative_include_with_base_path() {
+        let dir = Builder::new().prefix("expand-include").tempdir().unwrap();
+        let path = dir.path().join("inc.txt");
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, "hello").unwrap();
+        f.flush().unwrap();
+        drop(f);
+
+        let yaml = "x: !include inc.txt\n";
+        let out = expand_yaml_includes(yaml, Some(dir.path())).unwrap();
+        assert!(
+            out.contains("hello"),
+            "expected hello in output, got: {out}"
+        );
+    }
+
+    #[test]
+    fn no_include_directives_works_without_base_path() {
+        let yaml = "x: 1\n";
+        let out = expand_yaml_includes(yaml, None).unwrap();
+        assert_eq!(out, yaml);
     }
 }

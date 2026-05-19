@@ -90,6 +90,7 @@ const ColorInput = <
       />
       <ActionArea
         value={value}
+        readonly={readonly}
         defaultValue={defaultValue}
         onEditorOpen={onEditorOpen}
         onReset={handleReset}

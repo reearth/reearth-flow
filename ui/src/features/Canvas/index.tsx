@@ -12,6 +12,7 @@ import {
 import { MouseEvent, memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import {
   isValidConnection,
   CustomConnectionLine,
@@ -33,7 +34,6 @@ const gridSize = 16.5;
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
 type Props = {
-  readonly?: boolean;
   nodes: Node[];
   edges: Edge[];
   yDoc?: Doc | null;
@@ -69,7 +69,6 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({
-  readonly,
   nodes,
   edges,
   users,
@@ -95,6 +94,7 @@ const Canvas: React.FC<Props> = ({
   onConnectEnd,
   onPointerDown,
 }) => {
+  const { isLocked: readonly } = useEditorContext();
   const {
     handleNodesDeleteCleanup,
     handleNodeDragOver,
@@ -113,6 +113,7 @@ const Canvas: React.FC<Props> = ({
     nodes,
     edges,
     isMainWorkflow,
+    readonly,
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
@@ -142,8 +143,10 @@ const Canvas: React.FC<Props> = ({
       ref={paneRef}
       // Readonly props START
       nodesConnectable={!readonly}
+      nodesDraggable={!readonly}
       nodesFocusable={!readonly}
-      elementsSelectable={!readonly}
+      // elementsSelectable={!readonly}
+
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
       zIndexMode="manual" // Prevent xyflow from auto-elevating nodes and edges within Batch nodes, which would break the intended layering of Batch containers > edges > action nodes.
@@ -185,7 +188,7 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 1)"
       />
-      {!readonly && users && currentWorkflowId && (
+      {users && currentWorkflowId && (
         <Awareness users={users} currentWorkflowId={currentWorkflowId} />
       )}
       {contextMenu && (

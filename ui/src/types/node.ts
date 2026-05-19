@@ -1,3 +1,4 @@
+import type { RJSFSchema } from "@rjsf/utils";
 import type {
   Node as ReactFlowNode,
   NodeChange as ReactFlowNodeChange,
@@ -10,7 +11,7 @@ export type NodeCustomizations = {
   customName?: string;
   content?: string;
   backgroundColor?: string;
-  textColor?: string;
+  titleColor?: string;
 };
 
 export type PseudoPort = {
@@ -23,6 +24,7 @@ export type NodeData = {
   inputs?: string[];
   outputs?: string[];
   params?: NodeParams;
+  paramsSchema?: RJSFSchema;
   customizations?: NodeCustomizations;
   workflowPath?: string;
   isCollapsed?: boolean;
