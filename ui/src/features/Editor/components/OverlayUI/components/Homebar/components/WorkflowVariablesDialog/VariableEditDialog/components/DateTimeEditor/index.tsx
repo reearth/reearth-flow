@@ -134,19 +134,15 @@ export const DateTimeEditor: React.FC<Props> = ({
             className="mb-2 block text-sm font-medium">
             {allowTime ? t("Default Date & Time") : t("Default Date")}
           </Label>
-          <div
-            className="rounded"
-            style={paramsAwarenessStyles(fieldFocusMap?.["defaultValue"])}
-            onFocus={() => onFieldFocus?.("defaultValue")}
-            onBlur={() => onFieldFocus?.(null)}>
-            <DateTimeDefaultValueInput
-              id="default-datetime"
-              variable={variable}
-              onDefaultValueChange={(newValue) =>
-                onUpdate({ ...variable, defaultValue: newValue })
-              }
-            />
-          </div>
+          <DateTimeDefaultValueInput
+            id="default-datetime"
+            variable={variable}
+            fieldFocusMap={fieldFocusMap}
+            onDefaultValueChange={(newValue) =>
+              onUpdate({ ...variable, defaultValue: newValue })
+            }
+            onFieldFocus={onFieldFocus}
+          />
           <p className="mt-1 text-sm text-muted-foreground">
             {allowTime
               ? t(

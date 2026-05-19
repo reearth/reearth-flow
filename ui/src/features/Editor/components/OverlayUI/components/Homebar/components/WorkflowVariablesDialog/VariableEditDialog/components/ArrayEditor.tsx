@@ -37,12 +37,16 @@ import {
   Checkbox,
   Button,
 } from "@flow/components";
+import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, ArrayConfig } from "@flow/types";
+import { AnyWorkflowVariable, ArrayConfig, AwarenessUser } from "@flow/types";
 
 type Props = {
   variable: AnyWorkflowVariable;
   assetUrl?: string | null;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
+  onFieldFocus?: (field: string | null) => void;
+
   onUpdate: (variable: AnyWorkflowVariable) => void;
   onDialogOpen: (dialog: "assets" | "cms") => void;
   clearUrl: () => void;
@@ -51,6 +55,8 @@ type Props = {
 export const ArrayEditor: React.FC<Props> = ({
   variable,
   assetUrl,
+  fieldFocusMap,
+  onFieldFocus,
   onUpdate,
   onDialogOpen,
   clearUrl,
@@ -256,6 +262,10 @@ export const ArrayEditor: React.FC<Props> = ({
             </Label>
             <Input
               type="number"
+              id="min-items"
+              onFocus={() => onFieldFocus?.("minItems")}
+              onBlur={() => onFieldFocus?.(null)}
+              style={paramsAwarenessStyles(fieldFocusMap?.["minItems"])}
               min="0"
               value={arrayConfig.minItems || 0}
               onChange={(e) =>
@@ -270,7 +280,11 @@ export const ArrayEditor: React.FC<Props> = ({
             </Label>
             <Input
               type="number"
+              id="max-items"
               min="1"
+              onFocus={() => onFieldFocus?.("maxItems")}
+              onBlur={() => onFieldFocus?.(null)}
+              style={paramsAwarenessStyles(fieldFocusMap?.["maxItems"])}
               value={arrayConfig.maxItems || 10}
               onChange={(e) =>
                 handleConfigChange({ maxItems: parseInt(e.target.value) || 10 })
@@ -302,6 +316,9 @@ export const ArrayEditor: React.FC<Props> = ({
             <Input
               type={arrayConfig.itemType === "number" ? "number" : "text"}
               value={newItemText}
+              onFocus={() => onFieldFocus?.("newItemText")}
+              onBlur={() => onFieldFocus?.(null)}
+              style={paramsAwarenessStyles(fieldFocusMap?.["newItemText"])}
               onChange={(e) => setNewItemText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={t(
@@ -361,6 +378,9 @@ export const ArrayEditor: React.FC<Props> = ({
                   <SortableArrayItem
                     key={`item-${index}`}
                     index={index}
+                    focusedUsers={fieldFocusMap?.[`item_${index}`]}
+                    onFocus={() => onFieldFocus?.(`item_${index}`)}
+                    onBlur={() => onFieldFocus?.(null)}
                     onRemove={() => handleRemoveItem(index)}
                     renderInput={() => (
                       <ArrayDefaultItemInput
@@ -391,9 +411,12 @@ export const ArrayEditor: React.FC<Props> = ({
 // Sortable array item component
 const SortableArrayItem: React.FC<{
   index: number;
+  focusedUsers?: AwarenessUser[];
+  onFocus?: () => void;
+  onBlur?: () => void;
   onRemove: () => void;
   renderInput: () => React.ReactNode;
-}> = ({ index, onRemove, renderInput }) => {
+}> = ({ index, focusedUsers, onFocus, onBlur, onRemove, renderInput }) => {
   const t = useT();
 
   const {
@@ -411,6 +434,7 @@ const SortableArrayItem: React.FC<{
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...paramsAwarenessStyles(focusedUsers),
   };
 
   return (
@@ -418,6 +442,8 @@ const SortableArrayItem: React.FC<{
       ref={setNodeRef}
       style={style}
       className="flex items-center gap-2 rounded-md border p-2"
+      onFocus={onFocus}
+      onBlur={onBlur}
       {...attributes}>
       <div
         className="flex cursor-grab touch-none items-center justify-center p-1 active:cursor-grabbing"

@@ -110,6 +110,8 @@ const VariableEditDialog: React.FC<Props> = ({
           <ArrayEditor
             variable={localVariable}
             assetUrl={assetUrl}
+            fieldFocusMap={fieldFocusMap}
+            onFieldFocus={onFieldFocus}
             onUpdate={handleFieldUpdate}
             onDialogOpen={handleDialogOpen}
             clearUrl={clearUrl}

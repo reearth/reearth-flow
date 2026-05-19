@@ -50,14 +50,12 @@ export const NumberEditor: React.FC<Props> = ({
         <Label htmlFor="default-value" className="text-sm font-medium">
           {t("Default Value")}
         </Label>
-        <div
-          className="mt-1 rounded"
-          style={paramsAwarenessStyles(fieldFocusMap?.["defaultValue"])}
-          onFocus={() => onFieldFocus?.("defaultValue")}
-          onBlur={() => onFieldFocus?.(null)}>
+        <div className="mt-1 rounded">
           <NumberDefaultValueInput
             id="default-value"
             variable={variable}
+            fieldFocusMap={fieldFocusMap}
+            onFieldFocus={onFieldFocus}
             onDefaultValueChange={(newValue) =>
               onUpdate({
                 ...variable,
