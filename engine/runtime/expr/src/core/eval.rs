@@ -212,6 +212,7 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                 eval_inner(else_, env)
             }
         }
+        // No iteration cap — see docs/design.md#no-while-iteration-limit
         ExprKind::While { cond, body } => {
             loop {
                 let c = eval_inner(cond, env)?;

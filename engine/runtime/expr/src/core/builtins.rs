@@ -1,43 +1,28 @@
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{ImmutableObject, Value};
 use crate::unpack_args;
+use url::Url;
 
 fn parse_url(s: &str) -> Result<UrlObject, String> {
-    let full = if s.contains("://") {
-        s.to_string()
+    let url = if s.contains("://") {
+        Url::parse(s).map_err(|e| format!("not a valid URI: {e}"))?
     } else if s.starts_with('/') {
-        format!("file://{s}")
+        Url::parse(&format!("file://{s}")).map_err(|e| format!("not a valid URI: {e}"))?
     } else {
         return Err(format!("not a valid URI: {s}"));
     };
-    let (scheme, rest) = full
-        .split_once("://")
-        .ok_or_else(|| format!("not a valid URI: {s}"))?;
-    let (netloc, path) = match rest.find('/') {
-        Some(i) => (&rest[..i], &rest[i..]),
-        None => (rest, ""),
-    };
-    Ok(UrlObject {
-        scheme: scheme.to_string(),
-        netloc: netloc.to_string(),
-        path: path.to_string(),
-    })
+    Ok(UrlObject { url })
 }
 
 #[derive(Debug, Clone)]
 pub struct UrlObject {
-    scheme: String,
-    netloc: String,
-    path: String,
+    url: Url,
 }
 
 impl UrlObject {
-    fn as_string(&self) -> String {
-        format!("{}://{}{}", self.scheme, self.netloc, self.path)
-    }
-
     fn name(&self) -> &str {
-        self.path
+        self.url
+            .path()
             .trim_end_matches('/')
             .rsplit('/')
             .next()
@@ -45,22 +30,22 @@ impl UrlObject {
     }
 
     fn parent(&self) -> Self {
-        let new_path = if let Some(stripped) = self.path.strip_suffix('/') {
+        let path = self.url.path();
+        let new_path = if let Some(stripped) = path.strip_suffix('/') {
             if stripped.is_empty() || !stripped.contains('/') {
                 return self.clone();
             }
             stripped.to_string()
-        } else if !self.path.contains('/') {
-            return self.clone();
         } else {
-            let last = self.path.rfind('/').unwrap();
-            self.path[..last].to_string()
+            match path.rfind('/') {
+                None => return self.clone(),
+                Some(0) => "/".to_string(),
+                Some(i) => path[..i].to_string(),
+            }
         };
-        Self {
-            scheme: self.scheme.clone(),
-            netloc: self.netloc.clone(),
-            path: new_path,
-        }
+        let mut url = self.url.clone();
+        url.set_path(&new_path);
+        Self { url }
     }
 }
 
@@ -102,14 +87,14 @@ impl ImmutableObject for UrlObject {
                     .ok_or_else(|| InnerError::new("Url == requires an argument"))?;
                 match rhs {
                     Value::Object(obj) if obj.borrow().type_name() == "Url" => {
-                        Ok(Value::Bool(self.as_string() == obj.borrow().display()))
+                        Ok(Value::Bool(self.url.as_str() == obj.borrow().display()))
                     }
                     _ => Ok(Value::Bool(false)),
                 }
             }
             "__str__" => {
                 unpack_args!(args =>);
-                Ok(Value::String(self.as_string()))
+                Ok(Value::String(self.url.to_string()))
             }
             "__div__" => {
                 let rhs = args
@@ -122,23 +107,21 @@ impl ImmutableObject for UrlObject {
                         }
                     })
                     .ok_or_else(|| InnerError::new("Url / requires a string"))?;
-                let path = format!("{}/{rhs}", self.path.trim_end_matches('/'));
-                Ok(Value::object(Self {
-                    scheme: self.scheme.clone(),
-                    netloc: self.netloc.clone(),
-                    path,
-                }))
+                let new_path = format!("{}/{rhs}", self.url.path().trim_end_matches('/'));
+                let mut url = self.url.clone();
+                url.set_path(&new_path);
+                Ok(Value::object(Self { url }))
             }
             m => Err(InnerError::new(format!("Url has no method '{m}'"))),
         }
     }
 
     fn display(&self) -> String {
-        self.as_string()
+        self.url.to_string()
     }
 
     fn serialize(&self) -> Option<Value> {
-        Some(Value::String(self.as_string()))
+        Some(Value::String(self.url.to_string()))
     }
 }
 
@@ -224,7 +207,7 @@ mod tests {
     #[test]
     fn test_url_parent_single_level() {
         let v = run(r#"Url("/foo").parent()"#);
-        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file://"));
+        assert!(matches!(&v, Value::Object(obj) if obj.borrow().display() == "file:///"));
     }
 
     #[test]
