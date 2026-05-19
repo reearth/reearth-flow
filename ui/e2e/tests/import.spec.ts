@@ -13,12 +13,12 @@ test.describe("Workflow import", { tag: "@regression" }, () => {
   test.beforeEach(async ({ page }) => {
     projects = new ProjectsPage(page);
     await projects.goto();
-    await projects.deleteProjectIfExists(IMPORTED_PROJECT_NAME).catch(() => { });
+    await projects.deleteProjectIfExists(IMPORTED_PROJECT_NAME).catch(() => {});
   });
 
   test.afterEach(async () => {
     await projects.goto();
-    await projects.deleteProjectIfExists(IMPORTED_PROJECT_NAME).catch(() => { });
+    await projects.deleteProjectIfExists(IMPORTED_PROJECT_NAME).catch(() => {});
   });
 
   test("imports a workflow JSON file as a new project", async ({ page }) => {

@@ -64,9 +64,7 @@ export class ProjectsPage {
     const card = this.projectCard(name).first();
     await card.waitFor({ state: "visible" });
     await card.hover();
-    await card
-      .locator('button[data-slot="dropdown-menu-trigger"]')
-      .click();
+    await card.locator('button[data-slot="dropdown-menu-trigger"]').click();
   }
 
   async renameProject(oldName: string, newName: string) {
