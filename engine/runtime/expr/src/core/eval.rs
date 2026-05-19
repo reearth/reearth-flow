@@ -822,7 +822,6 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
             (Value::String(key), Value::Map(map)) => {
                 Ok(Value::Bool(map.borrow().contains_key(&key)))
             }
-            (_, Value::Null) => Ok(Value::Bool(false)),
             (l, r) => Err(InnerError::new(format!(
                 "'in' not supported between {} and {}",
                 l.type_name(),
@@ -839,7 +838,6 @@ fn eval_binary(op: &BinOp, left: Value, right: Value) -> InnerResult<Value> {
             (Value::String(key), Value::Map(map)) => {
                 Ok(Value::Bool(!map.borrow().contains_key(&key)))
             }
-            (_, Value::Null) => Ok(Value::Bool(true)),
             (l, r) => Err(InnerError::new(format!(
                 "'not in' not supported between {} and {}",
                 l.type_name(),
@@ -1355,8 +1353,8 @@ mod tests {
         assert_eval(r#""a" in m"#, &[("m", m.clone())], Value::from(true));
         assert_eval(r#""c" in m"#, &[("m", m.clone())], Value::from(false));
         assert_eval(r#""a" not in m"#, &[("m", m)], Value::from(false));
-        assert_eval(r#""x" in null"#, &[], Value::from(false));
-        assert_eval(r#""x" not in null"#, &[], Value::from(true));
+        assert!(try_run(r#""x" in null"#, &[]).is_err());
+        assert!(try_run(r#""x" not in null"#, &[]).is_err());
         let pkgs2 = Value::array(vec![Value::from("a")]);
         assert_eval(r#"not "a" in pkgs"#, &[("pkgs", pkgs2)], Value::from(false));
     }
