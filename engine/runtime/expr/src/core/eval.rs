@@ -932,7 +932,7 @@ fn value_to_string(v: &Value) -> String {
         Value::Bool(b) => b.to_string(),
         Value::Int(n) => n.to_string(),
         Value::Float(f) => format_float(*f),
-        Value::Array(_) | Value::Map(_) => format!("{v:?}"),
+        Value::Array(_) | Value::Map(_) => format!("{v}"),
         Value::Fn(_) => "<fn>".into(),
         Value::Object(rc) => rc.borrow().display(),
     }
