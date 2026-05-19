@@ -113,15 +113,6 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose, onAssetSelect }) => {
                   </SelectContent>
                 </Select>
               </div>
-
-              <IconButton
-                size="icon"
-                variant="outline"
-                className={layoutView === "list" ? "bg-accent" : ""}
-                tooltipText={t("List Layout")}
-                onClick={handleListView}
-                icon={<ListIcon size={"18px"} />}
-              />
               <IconButton
                 size="icon"
                 variant="outline"
@@ -130,8 +121,15 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose, onAssetSelect }) => {
                 onClick={handleGridView}
                 icon={<SquaresFourIcon size={"18px"} />}
               />
+              <IconButton
+                size="icon"
+                variant="outline"
+                className={layoutView === "list" ? "bg-accent" : ""}
+                tooltipText={t("List Layout")}
+                onClick={handleListView}
+                icon={<ListIcon size={"18px"} />}
+              />
             </div>
-
             <Button
               variant="default"
               onClick={handleAssetUploadClick}
