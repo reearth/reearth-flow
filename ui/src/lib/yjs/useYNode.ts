@@ -286,6 +286,7 @@ export default ({
         type?: string;
         updatedParams?: any;
         updatedCustomizations?: any;
+        paramsSchema?: any;
         isDisabled?: boolean;
       }[],
     ) =>
@@ -301,6 +302,7 @@ export default ({
             type,
             updatedParams,
             updatedCustomizations,
+            paramsSchema,
             isDisabled,
           }) => {
             const prevNode = nodes.find((n) => n.id === nodeId);
@@ -335,6 +337,8 @@ export default ({
             if (updatedParams) yData?.set("params", updatedParams);
             if (updatedCustomizations)
               yData?.set("customizations", updatedCustomizations);
+            if (paramsSchema !== undefined)
+              yData?.set("paramsSchema", paramsSchema as any);
 
             if (type === "batch" && isDisabled !== undefined) {
               const nodesByParentId = new Map<string, Node[]>();
