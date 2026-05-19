@@ -1,3 +1,4 @@
+import { RJSFSchema } from "@rjsf/utils";
 import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -37,6 +38,7 @@ type Props = {
       nodeId: string;
       updatedParams: any;
       updatedCustomizations: any;
+      paramsSchema?: RJSFSchema;
     }[],
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
@@ -133,7 +135,12 @@ const ParamsDialog: React.FC<Props> = ({
   );
 
   const handleUpdate = useCallback(
-    async (id: string, _updatedParams: any, _updatedCustomizations: any) => {
+    async (
+      id: string,
+      _updatedParams: any,
+      _updatedCustomizations: any,
+      paramsSchema?: RJSFSchema,
+    ) => {
       if (!openNode || openNode.id !== id) return;
 
       const latestNodeDrafts = rawDrafts[id] ?? {};
@@ -151,13 +158,48 @@ const ParamsDialog: React.FC<Props> = ({
       );
 
       yDoc?.transact(() => {
-        onDataSubmit?.([{ nodeId: id, updatedParams, updatedCustomizations }]);
+        onDataSubmit?.([
+          {
+            nodeId: id,
+            updatedParams,
+            updatedCustomizations,
+            paramsSchema,
+          },
+        ]);
       }, "params");
 
       removeMyDraft(id);
       onOpenNode();
     },
     [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
+  );
+
+  const handleMigrate = useCallback(
+    (id: string, newParams: any, paramsSchema?: RJSFSchema) => {
+      if (!openNode || openNode.id !== id) return;
+
+      const latestNodeDrafts = rawDrafts[id] ?? {};
+      const updatedCustomizations = applyMergedPatch(
+        openNode.data.customizations,
+        latestNodeDrafts,
+        "customizationsPatch",
+      );
+
+      yDoc?.transact(() => {
+        onDataSubmit?.([
+          {
+            nodeId: id,
+            updatedParams: newParams,
+            updatedCustomizations,
+            paramsSchema,
+          },
+        ]);
+      }, "params");
+
+      removeMyDraft(id);
+      // Dialog stays open — user reviews migrated values in normal editor and saves explicitly
+    },
+    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -316,6 +358,7 @@ const ParamsDialog: React.FC<Props> = ({
               onParamsUpdate={handleParamChange}
               onCustomizationsUpdate={handleCustomizationChange}
               onUpdate={handleUpdate}
+              onMigrate={handleMigrate}
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}
               onValueEditorOpen={(fieldContext) => {

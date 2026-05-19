@@ -62,6 +62,9 @@ export const reassembleNode = (yNode: YNode): Node => {
   if ((yNode.get("data") as Y.Map<any>)?.get("isDisabled") !== undefined) {
     data.isDisabled = (yNode.get("data") as Y.Map<any>)?.get("isDisabled");
   }
+  if ((yNode.get("data") as Y.Map<any>)?.get("paramsSchema") !== undefined) {
+    data.paramsSchema = (yNode.get("data") as Y.Map<any>)?.get("paramsSchema");
+  }
   // Subworkflow specific
   if ((yNode.get("data") as Y.Map<any>)?.get("subworkflowId") !== undefined) {
     data.subworkflowId = (yNode.get("data") as Y.Map<any>)
