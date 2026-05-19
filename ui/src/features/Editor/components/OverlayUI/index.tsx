@@ -1,6 +1,6 @@
 import { LockIcon } from "@phosphor-icons/react";
 import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 import { Doc } from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
@@ -150,14 +150,18 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onUserFocusedElement,
 }) => {
   const { isLocked } = useEditorContext();
-  const [showLayoutOptions, setShowLayoutOptions] = useState(false);
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks({
     onUserFocusedElement,
   });
 
   const handleLayoutOptionsToggle = useCallback(() => {
-    setShowLayoutOptions((prev) => !prev);
-  }, []);
+    if (showDialog === "layout") {
+      handleDialogClose();
+      return;
+    } else {
+      handleDialogOpen("layout");
+    }
+  }, [showDialog, handleDialogOpen, handleDialogClose]);
 
   const t = useT();
 
@@ -270,11 +274,13 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           </div>
         </div>
       </div>
-      <LayoutOptionsDialog
-        isOpen={showLayoutOptions}
-        onLayoutChange={onLayoutChange}
-        onClose={handleLayoutOptionsToggle}
-      />
+      {showDialog === "layout" && (
+        <LayoutOptionsDialog
+          showDialog={showDialog}
+          onLayoutChange={onLayoutChange}
+          onClose={handleDialogClose}
+        />
+      )}
       {nodePickerOpen && (
         <ActionPickerDialog
           openedActionType={nodePickerOpen}
