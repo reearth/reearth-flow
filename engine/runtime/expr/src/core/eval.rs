@@ -265,8 +265,8 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
             Ok(())
         }
         ExprKind::Index(target, key) => {
-            let key_val = eval_inner(key, env)?;
             let container = eval_inner(target, env)?;
+            let key_val = eval_inner(key, env)?;
             match (container, &key_val) {
                 (Value::Array(rc), Value::Int(i)) => {
                     let len = rc.borrow().len() as i64;
@@ -323,8 +323,8 @@ fn eval_compound_assign(
             Ok(new_val)
         }
         ExprKind::Index(target, key) => {
-            let key_val = eval_inner(key, env)?;
             let container = eval_inner(target, env)?;
+            let key_val = eval_inner(key, env)?;
             match (container, &key_val) {
                 (Value::Array(rc), Value::Int(i)) => {
                     let len = rc.borrow().len() as i64;
@@ -1714,6 +1714,21 @@ mod tests {
                 Value::from(0i64),
                 Value::from(1i64),
                 Value::from(0i64),
+            ]),
+        );
+    }
+
+    #[test]
+    fn test_assign_target_evaluated_before_key() {
+        // Target is evaluated before key. The block sets i=2 as a side effect;
+        // key `i` must see that update, so the write lands at index 2, not 0.
+        assert_eval(
+            "a = [0, 0, 0]; i = 0; { i = 2; a }[i] = 9; a",
+            &[],
+            Value::array(vec![
+                Value::from(0i64),
+                Value::from(0i64),
+                Value::from(9i64),
             ]),
         );
     }
