@@ -69,8 +69,7 @@ pub enum ExprKind {
         lvalue: Box<Expr>,
         value: Box<Expr>,
     },
-    /// `lvalue op= rhs` — reads lvalue, applies op, writes result back; evaluates to new value.
-    /// op is one of Add, Sub, Mul, Div, FloorDiv. lvalue is evaluated once (no double-evaluation).
+    /// `lvalue op= rhs` — reads lvalue, applies op, writes result back; lvalue is evaluated once.
     CompoundAssign {
         lvalue: Box<Expr>,
         op: BinOp,
