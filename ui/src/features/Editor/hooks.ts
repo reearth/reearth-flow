@@ -315,8 +315,8 @@ export default ({
           if (hasModifier) handleProjectLockChange?.(!isLocked);
           break;
         case "k":
-          if (hasModifier && !showSearchPanel) setShowSearchPanel(true);
-          if (hasModifier && showSearchPanel) setShowSearchPanel(false);
+          if (hasModifier && !showSearchPanel) handleShowSearchPanel(true);
+          if (hasModifier && showSearchPanel) handleShowSearchPanel(false);
 
           break;
         case "z":
@@ -358,6 +358,14 @@ export default ({
     openNode,
     yAwareness,
   });
+
+  const handleShowSearchPanel = useCallback(
+    (open: boolean) => {
+      setShowSearchPanel(open);
+      handleUserFocusedElement?.(open);
+    },
+    [setShowSearchPanel, handleUserFocusedElement],
+  );
 
   const {
     nodePickerOpen,
@@ -490,7 +498,7 @@ export default ({
     handleSpotlightUserDeselect,
     handlePaneClick,
     selectedNodeIds,
-    setShowSearchPanel,
+    handleShowSearchPanel,
     handlePointerDown,
     handleConnectStart,
     handleConnectEnd,

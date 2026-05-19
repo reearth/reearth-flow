@@ -224,6 +224,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onDebugRunStop={onDebugRunStop}
               customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
               onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+              onUserFocusedElement={onUserFocusedElement}
               refetchWorkflowVariables={refetchWorkflowVariables}
             />
             <div className="h-4/5 border-r" />
