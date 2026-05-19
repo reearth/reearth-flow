@@ -53,7 +53,15 @@ export default ({
   // Also captures the opening snapshot the first time variable becomes non-null.
   useEffect(() => {
     if (variable) {
-      if (!hasChanges) {
+      if (
+        openedVariableRef.current &&
+        openedVariableRef.current.id !== variable.id
+      ) {
+        // Variable ID changed while dialog was open — reset edit state entirely.
+        openedVariableRef.current = { ...variable };
+        setHasChanges(false);
+        setLocalVariable({ ...variable });
+      } else if (!hasChanges) {
         setLocalVariable({ ...variable });
         if (!openedVariableRef.current) {
           openedVariableRef.current = { ...variable };

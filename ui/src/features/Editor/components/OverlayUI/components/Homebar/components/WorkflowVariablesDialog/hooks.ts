@@ -118,6 +118,7 @@ export default ({
     yVarSession.delete("variables");
     yVarSession.delete("base");
     yVarSession.delete("timestamp");
+    yVarSession.delete("pendingRefetch");
   }, [yVarSession]);
 
   // Initialise the shared session once from server data (first open wins).
@@ -129,8 +130,9 @@ export default ({
     if (hasInitRef.current) return;
     hasInitRef.current = true;
 
-    if (yVarSession.get("pendingRefetch") === true) {
-      // A previous save left temp_ IDs; reinitialise from fresh server data.
+    if (yVarSession.get("pendingRefetch") !== undefined) {
+      // A previous save created new variables and then the saving client left.
+      // Reinit from current server data (which now has real IDs).
       yVarSession.set("variables", [...currentWorkflowVariables]);
       yVarSession.set("base", [...currentWorkflowVariables]);
       yVarSession.set("timestamp", Date.now());
@@ -141,13 +143,14 @@ export default ({
       yVarSession.set("base", [...currentWorkflowVariables]);
       yVarSession.set("timestamp", Date.now());
     }
-    // else: live session already in progress — join it without overwriting.
+    // else: live session already in progress — join without overwriting.
   }, [yVarSession, currentWorkflowVariables]);
 
   // After a successful save, wait for TanStack Query to refetch and then
   // reinitialise the session with real server IDs (resolving any temp_ IDs).
-  // We detect the refetch by tracking when currentWorkflowVariables changes.
-  const prevWorkflowVarsRef = useRef<WorkflowVariable[] | undefined>(undefined);
+  // Any client still in the dialog can do the reinit — all write the same
+  // server-authoritative data, so last-writer-wins is safe.
+  const prevWorkflowVarsRef = useRef(currentWorkflowVariables);
   useEffect(() => {
     if (!yVarSession || currentWorkflowVariables === undefined) return;
 
@@ -156,8 +159,8 @@ export default ({
       return;
     }
 
-    // pendingRefetch is set — wait until currentWorkflowVariables has actually
-    // changed (i.e. the server has returned fresh data after the save).
+    // Wait until currentWorkflowVariables has actually changed (i.e. the
+    // server has returned fresh data after the save).
     if (prevWorkflowVarsRef.current === currentWorkflowVariables) return;
 
     yVarSession.set("variables", [...currentWorkflowVariables]);
@@ -207,7 +210,7 @@ export default ({
     [writeVars, sessionVars, t],
   );
 
-  const handleLocalUpdate = useCallback(
+  const handleUpdate = useCallback(
     (updatedVariable: WorkflowVariable) => {
       writeVars(
         sessionVars.map((v) =>
@@ -232,21 +235,6 @@ export default ({
       const [moved] = next.splice(oldIndex, 1);
       next.splice(newIndex, 0, moved);
       writeVars(next);
-    },
-    [writeVars, sessionVars],
-  );
-
-  // Called from VariableEditDialog on every keystroke / drag — writes directly
-  // to Yjs so other users see every character change in real time.
-  const handleVariableLiveUpdate = useCallback(
-    (updatedVariable: WorkflowVariable) => {
-      writeVars(
-        sessionVars.map((v) =>
-          v.id === updatedVariable.id ? updatedVariable : v,
-        ),
-      );
-      // Keep editingVariableId stable so the sub-dialog stays open and
-      // editingVariable (derived from sessionVars) auto-updates.
     },
     [writeVars, sessionVars],
   );
@@ -306,7 +294,7 @@ export default ({
         yVarSession.set("base", [...sessionVars]);
         yVarSession.set("timestamp", Date.now());
         if (hasChanges && changes.creates.length > 0) {
-          yVarSession.set("pendingRefetch", true);
+          yVarSession.set("pendingRefetch", myClientId);
         }
       }
 
@@ -327,6 +315,7 @@ export default ({
     onDeleteBatch,
     onDelete,
     yVarSession,
+    myClientId,
     workflowVarAwareness,
     onClose,
   ]);
@@ -351,7 +340,7 @@ export default ({
     setEditingVariableId(null);
     workflowVarAwareness?.onEditStart(null);
     // No broadcastDraft needed — the shared Yjs session already holds the
-    // latest state written by handleVariableLiveUpdate / handleLocalUpdate.
+    // latest state written by handleUpdate.
   }, [workflowVarAwareness]);
 
   // ── Keep client ID in Yjs awareness when focus changes ───────────────────
@@ -377,8 +366,7 @@ export default ({
     myClientId,
     getUserFacingName,
     handleLocalAdd,
-    handleLocalUpdate,
-    handleVariableLiveUpdate,
+    handleUpdate,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,

@@ -106,8 +106,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     editingVariable,
     getUserFacingName,
     handleLocalAdd,
-    handleLocalUpdate,
-    handleVariableLiveUpdate,
+    handleUpdate,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,
@@ -171,7 +170,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
             <NameInput
               variable={variable}
               disabled={isLocked}
-              onUpdate={handleLocalUpdate}
+              onUpdate={handleUpdate}
               onFocus={() =>
                 workflowVarAwareness?.onFieldFocus(variable.id, "name")
               }
@@ -204,7 +203,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               onCheckedChange={() => {
                 const projectVar = { ...workflowVariables[row.index] };
                 projectVar.required = !isChecked;
-                handleLocalUpdate(projectVar);
+                handleUpdate(projectVar);
               }}
               disabled={isLocked}
             />
@@ -222,7 +221,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               onCheckedChange={() => {
                 const projectVar = { ...variable };
                 projectVar.public = !variable.public;
-                handleLocalUpdate(projectVar);
+                handleUpdate(projectVar);
               }}
               disabled={isLocked}
             />
@@ -269,7 +268,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     [
       workflowVariables,
       isLocked,
-      handleLocalUpdate,
+      handleUpdate,
       handleEditVariable,
       handleDeleteSingle,
       workflowVarAwareness,
@@ -386,8 +385,8 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
           editingVariable ? (variableEditMap[editingVariable.id] ?? []) : []
         }
         onClose={handleCloseEdit}
-        onUpdate={handleLocalUpdate}
-        onLiveUpdate={handleVariableLiveUpdate}
+        onUpdate={handleUpdate}
+        onLiveUpdate={handleUpdate}
         onFieldFocus={(field) =>
           workflowVarAwareness?.onFieldFocus(
             field ? (editingVariable?.id ?? null) : null,

@@ -21,7 +21,7 @@ import {
   DatabaseIcon,
   FileIcon,
 } from "@phosphor-icons/react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 import {
   ArrayDefaultItemInput,
@@ -87,8 +87,26 @@ export const ArrayEditor: React.FC<Props> = ({
 
   const [arrayItems, setArrayItems] = useState<any[]>(getArrayItems());
 
-  // Sync config and items when variable changes
+  // Refs for debouncing per-item Yjs writes.
+  const itemUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingItemUpdateRef = useRef<{
+    items: any[];
+    config: ArrayConfig;
+  } | null>(null);
+  const variableRef = useRef(variable);
+  variableRef.current = variable;
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+
+  // Sync config and items when variable changes from outside (peer edit or
+  // cancel-revert). Cancel any pending debounced write so stale data is not
+  // written back over the incoming change.
   useEffect(() => {
+    if (itemUpdateTimerRef.current) {
+      clearTimeout(itemUpdateTimerRef.current);
+      itemUpdateTimerRef.current = null;
+      pendingItemUpdateRef.current = null;
+    }
     const newConfig = getArrayConfig();
     const newItems = Array.isArray(variable.defaultValue)
       ? variable.defaultValue
@@ -163,8 +181,23 @@ export const ArrayEditor: React.FC<Props> = ({
   const handleUpdateItem = (index: number, value: any) => {
     const newItems = [...arrayItems];
     newItems[index] = value;
-    setArrayItems(newItems);
-    updateVariable(arrayConfig, newItems);
+    setArrayItems(newItems); // immediate local update for controlled input
+
+    // Debounce the Yjs write — text inputs fire on every keystroke.
+    if (itemUpdateTimerRef.current) clearTimeout(itemUpdateTimerRef.current);
+    pendingItemUpdateRef.current = { items: newItems, config: arrayConfig };
+    itemUpdateTimerRef.current = setTimeout(() => {
+      if (pendingItemUpdateRef.current) {
+        const { items, config } = pendingItemUpdateRef.current;
+        pendingItemUpdateRef.current = null;
+        const v = variableRef.current;
+        onUpdateRef.current({
+          ...v,
+          config: v.type === "array" ? config : v.config,
+          defaultValue: items,
+        });
+      }
+    }, 300);
   };
 
   // Set up drag and drop sensors

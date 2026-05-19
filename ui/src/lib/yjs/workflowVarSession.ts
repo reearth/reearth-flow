@@ -4,9 +4,11 @@ export type WorkflowVarSession = {
   variables: WorkflowVariable[];
   base: WorkflowVariable[];
   timestamp: number;
-  // Set after a successful save so any still-open user reinitialises from
-  // fresh server data once TanStack Query refetches (resolves temp_ IDs).
-  pendingRefetch?: boolean;
+  // Set to the saving client's ID after a successful create so that client
+  // reinitialises from fresh server data once TanStack Query refetches
+  // (resolves temp_ IDs). Other clients ignore it and receive the update
+  // reactively once the saving client writes back to Yjs.
+  pendingRefetch?: string;
 };
 
 export type SessionCreate = {
