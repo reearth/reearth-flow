@@ -6,7 +6,7 @@ import {
   PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   Card,
@@ -20,9 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { Icon, IconName } from "@flow/components/Icon";
+import { Icon } from "@flow/components/Icon";
 import { useT } from "@flow/lib/i18n";
 import { Asset } from "@flow/types";
+
+import { getIconFileType } from "./utils";
 
 type Props = {
   asset: Asset;
@@ -58,48 +60,7 @@ const AssetCard: React.FC<Props> = ({
       onDoubleClick(asset);
     }
   };
-  const iconType = useMemo((): IconName | undefined => {
-    switch (ext) {
-      case "csv":
-        return "fileCSV";
-      case "czml":
-        return "fileCzml";
-      case "geojson":
-        return "fileGeoJSON";
-      case "glb":
-        return "fileGlb";
-      case "gltf":
-        return "fileGltf";
-      case "gml":
-        return "fileGml";
-      case "gpkg":
-        return "fileGpkg";
-      case "jpg":
-        return "fileJpg";
-      case "jpeg":
-        return "fileJpeg";
-      case "json":
-        return "fileJson";
-      case "mtl":
-        return "fileMtl";
-      case "obj":
-        return "fileObj";
-      case "png":
-        return "filePng";
-      case "py":
-        return "filePy";
-      case "tif":
-        return "fileTif";
-      case "tiff":
-        return "fileTiff";
-      case "tsv":
-        return "fileTsv";
-      case "zip":
-        return "fileZip";
-      default:
-        return undefined;
-    }
-  }, [ext]);
+  const fileIcon = getIconFileType(ext);
 
   return (
     <Card
@@ -107,9 +68,9 @@ const AssetCard: React.FC<Props> = ({
       key={id}
       onDoubleClick={handleDoubleClick}>
       <CardContent className="flex items-start justify-center p-2">
-        {iconType ? (
+        {fileIcon ? (
           <Icon
-            icon={iconType}
+            icon={fileIcon}
             size={70}
             className="opacity-50 group-hover:opacity-90"
           />
