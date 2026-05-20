@@ -459,6 +459,8 @@ dependencies = [
  "http 1.4.0",
  "http-body",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "itoa 1.0.17",
  "matchit",
  "memchr",
@@ -467,10 +469,15 @@ dependencies = [
  "pin-project-lite",
  "rustversion",
  "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "serde_urlencoded",
  "sync_wrapper",
+ "tokio",
  "tower 0.5.3",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -491,6 +498,7 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -5798,7 +5806,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.316"
+version = "0.0.317"
 dependencies = [
  "directories",
  "log",
@@ -5827,7 +5835,7 @@ dependencies = [
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.28"
+version = "0.2.29"
 dependencies = [
  "bytes",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
@@ -6621,7 +6629,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "futures",
  "once_cell",
@@ -6641,7 +6649,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "approx",
  "async-trait",
@@ -6687,7 +6695,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "Inflector",
  "approx",
@@ -6745,7 +6753,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "indexmap 2.13.0",
  "once_cell",
@@ -6766,7 +6774,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
@@ -6834,7 +6842,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -6885,7 +6893,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-atlas"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "image 0.25.10",
  "rstar 0.12.2",
@@ -6896,7 +6904,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "bytes",
  "clap",
@@ -6934,7 +6942,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "approx",
  "async-recursion",
@@ -6974,7 +6982,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "chrono",
  "futures",
@@ -6988,7 +6996,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7017,7 +7025,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-expr"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "indexmap 2.13.0",
  "lalrpop",
@@ -7029,7 +7037,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "approx",
  "bvh",
@@ -7059,7 +7067,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "ahash 0.8.12",
  "base64 0.22.1",
@@ -7093,7 +7101,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7102,7 +7110,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7132,7 +7140,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -7166,7 +7174,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -7183,7 +7191,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -7195,7 +7203,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "bytes",
  "futures",
@@ -7212,7 +7220,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "bytes",
  "futures",
@@ -7231,7 +7239,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -7245,7 +7253,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7280,7 +7288,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "ahash 0.8.12",
  "bytes",
@@ -7318,9 +7326,10 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.369"
+version = "0.0.370"
 dependencies = [
  "async-trait",
+ "axum",
  "backon",
  "bytes",
  "chrono",
@@ -8109,6 +8118,17 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
+]
+
+[[package]]
+name = "serde_path_to_error"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10a9ff822e371bb5403e391ecd83e182e0e77ba7f6fe0160b795797109d1b457"
+dependencies = [
+ "itoa 1.0.17",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -9756,6 +9776,7 @@ dependencies = [
  "tokio",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -11196,7 +11217,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.218"
+version = "0.1.219"
 dependencies = [
  "anyhow",
  "csv",
