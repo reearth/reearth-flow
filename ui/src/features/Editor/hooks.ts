@@ -305,7 +305,9 @@ export default ({
 
   const handleOpenNode = useCallback(
     (nodeId?: string) => {
-      setOpenNodeId((prev) => (!nodeId || prev === nodeId ? undefined : nodeId));
+      setOpenNodeId((prev) =>
+        !nodeId || prev === nodeId ? undefined : nodeId,
+      );
       handleUserFocusedElement(!!nodeId);
     },
     [handleUserFocusedElement],
