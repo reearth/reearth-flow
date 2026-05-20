@@ -339,16 +339,11 @@ impl Sink for CityGmlWriterSink {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let output_uri = Uri::from_str(&path)?;
+        let out = crate::SinkOutput::from_expr(&ctx, &self.params.output)
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         write_citygml_to_storage(
-            &output_uri,
+            out.uri(),
             &self.buffer,
             &self.lod_mask,
             self.params.epsg_code,
