@@ -1,9 +1,6 @@
 use std::collections::HashMap;
-use std::str::FromStr;
-use std::sync::Arc;
 use std::vec;
 
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -121,15 +118,10 @@ impl Sink for ShapefileWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
-        let scope = expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
+        let base = crate::SinkOutput::from_expr(&ctx, &self.params.output)
+            .map_err(|e| SinkError::ShapefileWriter(e.to_string()))?;
         for (key, features) in self.buffer.iter() {
-            pipeline::pipeline(&ctx.as_context(), &output, key, features)?;
+            pipeline::pipeline(&ctx.as_context(), &base, key, features)?;
         }
         Ok(())
     }
