@@ -327,3 +327,11 @@ func (f *fileRepo) validateURL(u *url.URL, base *url.URL) bool {
 func (f *fileRepo) IssueUploadAssetLink(_ context.Context, _ gateway.IssueUploadAssetParam) (*gateway.UploadAssetLink, error) {
 	return nil, gateway.ErrUnsupportedOperation
 }
+
+func (f *fileRepo) WriteCancelFlag(_ context.Context, jobID string) error {
+	return afero.WriteFile(f.fs, "cancel/"+jobID, []byte("cancel"), 0644)
+}
+
+func (f *fileRepo) CancelFlagURI(jobID string) string {
+	return "file://cancel/" + jobID
+}

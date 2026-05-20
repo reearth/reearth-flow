@@ -7,6 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/cloudrunworker"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/cms"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
@@ -82,6 +83,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 	// Batch
 	gateways.Batch = initBatch(ctx, conf)
+
+	// CloudRunWorker (must be after File)
+	gateways.CloudRunWorker = initCloudRunWorker(ctx, conf, gateways.File)
 
 	// Scheduler
 	gateways.Scheduler = initScheduler(ctx, conf)
@@ -197,6 +201,17 @@ func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
 	}
 
 	return batchRepo
+}
+
+func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gateway.File) gateway.CloudRunWorker {
+	if conf.Worker_DebugServiceURL == "" || fileRepo == nil {
+		return nil
+	}
+	w, err := cloudrunworker.New(ctx, conf.Worker_DebugServiceURL, fileRepo)
+	if err != nil {
+		log.Fatalf("failed to create CloudRunWorker: %v", err)
+	}
+	return w
 }
 
 func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {

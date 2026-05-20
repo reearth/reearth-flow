@@ -27,6 +27,7 @@ type Job struct {
 	transaction       usecasex.Transaction
 	file              gateway.File
 	batch             gateway.Batch
+	cloudRunWorker    gateway.CloudRunWorker
 	redis             gateway.Redis
 	notifier          notification.Notifier
 	permissionChecker gateway.PermissionChecker
@@ -56,6 +57,7 @@ func NewJob(
 		transaction:       r.Transaction,
 		file:              gr.File,
 		batch:             gr.Batch,
+		cloudRunWorker:    gr.CloudRunWorker,
 		redis:             gr.Redis,
 		monitor:           monitor.NewMonitor(),
 		subscriptions:     subscription.NewJobManager(),
@@ -124,8 +126,15 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 		}
 	}()
 
-	if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
-		return nil, err
+	// Cloud-Run debug jobs have an empty GCPJobID; batch-fallback jobs do not.
+	if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" && i.cloudRunWorker != nil {
+		if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
+			return nil, err
+		}
 	}
 
 	j.SetStatus(job.StatusCancelled)
@@ -145,6 +154,108 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	i.subscriptions.Notify(j.ID().String(), j.Status())
 
 	return j, nil
+}
+
+// RunDebugJob runs a Cloud Run debug job end-to-end: blocks on RunJob, then
+// waits (bounded) for the authoritative JobCompleteEvent from Redis before
+// persisting the final merged status and calling handleJobCompletion.
+func (i *Job) RunDebugJob(ctx context.Context, j *job.Job, p gateway.RunJobParam) {
+	// This runs in a detached goroutine; a panic here would otherwise crash the API server.
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorfc(ctx, "job: debug job %s panicked: %v", j.ID(), r)
+		}
+	}()
+
+	status, err := i.cloudRunWorker.RunJob(ctx, p)
+	if err != nil {
+		log.Errorfc(ctx, "job: debug job %s run error: %v", j.ID(), err)
+		status = gateway.JobStatusFailed
+	}
+	batchStatus := job.Status(status)
+
+	// Wait (bounded) for the Redis JobCompleteEvent — process exit-0 is not
+	// sufficient since the workflow itself may have failed.
+	var workerStatus job.Status
+	for attempt := 0; attempt < 30; attempt++ { // ~60s max (2s interval)
+		ev, rerr := i.redis.GetJobCompleteEvent(ctx, j.ID())
+		if rerr != nil {
+			log.Warnf("debug job %s: redis read error: %v", j.ID(), rerr)
+		}
+		if ev != nil {
+			switch ev.Result {
+			case "success":
+				workerStatus = job.StatusCompleted
+			case "failed":
+				workerStatus = job.StatusFailed
+			}
+			if workerStatus != "" {
+				break
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
+	}
+
+	if workerStatus == "" {
+		log.Warnfc(ctx, "job: debug job %s finalized without a worker JobCompleteEvent; status from infra signal only", j.ID())
+	}
+
+	lock := i.getJobLock(j.ID().String())
+	lock.Lock()
+	defer lock.Unlock()
+
+	latest, err := i.jobRepo.FindByID(ctx, j.ID())
+	if err != nil {
+		log.Errorfc(ctx, "job: failed to reload debug job %s: %v", j.ID(), err)
+		return
+	}
+	// Don't clobber if a concurrent Cancel already finalized it.
+	if s := latest.Status(); s == job.StatusCancelled || s == job.StatusCompleted || s == job.StatusFailed {
+		log.Infofc(ctx, "job: debug job %s already terminal (%s); skipping", j.ID(), s)
+		return
+	}
+
+	latest.SetBatchStatus(batchStatus)
+	if workerStatus != "" {
+		latest.SetWorkerStatus(workerStatus)
+	}
+	latest.SetStatus(latest.Status())
+
+	tx, txErr := i.transaction.Begin(ctx)
+	if txErr != nil {
+		log.Errorfc(ctx, "job: tx begin failed for debug job %s: %v", j.ID(), txErr)
+		return
+	}
+	txCtx := tx.Context()
+	defer func() {
+		if err2 := tx.End(txCtx); err2 != nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err2)
+		}
+	}()
+
+	if serr := i.jobRepo.Save(txCtx, latest); serr != nil {
+		log.Errorfc(ctx, "job: failed to save debug job %s: %v", j.ID(), serr)
+		return
+	}
+	tx.Commit()
+
+	if workerStatus != "" {
+		if derr := i.redis.DeleteJobCompleteEvent(ctx, j.ID()); derr != nil {
+			log.Warnf("debug job %s: failed to delete redis event: %v", j.ID(), derr)
+		}
+	}
+
+	final := latest.Status()
+	if final == job.StatusCompleted || final == job.StatusFailed || final == job.StatusCancelled {
+		if cerr := i.handleJobCompletion(ctx, latest); cerr != nil {
+			log.Errorfc(ctx, "job: completion handling failed for debug job %s: %v", j.ID(), cerr)
+		}
+	}
+	i.subscriptions.Notify(j.ID().String(), latest.Status())
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
@@ -278,13 +389,6 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 }
 
 func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
-	status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
-	if err != nil {
-		return err
-	}
-
-	newBatchStatus := job.Status(status)
-
 	jobLock := i.getJobLock(j.ID().String())
 	jobLock.Lock()
 	defer jobLock.Unlock()
@@ -292,6 +396,21 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
 	if err != nil {
 		return fmt.Errorf("failed to fetch current job state: %w", err)
+	}
+
+	var batchStatusChanged bool
+
+	// Cloud-Run debug jobs have an empty GCPJobID; skip Batch polling for them.
+	if j.GCPJobID() != "" {
+		status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
+		if err != nil {
+			return err
+		}
+		newBatchStatus := job.Status(status)
+		batchStatusChanged = currentJob.BatchStatus() == nil || *currentJob.BatchStatus() != newBatchStatus
+		if batchStatusChanged {
+			currentJob.SetBatchStatus(newBatchStatus)
+		}
 	}
 
 	workerEvent, err := i.redis.GetJobCompleteEvent(ctx, currentJob.ID())
@@ -314,18 +433,10 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		}
 	}
 
-	batchStatusChanged := currentJob.BatchStatus() == nil || *currentJob.BatchStatus() != newBatchStatus
-	if batchStatusChanged {
-		currentJob.SetBatchStatus(newBatchStatus)
-	}
-
 	statusChanged := batchStatusChanged || workerEvent != nil
 
 	if statusChanged {
-		// Update legacy status field with computed value
 		currentJob.SetStatus(currentJob.Status())
-
-		// Use transaction for MongoDB update
 		tx, err := i.transaction.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to begin transaction: %w", err)
@@ -345,7 +456,6 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 
 		tx.Commit()
 
-		// Delete Redis key only after successful DB commit
 		if workerEvent != nil {
 			if err := i.redis.DeleteJobCompleteEvent(ctx, currentJob.ID()); err != nil {
 				log.Warnf("Failed to delete job complete event from Redis for job %s: %v", currentJob.ID(), err)
@@ -363,14 +473,11 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 			computedStatus,
 		)
 
-		// For terminal states, run completion handling (artifacts/logs) before notifying.
 		if err := i.handleJobCompletion(ctx, currentJob); err != nil {
 			log.Errorfc(ctx, "job: completion handling failed: %v", err)
 		}
 	}
 
-	// For terminal states we notify only after completion handling,
-	// so subscribers see final outputs/logs together with the final status.
 	if statusChanged {
 		i.subscriptions.Notify(currentJob.ID().String(), currentJob.Status())
 	}
@@ -531,6 +638,11 @@ func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
 	j, err := i.jobRepo.FindByID(context.Background(), jobID)
 	if err != nil {
 		log.Errorfc(context.Background(), "job: failed to find job for monitoring: %v", err)
+		return
+	}
+
+	// RunDebugJob owns the lifecycle for Cloud-Run debug jobs; don't start a loop.
+	if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" {
 		return
 	}
 
