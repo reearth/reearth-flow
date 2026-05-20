@@ -73,7 +73,7 @@ pub fn eval(expr: &Expr, env: &mut Env) -> Result<Value> {
     eval_inner(expr, env)
 }
 
-/// Unified recursion entrypoint. All function/operator/method invocations route here.
+/// Recursion entrypoint for native function/operator/method invocations.
 pub(crate) fn call_inner(f: &NativeFn, args: &[Value]) -> InnerResult<Value> {
     let _guard = DepthGuard::enter()?;
     f.call(args)
@@ -83,7 +83,6 @@ fn call_func(f: &NativeFn, args: &[Value], pos: usize) -> Result<Value> {
     call_inner(f, args).to_eval_error(pos)
 }
 
-/// Data-level equality: routes through call_inner so all recursion passes the unified entrypoint.
 pub(crate) fn eval_eq(a: Value, b: Value) -> InnerResult<bool> {
     match call_inner(&NativeFn::new(eq_op), &[a, b])? {
         Value::Bool(b) => Ok(b),
@@ -105,7 +104,7 @@ fn eq_op(args: &[Value]) -> InnerResult<Value> {
     }
 }
 
-/// Resolve a method name on a value, returning a NativeFn where args[0] is the receiver.
+// Resolve a method name on a value, returning a NativeFn where args[0] is the receiver.
 fn resolve_method(recv: &Value, method: &str) -> InnerResult<NativeFn> {
     match recv {
         Value::String(_) => str_methods::resolve_method(method),
@@ -126,7 +125,7 @@ fn resolve_method(recv: &Value, method: &str) -> InnerResult<NativeFn> {
     }
 }
 
-/// Returns a NativeFn for a binary operator. args[0]=left, args[1]=right.
+// Returns a NativeFn for a binary operator. args[0]=left, args[1]=right.
 fn resolve_op(op: &BinOp) -> NativeFn {
     match op {
         BinOp::Add => NativeFn::new(|args| {
@@ -365,7 +364,7 @@ fn contains_inner(left: Value, right: Value) -> InnerResult<bool> {
     }
 }
 
-/// Returns a NativeFn for a unary operator. args[0] is the operand.
+// Returns a NativeFn for a unary operator. args[0] is the operand.
 fn resolve_unary_op(op: &UnaryOp) -> NativeFn {
     match op {
         UnaryOp::Not => NativeFn::new(|args| {
@@ -398,6 +397,7 @@ fn unary_arg(args: &[Value]) -> InnerResult<&Value> {
         .ok_or_else(|| InnerError::new("unary operator requires one operand"))
 }
 
+// Recursion entrypoint for AST expression evaluation.
 fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
     let pos = expr.span.start;
     let _depth = DepthGuard::enter().to_eval_error(pos)?;
