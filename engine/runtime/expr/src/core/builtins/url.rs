@@ -82,9 +82,7 @@ impl ImmutableObject for UrlObject {
                 Ok(Value::String(stem.to_string()))
             }
             "__eq__" => {
-                let rhs = args
-                    .first()
-                    .ok_or_else(|| InnerError::new("Url == requires an argument"))?;
+                unpack_args!(args => rhs);
                 match rhs {
                     Value::Object(obj) if obj.type_name() == "Url" => {
                         Ok(Value::Bool(self.url.as_str() == obj.display()))
@@ -97,16 +95,10 @@ impl ImmutableObject for UrlObject {
                 Ok(Value::String(self.url.to_string()))
             }
             "__div__" => {
-                let rhs = args
-                    .first()
-                    .and_then(|v| {
-                        if let Value::String(s) = v {
-                            Some(s.as_str())
-                        } else {
-                            None
-                        }
-                    })
-                    .ok_or_else(|| InnerError::new("Url / requires a string"))?;
+                unpack_args!(args => rhs);
+                let Value::String(rhs) = rhs else {
+                    return Err(InnerError::new("Url / requires a string"));
+                };
                 let new_path = format!("{}/{rhs}", self.url.path().trim_end_matches('/'));
                 let mut url = self.url.clone();
                 url.set_path(&new_path);

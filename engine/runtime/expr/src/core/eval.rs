@@ -932,6 +932,13 @@ fn is_truthy(v: &Value) -> bool {
     }
 }
 
+pub(crate) fn str_cast(v: Value) -> InnerResult<String> {
+    match builtin_str(std::slice::from_ref(&v))? {
+        Value::String(s) => Ok(s),
+        _ => unreachable!(),
+    }
+}
+
 fn builtin_str(args: &[Value]) -> InnerResult<Value> {
     if args.len() > 1 {
         return Err(InnerError::new(format!(

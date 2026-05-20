@@ -15,7 +15,6 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
         ("starts_with", starts_with as MethodFn),
         ("ends_with", ends_with as MethodFn),
         ("replace", replace as MethodFn),
-        ("__eq__", eq as MethodFn),
     ])
 });
 
@@ -24,13 +23,6 @@ pub fn resolve_method(method: &str) -> InnerResult<NativeFn> {
         .get(method)
         .map(|&f| NativeFn::new(f))
         .ok_or_else(|| InnerError::new(format!("String has no method '{method}'")))
-}
-
-fn recv(args: &[Value]) -> InnerResult<&str> {
-    match args.first() {
-        Some(Value::String(s)) => Ok(s.as_str()),
-        _ => Err(InnerError::new("expected string receiver")),
-    }
 }
 
 fn len(args: &[Value]) -> InnerResult<Value> {
@@ -106,12 +98,4 @@ fn replace(args: &[Value]) -> InnerResult<Value> {
         ));
     };
     Ok(Value::String(s.replace(from.as_str(), to.as_str())))
-}
-
-fn eq(args: &[Value]) -> InnerResult<Value> {
-    let s = recv(args)?;
-    match args.get(1) {
-        Some(Value::String(other)) => Ok(Value::Bool(s == other.as_str())),
-        _ => Ok(Value::Bool(false)),
-    }
 }
