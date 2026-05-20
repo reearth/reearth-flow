@@ -96,8 +96,9 @@ export default function Editor({
     handleConnectStart,
     handleConnectEnd,
     handleParamFieldFocus,
+    handleUserFocusedElement,
     awarenessSelectionsMap,
-    setShowSearchPanel,
+    handleShowSearchPanel,
     selectedNodeIds,
   } = useHooks({
     yDoc,
@@ -181,7 +182,8 @@ export default function Editor({
             onDebugRunJoin={loadExternalDebugJob}
             activeUsersDebugRuns={activeUsersDebugRuns}
             showSearchPanel={showSearchPanel}
-            onShowSearchPanel={setShowSearchPanel}>
+            onShowSearchPanel={handleShowSearchPanel}
+            onUserFocusedElement={handleUserFocusedElement}>
             <Canvas
               nodes={nodes}
               edges={edges}

@@ -53,6 +53,7 @@ export type AwarenessUser = {
     y: number;
     zoom: number;
   };
+  focusedElement?: boolean;
   openNodeId?: string | null;
   focusedParamField?: string | null;
   color: string;
