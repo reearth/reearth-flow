@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::str::FromStr;
-use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
@@ -77,7 +75,7 @@ impl SinkFactory for ExcelWriterFactory {
 #[derive(Debug, Clone)]
 pub(super) struct ExcelWriter {
     pub(super) params: ExcelWriterParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
+    pub(super) buffer: HashMap<Uri, (crate::SinkOutput, Vec<Feature>)>,
 }
 
 /// # ExcelWriter Parameters
@@ -98,24 +96,23 @@ impl Sink for ExcelWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let output = &self.params.output;
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let uri = Uri::from_str(&path)?;
-        self.buffer.entry(uri).or_default().push(ctx.feature);
+        let node_ctx: NodeContext = ctx.clone().into();
+        let out = crate::SinkOutput::from_expr(&node_ctx, &self.params.output)
+            .map_err(|e| SinkError::ExcelWriterFactory(e.to_string()))?;
+        self.buffer
+            .entry(out.uri().clone())
+            .or_insert_with(|| (out, Vec::new()))
+            .1
+            .push(ctx.feature);
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        for (uri, features) in &self.buffer {
+    fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
+        for (out, features) in self.buffer.values() {
             let old_params = OldExcelWriterParam {
                 sheet_name: self.params.sheet_name.clone(),
             };
-            write_excel(uri, &old_params, features, &storage_resolver)?;
+            write_excel(out, &old_params, features)?;
         }
         Ok(())
     }
