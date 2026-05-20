@@ -31,7 +31,7 @@ pub enum UnaryOp {
     Not,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExprKind {
     Null,
     Bool(bool),
@@ -110,6 +110,12 @@ impl Expr {
     }
 }
 
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
+}
+
 #[cfg(test)]
 pub mod test_util {
     use super::*;
@@ -117,132 +123,5 @@ pub mod test_util {
     /// Construct an `Expr` with a dummy span for use in test expectations.
     pub fn e(kind: ExprKind) -> Expr {
         Expr::new(Span { start: 0, end: 0 }, kind)
-    }
-
-    /// Recursively compare two expression trees, ignoring spans.
-    pub fn exprs_eq(a: &Expr, b: &Expr) -> bool {
-        kinds_eq(&a.kind, &b.kind)
-    }
-
-    fn opt_box_eq(a: &Option<Box<Expr>>, b: &Option<Box<Expr>>) -> bool {
-        match (a, b) {
-            (None, None) => true,
-            (Some(a), Some(b)) => exprs_eq(a, b),
-            _ => false,
-        }
-    }
-
-    fn vec_eq(a: &[Expr], b: &[Expr]) -> bool {
-        a.len() == b.len() && a.iter().zip(b).all(|(x, y)| exprs_eq(x, y))
-    }
-
-    fn pair_vec_eq(a: &[(Expr, Expr)], b: &[(Expr, Expr)]) -> bool {
-        a.len() == b.len()
-            && a.iter()
-                .zip(b)
-                .all(|((ak, av), (bk, bv))| exprs_eq(ak, bk) && exprs_eq(av, bv))
-    }
-
-    fn kinds_eq(a: &ExprKind, b: &ExprKind) -> bool {
-        match (a, b) {
-            (ExprKind::Null, ExprKind::Null) => true,
-            (ExprKind::Bool(a), ExprKind::Bool(b)) => a == b,
-            (ExprKind::Int(a), ExprKind::Int(b)) => a == b,
-            (ExprKind::Float(a), ExprKind::Float(b)) => a == b,
-            (ExprKind::Str(a), ExprKind::Str(b)) => a == b,
-            (ExprKind::Var(a), ExprKind::Var(b)) => a == b,
-            (ExprKind::Array(a), ExprKind::Array(b)) => vec_eq(a, b),
-            (ExprKind::Index(at, ak), ExprKind::Index(bt, bk)) => {
-                exprs_eq(at, bt) && exprs_eq(ak, bk)
-            }
-            (
-                ExprKind::Slice {
-                    target: at,
-                    start: as_,
-                    stop: ao,
-                    step: ap,
-                },
-                ExprKind::Slice {
-                    target: bt,
-                    start: bs,
-                    stop: bo,
-                    step: bp,
-                },
-            ) => {
-                exprs_eq(at, bt) && opt_box_eq(as_, bs) && opt_box_eq(ao, bo) && opt_box_eq(ap, bp)
-            }
-            (
-                ExprKind::FuncCall { name: an, args: aa },
-                ExprKind::FuncCall { name: bn, args: ba },
-            ) => an == bn && vec_eq(aa, ba),
-            (
-                ExprKind::MethodCall {
-                    receiver: ar,
-                    method: am,
-                    args: aa,
-                },
-                ExprKind::MethodCall {
-                    receiver: br,
-                    method: bm,
-                    args: ba,
-                },
-            ) => exprs_eq(ar, br) && am == bm && vec_eq(aa, ba),
-            (ExprKind::Unary(ao, ae), ExprKind::Unary(bo, be)) => ao == bo && exprs_eq(ae, be),
-            (ExprKind::Binary(al, ao, ar), ExprKind::Binary(bl, bo, br)) => {
-                ao == bo && exprs_eq(al, bl) && exprs_eq(ar, br)
-            }
-            (
-                ExprKind::Assign {
-                    lvalue: al,
-                    value: av,
-                },
-                ExprKind::Assign {
-                    lvalue: bl,
-                    value: bv,
-                },
-            ) => exprs_eq(al, bl) && exprs_eq(av, bv),
-            (
-                ExprKind::CompoundAssign {
-                    lvalue: al,
-                    op: ao,
-                    rhs: ar,
-                },
-                ExprKind::CompoundAssign {
-                    lvalue: bl,
-                    op: bo,
-                    rhs: br,
-                },
-            ) => ao == bo && exprs_eq(al, bl) && exprs_eq(ar, br),
-            (ExprKind::Block(a), ExprKind::Block(b)) => vec_eq(a, b),
-            (ExprKind::Map(a), ExprKind::Map(b)) => pair_vec_eq(a, b),
-            (
-                ExprKind::If {
-                    cond: ac,
-                    then: at,
-                    else_: ae,
-                },
-                ExprKind::If {
-                    cond: bc,
-                    then: bt,
-                    else_: be,
-                },
-            ) => exprs_eq(ac, bc) && exprs_eq(at, bt) && exprs_eq(ae, be),
-            (ExprKind::While { cond: ac, body: ab }, ExprKind::While { cond: bc, body: bb }) => {
-                exprs_eq(ac, bc) && exprs_eq(ab, bb)
-            }
-            (
-                ExprKind::ForIn {
-                    var: av,
-                    iterable: ai,
-                    body: ab,
-                },
-                ExprKind::ForIn {
-                    var: bv,
-                    iterable: bi,
-                    body: bb,
-                },
-            ) => av == bv && exprs_eq(ai, bi) && exprs_eq(ab, bb),
-            _ => false,
-        }
     }
 }

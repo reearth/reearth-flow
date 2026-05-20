@@ -38,13 +38,13 @@ pub fn parse(input: &str) -> Result<Expr> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::ast::test_util::{e, exprs_eq};
+    use crate::core::ast::test_util::e;
     use crate::core::ast::{BinOp, ExprKind, UnaryOp};
 
     fn assert_parse(input: &str, expected: crate::core::ast::Expr) {
         let got = parse(input).unwrap_or_else(|err| panic!("parse({input:?}) failed: {err}"));
         assert!(
-            exprs_eq(&got, &expected),
+            got == expected,
             "parse({input:?})\n  got:      {:?}\n  expected: {:?}",
             got.kind,
             expected.kind
