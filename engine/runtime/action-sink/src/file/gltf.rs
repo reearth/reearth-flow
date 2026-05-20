@@ -2,14 +2,12 @@ use std::collections::HashMap;
 use std::f64::consts::FRAC_PI_2;
 use std::io::BufWriter;
 use std::sync::Mutex;
-use std::{str::FromStr, sync::Arc};
 
 use flatgeom::{Polygon2, Polygon3};
 use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_common::uri::Uri;
 use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -57,7 +55,7 @@ impl SinkFactory for GltfWriterSinkFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -74,19 +72,8 @@ impl SinkFactory for GltfWriterSinkFactory {
                 SinkError::BuildFactory("Missing required parameter `with`".to_string()).into(),
             );
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        if let Some(with) = with {
-            for (k, v) in with {
-                scope.set(k.as_str(), v);
-            }
-        }
-        let output = scope
-            .eval::<String>(params.output.to_string().as_str())
-            .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
-        let output = Uri::from_str(output.as_str())?;
         let sink = GltfWriter {
-            output,
+            output: params.output,
             attach_texture: params.attach_texture.unwrap_or(true),
             classified_features: Default::default(),
             draco_compression: params.draco_compression.unwrap_or(false),
@@ -141,7 +128,7 @@ impl TryFrom<&ClassFeatures> for Schema {
 
 #[derive(Debug, Clone)]
 pub struct GltfWriter {
-    output: Uri,
+    output: Expr,
     classified_features: ClassifiedFeatures,
     attach_texture: bool,
     draco_compression: bool,
@@ -201,6 +188,9 @@ impl Sink for GltfWriter {
         let transform_matrix = compute_transform_matrix(&global_bvol, &ellipsoid);
         let _ = transform_matrix.inverse();
 
+        let base = crate::SinkOutput::from_expr(&ctx, &self.output)
+            .map_err(|e| crate::errors::SinkError::GltfWriter(e.to_string()))?;
+
         let tileset_content_files = Mutex::new(Vec::new());
 
         self.classified_features
@@ -252,17 +242,17 @@ impl Sink for GltfWriter {
                     &mut vertices,
                 )?;
 
-                let file_path = match typename {
+                let out = match typename {
                     Some(f) => {
                         let name = format!("{}.glb", f.replace(':', "_"));
                         tileset_content_files.lock().unwrap().push(name.clone());
-                        self.output.join(name).map_err(|e| {
+                        base.join(&name).map_err(|e| {
                             crate::errors::SinkError::GltfWriter(format!(
                                 "Failed to join uri with {e:?}"
                             ))
                         })?
                     }
-                    None => self.output.clone(),
+                    None => base.clone(),
                 };
 
                 let mut buffer = Vec::new();
@@ -283,12 +273,7 @@ impl Sink for GltfWriter {
                     ))
                 })?;
 
-                let storage = ctx
-                    .storage_resolver
-                    .resolve(&file_path)
-                    .map_err(crate::errors::SinkError::gltf_writer)?;
-                storage
-                    .put_sync(file_path.as_path().as_path(), bytes::Bytes::from(buffer))
+                out.write(bytes::Bytes::from(buffer))
                     .map_err(crate::errors::SinkError::gltf_writer)?;
 
                 Ok::<(), crate::errors::SinkError>(())
