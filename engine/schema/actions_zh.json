@@ -3935,6 +3935,88 @@
       ]
     },
     {
+      "name": "FlowExprTest",
+      "type": "processor",
+      "description": "Flow 表达式引擎的实验性测试平台",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FlowExprTest 参数",
+        "type": "object",
+        "required": [
+          "mappings"
+        ],
+        "properties": {
+          "mappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Mapping"
+            }
+          }
+        },
+        "definitions": {
+          "Code": {
+            "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "oneOf": [
+              {
+                "description": "在运行时作为 Flow 表达式求值",
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              {
+                "description": "用作纯字符串字面量",
+                "type": "string",
+                "enum": [
+                  "string"
+                ]
+              }
+            ]
+          },
+          "Mapping": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "value"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "value": {
+                "$ref": "#/definitions/Code"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "FootprintReplacer",
       "type": "processor",
       "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）",

@@ -1,0 +1,6 @@
+[
+  {
+    "filename": "hello.txt",
+    "result": "file:///tmp/hello.txt"
+  }
+]

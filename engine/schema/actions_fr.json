@@ -3935,6 +3935,88 @@
       ]
     },
     {
+      "name": "FlowExprTest",
+      "type": "processor",
+      "description": "Banc d'essai expérimental pour le moteur d'expressions Flow",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres FlowExprTest",
+        "type": "object",
+        "required": [
+          "mappings"
+        ],
+        "properties": {
+          "mappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Mapping"
+            }
+          }
+        },
+        "definitions": {
+          "Code": {
+            "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "oneOf": [
+              {
+                "description": "Évalué comme une expression Flow à l'exécution",
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              {
+                "description": "Utilisé comme une chaîne de caractères littérale",
+                "type": "string",
+                "enum": [
+                  "string"
+                ]
+              }
+            ]
+          },
+          "Mapping": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "value"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "value": {
+                "$ref": "#/definitions/Code"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "FootprintReplacer",
       "type": "processor",
       "description": "Projette la géométrie 3D sur le plan XY et calcule l'empreinte union (supporte les solides, surfaces et CityGML)",
