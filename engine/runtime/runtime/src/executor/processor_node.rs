@@ -453,12 +453,19 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             None
         };
 
-        channel_manager.wait_until_downstream_empty(std::time::Duration::from_secs(300));
+        // Enable spill mode: if finish() emits more features than the bounded
+        // channel can hold, excess features are written to disk as JSONL files
+        // instead of blocking on send(). This prevents shutdown deadlocks where
+        // finish() blocks on a full channel that the downstream can't drain.
+        channel_manager.enable_spill_mode();
         channel_manager.reset_send_count();
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
+        // Flush any features that were spilled to disk during finish().
+        // These are sent as FileBackedOps which the downstream already handles.
+        channel_manager.flush_spill_files(&ctx.as_context());
         let finish_feature_count = channel_manager.get_send_count();
 
         drop(_accumulating_guard);

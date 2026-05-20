@@ -205,8 +205,16 @@ export default function useAwarenessPresence({
     [yAwareness],
   );
 
+  const handleUserFocusedElement = useCallback(
+    (isOpen: boolean) => {
+      yAwareness.setLocalStateField("focusedElement", isOpen);
+    },
+    [yAwareness],
+  );
+
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
+      if (yAwareness.getLocalState()?.focusedElement) return;
       throttledPresenceUpdate(event.clientX, event.clientY);
       const awarenessStates = yAwareness.getStates();
       if (awarenessStates.size > 1) {
@@ -273,6 +281,7 @@ export default function useAwarenessPresence({
     handleWorkflowVarDialogClose,
     handleWorkflowVarFieldFocus,
     handleWorkflowVarEditStart,
+    handleUserFocusedElement,
     setDraggingEdge,
     clearDraggingEdge,
   };

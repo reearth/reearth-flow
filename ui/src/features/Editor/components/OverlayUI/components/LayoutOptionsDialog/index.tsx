@@ -19,7 +19,6 @@ import { useT } from "@flow/lib/i18n";
 import type { Algorithm, Direction } from "@flow/types";
 
 type Props = {
-  isOpen: boolean;
   onClose: () => void;
   onLayoutChange: (
     algorithm: Algorithm,
@@ -28,11 +27,7 @@ type Props = {
   ) => void;
 };
 
-const LayoutOptionsDialog: React.FC<Props> = ({
-  isOpen,
-  onClose,
-  onLayoutChange,
-}) => {
+const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
   const t = useT();
 
   const [layoutDirection, setLayoutDirection] =
@@ -63,7 +58,7 @@ const LayoutOptionsDialog: React.FC<Props> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={true} onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="sm" position="top" overlayBgClass="bg-opacity-0">
         <DialogTitle>{t("Layout Options")}</DialogTitle>
         <DialogContentWrapper>
