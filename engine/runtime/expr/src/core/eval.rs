@@ -96,7 +96,7 @@ fn eq_op(args: &[Value]) -> InnerResult<Value> {
         return Err(InnerError::new("== requires two operands"));
     };
     if let Value::Object(rc) = a {
-        return rc.call_method("__eq__", &[b.clone()]);
+        return rc.call_method("__eq__", std::slice::from_ref(b));
     }
     match (a, b) {
         (Value::Array(a), Value::Array(b)) => array_methods::eq_inner(a, b).map(Value::Bool),
@@ -291,7 +291,7 @@ fn resolve_op(op: &BinOp) -> NativeFn {
                 return Err(InnerError::new("!= requires two operands"));
             };
             if let Value::Object(rc) = a {
-                let eq = rc.call_method("__eq__", &[b.clone()])?;
+                let eq = rc.call_method("__eq__", std::slice::from_ref(b))?;
                 return match eq {
                     Value::Bool(b) => Ok(Value::Bool(!b)),
                     _ => Err(InnerError::new("__eq__ must return a bool")),
@@ -1677,6 +1677,18 @@ mod tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    // This tests if stack overflow is captured as error instead of crashing the engine
+    fn test_deep_list_eq_depth_limit() {
+        let mut a = Value::array(vec![Value::Int(1)]);
+        let mut b = Value::array(vec![Value::Int(1)]);
+        for _ in 0..MAX_EVAL_DEPTH {
+            a = Value::array(vec![a]);
+            b = Value::array(vec![b]);
+        }
+        assert!(try_run("a == b", &[("a", a), ("b", b)]).is_err());
     }
 
     #[test]
