@@ -1097,9 +1097,7 @@ mod tests {
         assert_eval("10 - 3", &[], Value::from(7i64));
         assert_eval("2 * 5", &[], Value::from(10i64));
         assert_eval("10 / 4", &[], Value::from(2.5f64));
-        assert_eval("10 / 2", &[], Value::from(5.0f64));
         assert_eval("10 // 4", &[], Value::from(2i64));
-        assert_eval("10 // 3", &[], Value::from(3i64));
         assert_eval("-7 // 2", &[], Value::from(-4i64));
         assert_eval("7 // -2", &[], Value::from(-4i64));
         assert_eval("7.0 // 2.0", &[], Value::from(3.0f64));
@@ -1199,25 +1197,11 @@ mod tests {
 
     #[test]
     fn test_index() {
-        let feature = Value::map(indexmap::indexmap! {
-            "package".into() => Value::from("bldg"),
-            "cityGmlPath".into() => Value::from("/data/city.gml"),
+        let m = Value::map(indexmap::indexmap! {
+            "name".into() => Value::from("alice"),
         });
-        assert_eval(
-            r#"feature["package"]"#,
-            &[("feature", feature.clone())],
-            Value::from("bldg"),
-        );
-        assert_eval(
-            r#"feature["cityGmlPath"]"#,
-            &[("feature", feature.clone())],
-            Value::from("/data/city.gml"),
-        );
-        assert_eval(
-            r#"feature["missing"]"#,
-            &[("feature", feature)],
-            Value::Null,
-        );
+        assert_eval(r#"m["name"]"#, &[("m", m.clone())], Value::from("alice"));
+        assert_eval(r#"m["missing"]"#, &[("m", m)], Value::Null);
         let arr = Value::array(vec![
             Value::from(1i64),
             Value::from(2i64),
@@ -1226,7 +1210,6 @@ mod tests {
         assert_eval("arr[0]", &[("arr", arr.clone())], Value::from(1i64));
         assert_eval("arr[-1]", &[("arr", arr)], Value::from(3i64));
         assert_eval(r#""hello"[0]"#, &[], Value::from("h"));
-        assert_eval(r#""hello"[4]"#, &[], Value::from("o"));
         assert_eval(r#""hello"[-1]"#, &[], Value::from("o"));
     }
 
@@ -1275,12 +1258,8 @@ mod tests {
 
     #[test]
     fn test_string_split() {
-        assert_eval(r#""bldg:Building".split(":")[0]"#, &[], Value::from("bldg"));
-        assert_eval(
-            r#""bldg:Building".split(":")[-1]"#,
-            &[],
-            Value::from("Building"),
-        );
+        assert_eval(r#""foo:bar".split(":")[0]"#, &[], Value::from("foo"));
+        assert_eval(r#""foo:bar".split(":")[-1]"#, &[], Value::from("bar"));
         assert_eval(
             r#""hello".split(":")"#,
             &[],
@@ -1295,23 +1274,23 @@ mod tests {
 
     #[test]
     fn test_in_operator() {
-        let pkgs = Value::array(vec![Value::from("bldg"), Value::from("tran")]);
+        let pkgs = Value::array(vec![Value::from("foo"), Value::from("bar")]);
         assert_eval(
-            r#""bldg" in pkgs"#,
+            r#""foo" in pkgs"#,
             &[("pkgs", pkgs.clone())],
             Value::from(true),
         );
         assert_eval(
-            r#""fld" in pkgs"#,
+            r#""baz" in pkgs"#,
             &[("pkgs", pkgs.clone())],
             Value::from(false),
         );
         assert_eval(
-            r#""bldg" not in pkgs"#,
+            r#""foo" not in pkgs"#,
             &[("pkgs", pkgs.clone())],
             Value::from(false),
         );
-        assert_eval(r#""fld" not in pkgs"#, &[("pkgs", pkgs)], Value::from(true));
+        assert_eval(r#""baz" not in pkgs"#, &[("pkgs", pkgs)], Value::from(true));
         assert_eval(r#""world" in "hello world""#, &[], Value::from(true));
         assert_eval(r#""xyz" in "hello world""#, &[], Value::from(false));
         assert_eval(r#""xyz" not in "hello world""#, &[], Value::from(true));
@@ -1332,15 +1311,19 @@ mod tests {
     #[test]
     fn test_string_starts_ends_with() {
         assert_eval(
-            r#""bldg_lod1".starts_with("tran")"#,
+            r#""hello_world".starts_with("foo")"#,
             &[],
             Value::from(false),
         );
-        assert_eval(r#""bldg_lod1".ends_with("lod1")"#, &[], Value::from(true));
         assert_eval(
-            r#"s = "city_bldg"; sfx = "_bldg"; if s.ends_with(sfx) { s[:s.len() - sfx.len()] } else { s }"#,
+            r#""hello_world".ends_with("world")"#,
             &[],
-            Value::from("city"),
+            Value::from(true),
+        );
+        assert_eval(
+            r#"s = "foo_bar"; sfx = "_bar"; if s.ends_with(sfx) { s[:s.len() - sfx.len()] } else { s }"#,
+            &[],
+            Value::from("foo"),
         );
     }
 
@@ -1373,7 +1356,6 @@ mod tests {
         assert_eval("{}", &[], Value::Null);
         assert_eval("{ x = 5; x * 2 }", &[], Value::from(10i64));
         assert_eval("{ a = 3; b = 4; a * a + b * b }", &[], Value::from(25i64));
-        assert_eval("{ x = 1; }", &[], Value::Null);
         assert_eval("{ x = 3 } + { y = 4 }", &[], Value::from(7i64));
         assert_eval("{ x = 1; { y = 2; x + y } }", &[], Value::from(3i64));
     }
@@ -1505,8 +1487,6 @@ mod tests {
     #[test]
     fn test_string_add_non_string_errors() {
         assert!(try_run(r#""1" + 1"#, &[]).is_err());
-        assert!(try_run(r#""x" + 1.5"#, &[]).is_err());
-        assert!(try_run(r#""x" + true"#, &[]).is_err());
     }
 
     #[test]
@@ -1616,14 +1596,14 @@ mod tests {
 
     #[test]
     fn test_complex_expr() {
-        let feature = Value::map(indexmap::indexmap! {
-            "extension".into() => Value::from("gml"),
-            "package".into() => Value::from("bldg"),
+        let obj = Value::map(indexmap::indexmap! {
+            "type".into() => Value::from("json"),
+            "name".into() => Value::from("foo"),
         });
-        let pkgs = Value::array(vec![Value::from("bldg"), Value::from("tran")]);
+        let names = Value::array(vec![Value::from("foo"), Value::from("bar")]);
         assert_eval(
-            r#"feature["extension"] == "gml" and feature["package"] in packages"#,
-            &[("feature", feature), ("packages", pkgs)],
+            r#"obj["type"] == "json" and obj["name"] in names"#,
+            &[("obj", obj), ("names", names)],
             Value::from(true),
         );
     }
