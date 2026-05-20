@@ -224,7 +224,6 @@ export default function Editor({
               onDataSubmit={handleNodesDataUpdate}
               onWorkflowRename={handleWorkflowRename}
               onParamFieldFocus={handleParamFieldFocus}
-              onUserFocusedElement={handleUserFocusedElement}
             />
           )}
           {showBeforeDeleteDialog && (

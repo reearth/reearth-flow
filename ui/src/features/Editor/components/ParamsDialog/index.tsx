@@ -43,7 +43,6 @@ type Props = {
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
   onParamFieldFocus?: (fieldId: string | null) => void;
-  onUserFocusedElement?: (isOpen: boolean) => void;
 };
 
 const ParamsDialog: React.FC<Props> = ({
@@ -54,7 +53,6 @@ const ParamsDialog: React.FC<Props> = ({
   onDataSubmit,
   onWorkflowRename,
   onParamFieldFocus,
-  onUserFocusedElement,
 }) => {
   const t = useT();
   const { isLocked } = useEditorContext();
@@ -135,11 +133,6 @@ const ParamsDialog: React.FC<Props> = ({
     },
     [setMyDraft],
   );
-
-  useEffect(() => {
-    onUserFocusedElement?.(true);
-    return () => onUserFocusedElement?.(false);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdate = useCallback(
     async (

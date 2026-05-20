@@ -180,19 +180,9 @@ export default ({
     setCurrentWorkflowId,
   });
 
-  const handleOpenNode = useCallback((nodeId?: string) => {
-    setOpenNodeId((prev) => (!nodeId || prev === nodeId ? undefined : nodeId));
-  }, []);
-
   // Passed to editor context so needs to be a ref
   const handleNodeSettingsClickRef =
     useRef<(e: MouseEvent | undefined, nodeId: string) => void>(undefined);
-  handleNodeSettingsClickRef.current = (
-    _e: MouseEvent | undefined,
-    nodeId: string,
-  ) => {
-    handleOpenNode(nodeId);
-  };
 
   const handleNodeSettings = useCallback(
     (e: MouseEvent | undefined, nodeId: string) =>
@@ -312,6 +302,21 @@ export default ({
     openNode,
     yAwareness,
   });
+
+  const handleOpenNode = useCallback(
+    (nodeId?: string) => {
+      setOpenNodeId((prev) => (!nodeId || prev === nodeId ? undefined : nodeId));
+      handleUserFocusedElement(!!nodeId);
+    },
+    [handleUserFocusedElement],
+  );
+
+  handleNodeSettingsClickRef.current = (
+    _e: MouseEvent | undefined,
+    nodeId: string,
+  ) => {
+    handleOpenNode(nodeId);
+  };
 
   const handleShowSearchPanel = useCallback(
     (open: boolean) => {
