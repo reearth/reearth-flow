@@ -115,6 +115,16 @@ export const ArrayEditor: React.FC<Props> = ({
     setArrayItems(newItems);
   }, [getArrayConfig, variable.defaultValue]);
 
+  // Clear any pending debounced write on unmount to avoid stale Yjs updates
+  // firing after the dialog has closed.
+  useEffect(() => {
+    return () => {
+      if (itemUpdateTimerRef.current) {
+        clearTimeout(itemUpdateTimerRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (assetUrl) {
       setNewItemText(assetUrl);

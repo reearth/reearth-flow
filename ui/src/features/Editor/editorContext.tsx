@@ -5,7 +5,7 @@ import {
   PropsWithChildren,
   useContext,
 } from "react";
-import { Doc } from "yjs";
+import type { Doc } from "yjs";
 
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import {

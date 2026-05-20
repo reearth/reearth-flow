@@ -106,13 +106,19 @@ export default ({
 
   // ── Session helpers ────────────────────────────────────────────────────────
 
+  // TODO(CRDT safety): for true per-item CRDT merging, migrate yVarSession to a
+  // Y.Array of Y.Maps so concurrent edits to different variables do not resolve
+  // as last-writer-wins on the whole array. For now, wrap multi-field writes in
+  // a single Yjs transaction so they land atomically.
   const writeVars = useCallback(
     (newVars: WorkflowVariable[]) => {
-      if (!yVarSession) return;
-      yVarSession.set("variables", newVars);
-      yVarSession.set("timestamp", Date.now());
+      if (!yVarSession || !yDoc) return;
+      yDoc.transact(() => {
+        yVarSession.set("variables", newVars);
+        yVarSession.set("timestamp", Date.now());
+      });
     },
-    [yVarSession],
+    [yVarSession, yDoc],
   );
 
   const clearSession = useCallback(() => {
@@ -135,15 +141,19 @@ export default ({
     if (yVarSession.get("pendingRefetch") !== undefined) {
       // A previous save created new variables and then the saving client left.
       // Reinit from current server data (which now has real IDs).
-      yVarSession.set("variables", [...currentWorkflowVariables]);
-      yVarSession.set("base", [...currentWorkflowVariables]);
-      yVarSession.set("timestamp", Date.now());
-      yVarSession.delete("pendingRefetch");
+      yVarSession.doc?.transact(() => {
+        yVarSession.set("variables", [...currentWorkflowVariables]);
+        yVarSession.set("base", [...currentWorkflowVariables]);
+        yVarSession.set("timestamp", Date.now());
+        yVarSession.delete("pendingRefetch");
+      });
     } else if (yVarSession.get("variables") === undefined) {
       // Fresh session — nobody has started editing yet.
-      yVarSession.set("variables", [...currentWorkflowVariables]);
-      yVarSession.set("base", [...currentWorkflowVariables]);
-      yVarSession.set("timestamp", Date.now());
+      yVarSession.doc?.transact(() => {
+        yVarSession.set("variables", [...currentWorkflowVariables]);
+        yVarSession.set("base", [...currentWorkflowVariables]);
+        yVarSession.set("timestamp", Date.now());
+      });
     }
     // else: live session already in progress — join without overwriting.
   }, [yVarSession, currentWorkflowVariables]);
@@ -165,10 +175,12 @@ export default ({
     // server has returned fresh data after the save).
     if (prevWorkflowVarsRef.current === currentWorkflowVariables) return;
 
-    yVarSession.set("variables", [...currentWorkflowVariables]);
-    yVarSession.set("base", [...currentWorkflowVariables]);
-    yVarSession.set("timestamp", Date.now());
-    yVarSession.delete("pendingRefetch");
+    yVarSession.doc?.transact(() => {
+      yVarSession.set("variables", [...currentWorkflowVariables]);
+      yVarSession.set("base", [...currentWorkflowVariables]);
+      yVarSession.set("timestamp", Date.now());
+      yVarSession.delete("pendingRefetch");
+    });
     prevWorkflowVarsRef.current = currentWorkflowVariables;
   }, [yVarSession, currentWorkflowVariables, rawSession?.pendingRefetch]);
 
@@ -292,12 +304,14 @@ export default ({
       // If creates were submitted, mark pendingRefetch so the session is
       // re-initialised with real server IDs once TanStack Query refetches.
       if (yVarSession) {
-        yVarSession.set("variables", [...sessionVars]);
-        yVarSession.set("base", [...sessionVars]);
-        yVarSession.set("timestamp", Date.now());
-        if (hasChanges && changes.creates.length > 0) {
-          yVarSession.set("pendingRefetch", myClientId);
-        }
+        yVarSession.doc?.transact(() => {
+          yVarSession.set("variables", [...sessionVars]);
+          yVarSession.set("base", [...sessionVars]);
+          yVarSession.set("timestamp", Date.now());
+          if (hasChanges && changes.creates.length > 0) {
+            yVarSession.set("pendingRefetch", myClientId);
+          }
+        });
       }
 
       workflowVarAwareness?.onDialogClose();
