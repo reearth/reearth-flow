@@ -286,26 +286,9 @@ fn resolve_op(op: &BinOp) -> NativeFn {
             }
         }),
         BinOp::Eq => NativeFn::new(eq_op),
-        BinOp::Ne => NativeFn::new(|args| {
-            let [a, b] = args else {
-                return Err(InnerError::new("!= requires two operands"));
-            };
-            if let Value::Object(rc) = a {
-                let eq = rc.call_method("__eq__", std::slice::from_ref(b))?;
-                return match eq {
-                    Value::Bool(b) => Ok(Value::Bool(!b)),
-                    _ => Err(InnerError::new("__eq__ must return a bool")),
-                };
-            }
-            match (a, b) {
-                (Value::Array(a), Value::Array(b)) => {
-                    array_methods::eq_inner(a, b).map(|eq| Value::Bool(!eq))
-                }
-                (Value::Map(a), Value::Map(b)) => {
-                    map_methods::eq_inner(a, b).map(|eq| Value::Bool(!eq))
-                }
-                _ => Ok(Value::Bool(!primitive_eq(a, b))),
-            }
+        BinOp::Ne => NativeFn::new(|args| match eq_op(args)? {
+            Value::Bool(b) => Ok(Value::Bool(!b)),
+            _ => Err(InnerError::new("__eq__ must return a bool")),
         }),
         BinOp::Lt => NativeFn::new(|args| {
             let (left, right) = binary_args(args)?;
@@ -337,73 +320,48 @@ fn resolve_op(op: &BinOp) -> NativeFn {
         }),
         BinOp::In => NativeFn::new(|args| {
             let (left, right) = binary_args(args)?;
-            match right {
-                Value::Array(arr) => {
-                    let arr = arr.borrow();
-                    for v in arr.iter() {
-                        if eval_eq(v.clone(), left.clone())? {
-                            return Ok(Value::Bool(true));
-                        }
-                    }
-                    Ok(Value::Bool(false))
-                }
-                Value::String(haystack) => match left {
-                    Value::String(s) => Ok(Value::Bool(haystack.contains(s.as_str()))),
-                    l => Err(InnerError::new(format!(
-                        "'in' not supported between {} and string",
-                        l.type_name()
-                    ))),
-                },
-                Value::Map(map) => match left {
-                    Value::String(key) => Ok(Value::Bool(map.borrow().contains_key(&key))),
-                    l => Err(InnerError::new(format!(
-                        "'in' not supported between {} and map",
-                        l.type_name()
-                    ))),
-                },
-                r => Err(InnerError::new(format!(
-                    "'in' not supported between {} and {}",
-                    left.type_name(),
-                    r.type_name()
-                ))),
-            }
+            contains_inner(left, right).map(Value::Bool)
         }),
         BinOp::NotIn => NativeFn::new(|args| {
             let (left, right) = binary_args(args)?;
-            match right {
-                Value::Array(arr) => {
-                    let arr = arr.borrow();
-                    for v in arr.iter() {
-                        if eval_eq(v.clone(), left.clone())? {
-                            return Ok(Value::Bool(false));
-                        }
-                    }
-                    Ok(Value::Bool(true))
-                }
-                Value::String(haystack) => match left {
-                    Value::String(s) => Ok(Value::Bool(!haystack.contains(s.as_str()))),
-                    l => Err(InnerError::new(format!(
-                        "'not in' not supported between {} and string",
-                        l.type_name()
-                    ))),
-                },
-                Value::Map(map) => match left {
-                    Value::String(key) => Ok(Value::Bool(!map.borrow().contains_key(&key))),
-                    l => Err(InnerError::new(format!(
-                        "'not in' not supported between {} and map",
-                        l.type_name()
-                    ))),
-                },
-                r => Err(InnerError::new(format!(
-                    "'not in' not supported between {} and {}",
-                    left.type_name(),
-                    r.type_name()
-                ))),
-            }
+            contains_inner(left, right).map(|b| Value::Bool(!b))
         }),
         BinOp::And | BinOp::Or => {
             unreachable!("and/or are short-circuited in eval_inner before resolve_op is called")
         }
+    }
+}
+
+fn contains_inner(left: Value, right: Value) -> InnerResult<bool> {
+    match right {
+        Value::Array(arr) => {
+            let arr = arr.borrow();
+            for v in arr.iter() {
+                if eval_eq(v.clone(), left.clone())? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        Value::String(haystack) => match left {
+            Value::String(s) => Ok(haystack.contains(s.as_str())),
+            l => Err(InnerError::new(format!(
+                "'in' not supported between {} and string",
+                l.type_name()
+            ))),
+        },
+        Value::Map(map) => match left {
+            Value::String(key) => Ok(map.borrow().contains_key(&key)),
+            l => Err(InnerError::new(format!(
+                "'in' not supported between {} and map",
+                l.type_name()
+            ))),
+        },
+        r => Err(InnerError::new(format!(
+            "'in' not supported between {} and {}",
+            left.type_name(),
+            r.type_name()
+        ))),
     }
 }
 
