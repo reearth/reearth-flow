@@ -1406,7 +1406,6 @@
         },
         "definitions": {
           "Code": {
-            "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
             "type": "object",
             "required": [
               "type",
@@ -1422,21 +1421,10 @@
             }
           },
           "CodeType": {
-            "oneOf": [
-              {
-                "description": "Evaluated as a Flow expression at runtime",
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              {
-                "description": "Used as a plain string literal",
-                "type": "string",
-                "enum": [
-                  "string"
-                ]
-              }
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
             ]
           }
         }
@@ -3989,7 +3977,6 @@
         },
         "definitions": {
           "Code": {
-            "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
             "type": "object",
             "required": [
               "type",
@@ -4005,21 +3992,10 @@
             }
           },
           "CodeType": {
-            "oneOf": [
-              {
-                "description": "実行時にFlow式として評価される",
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              {
-                "description": "プレーンな文字列リテラルとして使用される",
-                "type": "string",
-                "enum": [
-                  "string"
-                ]
-              }
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
             ]
           },
           "Mapping": {

@@ -553,16 +553,6 @@
           "type": {},
           "value": {}
         }
-      },
-      "enumI18n": {
-        "CodeType": {
-          "flowExpr": {
-            "description": "Evaluated as a Flow expression at runtime"
-          },
-          "string": {
-            "description": "Used as a plain string literal"
-          }
-        }
       }
     },
     {
@@ -1334,16 +1324,6 @@
         "Mapping": {
           "attribute": {},
           "value": {}
-        }
-      },
-      "enumI18n": {
-        "CodeType": {
-          "flowExpr": {
-            "description": "在运行时作为 Flow 表达式求值"
-          },
-          "string": {
-            "description": "用作纯字符串字面量"
-          }
         }
       }
     },

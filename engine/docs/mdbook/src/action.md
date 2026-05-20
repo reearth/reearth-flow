@@ -1404,7 +1404,6 @@ Export Features as Cesium 3D Tiles for Web Visualization
   },
   "definitions": {
     "Code": {
-      "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
       "type": "object",
       "required": [
         "type",
@@ -1420,21 +1419,10 @@ Export Features as Cesium 3D Tiles for Web Visualization
       }
     },
     "CodeType": {
-      "oneOf": [
-        {
-          "description": "Evaluated as a Flow expression at runtime",
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        {
-          "description": "Used as a plain string literal",
-          "type": "string",
-          "enum": [
-            "string"
-          ]
-        }
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
       ]
     }
   }
@@ -3986,7 +3974,6 @@ Experimental testbed for the Flow expression engine
   },
   "definitions": {
     "Code": {
-      "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
       "type": "object",
       "required": [
         "type",
@@ -4002,21 +3989,10 @@ Experimental testbed for the Flow expression engine
       }
     },
     "CodeType": {
-      "oneOf": [
-        {
-          "description": "Evaluated as a Flow expression at runtime",
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        {
-          "description": "Used as a plain string literal",
-          "type": "string",
-          "enum": [
-            "string"
-          ]
-        }
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
       ]
     },
     "Mapping": {

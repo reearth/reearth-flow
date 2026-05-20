@@ -37,13 +37,10 @@ impl Expr {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum CodeType {
-    /// Evaluated as a Flow expression at runtime
     FlowExpr,
-    /// Used as a plain string literal
     String,
 }
 
-/// A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Code {

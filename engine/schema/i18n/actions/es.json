@@ -553,16 +553,6 @@
           "type": {},
           "value": {}
         }
-      },
-      "enumI18n": {
-        "CodeType": {
-          "flowExpr": {
-            "description": "Evaluated as a Flow expression at runtime"
-          },
-          "string": {
-            "description": "Used as a plain string literal"
-          }
-        }
       }
     },
     {
@@ -1334,16 +1324,6 @@
         "Mapping": {
           "attribute": {},
           "value": {}
-        }
-      },
-      "enumI18n": {
-        "CodeType": {
-          "flowExpr": {
-            "description": "Evaluado como una expresión Flow en tiempo de ejecución"
-          },
-          "string": {
-            "description": "Usado como una cadena de texto literal"
-          }
         }
       }
     },
