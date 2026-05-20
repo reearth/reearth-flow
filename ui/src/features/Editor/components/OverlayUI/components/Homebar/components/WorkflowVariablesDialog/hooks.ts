@@ -3,6 +3,7 @@ import { useY } from "react-yjs";
 import { Map as YMap } from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import {
@@ -61,6 +62,7 @@ export default ({
   }) => Promise<void>;
 }) => {
   const t = useT();
+  const { toast } = useToast();
   const { yDoc, workflowVarAwareness } = useEditorContext();
 
   const myClientId = String(yDoc?.clientID ?? "local");
@@ -343,16 +345,20 @@ export default ({
     // latest state written by handleUpdate.
   }, [workflowVarAwareness]);
 
-  // ── Keep client ID in Yjs awareness when focus changes ───────────────────
-
-  const handleParamFieldFocusRef = useRef(
-    (variableId: string | null, field: string | null) => {
-      workflowVarAwareness?.onFieldFocus(variableId, field);
-    },
-  );
-  handleParamFieldFocusRef.current = (variableId, field) => {
-    workflowVarAwareness?.onFieldFocus(variableId, field);
-  };
+  // If a collaborator deletes the variable currently open in the sub-dialog,
+  // close it explicitly and notify this user rather than silently wiping their
+  // unsaved edits via the null-variable path in VariableEditDialog's useEffect.
+  useEffect(() => {
+    if (!editingVariableId) return;
+    if (sessionVars.some((v) => v.id === editingVariableId)) return;
+    handleCloseEdit();
+    toast({
+      title: t("Variable removed"),
+      description: t(
+        "Another collaborator deleted the variable you were editing.",
+      ),
+    });
+  }, [sessionVars, editingVariableId, handleCloseEdit, toast, t]);
 
   // ── Public interface ──────────────────────────────────────────────────────
 
