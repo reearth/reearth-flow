@@ -85,10 +85,23 @@ fn call_func(f: &NativeFn, args: &[Value], pos: usize) -> Result<Value> {
 
 /// Data-level equality: routes through call_inner so all recursion passes the unified entrypoint.
 pub(crate) fn eval_eq(a: Value, b: Value) -> InnerResult<bool> {
-    let f = resolve_op(&BinOp::Eq);
-    match call_inner(&f, &[a, b])? {
+    match call_inner(&NativeFn::new(eq_op), &[a, b])? {
         Value::Bool(b) => Ok(b),
         _ => Err(InnerError::new("__eq__ must return a bool")),
+    }
+}
+
+fn eq_op(args: &[Value]) -> InnerResult<Value> {
+    let [a, b] = args else {
+        return Err(InnerError::new("== requires two operands"));
+    };
+    if let Value::Object(rc) = a {
+        return rc.call_method("__eq__", &[b.clone()]);
+    }
+    match (a, b) {
+        (Value::Array(a), Value::Array(b)) => array_methods::eq_inner(a, b).map(Value::Bool),
+        (Value::Map(a), Value::Map(b)) => map_methods::eq_inner(a, b).map(Value::Bool),
+        _ => Ok(Value::Bool(primitive_eq(a, b))),
     }
 }
 
@@ -272,42 +285,26 @@ fn resolve_op(op: &BinOp) -> NativeFn {
                 Err(_) => Err(binop_type_error("**", &left, &right)),
             }
         }),
-        BinOp::Eq => NativeFn::new(|args| {
-            let (left, right) = binary_args(args)?;
-            if let Value::Object(rc) = &left {
-                return rc.call_method("__eq__", &[right]);
-            }
-            match (left, right) {
-                (Value::Array(a), Value::Array(b)) => {
-                    array_methods::eq(&[Value::Array(a), Value::Array(b)])
-                }
-                (Value::Map(a), Value::Map(b)) => map_methods::eq(&[Value::Map(a), Value::Map(b)]),
-                (l, r) => Ok(Value::Bool(primitive_eq(&l, &r))),
-            }
-        }),
+        BinOp::Eq => NativeFn::new(eq_op),
         BinOp::Ne => NativeFn::new(|args| {
-            let (left, right) = binary_args(args)?;
-            if let Value::Object(rc) = &left {
-                let eq = rc.call_method("__eq__", &[right])?;
+            let [a, b] = args else {
+                return Err(InnerError::new("!= requires two operands"));
+            };
+            if let Value::Object(rc) = a {
+                let eq = rc.call_method("__eq__", &[b.clone()])?;
                 return match eq {
                     Value::Bool(b) => Ok(Value::Bool(!b)),
                     _ => Err(InnerError::new("__eq__ must return a bool")),
                 };
             }
-            match (left, right) {
+            match (a, b) {
                 (Value::Array(a), Value::Array(b)) => {
-                    match array_methods::eq(&[Value::Array(a), Value::Array(b)])? {
-                        Value::Bool(b) => Ok(Value::Bool(!b)),
-                        _ => Err(InnerError::new("__eq__ must return a bool")),
-                    }
+                    array_methods::eq_inner(a, b).map(|eq| Value::Bool(!eq))
                 }
                 (Value::Map(a), Value::Map(b)) => {
-                    match map_methods::eq(&[Value::Map(a), Value::Map(b)])? {
-                        Value::Bool(b) => Ok(Value::Bool(!b)),
-                        _ => Err(InnerError::new("__eq__ must return a bool")),
-                    }
+                    map_methods::eq_inner(a, b).map(|eq| Value::Bool(!eq))
                 }
-                (l, r) => Ok(Value::Bool(!primitive_eq(&l, &r))),
+                _ => Ok(Value::Bool(!primitive_eq(a, b))),
             }
         }),
         BinOp::Lt => NativeFn::new(|args| {
@@ -432,10 +429,10 @@ fn resolve_unary_op(op: &UnaryOp) -> NativeFn {
 }
 
 fn binary_args(args: &[Value]) -> InnerResult<(Value, Value)> {
-    match (args.get(0), args.get(1)) {
-        (Some(a), Some(b)) => Ok((a.clone(), b.clone())),
-        _ => Err(InnerError::new("binary operator requires two operands")),
-    }
+    let [a, b] = args else {
+        return Err(InnerError::new("binary operator requires two operands"));
+    };
+    Ok((a.clone(), b.clone()))
 }
 
 fn unary_arg(args: &[Value]) -> InnerResult<&Value> {

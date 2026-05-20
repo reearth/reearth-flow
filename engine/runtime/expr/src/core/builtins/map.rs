@@ -1,6 +1,9 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::LazyLock;
+
+use indexmap::IndexMap;
 
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::eval::eval_eq;
@@ -15,7 +18,6 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
         ("keys", keys as MethodFn),
         ("values", values as MethodFn),
         ("items", items as MethodFn),
-        ("__eq__", eq as MethodFn),
     ])
 });
 
@@ -68,29 +70,27 @@ fn items(args: &[Value]) -> InnerResult<Value> {
     ))
 }
 
-pub fn eq(args: &[Value]) -> InnerResult<Value> {
-    match (args.get(0), args.get(1)) {
-        (Some(Value::Map(a)), Some(Value::Map(b))) => {
-            if Rc::ptr_eq(a, b) {
-                return Ok(Value::Bool(true));
-            }
-            let a = a.borrow();
-            let b = b.borrow();
-            if a.len() != b.len() {
-                return Ok(Value::Bool(false));
-            }
-            for (k, va) in a.iter() {
-                match b.get(k) {
-                    Some(vb) => {
-                        if !eval_eq(va.clone(), vb.clone())? {
-                            return Ok(Value::Bool(false));
-                        }
-                    }
-                    None => return Ok(Value::Bool(false)),
+pub fn eq_inner(
+    a: &Rc<RefCell<IndexMap<String, Value>>>,
+    b: &Rc<RefCell<IndexMap<String, Value>>>,
+) -> InnerResult<bool> {
+    if Rc::ptr_eq(a, b) {
+        return Ok(true);
+    }
+    let a = a.borrow();
+    let b = b.borrow();
+    if a.len() != b.len() {
+        return Ok(false);
+    }
+    for (k, va) in a.iter() {
+        match b.get(k) {
+            Some(vb) => {
+                if !eval_eq(va.clone(), vb.clone())? {
+                    return Ok(false);
                 }
             }
-            Ok(Value::Bool(true))
+            None => return Ok(false),
         }
-        _ => Ok(Value::Bool(false)),
     }
+    Ok(true)
 }
