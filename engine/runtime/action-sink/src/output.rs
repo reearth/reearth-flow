@@ -17,16 +17,22 @@ pub struct SinkOutput {
 }
 
 impl SinkOutput {
-    /// Construct a `SinkOutput` from a fully-formed path string.
+    /// Construct a `SinkOutput` from a path string.
     ///
-    /// The string must parse as a valid URI (`file://...`, `gs://...`, etc.).
-    /// Resolves the storage backend eagerly. Used by sinks that pre-compile
-    /// Rhai expression ASTs and evaluate them at write time.
+    /// Accepts either a URI (`file://...`, `gs://...`, etc.) or a plain
+    /// filesystem path (treated as `file://` by `Uri::from_str`). Resolves
+    /// the storage backend eagerly. Used by sinks that pre-compile Rhai
+    /// expression ASTs and evaluate them at write time.
     pub fn from_path(ctx: &NodeContext, path: &str) -> Result<Self, BoxedError> {
         let resolved = Uri::from_str(path).map_err(|e| -> BoxedError {
             format!("SinkOutput: invalid path {:?}: {e}", path).into()
         })?;
-        let storage = ctx.storage_resolver.resolve(&resolved)?;
+        let storage = ctx
+            .storage_resolver
+            .resolve(&resolved)
+            .map_err(|e| -> BoxedError {
+                format!("SinkOutput: failed to resolve storage for {resolved}: {e}").into()
+            })?;
         Ok(Self { resolved, storage })
     }
 
@@ -174,29 +180,18 @@ mod tests {
         std::fs::create_dir(&nested).unwrap();
         let ctx = NodeContext::default();
         let base = SinkOutput::from_path(&ctx, &file_uri(&nested)).unwrap();
-        // Document current behavior of `base.join("../sibling.txt")`.
-        // If `Uri::join` resolves `..` and the result escapes the base, this test pins that.
-        // PR2's sandbox check will replace this with a rejection assertion.
-        let result = base.join("../sibling.txt");
-        // Run the test once locally to see whether result is Ok or Err, then write the matching assertion below.
-        // Acceptable forms:
-        //   - assert!(result.is_ok(), "..."); + path check
-        //   - assert!(result.is_err(), "...");
-        match result {
-            Ok(sub) => {
-                // Today: join resolves traversal; pin the resolved path so PR2 sees the change.
-                let expected = tmp.path().join("sibling.txt");
-                assert_eq!(
-                    sub.uri().path().as_path(),
-                    expected.as_path(),
-                    "traversal currently resolves to parent — PR2 will block this"
-                );
-            }
-            Err(e) => {
-                // Today: Uri::join rejects `..` segments outright.
-                let _ = e; // pin that traversal is rejected at the Uri layer
-            }
-        }
+        // Pin current behavior: `Uri::join` normalizes `..` and the result
+        // escapes the base directory. PR2 will replace this with a rejection
+        // assertion once sandboxing lands.
+        let sub = base
+            .join("../sibling.txt")
+            .expect("Uri::join currently resolves `..` segments");
+        let expected = tmp.path().join("sibling.txt");
+        assert_eq!(
+            sub.uri().path().as_path(),
+            expected.as_path(),
+            "traversal currently resolves to parent — PR2 will block this"
+        );
     }
 
     #[test]
