@@ -136,14 +136,10 @@ const ParamsDialog: React.FC<Props> = ({
     [setMyDraft],
   );
 
-  const onUserFocusedElementRef = useRef(onUserFocusedElement);
-  onUserFocusedElementRef.current = onUserFocusedElement;
   useEffect(() => {
-    onUserFocusedElementRef.current?.(true);
-    return () => {
-      onUserFocusedElementRef.current?.(false);
-    };
-  }, []);
+    onUserFocusedElement?.(true);
+    return () => onUserFocusedElement?.(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdate = useCallback(
     async (

@@ -188,6 +188,8 @@ export default function useAwarenessPresence({
 
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
+      if (yAwareness.getLocalState()?.focusedElement) return;
+      console.log("TEST: pointer move", { x: event.clientX, y: event.clientY });
       throttledPresenceUpdate(event.clientX, event.clientY);
       const awarenessStates = yAwareness.getStates();
       if (awarenessStates.size > 1) {
