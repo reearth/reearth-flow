@@ -10,7 +10,7 @@ use reearth_flow_types::Expr;
 
 /// Owns expression evaluation, URI parsing, storage backend acquisition,
 /// and bytes write for sink output handling.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SinkOutput {
     resolved: Uri,
     storage: Arc<Storage>,

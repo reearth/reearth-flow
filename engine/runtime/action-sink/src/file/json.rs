@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use bytes::Bytes;
@@ -10,7 +9,6 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{Expr, Feature};
 use rhai::Dynamic;
 use schemars::JsonSchema;
@@ -18,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::SinkError;
+use crate::SinkOutput;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct JsonWriterFactory;
@@ -78,7 +77,7 @@ impl SinkFactory for JsonWriterFactory {
 #[derive(Debug, Clone)]
 pub(super) struct JsonWriter {
     pub(super) params: JsonWriterParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
+    pub(super) buffer: HashMap<Uri, (SinkOutput, Vec<Feature>)>,
 }
 
 /// # JsonWriter Parameters
@@ -99,38 +98,30 @@ impl Sink for JsonWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let output = &self.params.output;
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let uri = Uri::from_str(&path)?;
-        self.buffer.entry(uri).or_default().push(ctx.feature);
+        let node_ctx: NodeContext = ctx.clone().into();
+        let out = SinkOutput::from_expr(&node_ctx, &self.params.output)
+            .map_err(|e| SinkError::JsonWriter(e.to_string()))?;
+        self.buffer
+            .entry(out.uri().clone())
+            .or_insert_with(|| (out, Vec::new()))
+            .1
+            .push(ctx.feature);
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        for (uri, features) in &self.buffer {
-            write_json(
-                uri,
-                &self.params,
-                features,
-                &ctx.expr_engine,
-                &storage_resolver,
-            )?;
+        for (out, features) in self.buffer.values() {
+            write_json(out, &self.params, features, &ctx.expr_engine)?;
         }
         Ok(())
     }
 }
 
 fn write_json(
-    output: &Uri,
+    out: &SinkOutput,
     params: &JsonWriterParam,
     features: &[Feature],
     expr_engine: &Arc<Engine>,
-    storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let json_value: serde_json::Value = if let Some(converter) = &params.converter {
         let scope = expr_engine.new_scope();
@@ -167,11 +158,7 @@ fn write_json(
             .collect::<Vec<serde_json::Value>>();
         serde_json::Value::Array(attributes)
     };
-    let storage = storage_resolver
-        .resolve(output)
-        .map_err(|e| crate::errors::SinkError::JsonWriter(format!("{e:?}")))?;
-    storage
-        .put_sync(output.path().as_path(), Bytes::from(json_value.to_string()))
+    out.write(Bytes::from(json_value.to_string()))
         .map_err(|e| crate::errors::SinkError::JsonWriter(format!("{e:?}")))?;
     Ok(())
 }
