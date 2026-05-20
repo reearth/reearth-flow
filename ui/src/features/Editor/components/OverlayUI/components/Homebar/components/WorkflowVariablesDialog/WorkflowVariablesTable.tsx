@@ -96,21 +96,6 @@ const SortableRow: React.FC<{
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </TableCell>
       ))}
-      {/* {editingUsers.length > 0 && (
-        <TableCell className="w-6 px-1 py-[2px]">
-          <div className="flex items-center -space-x-1">
-            {editingUsers.slice(0, 2).map((user) => (
-              <div
-                key={user.clientId}
-                className="flex size-4 items-center justify-center rounded-full text-[9px] font-medium text-white ring-1 ring-background"
-                style={{ backgroundColor: user.color }}
-                title={user.userName}>
-                {user.userName.charAt(0).toUpperCase()}
-              </div>
-            ))}
-          </div>
-        </TableCell>
-      )} */}
     </TableRow>
   );
 };

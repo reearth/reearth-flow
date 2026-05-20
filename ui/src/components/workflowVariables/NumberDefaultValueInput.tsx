@@ -104,7 +104,10 @@ export const NumberDefaultValueInput: React.FC<Props> = ({
       value={variable.defaultValue ?? ""}
       onChange={(e) => handleValueChange(e.target.value)}
       onKeyDown={handleKeyDown}
-      onFocus={(e) => (e.stopPropagation(), onFieldFocus?.("defaultValue"))}
+      onFocus={(e) => {
+        e.stopPropagation();
+        onFieldFocus?.("defaultValue");
+      }}
       placeholder={t("Enter numeric value")}
       className={className}
       style={paramsAwarenessStyles(fieldFocusMap?.["defaultValue"])}
