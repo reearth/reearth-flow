@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use std::io::Write;
-use std::str::FromStr;
-use std::sync::Arc;
 use std::vec;
 
 use bytes::Bytes;
@@ -13,7 +11,6 @@ use nusamai_czml::{
 };
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use reearth_flow_common::str::to_hash;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::errors::BoxedError;
@@ -305,24 +302,16 @@ impl Sink for CzmlWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
-        let scope = expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
+        let base = crate::SinkOutput::from_expr(&ctx, &self.params.output)
+            .map_err(crate::errors::SinkError::czml_writer)?;
 
         for (key, features) in self.buffer.iter() {
-            let file_path = if *key == AttributeValue::Null {
-                output.clone()
+            let out = if *key == AttributeValue::Null {
+                base.clone()
             } else {
-                output.join(format!("{}.json", to_hash(key.to_string().as_str())))?
+                base.join(&format!("{}.json", to_hash(key.to_string().as_str())))
+                    .map_err(crate::errors::SinkError::czml_writer)?
             };
-            let storage = storage_resolver
-                .resolve(&file_path)
-                .map_err(crate::errors::SinkError::czml_writer)?;
 
             let is_grouped_timeseries =
                 self.params.group_timeseries_by.is_some() && self.params.time_field.is_some();
@@ -332,8 +321,7 @@ impl Sink for CzmlWriter {
 
             if is_grouped_timeseries {
                 let buffer = build_timeseries_czml(features, &self.params, &ctx)?;
-                storage
-                    .put_sync(file_path.path().as_path(), Bytes::from(buffer))
+                out.write(Bytes::from(buffer))
                     .map_err(crate::errors::SinkError::czml_writer)?;
             } else if has_citygml {
                 let (sender, receiver) = std::sync::mpsc::sync_channel(1000);
@@ -381,8 +369,7 @@ impl Sink for CzmlWriter {
                         buffer
                             .write(b"]\n")
                             .map_err(crate::errors::SinkError::czml_writer)?;
-                        storage
-                            .put_sync(file_path.path().as_path(), Bytes::from(buffer))
+                        out.write(Bytes::from(buffer))
                             .map_err(crate::errors::SinkError::czml_writer)
                     },
                 );
@@ -390,8 +377,7 @@ impl Sink for CzmlWriter {
                 rb?;
             } else {
                 let buffer = build_embedded_czml(features, &self.params)?;
-                storage
-                    .put_sync(file_path.path().as_path(), Bytes::from(buffer))
+                out.write(Bytes::from(buffer))
                     .map_err(crate::errors::SinkError::czml_writer)?;
             }
         }
