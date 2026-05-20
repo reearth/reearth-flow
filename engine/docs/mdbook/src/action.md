@@ -1347,7 +1347,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Optional path for compressed archive output",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -1381,7 +1381,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Directory path where the 3D tiles will be written",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -1403,8 +1403,39 @@ Export Features as Cesium 3D Tiles for Web Visualization
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "oneOf": [
+        {
+          "description": "Evaluated as a Flow expression at runtime",
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        {
+          "description": "Used as a plain string literal",
+          "type": "string",
+          "enum": [
+            "string"
+          ]
+        }
+      ]
     }
   }
 }

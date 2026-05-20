@@ -188,7 +188,7 @@ graphs:
               method: create
               value: |
                 let ft = env.get("__value")["__citygml_feature_type"] ?? "";
-                if ft.contains(":") {
+                if ":" in ft {
                   ft.split(":")[1]
                 } else {
                   ft

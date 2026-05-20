@@ -550,6 +550,22 @@
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
+      },
+      "enumI18n": {
+        "CodeType": {
+          "flowExpr": {
+            "description": "Evaluated as a Flow expression at runtime"
+          },
+          "string": {
+            "description": "Used as a plain string literal"
+          }
+        }
       }
     },
     {
