@@ -49,6 +49,23 @@ impl SinkOutput {
         Self::from_path(ctx, &path)
     }
 
+    /// Evaluate an `Expr` to its `(path_string, Uri)` pair without acquiring
+    /// a storage backend.
+    ///
+    /// Useful for buffered sinks that want to key a `HashMap` by `Uri` and
+    /// only construct a full `SinkOutput` (which calls
+    /// `storage_resolver.resolve`) when the entry is vacant.
+    pub fn evaluate_uri(ctx: &NodeContext, expr: &Expr) -> Result<(String, Uri), BoxedError> {
+        let scope = ctx.expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(expr.as_ref())
+            .unwrap_or_else(|_| expr.as_ref().to_string());
+        let uri = Uri::from_str(&path).map_err(|e| -> BoxedError {
+            format!("SinkOutput: invalid path {:?}: {e}", path).into()
+        })?;
+        Ok((path, uri))
+    }
+
     /// Return the resolved URI this output writes to.
     pub fn uri(&self) -> &Uri {
         &self.resolved
@@ -205,6 +222,17 @@ mod tests {
             Arc::ptr_eq(&original.storage, &cloned.storage),
             "clone must share the same storage Arc, not create a new one"
         );
+    }
+
+    #[test]
+    fn evaluate_uri_returns_path_and_parsed_uri() {
+        let tmp = tempdir().unwrap();
+        let target = tmp.path().join("eval.bin");
+        let ctx = NodeContext::default();
+        let expr = Expr::new(file_uri(&target));
+        let (path, uri) = SinkOutput::evaluate_uri(&ctx, &expr).unwrap();
+        assert_eq!(path, file_uri(&target));
+        assert_eq!(uri.path().as_path(), target.as_path());
     }
 
     #[test]

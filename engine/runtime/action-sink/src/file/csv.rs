@@ -120,13 +120,20 @@ impl Sink for CsvWriter {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let node_ctx: NodeContext = ctx.clone().into();
-        let out = SinkOutput::from_expr(&node_ctx, &self.params.output)
+        let (path, uri) = crate::SinkOutput::evaluate_uri(&node_ctx, &self.params.output)
             .map_err(|e| SinkError::CsvWriter(e.to_string()))?;
-        self.buffer
-            .entry(out.uri().clone())
-            .or_insert_with(|| (out, Vec::new()))
-            .1
-            .push(ctx.feature);
+        let feature = ctx.feature.clone();
+        use std::collections::hash_map::Entry;
+        match self.buffer.entry(uri) {
+            Entry::Occupied(mut e) => {
+                e.get_mut().1.push(feature);
+            }
+            Entry::Vacant(e) => {
+                let out = crate::SinkOutput::from_path(&node_ctx, &path)
+                    .map_err(|e| SinkError::CsvWriter(e.to_string()))?;
+                e.insert((out, vec![feature]));
+            }
+        }
         Ok(())
     }
 
