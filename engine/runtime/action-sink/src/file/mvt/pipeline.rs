@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::io::Write;
-use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -19,6 +18,7 @@ use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::executor_operation::Context;
+use reearth_flow_runtime::executor_operation::NodeContext;
 use reearth_flow_types::Feature;
 use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
@@ -53,9 +53,8 @@ pub(super) fn geometry_slicing_stage(
 ) -> crate::errors::Result<()> {
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let layer_names = Arc::new(Mutex::new(std::collections::HashSet::new()));
-    let storage = ctx
-        .storage_resolver
-        .resolve(output_path)
+    let node_ctx = NodeContext::from(ctx.clone());
+    let sink_out = crate::SinkOutput::from_path(&node_ctx, output_path.as_str())
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     // Convert CityObjects to sliced features
@@ -208,14 +207,9 @@ pub(super) fn geometry_slicing_stage(
     serde_json::to_string_pretty(&metadata)
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
         .and_then(|metadata| {
-            storage
-                .put_sync(
-                    &output_path
-                        .join(Path::new("tilejson.json"))
-                        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?
-                        .path(),
-                    bytes::Bytes::from(metadata),
-                )
+            sink_out
+                .join("tilejson.json")
+                .and_then(|out| out.write(bytes::Bytes::from(metadata)))
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
         })?;
 
@@ -279,9 +273,8 @@ pub(super) fn tile_writing_stage(
 ) -> crate::errors::Result<()> {
     let min_extent: i32 = 512;
 
-    let storage = ctx
-        .storage_resolver
-        .resolve(output_path)
+    let node_ctx = NodeContext::from(ctx);
+    let sink_out = crate::SinkOutput::from_path(&node_ctx, output_path.as_str())
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     receiver_sorted
@@ -290,9 +283,6 @@ pub(super) fn tile_writing_stage(
         .try_for_each(|(tile_id, serialized_feats)| {
             let (zoom, x, y) = tile_id_conv.id_to_zxy(tile_id);
 
-            let path = output_path
-                .join(Path::new(&format!("{zoom}/{x}/{y}.mvt")))
-                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
             let mut extent = default_extent;
             while extent >= min_extent {
                 let bytes = make_tile(
@@ -316,8 +306,9 @@ pub(super) fn tile_writing_stage(
                     extent /= 2;
                     continue;
                 }
-                storage
-                    .put_sync(&path.path(), bytes::Bytes::from(bytes))
+                sink_out
+                    .join(&format!("{zoom}/{x}/{y}.mvt"))
+                    .and_then(|tile_out| tile_out.write(bytes::Bytes::from(bytes)))
                     .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
                 break;
             }
