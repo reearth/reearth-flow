@@ -178,7 +178,8 @@ graphs:
             value: |
               citygml = Url(env("cityGmlPath")).stem().split("_op_")[0];
               udx_dirs = value("udxDirs").replace("/", "_");
-              scale = if value("__scale") != "" { "_" + value("__scale") } else { "" };
+              scale = "";
+              if value("__scale") { scale = "_" + value("__scale") }
               Url(env("workerArtifactPath")) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
 
       # Dictionary.json output branch
