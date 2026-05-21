@@ -99,7 +99,10 @@ mod tests {
 
     #[test]
     fn test_url_stem() {
-        assert_val(&run(r#"Url("/foo/bar.gml").stem()"#, &[]), &Value::from("bar"));
+        assert_val(
+            &run(r#"Url("/foo/bar.gml").stem()"#, &[]),
+            &Value::from("bar"),
+        );
     }
 
     #[test]
@@ -110,7 +113,10 @@ mod tests {
 
     #[test]
     fn test_url_stem_trailing_slash() {
-        assert_val(&run(r#"Url("/foo/bar.gml/").stem()"#, &[]), &Value::from("bar"));
+        assert_val(
+            &run(r#"Url("/foo/bar.gml/").stem()"#, &[]),
+            &Value::from("bar"),
+        );
     }
 
     #[test]

@@ -1,5 +1,5 @@
-use crate::core::eval::{default_env, eval, eval_eq};
 use crate::core::error::InnerResult;
+use crate::core::eval::{default_env, eval, eval_eq};
 use crate::core::parser::parse;
 use crate::core::value::Value;
 use crate::Result;

@@ -1062,9 +1062,9 @@ fn builtin_print(args: &[Value]) -> InnerResult<Value> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::core::parser::parse;
     use crate::core::test_utils::{assert_eval, run, try_run, values_equal};
-    use super::*;
 
     #[test]
     fn test_arithmetic() {

@@ -141,8 +141,16 @@ mod tests {
 
     #[test]
     fn test_startswith() {
-        assert_eval(r#""hello_world".startswith("hello")"#, &[], Value::Bool(true));
-        assert_eval(r#""hello_world".startswith("foo")"#, &[], Value::Bool(false));
+        assert_eval(
+            r#""hello_world".startswith("hello")"#,
+            &[],
+            Value::Bool(true),
+        );
+        assert_eval(
+            r#""hello_world".startswith("foo")"#,
+            &[],
+            Value::Bool(false),
+        );
     }
 
     #[test]
@@ -153,14 +161,30 @@ mod tests {
 
     #[test]
     fn test_removeprefix() {
-        assert_eval(r#""hello_world".removeprefix("hello_")"#, &[], Value::from("world"));
-        assert_eval(r#""hello_world".removeprefix("foo")"#, &[], Value::from("hello_world"));
+        assert_eval(
+            r#""hello_world".removeprefix("hello_")"#,
+            &[],
+            Value::from("world"),
+        );
+        assert_eval(
+            r#""hello_world".removeprefix("foo")"#,
+            &[],
+            Value::from("hello_world"),
+        );
     }
 
     #[test]
     fn test_removesuffix() {
-        assert_eval(r#""hello_world".removesuffix("_world")"#, &[], Value::from("hello"));
-        assert_eval(r#""hello_world".removesuffix("foo")"#, &[], Value::from("hello_world"));
+        assert_eval(
+            r#""hello_world".removesuffix("_world")"#,
+            &[],
+            Value::from("hello"),
+        );
+        assert_eval(
+            r#""hello_world".removesuffix("foo")"#,
+            &[],
+            Value::from("hello_world"),
+        );
     }
 
     #[test]
@@ -172,7 +196,11 @@ mod tests {
     #[test]
     fn test_replace() {
         assert_eval(r#""a/b/c".replace("/", "_")"#, &[], Value::from("a_b_c"));
-        assert_eval(r#""foo_op_bar_op_baz".replace("_op_", "/")"#, &[], Value::from("foo/bar/baz"));
+        assert_eval(
+            r#""foo_op_bar_op_baz".replace("_op_", "/")"#,
+            &[],
+            Value::from("foo/bar/baz"),
+        );
         assert_eval(r#""hello".replace("x", "y")"#, &[], Value::from("hello"));
     }
 
