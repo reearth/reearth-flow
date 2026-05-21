@@ -202,7 +202,11 @@ impl Sink for GeoPackageWriter {
             return Ok(());
         }
 
-        let out = crate::SinkOutput::from_expr(&ctx, &self.params.output)
+        let scope = ctx.expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(self.params.output.as_ref())
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let out = crate::SinkOutput::from_path(&ctx, &path)
             .map_err(|e| crate::errors::SinkError::GeoPackageWriter(e.to_string()))?;
 
         // Check if file exists

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
@@ -97,8 +98,12 @@ impl Sink for ExcelWriter {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let node_ctx: NodeContext = ctx.clone().into();
-        let (path, uri) = crate::SinkOutput::evaluate_uri(&node_ctx, &self.params.output)
-            .map_err(|e| SinkError::ExcelWriterFactory(e.to_string()))?;
+        let scope = node_ctx.expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(self.params.output.as_ref())
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let uri = Uri::from_str(&path)
+            .map_err(|e| SinkError::ExcelWriterFactory(format!("invalid path {:?}: {e}", path)))?;
         let feature = ctx.feature.clone();
         use std::collections::hash_map::Entry;
         match self.buffer.entry(uri) {

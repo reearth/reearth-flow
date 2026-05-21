@@ -6,10 +6,9 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::executor_operation::NodeContext;
 use reearth_flow_storage::storage::Storage;
-use reearth_flow_types::Expr;
 
-/// Owns expression evaluation, URI parsing, storage backend acquisition,
-/// and bytes write for sink output handling.
+/// Owns URI parsing, storage backend acquisition, and bytes write for sink
+/// output handling. Expression evaluation is the responsibility of the caller.
 #[derive(Clone, Debug)]
 pub struct SinkOutput {
     resolved: Uri,
@@ -21,8 +20,7 @@ impl SinkOutput {
     ///
     /// Accepts either a URI (`file://...`, `gs://...`, etc.) or a plain
     /// filesystem path (treated as `file://` by `Uri::from_str`). Resolves
-    /// the storage backend eagerly. Used by sinks that pre-compile Rhai
-    /// expression ASTs and evaluate them at write time.
+    /// the storage backend eagerly.
     pub fn from_path(ctx: &NodeContext, path: &str) -> Result<Self, BoxedError> {
         let resolved = Uri::from_str(path).map_err(|e| -> BoxedError {
             format!("SinkOutput: invalid path {:?}: {e}", path).into()
@@ -34,36 +32,6 @@ impl SinkOutput {
                 format!("SinkOutput: failed to resolve storage for {resolved}: {e}").into()
             })?;
         Ok(Self { resolved, storage })
-    }
-
-    /// Construct a `SinkOutput` by evaluating a Rhai expression to a path string.
-    ///
-    /// If evaluation fails, the raw expression text is used as the path —
-    /// this matches the historical per-sink behavior so literal paths work
-    /// without writing them as `"\"file://...\""`.
-    pub fn from_expr(ctx: &NodeContext, expr: &Expr) -> Result<Self, BoxedError> {
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(expr.as_ref())
-            .unwrap_or_else(|_| expr.as_ref().to_string());
-        Self::from_path(ctx, &path)
-    }
-
-    /// Evaluate an `Expr` to its `(path_string, Uri)` pair without acquiring
-    /// a storage backend.
-    ///
-    /// Useful for buffered sinks that want to key a `HashMap` by `Uri` and
-    /// only construct a full `SinkOutput` (which calls
-    /// `storage_resolver.resolve`) when the entry is vacant.
-    pub fn evaluate_uri(ctx: &NodeContext, expr: &Expr) -> Result<(String, Uri), BoxedError> {
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(expr.as_ref())
-            .unwrap_or_else(|_| expr.as_ref().to_string());
-        let uri = Uri::from_str(&path).map_err(|e| -> BoxedError {
-            format!("SinkOutput: invalid path {:?}: {e}", path).into()
-        })?;
-        Ok((path, uri))
     }
 
     /// Return the resolved URI this output writes to.
@@ -123,30 +91,6 @@ mod tests {
         out.write(Bytes::from_static(b"hello")).unwrap();
         let content = std::fs::read(&target).unwrap();
         assert_eq!(content, b"hello");
-    }
-
-    #[test]
-    fn from_expr_evaluates_then_resolves() {
-        let tmp = tempdir().unwrap();
-        let target = tmp.path().join("expr_target.bin");
-        let ctx = NodeContext::default();
-        let expr = Expr::new(file_uri(&target));
-        let out = SinkOutput::from_expr(&ctx, &expr).unwrap();
-        out.write(Bytes::from_static(b"x")).unwrap();
-        assert!(target.exists());
-    }
-
-    #[test]
-    fn from_expr_evaluates_rhai_concat_expression() {
-        let tmp = tempdir().unwrap();
-        // A Rhai expression that concatenates strings — must successfully evaluate
-        let dir = tmp.path().display().to_string();
-        let expr_src = format!(r#""file://{dir}/" + "concat_out.bin""#);
-        let expr = Expr::new(&expr_src);
-        let ctx = NodeContext::default();
-        let out = SinkOutput::from_expr(&ctx, &expr).unwrap();
-        out.write(Bytes::from_static(b"y")).unwrap();
-        assert!(tmp.path().join("concat_out.bin").exists());
     }
 
     #[test]
@@ -222,17 +166,6 @@ mod tests {
             Arc::ptr_eq(&original.storage, &cloned.storage),
             "clone must share the same storage Arc, not create a new one"
         );
-    }
-
-    #[test]
-    fn evaluate_uri_returns_path_and_parsed_uri() {
-        let tmp = tempdir().unwrap();
-        let target = tmp.path().join("eval.bin");
-        let ctx = NodeContext::default();
-        let expr = Expr::new(file_uri(&target));
-        let (path, uri) = SinkOutput::evaluate_uri(&ctx, &expr).unwrap();
-        assert_eq!(path, file_uri(&target));
-        assert_eq!(uri.path().as_path(), target.as_path());
     }
 
     #[test]

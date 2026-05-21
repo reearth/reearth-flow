@@ -118,7 +118,11 @@ impl Sink for ShapefileWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let base = crate::SinkOutput::from_expr(&ctx, &self.params.output)
+        let scope = ctx.expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(self.params.output.as_ref())
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let base = crate::SinkOutput::from_path(&ctx, &path)
             .map_err(|e| SinkError::ShapefileWriter(e.to_string()))?;
         for (key, features) in self.buffer.iter() {
             pipeline::pipeline(&ctx.as_context(), &base, key, features)?;

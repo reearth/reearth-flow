@@ -111,7 +111,11 @@ impl Sink for ZipFileWriter {
         if self.buffer.is_empty() {
             return Ok(());
         }
-        let out = crate::SinkOutput::from_expr(&ctx, &self.output)
+        let scope = ctx.expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(self.output.as_ref())
+            .unwrap_or_else(|_| self.output.as_ref().to_string());
+        let out = crate::SinkOutput::from_path(&ctx, &path)
             .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
         dir::move_files_with_structure(&temp_dir_path, &self.buffer)?;

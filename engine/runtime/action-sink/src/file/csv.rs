@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use bytes::Bytes;
 use reearth_flow_common::csv::Delimiter;
@@ -120,8 +121,12 @@ impl Sink for CsvWriter {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let node_ctx: NodeContext = ctx.clone().into();
-        let (path, uri) = crate::SinkOutput::evaluate_uri(&node_ctx, &self.params.output)
-            .map_err(|e| SinkError::CsvWriter(e.to_string()))?;
+        let scope = node_ctx.expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(self.params.output.as_ref())
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let uri = Uri::from_str(&path)
+            .map_err(|e| SinkError::CsvWriter(format!("invalid path {:?}: {e}", path)))?;
         let feature = ctx.feature.clone();
         use std::collections::hash_map::Entry;
         match self.buffer.entry(uri) {

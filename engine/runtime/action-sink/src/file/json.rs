@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use bytes::Bytes;
@@ -99,8 +100,12 @@ impl Sink for JsonWriter {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let node_ctx: NodeContext = ctx.clone().into();
-        let (path, uri) = SinkOutput::evaluate_uri(&node_ctx, &self.params.output)
-            .map_err(|e| SinkError::JsonWriter(e.to_string()))?;
+        let scope = node_ctx.expr_engine.new_scope();
+        let path = scope
+            .eval::<String>(self.params.output.as_ref())
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let uri = Uri::from_str(&path)
+            .map_err(|e| SinkError::JsonWriter(format!("invalid path {:?}: {e}", path)))?;
         let feature = ctx.feature.clone();
         use std::collections::hash_map::Entry;
         match self.buffer.entry(uri) {
