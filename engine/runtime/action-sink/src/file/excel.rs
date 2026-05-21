@@ -1,13 +1,6 @@
-use std::path::Path;
-use std::sync::Arc;
-
 use indexmap::IndexMap;
 use reearth_flow_types::Attribute;
 use rust_xlsxwriter::{Format, FormatAlign, FormatUnderline, Formula, Url, Workbook, Worksheet};
-
-use reearth_flow_storage::resolve::StorageResolver;
-
-use reearth_flow_common::uri::Uri;
 
 use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
@@ -23,10 +16,9 @@ pub struct ExcelWriterParam {
 }
 
 pub(super) fn write_excel(
-    output: &Uri,
+    output: &crate::SinkOutput,
     params: &ExcelWriterParam,
     features: &[Feature],
-    storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
@@ -95,14 +87,8 @@ pub(super) fn write_excel(
         .save_to_buffer()
         .map_err(crate::errors::SinkError::excel_writer)?;
 
-    let storage = storage_resolver
-        .resolve(output)
-        .map_err(crate::errors::SinkError::excel_writer)?;
-    let uri_path = output.path();
-    let path = Path::new(&uri_path);
-
-    storage
-        .put_sync(path, bytes::Bytes::from(buf))
+    output
+        .write(bytes::Bytes::from(buf))
         .map_err(crate::errors::SinkError::excel_writer)?;
 
     Ok(())

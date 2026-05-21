@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use bytes::Bytes;
 use quick_xml::events::{BytesDecl, BytesStart, Event};
@@ -16,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::SinkError;
-use reearth_flow_storage::resolve::StorageResolver;
+use crate::SinkOutput;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct XmlWriterFactory;
@@ -77,7 +76,7 @@ impl SinkFactory for XmlWriterFactory {
 #[derive(Debug, Clone)]
 pub(super) struct XmlWriter {
     pub(super) params: XmlWriterParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
+    pub(super) buffer: HashMap<Uri, (SinkOutput, Vec<Feature>)>,
 }
 
 /// # XmlWriter Parameters
@@ -96,30 +95,39 @@ impl Sink for XmlWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let output = &self.params.output;
+        let node_ctx: NodeContext = ctx.clone().into();
+        let scope = node_ctx.expr_engine.new_scope();
         let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let uri = Uri::from_str(&path)?;
-        self.buffer.entry(uri).or_default().push(ctx.feature);
+            .eval::<String>(self.params.output.as_ref())
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let uri = Uri::from_str(&path)
+            .map_err(|e| SinkError::XmlWriter(format!("invalid path {:?}: {e}", path)))?;
+        let feature = ctx.feature.clone();
+        use std::collections::hash_map::Entry;
+        match self.buffer.entry(uri) {
+            Entry::Occupied(mut e) => {
+                e.get_mut().1.push(feature);
+            }
+            Entry::Vacant(e) => {
+                let out = SinkOutput::from_path(&node_ctx, &path)
+                    .map_err(|e| SinkError::XmlWriter(e.to_string()))?;
+                e.insert((out, vec![feature]));
+            }
+        }
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        for (uri, features) in &self.buffer {
-            write_xml(uri, features, &storage_resolver)?;
+    fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
+        for (out, features) in self.buffer.values() {
+            write_xml(out, features)?;
         }
         Ok(())
     }
 }
 
 pub(super) fn write_xml(
-    output: &Uri,
+    out: &SinkOutput,
     features: &[Feature],
-    storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let attributes = features
         .iter()
@@ -147,11 +155,7 @@ pub(super) fn write_xml(
     let result = writer.into_inner();
     let xml = String::from_utf8(result)
         .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
-    let storage = storage_resolver
-        .resolve(output)
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
-    storage
-        .put_sync(output.path().as_path(), Bytes::from(xml))
+    out.write(Bytes::from(xml))
         .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
     Ok(())
 }

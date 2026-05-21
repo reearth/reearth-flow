@@ -1,10 +1,8 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use bytes::Bytes;
 use indexmap::IndexMap;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -127,7 +125,6 @@ impl Sink for ObjWriter {
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
         let scope = expr_engine.new_scope();
         if let Some(ref params) = self.global_params {
@@ -139,26 +136,22 @@ impl Sink for ObjWriter {
         let path = scope
             .eval_ast::<String>(&self.output)
             .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
-        let output = Uri::from_str(path.as_str())?;
 
         let (obj_content, mtl_content) = features_to_obj(&self.buffer, self, &path)?;
 
-        let storage = storage_resolver
-            .resolve(&output)
-            .map_err(|e| SinkError::ObjWriter(format!("Failed to resolve storage: {e}")))?;
-        storage
-            .put_sync(output.path().as_path(), Bytes::from(obj_content))
-            .map_err(|e| SinkError::ObjWriter(format!("Failed to write OBJ file: {e}")))?;
+        let obj_out = crate::SinkOutput::from_path(&ctx, &path)
+            .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
+        obj_out
+            .write(Bytes::from(obj_content))
+            .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
 
         if self.write_materials && !mtl_content.is_empty() {
-            let mtl_path = output.to_string().replace(".obj", ".mtl");
-            let mtl_uri = Uri::from_str(&mtl_path)?;
-            let mtl_storage = storage_resolver
-                .resolve(&mtl_uri)
-                .map_err(|e| SinkError::ObjWriter(format!("Failed to resolve MTL storage: {e}")))?;
-            mtl_storage
-                .put_sync(mtl_uri.path().as_path(), Bytes::from(mtl_content))
-                .map_err(|e| SinkError::ObjWriter(format!("Failed to write MTL file: {e}")))?;
+            let mtl_path = path.replace(".obj", ".mtl");
+            let mtl_out = crate::SinkOutput::from_path(&ctx, &mtl_path)
+                .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
+            mtl_out
+                .write(Bytes::from(mtl_content))
+                .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
         }
 
         Ok(())
