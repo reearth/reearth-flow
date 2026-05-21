@@ -209,6 +209,12 @@ export default ({
 
   // ── Variable list mutations (all write directly to shared Yjs) ────────────
 
+  // Tracks temp_ variables this user added and their latest self-authored
+  // state. Used in handleCancel to determine whether another collaborator has
+  // modified an unconfirmed addition — if nobody else touched it, we remove
+  // it when this user cancels; if someone did, we keep it.
+  const myAddedTempVarsRef = useRef(new Map<string, WorkflowVariable>());
+
   const handleLocalAdd = useCallback(
     (type: VarType) => {
       const tempId = `temp_${generateUUID()}`;
@@ -221,6 +227,7 @@ export default ({
         required: true,
         public: true,
       };
+      myAddedTempVarsRef.current.set(tempId, newVariable);
       writeVars([...sessionVars, newVariable]);
     },
     [writeVars, sessionVars, t],
@@ -228,6 +235,12 @@ export default ({
 
   const handleUpdate = useCallback(
     (updatedVariable: WorkflowVariable) => {
+      // Keep our "last self-authored" snapshot current so that the cancel
+      // comparison in handleCancel correctly identifies whether a collaborator
+      // has diverged from our version.
+      if (myAddedTempVarsRef.current.has(updatedVariable.id)) {
+        myAddedTempVarsRef.current.set(updatedVariable.id, updatedVariable);
+      }
       writeVars(
         sessionVars.map((v) =>
           v.id === updatedVariable.id ? updatedVariable : v,
@@ -360,7 +373,7 @@ export default ({
 
   const handleCancel = useCallback(() => {
     const otherUsersInDialog = Object.values(users ?? {}).some(
-      (u) => u.openWorkflowVariablesDialog,
+      (u) => u.openWorkflowVariablesDialog && String(u.clientId) !== myClientId,
     );
 
     if (!otherUsersInDialog) {
@@ -380,18 +393,33 @@ export default ({
         clearSession();
       }
     } else {
-      // Other collaborators are still editing. Keep structural changes (new
-      // temp_ variables, deletions, reorders) so their work survives, but
-      // revert any value edits this user confirmed via the inner dialog's
-      // "Save Changes" button — those should not become part of a collaborator's
-      // eventual save.
+      // Other collaborators are still editing.
+      // 1. Revert value edits confirmed via the inner-dialog "Save Changes".
+      // 2. Remove temp_ variables this user added that nobody else has touched
+      //    — if a collaborator modified one (its current value differs from
+      //    this user's last-authored snapshot), keep it in the session.
       const pendingIds = pendingValueEditIdsRef.current;
-      if (pendingIds.size > 0 && yVarSession) {
-        const baseVarMap = new Map(sessionBase.map((v) => [v.id, v]));
-        const reverted = sessionVars.map((v) => {
+      const myTempIds = myAddedTempVarsRef.current;
+      const baseVarMap = new Map(sessionBase.map((v) => [v.id, v]));
+
+      const reverted = sessionVars
+        .map((v) => {
           if (v.id.startsWith("temp_") || !pendingIds.has(v.id)) return v;
           return baseVarMap.get(v.id) ?? v;
+        })
+        .filter((v) => {
+          if (!v.id.startsWith("temp_") || !myTempIds.has(v.id)) return true;
+          // Remove if nobody else modified it from our last-authored version
+          return JSON.stringify(v) !== JSON.stringify(myTempIds.get(v.id));
         });
+
+      const changed =
+        reverted.length !== sessionVars.length ||
+        reverted.some(
+          (v, i) => JSON.stringify(v) !== JSON.stringify(sessionVars[i]),
+        );
+
+      if (changed && yVarSession) {
         yVarSession.doc?.transact(() => {
           yVarSession.set("variables", reverted);
           yVarSession.set("timestamp", Date.now());
@@ -403,6 +431,7 @@ export default ({
     onClose();
   }, [
     users,
+    myClientId,
     rawSession?.pendingRefetch,
     clearSession,
     yVarSession,
