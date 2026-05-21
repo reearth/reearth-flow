@@ -1,12 +1,16 @@
 import dagre from "@dagrejs/dagre";
 import { stratify, tree } from "d3-hierarchy";
 import type { HierarchyPointNode } from "d3-hierarchy";
-import ELK from "elkjs";
+import type { ELK as ELKInstance } from "elkjs/lib/elk-api";
+// The bundled build avoids the `web-worker` Node.js package that breaks Vite production builds.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import ELKBundled from "elkjs/lib/elk.bundled.js";
 
 import { DEFAULT_NODE_SIZE } from "@flow/global-constants";
 import { Algorithm, Direction, Edge, Node } from "@flow/types";
 
-const elk = new ELK();
+const elk = new ELKBundled() as ELKInstance;
 
 const nodeWidth = (node: Node) =>
   node.measured?.width ?? DEFAULT_NODE_SIZE.width;
