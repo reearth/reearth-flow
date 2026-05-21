@@ -78,6 +78,14 @@ export default () => {
         description: t("Paste the Copied Actions"),
       },
       {
+        keyBinding: CanvasKeyBindings["spreadNodes"],
+        description: t("Spread the Selected Actions"),
+      },
+      {
+        keyBinding: CanvasKeyBindings["compressNodes"],
+        description: t("Compress the Selected Actions"),
+      },
+      {
         keyBinding: CanvasKeyBindings["undo"],
         description: t("Undo the Last Action"),
       },

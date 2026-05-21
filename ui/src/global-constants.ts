@@ -29,7 +29,12 @@ export const CANVAS_HOT_KEYS = [
   "ctrl+v", // paste win
   "meta+e", // enable/disable node mac
   "ctrl+e", // enable/disable node win
+  "shift+equal", // spread selected nodes mac
+  "shift+equal", // spread selected nodes win
+  "shift+minus", // compress selected nodes mac
+  "shift+minus", // compress selected nodes win
 ];
+
 export const EDITOR_HOT_KEYS = [
   "shift+meta+z", // redo mac
   "shift+ctrl+z", // redo win

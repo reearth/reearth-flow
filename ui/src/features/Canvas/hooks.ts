@@ -8,7 +8,7 @@ import { MouseEvent, useCallback, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { ContextMenuMeta } from "@flow/components";
-import { CANVAS_HOT_KEYS } from "@flow/global-constants";
+import { CANVAS_HOT_KEYS, DEFAULT_NODE_SIZE } from "@flow/global-constants";
 import { useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -162,8 +162,48 @@ export default ({
     setContextMenu(null);
   };
 
+  const handleSelectedNodesSpacing = useCallback(
+    (factor: number) => {
+      if (readonly) return;
+      const selectedNodes = nodes.filter((n) => n.selected);
+      if (selectedNodes.length < 2) return;
+
+      const nw = (n: (typeof selectedNodes)[0]) =>
+        n.measured?.width ?? DEFAULT_NODE_SIZE.width;
+      const nh = (n: (typeof selectedNodes)[0]) =>
+        n.measured?.height ?? DEFAULT_NODE_SIZE.height;
+
+      const centerX =
+        selectedNodes.reduce((sum, n) => sum + n.position.x + nw(n) / 2, 0) /
+        selectedNodes.length;
+      const centerY =
+        selectedNodes.reduce((sum, n) => sum + n.position.y + nh(n) / 2, 0) /
+        selectedNodes.length;
+
+      handleNodesChange(
+        selectedNodes.map((n) => ({
+          id: n.id,
+          type: "position" as const,
+          position: {
+            x:
+              centerX +
+              (n.position.x + nw(n) / 2 - centerX) * factor -
+              nw(n) / 2,
+            y:
+              centerY +
+              (n.position.y + nh(n) / 2 - centerY) * factor -
+              nh(n) / 2,
+          },
+        })),
+      );
+    },
+    [nodes, handleNodesChange, readonly],
+  );
+
   useHotkeys(CANVAS_HOT_KEYS, (event, handler) => {
     const hasModifier = event.metaKey || event.ctrlKey;
+    const hasShift = event.shiftKey;
+
     switch (handler.keys?.join("")) {
       case "r":
         event.preventDefault();
@@ -190,6 +230,12 @@ export default ({
         break;
       case "e":
         if (hasModifier && !readonly) onNodesDisable?.();
+        break;
+      case "equal":
+        if (hasShift) handleSelectedNodesSpacing(1.25);
+        break;
+      case "minus":
+        if (hasShift) handleSelectedNodesSpacing(0.8);
         break;
     }
   });
