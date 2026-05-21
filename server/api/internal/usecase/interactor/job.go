@@ -156,6 +156,12 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	return j, nil
 }
 
+// cloudRunInfraFailureGrace is how long failCloudRunJob waits for a late worker
+// completion event before declaring an infrastructure failure. A failed RunJob
+// call (client-side timeout/connection drop) does not guarantee the workflow
+// failed — the worker may still finish and publish its result to Redis.
+const cloudRunInfraFailureGrace = 30 * time.Second
+
 // RunCloudRunWorker triggers execution of a debug job on the Cloud Run worker
 // Service. The worker publishes its authoritative result to Redis (via the
 // subscriber); the standard monitoring loop reads that event and finalizes the
@@ -177,18 +183,28 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 		}
 
 		// Success and workflow-level failures are finalized by the monitoring loop
-		// from the Redis worker event. An infra failure produces no event, so the
-		// loop would wait indefinitely — finalize as failed here instead.
+		// from the Redis worker event. A failed RunJob call may still be a workflow
+		// that completes after a client-side drop, so failCloudRunJob confirms no
+		// result arrives before declaring an infra failure.
 		if err != nil || status == gateway.JobStatusFailed {
 			i.failCloudRunJob(ctx, j.ID())
 		}
 	}()
 }
 
-// failCloudRunJob marks a debug job failed when the Cloud Run worker call itself
-// fails and no worker result will arrive. It mirrors the persistence the
-// monitoring loop uses so the two finalization paths stay consistent.
+// failCloudRunJob finalizes a debug job as failed when the Cloud Run worker call
+// fails. Because a client-side error does not guarantee the workflow failed, it
+// first gives the monitoring loop a bounded grace period to pick up a late worker
+// event and only finalizes if none arrives. It records the failure via the legacy
+// status field (leaving batchStatus nil) so a later worker event could still
+// resolve the status merge rather than being forced to FAILED.
 func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(cloudRunInfraFailureGrace):
+	}
+
 	lock := i.getJobLock(jobID.String())
 	lock.Lock()
 	defer lock.Unlock()
@@ -198,13 +214,16 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
 		return
 	}
-	// Don't clobber a status the monitoring loop or Cancel already finalized.
+	// The monitoring loop or Cancel may have already finalized it.
 	if s := latest.Status(); s == job.StatusCancelled || s == job.StatusCompleted || s == job.StatusFailed {
 		return
 	}
+	// A worker result did arrive after all — let the monitoring loop finalize from it.
+	if ev, _ := i.redis.GetJobCompleteEvent(ctx, jobID); ev != nil {
+		return
+	}
 
-	latest.SetBatchStatus(job.StatusFailed)
-	latest.SetStatus(latest.Status())
+	latest.SetStatus(job.StatusFailed)
 
 	if err := i.jobRepo.Save(ctx, latest); err != nil {
 		log.Errorfc(ctx, "job: failed to save cloud run job %s: %v", jobID, err)
@@ -425,7 +444,11 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	computedStatus := currentJob.Status()
 	isTerminalState := computedStatus == job.StatusCompleted || computedStatus == job.StatusFailed ||
 		computedStatus == job.StatusCancelled
-	if isTerminalState {
+	// Only handle completion on an actual transition to terminal in this iteration.
+	// Without the statusChanged guard, a job finalized concurrently (e.g. by
+	// failCloudRunJob or Cancel) would have its completion side-effects (artifact
+	// listing, notifications) run a second time here.
+	if statusChanged && isTerminalState {
 		log.Infof(
 			"Job %s transitioning to terminal state %s, handling completion",
 			currentJob.ID(),
