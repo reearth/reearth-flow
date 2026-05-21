@@ -8,18 +8,27 @@ import { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 const elk = new ELK();
 
+const nodeWidth = (node: Node) =>
+  node.measured?.width ?? DEFAULT_NODE_SIZE.width;
+const nodeHeight = (node: Node) =>
+  node.measured?.height ?? DEFAULT_NODE_SIZE.height;
+
 const dagreLayout = (
   direction: Direction,
   nodes: Node[],
   edges: Edge[],
 ): { nodes: Node[]; edges: Edge[] } => {
   const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  graph.setGraph({ rankdir: direction === "Horizontal" ? "LR" : "TB" });
+  graph.setGraph({
+    rankdir: direction === "Horizontal" ? "LR" : "TB",
+    ranksep: 80,
+    nodesep: 40,
+  });
 
   nodes.forEach((node) => {
     graph.setNode(node.id, {
-      width: DEFAULT_NODE_SIZE.width,
-      height: DEFAULT_NODE_SIZE.height,
+      width: nodeWidth(node),
+      height: nodeHeight(node),
     });
   });
 
@@ -35,8 +44,8 @@ const dagreLayout = (
       return {
         ...node,
         position: {
-          x: x - DEFAULT_NODE_SIZE.width / 2,
-          y: y - DEFAULT_NODE_SIZE.height / 2,
+          x: x - nodeWidth(node) / 2,
+          y: y - nodeHeight(node) / 2,
         },
       };
     }),
@@ -55,12 +64,12 @@ const elkLayout = async (
       "elk.algorithm": "layered",
       "elk.direction": direction === "Horizontal" ? "RIGHT" : "DOWN",
       "elk.spacing.nodeNode": "50",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "100",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "80",
     },
     children: nodes.map((node) => ({
       id: node.id,
-      width: DEFAULT_NODE_SIZE.width,
-      height: DEFAULT_NODE_SIZE.height,
+      width: nodeWidth(node),
+      height: nodeHeight(node),
     })),
     edges: edges.map((edge) => ({
       id: edge.id,
@@ -111,21 +120,25 @@ const d3Layout = (
   const parentMap = new Map<string, string>();
   edges.forEach((e) => parentMap.set(e.target, e.source));
 
+  // Use the largest node dimensions to guarantee no overlap across mixed node types
+  const maxWidth = Math.max(...nodes.map(nodeWidth));
+  const maxHeight = Math.max(...nodes.map(nodeHeight));
+
   try {
     const hierarchy = stratify<D3Datum>()
       .id((d) => d.id)
       .parentId((d) => d.parentId)(
-        nodes.map((n) => ({
-          id: n.id,
-          parentId: parentMap.get(n.id) ?? null,
-        })),
-      );
+      nodes.map((n) => ({
+        id: n.id,
+        parentId: parentMap.get(n.id) ?? null,
+      })),
+    );
 
     // nodeSize: [x-separation (perpendicular to depth), y-separation (depth)]
     const layout = tree<D3Datum>().nodeSize(
       direction === "Horizontal"
-        ? [DEFAULT_NODE_SIZE.height + 30, DEFAULT_NODE_SIZE.width + 80]
-        : [DEFAULT_NODE_SIZE.width + 40, DEFAULT_NODE_SIZE.height + 80],
+        ? [maxHeight + 40, maxWidth + 80]
+        : [maxWidth + 40, maxHeight + 80],
     );
 
     layout(hierarchy);
