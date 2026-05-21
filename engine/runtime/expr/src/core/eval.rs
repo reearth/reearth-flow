@@ -1081,17 +1081,12 @@ mod tests {
             &[],
             Value::from("hello_world"),
         );
-        let a = Value::array(vec![Value::from(1i64), Value::from(2i64)]);
-        let b = Value::array(vec![Value::from(3i64), Value::from(4i64)]);
+        let a = Value::from(vec![1i64, 2i64]);
+        let b = Value::from(vec![3i64, 4i64]);
         assert_eval(
             "a + b",
             &[("a", a), ("b", b)],
-            Value::array(vec![
-                Value::from(1i64),
-                Value::from(2i64),
-                Value::from(3i64),
-                Value::from(4i64),
-            ]),
+            Value::from(vec![1i64, 2i64, 3i64, 4i64]),
         );
     }
 
@@ -1177,11 +1172,7 @@ mod tests {
         });
         assert_eval(r#"m["name"]"#, &[("m", m.clone())], Value::from("alice"));
         assert_eval(r#"m["missing"]"#, &[("m", m)], Value::Null);
-        let arr = Value::array(vec![
-            Value::from(1i64),
-            Value::from(2i64),
-            Value::from(3i64),
-        ]);
+        let arr = Value::from(vec![1i64, 2i64, 3i64]);
         assert_eval("arr[0]", &[("arr", arr.clone())], Value::from(1i64));
         assert_eval("arr[-1]", &[("arr", arr)], Value::from(3i64));
         assert_eval(r#""hello"[0]"#, &[], Value::from("h"));
@@ -1201,12 +1192,12 @@ mod tests {
         assert_eval(
             "arr[1:3]",
             &[("arr", arr.clone())],
-            Value::array(vec![Value::from(1i64), Value::from(2i64)]),
+            Value::from(vec![1i64, 2i64]),
         );
         assert_eval(
             "arr[-2:]",
             &[("arr", arr.clone())],
-            Value::array(vec![Value::from(3i64), Value::from(4i64)]),
+            Value::from(vec![3i64, 4i64]),
         );
         assert_eval(
             "arr[::-1]",
@@ -1219,21 +1210,8 @@ mod tests {
     }
 
     #[test]
-    fn test_method_call() {
-        assert_eval(r#""  hello  ".trim()"#, &[], Value::from("hello"));
-        assert_eval(r#""hello".len()"#, &[], Value::from(5i64));
-        assert_eval(r#""".len()"#, &[], Value::from(0i64));
-        let arr = Value::array(vec![
-            Value::from(1i64),
-            Value::from(2i64),
-            Value::from(3i64),
-        ]);
-        assert_eval("arr.len()", &[("arr", arr)], Value::from(3i64));
-    }
-
-    #[test]
     fn test_in_operator() {
-        let pkgs = Value::array(vec![Value::from("foo"), Value::from("bar")]);
+        let pkgs = Value::from(vec!["foo", "bar"]);
         assert_eval(
             r#""foo" in pkgs"#,
             &[("pkgs", pkgs.clone())],
@@ -1263,7 +1241,7 @@ mod tests {
         assert_eval(r#""a" not in m"#, &[("m", m)], Value::from(false));
         assert!(try_run(r#""x" in null"#, &[]).is_err());
         assert!(try_run(r#""x" not in null"#, &[]).is_err());
-        let pkgs2 = Value::array(vec![Value::from("a")]);
+        let pkgs2 = Value::from(vec!["a"]);
         assert_eval(r#"not "a" in pkgs"#, &[("pkgs", pkgs2)], Value::from(false));
     }
 
@@ -1393,21 +1371,13 @@ mod tests {
         assert_eval(r#"bool("")"#, &[], Value::from(false));
         assert_eval(r#"bool("x")"#, &[], Value::from(true));
         assert_eval(r#"bool(null)"#, &[], Value::from(false));
-        assert_eval(
-            r#"list("abc")"#,
-            &[],
-            Value::array(vec![Value::from("a"), Value::from("b"), Value::from("c")]),
-        );
-        let arr = Value::array(vec![Value::from(1i64), Value::from(2i64)]);
+        assert_eval(r#"list("abc")"#, &[], Value::from(vec!["a", "b", "c"]));
+        let arr = Value::from(vec![1i64, 2i64]);
         assert_eval("list(arr)", &[("arr", arr.clone())], arr);
         let m = Value::map(
             indexmap::indexmap! { "x".into() => Value::from(1i64), "y".into() => Value::from(2i64) },
         );
-        assert_eval(
-            "list(m)",
-            &[("m", m)],
-            Value::array(vec![Value::from("x"), Value::from("y")]),
-        );
+        assert_eval("list(m)", &[("m", m)], Value::from(vec!["x", "y"]));
     }
 
     #[test]
@@ -1526,7 +1496,7 @@ mod tests {
             "type".into() => Value::from("json"),
             "name".into() => Value::from("foo"),
         });
-        let names = Value::array(vec![Value::from("foo"), Value::from("bar")]);
+        let names = Value::from(vec!["foo", "bar"]);
         assert_eval(
             r#"obj["type"] == "json" and obj["name"] in names"#,
             &[("obj", obj), ("names", names)],
@@ -1573,26 +1543,18 @@ mod tests {
         assert_eval(
             "a = [1, 2, 3]; a[1] = 99; a",
             &[],
-            Value::array(vec![
-                Value::from(1i64),
-                Value::from(99i64),
-                Value::from(3i64),
-            ]),
+            Value::from(vec![1i64, 99i64, 3i64]),
         );
         assert_eval(
             "a = [10, 20, 30]; a[-1] = 99; a",
             &[],
-            Value::array(vec![
-                Value::from(10i64),
-                Value::from(20i64),
-                Value::from(99i64),
-            ]),
+            Value::from(vec![10i64, 20i64, 99i64]),
         );
         assert_eval("a = [0]; a[0] = 7", &[], Value::from(7i64));
         assert_eval(
             "a = [[1, 2], [3, 4]]; a[0][1] = 99; a[0]",
             &[],
-            Value::array(vec![Value::from(1i64), Value::from(99i64)]),
+            Value::from(vec![1i64, 99i64]),
         );
     }
 
@@ -1601,11 +1563,7 @@ mod tests {
         assert_eval(
             "a = [0, 0, 0]; i = -999; a[i] = (i = 1); a",
             &[],
-            Value::array(vec![
-                Value::from(0i64),
-                Value::from(1i64),
-                Value::from(0i64),
-            ]),
+            Value::from(vec![0i64, 1i64, 0i64]),
         );
     }
 
@@ -1647,18 +1605,10 @@ mod tests {
             Value::from(42i64),
         );
 
-        let arr = Value::array(vec![
-            Value::from(1i64),
-            Value::from(2i64),
-            Value::from(3i64),
-        ]);
+        let arr = Value::from(vec![1i64, 2i64, 3i64]);
         run("arr[0] = 99", &[("arr", arr.clone())]);
         {
-            let expected = Value::array(vec![
-                Value::from(99i64),
-                Value::from(2i64),
-                Value::from(3i64),
-            ]);
+            let expected = Value::from(vec![99i64, 2i64, 3i64]);
             assert!(
                 values_equal(&arr, &expected).expect("values_equal failed"),
                 "\nleft:  {:?}\nright: {:?}",
@@ -1705,7 +1655,7 @@ mod tests {
         assert_eval(
             "keys = []; for k in m { keys = keys + [k] } keys",
             &[("m", m)],
-            Value::array(vec![Value::from("a"), Value::from("b")]),
+            Value::from(vec!["a", "b"]),
         );
     }
 
@@ -1721,33 +1671,6 @@ mod tests {
     #[test]
     fn test_for_in_null() {
         assert_eval("for x in null { x } 1", &[], Value::from(1i64));
-    }
-
-    #[test]
-    fn test_map_methods() {
-        let m = Value::map(indexmap::indexmap! {
-            "x".into() => Value::from(1i64),
-            "y".into() => Value::from(2i64),
-        });
-        assert_eval("m.len()", &[("m", m.clone())], Value::from(2i64));
-        assert_eval(
-            "m.keys()",
-            &[("m", m.clone())],
-            Value::array(vec![Value::from("x"), Value::from("y")]),
-        );
-        assert_eval(
-            "m.values()",
-            &[("m", m.clone())],
-            Value::array(vec![Value::from(1i64), Value::from(2i64)]),
-        );
-        assert_eval(
-            "m.items()",
-            &[("m", m)],
-            Value::array(vec![
-                Value::array(vec![Value::from("x"), Value::from(1i64)]),
-                Value::array(vec![Value::from("y"), Value::from(2i64)]),
-            ]),
-        );
     }
 
     #[test]

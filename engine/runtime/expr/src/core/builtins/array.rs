@@ -44,3 +44,15 @@ pub fn eq_inner(a: &Rc<RefCell<Vec<Value>>>, b: &Rc<RefCell<Vec<Value>>>) -> Inn
     }
     Ok(true)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::core::test_utils::assert_eval;
+    use crate::core::value::Value;
+
+    #[test]
+    fn test_len() {
+        let arr = Value::from(vec![1i64, 2i64, 3i64]);
+        assert_eval("arr.len()", &[("arr", arr)], Value::from(3i64));
+    }
+}
