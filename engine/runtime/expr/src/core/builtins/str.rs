@@ -125,7 +125,7 @@ fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
     };
     let Value::String(suffix) = suffix else {
         return Err(InnerError::new(format!(
-            "remove_suffix() argument must be a string, got {}",
+            "removesuffix() argument must be a string, got {}",
             suffix.type_name()
         )));
     };
