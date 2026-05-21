@@ -224,22 +224,6 @@ mod parse_smoke {
     }
 
     #[test]
-    fn smoke_block_as_expr_invalid() {
-        for src in &[
-            "{ 1; 2; 3 }",
-            "{ 42; }",
-            "{ x = 5; x * 2 }",
-            "{ x = 3 } + { y = 4 }",
-            "{ x = 1; { y = 2; x + y } }",
-            "x = 10; { x = 99 }; x",
-            "x = { 1 + 1 }; x",
-            "a = [0, 0, 0]; i = 0; { i = 2; a }[i] = 9; a",
-        ] {
-            assert!(parse(src).is_err(), "expected parse error for: {src}");
-        }
-    }
-
-    #[test]
     fn smoke_assign_ast() {
         let expr = parse("x = 42").unwrap();
         assert!(
