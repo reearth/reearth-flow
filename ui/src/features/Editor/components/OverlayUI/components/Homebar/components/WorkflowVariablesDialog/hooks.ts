@@ -209,6 +209,12 @@ export default ({
 
   // ── Variable list mutations (all write directly to shared Yjs) ────────────
 
+  // Always-current ref used by callbacks that must not recreate on every Yjs
+  // tick (handleUpdate, handleDeleteSingle, etc.) — reading the ref inside
+  // useCallback keeps those functions stable while still seeing fresh data.
+  const sessionVarsRef = useRef(sessionVars);
+  sessionVarsRef.current = sessionVars;
+
   // Snapshot of session vars at the moment this user joined (or initialised)
   // the dialog. Used in handleCancel to know what to revert TO for vars this
   // user changed. Captured once on the first non-null rawSession.variables.
@@ -258,19 +264,19 @@ export default ({
         myAddedTempVarsRef.current.set(updatedVariable.id, updatedVariable);
       }
       writeVars(
-        sessionVars.map((v) =>
+        sessionVarsRef.current.map((v) =>
           v.id === updatedVariable.id ? updatedVariable : v,
         ),
       );
     },
-    [writeVars, sessionVars],
+    [writeVars],
   );
 
   const handleDeleteSingle = useCallback(
     (variableId: string) => {
-      writeVars(sessionVars.filter((v) => v.id !== variableId));
+      writeVars(sessionVarsRef.current.filter((v) => v.id !== variableId));
     },
-    [writeVars, sessionVars],
+    [writeVars],
   );
 
   const handleReorder = useCallback(

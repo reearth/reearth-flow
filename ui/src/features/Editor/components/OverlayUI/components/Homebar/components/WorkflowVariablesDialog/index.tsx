@@ -107,7 +107,6 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     getUserFacingName,
     handleLocalAdd,
     handleUpdate,
-    handleConfirmVariableEdit,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,
@@ -167,7 +166,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         accessorKey: "name",
         header: t("Name"),
         cell: ({ row }) => {
-          const variable = workflowVariables[row.index];
+          const variable = row.original;
           return (
             <NameInput
               variable={variable}
@@ -190,8 +189,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         accessorKey: "defaultValue",
         header: t("Default Value"),
         cell: ({ row }) => {
-          const variable = workflowVariables[row.index];
-          return <DefaultValueDisplay variable={variable} />;
+          return <DefaultValueDisplay variable={row.original} />;
         },
       },
       {
@@ -203,9 +201,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
             <Switch
               checked={isChecked}
               onCheckedChange={() => {
-                const projectVar = { ...workflowVariables[row.index] };
-                projectVar.required = !isChecked;
-                handleUpdate(projectVar);
+                handleUpdate({ ...row.original, required: !isChecked });
               }}
               disabled={isLocked}
             />
@@ -216,14 +212,12 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         accessorKey: "public",
         header: t("Public"),
         cell: ({ row }) => {
-          const variable = workflowVariables[row.index];
+          const variable = row.original;
           return (
             <Switch
               checked={variable.public}
               onCheckedChange={() => {
-                const projectVar = { ...variable };
-                projectVar.public = !variable.public;
-                handleUpdate(projectVar);
+                handleUpdate({ ...variable, public: !variable.public });
               }}
               disabled={isLocked}
             />
@@ -234,7 +228,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         id: "actions",
         header: t("Actions"),
         cell: ({ row }) => {
-          const variable = workflowVariables[row.index];
+          const variable = row.original;
           return (
             <div className="flex items-center gap-1">
               <IconButton
@@ -267,15 +261,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         size: 100,
       },
     ],
-    [
-      workflowVariables,
-      isLocked,
-      handleUpdate,
-      handleEditVariable,
-      handleDeleteSingle,
-      workflowVarAwareness,
-      t,
-    ],
+    [isLocked, handleUpdate, handleEditVariable, handleDeleteSingle, workflowVarAwareness, t],
   );
 
   return (
@@ -387,7 +373,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
           editingVariable ? (variableEditMap[editingVariable.id] ?? []) : []
         }
         onClose={handleCloseEdit}
-        onUpdate={handleConfirmVariableEdit}
+        onUpdate={handleUpdate}
         onLiveUpdate={handleUpdate}
         onFieldFocus={(field) =>
           workflowVarAwareness?.onFieldFocus(
