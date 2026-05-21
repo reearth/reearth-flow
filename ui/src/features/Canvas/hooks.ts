@@ -232,10 +232,18 @@ export default ({
         if (hasModifier && !readonly) onNodesDisable?.();
         break;
       case "equal":
-        if (hasShift) handleSelectedNodesSpacing(1.25);
+        if (hasShift) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleSelectedNodesSpacing(1.25);
+        }
         break;
       case "minus":
-        if (hasShift) handleSelectedNodesSpacing(0.8);
+        if (hasShift) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleSelectedNodesSpacing(0.8);
+        }
         break;
     }
   });
