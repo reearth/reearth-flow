@@ -670,3 +670,76 @@ impl GltfWriter {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_runtime::event::EventHub;
+    use serde_json::json;
+
+    fn make_with(entries: &[(&str, serde_json::Value)]) -> HashMap<String, serde_json::Value> {
+        entries
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect()
+    }
+
+    // Regression: with-params must be injected into the eval scope at build time
+    // so the output expression can reference them via `env.get(...)`. If this
+    // breaks, workflows using `env.get("some_with_param")` in their output
+    // silently fail to resolve.
+    #[test]
+    fn build_resolves_output_expression_referencing_with_param() {
+        let ctx = NodeContext::default();
+        // The expression throws if `output_dir` is missing from scope — that
+        // way the test fails loudly if the with-injection regresses, instead
+        // of letting `env.get` return Dynamic::UNIT and silently coercing to
+        // an empty string in the concat.
+        let with = make_with(&[
+            (
+                "output",
+                json!(
+                    r#"let dir = env.get("output_dir"); if type_of(dir) != "string" { throw "output_dir not injected into scope" }; dir + "/feature.glb""#
+                ),
+            ),
+            ("output_dir", json!("file:///tmp/gltf_regression_test")),
+        ]);
+
+        let result = GltfWriterSinkFactory.build(
+            ctx,
+            EventHub::new(10),
+            "GltfWriter".to_string(),
+            Some(with),
+        );
+
+        assert!(
+            result.is_ok(),
+            "build must succeed when output expression references an injected with-param via env.get; got error: {:?}",
+            result.err(),
+        );
+    }
+
+    // Regression: eval failure at build() must surface as SinkError::BuildFactory,
+    // not silently fall through to a literal path. If this breaks, malformed
+    // output expressions produce garbage paths at write time with no signal.
+    #[test]
+    fn build_fails_when_output_expression_cannot_evaluate() {
+        let ctx = NodeContext::default();
+        let with = make_with(&[
+            // References a variable not present in `with` — Rhai eval will fail.
+            ("output", json!(r#"undefined_variable + "/x.glb""#)),
+        ]);
+
+        let result = GltfWriterSinkFactory.build(
+            ctx,
+            EventHub::new(10),
+            "GltfWriter".to_string(),
+            Some(with),
+        );
+
+        assert!(
+            result.is_err(),
+            "build must error when output expression cannot evaluate; silent fallback would mask this",
+        );
+    }
+}
