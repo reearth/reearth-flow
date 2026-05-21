@@ -229,7 +229,7 @@ graphs:
     with:
       schemaKey: __citygml_feature_type
       layerName:
-        type: flowExpr
+        type: string
         value: luse
       minZoom: 8
       maxZoom: 16
@@ -323,7 +323,7 @@ graphs:
     with:
       schemaKey: __citygml_feature_type
       layerName:
-        type: flowExpr
+        type: string
         value: lsld
       minZoom: 8
       maxZoom: 16
