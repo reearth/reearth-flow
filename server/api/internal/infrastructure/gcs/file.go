@@ -356,6 +356,20 @@ func (f *fileRepo) CheckIntermediateDataExists(ctx context.Context, edgeID, jobI
 	return true, nil
 }
 
+func (f *fileRepo) WriteCancelFlag(ctx context.Context, jobID string) error {
+	obj := f.bucket().Object("cancel/" + jobID)
+	w := obj.NewWriter(ctx)
+	if _, err := w.Write([]byte("cancel")); err != nil {
+		_ = w.Close()
+		return fmt.Errorf("gcs: write cancel flag: %w", err)
+	}
+	return w.Close()
+}
+
+func (f *fileRepo) CancelFlagURI(jobID string) string {
+	return fmt.Sprintf("gs://%s/cancel/%s", f.bucketName, jobID)
+}
+
 // helpers
 func (f *fileRepo) bucket() *storage.BucketHandle {
 	return f.client.Bucket(f.bucketName)

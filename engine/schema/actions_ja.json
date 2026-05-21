@@ -3938,6 +3938,88 @@
       ]
     },
     {
+      "name": "FlowExprTest",
+      "type": "processor",
+      "description": "Flow式エンジンの実験的テストベッド",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FlowExprTestParam パラメータ",
+        "type": "object",
+        "required": [
+          "mappings"
+        ],
+        "properties": {
+          "mappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Mapping"
+            }
+          }
+        },
+        "definitions": {
+          "Code": {
+            "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "oneOf": [
+              {
+                "description": "実行時にFlow式として評価される",
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              {
+                "description": "プレーンな文字列リテラルとして使用される",
+                "type": "string",
+                "enum": [
+                  "string"
+                ]
+              }
+            ]
+          },
+          "Mapping": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "value"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "value": {
+                "$ref": "#/definitions/Code"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "FootprintReplacer",
       "type": "processor",
       "description": "3DジオメトリをXY平面に投影して結合フットプリントを計算する（ソリッド、サーフェス、CityGML対応）",

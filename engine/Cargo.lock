@@ -239,6 +239,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ascii-canvas"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef1e3e699d84ab1b0911a1010c5c106aa34ae89aeac103be5ce0c3859db1e891"
+dependencies = [
+ "term",
+]
+
+[[package]]
 name = "async-channel"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -450,6 +459,8 @@ dependencies = [
  "http 1.4.0",
  "http-body",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "itoa 1.0.17",
  "matchit",
  "memchr",
@@ -458,10 +469,15 @@ dependencies = [
  "pin-project-lite",
  "rustversion",
  "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "serde_urlencoded",
  "sync_wrapper",
+ "tokio",
  "tower 0.5.3",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -482,6 +498,7 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -524,6 +541,12 @@ name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
+
+[[package]]
+name = "beef"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a8241f3ebb85c056b509d4327ad0358fbbba6ffb340bf388f26350aeda225b1"
 
 [[package]]
 name = "bincode"
@@ -1774,6 +1797,15 @@ name = "embed_plist"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ef6b89e5b37196644d8796de5268852ff179b44e96276cf4290264843743bb7"
+
+[[package]]
+name = "ena"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabffdaee24bd1bf95c5ef7cec31260444317e72ea56c4c91750e8b7ee58d5f1"
+dependencies = [
+ "log",
+]
 
 [[package]]
 name = "encoding_rs"
@@ -4099,6 +4131,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "keccak"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb26cec98cce3a3d96cbb7bced3c4b16e3d13f27ec56dbd62cbc8f39cfb9d653"
+dependencies = [
+ "cpufeatures 0.2.17",
+]
+
+[[package]]
 name = "kiddo"
 version = "5.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4163,6 +4204,38 @@ dependencies = [
  "rayon",
  "tempfile",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "lalrpop"
+version = "0.22.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba4ebbd48ce411c1d10fb35185f5a51a7bfa3d8b24b4e330d30c9e3a34129501"
+dependencies = [
+ "ascii-canvas",
+ "bit-set",
+ "ena",
+ "itertools",
+ "lalrpop-util",
+ "petgraph 0.7.1",
+ "pico-args",
+ "regex",
+ "regex-syntax",
+ "sha3",
+ "string_cache",
+ "term",
+ "unicode-xid",
+ "walkdir",
+]
+
+[[package]]
+name = "lalrpop-util"
+version = "0.22.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5baa5e9ff84f1aefd264e6869907646538a52147a755d494517a8007fb48733"
+dependencies = [
+ "regex-automata",
+ "rustversion",
 ]
 
 [[package]]
@@ -4294,6 +4367,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 dependencies = [
  "value-bag",
+]
+
+[[package]]
+name = "logos"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff472f899b4ec2d99161c51f60ff7075eeb3097069a36050d8037a6325eb8154"
+dependencies = [
+ "logos-derive",
+]
+
+[[package]]
+name = "logos-codegen"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "192a3a2b90b0c05b27a0b2c43eecdb7c415e29243acc3f89cc8247a5b693045c"
+dependencies = [
+ "beef",
+ "fnv",
+ "lazy_static",
+ "proc-macro2",
+ "quote",
+ "regex-syntax",
+ "rustc_version",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "logos-derive"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "605d9697bcd5ef3a42d38efc51541aa3d6a4a25f7ab6d1ed0da5ac632a26b470"
+dependencies = [
+ "logos-codegen",
 ]
 
 [[package]]
@@ -5610,6 +5717,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "pico-args"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
+
+[[package]]
 name = "pin-project"
 version = "1.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5693,7 +5806,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.316"
+version = "0.0.317"
 dependencies = [
  "directories",
  "log",
@@ -5722,7 +5835,7 @@ dependencies = [
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.28"
+version = "0.2.29"
 dependencies = [
  "bytes",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
@@ -6516,7 +6629,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "futures",
  "once_cell",
@@ -6536,7 +6649,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "approx",
  "async-trait",
@@ -6582,7 +6695,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "Inflector",
  "approx",
@@ -6640,7 +6753,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "indexmap 2.13.0",
  "once_cell",
@@ -6661,7 +6774,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
@@ -6729,7 +6842,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -6780,7 +6893,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-atlas"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "image 0.25.10",
  "rstar 0.12.2",
@@ -6791,7 +6904,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "bytes",
  "clap",
@@ -6829,7 +6942,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "approx",
  "async-recursion",
@@ -6869,7 +6982,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "chrono",
  "futures",
@@ -6883,7 +6996,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6911,8 +7024,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-expr"
+version = "0.0.370"
+dependencies = [
+ "indexmap 2.13.0",
+ "lalrpop",
+ "lalrpop-util",
+ "logos",
+ "thiserror 2.0.18",
+ "url",
+]
+
+[[package]]
 name = "reearth-flow-geometry"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "approx",
  "bvh",
@@ -6942,7 +7067,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "ahash 0.8.12",
  "base64 0.22.1",
@@ -6976,7 +7101,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6985,7 +7110,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7015,7 +7140,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -7049,7 +7174,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -7066,7 +7191,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -7078,7 +7203,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "bytes",
  "futures",
@@ -7095,7 +7220,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "bytes",
  "futures",
@@ -7114,7 +7239,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -7128,7 +7253,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7163,7 +7288,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "ahash 0.8.12",
  "bytes",
@@ -7184,6 +7309,7 @@ dependencies = [
  "once_cell",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
+ "reearth-flow-expr",
  "reearth-flow-geometry",
  "rhai",
  "schemars 0.8.22",
@@ -7200,9 +7326,10 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.368"
+version = "0.0.370"
 dependencies = [
  "async-trait",
+ "axum",
  "backon",
  "bytes",
  "chrono",
@@ -7994,6 +8121,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_path_to_error"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10a9ff822e371bb5403e391ecd83e182e0e77ba7f6fe0160b795797109d1b457"
+dependencies = [
+ "itoa 1.0.17",
+ "serde",
+ "serde_core",
+]
+
+[[package]]
 name = "serde_repr"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8143,6 +8281,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures 0.2.17",
  "digest",
+]
+
+[[package]]
+name = "sha3"
+version = "0.10.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75872d278a8f37ef87fa0ddbda7802605cb18344497949862c0d4dcb291eba60"
+dependencies = [
+ "digest",
+ "keccak",
 ]
 
 [[package]]
@@ -9628,6 +9776,7 @@ dependencies = [
  "tokio",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -11068,7 +11217,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.218"
+version = "0.1.219"
 dependencies = [
  "anyhow",
  "csv",

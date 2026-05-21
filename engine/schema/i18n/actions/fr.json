@@ -1302,6 +1302,36 @@
       }
     },
     {
+      "name": "FlowExprTest",
+      "description": "Banc d'essai expérimental pour le moteur d'expressions Flow",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres FlowExprTest"
+        },
+        "mappings": {}
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
+        "Mapping": {
+          "attribute": {},
+          "value": {}
+        }
+      },
+      "enumI18n": {
+        "CodeType": {
+          "flowExpr": {
+            "description": "Évalué comme une expression Flow à l'exécution"
+          },
+          "string": {
+            "description": "Utilisé comme une chaîne de caractères littérale"
+          }
+        }
+      }
+    },
+    {
       "name": "FootprintReplacer",
       "description": "Projette la géométrie 3D sur le plan XY et calcule l'empreinte union (supporte les solides, surfaces et CityGML)"
     },

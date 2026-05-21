@@ -4,6 +4,7 @@ import (
 	"context"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 )
@@ -14,6 +15,7 @@ type Job interface {
 	FindByID(context.Context, id.JobID) (*job.Job, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string) ([]*job.Job, *PageBasedInfo, error)
 	GetStatus(context.Context, id.JobID) (job.Status, error)
+	RunDebugJob(ctx context.Context, j *job.Job, p gateway.RunJobParam)
 	StartMonitoring(context.Context, *job.Job, *string) error
 	Subscribe(context.Context, id.JobID) (chan job.Status, error)
 	Unsubscribe(id.JobID, chan job.Status)
