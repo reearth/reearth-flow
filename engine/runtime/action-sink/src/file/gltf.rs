@@ -201,7 +201,7 @@ impl Sink for GltfWriter {
         let transform_matrix = compute_transform_matrix(&global_bvol, &ellipsoid);
         let _ = transform_matrix.inverse();
 
-        let base = crate::SinkOutput::from_path(&ctx, &self.output.to_string())
+        let base = crate::SinkOutput::from_path(&ctx, self.output.as_ref())
             .map_err(|e| crate::errors::SinkError::GltfWriter(e.to_string()))?;
 
         let tileset_content_files = Mutex::new(Vec::new());
