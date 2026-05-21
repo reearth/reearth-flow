@@ -468,12 +468,12 @@ graphs:
       output:
         type: flowExpr
         value: |
-          let ft = value("feature_type").split(":")[-1];
+          ft = value("feature_type").split(":")[-1];
           Url(env("workerArtifactPath")) / (value("package") + "_" + ft + "_lod" + value("lod"))
       compressOutput:
         type: flowExpr
         value: |
-          let ft = value("feature_type").split(":")[-1];
+          ft = value("feature_type").split(":")[-1];
           Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("package") + "_" + ft + "_3dtiles_lod" + value("lod") + ".zip")
   - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
     name: FeatureSorterDmGeometricAttribute
@@ -545,26 +545,18 @@ graphs:
     action: MVTWriter
     with:
       schemaKey: __citygml_feature_type
-      layerName: |
-        env.get("__value").feature_type.split(":")[1]
+      layerName:
+        type: flowExpr
+        value: value("feature_type").split(":")[1]
       minZoom: 8
       maxZoom: 18
       extent: 65536
-      output: |
-        let feature_type = env.get("__value")["feature_type"];
-        let key = feature_type.split(":")[1];
-        let pkg = env.get("__value")["__package"];
-        file::join_path(env.get("workerArtifactPath"), pkg + "_" + key + "_dm_geometric_attributes")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        let feature_type = env.get("__value")["feature_type"];
-        let key = feature_type.split(":")[1];
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_" + key + "_dm_geometric_attributes.zip")
+      output:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / (value("__package") + "_" + value("feature_type").split(":")[1] + "_dm_geometric_attributes")
+      compressOutput:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("__package") + "_" + value("feature_type").split(":")[1] + "_dm_geometric_attributes.zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:

@@ -258,14 +258,14 @@ graphs:
       output:
         type: flowExpr
         value: |
-          let udx_dirs = value("udxDirs").replace("/", "_");
+          udx_dirs = value("udxDirs").replace("/", "_");
           Url(env("workerArtifactPath")) / (udx_dirs + "_no_texture")
       compressOutput:
         type: flowExpr
         value: |
-          let citygml = Url(env("cityGmlPath")).stem().split("_op_")[0];
-          let udx_dirs = value("udxDirs").replace("/", "_");
-          let scale = if value("__scale") != "" { "_" + value("__scale") } else { "" };
+          citygml = Url(env("cityGmlPath")).stem().split("_op_")[0];
+          udx_dirs = value("udxDirs").replace("/", "_");
+          scale = if value("__scale") != "" { "_" + value("__scale") } else { "" };
           Url(env("workerArtifactPath")) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
     name: CreateDictionaryNameDict

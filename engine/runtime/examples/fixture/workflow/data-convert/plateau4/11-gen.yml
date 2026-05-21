@@ -404,25 +404,18 @@ graphs:
     action: MVTWriter
     with:
       schemaKey: __citygml_feature_type
-      layerName: |
-        let gml_name_code = env.get("__value").__gml_name_code;
-        "gen_" + gml_name_code
+      layerName:
+        type: flowExpr
+        value: '"gen_" + value("__gml_name_code")'
       minZoom: 8
       maxZoom: 16
       extent: 65536
-      output: |
-        let gml_name_code = env.get("__value").__gml_name_code;
-        file::join_path(env.get("workerArtifactPath"), "gen_" + gml_name_code + "_lod" + env.get("__value").__lod)
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let lod = env.get("__value").__lod;
-        let gml_name_code = env.get("__value").__gml_name_code;
-        let suffix = "_gen";
-        if city_gml.ends_with(suffix) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-        }
-        file::join_path(artifact, city_gml + "_gen_" + gml_name_code + "_mvt_lod" + lod + ".zip")
+      output:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / ("gen_" + value("__gml_name_code") + "_lod" + value("__lod"))
+      compressOutput:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / (Url(env("cityGmlPath")).stem().removesuffix("_gen") + "_gen_" + value("__gml_name_code") + "_mvt_lod" + value("__lod") + ".zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:
