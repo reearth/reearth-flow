@@ -209,11 +209,27 @@ export default ({
 
   // ── Variable list mutations (all write directly to shared Yjs) ────────────
 
+  // Snapshot of session vars at the moment this user joined (or initialised)
+  // the dialog. Used in handleCancel to know what to revert TO for vars this
+  // user changed. Captured once on the first non-null rawSession.variables.
+  const joinedSessionVarsRef = useRef<WorkflowVariable[] | null>(null);
+  useEffect(() => {
+    if (joinedSessionVarsRef.current !== null) return;
+    if (!rawSession?.variables) return;
+    joinedSessionVarsRef.current = [
+      ...(rawSession.variables as WorkflowVariable[]),
+    ];
+  }, [rawSession?.variables]);
+
   // Tracks temp_ variables this user added and their latest self-authored
   // state. Used in handleCancel to determine whether another collaborator has
   // modified an unconfirmed addition — if nobody else touched it, we remove
   // it when this user cancels; if someone did, we keep it.
   const myAddedTempVarsRef = useRef(new Map<string, WorkflowVariable>());
+
+  // Tracks existing (non-temp_) variable IDs this user has modified. Used in
+  // handleCancel to revert only this user's changes when others are present.
+  const myChangedVarIdsRef = useRef(new Set<string>());
 
   const handleLocalAdd = useCallback(
     (type: VarType) => {
@@ -235,9 +251,9 @@ export default ({
 
   const handleUpdate = useCallback(
     (updatedVariable: WorkflowVariable) => {
-      // Keep our "last self-authored" snapshot current so that the cancel
-      // comparison in handleCancel correctly identifies whether a collaborator
-      // has diverged from our version.
+      if (!updatedVariable.id.startsWith("temp_")) {
+        myChangedVarIdsRef.current.add(updatedVariable.id);
+      }
       if (myAddedTempVarsRef.current.has(updatedVariable.id)) {
         myAddedTempVarsRef.current.set(updatedVariable.id, updatedVariable);
       }
@@ -248,26 +264,6 @@ export default ({
       );
     },
     [writeVars, sessionVars],
-  );
-
-  // Tracks variable IDs whose values were confirmed via the inner-dialog "Save
-  // Changes" button (not mere live-typing). Used to revert those specific value
-  // edits when this user cancels the outer dialog while collaborators are still
-  // present. Structural changes (add / delete / reorder) are intentionally NOT
-  // tracked here — they survive a co-editor's cancel.
-  const pendingValueEditIdsRef = useRef(new Set<string>());
-
-  const handleConfirmVariableEdit = useCallback(
-    (updatedVariable: WorkflowVariable) => {
-      handleUpdate(updatedVariable);
-      // Only track existing (non-temp_) variables; newly-added variables carry
-      // no pre-existing base value to revert to, so they stay as structural
-      // changes in the session.
-      if (!updatedVariable.id.startsWith("temp_")) {
-        pendingValueEditIdsRef.current.add(updatedVariable.id);
-      }
-    },
-    [handleUpdate],
   );
 
   const handleDeleteSingle = useCallback(
@@ -394,18 +390,23 @@ export default ({
       }
     } else {
       // Other collaborators are still editing.
-      // 1. Revert value edits confirmed via the inner-dialog "Save Changes".
-      // 2. Remove temp_ variables this user added that nobody else has touched
-      //    — if a collaborator modified one (its current value differs from
-      //    this user's last-authored snapshot), keep it in the session.
-      const pendingIds = pendingValueEditIdsRef.current;
+      // 1. Revert existing vars this user changed back to their joined-state
+      //    values (covers both live name edits and inner-dialog saves).
+      // 2. Remove temp_ vars this user added that nobody else has touched.
+      const myChangedIds = myChangedVarIdsRef.current;
       const myTempIds = myAddedTempVarsRef.current;
-      const baseVarMap = new Map(sessionBase.map((v) => [v.id, v]));
+      const joinedVars = joinedSessionVarsRef.current;
+      const joinedMap = joinedVars
+        ? new Map(joinedVars.map((v) => [v.id, v]))
+        : null;
 
       const reverted = sessionVars
         .map((v) => {
-          if (v.id.startsWith("temp_") || !pendingIds.has(v.id)) return v;
-          return baseVarMap.get(v.id) ?? v;
+          if (v.id.startsWith("temp_")) return v;
+          if (myChangedIds.has(v.id) && joinedMap?.has(v.id)) {
+            return joinedMap.get(v.id) as WorkflowVariable;
+          }
+          return v;
         })
         .filter((v) => {
           if (!v.id.startsWith("temp_") || !myTempIds.has(v.id)) return true;
@@ -486,7 +487,6 @@ export default ({
     getUserFacingName,
     handleLocalAdd,
     handleUpdate,
-    handleConfirmVariableEdit,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,
