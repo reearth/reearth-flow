@@ -156,106 +156,65 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	return j, nil
 }
 
-// RunDebugJob runs a Cloud Run debug job end-to-end: blocks on RunJob, then
-// waits (bounded) for the authoritative JobCompleteEvent from Redis before
-// persisting the final merged status and calling handleJobCompletion.
-func (i *Job) RunDebugJob(ctx context.Context, j *job.Job, p gateway.RunJobParam) {
-	// This runs in a detached goroutine; a panic here would otherwise crash the API server.
-	defer func() {
-		if r := recover(); r != nil {
-			log.Errorfc(ctx, "job: debug job %s panicked: %v", j.ID(), r)
+// RunCloudRunWorker triggers execution of a debug job on the Cloud Run worker
+// Service. The worker publishes its authoritative result to Redis (via the
+// subscriber); the standard monitoring loop reads that event and finalizes the
+// job, exactly as it does for Batch jobs. Only an infrastructure failure — where
+// no result will ever arrive — is finalized here.
+func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
+	go func() {
+		ctx := context.Background()
+		// Detached goroutine; a panic here would otherwise crash the API server.
+		defer func() {
+			if r := recover(); r != nil {
+				log.Errorfc(ctx, "job: cloud run worker %s panicked: %v", j.ID(), r)
+			}
+		}()
+
+		status, err := i.cloudRunWorker.RunJob(ctx, p)
+		if err != nil {
+			log.Errorfc(ctx, "job: cloud run worker %s run error: %v", j.ID(), err)
+		}
+
+		// Success and workflow-level failures are finalized by the monitoring loop
+		// from the Redis worker event. An infra failure produces no event, so the
+		// loop would wait indefinitely — finalize as failed here instead.
+		if err != nil || status == gateway.JobStatusFailed {
+			i.failCloudRunJob(ctx, j.ID())
 		}
 	}()
+}
 
-	status, err := i.cloudRunWorker.RunJob(ctx, p)
-	if err != nil {
-		log.Errorfc(ctx, "job: debug job %s run error: %v", j.ID(), err)
-		status = gateway.JobStatusFailed
-	}
-	batchStatus := job.Status(status)
-
-	// Wait (bounded) for the Redis JobCompleteEvent — process exit-0 is not
-	// sufficient since the workflow itself may have failed.
-	var workerStatus job.Status
-	for attempt := 0; attempt < 30; attempt++ { // ~60s max (2s interval)
-		ev, rerr := i.redis.GetJobCompleteEvent(ctx, j.ID())
-		if rerr != nil {
-			log.Warnf("debug job %s: redis read error: %v", j.ID(), rerr)
-		}
-		if ev != nil {
-			switch ev.Result {
-			case "success":
-				workerStatus = job.StatusCompleted
-			case "failed":
-				workerStatus = job.StatusFailed
-			}
-			if workerStatus != "" {
-				break
-			}
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(2 * time.Second):
-		}
-	}
-
-	if workerStatus == "" {
-		log.Warnfc(ctx, "job: debug job %s finalized without a worker JobCompleteEvent; status from infra signal only", j.ID())
-	}
-
-	lock := i.getJobLock(j.ID().String())
+// failCloudRunJob marks a debug job failed when the Cloud Run worker call itself
+// fails and no worker result will arrive. It mirrors the persistence the
+// monitoring loop uses so the two finalization paths stay consistent.
+func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
+	lock := i.getJobLock(jobID.String())
 	lock.Lock()
 	defer lock.Unlock()
 
-	latest, err := i.jobRepo.FindByID(ctx, j.ID())
+	latest, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
-		log.Errorfc(ctx, "job: failed to reload debug job %s: %v", j.ID(), err)
+		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
 		return
 	}
-	// Don't clobber if a concurrent Cancel already finalized it.
+	// Don't clobber a status the monitoring loop or Cancel already finalized.
 	if s := latest.Status(); s == job.StatusCancelled || s == job.StatusCompleted || s == job.StatusFailed {
-		log.Infofc(ctx, "job: debug job %s already terminal (%s); skipping", j.ID(), s)
 		return
 	}
 
-	latest.SetBatchStatus(batchStatus)
-	if workerStatus != "" {
-		latest.SetWorkerStatus(workerStatus)
-	}
+	latest.SetBatchStatus(job.StatusFailed)
 	latest.SetStatus(latest.Status())
 
-	tx, txErr := i.transaction.Begin(ctx)
-	if txErr != nil {
-		log.Errorfc(ctx, "job: tx begin failed for debug job %s: %v", j.ID(), txErr)
+	if err := i.jobRepo.Save(ctx, latest); err != nil {
+		log.Errorfc(ctx, "job: failed to save cloud run job %s: %v", jobID, err)
 		return
 	}
-	txCtx := tx.Context()
-	defer func() {
-		if err2 := tx.End(txCtx); err2 != nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err2)
-		}
-	}()
 
-	if serr := i.jobRepo.Save(txCtx, latest); serr != nil {
-		log.Errorfc(ctx, "job: failed to save debug job %s: %v", j.ID(), serr)
-		return
+	if err := i.handleJobCompletion(ctx, latest); err != nil {
+		log.Errorfc(ctx, "job: completion handling failed for cloud run job %s: %v", jobID, err)
 	}
-	tx.Commit()
-
-	if workerStatus != "" {
-		if derr := i.redis.DeleteJobCompleteEvent(ctx, j.ID()); derr != nil {
-			log.Warnf("debug job %s: failed to delete redis event: %v", j.ID(), derr)
-		}
-	}
-
-	final := latest.Status()
-	if final == job.StatusCompleted || final == job.StatusFailed || final == job.StatusCancelled {
-		if cerr := i.handleJobCompletion(ctx, latest); cerr != nil {
-			log.Errorfc(ctx, "job: completion handling failed for debug job %s: %v", j.ID(), cerr)
-		}
-	}
-	i.subscriptions.Notify(j.ID().String(), latest.Status())
+	i.subscriptions.Notify(jobID.String(), latest.Status())
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
@@ -638,11 +597,6 @@ func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
 	j, err := i.jobRepo.FindByID(context.Background(), jobID)
 	if err != nil {
 		log.Errorfc(context.Background(), "job: failed to find job for monitoring: %v", err)
-		return
-	}
-
-	// RunDebugJob owns the lifecycle for Cloud-Run debug jobs; don't start a loop.
-	if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" {
 		return
 	}
 
