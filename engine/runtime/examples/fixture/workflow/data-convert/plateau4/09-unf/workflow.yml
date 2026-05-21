@@ -234,12 +234,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              let ft = value("feature_type").split(":")[-1];
+              ft = value("feature_type").split(":")[-1];
               Url(env("workerArtifactPath")) / (value("package") + "_" + ft + "_lod" + value("lod"))
           compressOutput:
             type: flowExpr
             value: |
-              let ft = value("feature_type").split(":")[-1];
+              ft = value("feature_type").split(":")[-1];
               Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("package") + "_" + ft + "_3dtiles_lod" + value("lod") + ".zip")
 
       # DmGeometricAttribute processing
