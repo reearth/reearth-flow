@@ -1346,18 +1346,16 @@ mod tests {
         assert_eval("x = 1; x = 99; x", &[], Value::from(99i64));
         assert_eval("x = 7; x", &[("x", Value::from(999i64))], Value::from(7i64));
         assert_eval("(x = 10) * 2", &[], Value::from(20i64));
-        assert_eval("x = 10; { x = 99 }; x", &[], Value::from(99i64));
+
     }
 
     #[test]
     fn test_block() {
-        assert_eval("{ 1; 2; 3 }", &[], Value::from(3i64));
-        assert_eval("{ 42; }", &[], Value::Null);
-        assert_eval("{}", &[], Value::Null);
-        assert_eval("{ x = 5; x * 2 }", &[], Value::from(10i64));
-        assert_eval("{ a = 3; b = 4; a * a + b * b }", &[], Value::from(25i64));
-        assert_eval("{ x = 3 } + { y = 4 }", &[], Value::from(7i64));
-        assert_eval("{ x = 1; { y = 2; x + y } }", &[], Value::from(3i64));
+        assert_eval("1; 2; 3", &[], Value::from(3i64));
+        assert_eval("42;", &[], Value::Null);
+        assert_eval("x = 5; x * 2", &[], Value::from(10i64));
+        assert_eval("a = 3; b = 4; a * a + b * b", &[], Value::from(25i64));
+        assert_eval("x = 1; y = 2; x + y", &[], Value::from(3i64));
     }
 
     #[test]
@@ -1414,6 +1412,7 @@ mod tests {
             &[],
             Value::map(indexmap::indexmap! { "x".into() => Value::Bool(true) }),
         );
+        assert_eval("{}", &[], Value::map(indexmap::indexmap! {}));
         assert_eval(r#"{"pre" + "fix": 9}["prefix"]"#, &[], Value::from(9i64));
         assert_eval(
             r#"{"a": {"b": 2}}"#,
@@ -1422,7 +1421,6 @@ mod tests {
                 "a".into() => Value::map(indexmap::indexmap! { "b".into() => Value::from(2i64) }),
             }),
         );
-        assert_eval("{}", &[], Value::Null);
         // insertion order must not affect equality
         assert_eval(
             r#"{"a": 1, "b": 2} == {"b": 2, "a": 1}"#,
@@ -1684,19 +1682,6 @@ mod tests {
     }
 
     #[test]
-    fn test_assign_target_evaluated_before_key() {
-        assert_eval(
-            "a = [0, 0, 0]; i = 0; { i = 2; a }[i] = 9; a",
-            &[],
-            Value::array(vec![
-                Value::from(0i64),
-                Value::from(0i64),
-                Value::from(9i64),
-            ]),
-        );
-    }
-
-    #[test]
     fn test_list_index_assign_out_of_range() {
         assert!(try_run("a = [1, 2]; a[5] = 9", &[]).is_err());
     }
@@ -1758,13 +1743,13 @@ mod tests {
     #[test]
     fn test_while() {
         assert_eval(
-            "i = 0; while i < 5 { i = i + 1 }; i",
+            "i = 0; while i < 5 { i = i + 1 } i",
             &[],
             Value::from(5i64),
         );
         assert_eval("while false { 1 }", &[], Value::Null);
         assert_eval(
-            "s = 0; i = 1; while i <= 10 { s = s + i; i = i + 1 }; s",
+            "s = 0; i = 1; while i <= 10 { s = s + i; i = i + 1 } s",
             &[],
             Value::from(55i64),
         );
@@ -1778,13 +1763,13 @@ mod tests {
     #[test]
     fn test_for_in_list() {
         assert_eval(
-            "s = 0; for x in [1, 2, 3] { s = s + x }; s",
+            "s = 0; for x in [1, 2, 3] { s = s + x } s",
             &[],
             Value::from(6i64),
         );
-        assert_eval("for x in [] { x }; 42", &[], Value::from(42i64));
+        assert_eval("for x in [] { x } 42", &[], Value::from(42i64));
         // loop variable persists after loop (Python semantics)
-        assert_eval("for x in [10, 20] { x }; x", &[], Value::from(20i64));
+        assert_eval("for x in [10, 20] { x } x", &[], Value::from(20i64));
     }
 
     #[test]
@@ -1794,7 +1779,7 @@ mod tests {
             "b".into() => Value::from(2i64),
         });
         assert_eval(
-            "keys = []; for k in m { keys = keys + [k] }; keys",
+            "keys = []; for k in m { keys = keys + [k] } keys",
             &[("m", m)],
             Value::array(vec![Value::from("a"), Value::from("b")]),
         );
@@ -1803,7 +1788,7 @@ mod tests {
     #[test]
     fn test_for_in_string() {
         assert_eval(
-            r#"n = 0; for c in "abc" { n = n + 1 }; n"#,
+            r#"n = 0; for c in "abc" { n = n + 1 } n"#,
             &[],
             Value::from(3i64),
         );
@@ -1811,7 +1796,7 @@ mod tests {
 
     #[test]
     fn test_for_in_null() {
-        assert_eval("for x in null { x }; 1", &[], Value::from(1i64));
+        assert_eval("for x in null { x } 1", &[], Value::from(1i64));
     }
 
     #[test]
@@ -1848,7 +1833,7 @@ mod tests {
             "b".into() => Value::from(20i64),
         });
         assert_eval(
-            "s = 0; for pair in m.items() { s = s + pair[1] }; s",
+            "s = 0; for pair in m.items() { s = s + pair[1] } s",
             &[("m", m)],
             Value::from(30i64),
         );

@@ -213,7 +213,7 @@ mod parse_smoke {
     fn smoke_assign_forms() {
         let cases = [
             ("x = 1 + 1; x", true),
-            ("x = { 1 + 1 }; x", true),
+
             ("x = 1 + 1;", true),   // trailing semi returns Null
             ("x = 1", true),        // assign alone is a valid expr
             ("x = y = 2; x", true), // chained assign
@@ -221,6 +221,23 @@ mod parse_smoke {
         for (src, should_ok) in cases {
             let r = parse(src);
             assert_eq!(r.is_ok(), should_ok, "input={src:?}  result={r:?}");
+        }
+    }
+
+    #[test]
+    fn smoke_block_as_expr_invalid() {
+        for src in &[
+            "{ 1; 2; 3 }",
+            "{ 42; }",
+
+            "{ x = 5; x * 2 }",
+            "{ x = 3 } + { y = 4 }",
+            "{ x = 1; { y = 2; x + y } }",
+            "x = 10; { x = 99 }; x",
+            "x = { 1 + 1 }; x",
+            "a = [0, 0, 0]; i = 0; { i = 2; a }[i] = 9; a",
+        ] {
+            assert!(parse(src).is_err(), "expected parse error for: {src}");
         }
     }
 
