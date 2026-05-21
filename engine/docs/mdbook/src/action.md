@@ -6862,7 +6862,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Optional expression to determine whether to compress the output tiles",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -6884,7 +6884,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Name of the layer within the MVT tiles",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -6907,7 +6907,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Output directory path or expression for the generated MVT tiles",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -6929,8 +6929,27 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }

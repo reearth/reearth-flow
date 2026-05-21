@@ -6866,7 +6866,7 @@
             "description": "出力タイルを圧縮するかを決定する式（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6888,7 +6888,7 @@
             "description": "MVT タイル内のレイヤー名",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -6911,7 +6911,7 @@
             "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -6933,8 +6933,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },

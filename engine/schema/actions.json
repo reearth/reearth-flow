@@ -6863,7 +6863,7 @@
             "description": "Optional expression to determine whether to compress the output tiles",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6885,7 +6885,7 @@
             "description": "Name of the layer within the MVT tiles",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -6908,7 +6908,7 @@
             "description": "Output directory path or expression for the generated MVT tiles",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -6930,8 +6930,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },

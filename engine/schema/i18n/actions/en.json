@@ -2153,6 +2153,12 @@
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
