@@ -107,6 +107,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     getUserFacingName,
     handleLocalAdd,
     handleUpdate,
+    handleConfirmVariableEdit,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,
@@ -115,6 +116,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     handleCloseEdit,
   } = useWorkflowVariablesDialog({
     currentWorkflowVariables,
+    users,
     projectId,
     onClose,
     onAdd,
@@ -385,7 +387,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
           editingVariable ? (variableEditMap[editingVariable.id] ?? []) : []
         }
         onClose={handleCloseEdit}
-        onUpdate={handleUpdate}
+        onUpdate={handleConfirmVariableEdit}
         onLiveUpdate={handleUpdate}
         onFieldFocus={(field) =>
           workflowVarAwareness?.onFieldFocus(

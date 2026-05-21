@@ -10,7 +10,7 @@ import {
   computeSessionChanges,
   WorkflowVarSession,
 } from "@flow/lib/yjs/workflowVarSession";
-import { WorkflowVariable, VarType } from "@flow/types";
+import { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
 import {
   generateUUID,
   getDefaultConfigForWorkflowVar,
@@ -19,6 +19,7 @@ import {
 
 export default ({
   currentWorkflowVariables,
+  users,
   projectId,
   onClose,
   onAdd,
@@ -28,6 +29,7 @@ export default ({
   onBatchUpdate,
 }: {
   currentWorkflowVariables?: WorkflowVariable[];
+  users?: Record<string, AwarenessUser>;
   projectId?: string;
   onClose: () => void;
   onAdd: (workflowVariable: WorkflowVariable) => Promise<void>;
@@ -131,23 +133,17 @@ export default ({
 
   // Initialise the shared session once from server data (first open wins).
   // Subsequent openers read the already-live session so they see each other's
-  // in-progress edits immediately.
+  // in-progress edits immediately. If pendingRefetch is set, we join the
+  // existing session and let the second useEffect below handle temp_ ID
+  // resolution once TQ has returned fresh data — we never reinitialise here
+  // from potentially stale currentWorkflowVariables.
   const hasInitRef = useRef(false);
   useEffect(() => {
     if (!yVarSession || currentWorkflowVariables === undefined) return;
     if (hasInitRef.current) return;
     hasInitRef.current = true;
 
-    if (yVarSession.get("pendingRefetch") !== undefined) {
-      // A previous save created new variables and then the saving client left.
-      // Reinit from current server data (which now has real IDs).
-      yVarSession.doc?.transact(() => {
-        yVarSession.set("variables", [...currentWorkflowVariables]);
-        yVarSession.set("base", [...currentWorkflowVariables]);
-        yVarSession.set("timestamp", Date.now());
-        yVarSession.delete("pendingRefetch");
-      });
-    } else if (yVarSession.get("variables") === undefined) {
+    if (yVarSession.get("variables") === undefined) {
       // Fresh session — nobody has started editing yet.
       yVarSession.doc?.transact(() => {
         yVarSession.set("variables", [...currentWorkflowVariables]);
@@ -155,33 +151,39 @@ export default ({
         yVarSession.set("timestamp", Date.now());
       });
     }
-    // else: live session already in progress — join without overwriting.
+    // else: live session (possibly with pendingRefetch) — join without
+    // overwriting. The effect below resolves temp_ IDs when TQ is ready.
   }, [yVarSession, currentWorkflowVariables]);
 
-  // After a successful save, wait for TanStack Query to refetch and then
-  // reinitialise the session with real server IDs (resolving any temp_ IDs).
-  // Any client still in the dialog can do the reinit — all write the same
-  // server-authoritative data, so last-writer-wins is safe.
-  const prevWorkflowVarsRef = useRef(currentWorkflowVariables);
+  // After a successful save with creates, resolve temp_ IDs once TQ has the
+  // real server IDs. We use a per-mount "already processed" flag rather than
+  // object-identity change detection so this fires correctly whether TQ was
+  // already fresh at mount time or catches up later. Freshness is confirmed by
+  // checking that currentWorkflowVariables is at least as long as the session
+  // base (the saving client wrote base to include the temp_ variables).
+  const hasProcessedPendingRefetchRef = useRef(false);
   useEffect(() => {
     if (!yVarSession || currentWorkflowVariables === undefined) return;
 
     if (!rawSession?.pendingRefetch) {
-      prevWorkflowVarsRef.current = currentWorkflowVariables;
+      hasProcessedPendingRefetchRef.current = false;
       return;
     }
 
-    // Wait until currentWorkflowVariables has actually changed (i.e. the
-    // server has returned fresh data after the save).
-    if (prevWorkflowVarsRef.current === currentWorkflowVariables) return;
+    if (hasProcessedPendingRefetchRef.current) return;
 
+    const sessionBaseLen = (
+      (yVarSession.get("base") ?? []) as WorkflowVariable[]
+    ).length;
+    if (currentWorkflowVariables.length < sessionBaseLen) return; // TQ still stale
+
+    hasProcessedPendingRefetchRef.current = true;
     yVarSession.doc?.transact(() => {
       yVarSession.set("variables", [...currentWorkflowVariables]);
       yVarSession.set("base", [...currentWorkflowVariables]);
       yVarSession.set("timestamp", Date.now());
       yVarSession.delete("pendingRefetch");
     });
-    prevWorkflowVarsRef.current = currentWorkflowVariables;
   }, [yVarSession, currentWorkflowVariables, rawSession?.pendingRefetch]);
 
   // Broadcast awareness that this user has the dialog open, and clean up on
@@ -233,6 +235,26 @@ export default ({
       );
     },
     [writeVars, sessionVars],
+  );
+
+  // Tracks variable IDs whose values were confirmed via the inner-dialog "Save
+  // Changes" button (not mere live-typing). Used to revert those specific value
+  // edits when this user cancels the outer dialog while collaborators are still
+  // present. Structural changes (add / delete / reorder) are intentionally NOT
+  // tracked here — they survive a co-editor's cancel.
+  const pendingValueEditIdsRef = useRef(new Set<string>());
+
+  const handleConfirmVariableEdit = useCallback(
+    (updatedVariable: WorkflowVariable) => {
+      handleUpdate(updatedVariable);
+      // Only track existing (non-temp_) variables; newly-added variables carry
+      // no pre-existing base value to revert to, so they stay as structural
+      // changes in the session.
+      if (!updatedVariable.id.startsWith("temp_")) {
+        pendingValueEditIdsRef.current.add(updatedVariable.id);
+      }
+    },
+    [handleUpdate],
   );
 
   const handleDeleteSingle = useCallback(
@@ -337,10 +359,58 @@ export default ({
   ]);
 
   const handleCancel = useCallback(() => {
-    clearSession();
+    const otherUsersInDialog = Object.values(users ?? {}).some(
+      (u) => u.openWorkflowVariablesDialog,
+    );
+
+    if (!otherUsersInDialog) {
+      if (rawSession?.pendingRefetch && yVarSession) {
+        // A save with creates is pending temp_→real ID resolution. Wiping the
+        // session here would delete the pendingRefetch flag, so the next opener
+        // would init from a potentially stale TQ cache and miss the new variable.
+        // Instead, revert variables back to the saved base (discarding this
+        // user's unsaved additions) while keeping pendingRefetch so the next
+        // opener's watcher can resolve temp_ IDs once TQ is fresh.
+        yVarSession.doc?.transact(() => {
+          yVarSession.set("variables", [...sessionBase]);
+          yVarSession.set("timestamp", Date.now());
+        });
+      } else {
+        // No pending save — wipe the session entirely.
+        clearSession();
+      }
+    } else {
+      // Other collaborators are still editing. Keep structural changes (new
+      // temp_ variables, deletions, reorders) so their work survives, but
+      // revert any value edits this user confirmed via the inner dialog's
+      // "Save Changes" button — those should not become part of a collaborator's
+      // eventual save.
+      const pendingIds = pendingValueEditIdsRef.current;
+      if (pendingIds.size > 0 && yVarSession) {
+        const baseVarMap = new Map(sessionBase.map((v) => [v.id, v]));
+        const reverted = sessionVars.map((v) => {
+          if (v.id.startsWith("temp_") || !pendingIds.has(v.id)) return v;
+          return baseVarMap.get(v.id) ?? v;
+        });
+        yVarSession.doc?.transact(() => {
+          yVarSession.set("variables", reverted);
+          yVarSession.set("timestamp", Date.now());
+        });
+      }
+    }
+
     workflowVarAwareness?.onDialogClose();
     onClose();
-  }, [clearSession, workflowVarAwareness, onClose]);
+  }, [
+    users,
+    rawSession?.pendingRefetch,
+    clearSession,
+    yVarSession,
+    sessionVars,
+    sessionBase,
+    workflowVarAwareness,
+    onClose,
+  ]);
 
   // ── VariableEditDialog open/close ─────────────────────────────────────────
 
@@ -387,6 +457,7 @@ export default ({
     getUserFacingName,
     handleLocalAdd,
     handleUpdate,
+    handleConfirmVariableEdit,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,

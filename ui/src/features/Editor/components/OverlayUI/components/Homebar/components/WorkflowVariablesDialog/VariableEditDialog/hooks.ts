@@ -92,15 +92,14 @@ export default ({
   }, [localVariable, hasChanges, onUpdate, onClose]);
 
   const handleCancel = useCallback(() => {
-    // Discard only local React state — do NOT revert to the opening snapshot via
-    // onLiveUpdate. Writing back the snapshot would overwrite any concurrent edits
-    // made by other collaborators since this dialog opened (data loss). The live
-    // Yjs writes already in the session stay as-is; they are handled by the
-    // shared session lifecycle (save, cancel at the outer dialog, or re-edit).
+    // Revert any live Yjs writes back to the state when this edit session opened.
+    if (hasChanges && openedVariableRef.current) {
+      onLiveUpdate?.(openedVariableRef.current);
+    }
     openedVariableRef.current = null;
     setHasChanges(false);
     onClose();
-  }, [onClose]);
+  }, [hasChanges, onLiveUpdate, onClose]);
 
   const clearUrl = () => {
     setAssetUrl(null);
