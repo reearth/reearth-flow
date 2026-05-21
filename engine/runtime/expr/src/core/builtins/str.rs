@@ -12,9 +12,11 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
         ("len", len as MethodFn),
         ("trim", trim as MethodFn),
         ("split", split as MethodFn),
-        ("starts_with", starts_with as MethodFn),
-        ("ends_with", ends_with as MethodFn),
+        ("startswith", starts_with as MethodFn),
+        ("endswith", ends_with as MethodFn),
         ("replace", replace as MethodFn),
+        ("removeprefix", remove_prefix as MethodFn),
+        ("removesuffix", remove_suffix as MethodFn),
     ])
 });
 
@@ -66,7 +68,7 @@ fn starts_with(args: &[Value]) -> InnerResult<Value> {
     };
     let Value::String(prefix) = prefix else {
         return Err(InnerError::new(format!(
-            "starts_with() argument must be a string, got {}",
+            "startswith() argument must be a string, got {}",
             prefix.type_name()
         )));
     };
@@ -80,11 +82,29 @@ fn ends_with(args: &[Value]) -> InnerResult<Value> {
     };
     let Value::String(suffix) = suffix else {
         return Err(InnerError::new(format!(
-            "ends_with() argument must be a string, got {}",
+            "endswith() argument must be a string, got {}",
             suffix.type_name()
         )));
     };
     Ok(Value::Bool(s.ends_with(suffix.as_str())))
+}
+
+fn remove_prefix(args: &[Value]) -> InnerResult<Value> {
+    unpack_args!(args => s, prefix);
+    let Value::String(s) = s else {
+        return Err(InnerError::new("expected string receiver"));
+    };
+    let Value::String(prefix) = prefix else {
+        return Err(InnerError::new(format!(
+            "removeprefix() argument must be a string, got {}",
+            prefix.type_name()
+        )));
+    };
+    Ok(Value::String(
+        s.strip_prefix(prefix.as_str())
+            .unwrap_or(&s)
+            .to_string(),
+    ))
 }
 
 fn replace(args: &[Value]) -> InnerResult<Value> {
@@ -98,4 +118,22 @@ fn replace(args: &[Value]) -> InnerResult<Value> {
         ));
     };
     Ok(Value::String(s.replace(from.as_str(), to.as_str())))
+}
+
+fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
+    unpack_args!(args => s, suffix);
+    let Value::String(s) = s else {
+        return Err(InnerError::new("expected string receiver"));
+    };
+    let Value::String(suffix) = suffix else {
+        return Err(InnerError::new(format!(
+            "remove_suffix() argument must be a string, got {}",
+            suffix.type_name()
+        )));
+    };
+    Ok(Value::String(
+        s.strip_suffix(suffix.as_str())
+            .unwrap_or(&s)
+            .to_string(),
+    ))
 }

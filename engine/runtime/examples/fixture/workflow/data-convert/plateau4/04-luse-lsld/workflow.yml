@@ -150,7 +150,7 @@ graphs:
             type: flowExpr
             value: |
               city_gml = Url(env("cityGmlPath")).stem();
-              Url(env("workerArtifactPath")) / (if city_gml.ends_with("_luse") { city_gml[:city_gml.len() - 5] } else { city_gml } + "_luse_mvt.zip")
+              Url(env("workerArtifactPath")) / (city_gml.removesuffix("_luse") + "_luse_mvt.zip")
 
       # LSLD processing branch
       - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
@@ -249,7 +249,7 @@ graphs:
             type: flowExpr
             value: |
               city_gml = Url(env("cityGmlPath")).stem();
-              Url(env("workerArtifactPath")) / (if city_gml.ends_with("_lsld") { city_gml[:city_gml.len() - 5] } else { city_gml } + "_lsld_mvt.zip")
+              Url(env("workerArtifactPath")) / (city_gml.removesuffix("_lsld") + "_lsld_mvt.zip")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
