@@ -109,7 +109,10 @@ export class EditorPage {
       .locator("span.flex-1.truncate.text-sm")
       .first();
     await expect(firstAction).toBeVisible();
-    const name = (await firstAction.textContent())?.trim() ?? "";
+    const name = (await firstAction.textContent())?.trim();
+    if (!name) {
+      throw new Error("Action picker has no labelled actions to choose from");
+    }
     await firstAction.dblclick();
 
     await expect(this.actionPicker).toBeHidden();
