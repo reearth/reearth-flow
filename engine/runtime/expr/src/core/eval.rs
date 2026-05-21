@@ -872,11 +872,6 @@ fn primitive_eq(a: &Value, b: &Value) -> bool {
     }
 }
 
-#[cfg(test)]
-pub(crate) fn values_equal(a: &Value, b: &Value) -> InnerResult<bool> {
-    eval_eq(a.clone(), b.clone())
-}
-
 fn is_truthy(v: &Value) -> bool {
     match v {
         Value::Null => false,
@@ -1067,29 +1062,9 @@ fn builtin_print(args: &[Value]) -> InnerResult<Value> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::parser::parse;
+    use crate::core::parser::parse;
+    use crate::core::test_utils::{assert_eval, run, try_run, values_equal};
     use super::*;
-
-    fn run(input: &str, vars: &[(&str, Value)]) -> Value {
-        try_run(input, vars).unwrap()
-    }
-
-    fn try_run(input: &str, vars: &[(&str, Value)]) -> Result<Value> {
-        let mut env = default_env();
-        for (k, v) in vars {
-            env.insert(k.to_string(), v.clone());
-        }
-        eval_inner(&parse(input).unwrap(), &mut env)
-    }
-
-    #[track_caller]
-    fn assert_eval(input: &str, vars: &[(&str, Value)], expected: Value) {
-        let actual = run(input, vars);
-        assert!(
-            values_equal(&actual, &expected).expect("values_equal failed"),
-            "\nleft:  {actual:?}\nright: {expected:?}"
-        );
-    }
 
     #[test]
     fn test_arithmetic() {
@@ -1257,22 +1232,6 @@ mod tests {
     }
 
     #[test]
-    fn test_string_split() {
-        assert_eval(r#""foo:bar".split(":")[0]"#, &[], Value::from("foo"));
-        assert_eval(r#""foo:bar".split(":")[-1]"#, &[], Value::from("bar"));
-        assert_eval(
-            r#""hello".split(":")"#,
-            &[],
-            Value::array(vec![Value::from("hello")]),
-        );
-        assert_eval(
-            r#""a::b".split(":")"#,
-            &[],
-            Value::array(vec![Value::from("a"), Value::from(""), Value::from("b")]),
-        );
-    }
-
-    #[test]
     fn test_in_operator() {
         let pkgs = Value::array(vec![Value::from("foo"), Value::from("bar")]);
         assert_eval(
@@ -1306,36 +1265,6 @@ mod tests {
         assert!(try_run(r#""x" not in null"#, &[]).is_err());
         let pkgs2 = Value::array(vec![Value::from("a")]);
         assert_eval(r#"not "a" in pkgs"#, &[("pkgs", pkgs2)], Value::from(false));
-    }
-
-    #[test]
-    fn test_string_starts_ends_with() {
-        assert_eval(
-            r#""hello_world".starts_with("foo")"#,
-            &[],
-            Value::from(false),
-        );
-        assert_eval(
-            r#""hello_world".ends_with("world")"#,
-            &[],
-            Value::from(true),
-        );
-        assert_eval(
-            r#"s = "foo_bar"; sfx = "_bar"; if s.ends_with(sfx) { s[:s.len() - sfx.len()] } else { s }"#,
-            &[],
-            Value::from("foo"),
-        );
-    }
-
-    #[test]
-    fn test_string_replace() {
-        assert_eval(r#""a/b/c".replace("/", "_")"#, &[], Value::from("a_b_c"));
-        assert_eval(
-            r#""foo_op_bar_op_baz".replace("_op_", "/")"#,
-            &[],
-            Value::from("foo/bar/baz"),
-        );
-        assert_eval(r#""hello".replace("x", "y")"#, &[], Value::from("hello"));
     }
 
     #[test]

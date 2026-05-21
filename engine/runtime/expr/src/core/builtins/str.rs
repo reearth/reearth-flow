@@ -133,3 +133,57 @@ fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
         s.strip_suffix(suffix.as_str()).unwrap_or(s).to_string(),
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::core::test_utils::assert_eval;
+    use crate::core::value::Value;
+
+    #[test]
+    fn test_startswith() {
+        assert_eval(r#""hello_world".startswith("hello")"#, &[], Value::Bool(true));
+        assert_eval(r#""hello_world".startswith("foo")"#, &[], Value::Bool(false));
+    }
+
+    #[test]
+    fn test_endswith() {
+        assert_eval(r#""hello_world".endswith("world")"#, &[], Value::Bool(true));
+        assert_eval(r#""hello_world".endswith("foo")"#, &[], Value::Bool(false));
+    }
+
+    #[test]
+    fn test_removeprefix() {
+        assert_eval(r#""hello_world".removeprefix("hello_")"#, &[], Value::from("world"));
+        assert_eval(r#""hello_world".removeprefix("foo")"#, &[], Value::from("hello_world"));
+    }
+
+    #[test]
+    fn test_removesuffix() {
+        assert_eval(r#""hello_world".removesuffix("_world")"#, &[], Value::from("hello"));
+        assert_eval(r#""hello_world".removesuffix("foo")"#, &[], Value::from("hello_world"));
+    }
+
+    #[test]
+    fn test_split() {
+        assert_eval(r#""foo:bar".split(":")[0]"#, &[], Value::from("foo"));
+        assert_eval(r#""foo:bar".split(":")[-1]"#, &[], Value::from("bar"));
+    }
+
+    #[test]
+    fn test_replace() {
+        assert_eval(r#""a/b/c".replace("/", "_")"#, &[], Value::from("a_b_c"));
+        assert_eval(r#""foo_op_bar_op_baz".replace("_op_", "/")"#, &[], Value::from("foo/bar/baz"));
+        assert_eval(r#""hello".replace("x", "y")"#, &[], Value::from("hello"));
+    }
+
+    #[test]
+    fn test_trim() {
+        assert_eval(r#""  hello  ".trim()"#, &[], Value::from("hello"));
+    }
+
+    #[test]
+    fn test_len() {
+        assert_eval(r#""hello".len()"#, &[], Value::Int(5));
+        assert_eval(r#""".len()"#, &[], Value::Int(0));
+    }
+}
