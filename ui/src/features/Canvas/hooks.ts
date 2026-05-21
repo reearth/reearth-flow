@@ -8,7 +8,7 @@ import { MouseEvent, useCallback, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { ContextMenuMeta } from "@flow/components";
-import { CANVAS_HOT_KEYS, DEFAULT_NODE_SIZE } from "@flow/global-constants";
+import { CANVAS_HOT_KEYS, DEFAULT_GRID_SIZE } from "@flow/global-constants";
 import { useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -163,38 +163,40 @@ export default ({
   };
 
   const handleSelectedNodesSpacing = useCallback(
-    (factor: number) => {
+    (direction: 1 | -1) => {
       if (readonly) return;
       const selectedNodes = nodes.filter((n) => n.selected);
       if (selectedNodes.length < 2) return;
 
-      const nw = (n: (typeof selectedNodes)[0]) =>
-        n.measured?.width ?? DEFAULT_NODE_SIZE.width;
-      const nh = (n: (typeof selectedNodes)[0]) =>
-        n.measured?.height ?? DEFAULT_NODE_SIZE.height;
+      const snap = (v: number) =>
+        Math.round(v / DEFAULT_GRID_SIZE) * DEFAULT_GRID_SIZE;
 
-      const centerX =
-        selectedNodes.reduce((sum, n) => sum + n.position.x + nw(n) / 2, 0) /
-        selectedNodes.length;
-      const centerY =
-        selectedNodes.reduce((sum, n) => sum + n.position.y + nh(n) / 2, 0) /
-        selectedNodes.length;
+      const anchorX = snap(Math.min(...selectedNodes.map((n) => n.position.x)));
+      const anchorY = snap(Math.min(...selectedNodes.map((n) => n.position.y)));
 
       handleNodesChange(
-        selectedNodes.map((n) => ({
-          id: n.id,
-          type: "position" as const,
-          position: {
-            x:
-              centerX +
-              (n.position.x + nw(n) / 2 - centerX) * factor -
-              nw(n) / 2,
-            y:
-              centerY +
-              (n.position.y + nh(n) / 2 - centerY) * factor -
-              nh(n) / 2,
-          },
-        })),
+        selectedNodes.map((n) => {
+          const offsetX = snap(n.position.x) - anchorX;
+          const offsetY = snap(n.position.y) - anchorY;
+          return {
+            id: n.id,
+            type: "position" as const,
+            position: {
+              x:
+                anchorX +
+                Math.max(
+                  0,
+                  offsetX + (offsetX > 0 ? direction * DEFAULT_GRID_SIZE : 0),
+                ),
+              y:
+                anchorY +
+                Math.max(
+                  0,
+                  offsetY + (offsetY > 0 ? direction * DEFAULT_GRID_SIZE : 0),
+                ),
+            },
+          };
+        }),
       );
     },
     [nodes, handleNodesChange, readonly],
@@ -235,14 +237,14 @@ export default ({
         if (hasShift) {
           event.preventDefault();
           event.stopPropagation();
-          handleSelectedNodesSpacing(1.25);
+          handleSelectedNodesSpacing(1);
         }
         break;
       case "minus":
         if (hasShift) {
           event.preventDefault();
           event.stopPropagation();
-          handleSelectedNodesSpacing(0.8);
+          handleSelectedNodesSpacing(-1);
         }
         break;
     }
