@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::{BufWriter, Cursor},
+    str::FromStr,
     sync::Arc,
     time, vec,
 };
@@ -216,18 +217,14 @@ impl Cesium3DTilesWriter {
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-        let node_ctx = NodeContext::from(ctx.clone());
-        let output_sink = crate::SinkOutput::from_path(&node_ctx, path.as_str())
-            .map_err(SinkError::cesium3dtiles_writer)?;
-        let output = output_sink.uri().clone();
+        // URI parse only; SinkOutput is constructed once at write time in pipeline.rs (see MVT pattern).
+        let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
         let compress_output = if let Some(compress_output) = &self.params.compress_output {
             let compress_output = compress_output.clone();
             let path = scope
                 .eval_ast::<String>(&compress_output)
                 .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-            let compress_sink = crate::SinkOutput::from_path(&node_ctx, path.as_str())
-                .map_err(SinkError::cesium3dtiles_writer)?;
-            Some(compress_sink.uri().clone())
+            Some(Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?)
         } else {
             None
         };
