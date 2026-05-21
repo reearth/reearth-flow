@@ -30,30 +30,24 @@ type Props = {
 const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
   const t = useT();
 
+  const [algorithm, setAlgorithm] = useState<Algorithm>("dagre");
   const [layoutDirection, setLayoutDirection] =
     useState<Direction>("Horizontal");
-  const [spacing, _setSpacing] = useState(100);
+  const [spacing] = useState(100);
 
-  const layoutDirections = {
+  const algorithms: Record<Algorithm, string> = {
+    dagre: t("Dagre (Tree)"),
+    elk: t("ELK (Layered)"),
+    d3: t("D3 Hierarchy"),
+  };
+
+  const layoutDirections: Record<Direction, string> = {
     Horizontal: t("Horizontal"),
     Vertical: t("Vertical"),
   };
 
-  const handleDirectionChange = (value: Direction) => {
-    setLayoutDirection(value);
-  };
-
-  // const handleSpacingChange = (e: ChangeEvent<HTMLInputElement>) => {
-  //   if (Number.isNaN(e.target.value)) return;
-  //   if (e.target.valueAsNumber > 500) {
-  //     setSpacing(500);
-  //   } else {
-  //     setSpacing(Number(e.target.value));
-  //   }
-  // };
-
   const handleLayoutChange = () => {
-    onLayoutChange("dagre", layoutDirection, spacing);
+    onLayoutChange(algorithm, layoutDirection, spacing);
     onClose();
   };
 
@@ -62,10 +56,25 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
       <DialogContent size="sm" position="top" overlayBgClass="bg-opacity-0">
         <DialogTitle>{t("Layout Options")}</DialogTitle>
         <DialogContentWrapper>
-          <DialogContentSection>
-            <Label>{t("Algorithm: ")}</Label>
-            <div className="ml-2">
-              <p>Dagre tree</p>
+          <DialogContentSection className="flex-row">
+            <div className="flex-1">
+              <Label>{t("Algorithm: ")}</Label>
+              <div className="ml-2">
+                <Select
+                  value={algorithm}
+                  onValueChange={(v) => setAlgorithm(v as Algorithm)}>
+                  <SelectTrigger className="h-8 w-37.5">
+                    <SelectValue placeholder={algorithms.dagre} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(algorithms).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </DialogContentSection>
           <DialogContentSection className="flex-row">
@@ -74,8 +83,8 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
               <div className="ml-2">
                 <Select
                   value={layoutDirection}
-                  onValueChange={handleDirectionChange}>
-                  <SelectTrigger className="h-[32px] w-[150px]">
+                  onValueChange={(v) => setLayoutDirection(v as Direction)}>
+                  <SelectTrigger className="h-8 w-37.5">
                     <SelectValue placeholder={layoutDirections.Horizontal} />
                   </SelectTrigger>
                   <SelectContent>
@@ -88,20 +97,6 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
                 </Select>
               </div>
             </div>
-            {/* <div className="flex-1">
-              <Label>{t("Spacing: ")}</Label>
-              <div className="ml-2 w-[100px]">
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="number"
-                    max={500}
-                    value={spacing}
-                    onChange={handleSpacingChange}
-                  />
-                  <p>px</p>
-                </div>
-              </div>
-            </div> */}
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>

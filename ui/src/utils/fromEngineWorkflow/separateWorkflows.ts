@@ -72,7 +72,7 @@ export const separateWorkflow = async ({
 
     const edges = convertEdges(graph.edges);
 
-    const { nodes: layoutedNodes, edges: layoutedEdges } = autoLayout(
+    const { nodes: layoutedNodes, edges: layoutedEdges } = await autoLayout(
       layoutType ?? "dagre",
       "Horizontal",
       nodes,

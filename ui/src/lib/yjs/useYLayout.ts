@@ -20,27 +20,26 @@ export default ({
   ) => void;
 }) => {
   const handleYLayoutChange = useCallback(
-    (algorithm: Algorithm, direction: Direction, _spacing: number) => {
+    async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
+      // Phase 1: compute all layouts asynchronously before touching Yjs
+      const layouts = await Promise.all(
+        rawWorkflows.map(async (rawWorkflow) => {
+          const nodes = rawWorkflow.nodes as Node[];
+          const edges = rawWorkflow.edges as Edge[];
+          const result = await autoLayout(algorithm, direction, nodes, edges);
+          return { id: rawWorkflow.id, result };
+        }),
+      );
+
+      // Phase 2: apply all results in one synchronous undo transaction
       undoTrackerActionWrapper(() => {
-        rawWorkflows.forEach((rawWorkflow) => {
-          const yNodes = yWorkflows?.get(rawWorkflow.id)?.get("nodes") as
+        layouts.forEach(({ id, result }) => {
+          const yNodes = yWorkflows?.get(id)?.get("nodes") as
             | YNodesMap
             | undefined;
           if (!yNodes) return;
-
-          const nodes = rawWorkflow.nodes as Node[];
-          const edges = rawWorkflow.edges as Edge[];
-          const layoutedElements = autoLayout(
-            algorithm,
-            direction,
-            nodes,
-            edges,
-            // spacing,
-          );
-
-          layoutedElements.nodes?.forEach((n) => {
-            const yNode = yNodeConstructor(n);
-            yNodes.set(n.id, yNode);
+          result.nodes.forEach((n) => {
+            yNodes.set(n.id, yNodeConstructor(n));
           });
         });
       });
