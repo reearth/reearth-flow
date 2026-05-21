@@ -213,7 +213,6 @@ mod parse_smoke {
     fn smoke_assign_forms() {
         let cases = [
             ("x = 1 + 1; x", true),
-
             ("x = 1 + 1;", true),   // trailing semi returns Null
             ("x = 1", true),        // assign alone is a valid expr
             ("x = y = 2; x", true), // chained assign
@@ -229,7 +228,6 @@ mod parse_smoke {
         for src in &[
             "{ 1; 2; 3 }",
             "{ 42; }",
-
             "{ x = 5; x * 2 }",
             "{ x = 3 } + { y = 4 }",
             "{ x = 1; { y = 2; x + y } }",

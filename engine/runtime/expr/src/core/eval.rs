@@ -1346,7 +1346,6 @@ mod tests {
         assert_eval("x = 1; x = 99; x", &[], Value::from(99i64));
         assert_eval("x = 7; x", &[("x", Value::from(999i64))], Value::from(7i64));
         assert_eval("(x = 10) * 2", &[], Value::from(20i64));
-
     }
 
     #[test]
@@ -1742,11 +1741,7 @@ mod tests {
 
     #[test]
     fn test_while() {
-        assert_eval(
-            "i = 0; while i < 5 { i = i + 1 } i",
-            &[],
-            Value::from(5i64),
-        );
+        assert_eval("i = 0; while i < 5 { i = i + 1 } i", &[], Value::from(5i64));
         assert_eval("while false { 1 }", &[], Value::Null);
         assert_eval(
             "s = 0; i = 1; while i <= 10 { s = s + i; i = i + 1 } s",

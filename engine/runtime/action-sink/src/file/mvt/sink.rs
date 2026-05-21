@@ -214,7 +214,10 @@ impl Sink for MVTWriter {
                 };
                 let output = Uri::from_str(eval(&self.params.output)?.as_str())?;
                 let compress_output = if let Some(c) = &self.params.compress_output {
-                    Some(Uri::from_str(eval(c)?.as_str()).map_err(|e| SinkError::MvtWriter(e.to_string()))?)
+                    Some(
+                        Uri::from_str(eval(c)?.as_str())
+                            .map_err(|e| SinkError::MvtWriter(e.to_string()))?,
+                    )
                 } else {
                     None
                 };

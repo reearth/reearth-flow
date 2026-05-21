@@ -101,9 +101,7 @@ fn remove_prefix(args: &[Value]) -> InnerResult<Value> {
         )));
     };
     Ok(Value::String(
-        s.strip_prefix(prefix.as_str())
-            .unwrap_or(&s)
-            .to_string(),
+        s.strip_prefix(prefix.as_str()).unwrap_or(s).to_string(),
     ))
 }
 
@@ -132,8 +130,6 @@ fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
         )));
     };
     Ok(Value::String(
-        s.strip_suffix(suffix.as_str())
-            .unwrap_or(&s)
-            .to_string(),
+        s.strip_suffix(suffix.as_str()).unwrap_or(s).to_string(),
     ))
 }
