@@ -156,21 +156,14 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	return j, nil
 }
 
-// cloudRunInfraFailureGrace is how long failCloudRunJob waits for a late worker
-// completion event before declaring an infrastructure failure. A failed RunJob
-// call (client-side timeout/connection drop) does not guarantee the workflow
-// failed — the worker may still finish and publish its result to Redis.
 const cloudRunInfraFailureGrace = 30 * time.Second
 
-// RunCloudRunWorker triggers execution of a debug job on the Cloud Run worker
-// Service. The worker publishes its authoritative result to Redis (via the
-// subscriber); the standard monitoring loop reads that event and finalizes the
-// job, exactly as it does for Batch jobs. Only an infrastructure failure — where
-// no result will ever arrive — is finalized here.
+// RunCloudRunWorker executes a debug job on the Cloud Run worker; the worker
+// publishes its result to Redis and the standard monitoring loop finalizes the
+// job. Only an infra failure (no result will ever arrive) is finalized here.
 func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 	go func() {
 		ctx := context.Background()
-		// Detached goroutine; a panic here would otherwise crash the API server.
 		defer func() {
 			if r := recover(); r != nil {
 				log.Errorfc(ctx, "job: cloud run worker %s panicked: %v", j.ID(), r)
@@ -182,22 +175,16 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 			log.Errorfc(ctx, "job: cloud run worker %s run error: %v", j.ID(), err)
 		}
 
-		// Success and workflow-level failures are finalized by the monitoring loop
-		// from the Redis worker event. A failed RunJob call may still be a workflow
-		// that completes after a client-side drop, so failCloudRunJob confirms no
-		// result arrives before declaring an infra failure.
 		if err != nil || status == gateway.JobStatusFailed {
 			i.failCloudRunJob(ctx, j.ID())
 		}
 	}()
 }
 
-// failCloudRunJob finalizes a debug job as failed when the Cloud Run worker call
-// fails. Because a client-side error does not guarantee the workflow failed, it
-// first gives the monitoring loop a bounded grace period to pick up a late worker
-// event and only finalizes if none arrives. It records the failure via the legacy
-// status field (leaving batchStatus nil) so a later worker event could still
-// resolve the status merge rather than being forced to FAILED.
+// failCloudRunJob marks a debug job failed when the worker call fails. A
+// client-side error may still yield a result, so it waits a grace period and
+// bails if the loop already finalized or a worker event arrived; it sets the
+// legacy status (not batchStatus) so a late success isn't forced to FAILED.
 func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 	select {
 	case <-ctx.Done():
@@ -214,11 +201,9 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
 		return
 	}
-	// The monitoring loop or Cancel may have already finalized it.
 	if s := latest.Status(); s == job.StatusCancelled || s == job.StatusCompleted || s == job.StatusFailed {
 		return
 	}
-	// A worker result did arrive after all — let the monitoring loop finalize from it.
 	if ev, _ := i.redis.GetJobCompleteEvent(ctx, jobID); ev != nil {
 		return
 	}
@@ -444,10 +429,8 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	computedStatus := currentJob.Status()
 	isTerminalState := computedStatus == job.StatusCompleted || computedStatus == job.StatusFailed ||
 		computedStatus == job.StatusCancelled
-	// Only handle completion on an actual transition to terminal in this iteration.
-	// Without the statusChanged guard, a job finalized concurrently (e.g. by
-	// failCloudRunJob or Cancel) would have its completion side-effects (artifact
-	// listing, notifications) run a second time here.
+	// statusChanged guard: don't re-run completion side-effects if another path
+	// (failCloudRunJob, Cancel) already finalized the job.
 	if statusChanged && isTerminalState {
 		log.Infof(
 			"Job %s transitioning to terminal state %s, handling completion",

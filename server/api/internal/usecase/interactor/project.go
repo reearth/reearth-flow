@@ -291,10 +291,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if i.cloudRunWorker != nil {
 		tx.Commit()
 		if i.job != nil {
-			// Execute the workflow on the Cloud Run worker (async). The worker
-			// publishes its result to Redis; the standard monitoring loop finalizes
-			// the job — it already handles debug jobs (empty GCPJobID skips Batch
-			// polling and the worker event drives status).
+			// Run on Cloud Run; the standard monitoring loop finalizes the job.
 			i.job.RunCloudRunWorker(j, gateway.RunJobParam{
 				JobID:         j.ID(),
 				WorkflowURL:   workflowURL.String(),
