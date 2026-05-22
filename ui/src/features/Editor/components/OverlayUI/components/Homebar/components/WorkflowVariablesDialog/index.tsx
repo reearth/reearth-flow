@@ -261,7 +261,14 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         size: 100,
       },
     ],
-    [isLocked, handleUpdate, handleEditVariable, handleDeleteSingle, workflowVarAwareness, t],
+    [
+      isLocked,
+      handleUpdate,
+      handleEditVariable,
+      handleDeleteSingle,
+      workflowVarAwareness,
+      t,
+    ],
   );
 
   return (
