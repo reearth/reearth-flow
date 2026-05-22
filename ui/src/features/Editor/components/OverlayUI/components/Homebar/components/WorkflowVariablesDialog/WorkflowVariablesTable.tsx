@@ -31,20 +31,23 @@ import {
   TableRow,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { WorkflowVariable } from "@flow/types";
+import { AwarenessUser, WorkflowVariable } from "@flow/types";
 
 type Props = {
   className?: string;
   workflowVariables: WorkflowVariable[];
   columns: ColumnDef<WorkflowVariable, unknown>[];
   onReorder?: (oldIndex: number, newIndex: number) => void;
+  variableFocusMap?: Record<string, AwarenessUser[]>;
+  variableEditMap?: Record<string, AwarenessUser[]>;
 };
 
-// Sortable Row Component
 const SortableRow: React.FC<{
   row: any;
   variable: WorkflowVariable;
-}> = ({ row, variable }) => {
+  focusedUsers: AwarenessUser[];
+  editingUsers: AwarenessUser[];
+}> = ({ row, variable, focusedUsers, editingUsers }) => {
   const {
     attributes,
     listeners,
@@ -62,6 +65,10 @@ const SortableRow: React.FC<{
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const firstFocusedUser = focusedUsers[0];
+  const firstEditingUser = editingUsers[0];
+  const indicatorUser = firstFocusedUser ?? firstEditingUser;
+
   return (
     <TableRow
       key={row.id}
@@ -69,11 +76,19 @@ const SortableRow: React.FC<{
       style={style}
       className="hover:bg-primary/50"
       {...attributes}>
-      <TableCell className="w-10">
-        <div
-          className="flex cursor-grab touch-none items-center justify-center p-1 active:cursor-grabbing"
-          {...listeners}>
-          <DotsSixIcon size={16} className="text-muted-foreground" />
+      <TableCell className="w-10 p-0">
+        <div className="flex items-center">
+          {indicatorUser && (
+            <div
+              className="w-1 self-stretch rounded-l"
+              style={{ backgroundColor: indicatorUser.color }}
+            />
+          )}
+          <div
+            className="flex cursor-grab touch-none items-center justify-center p-1 active:cursor-grabbing"
+            {...listeners}>
+            <DotsSixIcon size={16} className="text-muted-foreground" />
+          </div>
         </div>
       </TableCell>
       {row.getVisibleCells().map((cell: any) => (
@@ -90,10 +105,11 @@ const WorkflowVariablesTable: React.FC<Props> = ({
   workflowVariables,
   columns,
   onReorder,
+  variableFocusMap = {},
+  variableEditMap = {},
 }) => {
   const t = useT();
 
-  // Set up drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -101,7 +117,6 @@ const WorkflowVariablesTable: React.FC<Props> = ({
     }),
   );
 
-  // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -119,39 +134,17 @@ const WorkflowVariablesTable: React.FC<Props> = ({
     }
   };
 
-  // We'll handle the drag handle separately in the row rendering
-  const tableColumns = columns;
-
   const table = useReactTable({
     data: workflowVariables,
-    columns: tableColumns,
+    columns,
     getCoreRowModel: getCoreRowModel(),
-    // Sorting
-    // onSortingChange: setSorting,
-    // getSortedRowModel: getSortedRowModel(),
-    // Visibility
-    // onColumnVisibilityChange: setColumnVisibility,
     columnResizeMode: "onChange",
-    // Filtering
-    // onGlobalFilterChange: setGlobalFilter,
-    // getFilteredRowModel: getFilteredRowModel(),
-    // getPaginationRowModel: enablePagination
-    //   ? getPaginationRowModel()
-    //   : undefined,
-    // onPaginationChange: setPagination,
-    state: {
-      //   sorting,
-      //   columnVisibility,
-      //   globalFilter,
-      //   pagination,
-    },
-    // manualPagination: true,
+    state: {},
   });
 
   const items = workflowVariables.map((item) => item.id);
 
   if (!onReorder) {
-    // Render table without drag and drop if onReorder is not provided
     return (
       <div className="max-h-[50vh] overflow-auto">
         <Table className={`rounded-md bg-inherit ${className}`}>
@@ -190,7 +183,7 @@ const WorkflowVariablesTable: React.FC<Props> = ({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={tableColumns.length}
+                  colSpan={columns.length}
                   className="h-24 text-center">
                   {t("No Results")}
                 </TableCell>
@@ -202,7 +195,6 @@ const WorkflowVariablesTable: React.FC<Props> = ({
     );
   }
 
-  // Render table with drag and drop
   return (
     <div className="max-h-[50vh] overflow-auto">
       <DndContext
@@ -237,13 +229,19 @@ const WorkflowVariablesTable: React.FC<Props> = ({
                 table.getRowModel().rows.map((row) => {
                   const variable = workflowVariables[row.index];
                   return (
-                    <SortableRow key={row.id} row={row} variable={variable} />
+                    <SortableRow
+                      key={row.id}
+                      row={row}
+                      variable={variable}
+                      focusedUsers={variableFocusMap[variable.id] ?? []}
+                      editingUsers={variableEditMap[variable.id] ?? []}
+                    />
                   );
                 })
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={tableColumns.length + 1}
+                    colSpan={columns.length + 1}
                     className="h-24 text-center">
                     {t("No Results")}
                   </TableCell>

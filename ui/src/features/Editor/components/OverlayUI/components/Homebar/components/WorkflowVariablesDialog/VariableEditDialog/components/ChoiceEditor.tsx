@@ -36,23 +36,28 @@ import {
   CmsLogo,
   CheckboxDefaultInput,
 } from "@flow/components";
+import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, ChoiceConfig } from "@flow/types";
+import { AnyWorkflowVariable, AwarenessUser, ChoiceConfig } from "@flow/types";
 
 type Props = {
   variable: AnyWorkflowVariable;
   assetUrl?: string | null;
   cmsItemAssetUrl?: string | null;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onUpdate: (variable: AnyWorkflowVariable) => void;
   onDialogOpen?: (dialog: "assets" | "cms") => void;
+  onFieldFocus?: (field: string | null) => void;
   clearUrl: () => void;
 };
 
 export const ChoiceEditor: React.FC<Props> = ({
   variable,
   assetUrl,
+  fieldFocusMap,
   onUpdate,
   onDialogOpen,
+  onFieldFocus,
   clearUrl,
 }) => {
   const t = useT();
@@ -273,6 +278,9 @@ export const ChoiceEditor: React.FC<Props> = ({
             value={newOptionText}
             onChange={(e) => setNewOptionText(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => onFieldFocus?.("newOption")}
+            onBlur={() => onFieldFocus?.(null)}
+            style={paramsAwarenessStyles(fieldFocusMap?.["newOption"])}
             placeholder={t("Enter new option")}
             className="flex-1"
           />

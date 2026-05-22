@@ -294,6 +294,10 @@ export default ({
     awarenessSelectionsMap,
     handlePointerDown,
     handleParamFieldFocus,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
     handleUserFocusedElement,
     setDraggingEdge,
     clearDraggingEdge,
@@ -512,5 +516,9 @@ export default ({
     awarenessSelectionsMap,
     handleParamFieldFocus,
     handleUserFocusedElement,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
   };
 };

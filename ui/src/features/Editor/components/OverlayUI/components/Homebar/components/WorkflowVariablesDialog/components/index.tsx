@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -9,15 +9,24 @@ export const NameInput: React.FC<{
   variable: AnyWorkflowVariable;
   disabled?: boolean;
   onUpdate: (variable: AnyWorkflowVariable) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   placeholder: string;
-}> = ({ variable, disabled, onUpdate, placeholder }) => {
+}> = ({ variable, disabled, onUpdate, onFocus, onBlur, placeholder }) => {
   const [localValue, setLocalValue] = useState(variable.name);
+  // Tracks whether this input is focused so the Yjs sync effect does not
+  // overwrite the user's in-progress text with their own round-tripped update.
+  const hasFocusRef = useRef(false);
 
   useEffect(() => {
-    setLocalValue(variable.name);
+    if (!hasFocusRef.current) {
+      setLocalValue(variable.name);
+    }
   }, [variable.name]);
 
   const handleBlur = () => {
+    hasFocusRef.current = false;
+    onBlur?.();
     if (localValue !== variable.name) {
       onUpdate({ ...variable, name: localValue });
     }
@@ -37,11 +46,16 @@ export const NameInput: React.FC<{
         e.stopPropagation();
         const cleansedValue = removeWhiteSpace(e.currentTarget.value);
         setLocalValue(cleansedValue);
+        onUpdate({ ...variable, name: cleansedValue });
       }}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       onClick={(e) => e.stopPropagation()}
-      onFocus={(e) => e.stopPropagation()}
+      onFocus={(e) => {
+        hasFocusRef.current = true;
+        e.stopPropagation();
+        onFocus?.();
+      }}
       placeholder={placeholder}
     />
   );

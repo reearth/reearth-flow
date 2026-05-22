@@ -289,10 +289,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	}
 
 	if i.cloudRunWorker != nil {
-		// RunDebugJob owns the full lifecycle; commit before handing off.
 		tx.Commit()
 		if i.job != nil {
-			go i.job.RunDebugJob(context.Background(), j, gateway.RunJobParam{
+			// Run on Cloud Run; the standard monitoring loop finalizes the job.
+			i.job.RunCloudRunWorker(j, gateway.RunJobParam{
 				JobID:         j.ID(),
 				WorkflowURL:   workflowURL.String(),
 				MetadataURL:   j.MetadataURL(),
@@ -300,6 +300,9 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 				PreviousJobID: p.PreviousJobID,
 				StartNodeID:   p.StartNodeID,
 			})
+			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+				return j, fmt.Errorf("failed to start job monitoring: %v", err)
+			}
 		}
 	} else {
 		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace(), p.PreviousJobID, p.StartNodeID)

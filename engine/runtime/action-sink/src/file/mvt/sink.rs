@@ -409,48 +409,65 @@ impl MVTWriter {
                 }
 
                 if let Some(compress_output) = compress_output {
-                    if let Ok(storage) = gctx.storage_resolver.resolve(&compress_output) {
-                        let buffer = Vec::new();
-                        let mut cursor = Cursor::new(buffer);
-                        let writer = BufWriter::new(&mut cursor);
-                        let zip_result =
-                            reearth_flow_common::zip::write(writer, out.path().as_path()).map_err(
-                                |e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()),
-                            );
-                        match zip_result {
-                            Ok(_) => {
-                                match storage
-                                    .put_sync(
-                                        compress_output.path().as_path(),
-                                        bytes::Bytes::from(cursor.into_inner()),
-                                    )
-                                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)
-                                {
-                                    Ok(_) => match std::fs::remove_dir_all(out.path().as_path()) {
-                                        Ok(_) => {}
+                    let compress_node_ctx = NodeContext::from(gctx.clone());
+                    match crate::SinkOutput::from_path(
+                        &compress_node_ctx,
+                        compress_output.as_str(),
+                    ) {
+                        Ok(compress_sink_out) => {
+                            let buffer = Vec::new();
+                            let mut cursor = Cursor::new(buffer);
+                            let writer = BufWriter::new(&mut cursor);
+                            let zip_result = reearth_flow_common::zip::write(
+                                writer,
+                                out.path().as_path(),
+                            )
+                            .map_err(|e| {
+                                crate::errors::SinkError::MvtWriter(e.to_string())
+                            });
+                            match zip_result {
+                                Ok(_) => {
+                                    match compress_sink_out
+                                        .write(bytes::Bytes::from(cursor.into_inner()))
+                                        .map_err(|e| {
+                                            crate::errors::SinkError::MvtWriter(e.to_string())
+                                        }) {
+                                        Ok(_) => {
+                                            match std::fs::remove_dir_all(out.path().as_path()) {
+                                                Ok(_) => {}
+                                                Err(e) => {
+                                                    gctx.event_hub.error_log(
+                                                        None,
+                                                        format!(
+                                                            "Failed to remove directory with error = {e:?}"
+                                                        ),
+                                                    );
+                                                }
+                                            }
+                                        }
                                         Err(e) => {
                                             gctx.event_hub.error_log(
                                                 None,
                                                 format!(
-                                                    "Failed to remove directory with error = {e:?}"
+                                                    "Failed to write zip file with error = {e:?}"
                                                 ),
                                             );
                                         }
-                                    },
-                                    Err(e) => {
-                                        gctx.event_hub.error_log(
-                                            None,
-                                            format!("Failed to write zip file with error = {e:?}"),
-                                        );
                                     }
                                 }
+                                Err(e) => {
+                                    gctx.event_hub.error_log(
+                                        None,
+                                        format!("Failed to write zip file with error = {e:?}"),
+                                    );
+                                }
                             }
-                            Err(e) => {
-                                gctx.event_hub.error_log(
-                                    None,
-                                    format!("Failed to write zip file with error = {e:?}"),
-                                );
-                            }
+                        }
+                        Err(e) => {
+                            gctx.event_hub.error_log(
+                                None,
+                                format!("Failed to resolve compress output with error = {e:?}"),
+                            );
                         }
                     }
                 }

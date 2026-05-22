@@ -243,6 +243,8 @@
   "selected": "選択済み",
   "Legacy choice format": "レガシー選択形式",
   "New Workflow Variable": "新しいワークフロー変数",
+  "Variable removed": "変数が削除されました",
+  "Another collaborator deleted the variable you were editing.": "別の共同作業者が編集中の変数を削除しました。",
   "Enter name": "名前を入力",
   "Actions": "アクション",
   "Edit default value and advanced options": "デフォルト値と高度なオプションを編集",

@@ -278,6 +278,110 @@ describe("useAwarenessPresence", () => {
     });
   });
 
+  it("handleWorkflowVarDialogOpen sets openWorkflowVariablesDialog to true", () => {
+    const { result } = renderHook(() =>
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
+    );
+    act(() => {
+      result.current.handleWorkflowVarDialogOpen();
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "openWorkflowVariablesDialog",
+      true,
+    );
+  });
+
+  it("handleWorkflowVarDialogClose clears all workflow-var awareness fields", () => {
+    const { result } = renderHook(() =>
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
+    );
+    act(() => {
+      result.current.handleWorkflowVarDialogClose();
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "openWorkflowVariablesDialog",
+      null,
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedVariableId",
+      null,
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedVariableField",
+      null,
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "editingVariableId",
+      null,
+    );
+  });
+
+  it("handleWorkflowVarFieldFocus sets focusedVariableId and focusedVariableField", () => {
+    const { result } = renderHook(() =>
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
+    );
+    act(() => {
+      result.current.handleWorkflowVarFieldFocus("var-1", "name");
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedVariableId",
+      "var-1",
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedVariableField",
+      "name",
+    );
+
+    act(() => {
+      result.current.handleWorkflowVarFieldFocus(null, null);
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedVariableId",
+      null,
+    );
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "focusedVariableField",
+      null,
+    );
+  });
+
+  it("handleWorkflowVarEditStart sets editingVariableId", () => {
+    const { result } = renderHook(() =>
+      useAwarenessPresence({
+        yAwareness: awareness,
+        selectedNodeIds: [],
+        openNode: undefined,
+      }),
+    );
+    act(() => {
+      result.current.handleWorkflowVarEditStart("var-42");
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "editingVariableId",
+      "var-42",
+    );
+
+    act(() => {
+      result.current.handleWorkflowVarEditStart(null);
+    });
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith(
+      "editingVariableId",
+      null,
+    );
+  });
+
   it("syncs openNode prop to awareness field and clears focusedParamField when closed", () => {
     const { rerender } = renderHook(
       ({ openNode }: { openNode: Node | undefined }) =>

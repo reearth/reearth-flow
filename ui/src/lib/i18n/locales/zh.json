@@ -243,6 +243,8 @@
   "selected": "(已选择)",
   "Legacy choice format": "(旧版选择格式)",
   "New Workflow Variable": "新工作流变量",
+  "Variable removed": "变量已删除",
+  "Another collaborator deleted the variable you were editing.": "另一个协作者删除了您正在编辑的变量。",
   "Enter name": "输入名称",
   "Actions": "操作",
   "Edit default value and advanced options": "编辑默认值和高级选项",

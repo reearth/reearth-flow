@@ -243,6 +243,8 @@
   "selected": "sélectionné",
   "Legacy choice format": "Format de choix hérité",
   "New Workflow Variable": "Nouvelle variable de flux de travail",
+  "Variable removed": "Variable supprimée",
+  "Another collaborator deleted the variable you were editing.": "Un autre collaborateur a supprimé la variable que vous étiez en train de modifier.",
   "Enter name": "Entrez le nom",
   "Actions": "Actions",
   "Edit default value and advanced options": "Modifier la valeur par défaut et les options avancées",

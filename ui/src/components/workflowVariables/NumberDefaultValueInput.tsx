@@ -1,6 +1,8 @@
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { WorkflowVariable } from "@flow/types";
+import { AwarenessUser, WorkflowVariable } from "@flow/types";
+
+import { paramsAwarenessStyles } from "../SchemaForm/utils/awarenessTemplateStyles";
 
 type Props = {
   id?: string;
@@ -8,7 +10,9 @@ type Props = {
   min?: number;
   className?: string;
   variable: Pick<WorkflowVariable, "defaultValue" | "config">;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onDefaultValueChange: (newValue: number | null) => void;
+  onFieldFocus?: (field: string | null) => void;
 };
 
 export const NumberDefaultValueInput: React.FC<Props> = ({
@@ -17,7 +21,9 @@ export const NumberDefaultValueInput: React.FC<Props> = ({
   min,
   className,
   variable,
+  fieldFocusMap,
   onDefaultValueChange,
+  onFieldFocus,
 }) => {
   const t = useT();
 
@@ -98,9 +104,14 @@ export const NumberDefaultValueInput: React.FC<Props> = ({
       value={variable.defaultValue ?? ""}
       onChange={(e) => handleValueChange(e.target.value)}
       onKeyDown={handleKeyDown}
-      onFocus={(e) => e.stopPropagation()}
+      onFocus={(e) => {
+        e.stopPropagation();
+        onFieldFocus?.("defaultValue");
+      }}
       placeholder={t("Enter numeric value")}
       className={className}
+      style={paramsAwarenessStyles(fieldFocusMap?.["defaultValue"])}
+      onBlur={() => onFieldFocus?.(null)}
     />
   );
 };
