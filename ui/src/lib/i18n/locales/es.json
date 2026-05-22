@@ -635,6 +635,8 @@
   "Copy the Selected Actions": "Copiar las acciones seleccionadas",
   "Cut the Selected Actions": "Cortar las acciones seleccionadas",
   "Paste the Copied Actions": "Pegar las acciones copiadas",
+  "Spread the Selected Actions": "Expandir las acciones seleccionadas",
+  "Compress the Selected Actions": "Comprimir las acciones seleccionadas",
   "Undo the Last Action": "Deshacer la última acción",
   "Redo the Last Action": "Rehacer la última acción",
   "Disable/Enable the Selected Actions": "Deshabilitar/Habilitar las acciones seleccionadas",
