@@ -21,7 +21,7 @@ import {
   DatabaseIcon,
   FileIcon,
 } from "@phosphor-icons/react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 import {
   ArrayDefaultItemInput,
@@ -37,12 +37,16 @@ import {
   Checkbox,
   Button,
 } from "@flow/components";
+import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, ArrayConfig } from "@flow/types";
+import { AnyWorkflowVariable, ArrayConfig, AwarenessUser } from "@flow/types";
 
 type Props = {
   variable: AnyWorkflowVariable;
   assetUrl?: string | null;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
+  onFieldFocus?: (field: string | null) => void;
+
   onUpdate: (variable: AnyWorkflowVariable) => void;
   onDialogOpen: (dialog: "assets" | "cms") => void;
   clearUrl: () => void;
@@ -51,6 +55,8 @@ type Props = {
 export const ArrayEditor: React.FC<Props> = ({
   variable,
   assetUrl,
+  fieldFocusMap,
+  onFieldFocus,
   onUpdate,
   onDialogOpen,
   clearUrl,
@@ -81,8 +87,26 @@ export const ArrayEditor: React.FC<Props> = ({
 
   const [arrayItems, setArrayItems] = useState<any[]>(getArrayItems());
 
-  // Sync config and items when variable changes
+  // Refs for debouncing per-item Yjs writes.
+  const itemUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingItemUpdateRef = useRef<{
+    items: any[];
+    config: ArrayConfig;
+  } | null>(null);
+  const variableRef = useRef(variable);
+  variableRef.current = variable;
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+
+  // Sync config and items when variable changes from outside (peer edit or
+  // cancel-revert). Cancel any pending debounced write so stale data is not
+  // written back over the incoming change.
   useEffect(() => {
+    if (itemUpdateTimerRef.current) {
+      clearTimeout(itemUpdateTimerRef.current);
+      itemUpdateTimerRef.current = null;
+      pendingItemUpdateRef.current = null;
+    }
     const newConfig = getArrayConfig();
     const newItems = Array.isArray(variable.defaultValue)
       ? variable.defaultValue
@@ -90,6 +114,16 @@ export const ArrayEditor: React.FC<Props> = ({
     setArrayConfig(newConfig);
     setArrayItems(newItems);
   }, [getArrayConfig, variable.defaultValue]);
+
+  // Clear any pending debounced write on unmount to avoid stale Yjs updates
+  // firing after the dialog has closed.
+  useEffect(() => {
+    return () => {
+      if (itemUpdateTimerRef.current) {
+        clearTimeout(itemUpdateTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (assetUrl) {
@@ -157,8 +191,23 @@ export const ArrayEditor: React.FC<Props> = ({
   const handleUpdateItem = (index: number, value: any) => {
     const newItems = [...arrayItems];
     newItems[index] = value;
-    setArrayItems(newItems);
-    updateVariable(arrayConfig, newItems);
+    setArrayItems(newItems); // immediate local update for controlled input
+
+    // Debounce the Yjs write — text inputs fire on every keystroke.
+    if (itemUpdateTimerRef.current) clearTimeout(itemUpdateTimerRef.current);
+    pendingItemUpdateRef.current = { items: newItems, config: arrayConfig };
+    itemUpdateTimerRef.current = setTimeout(() => {
+      if (pendingItemUpdateRef.current) {
+        const { items, config } = pendingItemUpdateRef.current;
+        pendingItemUpdateRef.current = null;
+        const v = variableRef.current;
+        onUpdateRef.current({
+          ...v,
+          config: v.type === "array" ? config : v.config,
+          defaultValue: items,
+        });
+      }
+    }, 300);
   };
 
   // Set up drag and drop sensors
@@ -256,6 +305,10 @@ export const ArrayEditor: React.FC<Props> = ({
             </Label>
             <Input
               type="number"
+              id="min-items"
+              onFocus={() => onFieldFocus?.("minItems")}
+              onBlur={() => onFieldFocus?.(null)}
+              style={paramsAwarenessStyles(fieldFocusMap?.["minItems"])}
               min="0"
               value={arrayConfig.minItems || 0}
               onChange={(e) =>
@@ -270,7 +323,11 @@ export const ArrayEditor: React.FC<Props> = ({
             </Label>
             <Input
               type="number"
+              id="max-items"
               min="1"
+              onFocus={() => onFieldFocus?.("maxItems")}
+              onBlur={() => onFieldFocus?.(null)}
+              style={paramsAwarenessStyles(fieldFocusMap?.["maxItems"])}
               value={arrayConfig.maxItems || 10}
               onChange={(e) =>
                 handleConfigChange({ maxItems: parseInt(e.target.value) || 10 })
@@ -302,6 +359,9 @@ export const ArrayEditor: React.FC<Props> = ({
             <Input
               type={arrayConfig.itemType === "number" ? "number" : "text"}
               value={newItemText}
+              onFocus={() => onFieldFocus?.("newItemText")}
+              onBlur={() => onFieldFocus?.(null)}
+              style={paramsAwarenessStyles(fieldFocusMap?.["newItemText"])}
               onChange={(e) => setNewItemText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={t(
@@ -361,6 +421,9 @@ export const ArrayEditor: React.FC<Props> = ({
                   <SortableArrayItem
                     key={`item-${index}`}
                     index={index}
+                    focusedUsers={fieldFocusMap?.[`item_${index}`]}
+                    onFocus={() => onFieldFocus?.(`item_${index}`)}
+                    onBlur={() => onFieldFocus?.(null)}
                     onRemove={() => handleRemoveItem(index)}
                     renderInput={() => (
                       <ArrayDefaultItemInput
@@ -391,9 +454,12 @@ export const ArrayEditor: React.FC<Props> = ({
 // Sortable array item component
 const SortableArrayItem: React.FC<{
   index: number;
+  focusedUsers?: AwarenessUser[];
+  onFocus?: () => void;
+  onBlur?: () => void;
   onRemove: () => void;
   renderInput: () => React.ReactNode;
-}> = ({ index, onRemove, renderInput }) => {
+}> = ({ index, focusedUsers, onFocus, onBlur, onRemove, renderInput }) => {
   const t = useT();
 
   const {
@@ -411,6 +477,7 @@ const SortableArrayItem: React.FC<{
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...paramsAwarenessStyles(focusedUsers),
   };
 
   return (
@@ -418,6 +485,8 @@ const SortableArrayItem: React.FC<{
       ref={setNodeRef}
       style={style}
       className="flex items-center gap-2 rounded-md border p-2"
+      onFocus={onFocus}
+      onBlur={onBlur}
       {...attributes}>
       <div
         className="flex cursor-grab touch-none items-center justify-center p-1 active:cursor-grabbing"
