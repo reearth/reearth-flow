@@ -78,10 +78,11 @@ impl CompiledCode {
 
     pub fn eval_string(
         &self,
-        env: &mut reearth_flow_expr::Env,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval_string(e, env),
+            CompiledCode::Expr(e) => eval_string(e, &mut env_from_feature(feature, env_vars)),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
     }

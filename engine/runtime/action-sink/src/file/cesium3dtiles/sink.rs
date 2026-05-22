@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{env_from_feature, Code, CompiledCode, Feature};
+use reearth_flow_types::{Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -207,11 +207,11 @@ impl Cesium3DTilesWriter {
             .as_ref()
             .and_then(|key| ctx.feature.get(key).and_then(|v| v.as_string()));
 
-        let mut eval_ctx = env_from_feature(&ctx.feature, Arc::new(ctx.expr_engine.vars()));
+        let env_vars = Arc::new(ctx.expr_engine.vars());
         let path = self
             .params
             .output
-            .eval_string(&mut eval_ctx)
+            .eval_string(&ctx.feature, Arc::clone(&env_vars))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
         // URI parse only; SinkOutput is constructed once at write time in pipeline.rs (see MVT pattern).
         let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
@@ -221,7 +221,7 @@ impl Cesium3DTilesWriter {
             .as_ref()
             .map(|c| -> crate::errors::Result<Uri> {
                 let path = c
-                    .eval_string(&mut eval_ctx)
+                    .eval_string(&ctx.feature, Arc::clone(&env_vars))
                     .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
                 Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)
             })

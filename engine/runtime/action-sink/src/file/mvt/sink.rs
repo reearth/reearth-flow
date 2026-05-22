@@ -17,7 +17,7 @@ use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{env_from_feature, Attribute, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -207,9 +207,9 @@ impl Sink for MVTWriter {
         match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_)
             | geometry_types::GeometryValue::FlowGeometry2D(_) => {
-                let mut eval_ctx = env_from_feature(feature, Arc::new(ctx.expr_engine.vars()));
-                let mut eval = |c: &CompiledCode| {
-                    c.eval_string(&mut eval_ctx)
+                let env_vars = Arc::new(ctx.expr_engine.vars());
+                let eval = |c: &CompiledCode| {
+                    c.eval_string(feature, Arc::clone(&env_vars))
                         .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))
                 };
                 let output = Uri::from_str(eval(&self.params.output)?.as_str())?;
