@@ -638,6 +638,8 @@
   "Copy the Selected Actions": "Copier les actions sélectionnées",
   "Cut the Selected Actions": "Couper les actions sélectionnées",
   "Paste the Copied Actions": "Coller les actions copiées",
+  "Spread the Selected Actions": "Étaler les actions sélectionnées",
+  "Compress the Selected Actions": "Compresser les actions sélectionnées",
   "Undo the Last Action": "Annuler la dernière action",
   "Redo the Last Action": "Rétablir la dernière action",
   "Disable/Enable the Selected Actions": "Désactiver/Activer les actions sélectionnées",
