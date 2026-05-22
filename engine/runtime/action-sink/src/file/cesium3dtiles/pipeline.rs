@@ -2,7 +2,6 @@ use std::{
     convert::Infallible,
     fs,
     io::BufWriter,
-    path::Path,
     sync::{
         mpsc::{self},
         Arc, Mutex,
@@ -18,6 +17,7 @@ use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::prelude::*;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::executor_operation::Context;
+use reearth_flow_runtime::executor_operation::NodeContext;
 use reearth_flow_types::Feature;
 use tempfile::tempdir;
 
@@ -372,6 +372,10 @@ pub(super) fn tile_writing_stage(
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
+    let node_ctx = NodeContext::from(ctx.clone());
+    let sink_out = crate::SinkOutput::from_path(&node_ctx, output_path.as_str())
+        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+
     // Pre-initialize property_stats from schema to preserve attribute order
     let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> = {
         let mut stats = IndexMap::new();
@@ -463,13 +467,9 @@ pub(super) fn tile_writing_stage(
             )
             .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
-            let storage = ctx
-                .storage_resolver
-                .resolve(&output_path)
-                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-            let output_file_path = output_path.path().join(Path::new(&content_path));
-            storage
-                .put_sync(Path::new(&output_file_path), bytes::Bytes::from(buffer))
+            sink_out
+                .join(&content_path)
+                .and_then(|tile_out| tile_out.write(bytes::Bytes::from(buffer)))
                 .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
             Ok::<(), crate::errors::SinkError>(())
@@ -525,18 +525,11 @@ pub(super) fn tile_writing_stage(
         ..Default::default()
     };
 
-    let storage = ctx
-        .storage_resolver
-        .resolve(&output_path)
-        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-
-    let root_tileset_path = output_path
-        .join(Path::new("tileset.json"))
-        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
     let tileset_json = serde_json::to_string_pretty(&tileset)
         .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-    storage
-        .put_sync(Path::new(&root_tileset_path.path()), tileset_json.into())
+    sink_out
+        .join("tileset.json")
+        .and_then(|manifest_out| manifest_out.write(tileset_json.into()))
         .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
     Ok(())

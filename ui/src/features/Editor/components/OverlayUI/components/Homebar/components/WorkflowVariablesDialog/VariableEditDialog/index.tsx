@@ -1,4 +1,5 @@
 import { GearIcon } from "@phosphor-icons/react";
+import { useMemo } from "react";
 
 import {
   Dialog,
@@ -11,7 +12,7 @@ import { Button } from "@flow/components/buttons/BaseButton";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
-import { WorkflowVariable, VarType } from "@flow/types";
+import { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
 
 import { ArrayEditor } from "./components/ArrayEditor";
 // import { AttributeNameEditor } from "./components/AttributeNameEditor";
@@ -26,18 +27,35 @@ import useVariableEditDialog from "./hooks";
 type Props = {
   isOpen: boolean;
   variable: WorkflowVariable | null;
+  editingUsers?: AwarenessUser[];
   onClose: () => void;
   onUpdate: (variable: WorkflowVariable) => void;
+  onLiveUpdate?: (variable: WorkflowVariable) => void;
+  onFieldFocus?: (field: string | null) => void;
 };
 
 const VariableEditDialog: React.FC<Props> = ({
   isOpen,
   variable,
+  editingUsers = [],
   onClose,
   onUpdate,
+  onLiveUpdate,
+  onFieldFocus,
 }) => {
   const t = useT();
 
+  const fieldFocusMap = useMemo(() => {
+    const map: Record<string, AwarenessUser[]> = {};
+    editingUsers.forEach((user) => {
+      if (user.focusedVariableField) {
+        const field = user.focusedVariableField;
+        if (!map[field]) map[field] = [];
+        map[field].push(user);
+      }
+    });
+    return map;
+  }, [editingUsers]);
   const {
     localVariable,
     hasChanges,
@@ -55,11 +73,11 @@ const VariableEditDialog: React.FC<Props> = ({
     variable,
     onClose,
     onUpdate,
+    onLiveUpdate,
   });
 
   if (!localVariable) return null;
 
-  // Determine the original type from the user-facing name
   const getOriginalType = (type: VarType): VarType => {
     const typeMapping: Record<string, VarType> = {
       [t("Array")]: "array",
@@ -92,29 +110,31 @@ const VariableEditDialog: React.FC<Props> = ({
           <ArrayEditor
             variable={localVariable}
             assetUrl={assetUrl}
+            fieldFocusMap={fieldFocusMap}
+            onFieldFocus={onFieldFocus}
             onUpdate={handleFieldUpdate}
             onDialogOpen={handleDialogOpen}
             clearUrl={clearUrl}
           />
         );
-      // case "attribute_name":
-      //   return (
-      //     <AttributeNameEditor
-      //       variable={localVariable}
-      //       onUpdate={handleFieldUpdate}
-      //     />
-      //   );
       case "text":
         return (
           <DefaultEditor
             variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
             onUpdate={handleFieldUpdate}
             onDialogOpen={handleDialogOpen}
+            onFieldFocus={onFieldFocus}
           />
         );
       case "number":
         return (
-          <NumberEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+          <NumberEditor
+            variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
+            onUpdate={handleFieldUpdate}
+            onFieldFocus={onFieldFocus}
+          />
         );
       case "yes_no":
         return (
@@ -124,29 +144,40 @@ const VariableEditDialog: React.FC<Props> = ({
         return (
           <DateTimeEditor
             variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
             onUpdate={handleFieldUpdate}
+            onFieldFocus={onFieldFocus}
           />
         );
       case "choice":
         return (
           <ChoiceEditor
             variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
             onUpdate={handleFieldUpdate}
             onDialogOpen={handleDialogOpen}
+            onFieldFocus={onFieldFocus}
             clearUrl={clearUrl}
             assetUrl={assetUrl}
           />
         );
       case "color":
         return (
-          <ColorEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+          <ColorEditor
+            variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
+            onUpdate={handleFieldUpdate}
+            onFieldFocus={onFieldFocus}
+          />
         );
       default:
         return (
           <DefaultEditor
             variable={localVariable}
+            fieldFocusMap={fieldFocusMap}
             onUpdate={handleFieldUpdate}
             onDialogOpen={handleDialogOpen}
+            onFieldFocus={onFieldFocus}
           />
         );
     }
@@ -160,6 +191,35 @@ const VariableEditDialog: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <GearIcon />
               {t("Edit Variable")} - {localVariable.name}
+              {editingUsers.length > 0 && (
+                <div className="flex items-center -space-x-4">
+                  {editingUsers.length > 0 && (
+                    <>
+                      {editingUsers.slice(0, 2).map((user) => (
+                        <div key={user.clientId}>
+                          <div
+                            className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                            style={{
+                              backgroundColor: user.color || undefined,
+                            }}>
+                            <span className="text-xs font-medium text-white select-none">
+                              {user.userName.charAt(0).toUpperCase()}
+                              {user.userName.charAt(1)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {editingUsers.length > 2 && (
+                        <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
+                          <span className="text-[10px] font-medium text-white">
+                            + {editingUsers.length - 2}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </DialogTitle>
         </DialogHeader>
