@@ -174,25 +174,43 @@ export default ({
       const anchorX = snap(Math.min(...selectedNodes.map((n) => n.position.x)));
       const anchorY = snap(Math.min(...selectedNodes.map((n) => n.position.y)));
 
+      // Rank each node by its sorted position along each axis independently.
+      // A node at rank N moves by N × gridSize so every gap increases by gridSize.
+      const uniqueXs = [
+        ...new Set(selectedNodes.map((n) => snap(n.position.x))),
+      ].sort((a, b) => a - b);
+      const uniqueYs = [
+        ...new Set(selectedNodes.map((n) => snap(n.position.y))),
+      ].sort((a, b) => a - b);
+
+      const xRank = new Map(uniqueXs.map((x, i) => [x, i]));
+      const yRank = new Map(uniqueYs.map((y, i) => [y, i]));
+
       handleNodesChange(
         selectedNodes.map((n) => {
-          const offsetX = snap(n.position.x) - anchorX;
-          const offsetY = snap(n.position.y) - anchorY;
+          const snappedX = snap(n.position.x);
+          const snappedY = snap(n.position.y);
+          const offsetX = snappedX - anchorX;
+          const offsetY = snappedY - anchorY;
+          const rankX = xRank.get(snappedX) ?? 0;
+          const rankY = yRank.get(snappedY) ?? 0;
           return {
             id: n.id,
             type: "position" as const,
             position: {
+              // Minimum offset is rank × gridSize so nodes never fully collapse
+              // and spread can always recover the original arrangement.
               x:
                 anchorX +
                 Math.max(
-                  0,
-                  offsetX + (offsetX > 0 ? direction * DEFAULT_GRID_SIZE : 0),
+                  rankX * DEFAULT_GRID_SIZE,
+                  offsetX + rankX * direction * DEFAULT_GRID_SIZE,
                 ),
               y:
                 anchorY +
                 Math.max(
-                  0,
-                  offsetY + (offsetY > 0 ? direction * DEFAULT_GRID_SIZE : 0),
+                  rankY * DEFAULT_GRID_SIZE,
+                  offsetY + rankY * direction * DEFAULT_GRID_SIZE,
                 ),
             },
           };
