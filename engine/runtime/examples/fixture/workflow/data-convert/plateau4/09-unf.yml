@@ -557,7 +557,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = Url(env("cityGmlPath")).stem().removesuffix("_" + value("__package"));
+          stem = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
           ft = value("feature_type").split(":")[1];
           Url(env("workerArtifactPath")) / (stem + "_" + value("__package") + "_" + ft + "_dm_geometric_attributes.zip")
       skipUnexposedAttributes: true

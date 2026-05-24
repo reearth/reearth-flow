@@ -12,11 +12,11 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
         ("len", len as MethodFn),
         ("trim", trim as MethodFn),
         ("split", split as MethodFn),
-        ("startswith", starts_with as MethodFn),
-        ("endswith", ends_with as MethodFn),
+        ("starts_with", starts_with as MethodFn),
+        ("ends_with", ends_with as MethodFn),
         ("replace", replace as MethodFn),
-        ("removeprefix", remove_prefix as MethodFn),
-        ("removesuffix", remove_suffix as MethodFn),
+        ("remove_prefix", remove_prefix as MethodFn),
+        ("remove_suffix", remove_suffix as MethodFn),
     ])
 });
 
@@ -68,7 +68,7 @@ fn starts_with(args: &[Value]) -> InnerResult<Value> {
     };
     let Value::String(prefix) = prefix else {
         return Err(InnerError::new(format!(
-            "startswith() argument must be a string, got {}",
+            "starts_with() argument must be a string, got {}",
             prefix.type_name()
         )));
     };
@@ -82,7 +82,7 @@ fn ends_with(args: &[Value]) -> InnerResult<Value> {
     };
     let Value::String(suffix) = suffix else {
         return Err(InnerError::new(format!(
-            "endswith() argument must be a string, got {}",
+            "ends_with() argument must be a string, got {}",
             suffix.type_name()
         )));
     };
@@ -96,7 +96,7 @@ fn remove_prefix(args: &[Value]) -> InnerResult<Value> {
     };
     let Value::String(prefix) = prefix else {
         return Err(InnerError::new(format!(
-            "removeprefix() argument must be a string, got {}",
+            "remove_prefix() argument must be a string, got {}",
             prefix.type_name()
         )));
     };
@@ -125,7 +125,7 @@ fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
     };
     let Value::String(suffix) = suffix else {
         return Err(InnerError::new(format!(
-            "removesuffix() argument must be a string, got {}",
+            "remove_suffix() argument must be a string, got {}",
             suffix.type_name()
         )));
     };
@@ -140,48 +140,52 @@ mod tests {
     use crate::core::value::Value;
 
     #[test]
-    fn test_startswith() {
+    fn test_starts_with() {
         assert_eval(
-            r#""hello_world".startswith("hello")"#,
+            r#""hello_world".starts_with("hello")"#,
             &[],
             Value::Bool(true),
         );
         assert_eval(
-            r#""hello_world".startswith("foo")"#,
+            r#""hello_world".starts_with("foo")"#,
             &[],
             Value::Bool(false),
         );
     }
 
     #[test]
-    fn test_endswith() {
-        assert_eval(r#""hello_world".endswith("world")"#, &[], Value::Bool(true));
-        assert_eval(r#""hello_world".endswith("foo")"#, &[], Value::Bool(false));
+    fn test_ends_with() {
+        assert_eval(
+            r#""hello_world".ends_with("world")"#,
+            &[],
+            Value::Bool(true),
+        );
+        assert_eval(r#""hello_world".ends_with("foo")"#, &[], Value::Bool(false));
     }
 
     #[test]
-    fn test_removeprefix() {
+    fn test_remove_prefix() {
         assert_eval(
-            r#""hello_world".removeprefix("hello_")"#,
+            r#""hello_world".remove_prefix("hello_")"#,
             &[],
             Value::from("world"),
         );
         assert_eval(
-            r#""hello_world".removeprefix("foo")"#,
+            r#""hello_world".remove_prefix("foo")"#,
             &[],
             Value::from("hello_world"),
         );
     }
 
     #[test]
-    fn test_removesuffix() {
+    fn test_remove_suffix() {
         assert_eval(
-            r#""hello_world".removesuffix("_world")"#,
+            r#""hello_world".remove_suffix("_world")"#,
             &[],
             Value::from("hello"),
         );
         assert_eval(
-            r#""hello_world".removesuffix("foo")"#,
+            r#""hello_world".remove_suffix("foo")"#,
             &[],
             Value::from("hello_world"),
         );

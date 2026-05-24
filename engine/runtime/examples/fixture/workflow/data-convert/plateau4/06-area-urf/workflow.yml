@@ -199,7 +199,7 @@ graphs:
             value: |
               city_gml = Url(env("cityGmlPath")).stem();
               ft = value("feature_type").split(":")[1];
-              stem = city_gml.removesuffix("_" + ft);
+              stem = city_gml.remove_suffix("_" + ft);
               filename = stem + "_" + ft + "_mvt_lod" + value("__lod") + ".zip";
               Url(env("workerArtifactPath")) / filename
 
