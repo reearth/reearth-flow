@@ -453,6 +453,7 @@ impl Processor for FeatureMerger {
                                     storage_resolver: ctx.storage_resolver.clone(),
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),
+                                    output_path: ctx.output_path.clone(),
                                 },
                                 fw,
                             )?;
@@ -495,6 +496,7 @@ impl Processor for FeatureMerger {
                                     storage_resolver: ctx.storage_resolver.clone(),
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),
+                                    output_path: ctx.output_path.clone(),
                                 },
                                 fw,
                             )?;

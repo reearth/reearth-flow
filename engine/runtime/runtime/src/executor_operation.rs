@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
@@ -34,6 +35,10 @@ pub struct Context {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
+    /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
+    /// MUST set this to the resolved workerArtifactPath URI. Tests using
+    /// `NodeContext::default()` get `file:///` (permissive) — see `Default` impl.
+    pub output_path: Uri,
 }
 
 impl From<ExecutorContext> for Context {
@@ -43,6 +48,7 @@ impl From<ExecutorContext> for Context {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            output_path: ctx.output_path,
         }
     }
 }
@@ -54,6 +60,7 @@ impl From<NodeContext> for Context {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            output_path: ctx.output_path,
         }
     }
 }
@@ -64,12 +71,14 @@ impl Context {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        output_path: Uri,
     ) -> Self {
         Self {
             expr_engine,
             storage_resolver,
             kv_store,
             event_hub,
+            output_path,
         }
     }
 
@@ -81,6 +90,7 @@ impl Context {
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
+            output_path: self.output_path.clone(),
         }
     }
 }
@@ -93,6 +103,10 @@ pub struct ExecutorContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
+    /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
+    /// MUST set this to the resolved workerArtifactPath URI. Tests using
+    /// `NodeContext::default()` get `file:///` (permissive) — see `Default` impl.
+    pub output_path: Uri,
 }
 
 impl ExecutorContext {
@@ -103,6 +117,7 @@ impl ExecutorContext {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        output_path: Uri,
     ) -> Self {
         Self {
             feature,
@@ -111,6 +126,7 @@ impl ExecutorContext {
             storage_resolver,
             kv_store,
             event_hub,
+            output_path,
         }
     }
 
@@ -120,6 +136,7 @@ impl ExecutorContext {
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
+            output_path: self.output_path.clone(),
         }
     }
 
@@ -131,6 +148,7 @@ impl ExecutorContext {
             storage_resolver: Arc::clone(&self.storage_resolver),
             kv_store: Arc::clone(&self.kv_store),
             event_hub: self.event_hub.clone(),
+            output_path: self.output_path.clone(),
         }
     }
 
@@ -146,6 +164,7 @@ impl ExecutorContext {
             storage_resolver: Arc::clone(&ctx.storage_resolver),
             kv_store: Arc::clone(&ctx.kv_store),
             event_hub: ctx.event_hub.clone(),
+            output_path: ctx.output_path.clone(),
         }
     }
 
@@ -157,6 +176,7 @@ impl ExecutorContext {
             storage_resolver: Arc::clone(&ctx.storage_resolver),
             kv_store: Arc::clone(&ctx.kv_store),
             event_hub: ctx.event_hub.clone(),
+            output_path: ctx.output_path.clone(),
         }
     }
 
@@ -166,6 +186,7 @@ impl ExecutorContext {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        output_path: Uri,
     ) -> Self {
         Self {
             feature,
@@ -174,6 +195,7 @@ impl ExecutorContext {
             storage_resolver,
             kv_store,
             event_hub,
+            output_path,
         }
     }
 
@@ -192,6 +214,10 @@ pub struct NodeContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
+    /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
+    /// MUST set this to the resolved workerArtifactPath URI. Tests using
+    /// `NodeContext::default()` get `file:///` (permissive) — see `Default` impl.
+    pub output_path: Uri,
 }
 
 impl From<Context> for NodeContext {
@@ -201,6 +227,7 @@ impl From<Context> for NodeContext {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            output_path: ctx.output_path,
         }
     }
 }
@@ -212,6 +239,7 @@ impl From<ExecutorContext> for NodeContext {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            output_path: ctx.output_path,
         }
     }
 }
@@ -223,6 +251,10 @@ impl Default for NodeContext {
             storage_resolver: Arc::new(StorageResolver::new()),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
             event_hub: EventHub::new(30),
+            // Permissive sentinel: `file:///` accepts any file:// URI.
+            // Only used by tests; production constructs the context explicitly.
+            output_path: std::str::FromStr::from_str("file:///")
+                .expect("'file:///' is always a valid URI"),
         }
     }
 }
@@ -233,12 +265,14 @@ impl NodeContext {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        output_path: Uri,
     ) -> Self {
         Self {
             expr_engine,
             storage_resolver,
             kv_store,
             event_hub,
+            output_path,
         }
     }
 
@@ -256,6 +290,7 @@ impl NodeContext {
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
+            output_path: self.output_path.clone(),
         }
     }
 }

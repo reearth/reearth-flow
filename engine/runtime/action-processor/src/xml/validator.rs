@@ -724,6 +724,7 @@ mod tests {
                 storage_resolver.clone(),
                 kv_store.clone(),
                 event_hub.clone(),
+                reearth_flow_common::uri::Uri::for_test("file:///"),
             );
 
             let mut with = HashMap::new();
@@ -776,6 +777,7 @@ mod tests {
                     storage_resolver,
                     kv_store,
                     EventHub::new(1024),
+                    reearth_flow_common::uri::Uri::for_test("file:///"),
                 );
                 let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
 

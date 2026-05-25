@@ -9,6 +9,7 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -60,7 +61,15 @@ impl DagExecutor {
         let dag_schemas =
             DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params)?;
         let event_hub = EventHub::new(options.event_hub_capacity);
-        let ctx = NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub);
+        // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
+        let output_path = Uri::for_test("file:///");
+        let ctx = NodeContext::new(
+            expr_engine,
+            storage_resolver,
+            kv_store,
+            event_hub,
+            output_path,
+        );
         let builder_dag = BuilderDag::new(ctx, dag_schemas).await?;
         Ok(Self {
             builder_dag,
@@ -104,11 +113,13 @@ impl DagExecutor {
 
         let event_hub = execution_dag.event_hub().clone();
 
+        // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
         let ctx = NodeContext::new(
             Arc::clone(&expr_engine),
             Arc::clone(&storage_resolver),
             Arc::clone(&kv_store),
             execution_dag.event_hub().clone(),
+            Uri::for_test("file:///"),
         );
 
         let should_run_sources = execution_dag.graph().node_indices().any(|i| {
@@ -156,11 +167,13 @@ impl DagExecutor {
             match node {
                 NodeKind::Source { .. } => continue,
                 NodeKind::Processor(_) => {
+                    // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
                     let ctx = NodeContext::new(
                         Arc::clone(&expr_engine),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
+                        Uri::for_test("file:///"),
                     );
                     let processor_node = ProcessorNode::new(
                         ctx,
@@ -174,11 +187,13 @@ impl DagExecutor {
                     join_handles.push(start_processor(processor_node)?);
                 }
                 NodeKind::Sink(_) => {
+                    // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
                     let ctx = NodeContext::new(
                         Arc::clone(&expr_engine),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
+                        Uri::for_test("file:///"),
                     );
                     let sink_node = SinkNode::new(
                         ctx,
@@ -221,8 +236,14 @@ impl DagExecutor {
             let injector_handle = std::thread::Builder::new()
                 .name("replay-injector".to_string())
                 .spawn(move || {
-                    let node_ctx =
-                        NodeContext::new(expr_engine2, storage_resolver2, kv_store2, event_hub2);
+                    // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
+                    let node_ctx = NodeContext::new(
+                        expr_engine2,
+                        storage_resolver2,
+                        kv_store2,
+                        event_hub2,
+                        Uri::for_test("file:///"),
+                    );
                     replay_inject(cfg, replay_groups, node_ctx);
                     Ok::<(), ExecutionError>(())
                 })
@@ -497,6 +518,7 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
                             node_ctx.storage_resolver.clone(),
                             node_ctx.kv_store.clone(),
                             node_ctx.event_hub.clone(),
+                            node_ctx.output_path.clone(),
                         );
 
                         if let Err(err) = g.sender.send(ExecutorOperation::Op { ctx }) {

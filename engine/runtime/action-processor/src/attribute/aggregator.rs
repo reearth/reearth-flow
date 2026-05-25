@@ -342,12 +342,7 @@ mod tests {
     }
 
     fn make_node_context() -> NodeContext {
-        NodeContext::new(
-            Arc::new(Engine::new()),
-            Arc::new(StorageResolver::new()),
-            Arc::new(kvs::create_kv_store()),
-            EventHub::new(30),
-        )
+        NodeContext::default()
     }
 
     #[test]
