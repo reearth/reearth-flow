@@ -79,6 +79,31 @@ func TestListActions(t *testing.T) {
 	}
 }
 
+func TestListActionsHiddenFilter(t *testing.T) {
+	testActions := []Action{
+		{Name: "VisibleAction", Type: ActionTypeProcessor, Description: "visible", Categories: []string{"Filter"}},
+		{Name: "HiddenAction", Type: ActionTypeProcessor, Description: "hidden", Categories: []string{"Internal"}, Hidden: true},
+	}
+
+	resetTestData()
+	actionsDataMap[""] = ActionsData{Actions: testActions}
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/actions", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	err := listActions(c)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var response []ActionSummary
+	err = json.Unmarshal(rec.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Len(t, response, 1)
+	assert.Equal(t, "VisibleAction", response[0].Name)
+}
+
 func TestGetSegregatedActions(t *testing.T) {
 	testActions := []Action{
 		{
@@ -92,6 +117,13 @@ func TestGetSegregatedActions(t *testing.T) {
 			Type:        ActionTypeProcessor,
 			Description: "Action for port forwarding",
 			Categories:  []string{},
+		},
+		{
+			Name:        "InternalAction",
+			Type:        ActionTypeProcessor,
+			Description: "Should be hidden",
+			Categories:  []string{"Internal"},
+			Hidden:      true,
 		},
 	}
 
@@ -126,6 +158,7 @@ func TestGetSegregatedActions(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotEmpty(t, response.ByCategory)
 				assert.NotEmpty(t, response.ByType)
+				assert.NotContains(t, response.ByCategory, "Internal", "hidden action category must not appear")
 			}
 		})
 	}
@@ -137,6 +170,13 @@ func TestGetActionDetails(t *testing.T) {
 		Type:        ActionTypeProcessor,
 		Description: "Test action description",
 		Categories:  []string{"TestCategory"},
+	}
+	hiddenAction := Action{
+		Name:        "HiddenAction",
+		Type:        ActionTypeProcessor,
+		Description: "Should not be accessible",
+		Categories:  []string{"Internal"},
+		Hidden:      true,
 	}
 
 	tests := []struct {
@@ -150,12 +190,13 @@ func TestGetActionDetails(t *testing.T) {
 		{"Japanese", "ja", testAction.Name, http.StatusOK},
 		{"Invalid language", "invalid", testAction.Name, http.StatusBadRequest},
 		{"Not found", "en", "NonExistent", http.StatusNotFound},
+		{"Hidden action returns 404", "", hiddenAction.Name, http.StatusNotFound},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
-			actionsDataMap[tt.lang] = ActionsData{Actions: []Action{testAction}}
+			actionsDataMap[tt.lang] = ActionsData{Actions: []Action{testAction, hiddenAction}}
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/?lang="+tt.lang, nil)
@@ -204,6 +245,7 @@ func TestMatchesSearch(t *testing.T) {
 		Type:        ActionTypeProcessor,
 		Description: "This is a test action",
 		Categories:  []string{"TestCategory", "AnotherCategory"},
+		Tags:        []string{"citygml", "3d"},
 	}
 
 	tests := []struct {
@@ -222,6 +264,9 @@ func TestMatchesSearch(t *testing.T) {
 		{"Wrong category", "", "WrongCategory", "", false},
 		{"Wrong type", "", "", "source", false},
 		{"Partial match with type and category", "Test", "TestCategory", "processor", true},
+		{"Match by tag", "citygml", "", "", true},
+		{"Match by partial tag", "city", "", "", true},
+		{"No match wrong tag", "shapefile", "", "", false},
 	}
 
 	for _, tt := range tests {
