@@ -31,7 +31,9 @@ type Action struct {
 	InputPorts  []string               `json:"inputPorts"`
 	OutputPorts []string               `json:"outputPorts"`
 	Categories  []string               `json:"categories"`
+	Tags        []string               `json:"tags"`
 	Builtin     bool                   `json:"builtin"`
+	Hidden      bool                   `json:"hidden,omitempty"`
 }
 
 func (a *Action) Validate() error {
