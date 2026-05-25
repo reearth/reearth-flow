@@ -26,7 +26,7 @@ type Props = {
     direction: Direction,
     xSpacing: number,
     ySpacing: number,
-  ) => void;
+  ) => Promise<void>;
 };
 
 const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
@@ -42,8 +42,8 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
     Vertical: t("Vertical"),
   };
 
-  const handleLayoutChange = () => {
-    onLayoutChange(layoutDirection, xSpacing, ySpacing);
+  const handleLayoutChange = async () => {
+    await onLayoutChange(layoutDirection, xSpacing, ySpacing);
     onClose();
   };
 
@@ -80,9 +80,10 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
                 max={500}
                 className="h-8 w-20"
                 value={xSpacing}
-                onChange={(e) =>
-                  setXSpacing(Math.max(0, Number(e.target.value)))
-                }
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setXSpacing(Math.max(0, value));
+                }}
               />
             </div>
             <div className="flex flex-1 items-center gap-2">
@@ -93,9 +94,10 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
                 max={500}
                 className="h-8 w-20"
                 value={ySpacing}
-                onChange={(e) =>
-                  setYSpacing(Math.max(0, Number(e.target.value)))
-                }
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setYSpacing(Math.max(0, value));
+                }}
               />
             </div>
           </DialogContentSection>

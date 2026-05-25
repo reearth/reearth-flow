@@ -21,6 +21,8 @@ export default ({
 }) => {
   const handleYLayoutChange = useCallback(
     async (direction: Direction, xSpacing: number, ySpacing: number) => {
+      if (!yWorkflows) return;
+
       // Phase 1: compute all layouts asynchronously before touching Yjs
       const layouts = await Promise.all(
         rawWorkflows.map(async (rawWorkflow) => {
@@ -40,7 +42,7 @@ export default ({
       // Phase 2: apply all results in one synchronous undo transaction
       undoTrackerActionWrapper(() => {
         layouts.forEach(({ id, result }) => {
-          const yNodes = yWorkflows?.get(id)?.get("nodes") as
+          const yNodes = yWorkflows.get(id)?.get("nodes") as
             | YNodesMap
             | undefined;
           if (!yNodes) return;

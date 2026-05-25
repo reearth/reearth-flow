@@ -62,7 +62,7 @@ type OverlayUIProps = {
     direction: Direction,
     xSpacing: number,
     ySpacing: number,
-  ) => void;
+  ) => Promise<void>;
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
