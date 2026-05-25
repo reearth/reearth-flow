@@ -55,10 +55,10 @@ pub enum ExprKind {
         name: String,
         args: Vec<Expr>,
     },
-    /// method call: `expr.method(args)`
-    MethodCall {
+    /// attribute call: `expr.attr(args)`
+    Attribute {
         receiver: Box<Expr>,
-        method: String,
+        attr: String,
         args: Vec<Expr>,
     },
     Unary(UnaryOp, Box<Expr>),
@@ -96,6 +96,8 @@ pub enum ExprKind {
         iterable: Box<Expr>,
         body: Box<Expr>,
     },
+    /// `return [expr]` — exits the current script (or future closure) with a value
+    Return(Option<Box<Expr>>),
 }
 
 #[derive(Debug, Clone)]

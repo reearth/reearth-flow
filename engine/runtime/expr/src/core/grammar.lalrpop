@@ -21,7 +21,8 @@ extern {
         "if"    => crate::core::lexer::Token::If,
         "else"  => crate::core::lexer::Token::Else,
         "while" => crate::core::lexer::Token::While,
-        "for"   => crate::core::lexer::Token::For,
+        "for"    => crate::core::lexer::Token::For,
+        "return" => crate::core::lexer::Token::Return,
         "."     => crate::core::lexer::Token::Dot,
         "["     => crate::core::lexer::Token::LBracket,
         "]"     => crate::core::lexer::Token::RBracket,
@@ -74,6 +75,10 @@ pub Expr: Expr = {
 // Right-recursive so `a = b = 1` chains correctly.
 // LHS is a Postfix expression; the evaluator validates it is a legal lvalue at runtime.
 Assign: Expr = {
+    <l:@L> "return" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Return(Some(Box::new(v)))),
+    <l:@L> "return" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Return(None)),
     <l:@L> <lv:Postfix> "=" <v:Assign> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Assign { lvalue: Box::new(lv), value: Box::new(v) }),
     <l:@L> <lv:Postfix> "+=" <v:Assign> <r:@R>
@@ -176,7 +181,7 @@ Postfix: Expr = {
     <l:@L> <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> ":" <step:OptExpr> "]" <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: step.map(Box::new) }),
     <l:@L> <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::MethodCall { receiver: Box::new(e), method: name, args }),
+        => Expr::new(Span { start: l, end: r }, ExprKind::Attribute { receiver: Box::new(e), attr: name, args }),
     Primary,
 };
 

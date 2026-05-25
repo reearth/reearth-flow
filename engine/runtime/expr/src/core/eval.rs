@@ -70,7 +70,10 @@ pub fn default_env() -> Env {
 }
 
 pub fn eval(expr: &Expr, env: &mut Env) -> Result<Value> {
-    eval_inner(expr, env)
+    match eval_inner(expr, env) {
+        Err(Error::Return(v)) => Ok(v),
+        other => other,
+    }
 }
 
 /// Recursion entrypoint for native function/operator/method invocations.
@@ -476,13 +479,13 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             let f = resolve_unary_op(op);
             call_func(&f, &[val], pos)
         }
-        ExprKind::MethodCall {
+        ExprKind::Attribute {
             receiver,
-            method,
+            attr,
             args,
         } => {
             let recv = eval_inner(receiver, env)?;
-            let f = resolve_method(&recv, method).to_eval_error(pos)?;
+            let f = resolve_method(&recv, attr).to_eval_error(pos)?;
             let mut call_args = Vec::with_capacity(args.len() + 1);
             call_args.push(recv);
             for a in args {
@@ -575,6 +578,13 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                 eval_inner(body, env)?;
             }
             Ok(Value::Null)
+        }
+        ExprKind::Return(expr) => {
+            let val = match expr {
+                Some(e) => eval_inner(e, env)?,
+                None => Value::Null,
+            };
+            Err(Error::Return(val))
         }
     }
 }
@@ -1682,6 +1692,31 @@ mod tests {
     #[test]
     fn test_for_in_null() {
         assert_eval("for x in null { x } 1", &[], Value::from(1i64));
+    }
+
+    #[test]
+    fn test_return() {
+        // bare return evaluates to null
+        assert_eval("return", &[], Value::Null);
+        // return with value
+        assert_eval("return 42", &[], Value::from(42i64));
+        // early exit from block: statements after return are not evaluated
+        assert_eval("return 1; 2", &[], Value::from(1i64));
+        // return inside if
+        assert_eval("if true { return 7 } 99", &[], Value::from(7i64));
+        assert_eval("if false { return 7 } 99", &[], Value::from(99i64));
+        // return inside while exits the whole script
+        assert_eval(
+            "i = 0; while true { i = i + 1; if i == 3 { return i } }",
+            &[],
+            Value::from(3i64),
+        );
+        // return with assign expression
+        assert_eval(
+            "return x = 5",
+            &[("x", Value::from(0i64))],
+            Value::from(5i64),
+        );
     }
 
     #[test]
