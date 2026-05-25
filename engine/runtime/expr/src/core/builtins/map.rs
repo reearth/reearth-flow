@@ -18,6 +18,7 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
         ("keys", keys as MethodFn),
         ("values", values as MethodFn),
         ("items", items as MethodFn),
+        ("get", get as MethodFn),
     ])
 });
 
@@ -68,6 +69,25 @@ fn items(args: &[Value]) -> InnerResult<Value> {
             .map(|(k, v)| Value::array(vec![Value::String(k.clone()), v.clone()]))
             .collect(),
     ))
+}
+
+fn get(args: &[Value]) -> InnerResult<Value> {
+    let (recv, key, fallback) = match args {
+        [recv, key] => (recv, key, None),
+        [recv, key, fallback] => (recv, key, Some(fallback)),
+        _ => return Err(InnerError::new("map.get() requires 1 or 2 arguments")),
+    };
+    let Value::Map(rc) = recv else {
+        return Err(InnerError::new("expected map receiver"));
+    };
+    let Value::String(k) = key else {
+        return Err(InnerError::new("map.get() key must be a string"));
+    };
+    Ok(rc
+        .borrow()
+        .get(k.as_str())
+        .cloned()
+        .unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
 }
 
 pub fn eq_inner(
@@ -125,6 +145,17 @@ mod tests {
             "y".into() => Value::from(2i64),
         });
         assert_eval("m.values()", &[("m", m)], Value::from(vec![1i64, 2i64]));
+    }
+
+    #[test]
+    fn test_get() {
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+        });
+        assert_eval("m.get(\"x\")", &[("m", m.clone())], Value::from(1i64));
+        assert_eval("m.get(\"z\")", &[("m", m.clone())], Value::Null);
+        assert_eval("m.get(\"z\", 42)", &[("m", m.clone())], Value::from(42i64));
+        assert_eval("m.get(\"x\", 99)", &[("m", m)], Value::from(1i64));
     }
 
     #[test]

@@ -686,24 +686,33 @@ fn eval_compound_assign(
 
 fn eval_index(target: Value, key: Value) -> InnerResult<Value> {
     match (target, key) {
-        (Value::Map(map), Value::String(k)) => {
-            Ok(map.borrow().get(&k).cloned().unwrap_or(Value::Null))
-        }
+        (Value::Map(map), Value::String(k)) => map
+            .borrow()
+            .get(&k)
+            .cloned()
+            .ok_or_else(|| InnerError::new(format!("map key '{k}' not found"))),
         (Value::Array(arr), Value::Int(i)) => {
             let arr = arr.borrow();
-            let i = if i < 0 { arr.len() as i64 + i } else { i };
-            Ok(arr.get(i as usize).cloned().unwrap_or(Value::Null))
+            let len = arr.len() as i64;
+            let i = if i < 0 { len + i } else { i };
+            if i < 0 || i >= len {
+                return Err(InnerError::new(format!(
+                    "array index {i} out of range (len {len})"
+                )));
+            }
+            Ok(arr[i as usize].clone())
         }
         (Value::String(s), Value::Int(i)) => {
             let chars: Vec<char> = s.chars().collect();
             let len = chars.len() as i64;
             let i = if i < 0 { len + i } else { i };
             if i < 0 || i >= len {
-                return Ok(Value::Null);
+                return Err(InnerError::new(format!(
+                    "string index {i} out of range (len {len})"
+                )));
             }
             Ok(Value::String(chars[i as usize].to_string()))
         }
-        (Value::Null, _) => Ok(Value::Null),
         (target, key) => Err(InnerError::new(format!(
             "cannot index {} with {}",
             target.type_name(),
@@ -1171,12 +1180,14 @@ mod tests {
             "name".into() => Value::from("alice"),
         });
         assert_eval(r#"m["name"]"#, &[("m", m.clone())], Value::from("alice"));
-        assert_eval(r#"m["missing"]"#, &[("m", m)], Value::Null);
+        assert!(try_run(r#"m["missing"]"#, &[("m", m)]).is_err());
         let arr = Value::from(vec![1i64, 2i64, 3i64]);
         assert_eval("arr[0]", &[("arr", arr.clone())], Value::from(1i64));
-        assert_eval("arr[-1]", &[("arr", arr)], Value::from(3i64));
+        assert_eval("arr[-1]", &[("arr", arr.clone())], Value::from(3i64));
+        assert!(try_run("arr[10]", &[("arr", arr)]).is_err());
         assert_eval(r#""hello"[0]"#, &[], Value::from("h"));
         assert_eval(r#""hello"[-1]"#, &[], Value::from("o"));
+        assert!(try_run(r#""hello"[99]"#, &[]).is_err());
     }
 
     #[test]
