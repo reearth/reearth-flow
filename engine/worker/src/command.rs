@@ -220,9 +220,9 @@ impl RunWorkerCommand {
             }
         };
 
-        let (ingress_state, feature_state, logger_factory, incremental_run_config) = self
-            .prepare_workflow(&storage_resolver, &meta, &mut workflow)
-            .await?;
+        let (ingress_state, feature_state, logger_factory, incremental_run_config, artifact_uri) =
+            self.prepare_workflow(&storage_resolver, &meta, &mut workflow)
+                .await?;
 
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub.clone() {
             PubSubBackend::Google(p) => Arc::new(EventHandler::new(workflow.id, meta.job_id, p)),
@@ -241,6 +241,7 @@ impl RunWorkerCommand {
             feature_state,
             incremental_run_config,
             vec![handler, node_failure_handler.clone()],
+            artifact_uri,
         )
         .await;
         let job_result = match result {
@@ -373,6 +374,7 @@ impl RunWorkerCommand {
         Arc<State>,
         Arc<LoggerFactory>,
         Option<IncrementalRunConfig>,
+        Uri,
     )> {
         let job_id = meta.job_id;
         let asset_path = setup_job_directory("workers", "assets", job_id).map_err(Error::init)?;
@@ -397,27 +399,36 @@ impl RunWorkerCommand {
             WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE.to_string(),
             asset_path.to_string(),
         );
-        let external = self
+        // Resolve the effective workerArtifactPath: caller-provided value takes
+        // priority, falling back to the job-scoped default directory.
+        let effective_artifact_path = self
             .vars
             .get(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE)
             .cloned()
-            .or_else(|| flow_var(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE));
-        if let Some(v) = external {
+            .or_else(|| flow_var(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE))
+            .unwrap_or_else(|| artifact_path.to_string());
+        if effective_artifact_path != artifact_path.to_string() {
             tracing::info!(
                 "workerArtifactPath is provided externally. Using caller value in globals: {}",
-                v
+                effective_artifact_path
             );
-            global.insert(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(), v);
         } else {
             tracing::info!(
                 "workerArtifactPath is not provided. Injecting job-scoped default: {}",
-                artifact_path
-            );
-            global.insert(
-                WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
-                artifact_path.to_string(),
+                effective_artifact_path
             );
         }
+        global.insert(
+            WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
+            effective_artifact_path.clone(),
+        );
+        // Parse the effective path as a URI — used as the executor's output_path
+        // sandbox root (single source of truth with the global above).
+        let artifact_uri = Uri::from_str(&effective_artifact_path).map_err(|e| {
+            Error::failed_to_create_workflow(format!(
+                "invalid workerArtifactPath {effective_artifact_path:?}: {e}"
+            ))
+        })?;
         workflow
             .extend_with(global)
             .map_err(Error::failed_to_create_workflow)?;
@@ -508,6 +519,7 @@ impl RunWorkerCommand {
             feature_state,
             logger_factory,
             incremental_run_config,
+            artifact_uri,
         ))
     }
 

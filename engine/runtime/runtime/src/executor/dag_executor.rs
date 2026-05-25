@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::Builder;
 use std::thread::JoinHandle;
@@ -10,7 +9,6 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -62,14 +60,12 @@ impl DagExecutor {
         let dag_schemas =
             DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params)?;
         let event_hub = EventHub::new(options.event_hub_capacity);
-        // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
-        let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         let ctx = NodeContext::new(
             expr_engine,
             storage_resolver,
             kv_store,
             event_hub,
-            output_path,
+            options.output_path.clone(),
         );
         let builder_dag = BuilderDag::new(ctx, dag_schemas).await?;
         Ok(Self {
@@ -92,6 +88,9 @@ impl DagExecutor {
         event_handlers: Vec<Arc<dyn EventHandler>>,
         executor_id: uuid::Uuid,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
+        // Extract fields from options before partial moves.
+        let output_path = self.options.output_path.clone();
+
         // Construct execution dag.
         let mut execution_dag = ExecutionDag::new(
             self.builder_dag,
@@ -114,13 +113,12 @@ impl DagExecutor {
 
         let event_hub = execution_dag.event_hub().clone();
 
-        // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
         let ctx = NodeContext::new(
             Arc::clone(&expr_engine),
             Arc::clone(&storage_resolver),
             Arc::clone(&kv_store),
             execution_dag.event_hub().clone(),
-            Uri::from_str("file:///").expect("'file:///' is always a valid URI"),
+            output_path.clone(),
         );
 
         let should_run_sources = execution_dag.graph().node_indices().any(|i| {
@@ -168,13 +166,12 @@ impl DagExecutor {
             match node {
                 NodeKind::Source { .. } => continue,
                 NodeKind::Processor(_) => {
-                    // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
                     let ctx = NodeContext::new(
                         Arc::clone(&expr_engine),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
-                        Uri::from_str("file:///").expect("'file:///' is always a valid URI"),
+                        output_path.clone(),
                     );
                     let processor_node = ProcessorNode::new(
                         ctx,
@@ -188,13 +185,12 @@ impl DagExecutor {
                     join_handles.push(start_processor(processor_node)?);
                 }
                 NodeKind::Sink(_) => {
-                    // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
                     let ctx = NodeContext::new(
                         Arc::clone(&expr_engine),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
-                        Uri::from_str("file:///").expect("'file:///' is always a valid URI"),
+                        output_path.clone(),
                     );
                     let sink_node = SinkNode::new(
                         ctx,
@@ -237,13 +233,12 @@ impl DagExecutor {
             let injector_handle = std::thread::Builder::new()
                 .name("replay-injector".to_string())
                 .spawn(move || {
-                    // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
                     let node_ctx = NodeContext::new(
                         expr_engine2,
                         storage_resolver2,
                         kv_store2,
                         event_hub2,
-                        Uri::from_str("file:///").expect("'file:///' is always a valid URI"),
+                        output_path,
                     );
                     replay_inject(cfg, replay_groups, node_ctx);
                     Ok::<(), ExecutionError>(())

@@ -1,7 +1,8 @@
-use std::{collections::HashMap, env, sync::Arc, time::Instant};
+use std::{collections::HashMap, env, str::FromStr, sync::Arc, time::Instant};
 
 use once_cell::sync::Lazy;
 use reearth_flow_action_log::factory::LoggerFactory;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     event::EventHandler, incremental::IncrementalRunConfig, node::NodeKind, shutdown,
 };
@@ -96,6 +97,8 @@ impl Runner {
             logger_factory.clone(),
         ))];
         handlers.extend(event_handlers);
+        // TODO(PR2 Task 5): replace with real artifact path from CLI
+        let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         let result = runtime.block_on(async move {
             orchestrator
                 .run_all(
@@ -107,6 +110,7 @@ impl Runner {
                     feature_state,
                     incremental_run_config,
                     handlers,
+                    output_path,
                 )
                 .await
         });
@@ -135,6 +139,8 @@ impl AsyncRunner {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
+        // TODO(PR2 Task 5): replace with real artifact path from CLI
+        let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -145,6 +151,7 @@ impl AsyncRunner {
             feature_state,
             incremental_run_config,
             vec![],
+            output_path,
         )
         .await
     }
@@ -160,6 +167,7 @@ impl AsyncRunner {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
+        output_path: Uri,
     ) -> Result<(), crate::errors::Error> {
         let start = Instant::now();
         let version = env!("CARGO_PKG_VERSION");
@@ -193,11 +201,12 @@ impl AsyncRunner {
                 feature_state,
                 incremental_run_config,
                 handlers,
+                output_path,
             )
             .await;
         if let Err(e) = &result {
             error!("Failed to workflow: {:?}", e);
-            info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
         } else {
             info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
         }

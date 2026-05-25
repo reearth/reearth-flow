@@ -5,6 +5,7 @@ use std::sync::Arc;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
 use once_cell::sync::Lazy;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::event::EventHandler;
 use reearth_flow_runtime::executor_operation::ExecutorOptions;
@@ -70,6 +71,7 @@ impl Orchestrator {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
+        output_path: Uri,
     ) -> Result<(), Error> {
         let executor = Executor {};
         let options = ExecutorOptions {
@@ -77,6 +79,7 @@ impl Orchestrator {
             event_hub_capacity: *EVENT_HUB_CAPACITY,
             thread_pool_size: *THREAD_POOL_SIZE,
             feature_flush_threshold: *FEATURE_FLUSH_THRESHOLD,
+            output_path,
         };
         let expr_engine = Arc::new(Engine::with_vars(workflow.with.clone().unwrap_or_default()));
         let kv_store = Arc::new(create_kv_store());
@@ -132,6 +135,7 @@ impl Orchestrator {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
+        output_path: Uri,
     ) -> Result<(), Error> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(
@@ -143,6 +147,7 @@ impl Orchestrator {
             feature_state,
             incremental_run_config,
             event_handlers,
+            output_path,
         )
         .await
     }

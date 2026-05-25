@@ -301,4 +301,24 @@ pub struct ExecutorOptions {
     pub event_hub_capacity: usize,
     pub thread_pool_size: usize,
     pub feature_flush_threshold: usize,
+    /// Per-job sandbox root for sink writes, wired from the worker's resolved
+    /// `workerArtifactPath`. CLI callers set this too (Task 5). Tests and legacy
+    /// callers that do not set it via the builder will get the permissive
+    /// `file:///` sentinel through `ExecutorOptions::default()`.
+    pub output_path: Uri,
+}
+
+impl Default for ExecutorOptions {
+    fn default() -> Self {
+        Self {
+            channel_buffer_sz: 256,
+            event_hub_capacity: 8192,
+            thread_pool_size: 30,
+            feature_flush_threshold: 512,
+            // Permissive sentinel — same as NodeContext::default().
+            // Production callers must override this with the real artifact URI.
+            output_path: std::str::FromStr::from_str("file:///")
+                .expect("'file:///' is always a valid URI"),
+        }
+    }
 }
