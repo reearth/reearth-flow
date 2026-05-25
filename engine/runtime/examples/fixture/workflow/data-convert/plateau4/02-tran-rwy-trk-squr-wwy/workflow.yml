@@ -81,15 +81,6 @@ graphs:
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
-            - attribute: cityGmlStem
-              method: create
-              value: |
-                let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-                let suffix = "_" + env.get("__value")["package"];
-                if city_gml.ends_with(suffix) {
-                  city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-                }
-                city_gml
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -204,7 +195,9 @@ graphs:
             value: 'Url(env("workerArtifactPath")) / (value("__package") + "_lod3")'
           compressOutput:
             type: flowExpr
-            value: 'Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("__package") + "_3dtiles_lod3.zip")'
+            value: |
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
+              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_3dtiles_lod3.zip")
 
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeManagerByLod0-2
@@ -290,7 +283,9 @@ graphs:
             value: Url(env("workerArtifactPath")) / (value("__package") + "_lod" + value("__lod"))
           compressOutput:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("__package") + "_mvt_lod" + value("__lod") + ".zip")
+            value: |
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
+              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_mvt_lod" + value("__lod") + ".zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
@@ -378,7 +373,9 @@ graphs:
             value: Url(env("workerArtifactPath")) / (value("__package") + "_dm_geometric_attributes")
           compressOutput:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("__package") + "_dm_geometric_attributes.zip")
+            value: |
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
+              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_dm_geometric_attributes.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 

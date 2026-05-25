@@ -326,17 +326,6 @@ graphs:
       - attribute: feature_type
         method: create
         value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
-      - attribute: cityGmlStem
-        method: create
-        value: |
-          let pkg = env.get("__value")["package"];
-          let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-          let suffix = "_" + pkg;
-          if city_gml.ends_with(suffix) {
-            city_gml.sub_string(0, city_gml.len() - suffix.len())
-          } else {
-            city_gml
-          }
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -408,7 +397,9 @@ graphs:
         value: Url(env("workerArtifactPath")) / (value("package") + "_lod0")
       compressOutput:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("package") + "_mvt_lod0.zip")
+        value: |
+          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
+          Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_mvt_lod0.zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   - id: 674b22f7-ffb7-4594-b569-4c4f780326ce
@@ -428,7 +419,8 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          Url(env("workerArtifactPath")) / (value("cityGmlStem") + "_" + value("package") + "_3dtiles_lod1.zip")
+          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
+          Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_3dtiles_lod1.zip")
   edges:
   - id: a869fc02-dfdb-4c39-ac49-7329be13c1b9
     from: 6935ea45-2f34-4047-a33d-e8c34416e328
