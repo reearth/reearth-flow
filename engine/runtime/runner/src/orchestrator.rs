@@ -78,11 +78,7 @@ impl Orchestrator {
             thread_pool_size: *THREAD_POOL_SIZE,
             feature_flush_threshold: *FEATURE_FLUSH_THRESHOLD,
         };
-        let expr_engine = Engine::new();
-        if let Some(with) = &workflow.with {
-            expr_engine.append(with);
-        }
-        let expr_engine = Arc::new(expr_engine);
+        let expr_engine = Arc::new(Engine::with_vars(workflow.with.clone().unwrap_or_default()));
         let kv_store = Arc::new(create_kv_store());
 
         let dag_executor = executor

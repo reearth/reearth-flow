@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -99,7 +98,7 @@ impl Processor for FlowExprTest {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let mut eval_env = env_from_feature(feature, Arc::new(ctx.expr_engine.vars()));
+        let mut eval_env = env_from_feature(feature, ctx.expr_engine.vars());
         let mut feature = feature.clone();
 
         for (attr, code) in &self.mappings {
