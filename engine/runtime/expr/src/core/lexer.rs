@@ -28,7 +28,7 @@ fn lex_string<'src>(lex: &mut logos::Lexer<'src, Token>) -> Option<String> {
 #[logos(skip r"[ \t\n\r]+")]
 pub enum Token {
     // literals
-    #[regex(r"[0-9]+\.[0-9]+", |lex| lex.slice().parse::<f64>().ok())]
+    #[regex(r"[0-9]+\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+", |lex| lex.slice().parse::<f64>().ok())]
     Float(f64),
 
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
@@ -180,6 +180,14 @@ mod tests {
             tokenize("1 + 2.5"),
             vec![Token::Int(1), Token::Plus, Token::Float(2.5)]
         );
+    }
+
+    #[test]
+    fn test_float_scientific_notation() {
+        assert_eq!(tokenize("1e-10"), vec![Token::Float(1e-10)]);
+        assert_eq!(tokenize("1e10"), vec![Token::Float(1e10)]);
+        assert_eq!(tokenize("1.5e3"), vec![Token::Float(1.5e3)]);
+        assert_eq!(tokenize("2.0E+4"), vec![Token::Float(2.0E+4)]);
     }
 
     #[test]
