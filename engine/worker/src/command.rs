@@ -407,7 +407,7 @@ impl RunWorkerCommand {
             .cloned()
             .or_else(|| flow_var(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE))
             .unwrap_or_else(|| artifact_path.to_string());
-        if effective_artifact_path != artifact_path.to_string() {
+        if artifact_path.as_str() != effective_artifact_path {
             tracing::info!(
                 "workerArtifactPath is provided externally. Using caller value in globals: {}",
                 effective_artifact_path
