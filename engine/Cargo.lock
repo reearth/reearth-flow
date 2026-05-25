@@ -6817,7 +6817,6 @@ dependencies = [
  "reearth-flow-atlas",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
- "reearth-flow-expr",
  "reearth-flow-geometry",
  "reearth-flow-gltf",
  "reearth-flow-runtime",
