@@ -14,6 +14,9 @@ pub struct ActionSchema {
     pub input_ports: Vec<String>,
     pub output_ports: Vec<String>,
     pub categories: Vec<String>,
+    pub tags: Vec<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub hidden: bool,
 }
 
 impl ActionSchema {
@@ -27,6 +30,8 @@ impl ActionSchema {
         input_ports: Vec<String>,
         output_ports: Vec<String>,
         categories: Vec<String>,
+        tags: Vec<String>,
+        hidden: bool,
     ) -> Self {
         Self {
             name,
@@ -37,6 +42,8 @@ impl ActionSchema {
             input_ports,
             output_ports,
             categories,
+            tags,
+            hidden,
         }
     }
 }
@@ -209,8 +216,9 @@ pub(crate) fn create_action_schema(
     kind: &NodeKind,
     builtin: bool,
     i18n: &HashMap<String, I18nSchema>,
+    base_actions: &std::collections::HashSet<&str>,
 ) -> ActionSchema {
-    let (name, description, parameter, input_ports, output_ports, categories) = match kind {
+    let (name, description, parameter, input_ports, output_ports, categories, tags) = match kind {
         NodeKind::Source(factory) => {
             let i18n_schema = i18n.get(&factory.name().to_string());
             (
@@ -234,6 +242,7 @@ pub(crate) fn create_action_schema(
                     .map(|p| p.to_string())
                     .collect(),
                 factory.categories().iter().map(|c| c.to_string()).collect(),
+                factory.tags().iter().map(|t| t.to_string()).collect(),
             )
         }
         NodeKind::Processor(factory) => {
@@ -263,6 +272,7 @@ pub(crate) fn create_action_schema(
                     .map(|p| p.to_string())
                     .collect(),
                 factory.categories().iter().map(|c| c.to_string()).collect(),
+                factory.tags().iter().map(|t| t.to_string()).collect(),
             )
         }
         NodeKind::Sink(factory) => {
@@ -288,9 +298,12 @@ pub(crate) fn create_action_schema(
                     .collect(),
                 vec![],
                 factory.categories().iter().map(|c| c.to_string()).collect(),
+                factory.tags().iter().map(|t| t.to_string()).collect(),
             )
         }
     };
+
+    let hidden = !base_actions.is_empty() && !base_actions.contains(name.as_str());
 
     ActionSchema::new(
         name,
@@ -305,5 +318,7 @@ pub(crate) fn create_action_schema(
         input_ports,
         output_ports,
         categories,
+        tags,
+        hidden,
     )
 }

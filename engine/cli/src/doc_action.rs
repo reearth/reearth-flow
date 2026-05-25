@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use clap::Command;
 use indoc::indoc;
@@ -22,23 +22,24 @@ impl DocActionCliCommand {
     pub fn execute(&self) -> crate::Result<()> {
         let mut builtin_action_factories = HashMap::new();
         let i18n = HashMap::new();
+        let no_filter: HashSet<&str> = HashSet::new();
         builtin_action_factories.extend(BUILTIN_ACTION_FACTORIES.clone());
         builtin_action_factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let mut actions = builtin_action_factories
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, true, &i18n))
+            .map(|kind| create_action_schema(kind, true, &i18n, &no_filter))
             .collect::<Vec<_>>();
         let plateau_actions = PLATEAU_ACTION_FACTORIES
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, false, &i18n))
+            .map(|kind| create_action_schema(kind, false, &i18n, &no_filter))
             .collect::<Vec<_>>();
         actions.extend(plateau_actions);
         let python_actions = PYTHON_ACTION_FACTORIES
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, false, &i18n))
+            .map(|kind| create_action_schema(kind, false, &i18n, &no_filter))
             .collect::<Vec<_>>();
         actions.extend(python_actions);
         actions.sort_by(|a, b| a.name.cmp(&b.name));
