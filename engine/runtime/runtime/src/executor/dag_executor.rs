@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::Builder;
 use std::thread::JoinHandle;
@@ -62,7 +63,7 @@ impl DagExecutor {
             DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params)?;
         let event_hub = EventHub::new(options.event_hub_capacity);
         // TODO(PR2 Task 4/5): replace with real artifact path from worker/CLI
-        let output_path = Uri::for_test("file:///");
+        let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         let ctx = NodeContext::new(
             expr_engine,
             storage_resolver,
@@ -119,7 +120,7 @@ impl DagExecutor {
             Arc::clone(&storage_resolver),
             Arc::clone(&kv_store),
             execution_dag.event_hub().clone(),
-            Uri::for_test("file:///"),
+            Uri::from_str("file:///").expect("'file:///' is always a valid URI"),
         );
 
         let should_run_sources = execution_dag.graph().node_indices().any(|i| {
@@ -173,7 +174,7 @@ impl DagExecutor {
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
-                        Uri::for_test("file:///"),
+                        Uri::from_str("file:///").expect("'file:///' is always a valid URI"),
                     );
                     let processor_node = ProcessorNode::new(
                         ctx,
@@ -193,7 +194,7 @@ impl DagExecutor {
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
-                        Uri::for_test("file:///"),
+                        Uri::from_str("file:///").expect("'file:///' is always a valid URI"),
                     );
                     let sink_node = SinkNode::new(
                         ctx,
@@ -242,7 +243,7 @@ impl DagExecutor {
                         storage_resolver2,
                         kv_store2,
                         event_hub2,
-                        Uri::for_test("file:///"),
+                        Uri::from_str("file:///").expect("'file:///' is always a valid URI"),
                     );
                     replay_inject(cfg, replay_groups, node_ctx);
                     Ok::<(), ExecutionError>(())
