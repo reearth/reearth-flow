@@ -207,12 +207,16 @@ func listActions(c echo.Context) error {
 	var summaries []ActionSummary
 
 	for _, action := range data.Actions {
+		if action.Hidden {
+			continue
+		}
 		if matchesSearch(action, query, category, actionType) {
 			summaries = append(summaries, ActionSummary{
 				Name:        action.Name,
 				Description: action.Description,
 				Type:        string(action.Type),
 				Categories:  action.Categories,
+				Tags:        action.Tags,
 			})
 		}
 	}
@@ -252,12 +256,16 @@ func getSegregatedActions(c echo.Context) error {
 	}
 
 	for _, action := range data.Actions {
+		if action.Hidden {
+			continue
+		}
 		if matchesSearch(action, query, "", "") {
 			summary := ActionSummary{
 				Name:        action.Name,
 				Description: action.Description,
 				Type:        string(action.Type),
 				Categories:  action.Categories,
+				Tags:        action.Tags,
 			}
 
 			if len(action.Categories) > 0 {
@@ -363,6 +371,9 @@ func getActionDetails(c echo.Context) error {
 	}
 
 	for _, action := range data.Actions {
+		if action.Hidden {
+			continue
+		}
 		if action.Name == id {
 			return c.JSON(http.StatusOK, action)
 		}
