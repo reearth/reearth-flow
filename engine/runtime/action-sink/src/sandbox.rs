@@ -31,6 +31,11 @@ impl std::error::Error for SandboxError {}
 /// `file://` URIs are parsed by `Uri::from_str` which may normalize earlier,
 /// but if a `..` segment survives to this point it is treated as escape.
 pub fn ensure_under(root: &Uri, candidate: &Uri) -> Result<(), SandboxError> {
+    // Permissive sentinel: `Runner::run` (legacy / tests) uses `file:///` to
+    // mean "no sandbox". Bypass the prefix check so writes to any scheme pass.
+    if root.as_str() == "file:///" {
+        return Ok(());
+    }
     if root.as_str() == candidate.as_str() {
         return Ok(());
     }
@@ -128,5 +133,12 @@ mod tests {
         // The Default NodeContext uses "file:///" as the permissive root.
         // Any file:// URI must pass.
         assert!(ensure_under(&uri("file:///"), &uri("file:///tmp/foo.bin")).is_ok());
+    }
+
+    #[test]
+    fn permissive_file_root_accepts_other_schemes() {
+        // `Runner::run` uses `file:///` to mean "no sandbox" — non-file
+        // schemes (e.g. `ram://` used by integration tests) must pass too.
+        assert!(ensure_under(&uri("file:///"), &uri("ram:///output.gpkg")).is_ok());
     }
 }
