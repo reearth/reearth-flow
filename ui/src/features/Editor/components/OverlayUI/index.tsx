@@ -62,7 +62,8 @@ type OverlayUIProps = {
   onLayoutChange: (
     algorithm: Algorithm,
     direction: Direction,
-    spacing: number,
+    xSpacing: number,
+    ySpacing: number,
   ) => void;
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;

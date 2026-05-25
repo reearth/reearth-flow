@@ -8,6 +8,7 @@ import {
   DialogContentWrapper,
   DialogFooter,
   DialogTitle,
+  Input,
   Label,
   Select,
   SelectContent,
@@ -17,13 +18,15 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { Algorithm, Direction } from "@flow/types";
+import { DEFAULT_LAYOUT_SPACING } from "@flow/utils/autoLayout";
 
 type Props = {
   onClose: () => void;
   onLayoutChange: (
     algorithm: Algorithm,
     direction: Direction,
-    spacing: number,
+    xSpacing: number,
+    ySpacing: number,
   ) => void;
 };
 
@@ -33,7 +36,8 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
   const [algorithm, setAlgorithm] = useState<Algorithm>("dagre");
   const [layoutDirection, setLayoutDirection] =
     useState<Direction>("Horizontal");
-  const [spacing] = useState(100);
+  const [xSpacing, setXSpacing] = useState(DEFAULT_LAYOUT_SPACING.x);
+  const [ySpacing, setYSpacing] = useState(DEFAULT_LAYOUT_SPACING.y);
 
   const algorithms: Record<Algorithm, string> = {
     dagre: t("Dagre (Tree)"),
@@ -47,7 +51,7 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
   };
 
   const handleLayoutChange = () => {
-    onLayoutChange(algorithm, layoutDirection, spacing);
+    onLayoutChange(algorithm, layoutDirection, xSpacing, ySpacing);
     onClose();
   };
 
@@ -96,6 +100,34 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </DialogContentSection>
+          <DialogContentSection className="flex-row gap-4">
+            <div className="flex flex-1 items-center gap-2">
+              <Label className="shrink-0">{t("X Spacing: ")}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                className="h-8 w-20"
+                value={xSpacing}
+                onChange={(e) =>
+                  setXSpacing(Math.max(0, Number(e.target.value)))
+                }
+              />
+            </div>
+            <div className="flex flex-1 items-center gap-2">
+              <Label className="shrink-0">{t("Y Spacing: ")}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                className="h-8 w-20"
+                value={ySpacing}
+                onChange={(e) =>
+                  setYSpacing(Math.max(0, Number(e.target.value)))
+                }
+              />
             </div>
           </DialogContentSection>
         </DialogContentWrapper>

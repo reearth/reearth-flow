@@ -20,13 +20,25 @@ export default ({
   ) => void;
 }) => {
   const handleYLayoutChange = useCallback(
-    async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
+    async (
+      algorithm: Algorithm,
+      direction: Direction,
+      xSpacing: number,
+      ySpacing: number,
+    ) => {
       // Phase 1: compute all layouts asynchronously before touching Yjs
       const layouts = await Promise.all(
         rawWorkflows.map(async (rawWorkflow) => {
           const nodes = rawWorkflow.nodes as Node[];
           const edges = rawWorkflow.edges as Edge[];
-          const result = await autoLayout(algorithm, direction, nodes, edges);
+          const result = await autoLayout(
+            algorithm,
+            direction,
+            nodes,
+            edges,
+            xSpacing,
+            ySpacing,
+          );
           return { id: rawWorkflow.id, result };
         }),
       );

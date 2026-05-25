@@ -7,7 +7,7 @@ import type { ELK as ELKInstance } from "elkjs/lib/elk-api";
 // @ts-ignore
 import ELKBundled from "elkjs/lib/elk.bundled.js";
 
-import { DEFAULT_NODE_SIZE } from "@flow/global-constants";
+import { DEFAULT_GRID_SIZE, DEFAULT_NODE_SIZE } from "@flow/global-constants";
 import { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 const elk = new ELKBundled() as ELKInstance;
@@ -17,16 +17,22 @@ const nodeWidth = (node: Node) =>
 const nodeHeight = (node: Node) =>
   node.measured?.height ?? DEFAULT_NODE_SIZE.height;
 
+const snapToGrid = (v: number) =>
+  Math.round(v / DEFAULT_GRID_SIZE) * DEFAULT_GRID_SIZE;
+
 const dagreLayout = (
   direction: Direction,
   nodes: Node[],
   edges: Edge[],
+  xSpacing: number,
+  ySpacing: number,
 ): { nodes: Node[]; edges: Edge[] } => {
   const graph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+  const isHorizontal = direction === "Horizontal";
   graph.setGraph({
-    rankdir: direction === "Horizontal" ? "LR" : "TB",
-    ranksep: 80,
-    nodesep: 40,
+    rankdir: isHorizontal ? "LR" : "TB",
+    ranksep: isHorizontal ? xSpacing : ySpacing,
+    nodesep: isHorizontal ? ySpacing : xSpacing,
   });
 
   nodes.forEach((node) => {
@@ -48,8 +54,8 @@ const dagreLayout = (
       return {
         ...node,
         position: {
-          x: x - nodeWidth(node) / 2,
-          y: y - nodeHeight(node) / 2,
+          x: snapToGrid(x - nodeWidth(node) / 2),
+          y: snapToGrid(y - nodeHeight(node) / 2),
         },
       };
     }),
@@ -61,14 +67,19 @@ const elkLayout = async (
   direction: Direction,
   nodes: Node[],
   edges: Edge[],
+  xSpacing: number,
+  ySpacing: number,
 ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
+  const isHorizontal = direction === "Horizontal";
   const elkGraph = {
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",
-      "elk.direction": direction === "Horizontal" ? "RIGHT" : "DOWN",
-      "elk.spacing.nodeNode": "50",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "80",
+      "elk.direction": isHorizontal ? "RIGHT" : "DOWN",
+      "elk.spacing.nodeNode": String(isHorizontal ? ySpacing : xSpacing),
+      "elk.layered.spacing.nodeNodeBetweenLayers": String(
+        isHorizontal ? xSpacing : ySpacing,
+      ),
     },
     children: nodes.map((node) => ({
       id: node.id,
@@ -91,8 +102,8 @@ const elkLayout = async (
       return {
         ...node,
         position: {
-          x: child.x ?? node.position.x,
-          y: child.y ?? node.position.y,
+          x: snapToGrid(child.x ?? node.position.x),
+          y: snapToGrid(child.y ?? node.position.y),
         },
       };
     }),
@@ -106,6 +117,8 @@ const d3Layout = (
   direction: Direction,
   nodes: Node[],
   edges: Edge[],
+  xSpacing: number,
+  ySpacing: number,
 ): { nodes: Node[]; edges: Edge[] } => {
   const targetIds = new Set(edges.map((e) => e.target));
   const roots = nodes.filter((n) => !targetIds.has(n.id));
@@ -138,11 +151,11 @@ const d3Layout = (
       })),
     );
 
-    // nodeSize: [x-separation (perpendicular to depth), y-separation (depth)]
+    // nodeSize: [perpendicular-to-depth separation, depth separation]
     const layout = tree<D3Datum>().nodeSize(
       direction === "Horizontal"
-        ? [maxHeight + 40, maxWidth + 80]
-        : [maxWidth + 40, maxHeight + 80],
+        ? [maxHeight + ySpacing, maxWidth + xSpacing]
+        : [maxWidth + xSpacing, maxHeight + ySpacing],
     );
 
     layout(hierarchy);
@@ -153,8 +166,8 @@ const d3Layout = (
       if (!node.id) return;
       positionMap.set(node.id, {
         // For horizontal (LR): depth (node.y) → x, perpendicular (node.x) → y
-        x: direction === "Horizontal" ? node.y : node.x,
-        y: direction === "Horizontal" ? node.x : node.y,
+        x: snapToGrid(direction === "Horizontal" ? node.y : node.x),
+        y: snapToGrid(direction === "Horizontal" ? node.x : node.y),
       });
     });
 
@@ -171,13 +184,19 @@ const d3Layout = (
   }
 };
 
+export const DEFAULT_LAYOUT_SPACING = { x: 80, y: 50 };
+
 export const autoLayout = async (
   algorithm: Algorithm = "dagre",
   direction: Direction = "Horizontal",
   nodes: Node[],
   edges: Edge[],
+  xSpacing: number = DEFAULT_LAYOUT_SPACING.x,
+  ySpacing: number = DEFAULT_LAYOUT_SPACING.y,
 ): Promise<{ nodes: Node[]; edges: Edge[] }> => {
-  if (algorithm === "elk") return elkLayout(direction, nodes, edges);
-  if (algorithm === "d3") return d3Layout(direction, nodes, edges);
-  return dagreLayout(direction, nodes, edges);
+  if (algorithm === "elk")
+    return elkLayout(direction, nodes, edges, xSpacing, ySpacing);
+  if (algorithm === "d3")
+    return d3Layout(direction, nodes, edges, xSpacing, ySpacing);
+  return dagreLayout(direction, nodes, edges, xSpacing, ySpacing);
 };
