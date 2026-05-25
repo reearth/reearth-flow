@@ -27,5 +27,11 @@ pub(crate) fn create_default_node_context() -> NodeContext {
     let storage_resolver = Arc::new(StorageResolver::new());
     let kv_store = Arc::new(create_kv_store());
     let event_hub = EventHub::new(1024);
-    NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub, Uri::for_test("file:///"))
+    NodeContext::new(
+        expr_engine,
+        storage_resolver,
+        kv_store,
+        event_hub,
+        Uri::for_test("file:///"),
+    )
 }

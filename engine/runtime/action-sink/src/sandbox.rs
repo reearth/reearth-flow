@@ -7,11 +7,6 @@ use reearth_flow_common::uri::Uri;
 pub enum SandboxError {
     /// The candidate URI resolves outside the configured sandbox root.
     OutsideRoot { resolved: Uri, root: Uri },
-    /// The candidate cannot be normalized (e.g. malformed URI).
-    InvalidPath {
-        candidate: String,
-        reason: &'static str,
-    },
 }
 
 impl fmt::Display for SandboxError {
@@ -24,9 +19,6 @@ impl fmt::Display for SandboxError {
                     resolved, root
                 )
             }
-            SandboxError::InvalidPath { candidate, reason } => {
-                write!(f, "sink output path {:?} rejected: {}", candidate, reason)
-            }
         }
     }
 }
@@ -34,7 +26,10 @@ impl fmt::Display for SandboxError {
 impl std::error::Error for SandboxError {}
 
 /// Verify that `candidate` resolves under `root`. Same scheme, same authority,
-/// segment-aligned path prefix. `..` segments are normalized before the check.
+/// segment-aligned path prefix. Any `..` segment in the candidate (after the
+/// root prefix) is hard-rejected; the candidate is NOT normalized through them.
+/// `file://` URIs are parsed by `Uri::from_str` which may normalize earlier,
+/// but if a `..` segment survives to this point it is treated as escape.
 pub fn ensure_under(root: &Uri, candidate: &Uri) -> Result<(), SandboxError> {
     if root.as_str() == candidate.as_str() {
         return Ok(());
