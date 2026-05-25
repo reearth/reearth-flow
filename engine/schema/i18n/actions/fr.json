@@ -547,6 +547,12 @@
           "title": "Skip unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1318,16 +1324,6 @@
         "Mapping": {
           "attribute": {},
           "value": {}
-        }
-      },
-      "enumI18n": {
-        "CodeType": {
-          "flowExpr": {
-            "description": "Évalué comme une expression Flow à l'exécution"
-          },
-          "string": {
-            "description": "Utilisé comme une chaîne de caractères littérale"
-          }
         }
       }
     },
@@ -2181,6 +2177,12 @@
         "skipUnexposedAttributes": {
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

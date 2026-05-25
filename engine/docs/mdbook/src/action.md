@@ -1347,7 +1347,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Optional path for compressed archive output",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -1381,7 +1381,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Directory path where the 3D tiles will be written",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -1403,8 +1403,27 @@ Export Features as Cesium 3D Tiles for Web Visualization
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -3955,7 +3974,6 @@ Experimental testbed for the Flow expression engine
   },
   "definitions": {
     "Code": {
-      "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
       "type": "object",
       "required": [
         "type",
@@ -3971,21 +3989,10 @@ Experimental testbed for the Flow expression engine
       }
     },
     "CodeType": {
-      "oneOf": [
-        {
-          "description": "Evaluated as a Flow expression at runtime",
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        {
-          "description": "Used as a plain string literal",
-          "type": "string",
-          "enum": [
-            "string"
-          ]
-        }
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
       ]
     },
     "Mapping": {
@@ -6855,7 +6862,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Optional expression to determine whether to compress the output tiles",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -6877,7 +6884,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Name of the layer within the MVT tiles",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -6900,7 +6907,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Output directory path or expression for the generated MVT tiles",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -6922,8 +6929,27 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
