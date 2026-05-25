@@ -39,7 +39,7 @@ impl ProcessorFactory for SpatialFilterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Geometry"]
+        &["Filter"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

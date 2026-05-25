@@ -41,7 +41,11 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["3d-tiles", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

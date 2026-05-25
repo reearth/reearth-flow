@@ -36,7 +36,11 @@ impl SinkFactory for JsonWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["json"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

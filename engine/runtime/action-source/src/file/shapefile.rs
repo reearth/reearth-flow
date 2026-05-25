@@ -108,7 +108,11 @@ impl SourceFactory for ShapefileReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["shapefile"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

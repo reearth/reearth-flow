@@ -431,7 +431,11 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["System"]
+        &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["routing"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -513,7 +517,11 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["System"]
+        &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["routing"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

@@ -46,7 +46,11 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["mvt"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
