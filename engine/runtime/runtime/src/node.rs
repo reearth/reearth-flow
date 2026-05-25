@@ -226,6 +226,10 @@ pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
         &[]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &[]
+    }
+
     fn get_output_ports(&self) -> Vec<Port>;
     fn build(
         &self,
@@ -287,6 +291,10 @@ pub trait ProcessorFactory: Send + Sync + Debug + ProcessorFactoryClone {
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
 
     fn categories(&self) -> &[&'static str] {
+        &[]
+    }
+
+    fn tags(&self) -> &[&'static str] {
         &[]
     }
 
@@ -352,6 +360,10 @@ pub trait SinkFactory: Send + Sync + Debug + SinkFactoryClone {
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
 
     fn categories(&self) -> &[&'static str] {
+        &[]
+    }
+
+    fn tags(&self) -> &[&'static str] {
         &[]
     }
     fn get_input_ports(&self) -> Vec<Port>;
