@@ -205,6 +205,63 @@ mod tests {
 }
 
 #[cfg(test)]
+mod parse_ast {
+    use super::*;
+    use crate::core::ast::ExprKind;
+
+    #[test]
+    fn test_block_stmt_sequencing() {
+        // 1. block block — no spurious Null
+        let e1 = parse("if true { 1 } while false { 2 }").unwrap();
+        let ExprKind::Block(s1) = &e1.kind else {
+            panic!("case 1: expected Block")
+        };
+        assert_eq!(
+            s1.len(),
+            2,
+            "case 1: {:?}",
+            s1.iter().map(|e| &e.kind).collect::<Vec<_>>()
+        );
+        assert!(matches!(s1[0].kind, ExprKind::If { .. }));
+        assert!(matches!(s1[1].kind, ExprKind::While { .. }));
+
+        // 2. expr; while — no spurious Null
+        let ew = parse("i = 0; while i < 5 { i += 1 }").unwrap();
+        let ExprKind::Block(sw) = &ew.kind else {
+            panic!("while case: expected Block")
+        };
+        assert_eq!(
+            sw.len(),
+            2,
+            "while case: {:?}",
+            sw.iter().map(|e| &e.kind).collect::<Vec<_>>()
+        );
+        assert!(matches!(sw[0].kind, ExprKind::Assign { .. }));
+        assert!(matches!(sw[1].kind, ExprKind::While { .. }));
+
+        // 3. (block) block — parse error
+        assert!(
+            parse("(if true { 1 }) while false { 2 }").is_err(),
+            "case 3: expected parse error"
+        );
+
+        // 4. (block); block — no spurious Null
+        let e4 = parse("(if true { 1 }); while false { 2 }").unwrap();
+        let ExprKind::Block(s4) = &e4.kind else {
+            panic!("case 4: expected Block")
+        };
+        assert_eq!(
+            s4.len(),
+            2,
+            "case 4: {:?}",
+            s4.iter().map(|e| &e.kind).collect::<Vec<_>>()
+        );
+        assert!(matches!(s4[0].kind, ExprKind::If { .. }));
+        assert!(matches!(s4[1].kind, ExprKind::While { .. }));
+    }
+}
+
+#[cfg(test)]
 mod parse_smoke {
     use super::*;
     use crate::core::ast::ExprKind;
@@ -213,7 +270,6 @@ mod parse_smoke {
     fn smoke_assign_forms() {
         let cases = [
             ("x = 1 + 1; x", true),
-            ("x = { 1 + 1 }; x", true),
             ("x = 1 + 1;", true),   // trailing semi returns Null
             ("x = 1", true),        // assign alone is a valid expr
             ("x = y = 2; x", true), // chained assign

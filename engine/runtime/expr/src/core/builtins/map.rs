@@ -94,3 +94,52 @@ pub fn eq_inner(
     }
     Ok(true)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::core::test_utils::assert_eval;
+    use crate::core::value::Value;
+
+    #[test]
+    fn test_len() {
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eval("m.len()", &[("m", m)], Value::from(2i64));
+    }
+
+    #[test]
+    fn test_keys() {
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eval("m.keys()", &[("m", m)], Value::from(vec!["x", "y"]));
+    }
+
+    #[test]
+    fn test_values() {
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eval("m.values()", &[("m", m)], Value::from(vec![1i64, 2i64]));
+    }
+
+    #[test]
+    fn test_items() {
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eval(
+            "m.items()",
+            &[("m", m)],
+            Value::from(vec![
+                Value::from(vec![Value::from("x"), Value::from(1i64)]),
+                Value::from(vec![Value::from("y"), Value::from(2i64)]),
+            ]),
+        );
+    }
+}

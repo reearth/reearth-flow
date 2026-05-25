@@ -1349,7 +1349,7 @@
             "description": "圧縮アーカイブ出力の出力先パス（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -1383,7 +1383,7 @@
             "description": "3D タイルを書き出すディレクトリパス",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -1405,8 +1405,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -3958,7 +3977,6 @@
         },
         "definitions": {
           "Code": {
-            "description": "A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.",
             "type": "object",
             "required": [
               "type",
@@ -3974,21 +3992,10 @@
             }
           },
           "CodeType": {
-            "oneOf": [
-              {
-                "description": "実行時にFlow式として評価される",
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              {
-                "description": "プレーンな文字列リテラルとして使用される",
-                "type": "string",
-                "enum": [
-                  "string"
-                ]
-              }
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
             ]
           },
           "Mapping": {
@@ -6859,7 +6866,7 @@
             "description": "出力タイルを圧縮するかを決定する式（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6881,7 +6888,7 @@
             "description": "MVT タイル内のレイヤー名",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -6904,7 +6911,7 @@
             "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -6926,8 +6933,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
