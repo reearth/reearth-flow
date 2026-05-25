@@ -6,7 +6,6 @@ import type {
   Workflow,
   EngineReadyWorkflow,
   EngineReadyGraph,
-  Algorithm,
   PseudoPort,
 } from "@flow/types";
 
@@ -18,10 +17,8 @@ import { convertNodes } from "./convertNodes";
 
 export const separateWorkflow = async ({
   engineWorkflow,
-  layoutType,
 }: {
   engineWorkflow: EngineReadyWorkflow;
-  layoutType?: Algorithm;
 }): Promise<Workflow[] | undefined> => {
   const { graphs, entryGraphId } = engineWorkflow;
   if (graphs.some((graph) => !isWorkflowGraph(graph))) {
@@ -73,7 +70,6 @@ export const separateWorkflow = async ({
     const edges = convertEdges(graph.edges);
 
     const { nodes: layoutedNodes, edges: layoutedEdges } = await autoLayout(
-      layoutType ?? "dagre",
       "Horizontal",
       nodes,
       edges,

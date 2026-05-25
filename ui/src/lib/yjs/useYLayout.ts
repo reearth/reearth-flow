@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import * as Y from "yjs";
 
-import { Algorithm, Direction, Edge, Node, Workflow } from "@flow/types";
+import { Direction, Edge, Node, Workflow } from "@flow/types";
 import { autoLayout } from "@flow/utils/autoLayout";
 
 import { yNodeConstructor } from "./conversions";
@@ -20,19 +20,13 @@ export default ({
   ) => void;
 }) => {
   const handleYLayoutChange = useCallback(
-    async (
-      algorithm: Algorithm,
-      direction: Direction,
-      xSpacing: number,
-      ySpacing: number,
-    ) => {
+    async (direction: Direction, xSpacing: number, ySpacing: number) => {
       // Phase 1: compute all layouts asynchronously before touching Yjs
       const layouts = await Promise.all(
         rawWorkflows.map(async (rawWorkflow) => {
           const nodes = rawWorkflow.nodes as Node[];
           const edges = rawWorkflow.edges as Edge[];
           const result = await autoLayout(
-            algorithm,
             direction,
             nodes,
             edges,

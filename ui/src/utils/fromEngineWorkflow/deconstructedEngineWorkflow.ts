@@ -1,4 +1,4 @@
-import { Algorithm, EngineReadyWorkflow, Workflow } from "@flow/types";
+import { EngineReadyWorkflow, Workflow } from "@flow/types";
 
 import { separateWorkflow } from "./separateWorkflows";
 
@@ -13,10 +13,8 @@ export type WorkflowVariable = {
 
 export const deconstructedEngineWorkflow = async ({
   engineWorkflow,
-  layoutType,
 }: {
   engineWorkflow?: EngineReadyWorkflow;
-  layoutType?: Algorithm;
 }): Promise<
   | { meta: Meta; workflows: Workflow[]; variables?: WorkflowVariable[] }
   | undefined
@@ -26,7 +24,6 @@ export const deconstructedEngineWorkflow = async ({
 
   const canvasReadyWorkflows: Workflow[] | undefined = await separateWorkflow({
     engineWorkflow,
-    layoutType,
   });
 
   if (!canvasReadyWorkflows) return;

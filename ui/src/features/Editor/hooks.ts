@@ -30,7 +30,7 @@ import {
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
-import type { Algorithm, Direction, Edge, Node } from "@flow/types";
+import type { Direction, Edge, Node } from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -219,16 +219,9 @@ export default ({
   });
 
   const handleLayoutChange = useCallback(
-    async (
-      algorithm: Algorithm,
-      direction: Direction,
-      xSpacing: number,
-      ySpacing: number,
-    ) => {
+    async (direction: Direction, xSpacing: number, ySpacing: number) => {
       // We need to wait for the layout to finish before fitting the view
-      await Promise.resolve(
-        handleYLayoutChange(algorithm, direction, xSpacing, ySpacing),
-      );
+      await Promise.resolve(handleYLayoutChange(direction, xSpacing, ySpacing));
       fitView();
     },
     [fitView, handleYLayoutChange],

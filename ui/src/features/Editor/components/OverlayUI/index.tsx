@@ -7,7 +7,6 @@ import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type {
   ActionNodeType,
-  Algorithm,
   AnyWorkflowVariable,
   AwarenessUser,
   Direction,
@@ -60,7 +59,6 @@ type OverlayUIProps = {
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
   onLayoutChange: (
-    algorithm: Algorithm,
     direction: Direction,
     xSpacing: number,
     ySpacing: number,
