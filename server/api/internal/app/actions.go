@@ -76,6 +76,7 @@ type ActionSummary struct {
 	Description string   `json:"description"`
 	Type        string   `json:"type"`
 	Categories  []string `json:"categories"`
+	Tags        []string `json:"tags"`
 }
 
 type SegregatedActions struct {
