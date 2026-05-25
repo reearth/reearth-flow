@@ -2,6 +2,7 @@ export const DEFAULT_ENTRY_GRAPH_ID = "main";
 export const DEFAULT_EDGE_PORT = "default";
 export const DEFAULT_ROUTING_PORT = "default";
 export const DEFAULT_NODE_SIZE = { width: 150, height: 25 };
+export const DEFAULT_GRID_SIZE = 16.5;
 export const ALLOWED_WORKFLOW_FILE_EXTENSIONS = ".json, .yaml, .yml";
 export const ALLOWED_PROJECT_IMPORT_EXTENSIONS = ".zip";
 export const ALLOWED_ASSET_IMPORT_EXTENSIONS =
@@ -29,7 +30,10 @@ export const CANVAS_HOT_KEYS = [
   "ctrl+v", // paste win
   "meta+e", // enable/disable node mac
   "ctrl+e", // enable/disable node win
+  "shift+equal", // spread selected nodes mac
+  "shift+minus", // compress selected nodes mac
 ];
+
 export const EDITOR_HOT_KEYS = [
   "shift+meta+z", // redo mac
   "shift+ctrl+z", // redo win
