@@ -118,7 +118,7 @@ graphs:
         action: FeatureSorter
         with:
           attributes:
-            - __package
+            - package
           order: ascending
 
       - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
@@ -145,22 +145,20 @@ graphs:
         action: MVTWriter
         with:
           schemaKey: __citygml_feature_type
-          layerName: |
-            env.get("__value").feature_type.split(":")[1]
+          layerName:
+            type: flowExpr
+            value: value("feature_type").split(":")[1]
           minZoom: 8
           maxZoom: 16
           extent: 65536
-          output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("__value")["package"] + "_lod0")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let pkg = env.get("__value")["package"];
-            let suffix = "_" + pkg;
-            if city_gml.ends_with(suffix) {
-              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-            }
-            file::join_path(artifact, city_gml + "_" + pkg + "_mvt_lod0.zip")
+          output:
+            type: flowExpr
+            value: Url(env("workerArtifactPath")) / (value("package") + "_lod0")
+          compressOutput:
+            type: flowExpr
+            value: |
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
+              Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_mvt_lod0.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
@@ -174,17 +172,15 @@ graphs:
           maxZoom: 18
           attachTexture: true
           skipUnexposedAttributes: true
-          output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod1")
-          compressOutput: |
-            let artifact = env.get("workerArtifactPath");
-            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-            let pkg = env.get("__value")["package"];
-            let suffix = "_" + pkg;
-            if city_gml.ends_with(suffix) {
-              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-            }
-            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1.zip")
+          output:
+            type: flowExpr
+            value: |
+              Url(env("workerArtifactPath")) / (value("package") + "_lod1")
+          compressOutput:
+            type: flowExpr
+            value: |
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
+              Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_3dtiles_lod1.zip")
 
     edges:
       - id: a869fc02-dfdb-4c39-ac49-7329be13c1b9

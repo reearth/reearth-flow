@@ -37,13 +37,10 @@ impl Expr {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum CodeType {
-    /// Evaluated as a Flow expression at runtime
     FlowExpr,
-    /// Used as a plain string literal
     String,
 }
 
-/// A typed code value: a string paired with a [`CodeType`] that controls how it is interpreted at evaluation time.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Code {
@@ -81,10 +78,11 @@ impl CompiledCode {
 
     pub fn eval_string(
         &self,
-        env: &mut reearth_flow_expr::Env,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval_string(e, env),
+            CompiledCode::Expr(e) => eval_string(e, &mut env_from_feature(feature, env_vars)),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
     }

@@ -550,6 +550,12 @@
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1321,16 +1327,6 @@
         "Mapping": {
           "attribute": {},
           "value": {}
-        }
-      },
-      "enumI18n": {
-        "CodeType": {
-          "flowExpr": {
-            "description": "実行時にFlow式として評価される"
-          },
-          "string": {
-            "description": "プレーンな文字列リテラルとして使用される"
-          }
         }
       }
     },
@@ -2184,6 +2180,12 @@
         "skipUnexposedAttributes": {
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
