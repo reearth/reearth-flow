@@ -305,6 +305,7 @@ impl Processor for FeatureWriter {
                 } => {
                     citygml::write_citygml(
                         output,
+                        &ctx.output_path,
                         features,
                         &lod_mask,
                         &epsg_code,

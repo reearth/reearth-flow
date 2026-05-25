@@ -32,6 +32,7 @@ use writer::CityGmlXmlWriter;
 /// the `FeatureWriter` processor.
 pub fn write_citygml_to_storage(
     output: &Uri,
+    output_path: &Uri,
     features: &[Feature],
     lod_mask: &LodMask,
     epsg_code: Option<u32>,
@@ -131,17 +132,6 @@ pub fn write_citygml_to_storage(
                     continue;
                 }
             };
-            let dst_storage = match storage_resolver.resolve(&dst_uri) {
-                Ok(s) => s,
-                Err(e) => {
-                    tracing::warn!(
-                        "failed to resolve storage for texture destination '{}': {}",
-                        dst_str,
-                        e
-                    );
-                    continue;
-                }
-            };
             let bytes = match src_storage.get_sync(src_uri.path().as_path()) {
                 Ok(b) => b,
                 Err(e) => {
@@ -149,7 +139,26 @@ pub fn write_citygml_to_storage(
                     continue;
                 }
             };
-            if let Err(e) = dst_storage.put_sync(dst_uri.path().as_path(), bytes) {
+            // Construct a minimal NodeContext just for the sandbox check on texture dst.
+            // We synthesize a NodeContext because `write_citygml_to_storage` only receives
+            // `storage_resolver` and `output_path` as parameters, not a full NodeContext.
+            let node_ctx = reearth_flow_runtime::executor_operation::NodeContext {
+                storage_resolver: storage_resolver.clone(),
+                output_path: output_path.clone(),
+                ..Default::default()
+            };
+            let dst_out = match crate::SinkOutput::from_path(&node_ctx, dst_uri.as_str()) {
+                Ok(o) => o,
+                Err(e) => {
+                    tracing::warn!(
+                        "failed to acquire sandboxed SinkOutput for texture destination '{}': {}",
+                        dst_str,
+                        e
+                    );
+                    continue;
+                }
+            };
+            if let Err(e) = dst_out.write(bytes) {
                 tracing::warn!("failed to write texture file '{}': {}", dst_str, e);
                 continue;
             }
@@ -348,6 +357,7 @@ impl Sink for CityGmlWriterSink {
 
         write_citygml_to_storage(
             out.uri(),
+            &ctx.output_path,
             &self.buffer,
             &self.lod_mask,
             self.params.epsg_code,
@@ -356,5 +366,39 @@ impl Sink for CityGmlWriterSink {
         )?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod sandbox_tests {
+    use super::*;
+    use reearth_flow_common::uri::Uri;
+    use std::str::FromStr;
+    use tempfile::tempdir;
+
+    /// Texture dst URIs outside the configured output_path must be rejected
+    /// by SinkOutput::from_path — this catches any regression that would
+    /// reintroduce the direct dst_storage.put_sync bypass.
+    #[test]
+    fn texture_dst_write_outside_sandbox_root_is_rejected() {
+        let tmp = tempdir().unwrap();
+        let inside = tmp.path().join("inside");
+        std::fs::create_dir(&inside).unwrap();
+        let outside = tmp.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+
+        let output_path = Uri::from_str(&format!("file://{}", inside.display())).unwrap();
+        let mut ctx = reearth_flow_runtime::executor_operation::NodeContext::default();
+        ctx.output_path = output_path.clone();
+
+        // The texture dst URI lives outside the sandbox root — SinkOutput::from_path must reject.
+        let dst_path = outside.join("texture.png");
+        let dst_uri_str = format!("file://{}", dst_path.display());
+        let result = crate::SinkOutput::from_path(&ctx, &dst_uri_str);
+        assert!(
+            result.is_err(),
+            "Texture dst outside sandbox root must be rejected; got: {:?}",
+            result.ok().map(|s| s.uri().clone())
+        );
     }
 }
