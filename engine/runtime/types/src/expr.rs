@@ -185,7 +185,7 @@ pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue 
                 .map(|(k, v)| (k.clone(), attribute_value_from_eval(v.clone())))
                 .collect(),
         ),
-        Value::Fn(_) => {
+        Value::Fn(_) | Value::Module(_) => {
             tracing::warn!("flow expr function value converted to null attribute");
             AttributeValue::Null
         }

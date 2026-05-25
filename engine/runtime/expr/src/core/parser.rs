@@ -118,8 +118,8 @@ mod tests {
     fn test_func_call() {
         assert_parse(
             r#"value("package")"#,
-            e(ExprKind::FuncCall {
-                name: "value".into(),
+            e(ExprKind::Call {
+                callee: Box::new(e(ExprKind::Var("value".into()))),
                 args: vec![e(ExprKind::Str("package".into()))],
             }),
         );

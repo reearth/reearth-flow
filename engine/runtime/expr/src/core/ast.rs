@@ -50,15 +50,14 @@ pub enum ExprKind {
         stop: Option<Box<Expr>>,
         step: Option<Box<Expr>>,
     },
-    /// function call: `value("key")`
-    FuncCall {
-        name: String,
-        args: Vec<Expr>,
-    },
-    /// attribute call: `expr.attr(args)`
+    /// attribute access: `expr.attr`
     Attribute {
         receiver: Box<Expr>,
         attr: String,
+    },
+    /// call expression: `expr(args)`
+    Call {
+        callee: Box<Expr>,
         args: Vec<Expr>,
     },
     Unary(UnaryOp, Box<Expr>),

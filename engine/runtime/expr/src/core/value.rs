@@ -3,6 +3,8 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 
+pub type Module = IndexMap<String, Value>;
+
 use crate::core::error::InnerResult;
 
 /// Trait for typed objects that can respond to method calls.
@@ -69,6 +71,7 @@ pub enum Value {
     Fn(NativeFn),
     /// A typed object that can respond to method calls via [`ImmutableObject`].
     Object(Rc<dyn ImmutableObject>),
+    Module(Rc<Module>),
 }
 
 impl Value {
@@ -98,7 +101,12 @@ impl Value {
             Value::Map(_) => "map",
             Value::Fn(_) => "function",
             Value::Object(rc) => rc.type_name(),
+            Value::Module(_) => "module",
         }
+    }
+
+    pub fn module(m: Module) -> Self {
+        Value::Module(Rc::new(m))
     }
 }
 
@@ -154,6 +162,7 @@ impl std::fmt::Display for Value {
             }
             Value::Fn(_) => write!(f, "<fn>"),
             Value::Object(rc) => write!(f, "{}", rc.display()),
+            Value::Module(_) => write!(f, "<module>"),
         }
     }
 }

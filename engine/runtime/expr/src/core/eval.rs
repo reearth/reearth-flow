@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
-use super::builtins::builtin_url;
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
+use super::builtins::{builtin_math, builtin_url};
 use super::error::{Error, InnerError, InnerResult, Result};
 use super::value::{format_float, NativeFn, Value};
 
@@ -65,6 +65,7 @@ pub fn default_env() -> Env {
     env.insert("list".into(), Value::Fn(NativeFn::new(builtin_list)));
     env.insert("map".into(), Value::Fn(NativeFn::new(builtin_map)));
     env.insert("Url".into(), Value::Fn(NativeFn::new(builtin_url)));
+    env.insert("math".into(), builtin_math());
     env.insert("print".into(), Value::Fn(NativeFn::new(builtin_print)));
     env
 }
@@ -107,25 +108,36 @@ fn eq_op(args: &[Value]) -> InnerResult<Value> {
     }
 }
 
-// Resolve a method name on a value, returning a NativeFn where args[0] is the receiver.
-fn resolve_method(recv: &Value, method: &str) -> InnerResult<NativeFn> {
-    match recv {
-        Value::String(_) => str_methods::resolve_method(method),
-        Value::Array(_) => array_methods::resolve_method(method),
-        Value::Map(_) => map_methods::resolve_method(method),
+fn resolve_attr(recv: Value, attr: &str) -> InnerResult<Value> {
+    let f = match &recv {
+        Value::Module(m) => {
+            return m
+                .get(attr)
+                .cloned()
+                .ok_or_else(|| InnerError::new(format!("module has no attribute '{attr}'")));
+        }
+        Value::String(_) => str_methods::resolve_method(attr)?,
+        Value::Array(_) => array_methods::resolve_method(attr)?,
+        Value::Map(_) => map_methods::resolve_method(attr)?,
         Value::Object(rc) => {
             let rc = rc.clone();
-            let method_name = method.to_string();
-            Ok(NativeFn::new(move |args| {
-                // args[0] is the receiver; pass the rest to call_method
-                rc.call_method(&method_name, &args[1..])
-            }))
+            let attr = attr.to_string();
+            return Ok(Value::Fn(NativeFn::new(move |args| {
+                rc.call_method(&attr, args)
+            })));
         }
-        v => Err(InnerError::new(format!(
-            "{} has no method '{method}'",
-            v.type_name()
-        ))),
-    }
+        v => {
+            return Err(InnerError::new(format!(
+                "{} has no attribute '{attr}'",
+                v.type_name()
+            )));
+        }
+    };
+    Ok(Value::Fn(NativeFn::new(move |args| {
+        let mut a = vec![recv.clone()];
+        a.extend_from_slice(args);
+        f.call(&a)
+    })))
 }
 
 // Returns a NativeFn for a binary operator. args[0]=left, args[1]=right.
@@ -455,43 +467,25 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             let step = step.as_deref().map(|e| eval_inner(e, env)).transpose()?;
             eval_slice(target, start, stop, step).to_eval_error(pos)
         }
-        ExprKind::FuncCall { name, args } => {
-            let f = env.get(name.as_str()).cloned().ok_or_else(|| Error::Eval {
-                pos,
-                msg: format!("unknown function '{name}'"),
-            })?;
-            match f {
-                Value::Fn(native_fn) => {
-                    let mut evaled = Vec::with_capacity(args.len());
-                    for a in args {
-                        evaled.push(eval_inner(a, env)?);
-                    }
-                    call_func(&native_fn, &evaled, pos)
-                }
-                _ => Err(Error::Eval {
-                    pos,
-                    msg: format!("'{name}' is not a function"),
-                }),
-            }
-        }
         ExprKind::Unary(op, e) => {
             let val = eval_inner(e, env)?;
             let f = resolve_unary_op(op);
             call_func(&f, &[val], pos)
         }
-        ExprKind::Attribute {
-            receiver,
-            attr,
-            args,
-        } => {
+        ExprKind::Attribute { receiver, attr } => {
             let recv = eval_inner(receiver, env)?;
-            let f = resolve_method(&recv, attr).to_eval_error(pos)?;
-            let mut call_args = Vec::with_capacity(args.len() + 1);
-            call_args.push(recv);
-            for a in args {
-                call_args.push(eval_inner(a, env)?);
+            resolve_attr(recv, attr).to_eval_error(pos)
+        }
+        ExprKind::Call { callee, args } => {
+            let f = eval_inner(callee, env)?;
+            let evaled: Result<Vec<_>> = args.iter().map(|a| eval_inner(a, env)).collect();
+            match f {
+                Value::Fn(native_fn) => call_func(&native_fn, &evaled?, pos),
+                _ => Err(Error::Eval {
+                    pos,
+                    msg: format!("value of type {} is not callable", f.type_name()),
+                }),
             }
-            call_func(&f, &call_args, pos)
         }
         ExprKind::Binary(left, op, right) => {
             match op {
@@ -900,7 +894,7 @@ fn is_truthy(v: &Value) -> bool {
         Value::String(s) => !s.is_empty(),
         Value::Array(a) => !a.borrow().is_empty(),
         Value::Map(o) => !o.borrow().is_empty(),
-        Value::Fn(_) | Value::Object(_) => true,
+        Value::Fn(_) | Value::Object(_) | Value::Module(_) => true,
     }
 }
 

@@ -180,8 +180,10 @@ Postfix: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: None }),
     <l:@L> <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> ":" <step:OptExpr> "]" <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: step.map(Box::new) }),
-    <l:@L> <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::Attribute { receiver: Box::new(e), attr: name, args }),
+    <l:@L> <e:Postfix> "." <name:"ident"> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Attribute { receiver: Box::new(e), attr: name }),
+    <l:@L> <e:Postfix> "(" <args:Comma<Or>> ")" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Call { callee: Box::new(e), args }),
     Primary,
 };
 
@@ -197,8 +199,6 @@ Primary: Expr = {
     <l:@L> "true" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Bool(true)),
     <l:@L> "false" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Bool(false)),
     <l:@L> "null" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
-    <l:@L> <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::FuncCall { name, args }),
     <l:@L> <name:"ident"> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Var(name)),
     "(" <Expr> ")",
