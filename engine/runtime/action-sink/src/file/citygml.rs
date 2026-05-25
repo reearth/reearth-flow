@@ -371,8 +371,8 @@ impl Sink for CityGmlWriterSink {
 
 #[cfg(test)]
 mod sandbox_tests {
-    use super::*;
     use reearth_flow_common::uri::Uri;
+    use reearth_flow_runtime::executor_operation::NodeContext;
     use std::str::FromStr;
     use tempfile::tempdir;
 
@@ -388,8 +388,10 @@ mod sandbox_tests {
         std::fs::create_dir(&outside).unwrap();
 
         let output_path = Uri::from_str(&format!("file://{}", inside.display())).unwrap();
-        let mut ctx = reearth_flow_runtime::executor_operation::NodeContext::default();
-        ctx.output_path = output_path.clone();
+        let ctx = NodeContext {
+            output_path,
+            ..NodeContext::default()
+        };
 
         // The texture dst URI lives outside the sandbox root — SinkOutput::from_path must reject.
         let dst_path = outside.join("texture.png");

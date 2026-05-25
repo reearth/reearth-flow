@@ -150,8 +150,10 @@ mod tests {
         let nested = tmp.path().join("subdir");
         std::fs::create_dir(&nested).unwrap();
         // Critical: set output_path to the nested dir so `..` actually escapes.
-        let mut ctx = NodeContext::default();
-        ctx.output_path = Uri::from_str(&file_uri(&nested)).unwrap();
+        let ctx = NodeContext {
+            output_path: Uri::from_str(&file_uri(&nested)).unwrap(),
+            ..NodeContext::default()
+        };
         let base = SinkOutput::from_path(&ctx, &file_uri(&nested)).unwrap();
         let result = base.join("../sibling.txt");
         assert!(
@@ -187,8 +189,10 @@ mod tests {
         let outside = tmp.path().join("outside");
         std::fs::create_dir(&outside).unwrap();
 
-        let mut ctx = NodeContext::default();
-        ctx.output_path = Uri::from_str(&file_uri(&inside)).unwrap();
+        let ctx = NodeContext {
+            output_path: Uri::from_str(&file_uri(&inside)).unwrap(),
+            ..NodeContext::default()
+        };
 
         let target_outside = outside.join("attack.bin");
         let result = SinkOutput::from_path(&ctx, &file_uri(&target_outside));
@@ -204,8 +208,10 @@ mod tests {
         let inside = tmp.path().join("inside");
         std::fs::create_dir(&inside).unwrap();
 
-        let mut ctx = NodeContext::default();
-        ctx.output_path = Uri::from_str(&file_uri(&inside)).unwrap();
+        let ctx = NodeContext {
+            output_path: Uri::from_str(&file_uri(&inside)).unwrap(),
+            ..NodeContext::default()
+        };
 
         let target = inside.join("ok.bin");
         let result = SinkOutput::from_path(&ctx, &file_uri(&target));

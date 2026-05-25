@@ -89,10 +89,8 @@ mod tests {
     fn same_scheme_different_authority_rejected() {
         let err =
             ensure_under(&uri("gs://mine/job"), &uri("gs://other/job/x.geojson")).unwrap_err();
-        match err {
-            SandboxError::OutsideRoot { .. } => {}
-            other => panic!("unexpected error: {other:?}"),
-        }
+        // Only one variant exists now; match exhaustively without a wildcard.
+        let SandboxError::OutsideRoot { .. } = err;
     }
 
     #[test]
