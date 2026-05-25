@@ -30,6 +30,13 @@ pub struct Runner;
 
 #[allow(clippy::too_many_arguments)]
 impl Runner {
+    /// Run a workflow without a sandboxed output path.
+    ///
+    /// The executor contexts will have `output_path` set to `file:///`, which
+    /// means sink writes are **not** sandboxed to a job-scoped directory.
+    /// This is intentional for tests and legacy callers that do not supply an
+    /// artifact path. Production callers (CLI, worker) should use
+    /// [`Runner::run_with_output_path`] instead.
     pub fn run(
         job_id: uuid::Uuid,
         workflow: Workflow,
@@ -39,6 +46,38 @@ impl Runner {
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
+    ) -> Result<(), crate::errors::Error> {
+        let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
+        Self::run_with_output_path(
+            job_id,
+            workflow,
+            factories,
+            logger_factory,
+            storage_resolver,
+            ingress_state,
+            feature_state,
+            incremental_run_config,
+            output_path,
+        )
+    }
+
+    /// Run a workflow with a sandboxed output path.
+    ///
+    /// `output_path` is threaded into every executor context as `output_path`,
+    /// so that sink writes are scoped to the supplied directory. Production
+    /// callers (CLI, worker) should use this method and pass the resolved
+    /// `workerArtifactPath` value.
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_with_output_path(
+        job_id: uuid::Uuid,
+        workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
+        logger_factory: Arc<LoggerFactory>,
+        storage_resolver: Arc<StorageResolver>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
+        output_path: Uri,
     ) -> Result<(), crate::errors::Error> {
         Self::run_with_event_handler(
             job_id,
@@ -50,6 +89,7 @@ impl Runner {
             feature_state,
             incremental_run_config,
             vec![],
+            output_path,
         )
     }
 
@@ -64,6 +104,7 @@ impl Runner {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
+        output_path: Uri,
     ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(*ASYNC_WORKER_NUM)
@@ -97,8 +138,6 @@ impl Runner {
             logger_factory.clone(),
         ))];
         handlers.extend(event_handlers);
-        // TODO(PR2 Task 5): replace with real artifact path from CLI
-        let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         let result = runtime.block_on(async move {
             orchestrator
                 .run_all(
@@ -129,6 +168,13 @@ pub struct AsyncRunner;
 
 #[allow(clippy::too_many_arguments)]
 impl AsyncRunner {
+    /// Run a workflow without a sandboxed output path.
+    ///
+    /// The executor contexts will have `output_path` set to `file:///`, which
+    /// means sink writes are **not** sandboxed to a job-scoped directory.
+    /// This is intentional for tests and legacy callers that do not supply an
+    /// artifact path. Production callers should use
+    /// [`AsyncRunner::run_with_output_path`] instead.
     pub async fn run(
         job_id: uuid::Uuid,
         workflow: Workflow,
@@ -139,8 +185,40 @@ impl AsyncRunner {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
-        // TODO(PR2 Task 5): replace with real artifact path from CLI
         let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
+        Self::run_with_event_handler(
+            job_id,
+            workflow,
+            factories,
+            logger_factory,
+            storage_resolver,
+            ingress_state,
+            feature_state,
+            incremental_run_config,
+            vec![],
+            output_path,
+        )
+        .await
+    }
+
+    /// Run a workflow with a sandboxed output path.
+    ///
+    /// `output_path` is threaded into every executor context as `output_path`,
+    /// so that sink writes are scoped to the supplied directory. Production
+    /// callers should use this method and pass the resolved
+    /// `workerArtifactPath` value.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn run_with_output_path(
+        job_id: uuid::Uuid,
+        workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
+        logger_factory: Arc<LoggerFactory>,
+        storage_resolver: Arc<StorageResolver>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
+        output_path: Uri,
+    ) -> Result<(), crate::errors::Error> {
         Self::run_with_event_handler(
             job_id,
             workflow,
