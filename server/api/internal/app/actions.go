@@ -302,6 +302,7 @@ func matchesSearch(action Action, query, category, actionType string) bool {
 		string(action.Type),
 	}
 	searchFields = append(searchFields, action.Categories...)
+	searchFields = append(searchFields, action.Tags...)
 
 	for _, field := range searchFields {
 		if partialMatch(field, query) {
