@@ -258,7 +258,7 @@ SeqEndsAssign: Vec<Expr> = {
 // Sequence whose last item is a BlockStmt (if / while / for).
 SeqEndsBlock: Vec<Expr> = {
     <e:BlockStmt> => vec![e],
-    <mut h:SeqEndsAssign> <e:BlockStmt> => { h.push(e); h },
+    <mut h:SeqEndsAssign> ";" <e:BlockStmt> => { h.push(e); h },
     <mut h:SeqEndsBlock> <e:BlockStmt> => { h.push(e); h },
 };
 
