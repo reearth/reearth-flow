@@ -199,11 +199,7 @@ Primary: Expr = {
     "(" <Expr> ")",
     <l:@L> "[" <items:Comma<Or>> "]" <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Array(items)),
-    BlockExpr,
     MapExpr,
-    IfExpr,
-    WhileExpr,
-    ForInExpr,
 };
 
 // ElseBranch is either a block or another `if`, enabling `else if` chains.
@@ -243,14 +239,38 @@ BlockExpr: Expr = {
 };
 
 SeqBody: Vec<Expr> = {
-    <e:Assign> => vec![e],
-    <mut rest:SeqBody> ";" <e:Assign> => { rest.push(e); rest },
-    // trailing semicolon makes the block evaluate to Null
-    <mut rest:SeqBody> ";" <r:@R> => { rest.push(Expr::new(Span { start: r, end: r }, ExprKind::Null)); rest },
+    SeqEndsAssign,
+    SeqEndsBlock,
 };
 
-// Map literal requires at least one entry so `{}` remains unambiguous (Null).
+// Sequence whose last item is an Assign-level expression.
+SeqEndsAssign: Vec<Expr> = {
+    <e:Assign> => vec![e],
+    <mut h:SeqEndsAssign> ";" <e:Assign> => { h.push(e); h },
+    // trailing semicolon evaluates to Null
+    <mut h:SeqEndsAssign> ";" <r:@R> => { h.push(Expr::new(Span { start: r, end: r }, ExprKind::Null)); h },
+    // After a BlockStmt an Assign may follow without ";"
+    <mut h:SeqEndsBlock> <e:Assign> => { h.push(e); h },
+    <mut h:SeqEndsBlock> ";" <e:Assign> => { h.push(e); h },
+    <mut h:SeqEndsBlock> ";" <r:@R> => { h.push(Expr::new(Span { start: r, end: r }, ExprKind::Null)); h },
+};
+
+// Sequence whose last item is a BlockStmt (if / while / for).
+SeqEndsBlock: Vec<Expr> = {
+    <e:BlockStmt> => vec![e],
+    <mut h:SeqEndsAssign> ";" <e:BlockStmt> => { h.push(e); h },
+    <mut h:SeqEndsBlock> <e:BlockStmt> => { h.push(e); h },
+};
+
+BlockStmt: Expr = {
+    IfExpr,
+    WhileExpr,
+    ForInExpr,
+};
+
 MapExpr: Expr = {
+    <l:@L> "{" "}" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Map(vec![])),
     <l:@L> "{" <e:MapEntry> <rest:("," <MapEntry>)*> "}" <r:@R> => {
         let mut entries = vec![e];
         entries.extend(rest);

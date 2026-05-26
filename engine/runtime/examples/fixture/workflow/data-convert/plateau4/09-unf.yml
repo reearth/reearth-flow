@@ -454,22 +454,17 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["package"];
-        let ft = env.get("__value")["feature_type"].split(":").pop();
-        let lod = env.get("__value").lod;
-        file::join_path(artifact, pkg + "_" + ft + "_lod" + lod)
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["package"];
-        let ft = env.get("__value")["feature_type"].split(":").pop();
-        let lod = env.get("__value").lod;
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod" + lod + ".zip")
+      output:
+        type: flowExpr
+        value: |
+          ft = value("feature_type").split(":")[-1];
+          Url(env("workerArtifactPath")) / (value("package") + "_" + ft + "_lod" + value("lod"))
+      compressOutput:
+        type: flowExpr
+        value: |
+          ft = value("feature_type").split(":")[-1];
+          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
+          Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_" + ft + "_3dtiles_lod" + value("lod") + ".zip")
   - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
     name: FeatureSorterDmGeometricAttribute
     type: action
@@ -540,26 +535,21 @@ graphs:
     action: MVTWriter
     with:
       schemaKey: __citygml_feature_type
-      layerName: |
-        env.get("__value").feature_type.split(":")[1]
+      layerName:
+        type: flowExpr
+        value: value("feature_type").split(":")[1]
       minZoom: 8
       maxZoom: 18
       extent: 65536
-      output: |
-        let feature_type = env.get("__value")["feature_type"];
-        let key = feature_type.split(":")[1];
-        let pkg = env.get("__value")["__package"];
-        file::join_path(env.get("workerArtifactPath"), pkg + "_" + key + "_dm_geometric_attributes")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        let feature_type = env.get("__value")["feature_type"];
-        let key = feature_type.split(":")[1];
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_" + key + "_dm_geometric_attributes.zip")
+      output:
+        type: flowExpr
+        value: Url(env("workerArtifactPath")) / (value("__package") + "_" + value("feature_type").split(":")[1] + "_dm_geometric_attributes")
+      compressOutput:
+        type: flowExpr
+        value: |
+          stem = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
+          ft = value("feature_type").split(":")[1];
+          Url(env("workerArtifactPath")) / (stem + "_" + value("__package") + "_" + ft + "_dm_geometric_attributes.zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:

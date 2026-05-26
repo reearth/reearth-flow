@@ -17,20 +17,12 @@ use crate::{error::Error, scope::Scope, ShareLock, Value, Vars};
 /// This is separate from `Engine` to avoid a cyclic reference.
 #[derive(Debug, Clone)]
 pub(crate) struct EngineEnv {
-    vars: ShareLock<Vars>,
+    vars: Arc<Vars>,
 }
 
 impl EngineEnv {
     pub fn get(&self, name: &str) -> Option<Value> {
-        let vars = self.vars.read().unwrap();
-        vars.get(name).cloned()
-    }
-
-    pub fn set(&self, name: &str, value: Value) {
-        let mut vars = self.vars.write().unwrap();
-        vars.entry(name.to_string())
-            .and_modify(|i| *i = value.clone())
-            .or_insert(value);
+        self.vars.get(name).cloned()
     }
 }
 
@@ -38,14 +30,14 @@ impl EngineEnv {
 pub struct Engine {
     pub(crate) script_engine: Arc<ScriptEngine>,
     pub(crate) scope: ShareLock<RhaiScope<'static>>,
-    pub(crate) vars: ShareLock<Vars>,
+    pub(crate) vars: Arc<Vars>,
 }
 
 unsafe impl Send for Engine {}
 unsafe impl Sync for Engine {}
 
 impl Engine {
-    pub fn new() -> Self {
+    fn build(vars: Vars) -> Self {
         let mut script_engine = ScriptEngine::new();
         script_engine.set_allow_looping(true);
         script_engine.set_allow_anonymous_fn(true);
@@ -73,7 +65,7 @@ impl Engine {
             .register_static_module("datetime", rhai::exported_module!(datetime_module).into());
         script_engine.register_static_module("math", rhai::exported_module!(math_module).into());
 
-        let vars = Arc::new(RwLock::new(Vars::new()));
+        let vars = Arc::new(vars);
 
         let env = EngineEnv {
             vars: Arc::clone(&vars),
@@ -89,25 +81,24 @@ impl Engine {
         }
     }
 
+    pub fn new() -> Self {
+        Self::build(Vars::new())
+    }
+
+    pub fn with_vars(vars: Vars) -> Self {
+        Self::build(vars)
+    }
+
     pub fn new_scope(&self) -> Scope {
         Scope::new(self)
     }
 
-    pub fn vars(&self) -> Vars {
-        self.vars.read().unwrap().clone()
+    pub fn vars(&self) -> Arc<Vars> {
+        Arc::clone(&self.vars)
     }
 
     pub fn set_scope_var<T: Send + Sync + Clone + 'static>(&self, name: &str, v: &T) {
         self.scope.write().unwrap().set_or_push(name, v.clone());
-    }
-
-    pub fn append(&self, vars: &Vars) {
-        let env = &mut self.vars.write().unwrap();
-        for (name, v) in vars {
-            env.entry(name.to_string())
-                .and_modify(|i| *i = v.clone())
-                .or_insert(v.clone());
-        }
     }
 
     pub fn eval<T: rhai::Variant + Clone>(&self, expr: &str) -> crate::Result<T> {
@@ -177,20 +168,7 @@ impl Engine {
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {
-        let vars = self.vars.read().unwrap();
-        vars.get(name).cloned()
-    }
-
-    pub fn set(&self, name: &str, value: Value) {
-        let mut vars = self.vars.write().unwrap();
-        vars.entry(name.to_string())
-            .and_modify(|i| *i = value.clone())
-            .or_insert(value);
-    }
-
-    pub fn remove(&self, name: &str) {
-        let mut vars = self.vars.write().unwrap();
-        vars.remove(name);
+        self.vars.get(name).cloned()
     }
 }
 
@@ -229,9 +207,8 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let engine = Engine::new();
         let vars = Vars::from_iter([("a".to_string(), 10.into()), ("b".to_string(), "b".into())]);
-        engine.append(&vars);
+        let engine = Engine::with_vars(vars);
 
         let script = r#"
         let a = env.get("a");
@@ -273,9 +250,8 @@ mod tests {
 
     #[test]
     fn test_scope_share_global_vars() {
-        let engine = Engine::new();
-
-        engine.set("abc", serde_json::json!(1.5));
+        let vars = Vars::from_iter([("abc".to_string(), serde_json::json!(1.5))]);
+        let engine = Engine::with_vars(vars);
         let scope = engine.new_scope();
         let script = r#"
         let v = 5;

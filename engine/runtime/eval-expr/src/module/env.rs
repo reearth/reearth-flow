@@ -10,10 +10,6 @@ pub(crate) mod env_module {
             .unwrap_or_else(|| panic!("fail to get engine '{name}'"));
         utils::value_to_dynamic(&v)
     }
-
-    pub fn set(engine: &mut EngineEnv, name: &str, value: Dynamic) {
-        engine.set(name, utils::dynamic_to_value(&value));
-    }
 }
 
 #[export_module]

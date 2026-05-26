@@ -187,3 +187,9 @@ impl From<String> for Value {
         Value::String(s)
     }
 }
+
+impl<T: Into<Value>> From<Vec<T>> for Value {
+    fn from(v: Vec<T>) -> Self {
+        Value::array(v.into_iter().map(Into::into).collect())
+    }
+}
