@@ -78,8 +78,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": [
+        "area",
+        "measurement"
+      ]
     },
     {
       "name": "AreaOnAreaOverlayer",
@@ -3184,8 +3186,10 @@
       "categories": [
         "Feature"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": [
+        "file",
+        "path"
+      ]
     },
     {
       "name": "FeatureFilter",
@@ -4688,8 +4692,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": [
+        "geometry",
+        "decompose"
+      ]
     },
     {
       "name": "GeometryRemover",
@@ -4801,8 +4807,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": [
+        "split",
+        "geometry"
+      ]
     },
     {
       "name": "GeometryValidator",
@@ -6521,8 +6529,11 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": [
+        "raster",
+        "image",
+        "texture"
+      ]
     },
     {
       "name": "InputRouter",
@@ -9299,8 +9310,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": [
+        "normal",
+        "3d"
+      ]
     },
     {
       "name": "PythonScriptProcessor",
@@ -9565,8 +9578,11 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": [
+        "ray",
+        "intersection",
+        "3d"
+      ]
     },
     {
       "name": "Refiner",
