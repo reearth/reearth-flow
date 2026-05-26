@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+================================================================================
+  応用スキーマ（試作案）: PLATEAU 3D都市モデル 建築物モデル拡張（i-UR 相当）
+  CityGML 3.0 対応応用スキーマ案 の建築物モデル（本文 1.2 節）を対象に、
+  i-UR 由来の拡張属性（Urban Object）を GML による符号化（ADE パターン）で表現したもの。
+
+  出典
+    国土交通省 都市局「PLATEAU標準製品仕様書案（CityGML 3.0 対応応用スキーマ案）」
+    第1.0版 2026-03-26  plateau_tech_doc_0142_ver01.pdf
+    - 1.2.2.2 Urban Object（i-UR）クラス図
+    - 1.2.3.2 Urban Object（i-UR）応用スキーマ文書
+    - 1.2.4.2 Urban Object（i-UR）コードリストと列挙型
+    - 附属書A 妥当な建築物オブジェクト
+
+  このスキーマでカバーするもの
+    - 建築物モデルに付与する PLATEAU 拡張属性（11 DataType）
+    - それぞれを CityGML 3.0 ADE 拡張ポイント（bldg:ADEOfAbstractBuilding 等）
+      に substitutionGroup で接続する
+
+  このスキーマでカバーしないもの
+    - CityGML 3.0 本体（core/bldg/con/gen/app/dem など）の XSD
+      → OGC 21-006r2 が定める公式 XSD を import する前提
+    - 施設管理属性（1.2.3.4）／災害リスク属性（1.2.3.5）／データ品質属性（1.2.3.6）
+      ／数値地形図のための拡張属性（1.2.3.7）
+      → 各応用スキーマ文書側で定義されるため、本ファイルでは未含有
+
+  注意（暫定仕様）
+    - 本 PDF は GML による符号化を前提とするが、XSD の具体的な符号化規則
+      （要素名の大文字小文字、プロパティ型の命名、コードリスト参照のメカニズム等）
+      は明記されていない。本ファイルは PLATEAU 2.0 および CityGML 3.0
+      GML Encoding (OGC 21-006r2) の慣習に従って推定した暫定実装である。
+    - 名前空間 URI はコードリストの所在（1.2.4 に示される
+      https://www.geospatial.jp/iur/codelists/4.0/...）に合わせて "4.0" を採用。
+      公式公開時には変更される可能性がある。
+    - ADE 拡張要素の親要素（bldg:adeOfAbstractBuilding 等）の具体的な XML 要素名・型名
+      は OGC 21-006r2 の正式 GML 符号化規則に従うことを想定。ここでは
+      bldg 名前空間に ADEOfAbstractBuilding 等の要素名で抽象宣言があると仮定している。
+    - コードリスト型は gml:CodeType（xlink + 属性）を前提としている。
+
+  Target Namespace: https://www.geospatial.jp/iur/uro/4.0/  (prefix: uro)
+================================================================================
+-->
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:gml="http://www.opengis.net/gml/3.2"
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+  xmlns:con="http://www.opengis.net/citygml/construction/3.0"
+  xmlns:uro="https://www.geospatial.jp/iur/uro/4.0/"
+  targetNamespace="https://www.geospatial.jp/iur/uro/4.0/"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified"
+  version="0.1.0">
+
+  <!-- 外部参照: CityGML 3.0 本体及び GML 3.2.1 -->
+  <xs:import namespace="http://www.opengis.net/gml/3.2"
+             schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
+  <xs:import namespace="http://www.opengis.net/citygml/3.0"
+             schemaLocation="http://schemas.opengis.net/citygml/3.0/core.xsd"/>
+  <xs:import namespace="http://www.opengis.net/citygml/building/3.0"
+             schemaLocation="http://schemas.opengis.net/citygml/3.0/building.xsd"/>
+  <xs:import namespace="http://www.opengis.net/citygml/construction/3.0"
+             schemaLocation="http://schemas.opengis.net/citygml/3.0/construction.xsd"/>
+
+  <!-- ============================================================
+       1) BuildingIDAttribute  [表 1-49]
+       建築物を識別するための情報。上位型: ADEOfAbstractBuilding
+       ============================================================ -->
+  <xs:element name="BuildingIDAttribute"
+              type="uro:BuildingIDAttributeType"
+              substitutionGroup="bldg:ADEOfAbstractBuilding"/>
+  <xs:complexType name="BuildingIDAttributeType">
+    <xs:annotation>
+      <xs:documentation>
+        建築物を識別するための情報。
+        buildingID は [市区町村コード]-[接頭辞 bldg]-[オブジェクト連番] とする。
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfAbstractBuildingType">
+        <xs:sequence>
+          <xs:element name="buildingID" type="xs:string"/>
+          <xs:element name="branchID" type="xs:integer" minOccurs="0"/>
+          <xs:element name="partID" type="xs:integer" minOccurs="0"/>
+          <xs:element name="prefecture" type="gml:CodeType" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>
+                コードリスト: Common_localPublicAuthorities.xml
+              </xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="city" type="gml:CodeType">
+            <xs:annotation>
+              <xs:documentation>
+                コードリスト: Common_localPublicAuthorities.xml
+                標準製品仕様書では必須とする（i-UR本来の多重度は 0..1）。
+              </xs:documentation>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       2) BuildingDetailAttribute  [表 1-50]
+       都市計画基礎調査で収集された建築物に関する基礎的な情報。
+       ============================================================ -->
+  <xs:element name="BuildingDetailAttribute"
+              type="uro:BuildingDetailAttributeType"
+              substitutionGroup="bldg:ADEOfAbstractBuilding"/>
+  <xs:complexType name="BuildingDetailAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfAbstractBuildingType">
+        <xs:sequence>
+          <xs:element name="serialNumberOfBuildingCertification" type="xs:string" minOccurs="0"/>
+          <xs:element name="siteArea" type="gml:MeasureType" minOccurs="0"/>
+          <xs:element name="totalFloorArea" type="gml:MeasureType" minOccurs="0"/>
+          <xs:element name="buildingFootprintArea" type="gml:MeasureType" minOccurs="0"/>
+          <xs:element name="buildingRoofEdgeArea" type="gml:MeasureType" minOccurs="0"/>
+          <xs:element name="developmentArea" type="gml:MeasureType" minOccurs="0"/>
+          <xs:element name="buildingStructureType" type="gml:CodeType" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>コードリスト: BuildingDetailAttribute_buildingStructureType.xml</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="buildingStructureOrgType" type="gml:CodeType" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>コードリスト: BuildingDetailAttribute_buildingStructureOrgType.xml（都市独自）</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="fireproofStructureType" type="gml:CodeType" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>コードリスト: BuildingDetailAttribute_fireproofStructureType.xml</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="implementingBody" type="xs:string" minOccurs="0"/>
+          <xs:element name="urbanPlanType" type="gml:CodeType" minOccurs="0">
+            <xs:annotation><xs:documentation>コードリスト: Common_urbanPlanType.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="areaClassificationType" type="gml:CodeType" minOccurs="0">
+            <xs:annotation><xs:documentation>コードリスト: Common_areaClassificationType.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="districtsAndZonesType" type="gml:CodeType" minOccurs="0" maxOccurs="unbounded">
+            <xs:annotation><xs:documentation>コードリスト: Common_districtsAndZonesType.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="landUseType" type="gml:CodeType" minOccurs="0">
+            <xs:annotation><xs:documentation>コードリスト: Common_landUseType.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="reference" type="xs:string" minOccurs="0"/>
+          <xs:element name="majorUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="majorUsage2" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="orgUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="orgUsage2" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="detailedUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="detailedUsage2" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="detailedUsage3" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="groundFloorUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="secondFloorUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="thirdFloorUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="basementUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="basementFirstUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="basementSecondUsage" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="vacancy" type="gml:CodeType" minOccurs="0">
+            <xs:annotation><xs:documentation>コードリスト: BuildingDetailAttribute_vacancy.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="buildingCoverageRate" type="xs:double" minOccurs="0">
+            <xs:annotation><xs:documentation>建蔽率。百分率。単位は％。</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="floorAreaRate" type="xs:double" minOccurs="0">
+            <xs:annotation><xs:documentation>容積率。百分率。単位は％。</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="specifiedBuildingCoverageRate" type="xs:double" minOccurs="0"/>
+          <xs:element name="specifiedFloorAreaRate" type="xs:double" minOccurs="0"/>
+          <xs:element name="standardFloorAreaRate" type="xs:double" minOccurs="0"/>
+          <xs:element name="buildingHeight" type="gml:LengthType" minOccurs="0">
+            <xs:annotation><xs:documentation>建築基準法施行令第2条に定義される地盤面からの建築物の高さ。uom="m"。</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="eaveHeight" type="gml:LengthType" minOccurs="0">
+            <xs:annotation><xs:documentation>軒高。uom="m"。</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="note" type="xs:string" minOccurs="0"/>
+          <xs:element name="surveyYear" type="xs:date">
+            <xs:annotation><xs:documentation>建物利用現況調査の実施年（西暦）。必須。</xs:documentation></xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       3) LargeCustomerFacilityAttribute  [表 1-51]
+       大規模小売店舗／大規模集客施設に関する基礎的な情報。
+       ============================================================ -->
+  <xs:element name="LargeCustomerFacilityAttribute"
+              type="uro:LargeCustomerFacilityAttributeType"
+              substitutionGroup="bldg:ADEOfAbstractBuilding"/>
+  <xs:complexType name="LargeCustomerFacilityAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfAbstractBuildingType">
+        <xs:sequence>
+          <xs:element name="class" type="gml:CodeType" minOccurs="0">
+            <xs:annotation><xs:documentation>コードリスト: LargeCustomerFacilityAttribute_class.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="name" type="xs:string" minOccurs="0"/>
+          <xs:element name="capacity" type="xs:integer" minOccurs="0"/>
+          <xs:element name="owner" type="xs:string" minOccurs="0"/>
+          <xs:element name="totalFloorArea" type="gml:MeasureType" minOccurs="0"/>
+          <xs:element name="totalStoreFloorArea" type="gml:MeasureType" minOccurs="0"/>
+          <xs:element name="inauguralDate" type="xs:date" minOccurs="0"/>
+          <xs:element name="yearOpened" type="xs:date" minOccurs="0"/>
+          <xs:element name="yearClosed" type="xs:date" minOccurs="0"/>
+          <xs:element name="keyTenants" type="xs:string" minOccurs="0"/>
+          <xs:element name="availability" type="xs:boolean" minOccurs="0"/>
+          <xs:element name="urbanPlanType" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="areaClassificationType" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="districtsAndZonesType" type="gml:CodeType" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="landUseType" type="gml:CodeType" minOccurs="0"/>
+          <xs:element name="reference" type="xs:string" minOccurs="0"/>
+          <xs:element name="note" type="xs:string" minOccurs="0"/>
+          <xs:element name="surveyYear" type="xs:date"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       4) RealEstateIDAttribute  [表 1-52]
+       建築物及び土地に紐づく不動産ID（不動産IDルールガイドライン）。
+       ============================================================ -->
+  <xs:element name="RealEstateIDAttribute"
+              type="uro:RealEstateIDAttributeType"
+              substitutionGroup="bldg:ADEOfAbstractBuilding"/>
+  <xs:complexType name="RealEstateIDAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfAbstractBuildingType">
+        <xs:sequence>
+          <xs:element name="realEstateIDOfBuilding" type="xs:string">
+            <xs:annotation><xs:documentation>「不動産番号13桁+ハイフン+4桁」。必須。</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="numberOfBuildingUnitOwnership" type="xs:integer" minOccurs="0"/>
+          <xs:element name="realEstateIDOfBuildingUnitOwnership" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="numberOfRealEstateIDOfLand" type="xs:integer" minOccurs="0"/>
+          <xs:element name="realEstateIDOfLand" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+          <xs:element name="matchingScore" type="xs:integer">
+            <xs:annotation>
+              <xs:documentation>
+                建築物と登記簿データの一致度（0-100）。
+                dt23-03 3D都市モデル・不動産IDマッチングシステム使用時必須。
+              </xs:documentation>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       5) IndoorFacilityAttribute  [表 1-53]
+       施設に追加するナビゲーション用の属性。上位型: ADEOfBuilding
+       ============================================================ -->
+  <xs:element name="IndoorFacilityAttribute"
+              type="uro:IndoorFacilityAttributeType"
+              substitutionGroup="bldg:ADEOfBuilding"/>
+  <xs:complexType name="IndoorFacilityAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfBuildingType">
+        <xs:sequence>
+          <xs:element name="source" type="gml:CodeType">
+            <xs:annotation><xs:documentation>コードリスト: Common_indoorSource.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="weekdayHours" type="xs:string" minOccurs="0"/>
+          <xs:element name="weekendHours" type="xs:string" minOccurs="0"/>
+          <xs:element name="phone" type="xs:string" minOccurs="0"/>
+          <xs:element name="website" type="xs:anyURI" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       6) IndoorFurnishingAttribute  [表 1-54]
+       設備に追加するナビゲーション用の属性。上位型: ADEOfBuildingFurniture
+       ============================================================ -->
+  <xs:element name="IndoorFurnishingAttribute"
+              type="uro:IndoorFurnishingAttributeType"
+              substitutionGroup="bldg:ADEOfBuildingFurniture"/>
+  <xs:complexType name="IndoorFurnishingAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfBuildingFurnitureType">
+        <xs:sequence>
+          <xs:element name="source" type="gml:CodeType"/>
+          <xs:element name="floorId" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       7) IndoorPublicTagAttribute  [表 1-55]
+       パブリックタグに追加するナビゲーション用の属性。
+       上位型: ADEOfBuildingConstructiveElement
+       ============================================================ -->
+  <xs:element name="IndoorPublicTagAttribute"
+              type="uro:IndoorPublicTagAttributeType"
+              substitutionGroup="bldg:ADEOfBuildingConstructiveElement"/>
+  <xs:complexType name="IndoorPublicTagAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfBuildingConstructiveElementType">
+        <xs:sequence>
+          <xs:element name="source" type="gml:CodeType"/>
+          <xs:element name="ucode" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       8) IndoorSpaceAttribute  [表 1-56]
+       物理的な空間に追加するナビゲーション用の属性。
+       上位型: ADEOfBuildingRoom
+       ============================================================ -->
+  <xs:element name="IndoorSpaceAttribute"
+              type="uro:IndoorSpaceAttributeType"
+              substitutionGroup="bldg:ADEOfBuildingRoom"/>
+  <xs:complexType name="IndoorSpaceAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfBuildingRoomType">
+        <xs:sequence>
+          <xs:element name="source" type="gml:CodeType"/>
+          <xs:element name="floorId" type="xs:string" minOccurs="0"/>
+          <xs:element name="isRestricted" type="xs:boolean" minOccurs="0">
+            <xs:annotation><xs:documentation>1:進入制限あり ／ 0:進入制限なし</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="suite" type="xs:string" minOccurs="0"/>
+          <xs:element name="isPublic" type="xs:boolean" minOccurs="0">
+            <xs:annotation><xs:documentation>1:公開可 ／ 0:公開不可</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="tollType" type="gml:CodeType" minOccurs="0">
+            <xs:annotation><xs:documentation>コードリスト: IndoorSpaceAttribute_tollType.xml</xs:documentation></xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       9) IndoorStoreyAttribute  [表 1-57]
+       階層に追加するナビゲーション用の属性。上位型: ADEOfStorey
+       ============================================================ -->
+  <xs:element name="IndoorStoreyAttribute"
+              type="uro:IndoorStoreyAttributeType"
+              substitutionGroup="bldg:ADEOfStorey"/>
+  <xs:complexType name="IndoorStoreyAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfStoreyType">
+        <xs:sequence>
+          <xs:element name="source" type="gml:CodeType"/>
+          <xs:element name="category" type="xs:boolean" minOccurs="0">
+            <xs:annotation><xs:documentation>1:屋内 ／ 0:屋外</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="ordinal" type="xs:double" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       10) IndoorTactileTileAttribute  [表 1-58]
+       視覚障碍者用誘導ブロックに追加するナビゲーション用の属性。
+       上位型: ADEOfBuildingInstallation
+       ============================================================ -->
+  <xs:element name="IndoorTactileTileAttribute"
+              type="uro:IndoorTactileTileAttributeType"
+              substitutionGroup="bldg:ADEOfBuildingInstallation"/>
+  <xs:complexType name="IndoorTactileTileAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfBuildingInstallationType">
+        <xs:sequence>
+          <xs:element name="source" type="gml:CodeType"/>
+          <xs:element name="startNode" type="xs:string" minOccurs="0"/>
+          <xs:element name="endNode" type="xs:string" minOccurs="0"/>
+          <xs:element name="category" type="gml:CodeType" minOccurs="0">
+            <xs:annotation><xs:documentation>コードリスト: IndoorTactileTileAttribute_category.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="roof" type="gml:CodeType" minOccurs="0">
+            <xs:annotation><xs:documentation>コードリスト: IndoorTactileTileAttribute_roof.xml</xs:documentation></xs:annotation>
+          </xs:element>
+          <xs:element name="floorId" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- ============================================================
+       11) IndoorZoneAttribute  [表 1-59]
+       任意の空間に追加するナビゲーション用の属性。
+       上位型: ADEOfBuildingUnit
+       用途: InteriorWallSurface、CeilingSurface、FloorSurface
+       ============================================================ -->
+  <xs:element name="IndoorZoneAttribute"
+              type="uro:IndoorZoneAttributeType"
+              substitutionGroup="bldg:ADEOfBuildingUnit"/>
+  <xs:complexType name="IndoorZoneAttributeType">
+    <xs:complexContent>
+      <xs:extension base="bldg:ADEOfBuildingUnitType">
+        <xs:sequence>
+          <xs:element name="source" type="gml:CodeType"/>
+          <xs:element name="floorId" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+</xs:schema>

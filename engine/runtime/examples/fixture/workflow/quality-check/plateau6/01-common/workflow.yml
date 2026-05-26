@@ -1,0 +1,4 @@
+# PLATEAU6 (CityGML 3.0) quality-check 01-common workflow.
+# Placeholder: implementation pending. Tests under
+# testing/data/testcases/quality-check/plateau6/01-common/ are expected to fail
+# until this workflow is filled in (see quality-check-impl skill).
