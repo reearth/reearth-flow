@@ -375,8 +375,9 @@ export default ({
           const jv = joinedVars[i];
           if (!myDeletedRealIds.has(jv.id)) continue;
           if (reverted.some((v) => v.id === jv.id)) continue; // already present
-          // Find insertion point: after the nearest preceding joined var that is
-          // still in reverted, so relative order is preserved.
+          // Prefer inserting after the nearest preceding var still in reverted.
+          // Fall back to inserting before the nearest following var — handles the
+          // case where the deleted var was first or all preceding vars are gone.
           let insertAt = reverted.length;
           for (let j = i - 1; j >= 0; j--) {
             const prevIdx = reverted.findIndex(
@@ -385,6 +386,17 @@ export default ({
             if (prevIdx !== -1) {
               insertAt = prevIdx + 1;
               break;
+            }
+          }
+          if (insertAt === reverted.length) {
+            for (let j = i + 1; j < joinedVars.length; j++) {
+              const nextIdx = reverted.findIndex(
+                (v) => v.id === joinedVars[j].id,
+              );
+              if (nextIdx !== -1) {
+                insertAt = nextIdx;
+                break;
+              }
             }
           }
           reverted.splice(insertAt, 0, jv);
