@@ -48,6 +48,10 @@ impl ProcessorFactory for GeometryPartExtractorFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["geometry", "decompose"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }
