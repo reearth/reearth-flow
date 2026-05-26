@@ -7,6 +7,7 @@ use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
 use super::builtins::{builtin_math, builtin_url};
 use super::error::{Error, InnerError, InnerResult, Result};
+use crate::unpack_args;
 use super::value::{format_float, NativeFn, Value};
 
 #[cfg(debug_assertions)]
@@ -67,6 +68,7 @@ pub fn default_env() -> Env {
     env.insert("Url".into(), Value::Fn(NativeFn::new(builtin_url)));
     env.insert("math".into(), builtin_math());
     env.insert("print".into(), Value::Fn(NativeFn::new(builtin_print)));
+    env.insert("type".into(), Value::Fn(NativeFn::new(builtin_type)));
     env
 }
 
@@ -1061,6 +1063,11 @@ fn builtin_map(args: &[Value]) -> InnerResult<Value> {
     Ok(Value::map(out))
 }
 
+fn builtin_type(args: &[Value]) -> InnerResult<Value> {
+    unpack_args!(args => v);
+    Ok(Value::String(v.type_name().to_string()))
+}
+
 fn builtin_print(args: &[Value]) -> InnerResult<Value> {
     let parts: Vec<String> = args
         .iter()
@@ -1510,6 +1517,17 @@ mod tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    fn test_type_builtin() {
+        assert_eval("type(null)", &[], Value::from("null"));
+        assert_eval("type(true)", &[], Value::from("bool"));
+        assert_eval("type(42)", &[], Value::from("int"));
+        assert_eval("type(3.14)", &[], Value::from("float"));
+        assert_eval(r#"type("hello")"#, &[], Value::from("string"));
+        assert_eval("type([1, 2])", &[], Value::from("list"));
+        assert_eval(r#"type({"a": 1})"#, &[], Value::from("map"));
     }
 
     #[test]

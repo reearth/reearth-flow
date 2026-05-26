@@ -70,21 +70,23 @@ graphs:
                   attributes = value("cityGmlAttributes");
                   uro_list = attributes.get("uro:BuildingIDAttribute");
                   gml_city_code = null;
-                  if uro_list {
+                  if uro_list and type(uro_list) == "list" {
                     gml_city_code = uro_list[0].get("uro:city_code");
                   }
                   gml_city_code or value("cityCode") or env("cityCode")
 
             - attribute: cityName
               method: create
-              value: |
-                attributes = value("cityGmlAttributes");
-                uro_list = attributes.get("uro:BuildingIDAttribute");
-                gml_city_name = null;
-                if uro_list {
-                  gml_city_name = uro_list[0].get("uro:city")
-                }
-                gml_city_name or value("cityName")
+              value:
+                type: flowExpr
+                value: |
+                  attributes = value("cityGmlAttributes");
+                  uro_list = attributes.get("uro:BuildingIDAttribute");
+                  gml_city_name = null;
+                  if uro_list and type(uro_list) == "list" {
+                    gml_city_name = uro_list[0].get("uro:city")
+                  }
+                  gml_city_name or value("cityName")
 
       - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
         name: AttributeConversionTable
@@ -140,12 +142,14 @@ graphs:
           operations:
             - attribute: meshcode
               method: create
-              value: |
-                file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
+              value:
+                type: flowExpr
+                value: 'Url(value("path")).name().split("_")[0]'
             - attribute: feature_type
               method: create
-              value: |
-                env.get("__value")["__citygml_feature_type"]
+              value:
+                type: flowExpr
+                value: 'value("__citygml_feature_type")'
             - attribute: path
               method: rename
               value: "_path"
@@ -214,12 +218,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_xmin") + value("_xmax")) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_ymin") + value("_ymax")) * 0.5'
             # Derive _lod by recovering highest LOD from bitmask (same for all LODs). Notes:
             # 1. FeatureLodFilter filters __citygml_lod_mask to a single-bit mask representing the LOD
             # 2. Setting _lod before FeatureLodFilter would incorrectly capture the original highest LOD
@@ -263,12 +269,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_xmin") + value("_xmax")) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_ymin") + value("_ymax")) * 0.5'
             - attribute: _lod
               method: create
               value: |
@@ -308,12 +316,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_xmin") + value("_xmax")) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_ymin") + value("_ymax")) * 0.5'
             - attribute: _lod
               method: create
               value: |
@@ -353,12 +363,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_xmin") + value("_xmax")) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_ymin") + value("_ymax")) * 0.5'
             - attribute: _lod
               method: create
               value: |
@@ -398,12 +410,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_xmin") + value("_xmax")) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_ymin") + value("_ymax")) * 0.5'
             - attribute: _lod
               method: create
               value: |
@@ -443,12 +457,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_xmin") + value("_xmax")) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_ymin") + value("_ymax")) * 0.5'
             - attribute: _lod
               method: create
               value: |
@@ -488,12 +504,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_xmin") + value("_xmax")) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(value("_ymin") + value("_ymax")) * 0.5'
             - attribute: _lod
               method: create
               value: |
