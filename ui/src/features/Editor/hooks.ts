@@ -86,6 +86,7 @@ export default ({
     handleYWorkflowRedo,
     handleYWorkflowRename,
     handleYLayoutChange,
+    handleYSpacingChange,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
@@ -219,14 +220,24 @@ export default ({
   });
 
   const handleLayoutChange = useCallback(
-    async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
-      // We need to wait for the layout to finish before fitting the view
-      await Promise.resolve(
-        handleYLayoutChange(algorithm, direction, _spacing),
-      );
-      fitView();
+    (
+      algorithm: Algorithm,
+      direction: Direction,
+      xSpacing: number,
+      ySpacing: number,
+    ) => {
+      handleYLayoutChange(algorithm, direction, xSpacing, ySpacing);
+      // Defer fitView so React can flush the Yjs-driven node position updates first
+      setTimeout(() => fitView({ duration: 300 }), 0);
     },
     [fitView, handleYLayoutChange],
+  );
+
+  const handleSpacingChange = useCallback(
+    (xScale: number, yScale: number) => {
+      handleYSpacingChange(xScale, yScale);
+    },
+    [handleYSpacingChange],
   );
 
   const {
@@ -495,6 +506,7 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleLayoutChange,
+    handleSpacingChange,
     handleDeleteDialogClose,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,

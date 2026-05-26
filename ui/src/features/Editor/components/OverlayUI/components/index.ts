@@ -1,7 +1,7 @@
 export { default as CanvasActionBar } from "./CanvasActionbar";
 export { default as Toolbox } from "./Toolbox";
 export { default as ActionPickerDialog } from "./ActionPickerDialog";
-export { default as LayoutOptionsDialog } from "./LayoutOptionsDialog";
+export { default as LayoutSubToolbar } from "./LayoutSubToolbar";
 export { default as DebugLogs } from "./DebugPanel/DebugLogs";
 export { default as DebugPreview } from "./DebugPanel/DebugPreview";
 export { default as DebugPanel } from "./DebugPanel";

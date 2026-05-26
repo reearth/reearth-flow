@@ -1,6 +1,10 @@
 import dagre from "@dagrejs/dagre";
 
-import { DEFAULT_NODE_SIZE } from "@flow/global-constants";
+import {
+  DEFAULT_LAYOUT_X_SPACING,
+  DEFAULT_LAYOUT_Y_SPACING,
+  DEFAULT_NODE_SIZE,
+} from "@flow/global-constants";
 import { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 export type DagreDirection = "TB" | "LR";
@@ -12,12 +16,18 @@ export const autoLayout = (
   direction: Direction = "Horizontal",
   nodes: Node[],
   edges: Edge[],
+  xSpacing: number = DEFAULT_LAYOUT_X_SPACING,
+  ySpacing: number = DEFAULT_LAYOUT_Y_SPACING,
 ) => {
-  // Currently only supporting dagre
   if (algorithm === "dagre") {
-    const dagreDirection = direction === "Horizontal" ? "LR" : "TB";
-    // const isHorizontal = direction === "LR";
-    dagreGraph.setGraph({ rankdir: dagreDirection });
+    const isHorizontal = direction === "Horizontal";
+    // In LR layout: ranksep = gap between columns (x), nodesep = gap between rows (y)
+    // In TB layout: ranksep = gap between rows (y), nodesep = gap between columns (x)
+    dagreGraph.setGraph({
+      rankdir: isHorizontal ? "LR" : "TB",
+      ranksep: isHorizontal ? xSpacing : ySpacing,
+      nodesep: isHorizontal ? ySpacing : xSpacing,
+    });
 
     nodes.forEach((node) => {
       dagreGraph.setNode(node.id, {
@@ -36,10 +46,7 @@ export const autoLayout = (
       const nodeWithPosition = dagreGraph.node(node.id);
       const newNode: Node = {
         ...node,
-        // targetPosition: isHorizontal ? "left" : "top",
-        // sourcePosition: isHorizontal ? "right" : "bottom",
-        // We are shifting the dagre node position (anchor=center center) to the top left
-        // so it matches the React Flow node anchor point (top left).
+        // Shift dagre center anchor to React Flow top-left anchor
         position: {
           x: nodeWithPosition.x - DEFAULT_NODE_SIZE.width / 2,
           y: nodeWithPosition.y - DEFAULT_NODE_SIZE.height / 2,

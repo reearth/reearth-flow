@@ -22,7 +22,7 @@ import {
   CanvasActionBar,
   Toolbox,
   ActionPickerDialog,
-  LayoutOptionsDialog,
+  LayoutSubToolbar,
   DebugPanel,
   Homebar,
   VersionDialog,
@@ -62,8 +62,10 @@ type OverlayUIProps = {
   onLayoutChange: (
     algorithm: Algorithm,
     direction: Direction,
-    spacing: number,
+    xSpacing: number,
+    ySpacing: number,
   ) => void;
+  onSpacingChange: (xScale: number, yScale: number) => void;
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
@@ -130,6 +132,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onWorkflowOpen,
   onWorkflowClose,
   onLayoutChange,
+  onSpacingChange,
   onWorkflowDeployment,
   sharingUrl,
   onProjectExport,
@@ -178,10 +181,19 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             canUndo={canUndo}
             canRedo={canRedo}
             isMainWorkflow={isMainWorkflow}
+            showLayoutOptions={showDialog === "layout"}
             onLayoutChange={handleLayoutOptionsToggle}
             onRedo={onWorkflowRedo}
             onUndo={onWorkflowUndo}
           />
+          {showDialog === "layout" && !isLocked && (
+            <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
+              <LayoutSubToolbar
+                onLayoutChange={onLayoutChange}
+                onSpacingChange={onSpacingChange}
+              />
+            </div>
+          )}
           {isLocked && (
             <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
               <div className="flex items-center gap-2 rounded p-2 text-xs">
@@ -275,12 +287,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           </div>
         </div>
       </div>
-      {showDialog === "layout" && (
-        <LayoutOptionsDialog
-          onLayoutChange={onLayoutChange}
-          onClose={handleDialogClose}
-        />
-      )}
       {nodePickerOpen && (
         <ActionPickerDialog
           openedActionType={nodePickerOpen}
