@@ -54,33 +54,23 @@ impl ImmutableObject for UrlObject {
         "Url"
     }
 
-    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
-        match method {
-            "parent" => {
-                unpack_args!(args =>);
-                Ok(Value::object(self.parent()))
-            }
-            "extension" => {
-                unpack_args!(args =>);
+    fn get_property(&self, name: &str) -> Option<crate::core::error::InnerResult<Value>> {
+        match name {
+            "parent" => Some(Ok(Value::object(self.parent()))),
+            "name" => Some(Ok(Value::String(self.name().to_string()))),
+            "suffix" => {
                 let ext = std::path::Path::new(self.name())
                     .extension()
                     .and_then(|e| e.to_str())
                     .unwrap_or("");
-                Ok(Value::String(ext.to_string()))
+                Some(Ok(Value::String(ext.to_string())))
             }
-            "name" => {
-                unpack_args!(args =>);
-                Ok(Value::String(self.name().to_string()))
-            }
-            "stem" => {
-                unpack_args!(args =>);
-                let name = self.name();
-                let stem = std::path::Path::new(name)
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or(name);
-                Ok(Value::String(stem.to_string()))
-            }
+            _ => None,
+        }
+    }
+
+    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
+        match method {
             "__eq__" => {
                 unpack_args!(args => rhs);
                 match rhs {
@@ -114,6 +104,107 @@ impl ImmutableObject for UrlObject {
 
     fn serialize(&self) -> Option<Value> {
         Some(Value::String(self.url.to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::core::test_utils::{assert_val, run};
+    use crate::core::value::Value;
+
+    fn url_display(expr: &str) -> String {
+        match run(expr, &[]) {
+            Value::Object(obj) => obj.display(),
+            v => panic!("expected Object, got {v:?}"),
+        }
+    }
+
+    #[test]
+    fn test_url_construct() {
+        assert_eq!(url_display(r#"Url("/foo/bar")"#), "file:///foo/bar");
+        assert_eq!(url_display(r#"Url(Url("/foo/bar"))"#), "file:///foo/bar");
+    }
+
+    #[test]
+    fn test_url_str() {
+        assert_val(
+            &run(r#"str(Url("/foo/bar"))"#, &[]),
+            &Value::from("file:///foo/bar"),
+        );
+    }
+
+    #[test]
+    fn test_url_div() {
+        assert_val(
+            &run(r#"str(Url("/foo") / "bar" / "baz")"#, &[]),
+            &Value::from("file:///foo/bar/baz"),
+        );
+        assert_val(
+            &run(r#"str(Url("gs://bucket/artifacts") / "output")"#, &[]),
+            &Value::from("gs://bucket/artifacts/output"),
+        );
+    }
+
+    #[test]
+    fn test_url_parent() {
+        assert_eq!(url_display(r#"Url("/foo/bar").parent"#), "file:///foo");
+        assert_eq!(url_display(r#"Url("/foo").parent"#), "file:///");
+        assert_eq!(url_display(r#"Url("/foo/bar/").parent"#), "file:///foo/bar");
+        assert_val(
+            &run(r#"str(Url("file:///").parent)"#, &[]),
+            &Value::from("file:///"),
+        );
+        assert_val(
+            &run(r#"str(Url("gs://bucket").parent)"#, &[]),
+            &Value::from("gs://bucket"),
+        );
+    }
+
+    #[test]
+    fn test_url_name() {
+        assert_val(&run(r#"Url("gs://bucket").name"#, &[]), &Value::from(""));
+        assert_val(
+            &run(r#"Url("/foo/bar.gml").name"#, &[]),
+            &Value::from("bar.gml"),
+        );
+        assert_val(&run(r#"Url("/foo/").name"#, &[]), &Value::from("foo"));
+        assert_val(&run(r#"Url("/foo/bar/").name"#, &[]), &Value::from("bar"));
+    }
+
+    #[test]
+    fn test_url_suffix() {
+        assert_val(
+            &run(r#"Url("/foo/bar.gml").suffix"#, &[]),
+            &Value::from("gml"),
+        );
+        assert_val(
+            &run(r#"Url("/foo/bar.gml/").suffix"#, &[]),
+            &Value::from("gml"),
+        );
+    }
+
+    #[test]
+    fn test_url_eq() {
+        assert_val(
+            &run(r#"Url("/foo/bar") == Url("/foo/bar")"#, &[]),
+            &Value::Bool(true),
+        );
+        assert_val(
+            &run(r#"Url("/foo/bar") == Url("/foo/baz")"#, &[]),
+            &Value::Bool(false),
+        );
+    }
+
+    #[test]
+    fn test_url_in_array() {
+        assert_val(
+            &run(r#"Url("/foo/bar") in [Url("/foo/bar")]"#, &[]),
+            &Value::Bool(true),
+        );
+        assert_val(
+            &run(r#"Url("/foo/bar") in [Url("/foo/baz")]"#, &[]),
+            &Value::Bool(false),
+        );
     }
 }
 

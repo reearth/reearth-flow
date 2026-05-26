@@ -144,7 +144,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'Url(value("path")).name().split("_")[0]'
+                value: 'Url(value("path")).name.split("_")[0]'
             - attribute: feature_type
               method: create
               value:

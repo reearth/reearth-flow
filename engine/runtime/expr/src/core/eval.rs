@@ -7,8 +7,8 @@ use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
 use super::builtins::{builtin_math, builtin_url};
 use super::error::{Error, InnerError, InnerResult, Result};
-use crate::unpack_args;
 use super::value::{format_float, NativeFn, Value};
+use crate::unpack_args;
 
 #[cfg(debug_assertions)]
 const MAX_EVAL_DEPTH: usize = 64;
@@ -122,6 +122,9 @@ fn resolve_attr(recv: Value, attr: &str) -> InnerResult<Value> {
         Value::Array(_) => array_methods::resolve_method(attr)?,
         Value::Map(_) => map_methods::resolve_method(attr)?,
         Value::Object(rc) => {
+            if let Some(result) = rc.get_property(attr) {
+                return result;
+            }
             let rc = rc.clone();
             let attr = attr.to_string();
             return Ok(Value::Fn(NativeFn::new(move |args| {

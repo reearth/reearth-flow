@@ -15,6 +15,9 @@ use crate::core::error::InnerResult;
 pub trait ImmutableObject: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
     fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value>;
+    fn get_property(&self, _name: &str) -> Option<InnerResult<Value>> {
+        None
+    }
     fn display(&self) -> String {
         format!("<{}>", self.type_name())
     }
