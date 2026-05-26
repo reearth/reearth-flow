@@ -1,4 +1,8 @@
-use std::{collections::{HashMap, HashSet}, fs::File, io::BufReader};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::BufReader,
+};
 
 use clap::{Arg, ArgMatches, Command};
 use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
