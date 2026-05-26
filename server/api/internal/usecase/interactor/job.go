@@ -27,6 +27,7 @@ type Job struct {
 	transaction       usecasex.Transaction
 	file              gateway.File
 	batch             gateway.Batch
+	cloudRunWorker    gateway.CloudRunWorker
 	redis             gateway.Redis
 	notifier          notification.Notifier
 	permissionChecker gateway.PermissionChecker
@@ -56,6 +57,7 @@ func NewJob(
 		transaction:       r.Transaction,
 		file:              gr.File,
 		batch:             gr.Batch,
+		cloudRunWorker:    gr.CloudRunWorker,
 		redis:             gr.Redis,
 		monitor:           monitor.NewMonitor(),
 		subscriptions:     subscription.NewJobManager(),
@@ -124,8 +126,15 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 		}
 	}()
 
-	if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
-		return nil, err
+	// Cloud-Run debug jobs have an empty GCPJobID; batch-fallback jobs do not.
+	if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" && i.cloudRunWorker != nil {
+		if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
+			return nil, err
+		}
 	}
 
 	j.SetStatus(job.StatusCancelled)
@@ -145,6 +154,71 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	i.subscriptions.Notify(j.ID().String(), j.Status())
 
 	return j, nil
+}
+
+const cloudRunInfraFailureGrace = 30 * time.Second
+
+// RunCloudRunWorker executes a debug job on the Cloud Run worker; the worker
+// publishes its result to Redis and the standard monitoring loop finalizes the
+// job. Only an infra failure (no result will ever arrive) is finalized here.
+func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
+	go func() {
+		ctx := context.Background()
+		defer func() {
+			if r := recover(); r != nil {
+				log.Errorfc(ctx, "job: cloud run worker %s panicked: %v", j.ID(), r)
+			}
+		}()
+
+		status, err := i.cloudRunWorker.RunJob(ctx, p)
+		if err != nil {
+			log.Errorfc(ctx, "job: cloud run worker %s run error: %v", j.ID(), err)
+		}
+
+		if err != nil || status == gateway.JobStatusFailed {
+			i.failCloudRunJob(ctx, j.ID())
+		}
+	}()
+}
+
+// failCloudRunJob marks a debug job failed when the worker call fails. A
+// client-side error may still yield a result, so it waits a grace period and
+// bails if the loop already finalized or a worker event arrived; it sets the
+// legacy status (not batchStatus) so a late success isn't forced to FAILED.
+func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(cloudRunInfraFailureGrace):
+	}
+
+	lock := i.getJobLock(jobID.String())
+	lock.Lock()
+	defer lock.Unlock()
+
+	latest, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
+		return
+	}
+	if s := latest.Status(); s == job.StatusCancelled || s == job.StatusCompleted || s == job.StatusFailed {
+		return
+	}
+	if ev, _ := i.redis.GetJobCompleteEvent(ctx, jobID); ev != nil {
+		return
+	}
+
+	latest.SetStatus(job.StatusFailed)
+
+	if err := i.jobRepo.Save(ctx, latest); err != nil {
+		log.Errorfc(ctx, "job: failed to save cloud run job %s: %v", jobID, err)
+		return
+	}
+
+	if err := i.handleJobCompletion(ctx, latest); err != nil {
+		log.Errorfc(ctx, "job: completion handling failed for cloud run job %s: %v", jobID, err)
+	}
+	i.subscriptions.Notify(jobID.String(), latest.Status())
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
@@ -278,13 +352,6 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 }
 
 func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
-	status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
-	if err != nil {
-		return err
-	}
-
-	newBatchStatus := job.Status(status)
-
 	jobLock := i.getJobLock(j.ID().String())
 	jobLock.Lock()
 	defer jobLock.Unlock()
@@ -292,6 +359,21 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
 	if err != nil {
 		return fmt.Errorf("failed to fetch current job state: %w", err)
+	}
+
+	var batchStatusChanged bool
+
+	// Cloud-Run debug jobs have an empty GCPJobID; skip Batch polling for them.
+	if j.GCPJobID() != "" {
+		status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
+		if err != nil {
+			return err
+		}
+		newBatchStatus := job.Status(status)
+		batchStatusChanged = currentJob.BatchStatus() == nil || *currentJob.BatchStatus() != newBatchStatus
+		if batchStatusChanged {
+			currentJob.SetBatchStatus(newBatchStatus)
+		}
 	}
 
 	workerEvent, err := i.redis.GetJobCompleteEvent(ctx, currentJob.ID())
@@ -314,18 +396,10 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		}
 	}
 
-	batchStatusChanged := currentJob.BatchStatus() == nil || *currentJob.BatchStatus() != newBatchStatus
-	if batchStatusChanged {
-		currentJob.SetBatchStatus(newBatchStatus)
-	}
-
 	statusChanged := batchStatusChanged || workerEvent != nil
 
 	if statusChanged {
-		// Update legacy status field with computed value
 		currentJob.SetStatus(currentJob.Status())
-
-		// Use transaction for MongoDB update
 		tx, err := i.transaction.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to begin transaction: %w", err)
@@ -345,7 +419,6 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 
 		tx.Commit()
 
-		// Delete Redis key only after successful DB commit
 		if workerEvent != nil {
 			if err := i.redis.DeleteJobCompleteEvent(ctx, currentJob.ID()); err != nil {
 				log.Warnf("Failed to delete job complete event from Redis for job %s: %v", currentJob.ID(), err)
@@ -356,21 +429,20 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	computedStatus := currentJob.Status()
 	isTerminalState := computedStatus == job.StatusCompleted || computedStatus == job.StatusFailed ||
 		computedStatus == job.StatusCancelled
-	if isTerminalState {
+	// statusChanged guard: don't re-run completion side-effects if another path
+	// (failCloudRunJob, Cancel) already finalized the job.
+	if statusChanged && isTerminalState {
 		log.Infof(
 			"Job %s transitioning to terminal state %s, handling completion",
 			currentJob.ID(),
 			computedStatus,
 		)
 
-		// For terminal states, run completion handling (artifacts/logs) before notifying.
 		if err := i.handleJobCompletion(ctx, currentJob); err != nil {
 			log.Errorfc(ctx, "job: completion handling failed: %v", err)
 		}
 	}
 
-	// For terminal states we notify only after completion handling,
-	// so subscribers see final outputs/logs together with the final status.
 	if statusChanged {
 		i.subscriptions.Notify(currentJob.ID().String(), currentJob.Status())
 	}

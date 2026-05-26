@@ -1,11 +1,7 @@
 use std::collections::HashMap;
-use std::str::FromStr;
-use std::sync::Arc;
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use bytes::Bytes;
 use indexmap::IndexMap;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -206,25 +202,23 @@ impl Sink for GeoPackageWriter {
             return Ok(());
         }
 
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
-        let scope = expr_engine.new_scope();
+        let scope = ctx.expr_engine.new_scope();
         let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output_uri = Uri::from_str(path.as_str())?;
+            .eval::<String>(self.params.output.as_ref())
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let out = crate::SinkOutput::from_path(&ctx, &path)
+            .map_err(|e| crate::errors::SinkError::GeoPackageWriter(e.to_string()))?;
 
         // Check if file exists
-        let storage = storage_resolver
-            .resolve(&output_uri)
-            .map_err(SinkError::geopackage_writer)?;
-
         if !self.params.overwrite {
-            if let Ok(true) = storage.exists_sync(output_uri.path().as_path()) {
+            let storage = ctx
+                .storage_resolver
+                .resolve(out.uri())
+                .map_err(SinkError::geopackage_writer)?;
+            if let Ok(true) = storage.exists_sync(out.uri().path().as_path()) {
                 return Err(SinkError::GeoPackageWriter(format!(
                     "File already exists: {}. Set overwrite=true to replace it.",
-                    path
+                    out.uri()
                 ))
                 .into());
             }
@@ -234,7 +228,8 @@ impl Sink for GeoPackageWriter {
         let gpkg_data = self.create_geopackage()?;
 
         // Write to storage
-        storage.put_sync(output_uri.path().as_path(), Bytes::from(gpkg_data))?;
+        out.write(bytes::Bytes::from(gpkg_data))
+            .map_err(|e| crate::errors::SinkError::GeoPackageWriter(e.to_string()))?;
 
         Ok(())
     }

@@ -2,10 +2,20 @@ import { useState } from "react";
 
 import { DialogOptions } from "./types";
 
-export default () => {
+export default ({
+  onUserFocusedElement,
+}: {
+  onUserFocusedElement?: (isOpen: boolean) => void;
+}) => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
-  const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
-  const handleDialogClose = () => setShowDialog(undefined);
+  const handleDialogOpen = (dialog: DialogOptions) => {
+    setShowDialog(dialog);
+    onUserFocusedElement?.(true);
+  };
+  const handleDialogClose = () => {
+    setShowDialog(undefined);
+    onUserFocusedElement?.(false);
+  };
 
   return {
     showDialog,

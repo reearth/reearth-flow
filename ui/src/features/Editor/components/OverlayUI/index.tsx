@@ -1,6 +1,6 @@
 import { LockIcon } from "@phosphor-icons/react";
 import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 import { Doc } from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
@@ -95,6 +95,7 @@ type OverlayUIProps = {
   children?: React.ReactNode;
   showSearchPanel: boolean;
   onShowSearchPanel: (open: boolean) => void;
+  onUserFocusedElement?: (isOpen: boolean) => void;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
@@ -146,14 +147,21 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   activeUsersDebugRuns,
   showSearchPanel,
   onShowSearchPanel,
+  onUserFocusedElement,
 }) => {
   const { isLocked } = useEditorContext();
-  const [showLayoutOptions, setShowLayoutOptions] = useState(false);
-  const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
+  const { showDialog, handleDialogOpen, handleDialogClose } = useHooks({
+    onUserFocusedElement,
+  });
 
   const handleLayoutOptionsToggle = useCallback(() => {
-    setShowLayoutOptions((prev) => !prev);
-  }, []);
+    if (showDialog === "layout") {
+      handleDialogClose();
+      return;
+    } else {
+      handleDialogOpen("layout");
+    }
+  }, [showDialog, handleDialogOpen, handleDialogClose]);
 
   const t = useT();
 
@@ -199,6 +207,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onWorkflowClose={onWorkflowClose}
             onSpotlightUserSelect={onSpotlightUserSelect}
             onSpotlightUserDeselect={onSpotlightUserDeselect}
+            onUserFocusedElement={onUserFocusedElement}
           />
         </div>
         <div id="right-top" className="absolute top-2 right-2 h-[42px]">
@@ -215,6 +224,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onDebugRunStop={onDebugRunStop}
               customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
               onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+              onUserFocusedElement={onUserFocusedElement}
               refetchWorkflowVariables={refetchWorkflowVariables}
             />
             <div className="h-4/5 border-r" />
@@ -265,11 +275,12 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           </div>
         </div>
       </div>
-      <LayoutOptionsDialog
-        isOpen={showLayoutOptions}
-        onLayoutChange={onLayoutChange}
-        onClose={handleLayoutOptionsToggle}
-      />
+      {showDialog === "layout" && (
+        <LayoutOptionsDialog
+          onLayoutChange={onLayoutChange}
+          onClose={handleDialogClose}
+        />
+      )}
       {nodePickerOpen && (
         <ActionPickerDialog
           openedActionType={nodePickerOpen}

@@ -7,6 +7,9 @@ type MultiCursorProps = {
 };
 
 const MultiCursor: React.FC<MultiCursorProps> = ({ user }) => {
+  if (user.focusedElement) {
+    return null;
+  }
   return (
     <div
       className="pointer-events-none absolute"

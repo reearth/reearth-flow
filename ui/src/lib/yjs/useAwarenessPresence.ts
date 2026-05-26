@@ -179,8 +179,42 @@ export default function useAwarenessPresence({
     [yAwareness],
   );
 
+  const handleWorkflowVarDialogOpen = useCallback(() => {
+    yAwareness.setLocalStateField("openWorkflowVariablesDialog", true);
+  }, [yAwareness]);
+
+  const handleWorkflowVarDialogClose = useCallback(() => {
+    yAwareness.setLocalStateField("openWorkflowVariablesDialog", null);
+    yAwareness.setLocalStateField("focusedVariableId", null);
+    yAwareness.setLocalStateField("focusedVariableField", null);
+    yAwareness.setLocalStateField("editingVariableId", null);
+  }, [yAwareness]);
+
+  const handleWorkflowVarFieldFocus = useCallback(
+    (variableId: string | null, field: string | null) => {
+      yAwareness.setLocalStateField("focusedVariableId", variableId);
+      yAwareness.setLocalStateField("focusedVariableField", field);
+    },
+    [yAwareness],
+  );
+
+  const handleWorkflowVarEditStart = useCallback(
+    (variableId: string | null) => {
+      yAwareness.setLocalStateField("editingVariableId", variableId);
+    },
+    [yAwareness],
+  );
+
+  const handleUserFocusedElement = useCallback(
+    (isOpen: boolean) => {
+      yAwareness.setLocalStateField("focusedElement", isOpen);
+    },
+    [yAwareness],
+  );
+
   useEffect(() => {
     const handleWindowPointerMove = (event: PointerEvent) => {
+      if (yAwareness.getLocalState()?.focusedElement) return;
       throttledPresenceUpdate(event.clientX, event.clientY);
       const awarenessStates = yAwareness.getStates();
       if (awarenessStates.size > 1) {
@@ -243,6 +277,11 @@ export default function useAwarenessPresence({
     awarenessSelectionsMap,
     handlePointerDown,
     handleParamFieldFocus,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
+    handleUserFocusedElement,
     setDraggingEdge,
     clearDraggingEdge,
   };

@@ -180,19 +180,9 @@ export default ({
     setCurrentWorkflowId,
   });
 
-  const handleOpenNode = useCallback((nodeId?: string) => {
-    setOpenNodeId((prev) => (!nodeId || prev === nodeId ? undefined : nodeId));
-  }, []);
-
   // Passed to editor context so needs to be a ref
   const handleNodeSettingsClickRef =
     useRef<(e: MouseEvent | undefined, nodeId: string) => void>(undefined);
-  handleNodeSettingsClickRef.current = (
-    _e: MouseEvent | undefined,
-    nodeId: string,
-  ) => {
-    handleOpenNode(nodeId);
-  };
 
   const handleNodeSettings = useCallback(
     (e: MouseEvent | undefined, nodeId: string) =>
@@ -212,13 +202,6 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
   });
-
-  const {
-    nodePickerOpen,
-    openNodePickerViaShortcut,
-    handleNodePickerOpen,
-    handleNodePickerClose,
-  } = useUIState();
 
   const { allowedToDeploy, handleWorkflowDeployment } = useDeployment({
     currentNodes: nodes,
@@ -305,6 +288,50 @@ export default ({
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
   const [showSearchPanel, setShowSearchPanel] = useState<boolean>(false);
 
+  const {
+    self,
+    users,
+    awarenessSelectionsMap,
+    handlePointerDown,
+    handleParamFieldFocus,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
+    handleUserFocusedElement,
+    setDraggingEdge,
+    clearDraggingEdge,
+  } = useAwarenessPresence({
+    selectedNodeIds,
+    openNode,
+    yAwareness,
+  });
+
+  const handleOpenNode = useCallback(
+    (nodeId?: string) => {
+      setOpenNodeId((prev) =>
+        !nodeId || prev === nodeId ? undefined : nodeId,
+      );
+      handleUserFocusedElement(!!nodeId);
+    },
+    [handleUserFocusedElement],
+  );
+
+  handleNodeSettingsClickRef.current = (
+    _e: MouseEvent | undefined,
+    nodeId: string,
+  ) => {
+    handleOpenNode(nodeId);
+  };
+
+  const handleShowSearchPanel = useCallback(
+    (open: boolean) => {
+      setShowSearchPanel(open);
+      handleUserFocusedElement?.(open);
+    },
+    [setShowSearchPanel, handleUserFocusedElement],
+  );
+
   useHotkeys(
     EDITOR_HOT_KEYS,
     (event, handler) => {
@@ -322,8 +349,8 @@ export default ({
           if (hasModifier) handleProjectLockChange?.(!isLocked);
           break;
         case "k":
-          if (hasModifier && !showSearchPanel) setShowSearchPanel(true);
-          if (hasModifier && showSearchPanel) setShowSearchPanel(false);
+          if (hasModifier && !showSearchPanel) handleShowSearchPanel(true);
+          if (hasModifier && showSearchPanel) handleShowSearchPanel(false);
 
           break;
         case "z":
@@ -352,18 +379,11 @@ export default ({
   };
 
   const {
-    self,
-    users,
-    awarenessSelectionsMap,
-    handlePointerDown,
-    handleParamFieldFocus,
-    setDraggingEdge,
-    clearDraggingEdge,
-  } = useAwarenessPresence({
-    selectedNodeIds,
-    openNode,
-    yAwareness,
-  });
+    nodePickerOpen,
+    openNodePickerViaShortcut,
+    handleNodePickerOpen,
+    handleNodePickerClose,
+  } = useUIState({ onUserFocusedElement: handleUserFocusedElement });
 
   const {
     spotlightUser,
@@ -489,11 +509,16 @@ export default ({
     handleSpotlightUserDeselect,
     handlePaneClick,
     selectedNodeIds,
-    setShowSearchPanel,
+    handleShowSearchPanel,
     handlePointerDown,
     handleConnectStart,
     handleConnectEnd,
     awarenessSelectionsMap,
     handleParamFieldFocus,
+    handleUserFocusedElement,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
   };
 };

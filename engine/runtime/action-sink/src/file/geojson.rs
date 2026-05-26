@@ -1,11 +1,8 @@
 use std::collections::HashMap;
-use std::str::FromStr;
-use std::sync::Arc;
 use std::vec;
 
 use bytes::Bytes;
 use reearth_flow_common::str::to_hash;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -121,24 +118,21 @@ impl Sink for GeoJsonWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
-        let scope = expr_engine.new_scope();
+        let scope = ctx.expr_engine.new_scope();
         let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
+            .eval::<String>(self.params.output.as_ref())
+            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let base = crate::SinkOutput::from_path(&ctx, &path)
+            .map_err(crate::errors::SinkError::geojson_writer)?;
 
         for (key, features) in self.buffer.iter() {
-            let file_path = if *key == AttributeValue::Null {
-                output.clone()
+            let out = if *key == AttributeValue::Null {
+                base.clone()
             } else {
-                output.join(format!("{}.geojson", to_hash(key.to_string().as_str())))?
+                base.join(&format!("{}.geojson", to_hash(key.to_string().as_str())))
+                    .map_err(crate::errors::SinkError::geojson_writer)?
             };
-            let storage = storage_resolver
-                .resolve(&file_path)
-                .map_err(crate::errors::SinkError::geojson_writer)?;
+
             let mut buffer = Vec::from(b"{\"type\":\"FeatureCollection\",\"features\":[");
 
             let geojsons: Vec<geojson::Feature> = features
@@ -158,7 +152,8 @@ impl Sink for GeoJsonWriter {
                 buffer.extend(bytes);
             }
             buffer.extend(Vec::from(b"]}\n"));
-            storage.put_sync(file_path.path().as_path(), Bytes::from(buffer))?;
+            out.write(Bytes::from(buffer))
+                .map_err(crate::errors::SinkError::geojson_writer)?;
         }
         Ok(())
     }

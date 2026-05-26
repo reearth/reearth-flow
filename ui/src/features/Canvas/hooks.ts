@@ -8,7 +8,7 @@ import { MouseEvent, useCallback, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { ContextMenuMeta } from "@flow/components";
-import { CANVAS_HOT_KEYS } from "@flow/global-constants";
+import { CANVAS_HOT_KEYS, DEFAULT_GRID_SIZE } from "@flow/global-constants";
 import { useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -162,8 +162,68 @@ export default ({
     setContextMenu(null);
   };
 
+  const handleSelectedNodesSpacing = useCallback(
+    (direction: 1 | -1) => {
+      if (readonly) return;
+      const selectedNodes = nodes.filter((n) => n.selected);
+      if (selectedNodes.length < 2) return;
+
+      const snap = (v: number) =>
+        Math.round(v / DEFAULT_GRID_SIZE) * DEFAULT_GRID_SIZE;
+
+      const anchorX = snap(Math.min(...selectedNodes.map((n) => n.position.x)));
+      const anchorY = snap(Math.min(...selectedNodes.map((n) => n.position.y)));
+
+      // Rank each node by its sorted position along each axis independently.
+      // A node at rank N moves by N × gridSize so every gap increases by gridSize.
+      const uniqueXs = [
+        ...new Set(selectedNodes.map((n) => snap(n.position.x))),
+      ].sort((a, b) => a - b);
+      const uniqueYs = [
+        ...new Set(selectedNodes.map((n) => snap(n.position.y))),
+      ].sort((a, b) => a - b);
+
+      const xRank = new Map(uniqueXs.map((x, i) => [x, i]));
+      const yRank = new Map(uniqueYs.map((y, i) => [y, i]));
+
+      handleNodesChange(
+        selectedNodes.map((n) => {
+          const snappedX = snap(n.position.x);
+          const snappedY = snap(n.position.y);
+          const offsetX = snappedX - anchorX;
+          const offsetY = snappedY - anchorY;
+          const rankX = xRank.get(snappedX) ?? 0;
+          const rankY = yRank.get(snappedY) ?? 0;
+          return {
+            id: n.id,
+            type: "position" as const,
+            position: {
+              // Minimum offset is rank × gridSize so nodes never fully collapse
+              // and spread can always recover the original arrangement.
+              x:
+                anchorX +
+                Math.max(
+                  rankX * DEFAULT_GRID_SIZE,
+                  offsetX + rankX * direction * DEFAULT_GRID_SIZE,
+                ),
+              y:
+                anchorY +
+                Math.max(
+                  rankY * DEFAULT_GRID_SIZE,
+                  offsetY + rankY * direction * DEFAULT_GRID_SIZE,
+                ),
+            },
+          };
+        }),
+      );
+    },
+    [nodes, handleNodesChange, readonly],
+  );
+
   useHotkeys(CANVAS_HOT_KEYS, (event, handler) => {
     const hasModifier = event.metaKey || event.ctrlKey;
+    const hasShift = event.shiftKey;
+
     switch (handler.keys?.join("")) {
       case "r":
         event.preventDefault();
@@ -190,6 +250,20 @@ export default ({
         break;
       case "e":
         if (hasModifier && !readonly) onNodesDisable?.();
+        break;
+      case "equal":
+        if (hasShift) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleSelectedNodesSpacing(1);
+        }
+        break;
+      case "minus":
+        if (hasShift) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleSelectedNodesSpacing(-1);
+        }
         break;
     }
   });

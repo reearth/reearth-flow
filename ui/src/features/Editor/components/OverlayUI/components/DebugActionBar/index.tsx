@@ -19,8 +19,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
-import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { JobState, useCurrentProject } from "@flow/stores";
@@ -51,6 +51,7 @@ type Props = {
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   onDebugRunVariableValueChange: (index: number, newValue: any) => void;
   refetchWorkflowVariables: () => void;
+  onUserFocusedElement?: (isOpen: boolean) => void;
 };
 
 const DebugActionBar: React.FC<Props> = ({
@@ -64,6 +65,7 @@ const DebugActionBar: React.FC<Props> = ({
   onDebugRunStartFromSelectedNode,
   onDebugRunStop,
   onDebugRunVariableValueChange,
+  onUserFocusedElement,
   refetchWorkflowVariables,
 }) => {
   const t = useT();
@@ -83,6 +85,7 @@ const DebugActionBar: React.FC<Props> = ({
   } = useHooks({
     onDebugRunStart,
     onDebugRunStop,
+    onUserFocusedElement,
     refetchWorkflowVariables,
     customDebugRunWorkflowVariables,
   });

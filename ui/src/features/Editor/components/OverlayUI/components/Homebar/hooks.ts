@@ -9,7 +9,11 @@ import {
 
 import { DialogOptions } from "../../types";
 
-export default () => {
+export default ({
+  onUserFocusedElement,
+}: {
+  onUserFocusedElement?: (isOpen: boolean) => void;
+}) => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
 
   const {
@@ -33,9 +37,13 @@ export default () => {
       refetchWorkflowVariables();
     }
     setShowDialog(dialog);
+    onUserFocusedElement?.(true);
   };
 
-  const handleDialogClose = () => setShowDialog(undefined);
+  const handleDialogClose = () => {
+    setShowDialog(undefined);
+    onUserFocusedElement?.(false);
+  };
 
   const handleWorkflowVariableAdd = useCallback(
     async (workflowVariable: WorkflowVariableType) => {

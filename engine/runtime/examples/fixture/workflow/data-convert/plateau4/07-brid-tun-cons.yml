@@ -542,30 +542,33 @@ graphs:
     action: MVTWriter
     with:
       schemaKey: __citygml_feature_type
-      layerName: |
-        let pkg = env.get("__value")["__package"];
-        if pkg == "brid" {
-          "Bridge"
-        } else if pkg == "tun" {
-          "Tunnel"
-        } else if pkg == "cons" {
-          "OtherConstruction"
-        } else {
-          pkg
-        }
+      layerName:
+        type: flowExpr
+        value: |
+          pkg = value("__package");
+          if pkg == "brid" {
+            "Bridge"
+          } else if pkg == "tun" {
+            "Tunnel"
+          } else if pkg == "cons" {
+            "OtherConstruction"
+          } else {
+            pkg
+          }
       minZoom: 8
       maxZoom: 18
       extent: 65536
-      output: |
-        file::join_path(env.get("workerArtifactPath"), env.get("__value")["__package"] + "_dm_geometric_attributes")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes.zip")
+      output:
+        type: flowExpr
+        value: |
+          dir = value("__package") + "_dm_geometric_attributes";
+          Url(env("workerArtifactPath")) / dir
+      compressOutput:
+        type: flowExpr
+        value: |
+          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
+          filename = city_gml + "_" + value("__package") + "_dm_geometric_attributes.zip";
+          Url(env("workerArtifactPath")) / filename
       skipUnexposedAttributes: true
       colonToUnderscore: true
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
@@ -611,18 +614,15 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
-      output: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        file::join_path(artifact, pkg + "_lod1")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1.zip")
+      output:
+        type: flowExpr
+        value: |
+          Url(env("workerArtifactPath")) / (value("__package") + "_lod1")
+      compressOutput:
+        type: flowExpr
+        value: |
+          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
+          Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_3dtiles_lod1.zip")
   - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
     name: cesium3DTilesWriterByLod2
     type: action
@@ -632,18 +632,15 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        file::join_path(artifact, pkg + "_lod2")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod2.zip")
+      output:
+        type: flowExpr
+        value: |
+          Url(env("workerArtifactPath")) / (value("__package") + "_lod2")
+      compressOutput:
+        type: flowExpr
+        value: |
+          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
+          Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_3dtiles_lod2.zip")
   - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
     name: cesium3DTilesWriterByLod3
     type: action
@@ -653,18 +650,15 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        file::join_path(artifact, pkg + "_lod3")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["__package"];
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3.zip")
+      output:
+        type: flowExpr
+        value: |
+          Url(env("workerArtifactPath")) / (value("__package") + "_lod3")
+      compressOutput:
+        type: flowExpr
+        value: |
+          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
+          Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_3dtiles_lod3.zip")
   - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
     name: cesium3DTilesWriterByLod4
     type: action
@@ -674,18 +668,15 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["package"];
-        file::join_path(artifact, pkg + "_lod4")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let pkg = env.get("__value")["package"];
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        if city_gml.ends_with("_" + pkg) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod4.zip")
+      output:
+        type: flowExpr
+        value: |
+          Url(env("workerArtifactPath")) / (value("package") + "_lod4")
+      compressOutput:
+        type: flowExpr
+        value: |
+          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
+          Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_3dtiles_lod4.zip")
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae

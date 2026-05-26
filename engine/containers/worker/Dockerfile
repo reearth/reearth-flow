@@ -42,7 +42,9 @@ RUN \
     --mount=type=bind,source=testing/plateau-tiles-test,target=testing/plateau-tiles-test \
     --mount=type=bind,source=testing/workflow-tests,target=testing/workflow-tests \
     --mount=type=bind,source=worker,target=worker \
-    cargo build --package reearth-flow-worker --bin reearth-flow-worker --release && mv target/release/reearth-flow-worker /tmp/reearth-flow-worker
+    cargo build --package reearth-flow-worker --bin reearth-flow-worker --bin reearth-flow-worker-server --release && \
+    mv target/release/reearth-flow-worker /tmp/reearth-flow-worker && \
+    mv target/release/reearth-flow-worker-server /tmp/reearth-flow-worker-server
 
 FROM debian:trixie-slim
 
@@ -57,5 +59,7 @@ RUN \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
+COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker-server /bin
+RUN mkdir -p /work
 
 CMD [ "/bin/reearth-flow-worker" ]

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crossbeam::channel::Sender;
@@ -106,6 +106,20 @@ impl ProcessorChannelForwarder {
             ProcessorChannelForwarder::Noop(_) => uuid::Uuid::nil(),
         }
     }
+
+    /// Enable spill mode: send() will try_send and spill to disk on full channels.
+    pub fn enable_spill_mode(&self) {
+        if let ProcessorChannelForwarder::ChannelManager(cm) = self {
+            cm.enable_spill_mode();
+        }
+    }
+
+    /// Flush spill files accumulated during finish() as FileBackedOps.
+    pub fn flush_spill_files(&self, context: &Context) {
+        if let ProcessorChannelForwarder::ChannelManager(cm) = self {
+            cm.flush_spill_files(context);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -161,6 +175,14 @@ impl SenderWithPortMapping {
     }
 }
 
+/// Per-sender spill buffer for features that couldn't be sent during finish().
+#[derive(Debug)]
+struct SpillFile {
+    writer: BufWriter<std::fs::File>,
+    path: PathBuf,
+    count: usize,
+}
+
 #[derive(Debug)]
 pub struct ChannelManager {
     owner: NodeHandle,
@@ -173,6 +195,10 @@ pub struct ChannelManager {
     send_count: Arc<AtomicU64>,
     /// Unique identifier for this workflow execution, used for cache isolation
     executor_id: uuid::Uuid,
+    /// When true, send() uses try_send and spills to disk on full channels.
+    spill_mode: AtomicBool,
+    /// Spill files keyed by (sender_index, port).
+    spill_files: Mutex<HashMap<(usize, Port), SpillFile>>,
 }
 
 impl Clone for ChannelManager {
@@ -185,6 +211,8 @@ impl Clone for ChannelManager {
             event_hub: self.event_hub.clone(),
             send_count: self.send_count.clone(),
             executor_id: self.executor_id,
+            spill_mode: AtomicBool::new(self.spill_mode.load(Ordering::Relaxed)),
+            spill_files: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -213,11 +241,69 @@ impl ChannelManager {
     pub fn send_op(&self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
         self.write_to_port(&ctx.port, &ctx.feature);
 
+        if self.spill_mode.load(Ordering::Relaxed) {
+            return self.send_op_or_spill(ctx);
+        }
+
         if let Some((last_sender, senders)) = self.senders.split_last() {
             for sender in senders {
                 sender.send_op(ctx.clone())?;
             }
             last_sender.send_op(ctx)?;
+        }
+        Ok(())
+    }
+
+    /// Try to send to each downstream channel; spill to disk if full.
+    ///
+    /// Each sender has one channel shared across all port mappings. If
+    /// try_send fails (channel full) for a sender, the entire feature is
+    /// spilled to disk for that sender. The spill file is later flushed
+    /// via send_file_backed_op which resolves the full port mapping,
+    /// avoiding partial sends and duplicates.
+    fn send_op_or_spill(&self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
+        for (idx, sender) in self.senders.iter().enumerate() {
+            let Some(ports) = sender.port_mapping.get(&ctx.port) else {
+                continue;
+            };
+            // Probe with a single try_send to check channel capacity.
+            // If full, spill the feature and skip all ports for this sender.
+            let first_port = match ports.first() {
+                Some(p) => p,
+                None => continue,
+            };
+            let probe = ExecutorOperation::Op {
+                ctx: ExecutorContext {
+                    port: first_port.clone(),
+                    ..ctx.clone()
+                },
+            };
+            match sender.sender.try_send(probe) {
+                Ok(()) => {
+                    // Channel has space. Send remaining mapped ports normally.
+                    // First port already sent via try_send above.
+                    if let Some((_, rest)) = ports.split_first() {
+                        for port in rest {
+                            let op = ExecutorOperation::Op {
+                                ctx: ExecutorContext {
+                                    port: port.clone(),
+                                    ..ctx.clone()
+                                },
+                            };
+                            // These may block but the channel just had space
+                            sender.sender.send(op)?;
+                        }
+                    }
+                }
+                Err(crossbeam::channel::TrySendError::Full(_)) => {
+                    self.spill_feature(idx, &ctx.port, &ctx.feature);
+                }
+                Err(crossbeam::channel::TrySendError::Disconnected(_)) => {
+                    return Err(ExecutionError::CannotSendToChannel(
+                        "channel disconnected during spill".to_string(),
+                    ));
+                }
+            }
         }
         Ok(())
     }
@@ -342,6 +428,121 @@ impl ChannelManager {
             event_hub,
             send_count: Arc::new(AtomicU64::new(0)),
             executor_id,
+            spill_mode: AtomicBool::new(false),
+            spill_files: Mutex::new(HashMap::new()),
+        }
+    }
+
+    /// Enable spill mode: send() will use try_send and spill to disk on full channels.
+    pub fn enable_spill_mode(&self) {
+        self.spill_mode.store(true, Ordering::Relaxed);
+    }
+
+    /// Spill a feature to a JSONL file for the given sender/port.
+    fn spill_feature(&self, sender_idx: usize, port: &Port, feature: &Feature) {
+        let mut spills = self.spill_files.lock().unwrap();
+        let key = (sender_idx, port.clone());
+        let spill = spills.entry(key).or_insert_with(|| {
+            let dir = executor_cache_subdir(self.executor_id, "finish-spill");
+            if let Err(e) = std::fs::create_dir_all(&dir) {
+                tracing::error!(node_id = ?self.owner.id, ?e, "Failed to create spill directory");
+            }
+            let path = dir.join(format!(
+                "{}-{}-{}.jsonl",
+                self.owner.id,
+                sender_idx,
+                uuid::Uuid::new_v4()
+            ));
+            match std::fs::File::create(&path) {
+                Ok(file) => SpillFile {
+                    writer: BufWriter::new(file),
+                    path,
+                    count: 0,
+                },
+                Err(e) => {
+                    tracing::error!(node_id = ?self.owner.id, ?e, "Failed to create spill file");
+                    // Create a writer to /dev/null as fallback — features will be lost
+                    // but the process won't crash.
+                    let devnull = std::fs::File::create("/dev/null").unwrap();
+                    SpillFile {
+                        writer: BufWriter::new(devnull),
+                        path,
+                        count: 0,
+                    }
+                }
+            }
+        });
+        match serde_json::to_string(feature) {
+            Ok(json) => {
+                if let Err(e) = writeln!(spill.writer, "{}", json) {
+                    tracing::error!(
+                        node_id = ?self.owner.id,
+                        ?e,
+                        "Failed to write feature to spill file"
+                    );
+                } else {
+                    spill.count += 1;
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    node_id = ?self.owner.id,
+                    ?e,
+                    "Failed to serialize feature for spill"
+                );
+            }
+        }
+    }
+
+    /// Flush all spill files by sending them as FileBackedOps through the channels.
+    pub fn flush_spill_files(&self, context: &Context) {
+        let mut spills = self.spill_files.lock().unwrap();
+        for ((sender_idx, port), mut spill) in spills.drain() {
+            if spill.count == 0 {
+                continue;
+            }
+            if let Err(e) = spill.writer.flush() {
+                tracing::error!(
+                    node_id = ?self.owner.id, ?e,
+                    "Failed to flush spill file writer"
+                );
+            }
+            drop(spill.writer);
+
+            tracing::info!(
+                node_id = ?self.owner.id,
+                sender_idx,
+                ?port,
+                count = spill.count,
+                "Flushing spill file with {} features",
+                spill.count,
+            );
+
+            let cache_dir = channel_buffer_dir(self.executor_id);
+            if let Err(e) = std::fs::create_dir_all(&cache_dir) {
+                tracing::error!(
+                    node_id = ?self.owner.id, ?e,
+                    "Failed to create channel buffer directory for spill flush"
+                );
+                continue;
+            }
+            let dest = cache_dir.join(spill.path.file_name().unwrap_or_default());
+            if let Err(e) = std::fs::rename(&spill.path, &dest) {
+                tracing::error!(
+                    node_id = ?self.owner.id, ?e,
+                    src = ?spill.path, dst = ?dest,
+                    "Failed to move spill file to channel buffer"
+                );
+                continue;
+            }
+            if let Some(sender) = self.senders.get(sender_idx) {
+                if let Err(e) = sender.send_file_backed_op(&dest, &port, context) {
+                    tracing::error!(
+                        node_id = ?self.owner.id, ?e,
+                        "Failed to send spill FileBackedOp"
+                    );
+                }
+            }
         }
     }
 

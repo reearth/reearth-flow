@@ -1,0 +1,296 @@
+use crate::core::ast::{BinOp, Expr, ExprKind, Span, UnaryOp};
+
+grammar;
+
+extern {
+    type Location = usize;
+    type Error = crate::core::error::Error;
+
+    enum crate::core::lexer::Token {
+        "int"   => crate::core::lexer::Token::Int(<i64>),
+        "float" => crate::core::lexer::Token::Float(<f64>),
+        "str"   => crate::core::lexer::Token::Str(<String>),
+        "ident" => crate::core::lexer::Token::Ident(<String>),
+        "true"  => crate::core::lexer::Token::True,
+        "false" => crate::core::lexer::Token::False,
+        "null"  => crate::core::lexer::Token::Null,
+        "in"    => crate::core::lexer::Token::In,
+        "not"   => crate::core::lexer::Token::Not,
+        "and"   => crate::core::lexer::Token::And,
+        "or"    => crate::core::lexer::Token::Or,
+        "if"    => crate::core::lexer::Token::If,
+        "else"  => crate::core::lexer::Token::Else,
+        "while" => crate::core::lexer::Token::While,
+        "for"   => crate::core::lexer::Token::For,
+        "."     => crate::core::lexer::Token::Dot,
+        "["     => crate::core::lexer::Token::LBracket,
+        "]"     => crate::core::lexer::Token::RBracket,
+        "("     => crate::core::lexer::Token::LParen,
+        ")"     => crate::core::lexer::Token::RParen,
+        "{"     => crate::core::lexer::Token::LBrace,
+        "}"     => crate::core::lexer::Token::RBrace,
+        ","     => crate::core::lexer::Token::Comma,
+        ":"     => crate::core::lexer::Token::Colon,
+        ";"     => crate::core::lexer::Token::Semi,
+        "="     => crate::core::lexer::Token::Assign,
+        "+="    => crate::core::lexer::Token::PlusAssign,
+        "-="    => crate::core::lexer::Token::MinusAssign,
+        "*="    => crate::core::lexer::Token::StarAssign,
+        "**="   => crate::core::lexer::Token::DoubleStarAssign,
+        "/="    => crate::core::lexer::Token::SlashAssign,
+        "//="   => crate::core::lexer::Token::DoubleSlashAssign,
+        "%="    => crate::core::lexer::Token::PercentAssign,
+        "+"     => crate::core::lexer::Token::Plus,
+        "-"     => crate::core::lexer::Token::Minus,
+        "*"     => crate::core::lexer::Token::Star,
+        "**"    => crate::core::lexer::Token::DoubleStar,
+        "/"     => crate::core::lexer::Token::Slash,
+        "//"    => crate::core::lexer::Token::DoubleSlash,
+        "%"     => crate::core::lexer::Token::Percent,
+        "=="    => crate::core::lexer::Token::Eq,
+        "!="    => crate::core::lexer::Token::Ne,
+        "<"     => crate::core::lexer::Token::Lt,
+        "<="    => crate::core::lexer::Token::Le,
+        ">"     => crate::core::lexer::Token::Gt,
+        ">="    => crate::core::lexer::Token::Ge,
+    }
+}
+
+// Precedence (lowest → highest):
+// Assign → Or → And → Not → Equality → Comparison → Add → Mul → Unary → Postfix → Primary
+//
+// `not` has lower precedence than comparisons (Python-style): `not a in b` == `not (a in b)`.
+
+pub Expr: Expr = {
+    <l:@L> <mut items:SeqBody> <r:@R> => {
+        if items.len() == 1 {
+            items.pop().unwrap()
+        } else {
+            Expr::new(Span { start: l, end: r }, ExprKind::Block(items))
+        }
+    },
+};
+
+// Right-recursive so `a = b = 1` chains correctly.
+// LHS is a Postfix expression; the evaluator validates it is a legal lvalue at runtime.
+Assign: Expr = {
+    <l:@L> <lv:Postfix> "=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Assign { lvalue: Box::new(lv), value: Box::new(v) }),
+    <l:@L> <lv:Postfix> "+=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Add, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "-=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Sub, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "*=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Mul, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "/=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Div, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "//=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::FloorDiv, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "%=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Mod, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "**=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Pow, rhs: Box::new(v) }),
+    Or,
+};
+
+Or: Expr = {
+    <l:@L> <lhs:Or> "or" <rhs:And> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Or, Box::new(rhs))),
+    And,
+};
+
+And: Expr = {
+    <l:@L> <lhs:And> "and" <rhs:Not> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::And, Box::new(rhs))),
+    Not,
+};
+
+Not: Expr = {
+    <l:@L> "not" <e:Not> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Not, Box::new(e))),
+    Equality,
+};
+
+Equality: Expr = {
+    <l:@L> <lhs:Equality> "==" <rhs:Comparison> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Eq, Box::new(rhs))),
+    <l:@L> <lhs:Equality> "!=" <rhs:Comparison> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Ne, Box::new(rhs))),
+    <l:@L> <lhs:Equality> "in" <rhs:Comparison> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::In, Box::new(rhs))),
+    <l:@L> <lhs:Equality> "not" "in" <rhs:Comparison> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::NotIn, Box::new(rhs))),
+    Comparison,
+};
+
+Comparison: Expr = {
+    <l:@L> <lhs:Comparison> "<" <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Lt, Box::new(rhs))),
+    <l:@L> <lhs:Comparison> "<=" <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Le, Box::new(rhs))),
+    <l:@L> <lhs:Comparison> ">" <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Gt, Box::new(rhs))),
+    <l:@L> <lhs:Comparison> ">=" <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Ge, Box::new(rhs))),
+    Add,
+};
+
+Add: Expr = {
+    <l:@L> <lhs:Add> "+" <rhs:Mul> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Add, Box::new(rhs))),
+    <l:@L> <lhs:Add> "-" <rhs:Mul> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Sub, Box::new(rhs))),
+    Mul,
+};
+
+Mul: Expr = {
+    <l:@L> <lhs:Mul> "*" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Mul, Box::new(rhs))),
+    <l:@L> <lhs:Mul> "/" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Div, Box::new(rhs))),
+    <l:@L> <lhs:Mul> "//" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::FloorDiv, Box::new(rhs))),
+    <l:@L> <lhs:Mul> "%" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Mod, Box::new(rhs))),
+    Unary,
+};
+
+Unary: Expr = {
+    <l:@L> "-" <e:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Unary(UnaryOp::Neg, Box::new(e))),
+    Pow,
+};
+
+// Right-associative; left operand is Postfix (no leading unary minus) so `-2**2 = -(2**2)`.
+Pow: Expr = {
+    <l:@L> <lhs:Postfix> "**" <rhs:Unary> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Pow, Box::new(rhs))),
+    Postfix,
+};
+
+Postfix: Expr = {
+    <l:@L> <e:Postfix> "[" <k:Or> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Index(Box::new(e), Box::new(k))),
+    <l:@L> <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: None }),
+    <l:@L> <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> ":" <step:OptExpr> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: step.map(Box::new) }),
+    <l:@L> <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::MethodCall { receiver: Box::new(e), method: name, args }),
+    Primary,
+};
+
+OptExpr: Option<Expr> = {
+    <e:Or> => Some(e),
+    => None,
+};
+
+Primary: Expr = {
+    <l:@L> <n:"int"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Int(n)),
+    <l:@L> <n:"float"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Float(n)),
+    <l:@L> <s:"str"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Str(s)),
+    <l:@L> "true" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Bool(true)),
+    <l:@L> "false" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Bool(false)),
+    <l:@L> "null" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
+    <l:@L> <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::FuncCall { name, args }),
+    <l:@L> <name:"ident"> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Var(name)),
+    "(" <Expr> ")",
+    <l:@L> "[" <items:Comma<Or>> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Array(items)),
+    MapExpr,
+};
+
+// ElseBranch is either a block or another `if`, enabling `else if` chains.
+IfExpr: Expr = {
+    <l:@L> "if" <cond:Or> <then:BlockExpr> "else" <else_:ElseBranch> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(else_) }),
+    <l:@L> "if" <cond:Or> <then:BlockExpr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::If { cond: Box::new(cond), then: Box::new(then), else_: Box::new(Expr::new(Span { start: r, end: r }, ExprKind::Null)) }),
+};
+
+WhileExpr: Expr = {
+    <l:@L> "while" <cond:Or> <body:BlockExpr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::While { cond: Box::new(cond), body: Box::new(body) }),
+};
+
+ForInExpr: Expr = {
+    <l:@L> "for" <var:"ident"> "in" <iter:Or> <body:BlockExpr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::ForIn { var, iterable: Box::new(iter), body: Box::new(body) }),
+};
+
+ElseBranch: Expr = {
+    BlockExpr,
+    IfExpr,
+};
+
+// `{}` is Null; blocks require at least one expression inside.
+BlockExpr: Expr = {
+    <l:@L> "{" "}" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
+    <l:@L> "{" <mut items:SeqBody> "}" <r:@R> => {
+        let span = Span { start: l, end: r };
+        if items.len() == 1 {
+            items.pop().unwrap()
+        } else {
+            Expr::new(span, ExprKind::Block(items))
+        }
+    },
+};
+
+SeqBody: Vec<Expr> = {
+    SeqEndsAssign,
+    SeqEndsBlock,
+};
+
+// Sequence whose last item is an Assign-level expression.
+SeqEndsAssign: Vec<Expr> = {
+    <e:Assign> => vec![e],
+    <mut h:SeqEndsAssign> ";" <e:Assign> => { h.push(e); h },
+    // trailing semicolon evaluates to Null
+    <mut h:SeqEndsAssign> ";" <r:@R> => { h.push(Expr::new(Span { start: r, end: r }, ExprKind::Null)); h },
+    // After a BlockStmt an Assign may follow without ";"
+    <mut h:SeqEndsBlock> <e:Assign> => { h.push(e); h },
+    <mut h:SeqEndsBlock> ";" <e:Assign> => { h.push(e); h },
+    <mut h:SeqEndsBlock> ";" <r:@R> => { h.push(Expr::new(Span { start: r, end: r }, ExprKind::Null)); h },
+};
+
+// Sequence whose last item is a BlockStmt (if / while / for).
+SeqEndsBlock: Vec<Expr> = {
+    <e:BlockStmt> => vec![e],
+    <mut h:SeqEndsAssign> ";" <e:BlockStmt> => { h.push(e); h },
+    <mut h:SeqEndsBlock> <e:BlockStmt> => { h.push(e); h },
+};
+
+BlockStmt: Expr = {
+    IfExpr,
+    WhileExpr,
+    ForInExpr,
+};
+
+MapExpr: Expr = {
+    <l:@L> "{" "}" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Map(vec![])),
+    <l:@L> "{" <e:MapEntry> <rest:("," <MapEntry>)*> "}" <r:@R> => {
+        let mut entries = vec![e];
+        entries.extend(rest);
+        Expr::new(Span { start: l, end: r }, ExprKind::Map(entries))
+    },
+    <l:@L> "{" <e:MapEntry> <rest:("," <MapEntry>)*> "," "}" <r:@R> => {
+        let mut entries = vec![e];
+        entries.extend(rest);
+        Expr::new(Span { start: l, end: r }, ExprKind::Map(entries))
+    },
+};
+
+MapEntry: (Expr, Expr) = {
+    <k:Or> ":" <v:Or> => (k, v),
+};
+
+// Comma-separated list with optional trailing comma, allowing empty.
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => {
+        if let Some(e) = e { v.push(e); }
+        v
+    }
+};

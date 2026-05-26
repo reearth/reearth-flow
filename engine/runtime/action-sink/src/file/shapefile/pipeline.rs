@@ -2,7 +2,6 @@ use std::io::BufWriter;
 
 use itertools::Itertools;
 use rayon::iter::{ParallelBridge, ParallelIterator};
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_types::{AttributeValue, Feature};
 
@@ -14,7 +13,7 @@ use super::{
 
 pub(super) fn pipeline(
     ctx: &Context,
-    output: &Uri,
+    output: &crate::SinkOutput,
     key: &AttributeValue,
     upstream: &[Feature],
 ) -> crate::errors::Result<()> {
@@ -29,7 +28,7 @@ pub(super) fn pipeline(
             "No EPSG code".to_string(),
         ));
     };
-    std::fs::create_dir_all(output.as_path())
+    std::fs::create_dir_all(output.uri().as_path())
         .map_err(crate::errors::SinkError::ShapefileWriterIo)?;
 
     let (table_builder, fields_default) = make_table_builder(&feature.attributes)?;
@@ -58,11 +57,11 @@ pub(super) fn pipeline(
             let shapes = receiver.into_iter().collect_vec();
 
             // Create all the files needed for the shapefile to be complete (.shp, .shx, .dbf)
-            let shp_path = output
-                .join(format!("{}.shp", key.to_string().replace('/', "-")))
-                .map_err(|err| {
-                    crate::errors::SinkError::ShapefileWriter(format!("Failed to join path: {err}"))
-                })?;
+            let key_stem = key.to_string().replace('/', "-");
+            let shp_out = output.join(&format!("{key_stem}.shp")).map_err(|err| {
+                crate::errors::SinkError::ShapefileWriter(format!("Failed to join path: {err}"))
+            })?;
+            let shp_path = shp_out.uri();
             let feature_count = shapes.len();
             let has_no_geometry = shapes
                 .iter()
@@ -110,37 +109,38 @@ pub(super) fn pipeline(
                 }
             }
 
-            let storage = ctx
-                .storage_resolver
-                .resolve(&shp_path)
+            let shx_out = output
+                .join(&format!("{key_stem}.shx"))
                 .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
 
             if has_no_geometry {
-                let _ = storage.delete_sync(shp_path.as_path().as_path());
-                let shx_path = shp_path.as_path().with_extension("shx");
-                let _ = storage.delete_sync(shp_path.as_path().as_path());
+                // Remove the files written by shapefile::Writer and replace with null-shape bytes
+                let _ = std::fs::remove_file(shp_path.as_path());
+                let _ = std::fs::remove_file(shx_out.uri().as_path());
                 let mut buffer = Vec::new();
                 null_shape::write_shp(BufWriter::new(&mut buffer), feature_count)
                     .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
-                storage
-                    .put_sync(shp_path.as_path().as_path(), bytes::Bytes::from(buffer))
+                shp_out
+                    .write(bytes::Bytes::from(buffer))
                     .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
 
                 let mut buffer = Vec::new();
                 null_shape::write_shx(BufWriter::new(&mut buffer), feature_count)
                     .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
-                storage
-                    .put_sync(shx_path.as_path(), bytes::Bytes::from(buffer))
+                shx_out
+                    .write(bytes::Bytes::from(buffer))
                     .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
             } else {
                 // write .prj file if this type has geometry
                 let repo = ProjectionRepository::new();
-                let prj_path = &shp_path.as_path().with_extension("prj");
+                let prj_out = output
+                    .join(&format!("{key_stem}.prj"))
+                    .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
                 let mut buffer = Vec::new();
                 crs::write_prj(BufWriter::new(&mut buffer), &repo, epsg)
                     .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
-                storage
-                    .put_sync(prj_path.as_path(), bytes::Bytes::from(buffer))
+                prj_out
+                    .write(bytes::Bytes::from(buffer))
                     .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
             }
             Ok::<(), crate::errors::SinkError>(())
