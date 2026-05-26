@@ -108,7 +108,7 @@ pub(crate) fn execute(workflow: &str) {
     ));
     let handlers: Vec<Arc<dyn reearth_flow_runtime::event::EventHandler>> =
         vec![Arc::new(EventHandler)];
-    let output_path = reearth_flow_common::uri::Uri::from_str("file:///")
+    let sandbox_root = reearth_flow_common::uri::Uri::from_str("file:///")
         .expect("'file:///' is always a valid URI");
     Runner::run_with_event_handler(
         job_id,
@@ -120,7 +120,7 @@ pub(crate) fn execute(workflow: &str) {
         feature_state,
         None,
         handlers,
-        output_path,
+        sandbox_root,
     )
     .expect("Failed to run workflow.");
 }

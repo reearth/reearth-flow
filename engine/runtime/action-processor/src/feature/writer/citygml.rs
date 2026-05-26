@@ -45,7 +45,7 @@ pub(super) fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
 
 pub(super) fn write_citygml(
     output: &Uri,
-    output_path: &Uri,
+    sandbox_root: &Uri,
     features: &[Feature],
     lod_mask: &LodMask,
     epsg_code: &Option<u32>,
@@ -54,7 +54,7 @@ pub(super) fn write_citygml(
 ) -> Result<(), FeatureProcessorError> {
     write_citygml_to_storage(
         output,
-        output_path,
+        sandbox_root,
         features,
         lod_mask,
         *epsg_code,

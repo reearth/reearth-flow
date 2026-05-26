@@ -31,8 +31,8 @@ static ASYNC_WORKER_NUM: Lazy<usize> = Lazy::new(|| {
 /// sandboxing for tests / legacy callers; any other path that resolves to it
 /// (e.g. a misconfigured `workerArtifactPath`) would silently disable the
 /// sandbox, so production wrappers must trap it.
-fn reject_unsandboxed_sentinel(output_path: &Uri) -> Result<(), crate::errors::Error> {
-    if output_path.as_str() == "file:///" {
+fn reject_unsandboxed_sentinel(sandbox_root: &Uri) -> Result<(), crate::errors::Error> {
+    if sandbox_root.as_str() == "file:///" {
         return Err(crate::errors::Error::UnsandboxedSentinelRejected);
     }
     Ok(())
@@ -44,11 +44,11 @@ pub struct Runner;
 impl Runner {
     /// Run a workflow without a sandboxed output path.
     ///
-    /// The executor contexts will have `output_path` set to `file:///`, which
+    /// The executor contexts will have `sandbox_root` set to `file:///`, which
     /// means sink writes are **not** sandboxed to a job-scoped directory.
     /// This is intentional for tests and legacy callers that do not supply an
     /// artifact path. Production callers (CLI, worker) should use
-    /// [`Runner::run_with_output_path`] instead.
+    /// [`Runner::run_with_sandbox_root`] instead.
     pub fn run(
         job_id: uuid::Uuid,
         workflow: Workflow,
@@ -59,8 +59,8 @@ impl Runner {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
-        let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
-        // Bypass `run_with_output_path`'s sentinel guard — this entrypoint
+        let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
+        // Bypass `run_with_sandbox_root`'s sentinel guard — this entrypoint
         // intentionally requests the unsandboxed mode.
         Self::run_with_event_handler(
             job_id,
@@ -72,18 +72,18 @@ impl Runner {
             feature_state,
             incremental_run_config,
             vec![],
-            output_path,
+            sandbox_root,
         )
     }
 
     /// Run a workflow with a sandboxed output path.
     ///
-    /// `output_path` is threaded into every executor context as `output_path`,
+    /// `sandbox_root` is threaded into every executor context as `sandbox_root`,
     /// so that sink writes are scoped to the supplied directory. Production
     /// callers (CLI, worker) should use this method and pass the resolved
     /// `workerArtifactPath` value.
     #[allow(clippy::too_many_arguments)]
-    pub fn run_with_output_path(
+    pub fn run_with_sandbox_root(
         job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
@@ -92,9 +92,9 @@ impl Runner {
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
-        output_path: Uri,
+        sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
-        reject_unsandboxed_sentinel(&output_path)?;
+        reject_unsandboxed_sentinel(&sandbox_root)?;
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -105,7 +105,7 @@ impl Runner {
             feature_state,
             incremental_run_config,
             vec![],
-            output_path,
+            sandbox_root,
         )
     }
 
@@ -120,7 +120,7 @@ impl Runner {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
-        output_path: Uri,
+        sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(*ASYNC_WORKER_NUM)
@@ -165,7 +165,7 @@ impl Runner {
                     feature_state,
                     incremental_run_config,
                     handlers,
-                    output_path,
+                    sandbox_root,
                 )
                 .await
         });
@@ -186,11 +186,11 @@ pub struct AsyncRunner;
 impl AsyncRunner {
     /// Run a workflow without a sandboxed output path.
     ///
-    /// The executor contexts will have `output_path` set to `file:///`, which
+    /// The executor contexts will have `sandbox_root` set to `file:///`, which
     /// means sink writes are **not** sandboxed to a job-scoped directory.
     /// This is intentional for tests and legacy callers that do not supply an
     /// artifact path. Production callers should use
-    /// [`AsyncRunner::run_with_output_path`] instead.
+    /// [`AsyncRunner::run_with_sandbox_root`] instead.
     pub async fn run(
         job_id: uuid::Uuid,
         workflow: Workflow,
@@ -201,7 +201,7 @@ impl AsyncRunner {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
-        let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
+        let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -212,19 +212,19 @@ impl AsyncRunner {
             feature_state,
             incremental_run_config,
             vec![],
-            output_path,
+            sandbox_root,
         )
         .await
     }
 
     /// Run a workflow with a sandboxed output path.
     ///
-    /// `output_path` is threaded into every executor context as `output_path`,
+    /// `sandbox_root` is threaded into every executor context as `sandbox_root`,
     /// so that sink writes are scoped to the supplied directory. Production
     /// callers should use this method and pass the resolved
     /// `workerArtifactPath` value.
     #[allow(clippy::too_many_arguments)]
-    pub async fn run_with_output_path(
+    pub async fn run_with_sandbox_root(
         job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
@@ -233,9 +233,9 @@ impl AsyncRunner {
         ingress_state: Arc<State>,
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
-        output_path: Uri,
+        sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
-        reject_unsandboxed_sentinel(&output_path)?;
+        reject_unsandboxed_sentinel(&sandbox_root)?;
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -246,7 +246,7 @@ impl AsyncRunner {
             feature_state,
             incremental_run_config,
             vec![],
-            output_path,
+            sandbox_root,
         )
         .await
     }
@@ -262,7 +262,7 @@ impl AsyncRunner {
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
-        output_path: Uri,
+        sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         let start = Instant::now();
         let version = env!("CARGO_PKG_VERSION");
@@ -296,7 +296,7 @@ impl AsyncRunner {
                 feature_state,
                 incremental_run_config,
                 handlers,
-                output_path,
+                sandbox_root,
             )
             .await;
         if let Err(e) = &result {

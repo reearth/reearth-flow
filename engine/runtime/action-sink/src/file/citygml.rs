@@ -32,7 +32,7 @@ use writer::CityGmlXmlWriter;
 /// the `FeatureWriter` processor.
 pub fn write_citygml_to_storage(
     output: &Uri,
-    output_path: &Uri,
+    sandbox_root: &Uri,
     features: &[Feature],
     lod_mask: &LodMask,
     epsg_code: Option<u32>,
@@ -141,10 +141,10 @@ pub fn write_citygml_to_storage(
             };
             // Construct a minimal NodeContext just for the sandbox check on texture dst.
             // We synthesize a NodeContext because `write_citygml_to_storage` only receives
-            // `storage_resolver` and `output_path` as parameters, not a full NodeContext.
+            // `storage_resolver` and `sandbox_root` as parameters, not a full NodeContext.
             let node_ctx = reearth_flow_runtime::executor_operation::NodeContext {
                 storage_resolver: storage_resolver.clone(),
-                output_path: output_path.clone(),
+                sandbox_root: sandbox_root.clone(),
                 ..Default::default()
             };
             let dst_out = match crate::SinkOutput::from_path(&node_ctx, dst_uri.as_str()) {
@@ -357,7 +357,7 @@ impl Sink for CityGmlWriterSink {
 
         write_citygml_to_storage(
             out.uri(),
-            &ctx.output_path,
+            &ctx.sandbox_root,
             &self.buffer,
             &self.lod_mask,
             self.params.epsg_code,
@@ -376,7 +376,7 @@ mod sandbox_tests {
     use std::str::FromStr;
     use tempfile::tempdir;
 
-    /// Texture dst URIs outside the configured output_path must be rejected
+    /// Texture dst URIs outside the configured sandbox_root must be rejected
     /// by SinkOutput::from_path — this catches any regression that would
     /// reintroduce the direct dst_storage.put_sync bypass.
     #[test]
@@ -387,9 +387,9 @@ mod sandbox_tests {
         let outside = tmp.path().join("outside");
         std::fs::create_dir(&outside).unwrap();
 
-        let output_path = Uri::from_str(&format!("file://{}", inside.display())).unwrap();
+        let sandbox_root = Uri::from_str(&format!("file://{}", inside.display())).unwrap();
         let ctx = NodeContext {
-            output_path,
+            sandbox_root,
             ..NodeContext::default()
         };
 

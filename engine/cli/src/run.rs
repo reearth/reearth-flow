@@ -204,7 +204,7 @@ impl RunCliCommand {
             .or_else(|| flow_var(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE));
         // `effective_artifact_path` is the single source of truth: it feeds
         // both the `workerArtifactPath` global injected into the workflow and
-        // the `output_path` Uri threaded into executor contexts.
+        // the `sandbox_root` Uri threaded into executor contexts.
         let effective_artifact_path = if let Some(v) = external {
             tracing::info!(
                 "workerArtifactPath is provided externally. Using caller value in globals: {}",
@@ -317,7 +317,7 @@ impl RunCliCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Runner::run_with_output_path(
+        Runner::run_with_sandbox_root(
             job_id,
             workflow,
             ALL_ACTION_FACTORIES.clone(),

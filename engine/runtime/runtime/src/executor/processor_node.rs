@@ -84,7 +84,7 @@ pub struct ProcessorNode<F> {
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
-    output_path: Uri,
+    sandbox_root: Uri,
     source_intermediate_recorder: SourceIntermediateRecorder,
     /// State for writing source intermediate data
     feature_state: Arc<State>,
@@ -136,7 +136,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
-        let output_path = ctx.output_path.clone();
+        let sandbox_root = ctx.sandbox_root.clone();
         let num_threads = processor.num_threads();
 
         let source_intermediate_recorder =
@@ -166,7 +166,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
-            output_path,
+            sandbox_root,
             source_intermediate_recorder,
             feature_state,
             incremental_mode,
@@ -223,7 +223,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 self.storage_resolver.clone(),
                 self.kv_store.clone(),
                 self.event_hub.clone(),
-                self.output_path.clone(),
+                self.sandbox_root.clone(),
             ))
             .map_err(ExecutionError::Processor)?;
 
@@ -321,7 +321,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),
-                        self.output_path.clone(),
+                        self.sandbox_root.clone(),
                     ));
 
                     if terminate_result.is_err()

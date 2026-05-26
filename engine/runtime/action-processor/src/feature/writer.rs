@@ -281,7 +281,7 @@ impl Processor for FeatureWriter {
             // Enforce sandbox: CSV/TSV/JSON/CityGML all write directly to
             // `output`; without this check `FeatureWriter` would be an
             // out-of-sandbox escape hatch alongside the sink writers.
-            reearth_flow_action_sink::ensure_under(&ctx.output_path, output).map_err(|e| {
+            reearth_flow_action_sink::ensure_under(&ctx.sandbox_root, output).map_err(|e| {
                 FeatureProcessorError::FeatureWriter(format!(
                     "output {output} rejected by sandbox: {e}"
                 ))
@@ -313,7 +313,7 @@ impl Processor for FeatureWriter {
                 } => {
                     citygml::write_citygml(
                         output,
-                        &ctx.output_path,
+                        &ctx.sandbox_root,
                         features,
                         &lod_mask,
                         &epsg_code,

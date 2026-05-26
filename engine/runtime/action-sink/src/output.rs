@@ -21,13 +21,13 @@ impl SinkOutput {
     ///
     /// Accepts either a URI (`file://...`, `gs://...`, etc.) or a plain
     /// filesystem path (treated as `file://` by `Uri::from_str`). Verifies
-    /// the resolved URI is within `ctx.output_path` (hard-rejects writes
+    /// the resolved URI is within `ctx.sandbox_root` (hard-rejects writes
     /// outside the sandbox), then acquires the storage backend eagerly.
     pub fn from_path(ctx: &NodeContext, path: &str) -> Result<Self, BoxedError> {
         let resolved = Uri::from_str(path).map_err(|e| -> BoxedError {
             format!("SinkOutput: invalid path {:?}: {e}", path).into()
         })?;
-        crate::sandbox::ensure_under(&ctx.output_path, &resolved)
+        crate::sandbox::ensure_under(&ctx.sandbox_root, &resolved)
             .map_err(|e| -> BoxedError { Box::new(e) })?;
         let storage = ctx
             .storage_resolver
@@ -37,7 +37,7 @@ impl SinkOutput {
             })?;
         Ok(Self {
             resolved,
-            root: ctx.output_path.clone(),
+            root: ctx.sandbox_root.clone(),
             storage,
         })
     }
@@ -149,9 +149,9 @@ mod tests {
         let tmp = tempdir().unwrap();
         let nested = tmp.path().join("subdir");
         std::fs::create_dir(&nested).unwrap();
-        // Critical: set output_path to the nested dir so `..` actually escapes.
+        // Critical: set sandbox_root to the nested dir so `..` actually escapes.
         let ctx = NodeContext {
-            output_path: Uri::from_str(&file_uri(&nested)).unwrap(),
+            sandbox_root: Uri::from_str(&file_uri(&nested)).unwrap(),
             ..NodeContext::default()
         };
         let base = SinkOutput::from_path(&ctx, &file_uri(&nested)).unwrap();
@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn from_path_rejects_uri_outside_output_path() {
+    fn from_path_rejects_uri_outside_sandbox_root() {
         let tmp = tempdir().unwrap();
         let inside = tmp.path().join("inside");
         std::fs::create_dir(&inside).unwrap();
@@ -190,7 +190,7 @@ mod tests {
         std::fs::create_dir(&outside).unwrap();
 
         let ctx = NodeContext {
-            output_path: Uri::from_str(&file_uri(&inside)).unwrap(),
+            sandbox_root: Uri::from_str(&file_uri(&inside)).unwrap(),
             ..NodeContext::default()
         };
 
@@ -198,18 +198,18 @@ mod tests {
         let result = SinkOutput::from_path(&ctx, &file_uri(&target_outside));
         assert!(
             result.is_err(),
-            "SinkOutput::from_path must reject URIs outside ctx.output_path"
+            "SinkOutput::from_path must reject URIs outside ctx.sandbox_root"
         );
     }
 
     #[test]
-    fn from_path_accepts_uri_inside_output_path() {
+    fn from_path_accepts_uri_inside_sandbox_root() {
         let tmp = tempdir().unwrap();
         let inside = tmp.path().join("inside");
         std::fs::create_dir(&inside).unwrap();
 
         let ctx = NodeContext {
-            output_path: Uri::from_str(&file_uri(&inside)).unwrap(),
+            sandbox_root: Uri::from_str(&file_uri(&inside)).unwrap(),
             ..NodeContext::default()
         };
 
@@ -217,7 +217,7 @@ mod tests {
         let result = SinkOutput::from_path(&ctx, &file_uri(&target));
         assert!(
             result.is_ok(),
-            "URI inside output_path must succeed; got: {:?}",
+            "URI inside sandbox_root must succeed; got: {:?}",
             result.err()
         );
     }

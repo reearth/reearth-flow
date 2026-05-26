@@ -66,7 +66,7 @@ pub struct SinkNode<F> {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
-    output_path: Uri,
+    sandbox_root: Uri,
     source_intermediate_recorder: SourceIntermediateRecorder,
     /// State for writing source intermediate data
     feature_state: Arc<State>,
@@ -122,7 +122,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             expr_engine: ctx.expr_engine.clone(),
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
-            output_path: ctx.output_path.clone(),
+            sandbox_root: ctx.sandbox_root.clone(),
             source_intermediate_recorder,
             feature_state,
             incremental_mode,
@@ -176,7 +176,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 kv_store: self.kv_store.clone(),
                 storage_resolver: self.storage_resolver.clone(),
                 event_hub: self.event_hub.clone(),
-                output_path: self.output_path.clone(),
+                sandbox_root: self.sandbox_root.clone(),
             })
             .map_err(ExecutionError::Sink);
 

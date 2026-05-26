@@ -422,7 +422,7 @@ impl RunWorkerCommand {
             WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
             effective_artifact_path.clone(),
         );
-        // Parse the effective path as a URI — used as the executor's output_path
+        // Parse the effective path as a URI — used as the executor's sandbox_root
         // sandbox root (single source of truth with the global above).
         let artifact_uri = Uri::from_str(&effective_artifact_path).map_err(|e| {
             Error::failed_to_create_workflow(format!(

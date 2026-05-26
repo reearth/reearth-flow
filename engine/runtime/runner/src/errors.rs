@@ -38,7 +38,7 @@ pub enum Error {
     #[error("Runtime Error: {0}")]
     RuntimeError(String),
     #[error(
-        "output_path `file:///` is reserved as the `Runner::run` (unsandboxed) sentinel and must not be used with `run_with_output_path`"
+        "sandbox_root `file:///` is reserved as the `Runner::run` (unsandboxed) sentinel and must not be used with `run_with_sandbox_root`"
     )]
     UnsandboxedSentinelRejected,
 }
