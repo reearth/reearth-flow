@@ -79,8 +79,9 @@ graphs:
           operations:
           - attribute: feature_type_without_prefix
             method: create
-            value: |
-              env.get("__value")["featureType"].split(":")[1]
+            value:
+              type: flowExpr
+              value: 'value("featureType").split(":")[1]'
 
       - id: 69992005-2bdf-41f8-b298-59460b822bec
         name: AttributeDuplicateFilterDict
@@ -131,16 +132,19 @@ graphs:
           operations:
             - attribute: meshcode
               method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
+              value:
+                type: flowExpr
+                value: 'Url(value("path")).name.split("_")[0]'
             - attribute: gml_id
               method: create
-              value: |
-                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+              value:
+                type: flowExpr
+                value: 'value("__citygml_gml_id") or value("gmlId")'
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+              value:
+                type: flowExpr
+                value: 'value("featureType") or value("gmlName")'
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -477,16 +481,19 @@ graphs:
           operations:
             - attribute: veg:height
               method: convert
-              value: |
-                env.get("__value")["veg:height"] * 1.0
+              value:
+                type: flowExpr
+                value: 'value("veg:height") * 1.0'
             - attribute: veg:trunkDiameter
               method: convert
-              value: |
-                env.get("__value")["veg:trunkDiameter"] * 1.0
+              value:
+                type: flowExpr
+                value: 'value("veg:trunkDiameter") * 1.0'
             - attribute: veg:crownDiameter
               method: convert
-              value: |
-                env.get("__value")["veg:crownDiameter"] * 1.0
+              value:
+                type: flowExpr
+                value: 'value("veg:crownDiameter") * 1.0'
 
       - id: b5222fc2-f67b-4e89-8b8a-029181748511
         name: Cesium3DTilesWriterVeg1

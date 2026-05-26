@@ -71,16 +71,19 @@ graphs:
           operations:
             - attribute: meshcode
               method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
+              value:
+                type: flowExpr
+                value: 'Url(value("path")).name.split("_")[0]'
             - attribute: gml_id
               method: create
-              value: |
-                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+              value:
+                type: flowExpr
+                value: 'value("__citygml_gml_id") or value("gmlId")'
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+              value:
+                type: flowExpr
+                value: 'value("featureType") or value("gmlName")'
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -327,34 +330,54 @@ graphs:
           operations:
             - attribute: dm_feature_type
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_attributes
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_dmCode
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_dmCode_code
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_geometryType
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_geometryType_code
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_mapLevel
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_mapLevel_code
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_shapeType
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_shapeType_code
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
 
       - id: d4e5f6a7-b8c9-0123-def1-234567890123
         name: MVTWriterDmGeometricAttribute
