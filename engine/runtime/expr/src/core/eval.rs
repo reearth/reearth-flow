@@ -1354,13 +1354,20 @@ mod tests {
     fn test_cast() {
         assert_eval(r#"str("hello")"#, &[], Value::from("hello"));
         assert_eval(r#"str(42)"#, &[], Value::from("42"));
-        assert_eval(r#"str(3.14)"#, &[], Value::from("3.14"));
         assert_eval(r#"str(true)"#, &[], Value::from("true"));
         assert_eval(r#"str(false)"#, &[], Value::from("false"));
         assert_eval(r#"str(null)"#, &[], Value::from("null"));
         assert_eval(r#"str([1, 2, 3])"#, &[], Value::from("[1, 2, 3]"));
         assert_eval(r#"str([])"#, &[], Value::from("[]"));
         assert_eval(r#"str({"a": 1})"#, &[], Value::from(r#"{"a": 1}"#));
+        assert_eval(r#"str(0.0)"#, &[], Value::from("0.0"));
+        assert_eval(r#"str(1.0)"#, &[], Value::from("1.0"));
+        assert_eval(r#"str(0.0001)"#, &[], Value::from("0.0001"));
+        assert_eval(r#"str(1e-5)"#, &[], Value::from("1e-5"));
+        assert_eval(r#"str(1e-30)"#, &[], Value::from("1e-30"));
+        assert_eval(r#"str(1.5e-10)"#, &[], Value::from("1.5e-10"));
+        assert_eval(r#"str(1e16)"#, &[], Value::from("1e16"));
+        assert_eval(r#"str(1.5e20)"#, &[], Value::from("1.5e20"));
         assert_eval(r#"int(42)"#, &[], Value::from(42i64));
         assert_eval(r#"int(3.9)"#, &[], Value::from(3i64));
         assert_eval(r#"int(-3.9)"#, &[], Value::from(-3i64));

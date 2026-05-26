@@ -110,7 +110,7 @@ impl Value {
     }
 }
 
-/// Format a float the way Python does: always include a decimal point for finite whole numbers.
+/// Format a float: decimal for magnitudes in [1e-4, 1e16), shortest scientific otherwise.
 pub(crate) fn format_float(n: f64) -> String {
     if n.is_nan() {
         return "nan".to_string();
@@ -122,11 +122,16 @@ pub(crate) fn format_float(n: f64) -> String {
             "-inf".to_string()
         };
     }
-    let s = format!("{n}");
-    if s.contains('.') || s.contains('e') || s.contains('E') {
-        s
+    let abs = n.abs();
+    if abs == 0.0 || (abs >= 1e-4 && abs < 1e16) {
+        let s = format!("{n}");
+        if s.contains('.') || s.contains('e') || s.contains('E') {
+            s
+        } else {
+            s + ".0"
+        }
     } else {
-        s + ".0"
+        format!("{:e}", n)
     }
 }
 
@@ -202,3 +207,4 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
         Value::array(v.into_iter().map(Into::into).collect())
     }
 }
+
