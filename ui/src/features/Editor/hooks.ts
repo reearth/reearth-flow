@@ -30,7 +30,7 @@ import {
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
-import type { Direction, Edge, Node } from "@flow/types";
+import type { Direction, Edge, Node, Workflow } from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -86,6 +86,8 @@ export default ({
     handleYWorkflowRedo,
     handleYWorkflowRename,
     handleYLayoutChange,
+    handleYLayoutPreview,
+    handleYLayoutPreviewCancel,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
@@ -225,6 +227,22 @@ export default ({
       fitView();
     },
     [fitView, handleYLayoutChange],
+  );
+
+  const handleLayoutPreview = useCallback(
+    async (direction: Direction, xSpacing: number, ySpacing: number) => {
+      await handleYLayoutPreview(direction, xSpacing, ySpacing);
+      fitView();
+    },
+    [fitView, handleYLayoutPreview],
+  );
+
+  const handleLayoutPreviewCancel = useCallback(
+    (snapshot: Workflow[]) => {
+      handleYLayoutPreviewCancel(snapshot);
+      fitView();
+    },
+    [fitView, handleYLayoutPreviewCancel],
   );
 
   const {
@@ -493,6 +511,8 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleLayoutChange,
+    handleLayoutPreview,
+    handleLayoutPreviewCancel,
     handleDeleteDialogClose,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,

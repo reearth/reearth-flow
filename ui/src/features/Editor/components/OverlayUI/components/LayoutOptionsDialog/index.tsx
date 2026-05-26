@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 
 import {
   Button,
@@ -8,29 +8,45 @@ import {
   DialogContentWrapper,
   DialogFooter,
   DialogTitle,
-  Input,
   Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Slider,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { Direction } from "@flow/types";
+import type { Direction, Workflow } from "@flow/types";
 import { DEFAULT_LAYOUT_SPACING } from "@flow/utils/autoLayout";
 
 type Props = {
+  rawWorkflows: Workflow[];
   onClose: () => void;
   onLayoutChange: (
     direction: Direction,
     xSpacing: number,
     ySpacing: number,
   ) => Promise<void>;
+  onLayoutPreview: (
+    direction: Direction,
+    xSpacing: number,
+    ySpacing: number,
+  ) => Promise<void>;
+  onCancelLayoutPreview: (originalWorkflows: Workflow[]) => void;
 };
 
-const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
+const LayoutOptionsDialog: React.FC<Props> = ({
+  rawWorkflows,
+  onClose,
+  onLayoutChange,
+  onLayoutPreview,
+  onCancelLayoutPreview,
+}) => {
   const t = useT();
+
+  // Snapshot taken once on mount, before any preview changes touch Yjs.
+  const snapshotRef = useRef<Workflow[]>(rawWorkflows);
 
   const [layoutDirection, setLayoutDirection] =
     useState<Direction>("Horizontal");
@@ -42,13 +58,35 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
     Vertical: t("Vertical"),
   };
 
-  const handleLayoutChange = async () => {
+  const handleDirectionChange = (v: Direction) => {
+    setLayoutDirection(v);
+    onLayoutPreview(v, xSpacing, ySpacing);
+  };
+
+  const handleXChange = (value: number[]) => {
+    const next = value[0];
+    setXSpacing(next);
+    onLayoutPreview(layoutDirection, next, ySpacing);
+  };
+
+  const handleYChange = (value: number[]) => {
+    const next = value[0];
+    setYSpacing(next);
+    onLayoutPreview(layoutDirection, xSpacing, next);
+  };
+
+  const handleCancel = () => {
+    onCancelLayoutPreview(snapshotRef.current);
+    onClose();
+  };
+
+  const handleSubmit = async () => {
     await onLayoutChange(layoutDirection, xSpacing, ySpacing);
     onClose();
   };
 
   return (
-    <Dialog open={true} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={true} onOpenChange={(o) => !o && handleCancel()}>
       <DialogContent size="sm" position="top" overlayBgClass="bg-opacity-0">
         <DialogTitle>{t("Layout Options")}</DialogTitle>
         <DialogContentWrapper>
@@ -57,7 +95,7 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
               <Label>{t("Direction: ")}</Label>
               <Select
                 value={layoutDirection}
-                onValueChange={(v) => setLayoutDirection(v as Direction)}>
+                onValueChange={(v) => handleDirectionChange(v as Direction)}>
                 <SelectTrigger className="h-8 w-37.5">
                   <SelectValue placeholder={layoutDirections.Horizontal} />
                 </SelectTrigger>
@@ -71,39 +109,44 @@ const LayoutOptionsDialog: React.FC<Props> = ({ onClose, onLayoutChange }) => {
               </Select>
             </div>
           </DialogContentSection>
-          <DialogContentSection className="flex-row gap-4">
-            <div className="flex flex-1 items-center gap-2">
-              <Label className="shrink-0">{t("X Spacing: ")}</Label>
-              <Input
-                type="number"
+          <DialogContentSection className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Label>{t("X Spacing")}</Label>
+                <span className="w-8 text-right text-xs text-muted-foreground">
+                  {xSpacing}
+                </span>
+              </div>
+              <Slider
                 min={0}
                 max={500}
-                className="h-8 w-20"
-                value={xSpacing}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  setXSpacing(Math.max(0, value));
-                }}
+                step={1}
+                value={[xSpacing]}
+                onValueChange={handleXChange}
               />
             </div>
-            <div className="flex flex-1 items-center gap-2">
-              <Label className="shrink-0">{t("Y Spacing: ")}</Label>
-              <Input
-                type="number"
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Label>{t("Y Spacing")}</Label>
+                <span className="w-8 text-right text-xs text-muted-foreground">
+                  {ySpacing}
+                </span>
+              </div>
+              <Slider
                 min={0}
                 max={500}
-                className="h-8 w-20"
-                value={ySpacing}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  setYSpacing(Math.max(0, value));
-                }}
+                step={1}
+                value={[ySpacing]}
+                onValueChange={handleYChange}
               />
             </div>
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
-          <Button onClick={handleLayoutChange}>{t("Update")}</Button>
+          <Button variant="outline" onClick={handleCancel}>
+            {t("Cancel")}
+          </Button>
+          <Button onClick={handleSubmit}>{t("Apply")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

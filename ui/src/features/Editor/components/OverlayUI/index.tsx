@@ -63,6 +63,12 @@ type OverlayUIProps = {
     xSpacing: number,
     ySpacing: number,
   ) => Promise<void>;
+  onLayoutPreview: (
+    direction: Direction,
+    xSpacing: number,
+    ySpacing: number,
+  ) => Promise<void>;
+  onCancelLayoutPreview: (originalWorkflows: Workflow[]) => void;
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
@@ -129,6 +135,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onWorkflowOpen,
   onWorkflowClose,
   onLayoutChange,
+  onLayoutPreview,
+  onCancelLayoutPreview,
   onWorkflowDeployment,
   sharingUrl,
   onProjectExport,
@@ -276,7 +284,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
       </div>
       {showDialog === "layout" && (
         <LayoutOptionsDialog
+          rawWorkflows={rawWorkflows}
           onLayoutChange={onLayoutChange}
+          onLayoutPreview={onLayoutPreview}
+          onCancelLayoutPreview={onCancelLayoutPreview}
           onClose={handleDialogClose}
         />
       )}

@@ -34,6 +34,7 @@ export * from "./BasicBoiler";
 export * from "./visualizations";
 export * from "./Pagination";
 export * from "./Popover";
+export * from "./Slider";
 export * from "./Switch";
 export * from "./errors";
 export * from "./workflowVariables";

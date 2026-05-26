@@ -55,7 +55,60 @@ export default ({
     [rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
+  // Preview: writes layout to Yjs without undo tracking so preview steps
+  // don't pollute the undo history.
+  const handleYLayoutPreview = useCallback(
+    async (direction: Direction, xSpacing: number, ySpacing: number) => {
+      if (!yWorkflows) return;
+
+      const layouts = await Promise.all(
+        rawWorkflows.map(async (rawWorkflow) => {
+          const nodes = rawWorkflow.nodes as Node[];
+          const edges = rawWorkflow.edges as Edge[];
+          const result = await autoLayout(
+            direction,
+            nodes,
+            edges,
+            xSpacing,
+            ySpacing,
+          );
+          return { id: rawWorkflow.id, result };
+        }),
+      );
+
+      layouts.forEach(({ id, result }) => {
+        const yNodes = yWorkflows.get(id)?.get("nodes") as
+          | YNodesMap
+          | undefined;
+        if (!yNodes) return;
+        result.nodes.forEach((n) => {
+          yNodes.set(n.id, yNodeConstructor(n));
+        });
+      });
+    },
+    [rawWorkflows, yWorkflows],
+  );
+
+  // Restores a workflow snapshot to Yjs without undo tracking, used on cancel.
+  const handleYLayoutPreviewCancel = useCallback(
+    (snapshot: Workflow[]) => {
+      if (!yWorkflows) return;
+      snapshot.forEach((workflow) => {
+        const yNodes = yWorkflows.get(workflow.id)?.get("nodes") as
+          | YNodesMap
+          | undefined;
+        if (!yNodes) return;
+        (workflow.nodes as Node[]).forEach((n) => {
+          yNodes.set(n.id, yNodeConstructor(n));
+        });
+      });
+    },
+    [yWorkflows],
+  );
+
   return {
     handleYLayoutChange,
+    handleYLayoutPreview,
+    handleYLayoutPreviewCancel,
   };
 };
