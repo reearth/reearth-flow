@@ -278,6 +278,14 @@ impl Processor for FeatureWriter {
                 ),
             ])
             .into();
+            // Enforce sandbox: CSV/TSV/JSON/CityGML all write directly to
+            // `output`; without this check `FeatureWriter` would be an
+            // out-of-sandbox escape hatch alongside the sink writers.
+            reearth_flow_action_sink::ensure_under(&ctx.output_path, output).map_err(|e| {
+                FeatureProcessorError::FeatureWriter(format!(
+                    "output {output} rejected by sandbox: {e}"
+                ))
+            })?;
             match self.params {
                 CompiledFeatureWriterParam::Csv { .. } => {
                     csv::write_csv(output, Delimiter::Comma, &ctx.storage_resolver, features)?;

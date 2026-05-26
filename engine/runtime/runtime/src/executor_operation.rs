@@ -36,8 +36,10 @@ pub struct Context {
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
     /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
-    /// MUST set this to the resolved workerArtifactPath URI. Tests using
-    /// `NodeContext::default()` get `file:///` (permissive) — see `Default` impl.
+    /// MUST set this to the resolved workerArtifactPath URI; production
+    /// entrypoints (`Runner::run_with_output_path`) reject the `file:///`
+    /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
+    /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
     pub output_path: Uri,
 }
 
@@ -104,8 +106,10 @@ pub struct ExecutorContext {
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
     /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
-    /// MUST set this to the resolved workerArtifactPath URI. Tests using
-    /// `NodeContext::default()` get `file:///` (permissive) — see `Default` impl.
+    /// MUST set this to the resolved workerArtifactPath URI; production
+    /// entrypoints (`Runner::run_with_output_path`) reject the `file:///`
+    /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
+    /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
     pub output_path: Uri,
 }
 
@@ -215,8 +219,10 @@ pub struct NodeContext {
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
     /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
-    /// MUST set this to the resolved workerArtifactPath URI. Tests using
-    /// `NodeContext::default()` get `file:///` (permissive) — see `Default` impl.
+    /// MUST set this to the resolved workerArtifactPath URI; production
+    /// entrypoints (`Runner::run_with_output_path`) reject the `file:///`
+    /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
+    /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
     pub output_path: Uri,
 }
 
@@ -251,8 +257,10 @@ impl Default for NodeContext {
             storage_resolver: Arc::new(StorageResolver::new()),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
             event_hub: EventHub::new(30),
-            // Permissive sentinel: `file:///` accepts any file:// URI.
-            // Only used by tests; production constructs the context explicitly.
+            // Permissive sentinel: `file:///` is treated by
+            // `sandbox::ensure_under` as "no sandbox" — any candidate URI,
+            // regardless of scheme, passes. Only used by tests / the legacy
+            // `Runner::run` path; production entrypoints reject this value.
             output_path: std::str::FromStr::from_str("file:///")
                 .expect("'file:///' is always a valid URI"),
         }

@@ -26,6 +26,18 @@ static ASYNC_WORKER_NUM: Lazy<usize> = Lazy::new(|| {
         .unwrap_or(num_cpus::get())
 });
 
+/// Reject the unsandboxed sentinel (`file:///`) when supplied to a production
+/// entrypoint. `Runner::run` deliberately constructs this value to opt out of
+/// sandboxing for tests / legacy callers; any other path that resolves to it
+/// (e.g. a misconfigured `workerArtifactPath`) would silently disable the
+/// sandbox, so production wrappers must trap it.
+fn reject_unsandboxed_sentinel(output_path: &Uri) -> Result<(), crate::errors::Error> {
+    if output_path.as_str() == "file:///" {
+        return Err(crate::errors::Error::UnsandboxedSentinelRejected);
+    }
+    Ok(())
+}
+
 pub struct Runner;
 
 #[allow(clippy::too_many_arguments)]
@@ -48,7 +60,9 @@ impl Runner {
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
         let output_path = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
-        Self::run_with_output_path(
+        // Bypass `run_with_output_path`'s sentinel guard — this entrypoint
+        // intentionally requests the unsandboxed mode.
+        Self::run_with_event_handler(
             job_id,
             workflow,
             factories,
@@ -57,6 +71,7 @@ impl Runner {
             ingress_state,
             feature_state,
             incremental_run_config,
+            vec![],
             output_path,
         )
     }
@@ -79,6 +94,7 @@ impl Runner {
         incremental_run_config: Option<IncrementalRunConfig>,
         output_path: Uri,
     ) -> Result<(), crate::errors::Error> {
+        reject_unsandboxed_sentinel(&output_path)?;
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -219,6 +235,7 @@ impl AsyncRunner {
         incremental_run_config: Option<IncrementalRunConfig>,
         output_path: Uri,
     ) -> Result<(), crate::errors::Error> {
+        reject_unsandboxed_sentinel(&output_path)?;
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -289,5 +306,27 @@ impl AsyncRunner {
             info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
         }
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reject_unsandboxed_sentinel_rejects_file_root() {
+        let uri = Uri::from_str("file:///").unwrap();
+        assert!(matches!(
+            reject_unsandboxed_sentinel(&uri),
+            Err(crate::errors::Error::UnsandboxedSentinelRejected)
+        ));
+    }
+
+    #[test]
+    fn reject_unsandboxed_sentinel_accepts_real_paths() {
+        let uri = Uri::from_str("file:///tmp/job").unwrap();
+        assert!(reject_unsandboxed_sentinel(&uri).is_ok());
+        let uri = Uri::from_str("gs://bucket/job").unwrap();
+        assert!(reject_unsandboxed_sentinel(&uri).is_ok());
     }
 }
