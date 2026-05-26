@@ -1,13 +1,10 @@
 import { RJSFSchema } from "@rjsf/utils";
 import { describe, it, expect } from "vitest";
 
-import {
-  computeSchemaFingerprint,
-  schemaKeysMatch,
-} from "./schemaFingerprint";
+import { computeSchemaFingerprint, schemaKeysMatch } from "./schemaFingerprint";
 
 const s = (properties: Record<string, object>): RJSFSchema =>
-  ({ properties } as RJSFSchema);
+  ({ properties }) as RJSFSchema;
 
 describe("computeSchemaFingerprint", () => {
   it("returns undefined when schema is undefined", () => {
