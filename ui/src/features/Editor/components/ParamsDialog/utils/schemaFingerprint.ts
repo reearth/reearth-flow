@@ -20,7 +20,7 @@ export function computeSchemaFingerprint(
 // Returns true (no migration needed) when:
 // - storedSchema is undefined (first-time node, never been saved with a schema)
 // - schemas produce the same fingerprint
-export function schemasMatch(
+export function schemaKeysMatch(
   storedSchema: RJSFSchema | undefined,
   currentSchema: RJSFSchema,
 ): boolean {
