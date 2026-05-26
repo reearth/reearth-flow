@@ -51,8 +51,10 @@ const LayoutSubToolbar: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-secondary/70 px-4 py-2 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary">
-      <Button onClick={handleCleanUp}>{t("Clean up")}</Button>
+    <div className="flex items-center gap-4 rounded-md border border-accent bg-primary/50 px-4 py-2 text-popover-foreground shadow-md backdrop-blur">
+      <Button variant="outline" onClick={handleCleanUp}>
+        {t("Clean up")}
+      </Button>
       <div className="h-5 border-r border-border" />
       <Select
         value={direction}
