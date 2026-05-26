@@ -200,7 +200,9 @@ export default ({
   const usersRef = useRef(users);
   usersRef.current = users;
 
-  const pendingRefetchRef = useRef<unknown>(rawSession?.pendingRefetch);
+  const pendingRefetchRef = useRef<
+    WorkflowVarSession["pendingRefetch"] | undefined
+  >(rawSession?.pendingRefetch);
   pendingRefetchRef.current = rawSession?.pendingRefetch;
 
   const clearSessionRef = useRef(clearSession);
@@ -315,8 +317,7 @@ export default ({
   performCancelCleanupRef.current = () => {
     const currentUsers = usersRef.current;
     const otherUsersInDialog = Object.values(currentUsers ?? {}).some(
-      (u) =>
-        u.openWorkflowVariablesDialog && String(u.clientId) !== myClientId,
+      (u) => u.openWorkflowVariablesDialog && String(u.clientId) !== myClientId,
     );
 
     if (!otherUsersInDialog) {
