@@ -207,4 +207,3 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
         Value::array(v.into_iter().map(Into::into).collect())
     }
 }
-

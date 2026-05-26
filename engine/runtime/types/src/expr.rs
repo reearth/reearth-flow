@@ -69,11 +69,12 @@ impl CompiledCode {
     pub fn eval(
         &self,
         env: &mut reearth_flow_expr::Env,
-    ) -> reearth_flow_expr::Result<reearth_flow_expr::Value> {
-        match self {
-            CompiledCode::Expr(e) => eval(e, env),
-            CompiledCode::Literal(s) => Ok(reearth_flow_expr::Value::String(s.clone())),
-        }
+    ) -> reearth_flow_expr::Result<AttributeValue> {
+        let v = match self {
+            CompiledCode::Expr(e) => eval(e, env)?,
+            CompiledCode::Literal(s) => reearth_flow_expr::Value::String(s.clone()),
+        };
+        Ok(attribute_value_from_eval(v))
     }
 
     pub fn eval_string(

@@ -7,9 +7,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{
-    attribute_value_from_eval, env_from_feature, Attribute, AttributeValue, Code, CompiledCode,
-};
+use reearth_flow_types::{env_from_feature, Attribute, AttributeValue, Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -103,7 +101,7 @@ impl Processor for FlowExprTest {
 
         for (attr, code) in &self.mappings {
             let value = match code.eval(&mut eval_env) {
-                Ok(v) => attribute_value_from_eval(v),
+                Ok(v) => v,
                 Err(e) => {
                     tracing::error!(attr, error = %e, "FlowExprTest eval error");
                     AttributeValue::Null

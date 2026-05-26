@@ -7,10 +7,8 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use rhai::Dynamic;
 
-use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{env_from_feature, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -47,12 +45,12 @@ impl ProcessorFactory for AttributeManagerFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeManagerParam = if let Some(with) = with.clone() {
+        let params: AttributeManagerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::ManagerFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -70,20 +68,14 @@ impl ProcessorFactory for AttributeManagerFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let operations = convert_single_operation(&params.operations, Arc::clone(&expr_engine))?;
-
-        let process = AttributeManager {
-            global_params: with,
-            operations,
-        };
+        let operations = convert_single_operation(&params.operations)?;
+        let process = AttributeManager { operations };
         Ok(Box::new(process))
     }
 }
 
 #[derive(Debug, Clone)]
 struct AttributeManager {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     operations: Vec<Operate>,
 }
 
@@ -105,7 +97,7 @@ struct Operation {
     method: Method,
     /// # Value
     /// Value to use for the operation
-    value: Option<Expr>,
+    value: Option<Code>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -120,11 +112,11 @@ enum Method {
 #[derive(Debug, Clone)]
 enum Operate {
     Convert {
-        expr: Option<rhai::AST>,
+        code: Option<CompiledCode>,
         attribute: String,
     },
     Create {
-        expr: Option<rhai::AST>,
+        code: Option<CompiledCode>,
         attribute: String,
     },
     Rename {
@@ -142,13 +134,8 @@ impl Processor for AttributeManager {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = process_feature(
-            ctx.as_context(),
-            &ctx.feature,
-            &self.operations,
-            Arc::clone(&ctx.expr_engine),
-            &self.global_params,
-        );
+        let env_vars = ctx.expr_engine.vars();
+        let feature = process_feature(ctx.as_context(), &ctx.feature, &self.operations, env_vars);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
@@ -170,42 +157,38 @@ fn process_feature(
     ctx: Context,
     feature: &Feature,
     operations: &[Operate],
-    expr_engine: Arc<Engine>,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Feature {
     let mut result = feature.clone();
+    let mut env = env_from_feature(feature, env_vars);
     for operation in operations {
         match operation {
-            Operate::Convert { expr, attribute } => {
-                let value = feature.get(attribute);
-                if value.is_none() {
+            Operate::Convert { code, attribute } => {
+                if feature.get(attribute).is_none() {
                     continue;
                 }
-
-                let scope = feature.new_scope(expr_engine.clone(), global_params);
-                if let Some(expr) = expr {
-                    let new_value = scope.eval_ast::<Dynamic>(expr);
-                    if let Ok(new_value) = new_value {
-                        if let Ok(new_value) = new_value.try_into() {
+                if let Some(code) = code {
+                    match code.eval(&mut env) {
+                        Ok(new_value) => {
                             result.insert(attribute.clone(), new_value);
                         }
-                    } else if let Err(e) = new_value {
-                        ctx.event_hub
-                            .warn_log(None, format!("convert error with: {e:?}"));
+                        Err(e) => {
+                            ctx.event_hub
+                                .warn_log(None, format!("convert error with: {e:?}"));
+                        }
                     }
                 }
             }
-            Operate::Create { expr, attribute } => {
-                let scope = feature.new_scope(expr_engine.clone(), global_params);
-                if let Some(expr) = expr {
-                    let new_value = scope.eval_ast::<Dynamic>(expr);
-                    if let Ok(new_value) = new_value {
-                        if let Ok(new_value) = new_value.try_into() {
+            Operate::Create { code, attribute } => {
+                if let Some(code) = code {
+                    match code.eval(&mut env) {
+                        Ok(new_value) => {
                             result.insert(attribute.clone(), new_value);
                         }
-                    } else if let Err(e) = new_value {
-                        ctx.event_hub
-                            .warn_log(None, format!("create error with: {e:?}"));
+                        Err(e) => {
+                            ctx.event_hub
+                                .warn_log(None, format!("create error with: {e:?}"));
+                        }
                     }
                 }
             }
@@ -228,22 +211,18 @@ fn process_feature(
     result
 }
 
-fn convert_single_operation(
-    operations: &[Operation],
-    expr_engine: Arc<Engine>,
-) -> super::errors::Result<Vec<Operate>> {
+fn convert_single_operation(operations: &[Operation]) -> super::errors::Result<Vec<Operate>> {
     let mut result = Vec::new();
     for operation in operations.iter() {
         let method = &operation.method;
         let attribute = &operation.attribute;
-        let expr = if let Some(expr) = operation
+        let code = if let Some(code) = operation
             .value
             .clone()
             .take_if(|_| matches!(method, Method::Convert | Method::Create))
         {
             Some(
-                expr_engine
-                    .compile(expr.as_ref())
+                code.compile()
                     .map_err(|e| AttributeProcessorError::ManagerFactory(format!("{e:?}")))?,
             )
         } else {
@@ -251,15 +230,19 @@ fn convert_single_operation(
         };
         let value = match method {
             Method::Convert => Operate::Convert {
-                expr,
+                code,
                 attribute: attribute.clone(),
             },
             Method::Create => Operate::Create {
-                expr,
+                code,
                 attribute: attribute.clone(),
             },
             Method::Rename => Operate::Rename {
-                new_key: operation.value.clone().unwrap_or(Expr::new("")).to_string(),
+                new_key: operation
+                    .value
+                    .as_ref()
+                    .map(|c| c.value.clone())
+                    .unwrap_or_default(),
                 attribute: attribute.clone(),
             },
             Method::Remove => Operate::Remove {

@@ -64,27 +64,27 @@ graphs:
           operations:
             - attribute: cityCode
               method: convert
-              value: |
-                let attributes = env.get("__value").cityGmlAttributes;
-                let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
-                let gml_city_code = building_id_attributes["uro:city_code"];
-                if gml_city_code != () && gml_city_code != "" {
-                  gml_city_code
-                } else {
-                  let feature_city_code = env.get("__value").cityCode;
-                  if feature_city_code != () && feature_city_code != "" {
-                    feature_city_code
-                  } else {
-                    env.get("cityCode")
+              value:
+                type: flowExpr
+                value: |
+                  attributes = value("cityGmlAttributes");
+                  uro_list = attributes.get("uro:BuildingIDAttribute");
+                  gml_city_code = null;
+                  if uro_list {
+                    gml_city_code = uro_list[0].get("uro:city_code");
                   }
-                }
+                  gml_city_code or value("cityCode") or env("cityCode")
 
             - attribute: cityName
               method: create
               value: |
-                let attributes = env.get("__value").cityGmlAttributes;
-                let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
-                building_id_attributes["uro:city"] ?? env.get("__value").cityName
+                attributes = value("cityGmlAttributes");
+                uro_list = attributes.get("uro:BuildingIDAttribute");
+                gml_city_name = null;
+                if uro_list {
+                  gml_city_name = uro_list[0].get("uro:city")
+                }
+                gml_city_name or value("cityName")
 
       - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
         name: AttributeConversionTable
