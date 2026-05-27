@@ -249,6 +249,10 @@ export default ({
   const myDeletedRealVarIdsRef = useRef(new Set<string>());
   const myDeletedTempVarIdsRef = useRef(new Set<string>());
 
+  // True if this user moved any variable — used in cancel to restore the
+  // joined order so other users see the reorder undone.
+  const myReorderedRef = useRef(false);
+
   const handleLocalAdd = useCallback(
     (type: VarType) => {
       const tempId = `temp_${generateUUID()}`;
@@ -299,6 +303,7 @@ export default ({
   const handleReorder = useCallback(
     (oldIndex: number, newIndex: number) => {
       if (oldIndex === newIndex) return;
+      myReorderedRef.current = true;
       const next = [...sessionVarsRef.current];
       const [moved] = next.splice(oldIndex, 1);
       next.splice(newIndex, 0, moved);
@@ -368,6 +373,16 @@ export default ({
           // Remove if nobody else modified it from our last-authored version.
           return JSON.stringify(v) !== JSON.stringify(myTempIds.get(v.id));
         });
+
+      // If this user reordered, sort reverted back to the joined order so other
+      // users see the sequence restored. Vars not present in joinedVars (added
+      // by other users) are appended after, preserving their relative order.
+      if (myReorderedRef.current && joinedVars) {
+        const joinedRank = new Map(joinedVars.map((v, i) => [v.id, i]));
+        reverted.sort(
+          (a, b) => (joinedRank.get(a.id) ?? Infinity) - (joinedRank.get(b.id) ?? Infinity),
+        );
+      }
 
       // Re-insert real vars this user deleted at their original joined position.
       if (joinedVars && myDeletedRealIds.size > 0) {
