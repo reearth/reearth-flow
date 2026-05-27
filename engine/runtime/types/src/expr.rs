@@ -179,11 +179,66 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
     }
 }
 
+#[derive(Debug)]
+struct EnvObject(Arc<serde_json::Map<String, serde_json::Value>>);
+
+impl EnvObject {
+    fn get_value(&self, name: &str) -> Option<reearth_flow_expr::Value> {
+        self.0.get(name).cloned().map(json_to_value)
+    }
+}
+
+impl reearth_flow_expr::ImmutableObject for EnvObject {
+    fn type_name(&self) -> &'static str {
+        "Env"
+    }
+
+    fn call_method(
+        &self,
+        method: &str,
+        args: &[reearth_flow_expr::Value],
+    ) -> reearth_flow_expr::InnerResult<reearth_flow_expr::Value> {
+        use reearth_flow_expr::{InnerError, Value};
+        match method {
+            "__getitem__" => {
+                reearth_flow_expr::unpack_args!(args => key);
+                let Value::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "env index must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
+                self.get_value(name)
+                    .ok_or_else(|| InnerError::new(format!("env var '{name}' not found")))
+            }
+            "get" => {
+                let (key, fallback) = match args {
+                    [key] => (key, None),
+                    [key, fallback] => (key, Some(fallback)),
+                    _ => {
+                        return Err(InnerError::new("env.get() requires 1 or 2 arguments"))
+                    }
+                };
+                let Value::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "env.get() key must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
+                Ok(self
+                    .get_value(name)
+                    .unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
+            }
+            m => Err(InnerError::new(format!("Env has no method '{m}'"))),
+        }
+    }
+}
+
 pub fn env_from_feature(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> reearth_flow_expr::Env {
-    use reearth_flow_expr::{NativeFn, Value};
+    use reearth_flow_expr::Value;
     let mut env = reearth_flow_expr::default_env();
     env.insert(
         "attributes".into(),
@@ -191,20 +246,7 @@ pub fn env_from_feature(
     );
     env.insert(
         "env".into(),
-        Value::Fn(NativeFn::new(move |args| {
-            reearth_flow_expr::unpack_args!(args => arg);
-            let Value::String(name) = arg else {
-                return Err(reearth_flow_expr::InnerError::new(format!(
-                    "env() expects a string argument, got {}",
-                    arg.type_name()
-                )));
-            };
-            Ok(env_vars
-                .get(name.as_str())
-                .cloned()
-                .map(json_to_value)
-                .unwrap_or(Value::Null))
-        })),
+        Value::object(EnvObject(env_vars)),
     );
     env
 }

@@ -182,15 +182,15 @@ graphs:
             type: flowExpr
             value: |
               udx_dirs = attributes["udxDirs"].replace("/", "_");
-              Url(env("workerArtifactPath")) / (udx_dirs + "_no_texture")
+              Url(env["workerArtifactPath"]) / (udx_dirs + "_no_texture")
           compressOutput:
             type: flowExpr
             value: |
-              citygml = Url(env("cityGmlPath")).name.split("_op_")[0];
+              citygml = Url(env["cityGmlPath"]).name.split("_op_")[0];
               udx_dirs = attributes["udxDirs"].replace("/", "_");
               scale = "";
               if attributes.get("__scale") { scale = "_" + attributes["__scale"] }
-              Url(env("workerArtifactPath")) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
+              Url(env["workerArtifactPath"]) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
 
       # Dictionary.json output branch
       - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1

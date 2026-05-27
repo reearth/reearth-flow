@@ -1880,19 +1880,19 @@ graphs:
         value:
           type: flowExpr
           value: |
-            p = env("monthlyTransmissivity")[attributes["month"] - 1];
+            p = env["monthlyTransmissivity"][attributes["month"] - 1];
             h_rad = attributes["solarAltitude"] * math.pi / 180.0;
             m = 1.0 / math.sin(h_rad);
             beta_m = p ** m;
-            DT = env("directNormalIrradianceFactor") * beta_m * attributes["cosTheta"] * attributes["cellArea"];
+            DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
             dN = 1 - beta_m;
             dD = 1 - 1.4 * math.log(p);
-            SH = env("directNormalIrradianceFactor") * math.sin(h_rad) * (dN / dD) * 0.5;
+            SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
             tilt_rad = attributes["slope"] * math.pi / 180.0;
             ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-            TH = env("directNormalIrradianceFactor") * math.sin(h_rad) + SH;
+            TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
             RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
             DT + ST + RT
@@ -1901,19 +1901,19 @@ graphs:
         value:
           type: flowExpr
           value: |
-            p = 1.0 - env("monthlyTransmissivity")[attributes["month"] - 1];
+            p = 1.0 - env["monthlyTransmissivity"][attributes["month"] - 1];
             h_rad = attributes["solarAltitude"] * math.pi / 180.0;
             m = 1.0 / math.sin(h_rad);
             beta_m = p ** m;
-            DT = env("directNormalIrradianceFactor") * beta_m * attributes["cosTheta"] * attributes["cellArea"];
+            DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
             dN = 1 - beta_m;
             dD = 1 - 1.4 * math.log(p);
-            SH = env("directNormalIrradianceFactor") * math.sin(h_rad) * (dN / dD) * 0.5;
+            SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
             tilt_rad = attributes["slope"] * math.pi / 180.0;
             ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-            TH = env("directNormalIrradianceFactor") * math.sin(h_rad) + SH;
+            TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
             RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
             DT + ST + RT
@@ -2039,12 +2039,12 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: env("startTime")
+          value: env["startTime"]
       - attribute: シミュレーション終了日時
         method: create
         value:
           type: flowExpr
-          value: env("endTime")
+          value: env["endTime"]
   - id: 00000001-0000-0000-0000-000000000070
     name: NormalizeRadiationForColorMapping
     type: action
@@ -2056,7 +2056,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            start_str = env("startTime");
+            start_str = env["startTime"];
             s_date_parts = start_str.split("-");
             s_year = float(s_date_parts[0]);
             s_month = float(s_date_parts[1]);
@@ -2065,7 +2065,7 @@ graphs:
             s_y = s_year + 4800.0 - s_a;
             s_m = s_month + 12.0 * s_a - 3.0;
             s_jdn = s_day_val + math.floor((153.0 * s_m + 2.0) / 5.0) + 365.0 * s_y + math.floor(s_y / 4.0) - math.floor(s_y / 100.0) + math.floor(s_y / 400.0) - 32045.0;
-            end_str = env("endTime");
+            end_str = env["endTime"];
             e_date_parts = end_str.split("-");
             e_year = float(e_date_parts[0]);
             e_month = float(e_date_parts[1]);
@@ -2077,7 +2077,7 @@ graphs:
             num_days_raw = e_jdn - s_jdn;
             if num_days_raw <= 0.0 { num_days = 1.0 } else { num_days = num_days_raw };
             dt = attributes.get("totalSolarRadiation") or 0.0;
-            max_rad = env("maxRadiationPerDay") or 7.5;
+            max_rad = env["maxRadiationPerDay"] or 7.5;
             t_raw = dt / num_days / max_rad;
             if t_raw < 0.0 { 0.0 } else if t_raw > 1.0 { 1.0 } else { t_raw }
   - id: 00000001-0000-0000-0000-00000000005f
@@ -2217,10 +2217,10 @@ graphs:
       dracoCompression: false
       output:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "textured_roof_3dtiles"
+        value: Url(env["workerArtifactPath"]) / "textured_roof_3dtiles"
       compressOutput:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "textured_roof_3dtiles.zip"
+        value: Url(env["workerArtifactPath"]) / "textured_roof_3dtiles.zip"
   - id: 00000004-0000-0000-0000-000000000010
     name: ReflectionOutputFilter
     type: action
@@ -2530,10 +2530,10 @@ graphs:
       dracoCompression: false
       output:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "bldg_lod1"
+        value: Url(env["workerArtifactPath"]) / "bldg_lod1"
       compressOutput:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "bldg_lod1.zip"
+        value: Url(env["workerArtifactPath"]) / "bldg_lod1.zip"
   - id: 00000001-0000-0000-0000-0000000000a4
     name: BoundsExtractorByLod3
     type: action
@@ -2579,10 +2579,10 @@ graphs:
       dracoCompression: false
       output:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "bldg_lod3"
+        value: Url(env["workerArtifactPath"]) / "bldg_lod3"
       compressOutput:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "bldg_lod3.zip"
+        value: Url(env["workerArtifactPath"]) / "bldg_lod3.zip"
   - id: 00000001-0000-0000-0000-0000000000a8
     name: BoundsExtractorByLod4
     type: action
@@ -2628,10 +2628,10 @@ graphs:
       dracoCompression: false
       output:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "bldg_lod4"
+        value: Url(env["workerArtifactPath"]) / "bldg_lod4"
       compressOutput:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "bldg_lod4.zip"
+        value: Url(env["workerArtifactPath"]) / "bldg_lod4.zip"
   - id: 00000001-0000-0000-0000-0000000000e0
     name: CityGmlAttributeInserter
     type: action
@@ -2756,7 +2756,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env("restrictDirection1") or -1.0;
+            dir = env["restrictDirection1"] or -1.0;
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth") or 0.0;
               geo = (180.0 - pne + 360.0) % 360.0;
@@ -2769,7 +2769,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env("restrictDirection2") or -1.0;
+            dir = env["restrictDirection2"] or -1.0;
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth") or 0.0;
               geo = (180.0 - pne + 360.0) % 360.0;
@@ -2782,7 +2782,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env("restrictDirection3") or -1.0;
+            dir = env["restrictDirection3"] or -1.0;
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth") or 0.0;
               geo = (180.0 - pne + 360.0) % 360.0;

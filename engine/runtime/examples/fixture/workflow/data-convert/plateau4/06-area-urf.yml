@@ -394,15 +394,15 @@ graphs:
         value: |
           ft = attributes["feature_type"].split(":")[1];
           dir = attributes["__package"] + "_" + ft;
-          Url(env("workerArtifactPath")) / dir
+          Url(env["workerArtifactPath"]) / dir
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env("cityGmlPath")).name.remove_suffix(".zip");
+          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
           ft = attributes["feature_type"].split(":")[1];
           stem = city_gml.remove_suffix("_" + ft);
           filename = stem + "_" + ft + "_mvt_lod" + attributes["__lod"] + ".zip";
-          Url(env("workerArtifactPath")) / filename
+          Url(env["workerArtifactPath"]) / filename
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae

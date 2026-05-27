@@ -164,12 +164,12 @@ graphs:
           extent: 65536
           output:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / (attributes["package"] + "_lod0")
+            value: Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod0")
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
-              Url(env("workerArtifactPath")) / (city_gml + "_" + attributes["package"] + "_mvt_lod0.zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_mvt_lod0.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
@@ -186,12 +186,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / (attributes["package"] + "_lod1")
+              Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod1")
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
-              Url(env("workerArtifactPath")) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod1.zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod1.zip")
 
     edges:
       - id: a869fc02-dfdb-4c39-ac49-7329be13c1b9
