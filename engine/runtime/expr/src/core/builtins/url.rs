@@ -107,6 +107,27 @@ impl ImmutableObject for UrlObject {
     }
 }
 
+pub fn builtin_url(args: &[Value]) -> InnerResult<Value> {
+    if args.len() > 1 {
+        return Err(InnerError::new(format!(
+            "Url() expected at most 1 argument, got {}",
+            args.len()
+        )));
+    }
+    let s = match args.first() {
+        None => return Err(InnerError::new("Url() requires a string argument")),
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
+        Some(v) => {
+            return Err(InnerError::new(format!(
+                "Url() expects a string, got {}",
+                v.type_name()
+            )))
+        }
+    };
+    parse_url(&s).map(Value::object).map_err(InnerError::new)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::core::test_utils::{assert_val, run};
@@ -206,25 +227,4 @@ mod tests {
             &Value::Bool(false),
         );
     }
-}
-
-pub fn builtin_url(args: &[Value]) -> InnerResult<Value> {
-    if args.len() > 1 {
-        return Err(InnerError::new(format!(
-            "Url() expected at most 1 argument, got {}",
-            args.len()
-        )));
-    }
-    let s = match args.first() {
-        None => return Err(InnerError::new("Url() requires a string argument")),
-        Some(Value::String(s)) => s.clone(),
-        Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
-        Some(v) => {
-            return Err(InnerError::new(format!(
-                "Url() expects a string, got {}",
-                v.type_name()
-            )))
-        }
-    };
-    parse_url(&s).map(Value::object).map_err(InnerError::new)
 }

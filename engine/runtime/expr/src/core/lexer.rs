@@ -353,7 +353,7 @@ mod tests {
         assert_eq!(tokenize("0B1010"), vec![Token::Int(0b1010)]);
         assert_eq!(tokenize("0o777"), vec![Token::Int(0o777)]);
         assert_eq!(tokenize("0xff"), vec![Token::Int(0xff)]);
-        assert_eq!(tokenize("0XdeadBEEF"), vec![Token::Int(0xdeadBEEF)]);
+        assert_eq!(tokenize("0XdeadBEEF"), vec![Token::Int(0xDEADBEEF)]);
     }
 
     #[test]
