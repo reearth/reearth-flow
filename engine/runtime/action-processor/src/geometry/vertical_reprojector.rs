@@ -36,6 +36,10 @@ impl ProcessorFactory for VerticalReprojectorFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["projection", "3d"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

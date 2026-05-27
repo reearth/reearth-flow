@@ -31,6 +31,7 @@ type Action struct {
 	InputPorts  []string               `json:"inputPorts"`
 	OutputPorts []string               `json:"outputPorts"`
 	Categories  []string               `json:"categories"`
+	Tags        []string               `json:"tags"`
 	Builtin     bool                   `json:"builtin"`
 }
 
@@ -74,6 +75,7 @@ type ActionSummary struct {
 	Description string   `json:"description"`
 	Type        string   `json:"type"`
 	Categories  []string `json:"categories"`
+	Tags        []string `json:"tags"`
 }
 
 type SegregatedActions struct {
@@ -204,12 +206,16 @@ func listActions(c echo.Context) error {
 	var summaries []ActionSummary
 
 	for _, action := range data.Actions {
+		if !baseActions[action.Name] {
+			continue
+		}
 		if matchesSearch(action, query, category, actionType) {
 			summaries = append(summaries, ActionSummary{
 				Name:        action.Name,
 				Description: action.Description,
 				Type:        string(action.Type),
 				Categories:  action.Categories,
+				Tags:        action.Tags,
 			})
 		}
 	}
@@ -249,12 +255,16 @@ func getSegregatedActions(c echo.Context) error {
 	}
 
 	for _, action := range data.Actions {
+		if !baseActions[action.Name] {
+			continue
+		}
 		if matchesSearch(action, query, "", "") {
 			summary := ActionSummary{
 				Name:        action.Name,
 				Description: action.Description,
 				Type:        string(action.Type),
 				Categories:  action.Categories,
+				Tags:        action.Tags,
 			}
 
 			if len(action.Categories) > 0 {
@@ -291,6 +301,7 @@ func matchesSearch(action Action, query, category, actionType string) bool {
 		string(action.Type),
 	}
 	searchFields = append(searchFields, action.Categories...)
+	searchFields = append(searchFields, action.Tags...)
 
 	for _, field := range searchFields {
 		if partialMatch(field, query) {
@@ -360,6 +371,9 @@ func getActionDetails(c echo.Context) error {
 	}
 
 	for _, action := range data.Actions {
+		if !baseActions[action.Name] {
+			continue
+		}
 		if action.Name == id {
 			return c.JSON(http.StatusOK, action)
 		}

@@ -44,6 +44,10 @@ impl ProcessorFactory for ClipperFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["2d"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![CLIPPER_PORT.clone(), CANDIDATE_PORT.clone()]
     }

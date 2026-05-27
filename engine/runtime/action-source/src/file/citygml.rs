@@ -32,7 +32,11 @@ impl SourceFactory for CityGmlReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["citygml", "3d"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

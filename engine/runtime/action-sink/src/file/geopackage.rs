@@ -32,7 +32,11 @@ impl SinkFactory for GeoPackageWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File", "Database"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["geopackage"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

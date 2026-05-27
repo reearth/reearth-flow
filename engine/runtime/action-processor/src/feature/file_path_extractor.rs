@@ -40,6 +40,10 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
         &["Feature"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["file", "path"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

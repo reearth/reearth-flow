@@ -33,7 +33,11 @@ impl SourceFactory for CsvReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["csv"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

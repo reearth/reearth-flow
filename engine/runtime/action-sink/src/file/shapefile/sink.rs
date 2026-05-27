@@ -31,7 +31,11 @@ impl SinkFactory for ShapefileWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["shapefile"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

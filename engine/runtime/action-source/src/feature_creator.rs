@@ -33,7 +33,7 @@ impl SourceFactory for FeatureCreatorFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Input"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

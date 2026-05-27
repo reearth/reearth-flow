@@ -43,6 +43,10 @@ impl ProcessorFactory for FootprintReplacerFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["citygml", "3d"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

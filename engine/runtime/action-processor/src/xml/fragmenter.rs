@@ -37,7 +37,11 @@ impl ProcessorFactory for XmlFragmenterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["XML"]
+        &["Transform"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["xml"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

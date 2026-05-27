@@ -39,7 +39,11 @@ impl ProcessorFactory for FeatureLodFilterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["lod", "citygml"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

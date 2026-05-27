@@ -34,7 +34,11 @@ impl SinkFactory for XmlWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["xml"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
