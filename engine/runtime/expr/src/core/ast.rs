@@ -23,6 +23,11 @@ pub enum BinOp {
     Or,
     In,
     NotIn,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Shl,
+    Shr,
 }
 
 #[derive(Debug, Clone, PartialEq)]

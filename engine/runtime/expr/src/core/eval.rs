@@ -118,6 +118,21 @@ fn resolve_attr(recv: Value, attr: &str) -> InnerResult<Value> {
                 .cloned()
                 .ok_or_else(|| InnerError::new(format!("module has no attribute '{attr}'")));
         }
+        Value::Int(n) => {
+            let n = *n;
+            return match attr {
+                "bit_length" => Ok(Value::Fn(NativeFn::new(move |args| {
+                    unpack_args!(args =>);
+                    if n < 0 {
+                        return Err(InnerError::new(
+                            "bit_length() not supported for negative integers",
+                        ));
+                    }
+                    Ok(Value::Int((i64::BITS - n.leading_zeros()) as i64))
+                }))),
+                _ => Err(InnerError::new(format!("int has no attribute '{attr}'"))),
+            };
+        }
         Value::String(_) => str_methods::resolve_method(attr)?,
         Value::Array(_) => array_methods::resolve_method(attr)?,
         Value::Map(_) => map_methods::resolve_method(attr)?,
@@ -345,6 +360,55 @@ fn resolve_op(op: &BinOp) -> NativeFn {
             let (left, right) = binary_args(args)?;
             contains_inner(left, right).map(|b| Value::Bool(!b))
         }),
+        BinOp::BitAnd => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__and__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            Ok(Value::Int(a & b))
+        }),
+        BinOp::BitOr => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__or__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            Ok(Value::Int(a | b))
+        }),
+        BinOp::BitXor => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__xor__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            Ok(Value::Int(a ^ b))
+        }),
+        BinOp::Shl => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__lshift__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            if b >= 63 {
+                return Err(InnerError::new(format!("left shift amount {b} out of range [0, 62]")));
+            }
+            let result = a.checked_shl(b as u32)
+                .filter(|&v| v >= 0)
+                .ok_or_else(|| InnerError::new("left shift result overflows 63-bit integer"))?;
+            Ok(Value::Int(result))
+        }),
+        BinOp::Shr => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__rshift__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            if b >= 63 {
+                return Err(InnerError::new(format!("right shift amount {b} out of range [0, 62]")));
+            }
+            Ok(Value::Int(a >> b))
+        }),
         BinOp::And | BinOp::Or => {
             unreachable!("and/or are short-circuited in eval_inner before resolve_op is called")
         }
@@ -415,6 +479,18 @@ fn binary_args(args: &[Value]) -> InnerResult<(Value, Value)> {
 fn unary_arg(args: &[Value]) -> InnerResult<&Value> {
     args.first()
         .ok_or_else(|| InnerError::new("unary operator requires one operand"))
+}
+
+fn bitwise_args(a: &Value, b: &Value) -> InnerResult<(i64, i64)> {
+    let to_bits = |v: &Value| match v {
+        Value::Int(n) if *n >= 0 => Ok(*n),
+        Value::Int(_) => Err(InnerError::new("bitwise operands must be non-negative integers")),
+        other => Err(InnerError::new(format!(
+            "bitwise operands must be non-negative integers, got {}",
+            other.type_name()
+        ))),
+    };
+    Ok((to_bits(a)?, to_bits(b)?))
 }
 
 // Recursion entrypoint for AST expression evaluation.
@@ -1752,5 +1828,44 @@ mod tests {
             &[("m", m)],
             Value::from(30i64),
         );
+    }
+
+    #[test]
+    fn test_bitwise() {
+        assert_eval("0b1010 & 0b1100", &[], Value::from(0b1000i64));
+        assert_eval("0b1010 | 0b1100", &[], Value::from(0b1110i64));
+        assert_eval("0b1010 ^ 0b1100", &[], Value::from(0b0110i64));
+        assert_eval("1 << 3", &[], Value::from(8i64));
+        assert_eval("16 >> 2", &[], Value::from(4i64));
+        assert_eval("1 << 62", &[], Value::from(1i64 << 62));
+        // chaining and precedence
+        assert_eval("1 | 2 & 3", &[], Value::from(3i64)); // & binds tighter: 1 | (2 & 3) = 1 | 2 = 3
+        assert_eval("5 ^ 3 & 6", &[], Value::from(7i64)); // 5 ^ (3 & 6) = 5 ^ 2 = 7
+        // compound assignment
+        assert_eval("x = 0b1111; x &= 0b1010; x", &[], Value::from(0b1010i64));
+        assert_eval("x = 0b1010; x |= 0b0101; x", &[], Value::from(0b1111i64));
+        assert_eval("x = 0b1111; x ^= 0b1010; x", &[], Value::from(0b0101i64));
+        assert_eval("x = 1; x <<= 4; x", &[], Value::from(16i64));
+        assert_eval("x = 32; x >>= 2; x", &[], Value::from(8i64));
+        // errors: negative operand
+        assert!(try_run("-1 & 1", &[]).is_err());
+        assert!(try_run("1 | -1", &[]).is_err());
+        // errors: non-integer operand
+        assert!(try_run("1.0 & 1", &[]).is_err());
+        // errors: shift out of range
+        assert!(try_run("1 << 63", &[]).is_err());
+        assert!(try_run("1 >> 63", &[]).is_err());
+        assert!(try_run("1 << -1", &[]).is_err());
+        // errors: left shift overflow
+        assert!(try_run("4611686018427387904 << 1", &[]).is_err()); // 2^62 << 1 overflows
+    }
+
+    #[test]
+    fn test_bit_length() {
+        assert_eval("(0).bit_length()", &[], Value::from(0i64));
+        assert_eval("(1).bit_length()", &[], Value::from(1i64));
+        assert_eval("(0b1010).bit_length()", &[], Value::from(4i64));
+        assert!(try_run("(-1).bit_length()", &[]).is_err());
+        assert!(try_run("(1).bit_length(99)", &[]).is_err());
     }
 }

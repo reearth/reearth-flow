@@ -32,6 +32,9 @@ pub enum Token {
     Float(f64),
 
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
+    #[regex(r"0[bB][01]+", |lex| i64::from_str_radix(&lex.slice()[2..], 2).ok())]
+    #[regex(r"0[oO][0-7]+", |lex| i64::from_str_radix(&lex.slice()[2..], 8).ok())]
+    #[regex(r"0[xX][0-9a-fA-F]+", |lex| i64::from_str_radix(&lex.slice()[2..], 16).ok())]
     Int(i64),
 
     #[regex(r#""([^"\\]|\\.)*""#, lex_string)]
@@ -123,6 +126,28 @@ pub enum Token {
     // assignment (single `=`; must come after `==` in logos priority — longer wins)
     #[token("=")]
     Assign,
+
+    // bitwise
+    #[token("&")]
+    Amp,
+    #[token("|")]
+    Pipe,
+    #[token("^")]
+    Caret,
+    #[token("<<=")]
+    LShiftAssign,
+    #[token(">>=")]
+    RShiftAssign,
+    #[token("&=")]
+    AmpAssign,
+    #[token("|=")]
+    PipeAssign,
+    #[token("^=")]
+    CaretAssign,
+    #[token("<<")]
+    LShift,
+    #[token(">>")]
+    RShift,
 
     // comparison
     #[token("==")]
@@ -319,6 +344,15 @@ mod tests {
             tokenize("elsewhere"),
             vec![Token::Ident("elsewhere".into())]
         );
+    }
+
+    #[test]
+    fn test_integer_literals() {
+        assert_eq!(tokenize("0b1010"), vec![Token::Int(0b1010)]);
+        assert_eq!(tokenize("0B1010"), vec![Token::Int(0b1010)]);
+        assert_eq!(tokenize("0o777"), vec![Token::Int(0o777)]);
+        assert_eq!(tokenize("0xff"), vec![Token::Int(0xff)]);
+        assert_eq!(tokenize("0XdeadBEEF"), vec![Token::Int(0xdeadBEEF)]);
     }
 
     #[test]
