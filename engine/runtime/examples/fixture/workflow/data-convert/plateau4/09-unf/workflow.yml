@@ -229,7 +229,7 @@ graphs:
             type: flowExpr
             value: |
               ft = attributes["feature_type"].split(":")[-1];
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + attributes["package"]);
+              city_gml = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
               Url(env("workerArtifactPath")) / (city_gml + "_" + attributes["package"] + "_" + ft + "_3dtiles_lod" + attributes["lod"] + ".zip")
 
       # DmGeometricAttribute processing
@@ -319,7 +319,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = Url(env("cityGmlPath")).stem().remove_suffix("_" + attributes["__package"]);
+              stem = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
               ft = attributes["feature_type"].split(":")[1];
               Url(env("workerArtifactPath")) / (stem + "_" + attributes["__package"] + "_" + ft + "_dm_geometric_attributes.zip")
           skipUnexposedAttributes: true

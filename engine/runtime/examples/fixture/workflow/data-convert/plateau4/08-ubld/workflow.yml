@@ -149,7 +149,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + attributes["package"]);
+              city_gml = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
               Url(env("workerArtifactPath")) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod" + attributes["lod"] + ".zip")
 
     edges:

@@ -1033,20 +1033,24 @@ graphs:
       operations:
       - attribute: L01Errors
         method: create
-        value: |
-          if env.get("__value").status == "NOT_WELL_FORMED" {
-            env.get("__value").xmlError.len
-          } else {
-            0
-          }
+        value:
+          type: flowExpr
+          value: |
+            if attributes["status"] == "NOT_WELL_FORMED" {
+              attributes["xmlError"].len()
+            } else {
+              0
+            }
       - attribute: L02Errors
         method: create
-        value: |
-          if env.get("__value").status == "INVALID" {
-            env.get("__value").xmlError.len
-          } else {
-            0
-          }
+        value:
+          type: flowExpr
+          value: |
+            if attributes["status"] == "INVALID" {
+              attributes["xmlError"].len()
+            } else {
+              0
+            }
   - id: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
     name: AttributeMapperNotWellFormedXml
     type: action
@@ -1543,15 +1547,16 @@ graphs:
       operations:
       - attribute: totalErrorCount
         method: create
-        value: |
-          let total = 0;
-          for key in env.get("__value").keys() {
-            let val = env.get("__value")[key];
-            if val.type_of() == "i64" {
-              total += val;
+        value:
+          type: flowExpr
+          value: |
+            total = 0;
+            for key in attributes {
+              if type(attributes[key]) == "int" {
+                total += attributes[key];
+              }
             }
-          }
-          total
+            total
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action

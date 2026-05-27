@@ -496,7 +496,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = Url(env("cityGmlPath")).stem().remove_suffix("_frn");
+          stem = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_frn");
           lod = attributes["lod"];
           Url(env("workerArtifactPath")) / (stem + "_frn_3dtiles_lod" + lod + ".zip")
   - id: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
@@ -620,7 +620,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = Url(env("cityGmlPath")).stem().remove_suffix("_frn");
+          stem = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_frn");
           Url(env("workerArtifactPath")) / (stem + "_frn_dm_geometric_attributes.zip")
       colonToUnderscore: true
   - id: bd4ff879-8448-434d-9c47-ef85722b40cb
@@ -729,7 +729,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = Url(env("cityGmlPath")).stem().remove_suffix("_veg");
+          stem = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_veg");
           lod = attributes["lod"];
           Url(env("workerArtifactPath")) / (stem + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip")
   - id: 591050d4-8284-4708-a3e3-0bcb99bbd83c
@@ -871,7 +871,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = Url(env("cityGmlPath")).stem().remove_suffix("_veg");
+          stem = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_veg");
           Url(env("workerArtifactPath")) / (stem + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip")
       colonToUnderscore: true
   - id: 2233fddd-fdc3-44a1-93e2-86805de13a3a
@@ -951,7 +951,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = Url(env("cityGmlPath")).stem().remove_suffix("_veg");
+          stem = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_veg");
           lod = attributes["lod"];
           Url(env("workerArtifactPath")) / (stem + "_veg_PlantCover_3dtiles_lod" + lod + ".zip")
   - id: aa9b681b-0cc1-4445-bff6-be41bb9c764f
@@ -1085,7 +1085,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = Url(env("cityGmlPath")).stem().remove_suffix("_veg");
+          stem = Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_veg");
           Url(env("workerArtifactPath")) / (stem + "_veg_PlantCover_dm_geometric_attributes.zip")
       colonToUnderscore: true
   edges:

@@ -415,7 +415,7 @@ graphs:
         value: Url(env("workerArtifactPath")) / ("gen_" + attributes["__gml_name_code"] + "_lod" + attributes["__lod"])
       compressOutput:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / (Url(env("cityGmlPath")).stem().remove_suffix("_gen") + "_gen_" + attributes["__gml_name_code"] + "_mvt_lod" + attributes["__lod"] + ".zip")
+        value: Url(env("workerArtifactPath")) / (Url(env("cityGmlPath")).name.remove_suffix(".zip").remove_suffix("_gen") + "_gen_" + attributes["__gml_name_code"] + "_mvt_lod" + attributes["__lod"] + ".zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:
