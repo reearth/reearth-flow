@@ -121,11 +121,11 @@ graphs:
                   for part in parts {
                     if part == "l1" or part.starts_with("l1.") {
                       return "l1"
-                    };
+                    }
                     if part == "l2" or part.starts_with("l2.") {
                       return "l2"
                     }
-                  };
+                  }
                   return null
 
       # Clean up unnecessary attributes
