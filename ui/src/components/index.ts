@@ -37,3 +37,4 @@ export * from "./Popover";
 export * from "./Switch";
 export * from "./errors";
 export * from "./workflowVariables";
+export * from "./Slider";

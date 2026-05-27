@@ -71,7 +71,7 @@ const EditorComponent = () => {
           zoomOut();
           break;
         case "0":
-          fitView();
+          fitView({ duration: 400, padding: 0.5 });
           break;
         case "f":
           if (hasModifier) handleFullscreenToggle();

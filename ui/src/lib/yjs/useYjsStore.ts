@@ -65,6 +65,7 @@ export default ({
     useYHistory({ undoManager, undoTrackerActionWrapper });
 
   const { handleYLayoutChange } = useYLayout({
+    currentWorkflowId,
     yWorkflows,
     rawWorkflows,
     undoTrackerActionWrapper,
