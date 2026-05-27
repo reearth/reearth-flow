@@ -64,7 +64,7 @@ export default ({
   const { canRedo, canUndo, handleYWorkflowRedo, handleYWorkflowUndo } =
     useYHistory({ undoManager, undoTrackerActionWrapper });
 
-  const { handleYLayoutChange, handleYSpacingChange } = useYLayout({
+  const { handleYLayoutChange } = useYLayout({
     yWorkflows,
     rawWorkflows,
     undoTrackerActionWrapper,
@@ -87,6 +87,5 @@ export default ({
     handleYWorkflowRedo,
     handleYWorkflowRename,
     handleYLayoutChange,
-    handleYSpacingChange,
   };
 };

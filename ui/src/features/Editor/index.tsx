@@ -82,7 +82,6 @@ export default function Editor({
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
     handleLayoutChange,
-    handleSpacingChange,
     handleCopy,
     handleCut,
     handlePaste,
@@ -196,7 +195,6 @@ export default function Editor({
             onSpotlightUserSelect={handleSpotlightUserSelect}
             onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}
-            onSpacingChange={handleSpacingChange}
             onDebugRunJoin={loadExternalDebugJob}
             activeUsersDebugRuns={activeUsersDebugRuns}
             showSearchPanel={showSearchPanel}

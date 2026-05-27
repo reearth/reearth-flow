@@ -16,8 +16,6 @@ export const autoLayout = (
   direction: Direction = "Horizontal",
   nodes: Node[],
   edges: Edge[],
-  xSpacing: number = DEFAULT_LAYOUT_X_SPACING,
-  ySpacing: number = DEFAULT_LAYOUT_Y_SPACING,
 ) => {
   if (algorithm === "dagre") {
     const isHorizontal = direction === "Horizontal";
@@ -25,8 +23,12 @@ export const autoLayout = (
     // In TB layout: ranksep = gap between rows (y), nodesep = gap between columns (x)
     dagreGraph.setGraph({
       rankdir: isHorizontal ? "LR" : "TB",
-      ranksep: isHorizontal ? xSpacing : ySpacing,
-      nodesep: isHorizontal ? ySpacing : xSpacing,
+      ranksep: isHorizontal
+        ? DEFAULT_LAYOUT_X_SPACING
+        : DEFAULT_LAYOUT_Y_SPACING,
+      nodesep: isHorizontal
+        ? DEFAULT_LAYOUT_Y_SPACING
+        : DEFAULT_LAYOUT_X_SPACING,
     });
 
     nodes.forEach((node) => {

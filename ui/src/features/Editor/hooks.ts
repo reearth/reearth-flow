@@ -86,7 +86,6 @@ export default ({
     handleYWorkflowRedo,
     handleYWorkflowRename,
     handleYLayoutChange,
-    handleYSpacingChange,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
@@ -220,24 +219,12 @@ export default ({
   });
 
   const handleLayoutChange = useCallback(
-    (
-      algorithm: Algorithm,
-      direction: Direction,
-      xSpacing: number,
-      ySpacing: number,
-    ) => {
-      handleYLayoutChange(algorithm, direction, xSpacing, ySpacing);
+    (algorithm: Algorithm, direction: Direction) => {
+      handleYLayoutChange(algorithm, direction);
       // Defer fitView so React can flush the Yjs-driven node position updates first
       setTimeout(() => fitView({ duration: 300 }), 0);
     },
     [fitView, handleYLayoutChange],
-  );
-
-  const handleSpacingChange = useCallback(
-    (xScale: number, yScale: number) => {
-      handleYSpacingChange(xScale, yScale);
-    },
-    [handleYSpacingChange],
   );
 
   const {
@@ -506,7 +493,6 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleLayoutChange,
-    handleSpacingChange,
     handleDeleteDialogClose,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
