@@ -145,7 +145,7 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
                         key.type_name()
                     )));
                 };
-                self.get_value(&name)
+                self.get_value(name)
                     .ok_or_else(|| InnerError::new(format!("attribute '{name}' not found")))
             }
             "get" => {
