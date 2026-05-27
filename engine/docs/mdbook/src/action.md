@@ -1347,7 +1347,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Optional path for compressed archive output",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -1381,7 +1381,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Directory path where the 3D tiles will be written",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -1403,8 +1403,27 @@ Export Features as Cesium 3D Tiles for Web Visualization
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -3930,6 +3949,76 @@ Extracts file system properties (type, size, timestamps) from files
 * rejected
 ### Category
 * File
+
+## FlowExprTest
+### Type
+* processor
+### Description
+Experimental testbed for the Flow expression engine
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FlowExprTestParam",
+  "type": "object",
+  "required": [
+    "mappings"
+  ],
+  "properties": {
+    "mappings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Mapping"
+      }
+    }
+  },
+  "definitions": {
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
+    },
+    "Mapping": {
+      "type": "object",
+      "required": [
+        "attribute",
+        "value"
+      ],
+      "properties": {
+        "attribute": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/Code"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
 
 ## FootprintReplacer
 ### Type
@@ -6773,7 +6862,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Optional expression to determine whether to compress the output tiles",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -6795,7 +6884,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Name of the layer within the MVT tiles",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -6818,7 +6907,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Output directory path or expression for the generated MVT tiles",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -6840,8 +6929,27 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }

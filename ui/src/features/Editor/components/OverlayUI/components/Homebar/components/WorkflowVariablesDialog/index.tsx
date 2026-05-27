@@ -1,6 +1,6 @@
 import {
   ChalkboardTeacherIcon,
-  PencilSimpleIcon,
+  PencilLineIcon,
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
@@ -25,7 +25,7 @@ import {
 import { Button } from "@flow/components/buttons/BaseButton";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, VarType } from "@flow/types";
+import { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
 import useWorkflowVariablesDialog from "./hooks";
@@ -34,6 +34,7 @@ import { WorkflowVariablesTable } from "./WorkflowVariablesTable";
 
 type Props = {
   currentWorkflowVariables?: AnyWorkflowVariable[];
+  users: Record<string, AwarenessUser>;
   onClose: () => void;
   onAdd: (workflowVariable: AnyWorkflowVariable) => Promise<void>;
   onChange: (workflowVariable: AnyWorkflowVariable) => Promise<void>;
@@ -86,6 +87,7 @@ const allVarTypes: VarType[] = [
 
 const WorkflowVariablesDialog: React.FC<Props> = ({
   currentWorkflowVariables,
+  users,
   projectId,
   onClose,
   onAdd,
@@ -95,16 +97,16 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
   onBatchUpdate,
 }) => {
   const t = useT();
-  const { isLocked } = useEditorContext();
+  const { isLocked, workflowVarAwareness } = useEditorContext();
 
   const {
-    localWorkflowVariables,
-    pendingChanges,
+    workflowVariables,
+    hasUnsavedChanges,
     isSubmitting,
     editingVariable,
     getUserFacingName,
     handleLocalAdd,
-    handleLocalUpdate,
+    handleUpdate,
     handleDeleteSingle,
     handleReorder,
     handleSubmit,
@@ -113,6 +115,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     handleCloseEdit,
   } = useWorkflowVariablesDialog({
     currentWorkflowVariables,
+    users,
     projectId,
     onClose,
     onAdd,
@@ -122,18 +125,57 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     onBatchUpdate,
   });
 
+  // Users who have the dialog open (shown as avatars in the header)
+  const dialogUsers = useMemo(
+    () =>
+      Object.values(users).filter(
+        (u) => u.openWorkflowVariablesDialog === true,
+      ),
+    [users],
+  );
+
+  // Map of variableId → users focused on that row
+  const variableFocusMap = useMemo(() => {
+    const map: Record<string, AwarenessUser[]> = {};
+    Object.values(users).forEach((user) => {
+      if (user.openWorkflowVariablesDialog && user.focusedVariableId) {
+        const id = user.focusedVariableId;
+        if (!map[id]) map[id] = [];
+        map[id].push(user);
+      }
+    });
+    return map;
+  }, [users]);
+
+  // Map of variableId → users currently in VariableEditDialog for that variable
+  const variableEditMap = useMemo(() => {
+    const map: Record<string, AwarenessUser[]> = {};
+    Object.values(users).forEach((user) => {
+      if (user.openWorkflowVariablesDialog && user.editingVariableId) {
+        const id = user.editingVariableId;
+        if (!map[id]) map[id] = [];
+        map[id].push(user);
+      }
+    });
+    return map;
+  }, [users]);
+
   const columns: ColumnDef<AnyWorkflowVariable>[] = useMemo(
     () => [
       {
         accessorKey: "name",
         header: t("Name"),
         cell: ({ row }) => {
-          const variable = localWorkflowVariables[row.index];
+          const variable = row.original;
           return (
             <NameInput
               variable={variable}
               disabled={isLocked}
-              onUpdate={handleLocalUpdate}
+              onUpdate={handleUpdate}
+              onFocus={() =>
+                workflowVarAwareness?.onFieldFocus(variable.id, "name")
+              }
+              onBlur={() => workflowVarAwareness?.onFieldFocus(null, null)}
               placeholder={t("Enter name")}
             />
           );
@@ -147,8 +189,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         accessorKey: "defaultValue",
         header: t("Default Value"),
         cell: ({ row }) => {
-          const variable = localWorkflowVariables[row.index];
-          return <DefaultValueDisplay variable={variable} />;
+          return <DefaultValueDisplay variable={row.original} />;
         },
       },
       {
@@ -160,9 +201,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
             <Switch
               checked={isChecked}
               onCheckedChange={() => {
-                const projectVar = { ...localWorkflowVariables[row.index] };
-                projectVar.required = !isChecked;
-                handleLocalUpdate(projectVar);
+                handleUpdate({ ...row.original, required: !isChecked });
               }}
               disabled={isLocked}
             />
@@ -173,14 +212,12 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         accessorKey: "public",
         header: t("Public"),
         cell: ({ row }) => {
-          const variable = localWorkflowVariables[row.index];
+          const variable = row.original;
           return (
             <Switch
               checked={variable.public}
               onCheckedChange={() => {
-                const projectVar = { ...variable };
-                projectVar.public = !variable.public;
-                handleLocalUpdate(projectVar);
+                handleUpdate({ ...variable, public: !variable.public });
               }}
               disabled={isLocked}
             />
@@ -191,11 +228,11 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
         id: "actions",
         header: t("Actions"),
         cell: ({ row }) => {
-          const variable = localWorkflowVariables[row.index];
+          const variable = row.original;
           return (
             <div className="flex items-center gap-1">
               <IconButton
-                icon={<PencilSimpleIcon size={18} />}
+                icon={<PencilLineIcon size={18} />}
                 size="default"
                 variant="ghost"
                 onClick={(e) => {
@@ -225,11 +262,11 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
       },
     ],
     [
-      localWorkflowVariables,
       isLocked,
-      handleLocalUpdate,
+      handleUpdate,
       handleEditVariable,
       handleDeleteSingle,
+      workflowVarAwareness,
       t,
     ],
   );
@@ -250,6 +287,33 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                   <div className="flex items-center gap-2">
                     <ChalkboardTeacherIcon />
                     {t("Workflow Variables")}
+                    <div className="flex items-center -space-x-4">
+                      {dialogUsers.length > 0 && (
+                        <>
+                          {dialogUsers.slice(0, 2).map((user) => (
+                            <div key={user.clientId}>
+                              <div
+                                className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                                style={{
+                                  backgroundColor: user.color || undefined,
+                                }}>
+                                <span className="text-xs font-medium text-white select-none">
+                                  {user.userName.charAt(0).toUpperCase()}
+                                  {user.userName.charAt(1)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          {dialogUsers.length > 2 && (
+                            <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
+                              <span className="text-[10px] font-medium text-white">
+                                + {dialogUsers.length - 2}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -284,9 +348,11 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               <DialogContentSection className="flex min-h-0 flex-3 flex-col">
                 <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
                   <WorkflowVariablesTable
-                    workflowVariables={localWorkflowVariables}
+                    workflowVariables={workflowVariables}
                     columns={columns}
                     onReorder={handleReorder}
+                    variableFocusMap={variableFocusMap}
+                    variableEditMap={variableEditMap}
                   />
                 </DialogContentSection>
               </DialogContentSection>
@@ -300,7 +366,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || pendingChanges.length === 0}>
+                disabled={isSubmitting || !hasUnsavedChanges}>
                 {isSubmitting ? t("Saving...") : t("Save Changes")}
               </Button>
             </DialogFooter>
@@ -310,8 +376,18 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
       <VariableEditDialog
         isOpen={!!editingVariable}
         variable={editingVariable}
+        editingUsers={
+          editingVariable ? (variableEditMap[editingVariable.id] ?? []) : []
+        }
         onClose={handleCloseEdit}
-        onUpdate={handleLocalUpdate}
+        onUpdate={handleUpdate}
+        onLiveUpdate={handleUpdate}
+        onFieldFocus={(field) =>
+          workflowVarAwareness?.onFieldFocus(
+            field ? (editingVariable?.id ?? null) : null,
+            field,
+          )
+        }
       />
     </>
   );

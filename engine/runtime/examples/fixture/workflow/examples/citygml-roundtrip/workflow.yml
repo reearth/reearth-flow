@@ -103,8 +103,9 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "citygml-roundtrip-3dtiles")
+          output:
+            type: flowExpr
+            value: 'Url(env("workerArtifactPath")) / "citygml-roundtrip-3dtiles"'
 
       - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
         name: VerticalReprojectorOriginal
@@ -121,8 +122,9 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "citygml-original-3dtiles")
+          output:
+            type: flowExpr
+            value: 'Url(env("workerArtifactPath")) / "citygml-original-3dtiles"'
 
     edges:
       - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e

@@ -96,8 +96,13 @@ export default function Editor({
     handleConnectStart,
     handleConnectEnd,
     handleParamFieldFocus,
+    handleWorkflowVarDialogOpen,
+    handleWorkflowVarDialogClose,
+    handleWorkflowVarFieldFocus,
+    handleWorkflowVarEditStart,
+    handleUserFocusedElement,
     awarenessSelectionsMap,
-    setShowSearchPanel,
+    handleShowSearchPanel,
     selectedNodeIds,
   } = useHooks({
     yDoc,
@@ -115,6 +120,13 @@ export default function Editor({
       currentYWorkflow,
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
+      yDoc,
+      workflowVarAwareness: {
+        onDialogOpen: handleWorkflowVarDialogOpen,
+        onDialogClose: handleWorkflowVarDialogClose,
+        onFieldFocus: handleWorkflowVarFieldFocus,
+        onEditStart: handleWorkflowVarEditStart,
+      },
     }),
     [
       isLocked,
@@ -123,6 +135,11 @@ export default function Editor({
       currentYWorkflow,
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
+      yDoc,
+      handleWorkflowVarDialogOpen,
+      handleWorkflowVarDialogClose,
+      handleWorkflowVarFieldFocus,
+      handleWorkflowVarEditStart,
     ],
   );
 
@@ -181,7 +198,8 @@ export default function Editor({
             onDebugRunJoin={loadExternalDebugJob}
             activeUsersDebugRuns={activeUsersDebugRuns}
             showSearchPanel={showSearchPanel}
-            onShowSearchPanel={setShowSearchPanel}>
+            onShowSearchPanel={handleShowSearchPanel}
+            onUserFocusedElement={handleUserFocusedElement}>
             <Canvas
               nodes={nodes}
               edges={edges}

@@ -37,6 +37,8 @@ export type PossibleKeys = GeneralKeys | EditorKeys | CanvasKeys;
 type PossibleActions =
   | "zoomIn"
   | "zoomOut"
+  | "compressNodes"
+  | "spreadNodes"
   | "fitView"
   | "copy"
   | "cut"
@@ -107,5 +109,7 @@ export const CanvasKeyBindings: Partial<
   disableNode: { key: "e", commandKey: true },
   zoomIn: { key: "+" },
   zoomOut: { key: "-" },
+  compressNodes: { key: "-", shiftKey: true },
+  spreadNodes: { key: "+", shiftKey: true },
   fitView: { key: "0", commandKey: true },
 };

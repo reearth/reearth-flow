@@ -1,16 +1,26 @@
 import { Input } from "@flow/components";
-import type { DateTimeConfig, WorkflowVariable } from "@flow/types";
+import type {
+  AwarenessUser,
+  DateTimeConfig,
+  WorkflowVariable,
+} from "@flow/types";
 import { formatDateOnly } from "@flow/utils";
+
+import { paramsAwarenessStyles } from "../SchemaForm/utils/awarenessTemplateStyles";
 
 type Props = {
   id?: string;
   variable: Pick<WorkflowVariable, "defaultValue" | "config">;
+  fieldFocusMap?: Record<string, AwarenessUser[]>;
   onDefaultValueChange: (newValue: string | null) => void;
+  onFieldFocus?: (field: string | null) => void;
 };
 
 export const DateTimeDefaultValueInput: React.FC<Props> = ({
   id = "default-datetime",
   variable,
+  fieldFocusMap,
+  onFieldFocus,
   onDefaultValueChange,
 }) => {
   const config = (variable.config as DateTimeConfig) || {};
@@ -102,7 +112,12 @@ export const DateTimeDefaultValueInput: React.FC<Props> = ({
       id={id}
       type={allowTime ? "datetime-local" : "date"}
       value={formattedValue}
-      onFocus={(e) => e.stopPropagation()}
+      style={paramsAwarenessStyles(fieldFocusMap?.["defaultValue"])}
+      onBlur={() => onFieldFocus?.(null)}
+      onFocus={(e) => {
+        e.stopPropagation();
+        onFieldFocus?.("defaultValue");
+      }}
       onChange={(e) => handleDefaultValueChange(e.target.value)}
       min={
         allowTime

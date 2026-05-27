@@ -29,6 +29,7 @@ type Props = {
   onSpotlightUserDeselect: () => void;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
+  onUserFocusedElement?: (isOpen: boolean) => void;
 };
 
 const Homebar: React.FC<Props> = ({
@@ -42,6 +43,7 @@ const Homebar: React.FC<Props> = ({
   onSpotlightUserDeselect,
   onWorkflowChange,
   onWorkflowClose,
+  onUserFocusedElement,
 }) => {
   const t = useT();
 
@@ -56,7 +58,9 @@ const Homebar: React.FC<Props> = ({
     handleWorkflowVariablesBatchDelete,
     handleDialogOpen,
     handleDialogClose,
-  } = useHooks();
+  } = useHooks({
+    onUserFocusedElement,
+  });
 
   return (
     <div
@@ -107,6 +111,7 @@ const Homebar: React.FC<Props> = ({
         <WorkflowVariablesDialog
           currentWorkflowVariables={currentWorkflowVariables}
           projectId={currentProject?.id}
+          users={users}
           onClose={handleDialogClose}
           onAdd={handleWorkflowVariableAdd}
           onChange={handleWorkflowVariableChange}

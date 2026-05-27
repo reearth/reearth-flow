@@ -83,6 +83,7 @@ type (
 		Worker_TaskCount                       string `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 		Worker_ThreadPoolSize                  string `envconfig:"WORKER_THREAD_POOL_SIZE" default:"30" pp:",omitempty"`
 		Worker_RustLog                         string `envconfig:"WORKER_RUST_LOG" default:"info" pp:",omitempty"`
+		Worker_DebugServiceURL                 string `envconfig:"WORKER_DEBUG_SERVICE_URL" pp:",omitempty"`
 
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`

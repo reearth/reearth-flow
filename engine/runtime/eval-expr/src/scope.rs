@@ -65,10 +65,6 @@ impl Scope {
         }
     }
 
-    pub fn output(&self, vars: &Vars) {
-        self.engine.append(vars);
-    }
-
     pub fn eval<T: rhai::Variant + Clone>(&self, expr: &str) -> crate::Result<T> {
         match self.engine.eval_scope::<T>(expr, self) {
             Ok(ret) => Ok(ret),

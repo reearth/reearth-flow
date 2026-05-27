@@ -3,7 +3,11 @@ import { useCallback, useState } from "react";
 
 import type { ActionNodeType } from "@flow/types";
 
-export default () => {
+export default ({
+  onUserFocusedElement,
+}: {
+  onUserFocusedElement?: (isOpen: boolean) => void;
+}) => {
   const [nodePickerOpen, setNodePickerOpen] = useState<
     { position: XYPosition; nodeType: ActionNodeType } | undefined
   >(undefined);
@@ -21,14 +25,16 @@ export default () => {
       if (openViaShortcut) {
         setOpenNodePickerViaShortcut(true);
       }
+      onUserFocusedElement?.(true);
     },
-    [],
+    [onUserFocusedElement],
   );
 
   const handleNodePickerClose = useCallback(() => {
     setNodePickerOpen(undefined);
     setOpenNodePickerViaShortcut(false);
-  }, []);
+    onUserFocusedElement?.(false);
+  }, [onUserFocusedElement]);
 
   return {
     nodePickerOpen,

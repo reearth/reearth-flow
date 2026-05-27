@@ -6,4 +6,5 @@ export type DialogOptions =
   | "debugStop"
   | "workflowVariables"
   | "collaboration"
+  | "layout"
   | undefined;

@@ -80,7 +80,7 @@ const AssetsManager: React.FC = () => {
           disabled={isCreatingAsset}
           onClick={handleAssetUploadClick}>
           <FileArrowUpIcon weight="thin" />
-          <p className="text-xs dark:font-light">{t("Upload")}</p>
+          <p className="text-xs">{t("Upload")}</p>
         </Button>
       </div>
       <div className="mt-4 flex min-h-0 w-full flex-1 flex-col gap-4">
@@ -109,18 +109,18 @@ const AssetsManager: React.FC = () => {
             <IconButton
               size="icon"
               variant="outline"
-              className={layoutView === "list" ? "bg-accent" : ""}
-              tooltipText={t("List Layout")}
-              onClick={handleListView}
-              icon={<ListIcon size={"18px"} />}
-            />
-            <IconButton
-              size="icon"
-              variant="outline"
               className={layoutView === "grid" ? "bg-accent" : ""}
               tooltipText={t("Grid Layout")}
               onClick={handleGridView}
               icon={<SquaresFourIcon size={"18px"} />}
+            />
+            <IconButton
+              size="icon"
+              variant="outline"
+              className={layoutView === "list" ? "bg-accent" : ""}
+              tooltipText={t("List Layout")}
+              onClick={handleListView}
+              icon={<ListIcon size={"18px"} />}
             />
           </div>
         </div>

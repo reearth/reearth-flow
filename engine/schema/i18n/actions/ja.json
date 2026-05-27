@@ -550,6 +550,12 @@
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1301,6 +1307,26 @@
         },
         "filePathAttribute": {
           "description": "プロパティ解析対象のファイルパスを含む属性名"
+        }
+      }
+    },
+    {
+      "name": "FlowExprTest",
+      "description": "Flow式エンジンの実験的テストベッド",
+      "parameterI18n": {
+        "": {
+          "title": "FlowExprTestParam パラメータ"
+        },
+        "mappings": {}
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
+        "Mapping": {
+          "attribute": {},
+          "value": {}
         }
       }
     },
@@ -2154,6 +2180,12 @@
         "skipUnexposedAttributes": {
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

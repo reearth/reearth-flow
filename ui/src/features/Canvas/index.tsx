@@ -13,6 +13,7 @@ import { MouseEvent, memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { DEFAULT_GRID_SIZE } from "@flow/global-constants";
 import {
   isValidConnection,
   CustomConnectionLine,
@@ -29,9 +30,7 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 
-const gridSize = 16.5;
-
-const snapGrid: SnapGrid = [gridSize, gridSize];
+const snapGrid: SnapGrid = [DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE];
 
 type Props = {
   nodes: Node[];
@@ -185,7 +184,7 @@ const Canvas: React.FC<Props> = ({
       <Background
         className="bg-background dark:bg-background"
         variant={BackgroundVariant["Dots"]}
-        gap={gridSize}
+        gap={DEFAULT_GRID_SIZE}
         color="rgba(63, 63, 70, 1)"
       />
       {users && currentWorkflowId && (

@@ -25,12 +25,14 @@ graphs:
         action: MVTWriter
         with:
           schemaKey: __citygml_feature_type
-          layerName: |
-            "luse"
+          layerName:
+            type: string
+            value: luse
           minZoom: 8
           maxZoom: 16
-          output: |
-            file::join_path(env.get("currentPath"), "luse")
+          output:
+            type: flowExpr
+            value: Url(env("currentPath")) / "luse"
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

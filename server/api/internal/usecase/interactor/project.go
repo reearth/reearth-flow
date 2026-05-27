@@ -27,6 +27,7 @@ type Project struct {
 	transaction       usecasex.Transaction
 	file              gateway.File
 	batch             gateway.Batch
+	cloudRunWorker    gateway.CloudRunWorker
 	websocket         interfaces.WebsocketClient
 	job               interfaces.Job
 	permissionChecker gateway.PermissionChecker
@@ -43,6 +44,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		transaction:       r.Transaction,
 		file:              gr.File,
 		batch:             gr.Batch,
+		cloudRunWorker:    gr.CloudRunWorker,
 		websocket:         websocket,
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
@@ -286,21 +288,39 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, err
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace(), p.PreviousJobID, p.StartNodeID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to submit job: %v", err)
-	}
-	j.SetGCPJobID(gcpJobID)
+	if i.cloudRunWorker != nil {
+		tx.Commit()
+		if i.job != nil {
+			// Run on Cloud Run; the standard monitoring loop finalizes the job.
+			i.job.RunCloudRunWorker(j, gateway.RunJobParam{
+				JobID:         j.ID(),
+				WorkflowURL:   workflowURL.String(),
+				MetadataURL:   j.MetadataURL(),
+				Variables:     nil,
+				PreviousJobID: p.PreviousJobID,
+				StartNodeID:   p.StartNodeID,
+			})
+			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+				return j, fmt.Errorf("failed to start job monitoring: %v", err)
+			}
+		}
+	} else {
+		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace(), p.PreviousJobID, p.StartNodeID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to submit job: %v", err)
+		}
+		j.SetGCPJobID(gcpJobID)
 
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return nil, err
-	}
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return nil, err
+		}
 
-	tx.Commit()
+		tx.Commit()
 
-	if i.job != nil {
-		if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
-			return j, fmt.Errorf("failed to start job monitoring: %v", err)
+		if i.job != nil {
+			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+				return j, fmt.Errorf("failed to start job monitoring: %v", err)
+			}
 		}
 	}
 
