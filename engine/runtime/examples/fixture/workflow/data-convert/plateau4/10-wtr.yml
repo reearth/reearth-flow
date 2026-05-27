@@ -323,12 +323,12 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes["__citygml_gml_id"] or attributes["gmlId"]
+          value: attributes.get("__citygml_gml_id") or attributes["gmlId"]
       - attribute: feature_type
         method: create
         value:
           type: flowExpr
-          value: attributes["featureType"] or attributes["gmlName"]
+          value: attributes.get("featureType") or attributes["gmlName"]
       - attribute: codelists
         method: remove
       - attribute: schemas

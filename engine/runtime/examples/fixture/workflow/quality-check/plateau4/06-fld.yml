@@ -1687,7 +1687,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            filename = attributes["name"];
+            filename = attributes.get("name");
             if filename == null {
               return null
             };

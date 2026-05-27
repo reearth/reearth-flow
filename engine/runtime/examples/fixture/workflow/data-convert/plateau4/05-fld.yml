@@ -167,7 +167,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes["featureType"] or attributes["gmlName"]
+          value: attributes.get("featureType") or attributes["gmlName"]
       - attribute: __scale
         method: create
         value:
@@ -276,7 +276,7 @@ graphs:
           citygml = Url(env("cityGmlPath")).name.split("_op_")[0];
           udx_dirs = attributes["udxDirs"].replace("/", "_");
           scale = "";
-          if attributes["__scale"] { scale = "_" + attributes["__scale"] }
+          if attributes.get("__scale") { scale = "_" + attributes["__scale"] }
           Url(env("workerArtifactPath")) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
     name: CreateDictionaryNameDict
@@ -290,8 +290,8 @@ graphs:
           type: flowExpr
           value: |
             last_segment = attributes["udxDirs"].split("/")[-1];
-            scale = attributes["__scale"];
-            if scale != "" {
+            scale = attributes.get("__scale");
+            if scale {
               last_segment + "_" + scale
             } else {
               last_segment

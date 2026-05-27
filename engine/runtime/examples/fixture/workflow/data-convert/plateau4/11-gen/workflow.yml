@@ -74,12 +74,12 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'attributes["__citygml_gml_id"] or attributes["gmlId"]'
+                value: 'attributes.get("__citygml_gml_id") or attributes["gmlId"]'
             - attribute: feature_type
               method: create
               value:
                 type: flowExpr
-                value: 'attributes["featureType"] or attributes["gmlName"]'
+                value: 'attributes.get("featureType") or attributes["gmlName"]'
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -101,12 +101,12 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'attributes["gml:name_code"]'
+                value: 'attributes.get("gml:name_code")'
             - attribute: description
               method: create
               value:
                 type: flowExpr
-                value: 'attributes["gml:name"]'
+                value: 'attributes.get("gml:name")'
 
       - id: abc6a99c-5730-423c-a449-38911ab4a4e7
         name: AttributeDuplicateFilterDict

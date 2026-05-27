@@ -3123,7 +3123,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            ft = attributes["__citygml_feature_type"] or "";
+            ft = attributes.get("__citygml_feature_type") or "";
             if ft.contains(":") {
               ft.split(":")[1]
             } else {

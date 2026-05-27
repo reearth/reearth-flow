@@ -73,7 +73,7 @@ graphs:
                   if uro_list and type(uro_list) == "list" {
                     gml_city_code = uro_list[0].get("uro:city_code");
                   }
-                  gml_city_code or attributes["cityCode"] or env("cityCode")
+                  gml_city_code or attributes.get("cityCode") or env("cityCode")
 
             - attribute: cityName
               method: create
