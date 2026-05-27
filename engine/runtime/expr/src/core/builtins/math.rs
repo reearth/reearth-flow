@@ -23,6 +23,7 @@ pub fn builtin_math() -> Value {
     m.insert("floor".into(), unary_float("floor", f64::floor));
     m.insert("round".into(), unary_float("round", f64::round));
     m.insert("log".into(), unary_float("log", f64::ln));
+    m.insert("radians".into(), unary_float("radians", f64::to_radians));
     m.insert("pi".into(), Value::Float(std::f64::consts::PI));
     Value::module(m)
 }

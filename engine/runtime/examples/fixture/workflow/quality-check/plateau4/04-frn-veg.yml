@@ -299,9 +299,11 @@ graphs:
       operations:
       - attribute: issue
         method: create
-        value: |
-          let vr = env.get("__value").validationResult;
-          vr.details[0][0]
+        value:
+          type: flowExpr
+          value: |
+            vr = attributes["validationResult"];
+            vr["details"][0][0]
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
     name: GeometryCoercerRingNotClosed
     type: action
@@ -404,8 +406,9 @@ graphs:
       operations:
       - attribute: issue
         method: create
-        value: |
-          "IntersectionBetweenInteriorAndInterior"
+        value:
+          type: string
+          value: IntersectionBetweenInteriorAndInterior
   - id: 6b5d8a3f-1c4e-4b7d-a9c2-5d6b8a3f1c4e
     name: OrientationExtractorIncorrectInterior
     type: action
@@ -439,8 +442,9 @@ graphs:
       operations:
       - attribute: issue
         method: create
-        value: |
-          "IncorrectInteriorOrientation"
+        value:
+          type: string
+          value: IncorrectInteriorOrientation
   - id: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
     name: InvalidSurfaceRouter
     type: action
@@ -2048,20 +2052,22 @@ graphs:
       operations:
       - attribute: totalErrorCount
         method: create
-        value: |
-          let total = 0;
-          let data = env.get("__value")["dataFileData"];
-          if data != () {
-            for item in data {
-              if item.type_of() == "map" {
-                let count = item["count"];
-                if count != () && count.type_of() == "i64" {
-                  total += count;
+        value:
+          type: flowExpr
+          value: |
+            total = 0;
+            data = attributes.get("dataFileData");
+            if data != null {
+              for item in data {
+                if type(item) == "map" {
+                  count = item.get("count");
+                  if count != null and type(count) == "int" {
+                    total += count;
+                  }
                 }
               }
             }
-          }
-          total
+            total
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
     type: action

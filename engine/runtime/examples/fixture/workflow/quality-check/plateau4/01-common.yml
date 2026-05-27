@@ -1391,20 +1391,22 @@ graphs:
       operations:
       - attribute: totalErrorCount
         method: create
-        value: |
-          let total = 0;
-          let data = env.get("__value")["dataFileData"];
-          if data != () {
-            for item in data {
-              if item.type_of() == "map" {
-                let count = item["count"];
-                if count != () && count.type_of() == "i64" {
-                  total += count;
+        value:
+          type: flowExpr
+          value: |
+            total = 0;
+            data = attributes.get("dataFileData");
+            if data != null {
+              for item in data {
+                if type(item) == "map" {
+                  count = item.get("count");
+                  if count != null and type(count) == "int" {
+                    total += count;
+                  }
                 }
               }
             }
-          }
-          total
+            total
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
     type: action

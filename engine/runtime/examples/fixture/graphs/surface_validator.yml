@@ -147,9 +147,11 @@ nodes:
       operations:
         - attribute: issue
           method: create
-          value: |
-            let vr = env.get("__value").validationResult;
-            vr.details[0][0]
+          value:
+            type: flowExpr
+            value: |
+              vr = attributes["validationResult"];
+              vr["details"][0][0]
 
   ## Ring not closed
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
@@ -272,8 +274,9 @@ nodes:
       operations:
         - attribute: issue
           method: create
-          value: |
-            "IntersectionBetweenInteriorAndInterior"
+          value:
+            type: string
+            value: IntersectionBetweenInteriorAndInterior
 
   ## Incorrect Interior Orientation
   - id: 6b5d8a3f-1c4e-4b7d-a9c2-5d6b8a3f1c4e
@@ -312,8 +315,9 @@ nodes:
       operations:
       - attribute: issue
         method: create
-        value: |
-          "IncorrectInteriorOrientation"
+        value:
+          type: string
+          value: IncorrectInteriorOrientation
 
   - id: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
     name: InvalidSurfaceRouter

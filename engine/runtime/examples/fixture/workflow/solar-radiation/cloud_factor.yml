@@ -146,14 +146,16 @@ nodes:
       operations:
         - attribute: sunnyRatio
           method: create
-          value: |
-            let actual_sunshine = parse_float(env.get("__value")["日照時間(時間)"]);
-            let potential_daylight = env.get("__value")["monthlyDayTimeSumInHours"];
-            if potential_daylight > 0.0 {
-              actual_sunshine / potential_daylight
-            } else {
-              0.0
-            }
+          value:
+            type: flowExpr
+            value: |
+              actual_sunshine = float(attributes["日照時間(時間)"]);
+              potential_daylight = attributes["monthlyDayTimeSumInHours"];
+              if potential_daylight > 0.0 {
+                actual_sunshine / potential_daylight
+              } else {
+                0.0
+              }
 
   # ========================================
   # Node 8: Output Router

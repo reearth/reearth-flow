@@ -23,28 +23,34 @@ nodes:
     operations:
     - attribute: gmlFilename
       method: rename
-      value: filename
+      value:
+        type: string
+        value: filename
     - attribute: featureType
       method: rename
-      value: feature_type
+      value:
+        type: string
+        value: feature_type
     - attribute: gmlId
       method: rename
-      value: gml_id
+      value:
+        type: string
+        value: gml_id
     - attribute: issue
       method: create
-      value: |
-        let value = env.get("__value");
-        if value.validationResult?.details != () {
-          return value.validationResult.details[0][0];
-        }
-        if "issue" in value {
-          return value.issue;
-        }
-        "UnknownError"
+      value:
+        type: flowExpr
+        value: |
+          vr = attributes.get("validationResult");
+          if vr and vr.get("details") {
+            return vr["details"][0][0];
+          }
+          attributes.get("issue", "UnknownError")
     - attribute: folder
       method: create
-      value: |
-        env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
+      value:
+        type: flowExpr
+        value: attributes.get("package") or attributes.get("udxDirs") or ""
     - attribute: validationResult
       method: remove
     - attribute: surfaceId
@@ -165,28 +171,34 @@ nodes:
     operations:
     - attribute: gmlFilename
       method: rename
-      value: filename
+      value:
+        type: string
+        value: filename
     - attribute: featureType
       method: rename
-      value: feature_type
+      value:
+        type: string
+        value: feature_type
     - attribute: gmlId
       method: rename
-      value: gml_id
+      value:
+        type: string
+        value: gml_id
     - attribute: issue
       method: create
-      value: |
-        let value = env.get("__value");
-        if value.validationResult?.details != () {
-          return value.validationResult.details[0][0];
-        }
-        if "issue" in value {
-          return value.issue;
-        }
-        "UnknownError"
+      value:
+        type: flowExpr
+        value: |
+          vr = attributes.get("validationResult");
+          if vr and vr.get("details") {
+            return vr["details"][0][0];
+          }
+          attributes.get("issue", "UnknownError")
     - attribute: folder
       method: create
-      value: |
-        env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
+      value:
+        type: flowExpr
+        value: attributes.get("package") or attributes.get("udxDirs") or ""
     - attribute: validationResult
       method: remove
     - attribute: surfaceId
@@ -302,28 +314,34 @@ nodes:
     operations:
     - attribute: gmlFilename
       method: rename
-      value: filename
+      value:
+        type: string
+        value: filename
     - attribute: featureType
       method: rename
-      value: feature_type
+      value:
+        type: string
+        value: feature_type
     - attribute: gmlId
       method: rename
-      value: gml_id
+      value:
+        type: string
+        value: gml_id
     - attribute: issue
       method: create
-      value: |
-        let value = env.get("__value");
-        if value.validationResult?.details != () {
-          return value.validationResult.details[0][0];
-        }
-        if "issue" in value {
-          return value.issue;
-        }
-        "UnknownError"
+      value:
+        type: flowExpr
+        value: |
+          vr = attributes.get("validationResult");
+          if vr and vr.get("details") {
+            return vr["details"][0][0];
+          }
+          attributes.get("issue", "UnknownError")
     - attribute: folder
       method: create
-      value: |
-        env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
+      value:
+        type: flowExpr
+        value: attributes.get("package") or attributes.get("udxDirs") or ""
     - attribute: validationResult
       method: remove
     - attribute: surfaceId
@@ -493,21 +511,29 @@ nodes:
     operations:
     - attribute: gmlFilename
       method: rename
-      value: filename
+      value:
+        type: string
+        value: filename
     - attribute: featureType
       method: rename
-      value: feature_type
+      value:
+        type: string
+        value: feature_type
     - attribute: gmlId
       method: rename
-      value: gml_id
+      value:
+        type: string
+        value: gml_id
     - attribute: issue
       method: create
-      value: |
-        "Surface Not Closed"
+      value:
+        type: string
+        value: Surface Not Closed
     - attribute: folder
       method: create
-      value: |
-        env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
+      value:
+        type: flowExpr
+        value: attributes.get("package") or attributes.get("udxDirs") or ""
     - attribute: solid_boundary_issues
       method: remove
     - attribute: surfaceId
@@ -596,21 +622,29 @@ nodes:
     operations:
     - attribute: gmlFilename
       method: rename
-      value: filename
+      value:
+        type: string
+        value: filename
     - attribute: featureType
       method: rename
-      value: feature_type
+      value:
+        type: string
+        value: feature_type
     - attribute: gmlId
       method: rename
-      value: gml_id
+      value:
+        type: string
+        value: gml_id
     - attribute: issue
       method: create
-      value: |
-        "InvalidSolidBoundaries"
+      value:
+        type: string
+        value: InvalidSolidBoundaries
     - attribute: folder
       method: create
-      value: |
-        env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? ""
+      value:
+        type: flowExpr
+        value: attributes.get("package") or attributes.get("udxDirs") or ""
     - attribute: solid_boundary_issues
       method: remove
     - attribute: surfaceId

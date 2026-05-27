@@ -266,14 +266,16 @@ graphs:
       operations:
       - attribute: sunnyRatio
         method: create
-        value: |
-          let actual_sunshine = parse_float(env.get("__value")["日照時間(時間)"]);
-          let potential_daylight = env.get("__value")["monthlyDayTimeSumInHours"];
-          if potential_daylight > 0.0 {
-            actual_sunshine / potential_daylight
-          } else {
-            0.0
-          }
+        value:
+          type: flowExpr
+          value: |
+            actual_sunshine = float(attributes["日照時間(時間)"]);
+            potential_daylight = attributes["monthlyDayTimeSumInHours"];
+            if potential_daylight > 0.0 {
+              actual_sunshine / potential_daylight
+            } else {
+              0.0
+            }
   - id: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
     name: CloudFactorOutput
     type: action
@@ -360,7 +362,9 @@ graphs:
       operations:
       - attribute: _bcastKey
         method: create
-        value: '"all"'
+        value:
+          type: string
+          value: all
   - id: 00000005-0000-0000-0000-000000000032
     name: BuildingRadiationSorter
     type: action
@@ -384,7 +388,9 @@ graphs:
       operations:
       - attribute: _bcastKey
         method: create
-        value: '"all"'
+        value:
+          type: string
+          value: all
   - id: 00000005-0000-0000-0000-000000000035
     name: TotalCountMerger
     type: action
@@ -432,7 +438,9 @@ graphs:
       operations:
       - attribute: inZone1
         method: create
-        value: '1'
+        value:
+          type: flowExpr
+          value: 1
   - id: 00000007-0000-0000-0000-000000000006
     name: InZone1FlagFailed
     type: action
@@ -441,7 +449,9 @@ graphs:
       operations:
       - attribute: inZone1
         method: create
-        value: '0'
+        value:
+          type: flowExpr
+          value: 0
   - id: 00000007-0000-0000-0000-000000000007
     name: Zone1Merger
     type: action
@@ -480,7 +490,9 @@ graphs:
       operations:
       - attribute: inZone2
         method: create
-        value: '1'
+        value:
+          type: flowExpr
+          value: 1
   - id: 00000007-0000-0000-0000-000000000016
     name: InZone2FlagFailed
     type: action
@@ -489,7 +501,9 @@ graphs:
       operations:
       - attribute: inZone2
         method: create
-        value: '0'
+        value:
+          type: flowExpr
+          value: 0
   - id: 00000007-0000-0000-0000-000000000017
     name: Zone2Merger
     type: action
@@ -528,7 +542,9 @@ graphs:
       operations:
       - attribute: inZone3
         method: create
-        value: '1'
+        value:
+          type: flowExpr
+          value: 1
   - id: 00000007-0000-0000-0000-000000000026
     name: InZone3FlagFailed
     type: action
@@ -537,7 +553,9 @@ graphs:
       operations:
       - attribute: inZone3
         method: create
-        value: '0'
+        value:
+          type: flowExpr
+          value: 0
   - id: 00000007-0000-0000-0000-000000000027
     name: Zone3Merger
     type: action
@@ -587,149 +605,171 @@ graphs:
       operations:
       - attribute: result_1_1_1
         method: create
-        value: |
-          let thresh = env.get("solarRadiationThreshold") ?? 0.0;
-          let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
-          if thresh <= 0.0 || rad < 0.0 { "-" }
-          else if rad < thresh { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            thresh = env.get("solarRadiationThreshold", 0.0);
+            rad = attributes.get("totalSolarRadiation", -1.0);
+            if thresh <= 0.0 or rad < 0.0 { "-" }
+            else if rad < thresh { "×" } else { "○" }
       - attribute: result_1_1_2
         method: create
-        value: |
-          let pct = env.get("lowerPercent") ?? 0.0;
-          let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
-          if pct <= 0.0 || rad < 0.0 { "-" } else {
-            let rank = env.get("__value")["solarRank"] ?? 0;
-            let total = env.get("__value")["totalBuildingCount"] ?? 1;
-            if total > 0 && (rank.to_float() / total.to_float()) <= (pct / 100.0) { "×" } else { "○" }
-          }
+        value:
+          type: flowExpr
+          value: |
+            pct = env.get("lowerPercent", 0.0);
+            rad = attributes.get("totalSolarRadiation", -1.0);
+            if pct <= 0.0 or rad < 0.0 { "-" } else {
+              rank = attributes.get("solarRank", 0);
+              total = attributes.get("totalBuildingCount", 1);
+              if total > 0 and float(rank) / float(total) <= pct / 100.0 { "×" } else { "○" }
+            }
       - attribute: result_1_2
         method: create
-        value: |
-          let m = env.get("bldgStructureToExclude") ?? #{};
-          let any_active = m["木造・土蔵造"] || m["鉄骨鉄筋コンクリート造"] || m["鉄筋コンクリート造"] || m["鉄骨造"] || m["軽量鉄骨造"] || m["レンガ造等"] || m["非木造"] || m["不明"];
-          if !any_active { "-" } else {
-            let st_raw = env.get("__value")["structureType"] ?? "-1";
-            let st = if type_of(st_raw) == "string" { parse_int(st_raw) } else { st_raw };
-            let excluded = switch st {
-              601 => m["木造・土蔵造"],
-              602 => m["鉄骨鉄筋コンクリート造"],
-              603 => m["鉄筋コンクリート造"],
-              604 => m["鉄骨造"],
-              605 => m["軽量鉄骨造"],
-              606 => m["レンガ造等"],
-              610 => m["非木造"],
-              _ => m["不明"] ?? false,
-            };
-            if excluded { "×" } else { "○" }
-          }
+        value:
+          type: flowExpr
+          value: |
+            m = env.get("bldgStructureToExclude");
+            if m == null { "-" } else {
+              any_active = m.get("木造・土蔵造") or m.get("鉄骨鉄筋コンクリート造") or m.get("鉄筋コンクリート造") or m.get("鉄骨造") or m.get("軽量鉄骨造") or m.get("レンガ造等") or m.get("非木造") or m.get("不明");
+              if not any_active { "-" } else {
+                st_raw = attributes.get("structureType", "-1");
+                if type(st_raw) == "string" { st = int(st_raw); } else { st = st_raw; }
+                if st == 601 { excluded = m.get("木造・土蔵造"); }
+                else if st == 602 { excluded = m.get("鉄骨鉄筋コンクリート造"); }
+                else if st == 603 { excluded = m.get("鉄筋コンクリート造"); }
+                else if st == 604 { excluded = m.get("鉄骨造"); }
+                else if st == 605 { excluded = m.get("軽量鉄骨造"); }
+                else if st == 606 { excluded = m.get("レンガ造等"); }
+                else if st == 610 { excluded = m.get("非木造"); }
+                else { excluded = m.get("不明", false); }
+                if excluded { "×" } else { "○" }
+              }
+            }
       - attribute: result_1_3
         method: create
-        value: |
-          let lb = env.get("floorsBelow") ?? -1;
-          let ub = env.get("upperFloors") ?? -1;
-          let fc = env.get("__value")["floorCount"] ?? -1;
-          if (lb == -1 && ub == -1) || fc < 0 { "-" }
-          else if lb != -1 && fc <= lb { "×" }
-          else if ub != -1 && fc >= ub { "×" }
-          else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            lb = env.get("floorsBelow", -1);
+            ub = env.get("upperFloors", -1);
+            fc = attributes.get("floorCount", -1);
+            if (lb == -1 and ub == -1) or fc < 0 { "-" }
+            else if lb != -1 and fc <= lb { "×" }
+            else if ub != -1 and fc >= ub { "×" }
+            else { "○" }
       - attribute: result_2_1
         method: create
-        value: |
-          if !(env.get("enableTsunamiCheck") ?? false) { "-" } else {
-            let h = env.get("__value")["bldgHeight"] ?? -1.0;
-            let th = env.get("__value")["tsunamiHeight"] ?? 0.0;
-            if h < 0.0 || th <= 0.0 { "-" }
-            else if h < th { "×" } else { "○" }
-          }
+        value:
+          type: flowExpr
+          value: |
+            if not env.get("enableTsunamiCheck", false) { "-" } else {
+              h = attributes.get("bldgHeight", -1.0);
+              th = attributes.get("tsunamiHeight", 0.0);
+              if h < 0.0 or th <= 0.0 { "-" }
+              else if h < th { "×" } else { "○" }
+            }
       - attribute: result_2_2
         method: create
-        value: |
-          if !(env.get("enableFloodCheck") ?? false) { "-" } else {
-            let h = env.get("__value")["bldgHeight"] ?? -1.0;
-            let fd = env.get("__value")["floodDepth"] ?? 0.0;
-            if h < 0.0 || fd <= 0.0 { "-" }
-            else if h < fd { "×" } else { "○" }
-          }
+        value:
+          type: flowExpr
+          value: |
+            if not env.get("enableFloodCheck", false) { "-" } else {
+              h = attributes.get("bldgHeight", -1.0);
+              fd = attributes.get("floodDepth", 0.0);
+              if h < 0.0 or fd <= 0.0 { "-" }
+              else if h < fd { "×" } else { "○" }
+            }
       - attribute: result_2_3
         method: create
-        value: |
-          if !(env.get("enableLandslideCheck") ?? false) { "-" } else {
-            let flag = env.get("__value")["landslideFlag"] ?? false;
-            if flag { "×" } else { "○" }
-          }
+        value:
+          type: flowExpr
+          value: |
+            if not env.get("enableLandslideCheck", false) { "-" } else {
+              flag = attributes.get("landslideFlag", false);
+              if flag { "×" } else { "○" }
+            }
       - attribute: result_2_4
         method: create
-        value: |
-          let path = env.get("snowDepthShapefilePath");
-          if path == () { "-" } else {
-            let depth_cm = env.get("__value")["snow_G02_058"] ?? ();
-            if depth_cm == () { "-" } else {
-              let depth = depth_cm / 100.0;
-              let s = env.get("snowLoad") ?? 0.0;
-              if s > 0.0 {
-                let dp = env.get("snowUnitWeight") ?? 0.0;
-                let load = depth * dp / 9.80665;
-                if load >= s { "×" } else { "○" }
-              } else {
-                let thresh = env.get("snowDepthThreshold") ?? -1.0;
-                if thresh > 0.0 && depth >= thresh { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            path = env.get("snowDepthShapefilePath");
+            if path == null { "-" } else {
+              depth_cm = attributes.get("snow_G02_058");
+              if depth_cm == null { "-" } else {
+                depth = depth_cm / 100.0;
+                s = env.get("snowLoad", 0.0);
+                if s > 0.0 {
+                  dp = env.get("snowUnitWeight", 0.0);
+                  load = depth * dp / 9.80665;
+                  if load >= s { "×" } else { "○" }
+                } else {
+                  thresh = env.get("snowDepthThreshold", -1.0);
+                  if thresh > 0.0 and depth >= thresh { "×" } else { "○" }
+                }
               }
             }
-          }
       - attribute: result_3_1
         method: create
-        value: |
-          let path = env.get("restrictAreaPath1");
-          let hThresh = env.get("restrictHeight1") ?? -1.0;
-          if path == () || hThresh == -1.0 { "-" } else {
-            let inZone = env.get("__value")["inZone1"] ?? 0;
-            if inZone == 0 { "○" } else {
-              let h = env.get("__value")["bldgHeight"] ?? -1.0;
-              if h >= 0.0 && h < hThresh { "○" } else {
-                let dir = env.get("restrictDirection1") ?? -1.0;
-                if dir < 0.0 { "×" } else {
-                  let sm = env.get("__value")["dirMatchSum1"] ?? 0;
-                  if sm > 0 { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            path = env.get("restrictAreaPath1");
+            hThresh = env.get("restrictHeight1", -1.0);
+            if path == null or hThresh == -1.0 { "-" } else {
+              inZone = attributes.get("inZone1", 0);
+              if inZone == 0 { "○" } else {
+                h = attributes.get("bldgHeight", -1.0);
+                if h >= 0.0 and h < hThresh { "○" } else {
+                  dir = env.get("restrictDirection1", -1.0);
+                  if dir < 0.0 { "×" } else {
+                    sm = attributes.get("dirMatchSum1", 0);
+                    if sm > 0 { "×" } else { "○" }
+                  }
                 }
               }
             }
-          }
       - attribute: result_3_2
         method: create
-        value: |
-          let path = env.get("restrictAreaPath2");
-          let hThresh = env.get("restrictHeight2") ?? -1.0;
-          if path == () || hThresh == -1.0 { "-" } else {
-            let inZone = env.get("__value")["inZone2"] ?? 0;
-            if inZone == 0 { "○" } else {
-              let h = env.get("__value")["bldgHeight"] ?? -1.0;
-              if h >= 0.0 && h < hThresh { "○" } else {
-                let dir = env.get("restrictDirection2") ?? -1.0;
-                if dir < 0.0 { "×" } else {
-                  let sm = env.get("__value")["dirMatchSum2"] ?? 0;
-                  if sm > 0 { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            path = env.get("restrictAreaPath2");
+            hThresh = env.get("restrictHeight2", -1.0);
+            if path == null or hThresh == -1.0 { "-" } else {
+              inZone = attributes.get("inZone2", 0);
+              if inZone == 0 { "○" } else {
+                h = attributes.get("bldgHeight", -1.0);
+                if h >= 0.0 and h < hThresh { "○" } else {
+                  dir = env.get("restrictDirection2", -1.0);
+                  if dir < 0.0 { "×" } else {
+                    sm = attributes.get("dirMatchSum2", 0);
+                    if sm > 0 { "×" } else { "○" }
+                  }
                 }
               }
             }
-          }
       - attribute: result_3_3
         method: create
-        value: |
-          let path = env.get("restrictAreaPath3");
-          let hThresh = env.get("restrictHeight3") ?? -1.0;
-          if path == () || hThresh == -1.0 { "-" } else {
-            let inZone = env.get("__value")["inZone3"] ?? 0;
-            if inZone == 0 { "○" } else {
-              let h = env.get("__value")["bldgHeight"] ?? -1.0;
-              if h >= 0.0 && h < hThresh { "○" } else {
-                let dir = env.get("restrictDirection3") ?? -1.0;
-                if dir < 0.0 { "×" } else {
-                  let sm = env.get("__value")["dirMatchSum3"] ?? 0;
-                  if sm > 0 { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            path = env.get("restrictAreaPath3");
+            hThresh = env.get("restrictHeight3", -1.0);
+            if path == null or hThresh == -1.0 { "-" } else {
+              inZone = attributes.get("inZone3", 0);
+              if inZone == 0 { "○" } else {
+                h = attributes.get("bldgHeight", -1.0);
+                if h >= 0.0 and h < hThresh { "○" } else {
+                  dir = env.get("restrictDirection3", -1.0);
+                  if dir < 0.0 { "×" } else {
+                    sm = attributes.get("dirMatchSum3", 0);
+                    if sm > 0 { "×" } else { "○" }
+                  }
                 }
               }
             }
-          }
   - id: 00000005-0000-0000-0000-000000000063
     name: BuildingPriorityComputer
     type: action
@@ -738,25 +778,27 @@ graphs:
       operations:
       - attribute: priority
         method: create
-        value: |
-          let score = 0;
-          let r11 = env.get("__value")["result_1_1_1"];
-          let r12 = env.get("__value")["result_1_1_2"];
-          if r11 == "×" || r12 == "×" { score -= 1; }
-          if env.get("__value")["result_1_2"] == "×" { score -= 1; }
-          if env.get("__value")["result_1_3"] == "×" { score -= 1; }
-          if env.get("__value")["result_2_1"] == "×" { score -= 1; }
-          if env.get("__value")["result_2_2"] == "×" { score -= 1; }
-          if env.get("__value")["result_2_3"] == "×" { score -= 1; }
-          if env.get("__value")["result_2_4"] == "×" { score -= 1; }
-          if env.get("__value")["result_3_1"] == "×" { score -= 1; }
-          if env.get("__value")["result_3_2"] == "×" { score -= 1; }
-          if env.get("__value")["result_3_3"] == "×" { score -= 1; }
-          if score >= 0 { 5 }
-          else if score >= -2 { 4 }
-          else if score >= -4 { 3 }
-          else if score >= -6 { 2 }
-          else { 1 }
+        value:
+          type: flowExpr
+          value: |
+            score = 0;
+            r11 = attributes["result_1_1_1"];
+            r12 = attributes["result_1_1_2"];
+            if r11 == "×" or r12 == "×" { score -= 1; }
+            if attributes["result_1_2"] == "×" { score -= 1; }
+            if attributes["result_1_3"] == "×" { score -= 1; }
+            if attributes["result_2_1"] == "×" { score -= 1; }
+            if attributes["result_2_2"] == "×" { score -= 1; }
+            if attributes["result_2_3"] == "×" { score -= 1; }
+            if attributes["result_2_4"] == "×" { score -= 1; }
+            if attributes["result_3_1"] == "×" { score -= 1; }
+            if attributes["result_3_2"] == "×" { score -= 1; }
+            if attributes["result_3_3"] == "×" { score -= 1; }
+            if score >= 0 { 5 }
+            else if score >= -2 { 4 }
+            else if score >= -4 { 3 }
+            else if score >= -6 { 2 }
+            else { 1 }
   - id: 00000005-0000-0000-0000-000000000061
     name: BuildingJudgmentMapper
     type: action
@@ -826,97 +868,119 @@ graphs:
       operations:
       - attribute: result_1_1_1
         method: create
-        value: |
-          let thresh = env.get("solarRadiationThreshold") ?? 0.0;
-          let rad = env.get("__value")["totalSolarRadiation"] ?? -1.0;
-          if thresh <= 0.0 || rad < 0.0 { "-" }
-          else if rad < thresh { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            thresh = env.get("solarRadiationThreshold", 0.0);
+            rad = attributes.get("totalSolarRadiation", -1.0);
+            if thresh <= 0.0 or rad < 0.0 { "-" }
+            else if rad < thresh { "×" } else { "○" }
       - attribute: result_1_1_2
         method: create
-        value: '"-"'
+        value:
+          type: string
+          value: '-'
       - attribute: result_1_2
         method: create
-        value: '"-"'
+        value:
+          type: string
+          value: '-'
       - attribute: result_1_3
         method: create
-        value: '"-"'
+        value:
+          type: string
+          value: '-'
       - attribute: result_2_1
         method: create
-        value: '"-"'
+        value:
+          type: string
+          value: '-'
       - attribute: result_2_2
         method: create
-        value: '"-"'
+        value:
+          type: string
+          value: '-'
       - attribute: result_2_3
         method: create
-        value: |
-          if !(env.get("enableLandslideCheck") ?? false) { "-" } else {
-            let flag = env.get("__value")["landslideFlag"] ?? false;
-            if flag { "×" } else { "○" }
-          }
+        value:
+          type: flowExpr
+          value: |
+            if not env.get("enableLandslideCheck", false) { "-" } else {
+              flag = attributes.get("landslideFlag", false);
+              if flag { "×" } else { "○" }
+            }
       - attribute: result_2_4
         method: create
-        value: |
-          let path = env.get("snowDepthShapefilePath");
-          if path == () { "-" } else {
-            let depth_cm = env.get("__value")["snow_G02_058"] ?? ();
-            if depth_cm == () { "-" } else {
-              let depth = depth_cm / 100.0;
-              let s = env.get("snowLoad") ?? 0.0;
-              if s > 0.0 {
-                let dp = env.get("snowUnitWeight") ?? 0.0;
-                let load = depth * dp / 9.80665;
-                if load >= s { "×" } else { "○" }
-              } else {
-                let thresh = env.get("snowDepthThreshold") ?? -1.0;
-                if thresh > 0.0 && depth >= thresh { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            path = env.get("snowDepthShapefilePath");
+            if path == null { "-" } else {
+              depth_cm = attributes.get("snow_G02_058");
+              if depth_cm == null { "-" } else {
+                depth = depth_cm / 100.0;
+                s = env.get("snowLoad", 0.0);
+                if s > 0.0 {
+                  dp = env.get("snowUnitWeight", 0.0);
+                  load = depth * dp / 9.80665;
+                  if load >= s { "×" } else { "○" }
+                } else {
+                  thresh = env.get("snowDepthThreshold", -1.0);
+                  if thresh > 0.0 and depth >= thresh { "×" } else { "○" }
+                }
               }
             }
-          }
       - attribute: result_3_1
         method: create
-        value: |
-          let path = env.get("restrictAreaPath1");
-          let hThresh = env.get("restrictHeight1") ?? -1.0;
-          if path == () || hThresh == -1.0 { "-" } else {
-            let inZone = env.get("__value")["inZone1"] ?? 0;
-            if inZone == 0 { "○" } else {
-              let dir = env.get("restrictDirection1") ?? -1.0;
-              if dir < 0.0 { "×" } else {
-                let sm = env.get("__value")["dirMatchSum1"] ?? 0;
-                if sm > 0 { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            path = env.get("restrictAreaPath1");
+            hThresh = env.get("restrictHeight1", -1.0);
+            if path == null or hThresh == -1.0 { "-" } else {
+              inZone = attributes.get("inZone1", 0);
+              if inZone == 0 { "○" } else {
+                dir = env.get("restrictDirection1", -1.0);
+                if dir < 0.0 { "×" } else {
+                  sm = attributes.get("dirMatchSum1", 0);
+                  if sm > 0 { "×" } else { "○" }
+                }
               }
             }
-          }
       - attribute: result_3_2
         method: create
-        value: |
-          let path = env.get("restrictAreaPath2");
-          let hThresh = env.get("restrictHeight2") ?? -1.0;
-          if path == () || hThresh == -1.0 { "-" } else {
-            let inZone = env.get("__value")["inZone2"] ?? 0;
-            if inZone == 0 { "○" } else {
-              let dir = env.get("restrictDirection2") ?? -1.0;
-              if dir < 0.0 { "×" } else {
-                let sm = env.get("__value")["dirMatchSum2"] ?? 0;
-                if sm > 0 { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            path = env.get("restrictAreaPath2");
+            hThresh = env.get("restrictHeight2", -1.0);
+            if path == null or hThresh == -1.0 { "-" } else {
+              inZone = attributes.get("inZone2", 0);
+              if inZone == 0 { "○" } else {
+                dir = env.get("restrictDirection2", -1.0);
+                if dir < 0.0 { "×" } else {
+                  sm = attributes.get("dirMatchSum2", 0);
+                  if sm > 0 { "×" } else { "○" }
+                }
               }
             }
-          }
       - attribute: result_3_3
         method: create
-        value: |
-          let path = env.get("restrictAreaPath3");
-          let hThresh = env.get("restrictHeight3") ?? -1.0;
-          if path == () || hThresh == -1.0 { "-" } else {
-            let inZone = env.get("__value")["inZone3"] ?? 0;
-            if inZone == 0 { "○" } else {
-              let dir = env.get("restrictDirection3") ?? -1.0;
-              if dir < 0.0 { "×" } else {
-                let sm = env.get("__value")["dirMatchSum3"] ?? 0;
-                if sm > 0 { "×" } else { "○" }
+        value:
+          type: flowExpr
+          value: |
+            path = env.get("restrictAreaPath3");
+            hThresh = env.get("restrictHeight3", -1.0);
+            if path == null or hThresh == -1.0 { "-" } else {
+              inZone = attributes.get("inZone3", 0);
+              if inZone == 0 { "○" } else {
+                dir = env.get("restrictDirection3", -1.0);
+                if dir < 0.0 { "×" } else {
+                  sm = attributes.get("dirMatchSum3", 0);
+                  if sm > 0 { "×" } else { "○" }
+                }
               }
             }
-          }
   - id: 00000006-0000-0000-0000-000000000006
     name: LandPriorityComputer
     type: action
@@ -925,19 +989,21 @@ graphs:
       operations:
       - attribute: priority
         method: create
-        value: |
-          let score = 0;
-          if env.get("__value")["result_1_1_1"] == "×" { score -= 1; }
-          if env.get("__value")["result_2_3"] == "×" { score -= 1; }
-          if env.get("__value")["result_2_4"] == "×" { score -= 1; }
-          if env.get("__value")["result_3_1"] == "×" { score -= 1; }
-          if env.get("__value")["result_3_2"] == "×" { score -= 1; }
-          if env.get("__value")["result_3_3"] == "×" { score -= 1; }
-          if score >= 0 { 5 }
-          else if score >= -2 { 4 }
-          else if score >= -4 { 3 }
-          else if score >= -6 { 2 }
-          else { 1 }
+        value:
+          type: flowExpr
+          value: |
+            score = 0;
+            if attributes["result_1_1_1"] == "×" { score -= 1; }
+            if attributes["result_2_3"] == "×" { score -= 1; }
+            if attributes["result_2_4"] == "×" { score -= 1; }
+            if attributes["result_3_1"] == "×" { score -= 1; }
+            if attributes["result_3_2"] == "×" { score -= 1; }
+            if attributes["result_3_3"] == "×" { score -= 1; }
+            if score >= 0 { 5 }
+            else if score >= -2 { 4 }
+            else if score >= -4 { 3 }
+            else if score >= -6 { 2 }
+            else { 1 }
   - id: 00000006-0000-0000-0000-000000000004
     name: LandJudgmentMapper
     type: action
@@ -1009,7 +1075,9 @@ graphs:
       operations:
       - attribute: inZone1
         method: create
-        value: '1'
+        value:
+          type: flowExpr
+          value: 1
   - id: 00000006-0000-0000-0000-000000000023
     name: LandInZone1FlagFailed
     type: action
@@ -1018,7 +1086,9 @@ graphs:
       operations:
       - attribute: inZone1
         method: create
-        value: '0'
+        value:
+          type: flowExpr
+          value: 0
   - id: 00000006-0000-0000-0000-000000000024
     name: LandZone1Merger
     type: action
@@ -1042,7 +1112,9 @@ graphs:
       operations:
       - attribute: inZone2
         method: create
-        value: '1'
+        value:
+          type: flowExpr
+          value: 1
   - id: 00000006-0000-0000-0000-000000000033
     name: LandInZone2FlagFailed
     type: action
@@ -1051,7 +1123,9 @@ graphs:
       operations:
       - attribute: inZone2
         method: create
-        value: '0'
+        value:
+          type: flowExpr
+          value: 0
   - id: 00000006-0000-0000-0000-000000000034
     name: LandZone2Merger
     type: action
@@ -1075,7 +1149,9 @@ graphs:
       operations:
       - attribute: inZone3
         method: create
-        value: '1'
+        value:
+          type: flowExpr
+          value: 1
   - id: 00000006-0000-0000-0000-000000000043
     name: LandInZone3FlagFailed
     type: action
@@ -1084,7 +1160,9 @@ graphs:
       operations:
       - attribute: inZone3
         method: create
-        value: '0'
+        value:
+          type: flowExpr
+          value: 0
   - id: 00000006-0000-0000-0000-000000000044
     name: LandZone3Merger
     type: action
