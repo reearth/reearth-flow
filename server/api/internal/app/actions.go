@@ -33,7 +33,6 @@ type Action struct {
 	Categories  []string               `json:"categories"`
 	Tags        []string               `json:"tags"`
 	Builtin     bool                   `json:"builtin"`
-	Hidden      bool                   `json:"hidden,omitempty"`
 }
 
 func (a *Action) Validate() error {
@@ -103,6 +102,7 @@ var (
 		"ja": true,
 		"zh": true,
 	}
+
 )
 
 func loadActionsData(lang string) (ActionsData, error) {
@@ -207,7 +207,7 @@ func listActions(c echo.Context) error {
 	var summaries []ActionSummary
 
 	for _, action := range data.Actions {
-		if action.Hidden {
+		if !baseActions[action.Name] {
 			continue
 		}
 		if matchesSearch(action, query, category, actionType) {
@@ -256,7 +256,7 @@ func getSegregatedActions(c echo.Context) error {
 	}
 
 	for _, action := range data.Actions {
-		if action.Hidden {
+		if !baseActions[action.Name] {
 			continue
 		}
 		if matchesSearch(action, query, "", "") {
@@ -372,7 +372,7 @@ func getActionDetails(c echo.Context) error {
 	}
 
 	for _, action := range data.Actions {
-		if action.Hidden {
+		if !baseActions[action.Name] {
 			continue
 		}
 		if action.Name == id {
