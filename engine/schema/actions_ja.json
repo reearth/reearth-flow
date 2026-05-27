@@ -168,8 +168,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "AttributeAggregator",
@@ -356,8 +355,7 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "AttributeConversionTable",
@@ -515,8 +513,7 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "AttributeFilePathInfoExtractor",
@@ -557,8 +554,7 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "AttributeFlattener",
@@ -855,8 +851,7 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "BoundaryExtractor",
@@ -890,8 +885,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "BoundsExtractor",
@@ -1257,8 +1251,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "CSGEvaluator",
@@ -1301,8 +1294,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "CenterPointReplacer",
@@ -1363,8 +1355,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "Cesium3DTilesWriter",
@@ -1657,8 +1648,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "ConvexHullAccumulator",
@@ -1698,8 +1688,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "CoordinateExtractor",
@@ -1831,8 +1820,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "CsvReader",
@@ -2251,8 +2239,7 @@
       "categories": [
         "File"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "CzmlWriter",
@@ -2413,8 +2400,7 @@
       "categories": [
         "File"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "DateTimeConverter",
@@ -2579,8 +2565,7 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "DimensionFilter",
@@ -2741,8 +2726,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "EchoProcessor",
@@ -2862,8 +2846,7 @@
       "categories": [
         "File"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "Extruder",
@@ -2955,8 +2938,7 @@
       "categories": [
         "Feature"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "FeatureCityGmlReader",
@@ -3132,8 +3114,7 @@
       "categories": [
         "Feature"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "FeatureFilePathExtractor",
@@ -3694,8 +3675,7 @@
       "categories": [
         "Feature"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "FeatureSorter",
@@ -4007,8 +3987,7 @@
       "categories": [
         "Feature"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "FilePathExtractor",
@@ -4160,8 +4139,7 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "FootprintReplacer",
@@ -4526,8 +4504,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "GeometryExtractor",
@@ -4645,8 +4622,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "GeometryPartExtractor",
@@ -4931,8 +4907,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "GltfReader",
@@ -5001,8 +4976,7 @@
         "File",
         "3D"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "GltfWriter",
@@ -5061,8 +5035,7 @@
       "categories": [
         "File"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "GridDivider",
@@ -6304,8 +6277,7 @@
       "categories": [
         "Web"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "HoleCounter",
@@ -6346,8 +6318,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "HoleExtractor",
@@ -6366,8 +6337,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "HorizontalReprojector",
@@ -6583,8 +6553,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "JSONFragmenter",
@@ -6720,8 +6689,7 @@
       "categories": [
         "Feature"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "JsonReader",
@@ -6879,8 +6847,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "ListConcatenator",
@@ -6943,8 +6910,7 @@
       "categories": [
         "Feature"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "ListExploder",
@@ -7049,8 +7015,7 @@
       "categories": [
         "Feature"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "MVTWriter",
@@ -7331,8 +7296,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "NoopProcessor",
@@ -7615,8 +7579,7 @@
         "File",
         "3D"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "ObjWriter",
@@ -7683,8 +7646,7 @@
         "File",
         "3D"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "Offsetter",
@@ -7735,8 +7697,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "OrientationExtractor",
@@ -7777,8 +7738,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "OutputRouter",
@@ -7824,8 +7784,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
@@ -7842,8 +7801,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.BuildingUsageAttributeValidator",
@@ -7874,8 +7832,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.DictionariesInitiator",
@@ -7893,8 +7850,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.DomainOfDefinitionValidator",
@@ -7912,8 +7868,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.MaxLodExtractor",
@@ -7930,8 +7885,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.TranXLinkChecker",
@@ -7948,8 +7902,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.UDXFolderExtractor",
@@ -7967,8 +7920,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.UnmatchedXlinkDetector",
@@ -7987,8 +7939,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU3.XMLAttributeExtractor",
@@ -8055,8 +8006,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.AttributeFlattener",
@@ -8085,8 +8035,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
@@ -8103,8 +8052,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
@@ -8174,8 +8122,7 @@
         "Feature",
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
@@ -8211,8 +8158,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.CityCodeExtractor",
@@ -8261,8 +8207,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.CityGmlMeshBuilder",
@@ -8323,8 +8268,7 @@
         "PLATEAU",
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
@@ -8343,8 +8287,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
@@ -8398,8 +8341,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
@@ -8441,8 +8383,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.FaceExtractor",
@@ -8483,8 +8424,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
@@ -8540,8 +8480,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
@@ -8583,8 +8522,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.MaxLodExtractor",
@@ -8623,8 +8561,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.MissingAttributeDetector",
@@ -8663,8 +8600,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.ObjectListExtractor",
@@ -8699,8 +8635,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.SolarCityGmlAttributeInserter",
@@ -8813,8 +8748,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.SolarPositionCalculator",
@@ -9020,8 +8954,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
@@ -9060,8 +8993,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
@@ -9096,8 +9028,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.UDXFolderExtractor",
@@ -9156,8 +9087,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.UnmatchedXlinkDetector",
@@ -9176,8 +9106,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
@@ -9223,8 +9152,7 @@
       "categories": [
         "PLATEAU"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PlanarityFilter",
@@ -9295,8 +9223,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "PolygonNormalExtractor",
@@ -9387,8 +9314,7 @@
         "Script",
         "Python"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "RayIntersector",
@@ -9823,8 +9749,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "ShapefileReader",
@@ -9993,8 +9918,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "SpatialFilter",
@@ -10374,8 +10298,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "ThreeDimensionForcer",
@@ -10442,8 +10365,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "ThreeDimensionRotator",
@@ -10544,8 +10466,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "TwoDimensionForcer",
@@ -10605,8 +10526,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "VertexRemover",
@@ -10624,8 +10544,7 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [],
-      "hidden": true
+      "tags": []
     },
     {
       "name": "VerticalReprojector",
