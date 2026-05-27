@@ -380,7 +380,9 @@ export default ({
       if (myReorderedRef.current && joinedVars) {
         const joinedRank = new Map(joinedVars.map((v, i) => [v.id, i]));
         reverted.sort(
-          (a, b) => (joinedRank.get(a.id) ?? Infinity) - (joinedRank.get(b.id) ?? Infinity),
+          (a, b) =>
+            (joinedRank.get(a.id) ?? Infinity) -
+            (joinedRank.get(b.id) ?? Infinity),
         );
       }
 
