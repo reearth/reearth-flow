@@ -219,12 +219,10 @@ export default ({
   });
 
   const handleLayoutChange = useCallback(
-    async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
-      // We need to wait for the layout to finish before fitting the view
-      await Promise.resolve(
-        handleYLayoutChange(algorithm, direction, _spacing),
-      );
-      fitView();
+    (algorithm: Algorithm, direction: Direction, applyToAll: boolean) => {
+      handleYLayoutChange(algorithm, direction, applyToAll);
+      // Defer fitView so React can flush the Yjs-driven node position updates first
+      setTimeout(() => fitView(), 0);
     },
     [fitView, handleYLayoutChange],
   );
