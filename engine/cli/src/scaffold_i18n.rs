@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap},
     fs,
     path::Path,
 };
@@ -255,22 +255,21 @@ impl ScaffoldI18nCliCommand {
         builtin.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
 
         let empty_i18n: HashMap<String, I18nSchema> = HashMap::new();
-        let no_filter: HashSet<&str> = HashSet::new();
 
         let mut actions: HashMap<String, ActionSchema> = builtin
             .values()
             .map(|kind| {
-                let s = crate::utils::create_action_schema(kind, true, &empty_i18n, &no_filter);
+                let s = crate::utils::create_action_schema(kind, true, &empty_i18n);
                 (s.name.clone(), s)
             })
             .collect();
 
         for (name, kind) in PLATEAU_ACTION_FACTORIES.clone().iter() {
-            let s = crate::utils::create_action_schema(kind, false, &empty_i18n, &no_filter);
+            let s = crate::utils::create_action_schema(kind, false, &empty_i18n);
             actions.insert(name.to_string(), s);
         }
         for (name, kind) in PYTHON_ACTION_FACTORIES.clone().iter() {
-            let s = crate::utils::create_action_schema(kind, false, &empty_i18n, &no_filter);
+            let s = crate::utils::create_action_schema(kind, false, &empty_i18n);
             actions.insert(name.to_string(), s);
         }
 
