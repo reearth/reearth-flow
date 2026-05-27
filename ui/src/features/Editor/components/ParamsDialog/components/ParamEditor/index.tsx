@@ -28,7 +28,7 @@ import type { AwarenessUser, NodeData, NodeParams } from "@flow/types";
 
 import { extractDescriptions } from "../../utils/extractDescriptions";
 import { FieldContext } from "../../utils/fieldUtils";
-import { schemasMatch } from "../../utils/schemaFingerprint";
+import { schemaKeysMatch } from "../../utils/schemaFingerprint";
 
 import SchemaMigrationView from "./SchemaMigrationView";
 
@@ -92,7 +92,7 @@ const ParamEditor: React.FC<Props> = ({
 
   const needsMigration =
     !!createdAction?.parameter &&
-    !schemasMatch(nodeMeta.paramsSchema, createdAction.parameter);
+    !schemaKeysMatch(nodeMeta.paramsSchema, createdAction.parameter);
 
   const [migrationComplete, setMigrationComplete] = useState(false);
 
