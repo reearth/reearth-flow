@@ -313,7 +313,7 @@
   "Clean up": "Nettoyer",
   "Horizontal": "Horizontal",
   "Vertical": "Vertical",
-  "Apply to all workflows": "Appliquer à tous les flux de travail",
+  "Include subworkflows": "Inclure les sous-flux de travail",
   "Search Filters": "Filtres de recherche",
   "All Actions": "Toutes les actions",
   "Readers": "Lecteurs",

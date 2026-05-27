@@ -52,6 +52,7 @@ const LayoutSubToolbar: React.FC<Props> = ({
       <Button variant="outline" onClick={handleCleanUp}>
         {t("Clean up")}
       </Button>
+      <div className="h-5 border-r border-border" />
       <Select
         value={direction}
         onValueChange={(v) => setDirection(v as Direction)}>
@@ -63,13 +64,13 @@ const LayoutSubToolbar: React.FC<Props> = ({
           <SelectItem value="Vertical">{t("Vertical")}</SelectItem>
         </SelectContent>
       </Select>
-      <label className="flex cursor-pointer items-center gap-2 text-xs select-none">
+      <label className="flex cursor-pointer items-center gap-2 text-xs text-accent-foreground select-none">
         <Checkbox
           className="bg-accent"
           checked={applyToAll}
           onCheckedChange={(v) => setApplyToAll(v === true)}
         />
-        {t("Apply to all workflows")}
+        {t("Include subworkflows")}
       </label>
     </div>
   );
