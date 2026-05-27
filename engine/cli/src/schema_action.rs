@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs::File,
-    io::BufReader,
-};
+use std::{collections::HashMap, fs::File, io::BufReader};
 
 use clap::{Arg, ArgMatches, Command};
 use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
@@ -13,90 +9,6 @@ use crate::{
     utils::{create_action_schema, ActionSchema, I18nSchema},
 };
 
-/// The curated base set for the Re:Earth Flow SaaS release.
-/// Actions not in this list are marked hidden: true in the generated schema.
-const BASE_ACTIONS: &[&str] = &[
-    // Input
-    "CityGmlReader",
-    "CsvReader",
-    "FeatureCreator",
-    "FilePathExtractor",
-    "GeoJsonReader",
-    "GeoPackageReader",
-    "JsonReader",
-    "ShapefileReader",
-    "SqlReader",
-    // Output
-    "Cesium3DTilesWriter",
-    "CityGmlWriter",
-    "CsvWriter",
-    "EchoSink",
-    "GeoJsonWriter",
-    "GeoPackageWriter",
-    "JsonWriter",
-    "MVTWriter",
-    "NoopSink",
-    "ShapefileWriter",
-    "XmlWriter",
-    "ZipFileWriter",
-    // Geometry
-    "AppearanceRemover",
-    "AreaCalculator",
-    "BoundsExtractor",
-    "Bufferer",
-    "Clipper",
-    "DimensionFilter",
-    "ElevationExtractor",
-    "Extruder",
-    "FootprintReplacer",
-    "GeometryExtractor",
-    "GeometryPartExtractor",
-    "GeometryRemover",
-    "GeometryReplacer",
-    "GeometryValidator",
-    "GeometrySplitter",
-    "GridDivider",
-    "HorizontalReprojector",
-    "ImageRasterizer",
-    "PolygonNormalExtractor",
-    "RayIntersector",
-    "Refiner",
-    "SpatialFilter",
-    "ThreeDimensionForcer",
-    "TwoDimensionForcer",
-    "VerticalReprojector",
-    // Attribute
-    "AttributeAggregator",
-    "AttributeConversionTable",
-    "AttributeFlattener",
-    "AttributeManager",
-    "AttributeMapper",
-    "BulkAttributeRenamer",
-    "NullAttributeMapper",
-    "StatisticsCalculator",
-    // Feature / Flow
-    "FeatureCityGmlReader",
-    "FeatureCounter",
-    "FeatureFilePathExtractor",
-    "FeatureFilter",
-    "FeatureJoiner",
-    "FeatureLodFilter",
-    "FeatureMerger",
-    "FeatureSorter",
-    "FeatureTransformer",
-    "FeatureTypeFilter",
-    "InputRouter",
-    "OutputRouter",
-    "RhaiCaller",
-    // Utility
-    "DirectoryDecompressor",
-    "EchoProcessor",
-    "FilePropertyExtractor",
-    "ListExploder",
-    "NoopProcessor",
-    "XMLFragmenter",
-    "XMLValidator",
-];
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -152,26 +64,24 @@ impl SchemaActionCliCommand {
         } else {
             HashMap::new()
         };
-        let base_actions: HashSet<&str> = BASE_ACTIONS.iter().copied().collect();
-
         let mut builtin_action_factories = HashMap::new();
         builtin_action_factories.extend(BUILTIN_ACTION_FACTORIES.clone());
         builtin_action_factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let mut actions = builtin_action_factories
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, true, &i18n, &base_actions))
+            .map(|kind| create_action_schema(kind, true, &i18n))
             .collect::<Vec<_>>();
         let plateau_actions = PLATEAU_ACTION_FACTORIES
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, false, &i18n, &base_actions))
+            .map(|kind| create_action_schema(kind, false, &i18n))
             .collect::<Vec<_>>();
         actions.extend(plateau_actions);
         let python_actions = PYTHON_ACTION_FACTORIES
             .clone()
             .values()
-            .map(|kind| create_action_schema(kind, false, &i18n, &base_actions))
+            .map(|kind| create_action_schema(kind, false, &i18n))
             .collect::<Vec<_>>();
         actions.extend(python_actions);
         actions.sort_by(|a, b| a.name.cmp(&b.name));
