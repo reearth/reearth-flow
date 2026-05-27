@@ -15,8 +15,6 @@ pub struct ActionSchema {
     pub output_ports: Vec<String>,
     pub categories: Vec<String>,
     pub tags: Vec<String>,
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub hidden: bool,
 }
 
 impl ActionSchema {
@@ -31,7 +29,6 @@ impl ActionSchema {
         output_ports: Vec<String>,
         categories: Vec<String>,
         tags: Vec<String>,
-        hidden: bool,
     ) -> Self {
         Self {
             name,
@@ -43,7 +40,6 @@ impl ActionSchema {
             output_ports,
             categories,
             tags,
-            hidden,
         }
     }
 }
@@ -216,7 +212,6 @@ pub(crate) fn create_action_schema(
     kind: &NodeKind,
     builtin: bool,
     i18n: &HashMap<String, I18nSchema>,
-    base_actions: &std::collections::HashSet<&str>,
 ) -> ActionSchema {
     let (name, description, parameter, input_ports, output_ports, categories, tags) = match kind {
         NodeKind::Source(factory) => {
@@ -303,8 +298,6 @@ pub(crate) fn create_action_schema(
         }
     };
 
-    let hidden = !base_actions.is_empty() && !base_actions.contains(name.as_str());
-
     ActionSchema::new(
         name,
         match kind {
@@ -319,6 +312,5 @@ pub(crate) fn create_action_schema(
         output_ports,
         categories,
         tags,
-        hidden,
     )
 }
