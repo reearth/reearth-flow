@@ -9,7 +9,6 @@ use crate::{
     utils::{create_action_schema, ActionSchema, I18nSchema},
 };
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RootActionSchema {
