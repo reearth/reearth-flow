@@ -81,7 +81,7 @@ graphs:
             method: create
             value:
               type: flowExpr
-              value: 'value("featureType").split(":")[1]'
+              value: 'attributes["featureType"].split(":")[1]'
 
       - id: 69992005-2bdf-41f8-b298-59460b822bec
         name: AttributeDuplicateFilterDict
@@ -134,17 +134,17 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'Url(value("path")).name.split("_")[0]'
+                value: 'Url(attributes["path"]).name.split("_")[0]'
             - attribute: gml_id
               method: create
               value:
                 type: flowExpr
-                value: 'value("__citygml_gml_id") or value("gmlId")'
+                value: 'attributes["__citygml_gml_id"] or attributes["gmlId"]'
             - attribute: feature_type
               method: create
               value:
                 type: flowExpr
-                value: 'value("featureType") or value("gmlName")'
+                value: 'attributes["featureType"] or attributes["gmlName"]'
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -260,12 +260,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / ("frn_lod" + value("lod"))
+              Url(env("workerArtifactPath")) / ("frn_lod" + attributes["lod"])
           compressOutput:
             type: flowExpr
             value: |
               stem = Url(env("cityGmlPath")).stem().remove_suffix("_frn");
-              lod = value("lod");
+              lod = attributes["lod"];
               Url(env("workerArtifactPath")) / (stem + "_frn_3dtiles_lod" + lod + ".zip")
 
       - id: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
@@ -383,7 +383,7 @@ graphs:
           schemaKey: __citygml_feature_type
           layerName:
             type: flowExpr
-            value: value("feature_type").split(":")[1]
+            value: attributes["feature_type"].split(":")[1]
           minZoom: 8
           maxZoom: 18
           extent: 65536
@@ -483,17 +483,17 @@ graphs:
               method: convert
               value:
                 type: flowExpr
-                value: 'value("veg:height") * 1.0'
+                value: 'attributes["veg:height"] * 1.0'
             - attribute: veg:trunkDiameter
               method: convert
               value:
                 type: flowExpr
-                value: 'value("veg:trunkDiameter") * 1.0'
+                value: 'attributes["veg:trunkDiameter"] * 1.0'
             - attribute: veg:crownDiameter
               method: convert
               value:
                 type: flowExpr
-                value: 'value("veg:crownDiameter") * 1.0'
+                value: 'attributes["veg:crownDiameter"] * 1.0'
 
       - id: b5222fc2-f67b-4e89-8b8a-029181748511
         name: Cesium3DTilesWriterVeg1
@@ -507,12 +507,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / ("veg_SolitaryVegetationObject_lod" + value("lod"))
+              Url(env("workerArtifactPath")) / ("veg_SolitaryVegetationObject_lod" + attributes["lod"])
           compressOutput:
             type: flowExpr
             value: |
               stem = Url(env("cityGmlPath")).stem().remove_suffix("_veg");
-              lod = value("lod");
+              lod = attributes["lod"];
               Url(env("workerArtifactPath")) / (stem + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip")
 
       - id: 591050d4-8284-4708-a3e3-0bcb99bbd83c
@@ -648,7 +648,7 @@ graphs:
           schemaKey: __citygml_feature_type
           layerName:
             type: flowExpr
-            value: value("feature_type").split(":")[1]
+            value: attributes["feature_type"].split(":")[1]
           minZoom: 8
           maxZoom: 18
           extent: 65536
@@ -742,12 +742,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / ("veg_PlantCover_lod" + value("lod"))
+              Url(env("workerArtifactPath")) / ("veg_PlantCover_lod" + attributes["lod"])
           compressOutput:
             type: flowExpr
             value: |
               stem = Url(env("cityGmlPath")).stem().remove_suffix("_veg");
-              lod = value("lod");
+              lod = attributes["lod"];
               Url(env("workerArtifactPath")) / (stem + "_veg_PlantCover_3dtiles_lod" + lod + ".zip")
 
       - id: aa9b681b-0cc1-4445-bff6-be41bb9c764f
@@ -875,7 +875,7 @@ graphs:
           schemaKey: __citygml_feature_type
           layerName:
             type: flowExpr
-            value: value("feature_type").split(":")[1]
+            value: attributes["feature_type"].split(":")[1]
           minZoom: 8
           maxZoom: 18
           extent: 65536

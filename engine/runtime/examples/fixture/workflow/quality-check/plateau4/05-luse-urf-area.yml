@@ -702,8 +702,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "VALID"
+        value:
+          type: string
+          value: VALID
   - id: 9293ff92-7cde-422d-a157-011d54b23cf0
     name: AttributeManagerCreateNotWellFormed
     type: action
@@ -712,8 +713,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "NOT_WELL_FORMED"
+        value:
+          type: string
+          value: NOT_WELL_FORMED
   - id: 6c235d0b-26fb-47dd-a3df-709fa961855c
     name: AttributeManagerCreateInvalid
     type: action
@@ -722,8 +724,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "INVALID"
+        value:
+          type: string
+          value: INVALID
   - id: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
     name: SummaryRouter
     type: action

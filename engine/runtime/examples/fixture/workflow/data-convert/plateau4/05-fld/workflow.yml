@@ -71,17 +71,17 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'value("featureType") or value("gmlName")'
+                value: 'attributes["featureType"] or attributes["gmlName"]'
             - attribute: __scale
               method: create
               value:
                 type: flowExpr
                 value: |
-                  if value("package") != "fld" {
+                  if attributes["package"] != "fld" {
                     ""
-                  } else if "_l1_" in value("name") or "_l1." in value("name") {
+                  } else if "_l1_" in attributes["name"] or "_l1." in attributes["name"] {
                     "l1"
-                  } else if "_l2_" in value("name") or "_l2." in value("name") {
+                  } else if "_l2_" in attributes["name"] or "_l2." in attributes["name"] {
                     "l2"
                   } else {
                     ""
@@ -177,15 +177,15 @@ graphs:
           output:
             type: flowExpr
             value: |
-              udx_dirs = value("udxDirs").replace("/", "_");
+              udx_dirs = attributes["udxDirs"].replace("/", "_");
               Url(env("workerArtifactPath")) / (udx_dirs + "_no_texture")
           compressOutput:
             type: flowExpr
             value: |
               citygml = Url(env("cityGmlPath")).stem().split("_op_")[0];
-              udx_dirs = value("udxDirs").replace("/", "_");
+              udx_dirs = attributes["udxDirs"].replace("/", "_");
               scale = "";
-              if value("__scale") { scale = "_" + value("__scale") }
+              if attributes["__scale"] { scale = "_" + attributes["__scale"] }
               Url(env("workerArtifactPath")) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
 
       # Dictionary.json output branch
@@ -200,8 +200,8 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  last_segment = value("udxDirs").split("/")[-1];
-                  scale = value("__scale");
+                  last_segment = attributes["udxDirs"].split("/")[-1];
+                  scale = attributes["__scale"];
                   if scale != "" {
                     last_segment + "_" + scale
                   } else {

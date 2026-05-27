@@ -640,7 +640,20 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                     .map(|k| Value::String(k.clone()))
                     .collect(),
                 Value::String(s) => s.chars().map(|c| Value::String(c.to_string())).collect(),
-                Value::Null => vec![],
+                Value::Object(rc) => {
+                    match rc.call_method("__iter__", &[]).to_eval_error(pos)? {
+                        Value::Array(arr) => arr.borrow().clone(),
+                        v => {
+                            return Err(Error::Eval {
+                                pos,
+                                msg: format!(
+                                    "__iter__ must return a list, got {}",
+                                    v.type_name()
+                                ),
+                            })
+                        }
+                    }
+                }
                 v => {
                     return Err(Error::Eval {
                         pos,
@@ -798,6 +811,7 @@ fn eval_index(target: Value, key: Value) -> InnerResult<Value> {
             }
             Ok(Value::String(chars[i as usize].to_string()))
         }
+        (Value::Object(rc), key) => rc.call_method("__getitem__", &[key]),
         (target, key) => Err(InnerError::new(format!(
             "cannot index {} with {}",
             target.type_name(),
@@ -1558,6 +1572,53 @@ mod tests {
     }
 
     #[test]
+    fn test_object_getitem_and_iter() {
+        #[derive(Debug, Clone)]
+        struct Bag(Vec<(String, i64)>);
+
+        impl super::super::value::ImmutableObject for Bag {
+            fn type_name(&self) -> &'static str {
+                "Bag"
+            }
+            fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
+                match method {
+                    "__getitem__" => match args.first() {
+                        Some(Value::String(k)) => self
+                            .0
+                            .iter()
+                            .find(|(key, _)| key == k)
+                            .map(|(_, v)| Value::Int(*v))
+                            .ok_or_else(|| InnerError::new(format!("key '{k}' not found"))),
+                        _ => Err(InnerError::new("__getitem__ expects a string")),
+                    },
+                    "__iter__" => Ok(Value::array(
+                        self.0.iter().map(|(k, _)| Value::String(k.clone())).collect(),
+                    )),
+                    m => Err(InnerError::new(format!("no method {m}"))),
+                }
+            }
+        }
+
+        let mut env = default_env();
+        env.insert("bag".into(), Value::object(Bag(vec![
+            ("x".into(), 10),
+            ("y".into(), 20),
+        ])));
+
+        // __getitem__
+        assert_eval(r#"bag["x"]"#, &[("bag", env["bag"].clone())], Value::from(10i64));
+        assert_eval(r#"bag["y"]"#, &[("bag", env["bag"].clone())], Value::from(20i64));
+        assert!(try_run(r#"bag["z"]"#, &[("bag", env["bag"].clone())]).is_err());
+
+        // __iter__ via for-in
+        assert_eval(
+            "keys = []; for k in bag { keys = keys + [k] } keys",
+            &[("bag", env["bag"].clone())],
+            Value::from(vec!["x", "y"]),
+        );
+    }
+
+    #[test]
     fn test_var() {
         let mut env = default_env();
         assert!(eval(&parse("missing").unwrap(), &mut env).is_err());
@@ -1789,7 +1850,7 @@ mod tests {
 
     #[test]
     fn test_for_in_null() {
-        assert_eval("for x in null { x } 1", &[], Value::from(1i64));
+        assert!(try_run("for x in null { x }", &[]).is_err());
     }
 
     #[test]
@@ -1814,19 +1875,6 @@ mod tests {
             "return x = 5",
             &[("x", Value::from(0i64))],
             Value::from(5i64),
-        );
-    }
-
-    #[test]
-    fn test_for_in_map_items() {
-        let m = Value::map(indexmap::indexmap! {
-            "a".into() => Value::from(10i64),
-            "b".into() => Value::from(20i64),
-        });
-        assert_eval(
-            "s = 0; for pair in m.items() { s = s + pair[1] } s",
-            &[("m", m)],
-            Value::from(30i64),
         );
     }
 
@@ -1867,5 +1915,18 @@ mod tests {
         assert_eval("(0b1010).bit_length()", &[], Value::from(4i64));
         assert!(try_run("(-1).bit_length()", &[]).is_err());
         assert!(try_run("(1).bit_length(99)", &[]).is_err());
+    }
+
+    #[test]
+    fn test_for_in_map_items() {
+        let m = Value::map(indexmap::indexmap! {
+            "a".into() => Value::from(10i64),
+            "b".into() => Value::from(20i64),
+        });
+        assert_eval(
+            "s = 0; for pair in m.items() { s = s + pair[1] } s",
+            &[("m", m)],
+            Value::from(30i64),
+        );
     }
 }

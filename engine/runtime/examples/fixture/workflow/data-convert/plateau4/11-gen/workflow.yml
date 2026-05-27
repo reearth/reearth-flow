@@ -166,16 +166,16 @@ graphs:
           schemaKey: __citygml_feature_type
           layerName:
             type: flowExpr
-            value: '"gen_" + value("__gml_name_code")'
+            value: '"gen_" + attributes["__gml_name_code"]'
           minZoom: 8
           maxZoom: 16
           extent: 65536
           output:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / ("gen_" + value("__gml_name_code") + "_lod" + value("__lod"))
+            value: Url(env("workerArtifactPath")) / ("gen_" + attributes["__gml_name_code"] + "_lod" + attributes["__lod"])
           compressOutput:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / (Url(env("cityGmlPath")).stem().remove_suffix("_gen") + "_gen_" + value("__gml_name_code") + "_mvt_lod" + value("__lod") + ".zip")
+            value: Url(env("workerArtifactPath")) / (Url(env("cityGmlPath")).stem().remove_suffix("_gen") + "_gen_" + attributes["__gml_name_code"] + "_mvt_lod" + attributes["__lod"] + ".zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 

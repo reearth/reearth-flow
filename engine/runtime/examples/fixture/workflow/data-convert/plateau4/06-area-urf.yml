@@ -371,7 +371,7 @@ graphs:
       layerName:
         type: flowExpr
         value: |
-          value("feature_type").split(":")[1]
+          attributes["feature_type"].split(":")[1]
       minZoom: 8
       maxZoom: 16
       skipUnexposedAttributes: true
@@ -380,16 +380,16 @@ graphs:
       output:
         type: flowExpr
         value: |
-          ft = value("feature_type").split(":")[1];
-          dir = value("__package") + "_" + ft;
+          ft = attributes["feature_type"].split(":")[1];
+          dir = attributes["__package"] + "_" + ft;
           Url(env("workerArtifactPath")) / dir
       compressOutput:
         type: flowExpr
         value: |
           city_gml = Url(env("cityGmlPath")).stem();
-          ft = value("feature_type").split(":")[1];
+          ft = attributes["feature_type"].split(":")[1];
           stem = city_gml.remove_suffix("_" + ft);
-          filename = stem + "_" + ft + "_mvt_lod" + value("__lod") + ".zip";
+          filename = stem + "_" + ft + "_mvt_lod" + attributes["__lod"] + ".zip";
           Url(env("workerArtifactPath")) / filename
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

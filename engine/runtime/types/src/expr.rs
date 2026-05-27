@@ -114,28 +114,55 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
     }
 }
 
+#[derive(Debug)]
+struct AttributesObject(Arc<crate::feature::Attributes>);
+
+impl reearth_flow_expr::ImmutableObject for AttributesObject {
+    fn type_name(&self) -> &'static str {
+        "Attributes"
+    }
+
+    fn call_method(
+        &self,
+        method: &str,
+        args: &[reearth_flow_expr::Value],
+    ) -> reearth_flow_expr::InnerResult<reearth_flow_expr::Value> {
+        use reearth_flow_expr::{InnerError, Value};
+        match method {
+            "__getitem__" => {
+                reearth_flow_expr::unpack_args!(args => key);
+                let Value::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "attributes index must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
+                Ok(self
+                    .0
+                    .get(&Attribute::new(name))
+                    .map(|v| json_to_value(serde_json::Value::from(v.clone())))
+                    .unwrap_or(Value::Null))
+            }
+            "__iter__" => Ok(Value::array(
+                self.0
+                    .keys()
+                    .map(|k| Value::String(k.as_ref().to_string()))
+                    .collect(),
+            )),
+            m => Err(InnerError::new(format!("Attributes has no method '{m}'"))),
+        }
+    }
+}
+
 pub fn env_from_feature(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> reearth_flow_expr::Env {
     use reearth_flow_expr::{NativeFn, Value};
     let mut env = reearth_flow_expr::default_env();
-    let attrs = Arc::clone(&feature.attributes);
     env.insert(
-        "value".into(),
-        Value::Fn(NativeFn::new(move |args| {
-            reearth_flow_expr::unpack_args!(args => arg);
-            let Value::String(name) = arg else {
-                return Err(reearth_flow_expr::InnerError::new(format!(
-                    "value() expects a string argument, got {}",
-                    arg.type_name()
-                )));
-            };
-            Ok(attrs
-                .get(&Attribute::new(name))
-                .map(|v| json_to_value(serde_json::Value::from(v.clone())))
-                .unwrap_or(Value::Null))
-        })),
+        "attributes".into(),
+        Value::object(AttributesObject(Arc::clone(&feature.attributes))),
     );
     env.insert(
         "env".into(),

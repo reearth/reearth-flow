@@ -73,17 +73,17 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'Url(value("path")).name.split("_")[0]'
+                value: 'Url(attributes["path"]).name.split("_")[0]'
             - attribute: gml_id
               method: create
               value:
                 type: flowExpr
-                value: 'value("__citygml_gml_id") or value("gmlId")'
+                value: 'attributes["__citygml_gml_id"] or attributes["gmlId"]'
             - attribute: feature_type
               method: create
               value:
                 type: flowExpr
-                value: 'value("featureType") or value("gmlName")'
+                value: 'attributes["featureType"] or attributes["gmlName"]'
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -195,12 +195,12 @@ graphs:
           attachTexture: true
           output:
             type: flowExpr
-            value: 'Url(env("workerArtifactPath")) / (value("__package") + "_lod3")'
+            value: 'Url(env("workerArtifactPath")) / (attributes["__package"] + "_lod3")'
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_3dtiles_lod3.zip")
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + attributes["__package"]);
+              Url(env("workerArtifactPath")) / (city_gml + "_" + attributes["__package"] + "_3dtiles_lod3.zip")
 
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeManagerByLod0-2
@@ -277,18 +277,18 @@ graphs:
           schemaKey: __citygml_feature_type
           layerName:
             type: flowExpr
-            value: value("feature_type").split(":")[1]
+            value: attributes["feature_type"].split(":")[1]
           minZoom: 8
           maxZoom: 16
           extent: 65536
           output:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / (value("__package") + "_lod" + value("__lod"))
+            value: Url(env("workerArtifactPath")) / (attributes["__package"] + "_lod" + attributes["__lod"])
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_mvt_lod" + value("__lod") + ".zip")
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + attributes["__package"]);
+              Url(env("workerArtifactPath")) / (city_gml + "_" + attributes["__package"] + "_mvt_lod" + attributes["__lod"] + ".zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
@@ -387,18 +387,18 @@ graphs:
           schemaKey: __citygml_feature_type
           layerName:
             type: flowExpr
-            value: value("feature_type").split(":")[1]
+            value: attributes["feature_type"].split(":")[1]
           minZoom: 8
           maxZoom: 18
           extent: 65536
           output:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / (value("__package") + "_dm_geometric_attributes")
+            value: Url(env("workerArtifactPath")) / (attributes["__package"] + "_dm_geometric_attributes")
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_dm_geometric_attributes.zip")
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + attributes["__package"]);
+              Url(env("workerArtifactPath")) / (city_gml + "_" + attributes["__package"] + "_dm_geometric_attributes.zip")
           skipUnexposedAttributes: true
           colonToUnderscore: true
 

@@ -145,12 +145,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / (value("package") + "_lod" + value("lod"))
+              Url(env("workerArtifactPath")) / (attributes["package"] + "_lod" + attributes["lod"])
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_3dtiles_lod" + value("lod") + ".zip")
+              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + attributes["package"]);
+              Url(env("workerArtifactPath")) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod" + attributes["lod"] + ".zip")
 
     edges:
       - id: 25accc00-50d0-4fe9-a289-0e84ecaca659
