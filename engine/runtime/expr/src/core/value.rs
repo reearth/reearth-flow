@@ -126,7 +126,7 @@ pub(crate) fn format_float(n: f64) -> String {
         };
     }
     let abs = n.abs();
-    if abs == 0.0 || (abs >= 1e-4 && abs < 1e16) {
+    if abs == 0.0 || (1e-4..1e16).contains(&abs) {
         let s = format!("{n}");
         if s.contains('.') || s.contains('e') || s.contains('E') {
             s

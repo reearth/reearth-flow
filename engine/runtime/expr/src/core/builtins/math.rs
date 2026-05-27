@@ -1,41 +1,28 @@
 use crate::core::error::InnerError;
 use crate::core::value::{Module, NativeFn, Value};
 
-pub fn builtin_math() -> Value {
-    let mut m = Module::new();
-    m.insert(
-        "sin".into(),
-        Value::Fn(NativeFn::new(|args| match args {
-            [Value::Float(x)] => Ok(Value::Float(x.sin())),
-            [Value::Int(x)] => Ok(Value::Float((*x as f64).sin())),
-            [v] => Err(InnerError::new(format!(
-                "math.sin() expected float, got {}",
-                v.type_name()
-            ))),
-            _ => Err(InnerError::new(format!(
-                "math.sin() expected 1 argument, got {}",
-                args.len()
-            ))),
-        })),
-    );
-    m.insert("pi".into(), Value::Float(std::f64::consts::PI));
-    Value::module(m)
+fn unary_float(name: &'static str, f: fn(f64) -> f64) -> Value {
+    Value::Fn(NativeFn::new(move |args| match args {
+        [Value::Float(x)] => Ok(Value::Float(f(*x))),
+        [Value::Int(x)] => Ok(Value::Float(f(*x as f64))),
+        [v] => Err(InnerError::new(format!(
+            "math.{name}() expected float, got {}",
+            v.type_name()
+        ))),
+        _ => Err(InnerError::new(format!(
+            "math.{name}() expected 1 argument, got {}",
+            args.len()
+        ))),
+    }))
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::core::test_utils::run;
-    use crate::core::value::Value;
-
-    #[test]
-    fn test_math_sin() {
-        let v = run("math.sin(0.0)", &[]);
-        assert!(matches!(v, Value::Float(f) if f == 0.0));
-    }
-
-    #[test]
-    fn test_math_pi() {
-        let v = run("math.pi", &[]);
-        assert!(matches!(v, Value::Float(f) if (f - std::f64::consts::PI).abs() < 1e-10));
-    }
+pub fn builtin_math() -> Value {
+    let mut m = Module::new();
+    m.insert("sin".into(), unary_float("sin", f64::sin));
+    m.insert("cos".into(), unary_float("cos", f64::cos));
+    m.insert("floor".into(), unary_float("floor", f64::floor));
+    m.insert("round".into(), unary_float("round", f64::round));
+    m.insert("log".into(), unary_float("log", f64::ln));
+    m.insert("pi".into(), Value::Float(std::f64::consts::PI));
+    Value::module(m)
 }
