@@ -198,10 +198,14 @@ graphs:
       operations:
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
   - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
     name: AttributeMapperSchema
     type: action

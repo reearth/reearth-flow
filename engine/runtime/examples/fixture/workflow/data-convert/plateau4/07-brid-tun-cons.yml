@@ -330,34 +330,54 @@ graphs:
       operations:
       - attribute: dm_feature_type
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_attributes
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_dmCode
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_dmCode_code
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_geometryType
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_geometryType_code
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_mapLevel
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_mapLevel_code
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_shapeType
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
       - attribute: dm_shapeType_code
         method: create
-        value: '""'
+        value:
+          type: string
+          value: ''
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
     name: AttributeManagerForMerger
     type: action
@@ -366,8 +386,9 @@ graphs:
       operations:
       - attribute: __schema_definition
         method: create
-        value: |
-          env.get("__value")["feature_type"]
+        value:
+          type: flowExpr
+          value: attributes["feature_type"]
   - id: ded2e272-e05c-4918-86b3-aa9f763da6e7
     name: FeatureReaderByCityGmlForDm
     type: action
@@ -386,16 +407,19 @@ graphs:
       operations:
       - attribute: meshcode
         method: create
-        value: |
-          let file = file::extract_filename(env.get("__value")["path"]);
-          file.split("_")[0]
+        value:
+          type: flowExpr
+          value: Url(attributes["path"]).name.split("_")[0]
       - attribute: gml_id
         method: create
-        value: |
-          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+        value:
+          type: flowExpr
+          value: attributes["__citygml_gml_id"] or attributes["gmlId"]
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes["featureType"] or attributes["gmlName"]
   - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
     name: AttributeFlattenerForDm
     type: action
@@ -408,10 +432,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
   - id: c32a279d-97be-4584-b282-4d65627b1133
     name: LodSplitterWithDmForDm
     type: subGraph
@@ -464,13 +492,19 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: package
         method: rename
-        value: __package
+        value:
+          type: string
+          value: __package
       - attribute: baseCityCode
         method: remove
       - attribute: lod

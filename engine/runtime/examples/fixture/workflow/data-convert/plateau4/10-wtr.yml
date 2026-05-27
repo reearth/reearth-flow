@@ -316,16 +316,19 @@ graphs:
       operations:
       - attribute: meshcode
         method: create
-        value: |
-          let file = file::extract_filename(env.get("__value")["path"]);
-          file.split("_")[0]
+        value:
+          type: flowExpr
+          value: Url(attributes["path"]).name.split("_")[0]
       - attribute: gml_id
         method: create
-        value: |
-          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+        value:
+          type: flowExpr
+          value: attributes["__citygml_gml_id"] or attributes["gmlId"]
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes["featureType"] or attributes["gmlName"]
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -352,10 +355,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
   - id: 123e1a65-7cad-4412-9336-91f37694aa08
     name: FeatureSorter
     type: action
@@ -376,10 +383,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
   - id: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
     name: MVTWriterLod0
     type: action

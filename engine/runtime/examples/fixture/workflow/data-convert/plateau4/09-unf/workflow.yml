@@ -67,8 +67,9 @@ graphs:
           operations:
             - attribute: feature_type_without_prefix
               method: create
-              value: |
-                env.get("__value")["featureType"].split(":")[1]
+              value:
+                type: flowExpr
+                value: 'attributes["featureType"].split(":")[1]'
 
       - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
         name: AttributeDuplicateFilterDict
@@ -130,16 +131,19 @@ graphs:
           operations:
             - attribute: meshcode
               method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
+              value:
+                type: flowExpr
+                value: 'Url(attributes["path"]).name.split("_")[0]'
             - attribute: gml_id
               method: create
-              value: |
-                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+              value:
+                type: flowExpr
+                value: 'attributes["__citygml_gml_id"] or attributes["gmlId"]'
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+              value:
+                type: flowExpr
+                value: 'attributes["featureType"] or attributes["gmlName"]'
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -192,10 +196,14 @@ graphs:
           operations:
             - attribute: cityCode
               method: rename
-              value: city_code
+              value:
+                type: string
+                value: city_code
             - attribute: cityName
               method: rename
-              value: city_name
+              value:
+                type: string
+                value: city_name
 
       - id: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
         name: HorizontalReprojector

@@ -66,16 +66,19 @@ graphs:
           operations:
             - attribute: meshcode
               method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
+              value:
+                type: flowExpr
+                value: 'Url(attributes["path"]).name.split("_")[0]'
             - attribute: gml_id
               method: create
-              value: |
-                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+              value:
+                type: flowExpr
+                value: 'attributes["__citygml_gml_id"] or attributes["gmlId"]'
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+              value:
+                type: flowExpr
+                value: 'attributes["featureType"] or attributes["gmlName"]'
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -94,16 +97,24 @@ graphs:
           operations:
           - attribute: cityCode
             method: rename
-            value: city_code
+            value:
+              type: string
+              value: city_code
           - attribute: cityName
             method: rename
-            value: city_name
+            value:
+              type: string
+              value: city_name
           - attribute: lod
             method: rename
-            value: __lod
+            value:
+              type: string
+              value: __lod
           - attribute: package
             method: rename
-            value: __package
+            value:
+              type: string
+              value: __package
 
       - id: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
         name: FilterUrfPackage
@@ -123,8 +134,9 @@ graphs:
           operations:
           - attribute: feature_type_without_prefix
             method: create
-            value: |
-              env.get("__value").feature_type.split(":")[1]
+            value:
+              type: flowExpr
+              value: 'attributes["feature_type"].split(":")[1]'
 
       - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
         name: AttributeDuplicateFilter

@@ -316,16 +316,19 @@ graphs:
       operations:
       - attribute: meshcode
         method: create
-        value: |
-          let file = file::extract_filename(env.get("__value")["path"]);
-          file.split("_")[0]
+        value:
+          type: flowExpr
+          value: Url(attributes["path"]).name.split("_")[0]
       - attribute: gml_id
         method: create
-        value: |
-          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+        value:
+          type: flowExpr
+          value: attributes["__citygml_gml_id"] or attributes["gmlId"]
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes["featureType"] or attributes["gmlName"]
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -342,12 +345,14 @@ graphs:
       operations:
       - attribute: code
         method: create
-        value: |
-          env.get("__value")["gml:name_code"]
+        value:
+          type: flowExpr
+          value: attributes["gml:name_code"]
       - attribute: description
         method: create
-        value: |
-          env.get("__value")["gml:name"]
+        value:
+          type: flowExpr
+          value: attributes["gml:name"]
   - id: abc6a99c-5730-423c-a449-38911ab4a4e7
     name: AttributeDuplicateFilterDict
     type: action
@@ -381,19 +386,29 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: lod
         method: rename
-        value: __lod
+        value:
+          type: string
+          value: __lod
       - attribute: package
         method: rename
-        value: __package
+        value:
+          type: string
+          value: __package
       - attribute: gml:name_code
         method: rename
-        value: __gml_name_code
+        value:
+          type: string
+          value: __gml_name_code
   - id: 2469c61e-dbda-488e-af80-e3b4105197b7
     name: TwoDimensionForcer
     type: action
