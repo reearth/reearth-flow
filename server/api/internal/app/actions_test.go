@@ -80,9 +80,10 @@ func TestListActions(t *testing.T) {
 }
 
 func TestListActionsHiddenFilter(t *testing.T) {
+	// "CsvReader" is in baseActions; "PLATEAU4.SolarPositionCalculator" is not.
 	testActions := []Action{
-		{Name: "VisibleAction", Type: ActionTypeProcessor, Description: "visible", Categories: []string{"Filter"}},
-		{Name: "HiddenAction", Type: ActionTypeProcessor, Description: "hidden", Categories: []string{"Internal"}, Hidden: true},
+		{Name: "CsvReader", Type: ActionTypeSource, Description: "visible", Categories: []string{"File"}},
+		{Name: "PLATEAU4.SolarPositionCalculator", Type: ActionTypeProcessor, Description: "not in allow-list", Categories: []string{"PLATEAU"}},
 	}
 
 	resetTestData()
@@ -101,7 +102,7 @@ func TestListActionsHiddenFilter(t *testing.T) {
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Len(t, response, 1)
-	assert.Equal(t, "VisibleAction", response[0].Name)
+	assert.Equal(t, "CsvReader", response[0].Name)
 }
 
 func TestGetSegregatedActions(t *testing.T) {
@@ -119,11 +120,10 @@ func TestGetSegregatedActions(t *testing.T) {
 			Categories:  []string{},
 		},
 		{
-			Name:        "InternalAction",
+			Name:        "PLATEAU4.SolarPositionCalculator",
 			Type:        ActionTypeProcessor,
-			Description: "Should be hidden",
-			Categories:  []string{"Internal"},
-			Hidden:      true,
+			Description: "Not in allow-list",
+			Categories:  []string{"PLATEAU"},
 		},
 	}
 
@@ -158,7 +158,7 @@ func TestGetSegregatedActions(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotEmpty(t, response.ByCategory)
 				assert.NotEmpty(t, response.ByType)
-				assert.NotContains(t, response.ByCategory, "Internal", "hidden action category must not appear")
+				assert.NotContains(t, response.ByCategory, "PLATEAU", "action not in allow-list must not appear")
 			}
 		})
 	}
@@ -166,17 +166,16 @@ func TestGetSegregatedActions(t *testing.T) {
 
 func TestGetActionDetails(t *testing.T) {
 	testAction := Action{
-		Name:        "TestAction",
-		Type:        ActionTypeProcessor,
+		Name:        "CsvReader",
+		Type:        ActionTypeSource,
 		Description: "Test action description",
-		Categories:  []string{"TestCategory"},
+		Categories:  []string{"File"},
 	}
 	hiddenAction := Action{
-		Name:        "HiddenAction",
+		Name:        "PLATEAU4.SolarPositionCalculator",
 		Type:        ActionTypeProcessor,
-		Description: "Should not be accessible",
-		Categories:  []string{"Internal"},
-		Hidden:      true,
+		Description: "Not in allow-list",
+		Categories:  []string{"PLATEAU"},
 	}
 
 	tests := []struct {
