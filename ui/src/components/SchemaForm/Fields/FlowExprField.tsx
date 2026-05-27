@@ -23,8 +23,11 @@ export type CodeValue = {
 };
 
 // RJSF v6 uses fieldPathId instead of idSchema
-type V6FieldProps<T, S extends StrictRJSFSchema, F extends FormContextType> =
-  Omit<FieldProps<T, S, F>, "idSchema"> & { fieldPathId: FieldPathId };
+type V6FieldProps<
+  T,
+  S extends StrictRJSFSchema,
+  F extends FormContextType,
+> = Omit<FieldProps<T, S, F>, "idSchema"> & { fieldPathId: FieldPathId };
 
 const FlowExprField = <
   T = any,

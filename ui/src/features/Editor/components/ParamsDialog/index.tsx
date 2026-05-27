@@ -314,7 +314,8 @@ const ParamsDialog: React.FC<Props> = ({
   };
 
   const handleFlowExprValueSubmit = (codeValue: CodeValue) => {
-    if (flowExprEditorContext) applyFieldPatch(flowExprEditorContext, codeValue);
+    if (flowExprEditorContext)
+      applyFieldPatch(flowExprEditorContext, codeValue);
   };
 
   const handleOpenNode = useCallback(() => {
