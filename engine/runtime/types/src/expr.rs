@@ -117,6 +117,14 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
 #[derive(Debug)]
 struct AttributesObject(Arc<crate::feature::Attributes>);
 
+impl AttributesObject {
+    fn get_value(&self, name: &str) -> Option<reearth_flow_expr::Value> {
+        self.0
+            .get(&Attribute::new(name))
+            .map(|v| json_to_value(serde_json::Value::from(v.clone())))
+    }
+}
+
 impl reearth_flow_expr::ImmutableObject for AttributesObject {
     fn type_name(&self) -> &'static str {
         "Attributes"
@@ -137,11 +145,28 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
                         key.type_name()
                     )));
                 };
+                self.get_value(&name)
+                    .ok_or_else(|| InnerError::new(format!("attribute '{name}' not found")))
+            }
+            "get" => {
+                let (key, fallback) = match args {
+                    [key] => (key, None),
+                    [key, fallback] => (key, Some(fallback)),
+                    _ => {
+                        return Err(InnerError::new(
+                            "attributes.get() requires 1 or 2 arguments",
+                        ))
+                    }
+                };
+                let Value::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "attributes.get() key must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
                 Ok(self
-                    .0
-                    .get(&Attribute::new(name))
-                    .map(|v| json_to_value(serde_json::Value::from(v.clone())))
-                    .unwrap_or(Value::Null))
+                    .get_value(name)
+                    .unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
             }
             "__iter__" => Ok(Value::array(
                 self.0
