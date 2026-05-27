@@ -102,7 +102,6 @@ var (
 		"ja": true,
 		"zh": true,
 	}
-
 )
 
 func loadActionsData(lang string) (ActionsData, error) {
