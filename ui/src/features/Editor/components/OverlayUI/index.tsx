@@ -59,7 +59,11 @@ type OverlayUIProps = {
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
-  onLayoutChange: (algorithm: Algorithm, direction: Direction) => void;
+  onLayoutChange: (
+    algorithm: Algorithm,
+    direction: Direction,
+    applyToAll: boolean,
+  ) => void;
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
@@ -181,7 +185,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           />
           {showDialog === "layout" && !isLocked && (
             <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
-              <LayoutSubToolbar onLayoutChange={onLayoutChange} />
+              <LayoutSubToolbar
+                Ydoc={yDoc}
+                onLayoutChange={onLayoutChange}
+                onClose={handleDialogClose}
+              />
             </div>
           )}
           {isLocked && (

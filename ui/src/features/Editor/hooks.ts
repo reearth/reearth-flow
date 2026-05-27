@@ -219,10 +219,10 @@ export default ({
   });
 
   const handleLayoutChange = useCallback(
-    (algorithm: Algorithm, direction: Direction) => {
-      handleYLayoutChange(algorithm, direction);
+    (algorithm: Algorithm, direction: Direction, applyToAll: boolean) => {
+      handleYLayoutChange(algorithm, direction, applyToAll);
       // Defer fitView so React can flush the Yjs-driven node position updates first
-      setTimeout(() => fitView({ duration: 300 }), 0);
+      setTimeout(() => fitView(), 0);
     },
     [fitView, handleYLayoutChange],
   );

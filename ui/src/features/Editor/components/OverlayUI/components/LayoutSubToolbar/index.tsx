@@ -1,7 +1,10 @@
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
+import { useY } from "react-yjs";
+import { Doc, Map as YMap } from "yjs";
 
 import {
   Button,
+  Checkbox,
   Select,
   SelectContent,
   SelectItem,
@@ -12,15 +15,36 @@ import { useT } from "@flow/lib/i18n";
 import type { Algorithm, Direction } from "@flow/types";
 
 type Props = {
-  onLayoutChange: (algorithm: Algorithm, direction: Direction) => void;
+  Ydoc: Doc | null;
+  onLayoutChange: (
+    algorithm: Algorithm,
+    direction: Direction,
+    applyToAll: boolean,
+  ) => void;
+  onClose: () => void;
 };
 
-const LayoutSubToolbar: React.FC<Props> = ({ onLayoutChange }) => {
+const LayoutSubToolbar: React.FC<Props> = ({
+  Ydoc,
+  onLayoutChange,
+  onClose,
+}) => {
   const t = useT();
-  const [direction, setDirection] = useState<Direction>("Horizontal");
+  const yMetadata = useMemo(() => Ydoc?.getMap<any>("metadata"), [Ydoc]);
+  const metadata = useY(yMetadata ?? new YMap()) as Record<string, any>;
+
+  const [direction, setDirection] = useState<Direction>(
+    () => (metadata?.layoutDirection as Direction) || "Horizontal",
+  );
+  const [applyToAll, setApplyToAll] = useState<boolean>(
+    () => metadata?.layoutApplyToAll ?? false,
+  );
 
   const handleCleanUp = () => {
-    onLayoutChange("dagre", direction);
+    yMetadata?.set("layoutDirection", direction);
+    yMetadata?.set("layoutApplyToAll", applyToAll);
+    onLayoutChange("dagre", direction, applyToAll);
+    onClose();
   };
 
   return (
@@ -39,6 +63,14 @@ const LayoutSubToolbar: React.FC<Props> = ({ onLayoutChange }) => {
           <SelectItem value="Vertical">{t("Vertical")}</SelectItem>
         </SelectContent>
       </Select>
+      <label className="flex cursor-pointer items-center gap-2 text-xs select-none">
+        <Checkbox
+          className="bg-accent"
+          checked={applyToAll}
+          onCheckedChange={(v) => setApplyToAll(v === true)}
+        />
+        {t("Apply to all workflows")}
+      </label>
     </div>
   );
 };

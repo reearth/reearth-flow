@@ -8,10 +8,12 @@ import { yNodeConstructor } from "./conversions";
 import { YNodesMap, YWorkflow } from "./types";
 
 export default ({
+  currentWorkflowId,
   yWorkflows,
   rawWorkflows,
   undoTrackerActionWrapper,
 }: {
+  currentWorkflowId: string;
   yWorkflows?: Y.Map<YWorkflow>;
   rawWorkflows: Workflow[];
   undoTrackerActionWrapper: (
@@ -20,9 +22,12 @@ export default ({
   ) => void;
 }) => {
   const handleYLayoutChange = useCallback(
-    (algorithm: Algorithm, direction: Direction) => {
+    (algorithm: Algorithm, direction: Direction, applyToAll: boolean) => {
+      const targets = applyToAll
+        ? rawWorkflows
+        : rawWorkflows.filter((w) => w.id === currentWorkflowId);
       undoTrackerActionWrapper(() => {
-        rawWorkflows.forEach((rawWorkflow) => {
+        targets.forEach((rawWorkflow) => {
           const yNodes = yWorkflows?.get(rawWorkflow.id)?.get("nodes") as
             | YNodesMap
             | undefined;
@@ -44,7 +49,7 @@ export default ({
         });
       });
     },
-    [rawWorkflows, yWorkflows, undoTrackerActionWrapper],
+    [currentWorkflowId, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
   return {
