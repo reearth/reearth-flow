@@ -26,6 +26,7 @@ fn lex_string<'src>(lex: &mut logos::Lexer<'src, Token>) -> Option<String> {
 
 #[derive(Logos, Debug, Clone, PartialEq)]
 #[logos(skip r"[ \t\n\r]+")]
+#[logos(skip r"#[^\n]*")]
 pub enum Token {
     // literals
     #[regex(r"[0-9]+\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+", |lex| lex.slice().parse::<f64>().ok())]
@@ -353,6 +354,19 @@ mod tests {
         assert_eq!(tokenize("0o777"), vec![Token::Int(0o777)]);
         assert_eq!(tokenize("0xff"), vec![Token::Int(0xff)]);
         assert_eq!(tokenize("0XdeadBEEF"), vec![Token::Int(0xdeadBEEF)]);
+    }
+
+    #[test]
+    fn test_line_comment() {
+        assert_eq!(tokenize("1 # comment\n+ 2"), vec![Token::Int(1), Token::Plus, Token::Int(2)]);
+        assert_eq!(tokenize("# full line comment\n42"), vec![Token::Int(42)]);
+        assert_eq!(tokenize("1 # trailing"), vec![Token::Int(1)]);
+        // # inside a string must not start a comment
+        assert_eq!(tokenize(r#""hello#world""#), vec![Token::Str("hello#world".into())]);
+        assert_eq!(
+            tokenize(r#""foo#bar" # strip this"#),
+            vec![Token::Str("foo#bar".into())]
+        );
     }
 
     #[test]

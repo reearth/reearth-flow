@@ -3120,13 +3120,15 @@ graphs:
       operations:
       - attribute: featureTypeName
         method: create
-        value: |
-          let ft = env.get("__value")["__citygml_feature_type"] ?? "";
-          if ft.contains(":") {
-            ft.split(":")[1]
-          } else {
-            ft
-          }
+        value:
+          type: flowExpr
+          value: |
+            ft = attributes["__citygml_feature_type"] or "";
+            if ft.contains(":") {
+              ft.split(":")[1]
+            } else {
+              ft
+            }
   - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
     name: GeometrySplitterForCount
     type: action
