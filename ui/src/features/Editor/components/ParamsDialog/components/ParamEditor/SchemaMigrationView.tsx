@@ -19,6 +19,7 @@ type Props = {
   onMigrate: (newParams: NodeParams) => void;
   onValueEditorOpen: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
+  onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
 };
 
 const SchemaMigrationView: React.FC<Props> = ({
@@ -32,6 +33,7 @@ const SchemaMigrationView: React.FC<Props> = ({
   onMigrate,
   onValueEditorOpen,
   onPythonEditorOpen,
+  onFlowExprEditorOpen,
 }) => {
   const t = useT();
   const [isValid, setIsValid] = useState(true);
@@ -124,6 +126,7 @@ const SchemaMigrationView: React.FC<Props> = ({
               onValidationChange={setIsValid}
               onEditorOpen={onValueEditorOpen}
               onPythonEditorOpen={onPythonEditorOpen}
+              onFlowExprEditorOpen={onFlowExprEditorOpen}
             />
           </div>
         </div>

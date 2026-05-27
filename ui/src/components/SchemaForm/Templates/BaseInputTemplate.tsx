@@ -20,6 +20,7 @@ import { TextInput } from "./BaseInputTemplate/TextInput";
 export type ExtendedFormContext = FormContextType & {
   onEditorOpen?: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
+  onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
   onAssetsOpen?: (fieldContext: FieldContext) => void;
   originalSchema?: any;
   actionName?: string;
