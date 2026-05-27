@@ -358,11 +358,17 @@ mod tests {
 
     #[test]
     fn test_line_comment() {
-        assert_eq!(tokenize("1 # comment\n+ 2"), vec![Token::Int(1), Token::Plus, Token::Int(2)]);
+        assert_eq!(
+            tokenize("1 # comment\n+ 2"),
+            vec![Token::Int(1), Token::Plus, Token::Int(2)]
+        );
         assert_eq!(tokenize("# full line comment\n42"), vec![Token::Int(42)]);
         assert_eq!(tokenize("1 # trailing"), vec![Token::Int(1)]);
         // # inside a string must not start a comment
-        assert_eq!(tokenize(r#""hello#world""#), vec![Token::Str("hello#world".into())]);
+        assert_eq!(
+            tokenize(r#""hello#world""#),
+            vec![Token::Str("hello#world".into())]
+        );
         assert_eq!(
             tokenize(r#""foo#bar" # strip this"#),
             vec![Token::Str("foo#bar".into())]

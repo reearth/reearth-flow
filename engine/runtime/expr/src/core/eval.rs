@@ -391,9 +391,12 @@ fn resolve_op(op: &BinOp) -> NativeFn {
             }
             let (a, b) = bitwise_args(&left, &right)?;
             if b >= 63 {
-                return Err(InnerError::new(format!("left shift amount {b} out of range [0, 62]")));
+                return Err(InnerError::new(format!(
+                    "left shift amount {b} out of range [0, 62]"
+                )));
             }
-            let result = a.checked_shl(b as u32)
+            let result = a
+                .checked_shl(b as u32)
                 .filter(|&v| v >= 0)
                 .ok_or_else(|| InnerError::new("left shift result overflows 63-bit integer"))?;
             Ok(Value::Int(result))
@@ -405,7 +408,9 @@ fn resolve_op(op: &BinOp) -> NativeFn {
             }
             let (a, b) = bitwise_args(&left, &right)?;
             if b >= 63 {
-                return Err(InnerError::new(format!("right shift amount {b} out of range [0, 62]")));
+                return Err(InnerError::new(format!(
+                    "right shift amount {b} out of range [0, 62]"
+                )));
             }
             Ok(Value::Int(a >> b))
         }),
@@ -484,7 +489,9 @@ fn unary_arg(args: &[Value]) -> InnerResult<&Value> {
 fn bitwise_args(a: &Value, b: &Value) -> InnerResult<(i64, i64)> {
     let to_bits = |v: &Value| match v {
         Value::Int(n) if *n >= 0 => Ok(*n),
-        Value::Int(_) => Err(InnerError::new("bitwise operands must be non-negative integers")),
+        Value::Int(_) => Err(InnerError::new(
+            "bitwise operands must be non-negative integers",
+        )),
         other => Err(InnerError::new(format!(
             "bitwise operands must be non-negative integers, got {}",
             other.type_name()
@@ -640,20 +647,15 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                     .map(|k| Value::String(k.clone()))
                     .collect(),
                 Value::String(s) => s.chars().map(|c| Value::String(c.to_string())).collect(),
-                Value::Object(rc) => {
-                    match rc.call_method("__iter__", &[]).to_eval_error(pos)? {
-                        Value::Array(arr) => arr.borrow().clone(),
-                        v => {
-                            return Err(Error::Eval {
-                                pos,
-                                msg: format!(
-                                    "__iter__ must return a list, got {}",
-                                    v.type_name()
-                                ),
-                            })
-                        }
+                Value::Object(rc) => match rc.call_method("__iter__", &[]).to_eval_error(pos)? {
+                    Value::Array(arr) => arr.borrow().clone(),
+                    v => {
+                        return Err(Error::Eval {
+                            pos,
+                            msg: format!("__iter__ must return a list, got {}", v.type_name()),
+                        })
                     }
-                }
+                },
                 v => {
                     return Err(Error::Eval {
                         pos,
@@ -1592,7 +1594,10 @@ mod tests {
                         _ => Err(InnerError::new("__getitem__ expects a string")),
                     },
                     "__iter__" => Ok(Value::array(
-                        self.0.iter().map(|(k, _)| Value::String(k.clone())).collect(),
+                        self.0
+                            .iter()
+                            .map(|(k, _)| Value::String(k.clone()))
+                            .collect(),
                     )),
                     m => Err(InnerError::new(format!("no method {m}"))),
                 }
@@ -1600,14 +1605,22 @@ mod tests {
         }
 
         let mut env = default_env();
-        env.insert("bag".into(), Value::object(Bag(vec![
-            ("x".into(), 10),
-            ("y".into(), 20),
-        ])));
+        env.insert(
+            "bag".into(),
+            Value::object(Bag(vec![("x".into(), 10), ("y".into(), 20)])),
+        );
 
         // __getitem__
-        assert_eval(r#"bag["x"]"#, &[("bag", env["bag"].clone())], Value::from(10i64));
-        assert_eval(r#"bag["y"]"#, &[("bag", env["bag"].clone())], Value::from(20i64));
+        assert_eval(
+            r#"bag["x"]"#,
+            &[("bag", env["bag"].clone())],
+            Value::from(10i64),
+        );
+        assert_eval(
+            r#"bag["y"]"#,
+            &[("bag", env["bag"].clone())],
+            Value::from(20i64),
+        );
         assert!(try_run(r#"bag["z"]"#, &[("bag", env["bag"].clone())]).is_err());
 
         // __iter__ via for-in
@@ -1889,7 +1902,7 @@ mod tests {
         // chaining and precedence
         assert_eval("1 | 2 & 3", &[], Value::from(3i64)); // & binds tighter: 1 | (2 & 3) = 1 | 2 = 3
         assert_eval("5 ^ 3 & 6", &[], Value::from(7i64)); // 5 ^ (3 & 6) = 5 ^ 2 = 7
-        // compound assignment
+                                                          // compound assignment
         assert_eval("x = 0b1111; x &= 0b1010; x", &[], Value::from(0b1010i64));
         assert_eval("x = 0b1010; x |= 0b0101; x", &[], Value::from(0b1111i64));
         assert_eval("x = 0b1111; x ^= 0b1010; x", &[], Value::from(0b0101i64));
