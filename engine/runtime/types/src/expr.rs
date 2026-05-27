@@ -215,9 +215,7 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
                 let (key, fallback) = match args {
                     [key] => (key, None),
                     [key, fallback] => (key, Some(fallback)),
-                    _ => {
-                        return Err(InnerError::new("env.get() requires 1 or 2 arguments"))
-                    }
+                    _ => return Err(InnerError::new("env.get() requires 1 or 2 arguments")),
                 };
                 let Value::String(name) = key else {
                     return Err(InnerError::new(format!(
@@ -244,10 +242,7 @@ pub fn env_from_feature(
         "attributes".into(),
         Value::object(AttributesObject(Arc::clone(&feature.attributes))),
     );
-    env.insert(
-        "env".into(),
-        Value::object(EnvObject(env_vars)),
-    );
+    env.insert("env".into(), Value::object(EnvObject(env_vars)));
     env
 }
 
