@@ -54,17 +54,16 @@ export default ({
   ];
 
   const actionCategories: { value: CategoryFiltering; label: string }[] = [
-    { value: "3D", label: t("3D") },
     { value: "Attribute", label: t("Attribute") },
-    { value: "Database", label: t("Database") },
     { value: "Debug", label: t("Debug") },
     { value: "Feature", label: t("Feature") },
     { value: "File", label: t("File") },
+    { value: "Filter", label: t("Filter") },
     { value: "Geometry", label: t("Geometry") },
-    { value: "Noop", label: t("Noop") },
-    { value: "PLATEAU", label: t("PLATEAU") },
-    { value: "Web", label: t("Web") },
-    { value: "XML", label: t("XML") },
+    { value: "Input", label: t("Input") },
+    { value: "Merge", label: t("Merge") },
+    { value: "Output", label: t("Output") },
+    { value: "Transform", label: t("Transform") },
   ];
 
   const containerRef = useRef<HTMLDivElement>(null);
