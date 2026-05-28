@@ -174,7 +174,7 @@ fn process_feature(
                         }
                         Err(e) => {
                             ctx.event_hub
-                                .warn_log(None, format!("convert error with: {e:?}"));
+                                .error_log(None, format!("convert error with: {e:?}"));
                         }
                     }
                 }
@@ -187,7 +187,7 @@ fn process_feature(
                         }
                         Err(e) => {
                             ctx.event_hub
-                                .warn_log(None, format!("create error with: {e:?}"));
+                                .error_log(None, format!("create error with: {e:?}"));
                         }
                     }
                 }
