@@ -10,10 +10,10 @@
 	xmlns:xlink="http://www.w3.org/1999/xlink"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.opengis.net/citygml/3.0 http://schemas.opengis.net/citygml/3.0/core.xsd
-http://www.opengis.net/citygml/building/3.0 http://schemas.opengis.net/citygml/3.0/building.xsd
-http://www.opengis.net/citygml/construction/3.0 http://schemas.opengis.net/citygml/3.0/construction.xsd
-http://www.opengis.net/citygml/appearance/3.0 http://schemas.opengis.net/citygml/3.0/appearance.xsd
-http://www.opengis.net/citygml/generics/3.0 http://schemas.opengis.net/citygml/3.0/generics.xsd
+http://www.opengis.net/citygml/building/3.0 http://schemas.opengis.net/citygml/building/3.0/building.xsd
+http://www.opengis.net/citygml/construction/3.0 http://schemas.opengis.net/citygml/construction/3.0/construction.xsd
+http://www.opengis.net/citygml/appearance/3.0 http://schemas.opengis.net/citygml/appearance/3.0/appearance.xsd
+http://www.opengis.net/citygml/generics/3.0 http://schemas.opengis.net/citygml/generics/3.0/generics.xsd
 https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 ">
 	<gml:boundedBy>
@@ -24,7 +24,7 @@ https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 	</gml:boundedBy>
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_b3eef114-02e4-11f0-a3af-18ece7a5508c">
-			<core:creationDate>2025-03-21</core:creationDate>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
 			<!-- TEST: invalid xs:date value (L02 schema error) -->
 			<con:dateOfConstruction>二千二十年</con:dateOfConstruction>
 			<bldg:class codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml">3003</bldg:class>
@@ -127,7 +127,7 @@ https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 	</core:cityObjectMember>
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_b3eef115-02e4-11f0-810e-18ece7a5508c">
-			<core:creationDate>2025-03-21</core:creationDate>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
 			<con:dateOfConstruction>0001-01-01</con:dateOfConstruction>
 			<bldg:class codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml">3001</bldg:class>
 			<bldg:usage codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_usage.xml">461</bldg:usage>

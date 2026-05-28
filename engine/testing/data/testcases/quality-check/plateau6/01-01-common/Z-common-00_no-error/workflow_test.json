@@ -1,6 +1,5 @@
 {
-  "description": "Verify output files for plateau6 (CityGML 3.0) quality check with no errors. Input GML is an empty core:CityModel (boundedBy only) under the CityGML 3.0 namespace. workflow.yml is a placeholder; this test is expected to fail until the plateau6 quality-check workflow is implemented.",
-  "skip": true,
+  "description": "Verify output files for plateau6 (CityGML 3.0) quality check with no errors. Input GML is a CityGML 3.0 + i-UR 4.0 building fixture that exercises the major 3.0 changes (Space/SpaceBoundary, con: module, BuildingRoom, i-UR ADE).",
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {
@@ -39,11 +38,7 @@
       "expectedFile": "summary_common.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "01_共通.csv",
-      "excludeColumns": [
-        "XML検証結果",
-        "L02エラー"
-      ]
+      "expectedFile": "01_共通.csv"
     }
   },
   "expectResultOkFile": true

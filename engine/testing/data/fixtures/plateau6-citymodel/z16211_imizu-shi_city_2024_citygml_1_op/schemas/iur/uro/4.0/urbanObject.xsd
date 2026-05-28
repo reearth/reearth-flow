@@ -47,8 +47,8 @@
   xmlns:core="http://www.opengis.net/citygml/3.0"
   xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
   xmlns:con="http://www.opengis.net/citygml/construction/3.0"
-  xmlns:uro="https://www.geospatial.jp/iur/uro/4.0/"
-  targetNamespace="https://www.geospatial.jp/iur/uro/4.0/"
+  xmlns:uro="https://www.geospatial.jp/iur/uro/4.0"
+  targetNamespace="https://www.geospatial.jp/iur/uro/4.0"
   elementFormDefault="qualified"
   attributeFormDefault="unqualified"
   version="0.1.0">
@@ -59,9 +59,9 @@
   <xs:import namespace="http://www.opengis.net/citygml/3.0"
              schemaLocation="http://schemas.opengis.net/citygml/3.0/core.xsd"/>
   <xs:import namespace="http://www.opengis.net/citygml/building/3.0"
-             schemaLocation="http://schemas.opengis.net/citygml/3.0/building.xsd"/>
+             schemaLocation="http://schemas.opengis.net/citygml/building/3.0/building.xsd"/>
   <xs:import namespace="http://www.opengis.net/citygml/construction/3.0"
-             schemaLocation="http://schemas.opengis.net/citygml/3.0/construction.xsd"/>
+             schemaLocation="http://schemas.opengis.net/citygml/construction/3.0/construction.xsd"/>
 
   <!-- ============================================================
        1) BuildingIDAttribute  [表 1-49]
