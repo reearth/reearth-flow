@@ -426,6 +426,7 @@ const ParamsDialog: React.FC<Props> = ({
           onClose={() => {
             setOpenFlowExprEditor(false);
             setFlowExprEditorContext(undefined);
+            onParamFieldFocus?.(null);
           }}
           onValueSubmit={handleFlowExprValueSubmit}
         />
