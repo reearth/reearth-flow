@@ -409,9 +409,7 @@ fn resolve_op(op: &BinOp) -> NativeFn {
             }
             let (a, b) = bitwise_args(&left, &right)?;
             if b >= 63 {
-                return Err(InnerError::new(format!(
-                    "right shift amount {b} out of range [0, 62]"
-                )));
+                return Ok(Value::Int(0));
             }
             Ok(Value::Int(a >> b))
         }),
@@ -1943,7 +1941,7 @@ mod tests {
         assert!(try_run("1.0 & 1", &[]).is_err());
         // errors: shift out of range
         assert!(try_run("1 << 63", &[]).is_err());
-        assert!(try_run("1 >> 63", &[]).is_err());
+        assert_eval("1 >> 63", &[], Value::from(0i64));
         assert!(try_run("1 << -1", &[]).is_err());
         // errors: left shift overflow
         assert!(try_run("4611686018427387904 << 1", &[]).is_err()); // 2^62 << 1 overflows
