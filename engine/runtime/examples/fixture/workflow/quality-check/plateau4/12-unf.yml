@@ -3130,7 +3130,7 @@ graphs:
           type: flowExpr
           value: |
             ft = attributes.get("__citygml_feature_type") or "";
-            if ft.contains(":") {
+            if ":" in ft {
               ft.split(":")[1]
             } else {
               ft
