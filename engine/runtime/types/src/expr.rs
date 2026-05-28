@@ -68,10 +68,11 @@ pub enum CompiledCode {
 impl CompiledCode {
     pub fn eval(
         &self,
-        env: &mut reearth_flow_expr::Env,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<AttributeValue> {
         let v = match self {
-            CompiledCode::Expr(e) => eval(e, env)?,
+            CompiledCode::Expr(e) => eval(e, &mut env_from_feature(feature, env_vars))?,
             CompiledCode::Literal(s) => reearth_flow_expr::Value::String(s.clone()),
         };
         Ok(attribute_value_from_eval(v))
@@ -232,7 +233,7 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
     }
 }
 
-pub fn env_from_feature(
+fn env_from_feature(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> reearth_flow_expr::Env {

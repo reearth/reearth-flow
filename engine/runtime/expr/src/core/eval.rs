@@ -112,53 +112,40 @@ fn eq_op(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn resolve_attr(recv: Value, attr: &str) -> InnerResult<Value> {
-    let f = match &recv {
-        Value::Module(m) => {
-            return m
-                .get(attr)
-                .cloned()
-                .ok_or_else(|| InnerError::new(format!("module has no attribute '{attr}'")));
-        }
-        Value::Int(n) => {
-            let n = *n;
-            return match attr {
-                "bit_length" => Ok(Value::Fn(NativeFn::new(move |args| {
-                    unpack_args!(args =>);
-                    if n < 0 {
-                        return Err(InnerError::new(
-                            "bit_length() not supported for negative integers",
-                        ));
-                    }
-                    Ok(Value::Int((i64::BITS - n.leading_zeros()) as i64))
-                }))),
-                _ => Err(InnerError::new(format!("int has no attribute '{attr}'"))),
-            };
-        }
-        Value::String(_) => str_methods::resolve_method(attr)?,
-        Value::Array(_) => array_methods::resolve_method(attr)?,
-        Value::Map(_) => map_methods::resolve_method(attr)?,
+    match recv {
+        Value::Module(m) => m
+            .get(attr)
+            .cloned()
+            .ok_or_else(|| InnerError::new(format!("module has no attribute '{attr}'"))),
+        Value::Int(n) => match attr {
+            "bit_length" => Ok(Value::Fn(NativeFn::new(move |args| {
+                unpack_args!(args =>);
+                if n < 0 {
+                    return Err(InnerError::new(
+                        "bit_length() not supported for negative integers",
+                    ));
+                }
+                Ok(Value::Int((i64::BITS - n.leading_zeros()) as i64))
+            }))),
+            _ => Err(InnerError::new(format!("int has no attribute '{attr}'"))),
+        },
+        recv @ Value::String(_) => str_methods::resolve_method(recv, attr).map(Value::Fn),
+        recv @ Value::Array(_) => array_methods::resolve_method(recv, attr).map(Value::Fn),
+        recv @ Value::Map(_) => map_methods::resolve_method(recv, attr).map(Value::Fn),
         Value::Object(rc) => {
             if let Some(result) = rc.get_property(attr) {
                 return result;
             }
-            let rc = rc.clone();
             let attr = attr.to_string();
-            return Ok(Value::Fn(NativeFn::new(move |args| {
+            Ok(Value::Fn(NativeFn::new(move |args| {
                 rc.call_method(&attr, args)
-            })));
+            })))
         }
-        v => {
-            return Err(InnerError::new(format!(
-                "{} has no attribute '{attr}'",
-                v.type_name()
-            )));
-        }
-    };
-    Ok(Value::Fn(NativeFn::new(move |args| {
-        let mut a = vec![recv.clone()];
-        a.extend_from_slice(args);
-        f.call(&a)
-    })))
+        v => Err(InnerError::new(format!(
+            "{} has no attribute '{attr}'",
+            v.type_name()
+        ))),
+    }
 }
 
 // Returns a NativeFn for a binary operator. args[0]=left, args[1]=right.

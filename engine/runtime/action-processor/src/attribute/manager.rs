@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 
-use reearth_flow_types::{env_from_feature, Code, CompiledCode, Feature};
+use reearth_flow_types::{Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -160,7 +160,6 @@ fn process_feature(
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Feature {
     let mut result = feature.clone();
-    let mut env = env_from_feature(feature, env_vars);
     for operation in operations {
         match operation {
             Operate::Convert { code, attribute } => {
@@ -168,7 +167,7 @@ fn process_feature(
                     continue;
                 }
                 if let Some(code) = code {
-                    match code.eval(&mut env) {
+                    match code.eval(feature, Arc::clone(&env_vars)) {
                         Ok(new_value) => {
                             result.insert(attribute.clone(), new_value);
                         }
@@ -181,7 +180,7 @@ fn process_feature(
             }
             Operate::Create { code, attribute } => {
                 if let Some(code) = code {
-                    match code.eval(&mut env) {
+                    match code.eval(feature, Arc::clone(&env_vars)) {
                         Ok(new_value) => {
                             result.insert(attribute.clone(), new_value);
                         }

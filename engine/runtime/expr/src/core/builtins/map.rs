@@ -10,7 +10,7 @@ use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
 use crate::unpack_args;
 
-type MethodFn = fn(&[Value]) -> InnerResult<Value>;
+use super::MethodFn;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
@@ -21,11 +21,16 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     ])
 });
 
-pub fn resolve_method(method: &str) -> InnerResult<NativeFn> {
-    METHODS
+pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
+    let f = METHODS
         .get(method)
-        .map(|&f| NativeFn::new(f))
-        .ok_or_else(|| InnerError::new(format!("Map has no method '{method}'")))
+        .copied()
+        .ok_or_else(|| InnerError::new(format!("Map has no method '{method}'")))?;
+    Ok(NativeFn::new(move |args| {
+        let mut a = vec![recv.clone()];
+        a.extend_from_slice(args);
+        f(&a)
+    }))
 }
 
 fn keys(args: &[Value]) -> InnerResult<Value> {
