@@ -9,8 +9,7 @@ use crate::core::value::{NativeFn, Value};
 
 type MethodFn = fn(&[Value]) -> InnerResult<Value>;
 
-static METHODS: LazyLock<HashMap<&'static str, MethodFn>> =
-    LazyLock::new(|| HashMap::from([]));
+static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| HashMap::from([]));
 
 pub fn resolve_method(method: &str) -> InnerResult<NativeFn> {
     METHODS
