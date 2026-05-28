@@ -36,6 +36,10 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         &["Attribute"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["aggregate"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

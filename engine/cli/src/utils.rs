@@ -14,6 +14,7 @@ pub struct ActionSchema {
     pub input_ports: Vec<String>,
     pub output_ports: Vec<String>,
     pub categories: Vec<String>,
+    pub tags: Vec<String>,
 }
 
 impl ActionSchema {
@@ -27,6 +28,7 @@ impl ActionSchema {
         input_ports: Vec<String>,
         output_ports: Vec<String>,
         categories: Vec<String>,
+        tags: Vec<String>,
     ) -> Self {
         Self {
             name,
@@ -37,6 +39,7 @@ impl ActionSchema {
             input_ports,
             output_ports,
             categories,
+            tags,
         }
     }
 }
@@ -210,7 +213,7 @@ pub(crate) fn create_action_schema(
     builtin: bool,
     i18n: &HashMap<String, I18nSchema>,
 ) -> ActionSchema {
-    let (name, description, parameter, input_ports, output_ports, categories) = match kind {
+    let (name, description, parameter, input_ports, output_ports, categories, tags) = match kind {
         NodeKind::Source(factory) => {
             let i18n_schema = i18n.get(&factory.name().to_string());
             (
@@ -234,6 +237,7 @@ pub(crate) fn create_action_schema(
                     .map(|p| p.to_string())
                     .collect(),
                 factory.categories().iter().map(|c| c.to_string()).collect(),
+                factory.tags().iter().map(|t| t.to_string()).collect(),
             )
         }
         NodeKind::Processor(factory) => {
@@ -263,6 +267,7 @@ pub(crate) fn create_action_schema(
                     .map(|p| p.to_string())
                     .collect(),
                 factory.categories().iter().map(|c| c.to_string()).collect(),
+                factory.tags().iter().map(|t| t.to_string()).collect(),
             )
         }
         NodeKind::Sink(factory) => {
@@ -288,6 +293,7 @@ pub(crate) fn create_action_schema(
                     .collect(),
                 vec![],
                 factory.categories().iter().map(|c| c.to_string()).collect(),
+                factory.tags().iter().map(|t| t.to_string()).collect(),
             )
         }
     };
@@ -305,5 +311,6 @@ pub(crate) fn create_action_schema(
         input_ports,
         output_ports,
         categories,
+        tags,
     )
 }

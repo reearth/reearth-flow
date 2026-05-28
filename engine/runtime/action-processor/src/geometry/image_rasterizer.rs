@@ -83,6 +83,10 @@ impl ProcessorFactory for ImageRasterizerFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["raster", "image", "texture"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), TEXTURE_COORDS_PORT.clone()]
     }

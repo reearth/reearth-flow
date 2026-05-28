@@ -84,6 +84,10 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
         &["Attribute"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["statistics", "aggregate"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

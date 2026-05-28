@@ -34,7 +34,7 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Filter"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

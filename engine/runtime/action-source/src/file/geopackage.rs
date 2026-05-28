@@ -48,7 +48,11 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File", "Database"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["geopackage"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

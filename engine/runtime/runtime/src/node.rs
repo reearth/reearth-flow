@@ -226,6 +226,10 @@ pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
         &[]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &[]
+    }
+
     fn get_output_ports(&self) -> Vec<Port>;
     fn build(
         &self,
@@ -287,6 +291,10 @@ pub trait ProcessorFactory: Send + Sync + Debug + ProcessorFactoryClone {
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema>;
 
     fn categories(&self) -> &[&'static str] {
+        &[]
+    }
+
+    fn tags(&self) -> &[&'static str] {
         &[]
     }
 
@@ -354,6 +362,10 @@ pub trait SinkFactory: Send + Sync + Debug + SinkFactoryClone {
     fn categories(&self) -> &[&'static str] {
         &[]
     }
+
+    fn tags(&self) -> &[&'static str] {
+        &[]
+    }
     fn get_input_ports(&self) -> Vec<Port>;
     fn prepare(&self) -> Result<(), BoxedError>;
     fn build(
@@ -419,7 +431,11 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["System"]
+        &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["routing"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -502,7 +518,11 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["System"]
+        &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["routing"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

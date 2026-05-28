@@ -32,7 +32,11 @@ impl SourceFactory for JsonReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["json"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

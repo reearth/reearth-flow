@@ -46,7 +46,11 @@ impl ProcessorFactory for FeatureJoinerFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Merge"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["join"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

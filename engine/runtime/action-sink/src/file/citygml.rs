@@ -238,7 +238,11 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["citygml", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

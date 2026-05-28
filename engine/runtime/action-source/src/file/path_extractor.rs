@@ -41,7 +41,11 @@ impl SourceFactory for FilePathExtractorFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["file-system"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

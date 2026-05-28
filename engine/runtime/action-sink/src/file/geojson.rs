@@ -31,7 +31,11 @@ impl SinkFactory for GeoJsonWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["geojson"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

@@ -32,7 +32,11 @@ impl SourceFactory for GeoJsonReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["geojson"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

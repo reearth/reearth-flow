@@ -33,7 +33,11 @@ impl SinkFactory for ZipFileWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["file-system", "compression"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
