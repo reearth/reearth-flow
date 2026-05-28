@@ -163,8 +163,8 @@ graphs:
         value:
           type: flowExpr
           value: |
-            attributes = attributes["cityGmlAttributes"];
-            uro_list = attributes.get("uro:BuildingIDAttribute");
+            cga = attributes["cityGmlAttributes"];
+            uro_list = cga.get("uro:BuildingIDAttribute");
             gml_city_code = null;
             if uro_list and type(uro_list) == "list" {
               gml_city_code = uro_list[0].get("uro:city_code");
@@ -175,13 +175,13 @@ graphs:
         value:
           type: flowExpr
           value: |
-            attributes = attributes["cityGmlAttributes"];
-            uro_list = attributes.get("uro:BuildingIDAttribute");
+            cga = attributes["cityGmlAttributes"];
+            uro_list = cga.get("uro:BuildingIDAttribute");
             gml_city_name = null;
             if uro_list and type(uro_list) == "list" {
               gml_city_name = uro_list[0].get("uro:city")
             }
-            gml_city_name or attributes["cityName"]
+            gml_city_name or attributes.get("cityName")
   - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
     name: AttributeConversionTable
     type: action
