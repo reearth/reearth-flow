@@ -61,14 +61,16 @@ const FlowExprField = <
 
   const handleInlineChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      (onChange as any)(
-        { type: "string", value: e.target.value },
-        [],
+      // fieldPathId.path is the full path from root — required by RJSF v6 so it
+      // sets only this field's slice of formData, not the entire form root.
+      onChange(
+        { type: "string", value: e.target.value } as any,
+        fieldPathId.path,
         undefined,
         id,
       );
     },
-    [onChange, id],
+    [onChange, fieldPathId.path, id],
   );
 
   const handleEditorOpen = useCallback(
