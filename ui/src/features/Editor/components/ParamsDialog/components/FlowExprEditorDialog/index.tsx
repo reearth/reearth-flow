@@ -58,7 +58,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   const initialCode = fieldContext.value as CodeValue | undefined;
   const [codeType, setCodeType] = useState<"flowExpr" | "string">(
-    initialCode?.type ?? "string",
+    initialCode?.type ?? "flowExpr",
   );
   const [codeValue, setCodeValue] = useState(initialCode?.value ?? "");
   const [isFullscreen, setIsFullscreen] = useState(false);
