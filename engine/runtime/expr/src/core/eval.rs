@@ -396,6 +396,7 @@ fn resolve_op(op: &BinOp) -> NativeFn {
             }
             let (a, b) = bitwise_args(&left, &right)?;
             if b >= 63 {
+                // shr should not overflow, same as Python
                 return Ok(Value::Int(0));
             }
             Ok(Value::Int(a >> b))

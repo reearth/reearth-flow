@@ -134,6 +134,8 @@ pub(crate) fn format_float(n: f64) -> String {
             s + ".0"
         }
     } else {
+        // the formatting is deliberately not aligned with Python formatting
+        // to discourage users from assuming the unguaranteed stability of the string formatting
         format!("{:e}", n)
     }
 }
