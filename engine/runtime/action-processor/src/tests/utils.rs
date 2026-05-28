@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     event::EventHub, executor_operation::ExecutorContext, kvs, node::DEFAULT_PORT,
@@ -15,5 +16,6 @@ pub(crate) fn create_default_execute_context(feature: &Feature) -> ExecutorConte
         Arc::new(StorageResolver::new()),
         Arc::new(kvs::create_kv_store()),
         EventHub::new(30),
+        Uri::for_test("file:///"),
     )
 }

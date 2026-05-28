@@ -15,6 +15,19 @@ use crate::storage::format_object_store_error;
 use crate::storage::Storage;
 
 impl Storage {
+    /// Direct sync write to the storage backend.
+    ///
+    /// **Do not call this from sink code paths.** Sinks must go through
+    /// [`reearth_flow_action_sink::SinkOutput::from_path`] →
+    /// [`reearth_flow_action_sink::SinkOutput::write`], which routes the
+    /// destination URI through `sandbox::ensure_under` against the executor
+    /// context's `sandbox_root`. Calling `put_sync` directly from a sink
+    /// skips that check and reintroduces an unbounded-write vulnerability:
+    /// the sink could land bytes anywhere the storage backend permits
+    /// (`/etc/passwd`, a sibling bucket, `..` traversal, etc.).
+    ///
+    /// Legitimate non-sink callers (sources reading inputs, processors
+    /// staging temp files, incremental state) may use this directly.
     pub fn put_sync(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {

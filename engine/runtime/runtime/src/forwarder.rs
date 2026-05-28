@@ -33,6 +33,7 @@ pub(crate) fn open_jsonl_reader(path: &Path) -> std::io::Result<Box<dyn BufRead>
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum ProcessorChannelForwarder {
     ChannelManager(ChannelManager),
     Noop(NoopChannelForwarder),
