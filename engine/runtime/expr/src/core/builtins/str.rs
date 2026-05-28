@@ -9,7 +9,6 @@ type MethodFn = fn(&[Value]) -> InnerResult<Value>;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
-        ("len", len as MethodFn),
         ("trim", trim as MethodFn),
         ("split", split as MethodFn),
         ("starts_with", starts_with as MethodFn),
@@ -25,14 +24,6 @@ pub fn resolve_method(method: &str) -> InnerResult<NativeFn> {
         .get(method)
         .map(|&f| NativeFn::new(f))
         .ok_or_else(|| InnerError::new(format!("String has no method '{method}'")))
-}
-
-fn len(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    Ok(Value::Int(s.chars().count() as i64))
 }
 
 fn trim(args: &[Value]) -> InnerResult<Value> {
@@ -215,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        assert_eval(r#""hello".len()"#, &[], Value::Int(5));
-        assert_eval(r#""".len()"#, &[], Value::Int(0));
+        assert_eval(r#"len("hello")"#, &[], Value::Int(5));
+        assert_eval(r#"len("")"#, &[], Value::Int(0));
     }
 }

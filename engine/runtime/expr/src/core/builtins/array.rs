@@ -6,26 +6,17 @@ use std::sync::LazyLock;
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
-use crate::unpack_args;
 
 type MethodFn = fn(&[Value]) -> InnerResult<Value>;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> =
-    LazyLock::new(|| HashMap::from([("len", len as MethodFn)]));
+    LazyLock::new(|| HashMap::from([]));
 
 pub fn resolve_method(method: &str) -> InnerResult<NativeFn> {
     METHODS
         .get(method)
         .map(|&f| NativeFn::new(f))
         .ok_or_else(|| InnerError::new(format!("Array has no method '{method}'")))
-}
-
-fn len(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => recv);
-    let Value::Array(rc) = recv else {
-        return Err(InnerError::new("expected array receiver"));
-    };
-    Ok(Value::Int(rc.borrow().len() as i64))
 }
 
 pub fn eq_inner(a: &Rc<RefCell<Vec<Value>>>, b: &Rc<RefCell<Vec<Value>>>) -> InnerResult<bool> {
@@ -53,6 +44,6 @@ mod tests {
     #[test]
     fn test_len() {
         let arr = Value::from(vec![1i64, 2i64, 3i64]);
-        assert_eval("arr.len()", &[("arr", arr)], Value::from(3i64));
+        assert_eval("len(arr)", &[("arr", arr)], Value::from(3i64));
     }
 }

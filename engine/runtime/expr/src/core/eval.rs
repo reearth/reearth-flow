@@ -69,6 +69,7 @@ pub fn default_env() -> Env {
     env.insert("math".into(), builtin_math());
     env.insert("print".into(), Value::Fn(NativeFn::new(builtin_print)));
     env.insert("type".into(), Value::Fn(NativeFn::new(builtin_type)));
+    env.insert("len".into(), Value::Fn(NativeFn::new(builtin_len)));
     env
 }
 
@@ -1163,6 +1164,19 @@ fn builtin_type(args: &[Value]) -> InnerResult<Value> {
     Ok(Value::String(v.type_name().to_string()))
 }
 
+fn builtin_len(args: &[Value]) -> InnerResult<Value> {
+    unpack_args!(args => v);
+    match v {
+        Value::String(s) => Ok(Value::Int(s.chars().count() as i64)),
+        Value::Array(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
+        Value::Map(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
+        other => Err(InnerError::new(format!(
+            "len() not supported for {}",
+            other.type_name()
+        ))),
+    }
+}
+
 fn builtin_print(args: &[Value]) -> InnerResult<Value> {
     let parts: Vec<String> = args
         .iter()
@@ -1670,6 +1684,20 @@ mod tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    fn test_len_builtin() {
+        assert_eval(r#"len("hello")"#, &[], Value::from(5i64));
+        assert_eval(r#"len("")"#, &[], Value::from(0i64));
+        let arr = Value::from(vec![1i64, 2i64, 3i64]);
+        assert_eval("len(arr)", &[("arr", arr)], Value::from(3i64));
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eval("len(m)", &[("m", m)], Value::from(2i64));
+        assert!(try_run("len(42)", &[]).is_err());
     }
 
     #[test]

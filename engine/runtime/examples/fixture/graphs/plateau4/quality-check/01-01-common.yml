@@ -79,7 +79,7 @@ nodes:
             type: flowExpr
             value: |
               if attributes["status"] == "NOT_WELL_FORMED" {
-                attributes["xmlError"].len()
+                len(attributes["xmlError"])
               } else {
                 0
               }
@@ -89,7 +89,7 @@ nodes:
             type: flowExpr
             value: |
               if attributes["status"] == "INVALID" {
-                attributes["xmlError"].len()
+                len(attributes["xmlError"])
               } else {
                 0
               }
