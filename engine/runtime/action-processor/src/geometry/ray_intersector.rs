@@ -89,6 +89,10 @@ impl ProcessorFactory for RayIntersectorFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["ray", "intersection", "3d"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![RAY_PORT.clone(), GEOM_PORT.clone()]
     }

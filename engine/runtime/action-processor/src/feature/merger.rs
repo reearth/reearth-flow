@@ -45,7 +45,7 @@ impl ProcessorFactory for FeatureMergerFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Merge"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

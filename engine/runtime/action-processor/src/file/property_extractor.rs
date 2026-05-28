@@ -35,6 +35,10 @@ impl ProcessorFactory for FilePropertyExtractorFactory {
         &["File"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["file-system"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

@@ -73,7 +73,7 @@ impl ProcessorFactory for FeatureCounterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Debug"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

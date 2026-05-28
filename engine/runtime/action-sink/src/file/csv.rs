@@ -33,7 +33,11 @@ impl SinkFactory for CsvWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["csv"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

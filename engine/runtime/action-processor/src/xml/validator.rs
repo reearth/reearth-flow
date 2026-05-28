@@ -46,7 +46,11 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["PLATEAU"]
+        &["Transform"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["xml", "validate"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
