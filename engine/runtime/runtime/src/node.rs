@@ -483,6 +483,7 @@ impl Processor for InputRouter {
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
+            ctx.sandbox_root,
         ));
         Ok(())
     }
@@ -569,6 +570,7 @@ impl Processor for OutputRouter {
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
+            ctx.sandbox_root,
         ));
         Ok(())
     }

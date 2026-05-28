@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::vec;
 use std::{env, fs, path::Path, sync::Arc};
 
@@ -107,6 +108,8 @@ pub(crate) fn execute(workflow: &str) {
     ));
     let handlers: Vec<Arc<dyn reearth_flow_runtime::event::EventHandler>> =
         vec![Arc::new(EventHandler)];
+    let sandbox_root = reearth_flow_common::uri::Uri::from_str("file:///")
+        .expect("'file:///' is always a valid URI");
     Runner::run_with_event_handler(
         job_id,
         workflow,
@@ -117,6 +120,7 @@ pub(crate) fn execute(workflow: &str) {
         feature_state,
         None,
         handlers,
+        sandbox_root,
     )
     .expect("Failed to run workflow.");
 }
