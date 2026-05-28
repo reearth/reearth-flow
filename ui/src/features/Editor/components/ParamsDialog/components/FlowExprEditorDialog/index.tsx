@@ -204,26 +204,26 @@ const FlowExprEditorDialog: React.FC<Props> = ({
             className={`flex flex-col ${isFullscreen ? "h-[calc(100vh-52px)]" : "h-[70vh]"}`}>
             {/* Mode toggle */}
             <div className="flex shrink-0 gap-1 border-b px-4 py-2">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={() => setCodeType("flowExpr")}
-                className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                className={` ${
                   codeType === "flowExpr"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-accent text-accent-foreground"
+                    : ""
                 }`}>
                 {t("Expression")}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setCodeType("string")}
-                className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                className={` ${
                   codeType === "string"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-accent text-accent-foreground"
+                    : ""
                 }`}>
                 {t("Literal string")}
-              </button>
+              </Button>
             </div>
 
             {/* Editor area */}
