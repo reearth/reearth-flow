@@ -113,5 +113,4 @@ See [docs/flow-expr-editor.md](docs/flow-expr-editor.md) for architecture detail
 ## Documentation
 
 - [UI Architecture](docs/architecture.md) - Technologies, data flow, component patterns, environment configuration
-- [FlowExpr Language Reference](docs/flow-expr-reference.md) - Language spec (types, operators, built-ins, math namespace)
 - [FlowExpr Editor Architecture](docs/flow-expr-editor.md) - Overlay stack, tokenizer, validator, autocomplete
