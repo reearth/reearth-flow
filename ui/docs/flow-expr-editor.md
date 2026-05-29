@@ -4,14 +4,14 @@ The FlowExpr editor is a custom code editor built from a plain `<textarea>` with
 
 ## Files
 
-| File | Role |
-|------|------|
-| `FlowExprCodeEditor.tsx` | Main component — composes all layers, manages validation debounce, scroll sync |
-| `FlowExprSyntaxHighlighter.tsx` | Hand-written tokenizer → colored `<span>` elements |
-| `FlowExprAutocomplete.tsx` | Dropdown positioned via canvas text measurement |
-| `FlowExprValidator.ts` | Client-side bracket matching + unclosed string detection |
-| `flowExprConstants.ts` | Keywords, built-in functions, math functions, operators, autocomplete suggestions |
-| `constants.ts` | Shared `AutocompleteSuggestion` type |
+| File                            | Role                                                                              |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| `FlowExprCodeEditor.tsx`        | Main component — composes all layers, manages validation debounce, scroll sync    |
+| `FlowExprSyntaxHighlighter.tsx` | Hand-written tokenizer → colored `<span>` elements                                |
+| `FlowExprAutocomplete.tsx`      | Dropdown positioned via canvas text measurement                                   |
+| `FlowExprValidator.ts`          | Client-side bracket matching + unclosed string detection                          |
+| `flowExprConstants.ts`          | Keywords, built-in functions, math functions, operators, autocomplete suggestions |
+| `constants.ts`                  | Shared `AutocompleteSuggestion` type                                              |
 
 All files live under:
 `src/features/Editor/components/ParamsDialog/components/ValueEditorDialog/components/`
@@ -20,12 +20,12 @@ All files live under:
 
 Four layers are stacked with absolute positioning:
 
-| z-index | Layer | Purpose |
-|---------|-------|---------|
-| 1 | Highlight div | Syntax-colored spans (pointer-events: none) |
-| 3 | Textarea | Transparent text, visible caret/selection |
-| 4 | Error overlay | Underline spans for validation errors (pointer-events: auto for hover tooltips) |
-| 0 | Placeholder div | Gray placeholder text when value is empty |
+| z-index | Layer           | Purpose                                                                         |
+| ------- | --------------- | ------------------------------------------------------------------------------- |
+| 1       | Highlight div   | Syntax-colored spans (pointer-events: none)                                     |
+| 3       | Textarea        | Transparent text, visible caret/selection                                       |
+| 4       | Error overlay   | Underline spans for validation errors (pointer-events: auto for hover tooltips) |
+| 0       | Placeholder div | Gray placeholder text when value is empty                                       |
 
 The textarea text is `color: transparent` so the highlight layer shows through. The caret stays visible because it is rendered by the browser independently of text color. Scroll position is kept in sync between textarea and the highlight/error layers via `onScroll`.
 
@@ -45,6 +45,7 @@ The `math::fnName` tokens are classified as `namespace` + `operator` (`::`) + `i
 ## Autocomplete
 
 `FlowExprAutocomplete.tsx` positions the dropdown by:
+
 1. Finding the cursor word start/end
 2. Measuring text width with a `canvas` element using the textarea's computed font
 3. Combining that with `paddingLeft`, `lineHeight`, and `scrollTop` offsets

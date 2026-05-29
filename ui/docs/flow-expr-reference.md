@@ -27,17 +27,17 @@ FlowExpr is a Python-like expression language used throughout the Re:Earth Flow 
 
 ## Data Types
 
-| Type    | Rust backing | Notes |
-|---------|-------------|-------|
-| `null`  | `()`        |       |
-| Boolean | `bool`      | `true`, `false` |
-| Integer | `i64`       |       |
-| Float   | `f64`       |       |
-| String  | `String`    | UTF-8 |
-| Array   | `Rc<Vec<Value>>` | Reference-counted |
-| Map     | `Rc<IndexMap<String,Value>>` | Ordered, reference-counted |
-| Url     | Custom      | Path / URI manipulation |
-| Function | Native Rust | Callable from expressions |
+| Type     | Rust backing                 | Notes                      |
+| -------- | ---------------------------- | -------------------------- |
+| `null`   | `()`                         |                            |
+| Boolean  | `bool`                       | `true`, `false`            |
+| Integer  | `i64`                        |                            |
+| Float    | `f64`                        |                            |
+| String   | `String`                     | UTF-8                      |
+| Array    | `Rc<Vec<Value>>`             | Reference-counted          |
+| Map      | `Rc<IndexMap<String,Value>>` | Ordered, reference-counted |
+| Url      | Custom                       | Path / URI manipulation    |
+| Function | Native Rust                  | Callable from expressions  |
 
 ---
 
@@ -79,41 +79,41 @@ x **= 2   # x = x ** 2
 
 ### Arithmetic
 
-| Operator | Meaning |
-|----------|---------|
-| `+` | Addition / string concat |
-| `-` | Subtraction |
-| `*` | Multiplication |
-| `/` | Division |
-| `//` | Floor division |
-| `%` | Modulo |
-| `**` | Exponentiation (right-associative) |
-| `-x` | Unary negation |
+| Operator | Meaning                            |
+| -------- | ---------------------------------- |
+| `+`      | Addition / string concat           |
+| `-`      | Subtraction                        |
+| `*`      | Multiplication                     |
+| `/`      | Division                           |
+| `//`     | Floor division                     |
+| `%`      | Modulo                             |
+| `**`     | Exponentiation (right-associative) |
+| `-x`     | Unary negation                     |
 
 ### Comparison
 
-| Operator | Meaning |
-|----------|---------|
-| `==` | Equal |
-| `!=` | Not equal |
-| `<` | Less than |
-| `<=` | Less than or equal |
-| `>` | Greater than |
-| `>=` | Greater than or equal |
+| Operator | Meaning               |
+| -------- | --------------------- |
+| `==`     | Equal                 |
+| `!=`     | Not equal             |
+| `<`      | Less than             |
+| `<=`     | Less than or equal    |
+| `>`      | Greater than          |
+| `>=`     | Greater than or equal |
 
 ### Logical
 
-| Operator | Meaning |
-|----------|---------|
-| `and` | Logical AND |
-| `or` | Logical OR |
-| `not` | Logical NOT |
+| Operator | Meaning     |
+| -------- | ----------- |
+| `and`    | Logical AND |
+| `or`     | Logical OR  |
+| `not`    | Logical NOT |
 
 ### Membership
 
-| Operator | Meaning |
-|----------|---------|
-| `in` | `"a" in ["a","b"]` |
+| Operator | Meaning            |
+| -------- | ------------------ |
+| `in`     | `"a" in ["a","b"]` |
 | `not in` | Negated membership |
 
 ### Precedence (lowest → highest)
@@ -244,23 +244,23 @@ A block `{ … }` evaluates to its final expression. Statements are separated by
 
 ### Type conversion
 
-| Function | Description |
-|----------|-------------|
-| `str(v)` | Convert to string |
-| `int(v)` | Convert to integer |
-| `float(v)` | Convert to float |
-| `bool(v)` | Convert to boolean |
-| `list(v)` | Convert to array |
-| `map(v)` | Convert to map |
+| Function   | Description        |
+| ---------- | ------------------ |
+| `str(v)`   | Convert to string  |
+| `int(v)`   | Convert to integer |
+| `float(v)` | Convert to float   |
+| `bool(v)`  | Convert to boolean |
+| `list(v)`  | Convert to array   |
+| `map(v)`   | Convert to map     |
 
 ### Engine integration
 
-| Function | Description |
-|----------|-------------|
-| `value("attr")` | Read a feature attribute by name |
-| `env("VAR")` | Read an environment variable |
-| `Url(path)` | Construct a [Url](#the-url-type) value |
-| `print(...)` | Debug print; returns first argument |
+| Function        | Description                            |
+| --------------- | -------------------------------------- |
+| `value("attr")` | Read a feature attribute by name       |
+| `env("VAR")`    | Read an environment variable           |
+| `Url(path)`     | Construct a [Url](#the-url-type) value |
+| `print(...)`    | Debug print; returns first argument    |
 
 ---
 
@@ -289,24 +289,24 @@ All math functions live in the `math::` namespace.
 
 ### Constants
 
-| Name | Value |
-|------|-------|
-| `math::PI` | π ≈ 3.14159… |
-| `math::E` | e ≈ 2.71828… |
+| Name        | Value         |
+| ----------- | ------------- |
+| `math::PI`  | π ≈ 3.14159…  |
+| `math::E`   | e ≈ 2.71828…  |
 | `math::TAU` | 2π ≈ 6.28318… |
 
 ### Functions
 
-| Category | Functions |
-|----------|-----------|
-| Trigonometry | `sin` `cos` `tan` `asin` `acos` `atan` `atan2` |
-| Hyperbolic | `sinh` `cosh` `tanh` `asinh` `acosh` `atanh` |
+| Category          | Functions                                        |
+| ----------------- | ------------------------------------------------ |
+| Trigonometry      | `sin` `cos` `tan` `asin` `acos` `atan` `atan2`   |
+| Hyperbolic        | `sinh` `cosh` `tanh` `asinh` `acosh` `atanh`     |
 | Exponential / Log | `exp` `exp_m1` `ln` `ln_1p` `log` `log10` `log2` |
-| Power / Root | `sqrt` `cbrt` `pow` `hypot` |
-| Rounding | `floor` `ceil` `round` |
-| Comparison | `abs` `min` `max` |
-| Angle conversion | `to_radians` `to_degrees` |
-| Other | `copysign` |
+| Power / Root      | `sqrt` `cbrt` `pow` `hypot`                      |
+| Rounding          | `floor` `ceil` `round`                           |
+| Comparison        | `abs` `min` `max`                                |
+| Angle conversion  | `to_radians` `to_degrees`                        |
+| Other             | `copysign`                                       |
 
 All functions accept `float` arguments. Example:
 
@@ -350,10 +350,10 @@ Code::String(literal)        // treated as a plain string value
 
 ## Design Constraints
 
-| Constraint | Detail |
-|------------|--------|
-| **No iteration limit on `while`** | Relies on action-level timeouts |
-| **No cycle detection** | Circular references in maps/arrays are undefined behavior |
-| **Memory model** | Arrays and maps use `Rc` (reference counting); no tracing GC |
-| **Recursion depth** | 64 in debug builds, 1024 in release builds |
-| **No `import` / modules** | All built-ins are pre-registered in the environment |
+| Constraint                        | Detail                                                       |
+| --------------------------------- | ------------------------------------------------------------ |
+| **No iteration limit on `while`** | Relies on action-level timeouts                              |
+| **No cycle detection**            | Circular references in maps/arrays are undefined behavior    |
+| **Memory model**                  | Arrays and maps use `Rc` (reference counting); no tracing GC |
+| **Recursion depth**               | 64 in debug builds, 1024 in release builds                   |
+| **No `import` / modules**         | All built-ins are pre-registered in the environment          |
