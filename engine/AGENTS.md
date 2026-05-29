@@ -120,3 +120,4 @@ cargo make test
 ## Documentation
 
 - [Engine Architecture](dev-docs/architecture.md) - Runtime design, expression system, environment variables, debugging
+- [Action Standard](dev-docs/action-standard.md) - Naming, description, parameter, and port conventions for authoring and reviewing actions
