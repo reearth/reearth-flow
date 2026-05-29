@@ -120,7 +120,7 @@ enum Operate {
         attribute: String,
     },
     Rename {
-        new_key: String,
+        new_key: CompiledCode,
         attribute: String,
     },
     Remove {
@@ -192,12 +192,23 @@ fn process_feature(
                 }
             }
             Operate::Rename { new_key, attribute } => {
-                if !feature.contains_key(attribute) || feature.contains_key(new_key) {
+                if !feature.contains_key(attribute) {
                     continue;
                 }
-                let value = feature.get(attribute);
-                result.remove(attribute);
-                result.insert(new_key.clone(), value.cloned().unwrap_or_default());
+                match new_key.eval_string(feature, Arc::clone(&env_vars)) {
+                    Ok(new_key_str) => {
+                        if feature.contains_key(&new_key_str) {
+                            continue;
+                        }
+                        let value = feature.get(attribute);
+                        result.remove(attribute);
+                        result.insert(new_key_str, value.cloned().unwrap_or_default());
+                    }
+                    Err(e) => {
+                        ctx.event_hub
+                            .warn_log(None, format!("rename error with: {e:?}"));
+                    }
+                }
             }
             Operate::Remove { attribute } => {
                 if !feature.contains_key(attribute) {
@@ -236,14 +247,22 @@ fn convert_single_operation(operations: &[Operation]) -> super::errors::Result<V
                 code,
                 attribute: attribute.clone(),
             },
-            Method::Rename => Operate::Rename {
-                new_key: operation
+            Method::Rename => {
+                let new_key = operation
                     .value
                     .as_ref()
-                    .map(|c| c.value.clone())
-                    .unwrap_or_default(),
-                attribute: attribute.clone(),
-            },
+                    .ok_or_else(|| {
+                        AttributeProcessorError::ManagerFactory(
+                            "Rename requires a value".to_string(),
+                        )
+                    })?
+                    .compile()
+                    .map_err(|e| AttributeProcessorError::ManagerFactory(format!("{e:?}")))?;
+                Operate::Rename {
+                    new_key,
+                    attribute: attribute.clone(),
+                }
+            }
             Method::Remove => Operate::Remove {
                 attribute: attribute.clone(),
             },
