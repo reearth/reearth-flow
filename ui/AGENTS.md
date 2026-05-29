@@ -92,6 +92,20 @@ yarn test --run     # Ensure all tests pass
 3. Update affected components with new types
 4. Fix TypeScript errors from type changes
 
+## FlowExpr Editor
+
+`flowExprConstants.ts` is the single source of truth for the editor. When the engine changes the language, always read `docs/flow-expr-reference.md` first (pinned to the engine version), then update **all five** in `flowExprConstants.ts`:
+
+- `FLOWEXPR_KEYWORDS`
+- `FLOWEXPR_BUILTIN_FUNCTIONS`
+- `FLOWEXPR_MATH_FUNCTIONS`
+- `FLOWEXPR_OPERATORS` (keep longest → shortest within each group)
+- `getFlowExprAutocompleteSuggestions` (one entry per item, with `detail` signature and `{{cursor}}` placement)
+
+See [docs/flow-expr-editor.md](docs/flow-expr-editor.md) for architecture details (overlay stack, syntax highlighter quirks, validator scope, autocomplete positioning).
+
 ## Documentation
 
 - [UI Architecture](docs/architecture.md) - Technologies, data flow, component patterns, environment configuration
+- [FlowExpr Language Reference](docs/flow-expr-reference.md) - Language spec (types, operators, built-ins, math namespace)
+- [FlowExpr Editor Architecture](docs/flow-expr-editor.md) - Overlay stack, tokenizer, validator, autocomplete
