@@ -67,11 +67,11 @@ Validation runs on a 300 ms debounce after each change.
 
 Always read the engine source directly before editing `flowExprConstants.ts` — the markdown reference doc can lag behind the implementation:
 
-| What to check | Engine file |
-|---------------|-------------|
-| Keywords and operators | `engine/runtime/expr/src/core/lexer.rs` — the `Token` enum |
-| Built-in functions (`str`, `int`, `Url`, etc.) | `engine/runtime/expr/src/core/eval.rs` — `default_env()` |
-| Math functions and constants | `engine/runtime/expr/src/core/builtins/` |
+| What to check                                  | Engine file                                                |
+| ---------------------------------------------- | ---------------------------------------------------------- |
+| Keywords and operators                         | `engine/runtime/expr/src/core/lexer.rs` — the `Token` enum |
+| Built-in functions (`str`, `int`, `Url`, etc.) | `engine/runtime/expr/src/core/eval.rs` — `default_env()`   |
+| Math functions and constants                   | `engine/runtime/expr/src/core/builtins/`                   |
 
 After reading the source, update **all five** in `flowExprConstants.ts`:
 
