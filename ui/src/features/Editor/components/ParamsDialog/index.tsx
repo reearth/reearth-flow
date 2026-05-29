@@ -19,6 +19,8 @@ import {
   ParamEditor,
   ValueEditorDialog,
   PythonEditorDialog,
+  FlowExprEditorDialog,
+  type CodeValue,
 } from "./components";
 import { FieldContext, getValueAtPath } from "./utils/fieldUtils";
 import {
@@ -60,7 +62,14 @@ const ParamsDialog: React.FC<Props> = ({
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
   const [openPythonEditor, setOpenPythonEditor] = useState(false);
-  const [currentFieldContext, setCurrentFieldContext] = useState<
+  const [openFlowExprEditor, setOpenFlowExprEditor] = useState(false);
+  const [valueEditorContext, setValueEditorContext] = useState<
+    FieldContext | undefined
+  >(undefined);
+  const [pythonEditorContext, setPythonEditorContext] = useState<
+    FieldContext | undefined
+  >(undefined);
+  const [flowExprEditorContext, setFlowExprEditorContext] = useState<
     FieldContext | undefined
   >(undefined);
 
@@ -292,14 +301,21 @@ const ParamsDialog: React.FC<Props> = ({
     [openNode, updateMyFieldPatch],
   );
 
-  const handleValueChange = (value: any) => {
-    if (!currentFieldContext || !openNode) return;
-
-    const path = Array.isArray(currentFieldContext.path)
-      ? currentFieldContext.path.join(".")
-      : currentFieldContext.path;
-
+  const applyFieldPatch = (fieldContext: FieldContext, value: any) => {
+    if (!fieldContext || !openNode) return;
+    const path = Array.isArray(fieldContext.path)
+      ? fieldContext.path.join(".")
+      : fieldContext.path;
     updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
+  };
+
+  const handleValueChange = (value: any) => {
+    if (valueEditorContext) applyFieldPatch(valueEditorContext, value);
+  };
+
+  const handleFlowExprValueSubmit = (codeValue: CodeValue) => {
+    if (flowExprEditorContext)
+      applyFieldPatch(flowExprEditorContext, codeValue);
   };
 
   const handleOpenNode = useCallback(() => {
@@ -366,37 +382,53 @@ const ParamsDialog: React.FC<Props> = ({
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}
               onValueEditorOpen={(fieldContext) => {
-                setCurrentFieldContext(fieldContext);
+                setValueEditorContext(fieldContext);
                 setOpenValueEditor(true);
               }}
               onPythonEditorOpen={(fieldContext) => {
-                setCurrentFieldContext(fieldContext);
+                setPythonEditorContext(fieldContext);
                 setOpenPythonEditor(true);
+              }}
+              onFlowExprEditorOpen={(fieldContext) => {
+                setFlowExprEditorContext(fieldContext);
+                setOpenFlowExprEditor(true);
               }}
             />
           )}
         </DialogContent>
       </Dialog>
-      {currentFieldContext && (
+      {valueEditorContext && (
         <ValueEditorDialog
           open={openValueEditor}
-          fieldContext={currentFieldContext}
+          fieldContext={valueEditorContext}
           onClose={() => {
             setOpenValueEditor(false);
-            setCurrentFieldContext(undefined);
+            setValueEditorContext(undefined);
           }}
           onValueSubmit={handleValueChange}
         />
       )}
-      {currentFieldContext && (
+      {pythonEditorContext && (
         <PythonEditorDialog
           open={openPythonEditor}
-          fieldContext={currentFieldContext}
+          fieldContext={pythonEditorContext}
           onClose={() => {
             setOpenPythonEditor(false);
-            setCurrentFieldContext(undefined);
+            setPythonEditorContext(undefined);
           }}
-          onValueSubmit={handleValueChange}
+          onValueSubmit={(value) => applyFieldPatch(pythonEditorContext, value)}
+        />
+      )}
+      {flowExprEditorContext && (
+        <FlowExprEditorDialog
+          open={openFlowExprEditor}
+          fieldContext={flowExprEditorContext}
+          onClose={() => {
+            setOpenFlowExprEditor(false);
+            setFlowExprEditorContext(undefined);
+            onParamFieldFocus?.(null);
+          }}
+          onValueSubmit={handleFlowExprValueSubmit}
         />
       )}
     </>

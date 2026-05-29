@@ -7,6 +7,7 @@ import {
 
 import { CheckboxesWidget } from "./CheckboxesWidget";
 import { CheckboxWidget } from "./CheckboxWidget";
+import { FlowExprWidget } from "./FlowExprWidget";
 import { RadioWidget } from "./RadioWidget";
 import { RangeWidget } from "./RangeWidget";
 import { SelectWidget } from "./SelectWidget";
@@ -27,6 +28,7 @@ export function generateWidgets<
     SelectWidget,
     TextareaWidget,
     WysiwygWidget,
+    FlowExprWidget,
     // Note: Basic inputs (text, number, color) are now handled by BaseInputTemplate
   };
 }

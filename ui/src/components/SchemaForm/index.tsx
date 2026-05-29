@@ -28,6 +28,7 @@ type SchemaFormProps = {
   onValidationChange?: (isValid: boolean) => void;
   onEditorOpen?: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
+  onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
 };
 
 // Function to recursively scan schema for Expr types and build UI schema
@@ -49,6 +50,11 @@ const buildExprUiSchema = (
     schemaObj.$ref === "#/definitions/Expr" ||
     schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr") ||
     schemaObj.anyOf?.some((item: any) => item.$ref === "#/definitions/Expr");
+
+  const isCodeType =
+    schemaObj.$ref === "#/definitions/Code" ||
+    schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Code") ||
+    schemaObj.anyOf?.some((item: any) => item.$ref === "#/definitions/Code");
 
   // Check if this schema references any definition that contains expressions
   let referencesExprDefinition = false;
@@ -85,15 +91,33 @@ const buildExprUiSchema = (
                   (item: any) => item.$ref === "#/definitions/Expr",
                 );
 
+              const propHasCode =
+                prop?.$ref === "#/definitions/Code" ||
+                prop?.allOf?.some(
+                  (item: any) => item.$ref === "#/definitions/Code",
+                ) ||
+                prop?.anyOf?.some(
+                  (item: any) => item.$ref === "#/definitions/Code",
+                );
+
               if (propHasExpr) {
                 hasExprDefinitions = true;
                 exprFieldUiSchema[propName] = { "ui:exprType": "rhai" };
+              }
+
+              if (propHasCode) {
+                hasExprDefinitions = true;
+                exprFieldUiSchema[propName] = { "ui:field": "FlowExprField" };
               }
             },
           );
         }
       },
     );
+  }
+
+  if (isCodeType) {
+    return { "ui:field": "FlowExprField" };
   }
 
   if (isExprType || referencesExprDefinition) {
@@ -163,6 +187,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   onValidationChange,
   onEditorOpen,
   onPythonEditorOpen,
+  onFlowExprEditorOpen,
 }) => {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
@@ -246,6 +271,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
         formContext={{
           onEditorOpen,
           onPythonEditorOpen,
+          onFlowExprEditorOpen,
           originalSchema,
           patchedSchema,
           actionName,
