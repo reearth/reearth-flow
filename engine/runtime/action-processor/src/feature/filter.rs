@@ -1,4 +1,4 @@
-use std::{collections::HashMap, collections::HashSet, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
@@ -8,10 +8,11 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Expr;
+use reearth_flow_types::{AttributeValue, Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 use super::errors::FeatureProcessorError;
 
@@ -47,12 +48,12 @@ impl ProcessorFactory for FeatureFilterFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureFilterParam = if let Some(with) = with.clone() {
+        let params: FeatureFilterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FilterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -86,30 +87,23 @@ impl ProcessorFactory for FeatureFilterFactory {
                 .into());
             }
         }
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut conditions = Vec::new();
         for condition in &params.conditions {
-            let expr = &condition.expr;
-            let template_ast = expr_engine
-                .compile(expr.as_ref())
+            let compiled = condition
+                .expr
+                .compile()
                 .map_err(|e| FeatureProcessorError::FilterFactory(format!("{e:?}")))?;
-            let output_port = &condition.output_port;
             conditions.push(CompiledCondition {
-                expr: template_ast,
-                output_port: output_port.clone(),
+                expr: compiled,
+                output_port: condition.output_port.clone(),
             });
         }
-        let process = FeatureFilter {
-            global_params: with,
-            conditions,
-        };
-        Ok(Box::new(process))
+        Ok(Box::new(FeatureFilter { conditions }))
     }
 }
 
 #[derive(Debug, Clone)]
 struct FeatureFilter {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     conditions: Vec<CompiledCondition>,
 }
 
@@ -127,14 +121,14 @@ struct FeatureFilterParam {
 #[serde(rename_all = "camelCase")]
 struct Condition {
     /// # Condition expression
-    expr: Expr,
+    expr: Code,
     /// # Output port
     output_port: Port,
 }
 
 #[derive(Debug, Clone)]
 struct CompiledCondition {
-    expr: rhai::AST,
+    expr: CompiledCode,
     output_port: Port,
 }
 
@@ -144,14 +138,12 @@ impl Processor for FeatureFilter {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let env_vars = ctx.expr_engine.vars();
         let feature = &ctx.feature;
         let mut routing = false;
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         for condition in &self.conditions {
-            let eval = scope.eval_ast::<bool>(&condition.expr);
-            match eval {
-                Ok(eval) if eval => {
+            match condition.expr.eval(feature, Arc::clone(&env_vars)) {
+                Ok(AttributeValue::Bool(true)) => {
                     fw.send(
                         ctx.new_with_feature_and_port(
                             feature.clone(),
@@ -166,7 +158,6 @@ impl Processor for FeatureFilter {
                         Some(ctx.error_span()),
                         format!("filter eval error = {err:?}"),
                     );
-                    continue;
                 }
             }
         }

@@ -82,8 +82,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").extension == "gml"
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
               outputPort: default
 
       - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
@@ -110,8 +111,11 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-          - expr: |
-              (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+          - expr:
+              type: flowExpr
+              value: |
+                t = env.get("targetPackages", []);
+                len(t) == 0 or attributes["package"] in t
             outputPort: default
 
       - id: 7a561c34-2e94-4883-91e4-4026b09c2f8a
@@ -198,10 +202,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: "true"
+            - expr:
+                type: flowExpr
+                value: true
               outputPort: default
-            - expr: |
-                env.get("__value").featureType == "bldg:BuildingPart"
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:BuildingPart"
               outputPort: buildingPart
 
       - id: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b

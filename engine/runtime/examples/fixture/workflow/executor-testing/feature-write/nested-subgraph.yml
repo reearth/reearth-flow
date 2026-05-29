@@ -21,11 +21,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").category == "A"
+            - expr:
+                type: flowExpr
+                value: attributes["category"] == "A"
               outputPort: portA
-            - expr: |
-                env.get("__value").category == "B"
+            - expr:
+                type: flowExpr
+                value: attributes["category"] == "B"
               outputPort: portB
 
       - id: 20000000-0000-0000-0000-000000000033
