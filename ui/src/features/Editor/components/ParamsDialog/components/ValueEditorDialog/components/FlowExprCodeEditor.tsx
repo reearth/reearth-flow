@@ -7,8 +7,6 @@ import {
   forwardRef,
 } from "react";
 
-import { useHotkeys } from "react-hotkeys-hook";
-
 import { TextArea } from "@flow/components";
 
 import { type AutocompleteSuggestion } from "./constants";
@@ -42,26 +40,10 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
     const errorOverlayRef = useRef<HTMLDivElement>(null);
 
     const [autocompleteVisible, setAutocompleteVisible] = useState(false);
-    const autocompleteVisibleRef = useRef(false);
-    autocompleteVisibleRef.current = autocompleteVisible;
-
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
       [],
     );
     const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    useHotkeys(
-      "escape",
-      (e) => {
-        e.stopImmediatePropagation();
-        setAutocompleteVisible(false);
-      },
-      {
-        enableOnFormTags: ["TEXTAREA"],
-        enabled: () => autocompleteVisibleRef.current,
-        eventListenerOptions: { capture: true },
-      },
-    );
 
     useImperativeHandle(
       ref,
@@ -107,6 +89,9 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           autocompleteVisible &&
           ["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"].includes(e.key)
         ) {
+          // Stop the native event from reaching document-level listeners (e.g. Radix
+          // Dialog's ESC handler) so only the autocomplete handles these keys.
+          e.nativeEvent.stopPropagation();
           return;
         }
 

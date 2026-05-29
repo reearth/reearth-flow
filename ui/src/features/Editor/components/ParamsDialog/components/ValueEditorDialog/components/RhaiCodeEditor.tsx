@@ -7,8 +7,6 @@ import {
   forwardRef,
 } from "react";
 
-import { useHotkeys } from "react-hotkeys-hook";
-
 import { TextArea } from "@flow/components";
 
 import { type AutocompleteSuggestion } from "./constants";
@@ -43,18 +41,19 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
     const autocompleteVisibleRef = useRef(false);
     autocompleteVisibleRef.current = autocompleteVisible;
 
-    useHotkeys(
-      "escape",
-      (e) => {
-        e.stopImmediatePropagation();
-        setAutocompleteVisible(false);
-      },
-      {
-        enableOnFormTags: ["TEXTAREA"],
-        enabled: () => autocompleteVisibleRef.current,
-        eventListenerOptions: { capture: true },
-      },
-    );
+    // Capture-phase ESC handler — registered before Radix Dialog's handler so ESC
+    // only closes suggestions when the autocomplete is open, not the dialog.
+    useEffect(() => {
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && autocompleteVisibleRef.current) {
+          e.stopImmediatePropagation();
+          setAutocompleteVisible(false);
+        }
+      };
+      document.addEventListener("keydown", handleEsc, { capture: true });
+      return () =>
+        document.removeEventListener("keydown", handleEsc, { capture: true });
+    }, []);
 
     // Validation state with debounced validation
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
