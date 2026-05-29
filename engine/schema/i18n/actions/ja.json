@@ -217,6 +217,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Operation": {
           "attribute": {
             "title": "属性名"

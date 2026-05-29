@@ -3,6 +3,8 @@ use std::rc::Rc;
 
 use indexmap::IndexMap;
 
+pub type Module = IndexMap<String, Value>;
+
 use crate::core::error::InnerResult;
 
 /// Trait for typed objects that can respond to method calls.
@@ -13,6 +15,9 @@ use crate::core::error::InnerResult;
 pub trait ImmutableObject: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
     fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value>;
+    fn get_property(&self, _name: &str) -> Option<InnerResult<Value>> {
+        None
+    }
     fn display(&self) -> String {
         format!("<{}>", self.type_name())
     }
@@ -69,6 +74,7 @@ pub enum Value {
     Fn(NativeFn),
     /// A typed object that can respond to method calls via [`ImmutableObject`].
     Object(Rc<dyn ImmutableObject>),
+    Module(Rc<Module>),
 }
 
 impl Value {
@@ -98,11 +104,16 @@ impl Value {
             Value::Map(_) => "map",
             Value::Fn(_) => "function",
             Value::Object(rc) => rc.type_name(),
+            Value::Module(_) => "module",
         }
+    }
+
+    pub fn module(m: Module) -> Self {
+        Value::Module(Rc::new(m))
     }
 }
 
-/// Format a float the way Python does: always include a decimal point for finite whole numbers.
+/// Format a float: decimal for magnitudes in [1e-4, 1e16), shortest scientific otherwise.
 pub(crate) fn format_float(n: f64) -> String {
     if n.is_nan() {
         return "nan".to_string();
@@ -114,11 +125,18 @@ pub(crate) fn format_float(n: f64) -> String {
             "-inf".to_string()
         };
     }
-    let s = format!("{n}");
-    if s.contains('.') || s.contains('e') || s.contains('E') {
-        s
+    let abs = n.abs();
+    if abs == 0.0 || (1e-4..1e16).contains(&abs) {
+        let s = format!("{n}");
+        if s.contains('.') || s.contains('e') || s.contains('E') {
+            s
+        } else {
+            s + ".0"
+        }
     } else {
-        s + ".0"
+        // the formatting is deliberately not aligned with Python formatting
+        // to discourage users from assuming the unguaranteed stability of the string formatting
+        format!("{:e}", n)
     }
 }
 
@@ -154,6 +172,7 @@ impl std::fmt::Display for Value {
             }
             Value::Fn(_) => write!(f, "<fn>"),
             Value::Object(rc) => write!(f, "{}", rc.display()),
+            Value::Module(_) => write!(f, "<module>"),
         }
     }
 }
