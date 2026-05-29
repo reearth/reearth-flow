@@ -21,6 +21,10 @@ import {
   IconButton,
   TextArea,
   CmsLogo,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
@@ -200,54 +204,41 @@ const FlowExprEditorDialog: React.FC<Props> = ({
             </DialogTitle>
           </DialogHeader>
 
-          <div
+          <Tabs
+            value={codeType}
+            onValueChange={(v) => setCodeType(v as "flowExpr" | "string")}
             className={`flex flex-col ${isFullscreen ? "h-[calc(100vh-52px)]" : "h-[70vh]"}`}>
             {/* Mode toggle */}
             <div className="flex shrink-0 gap-1 border-b px-4 py-2">
-              <Button
-                variant="outline"
-                onClick={() => setCodeType("flowExpr")}
-                className={` ${
-                  codeType === "flowExpr"
-                    ? "bg-accent text-accent-foreground"
-                    : ""
-                }`}>
-                {t("Expression")}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setCodeType("string")}
-                className={` ${
-                  codeType === "string"
-                    ? "bg-accent text-accent-foreground"
-                    : ""
-                }`}>
-                {t("Literal string")}
-              </Button>
+              <TabsList className="flex gap-2">
+                <TabsTrigger value="flowExpr">{t("Expression")}</TabsTrigger>
+                <TabsTrigger value="string">{t("Literal string")}</TabsTrigger>
+              </TabsList>
             </div>
 
-            {/* Editor area */}
-            <div className="relative flex-1 overflow-hidden border-b">
-              {codeType === "flowExpr" ? (
-                <FlowExprCodeEditor
-                  ref={editorRef}
-                  className="size-full"
-                  value={codeValue}
-                  onChange={setCodeValue}
-                  placeholder={t(
-                    'e.g. Url(env("BASE_DIR")) / value("filename")',
-                  )}
-                />
-              ) : (
-                <TextArea
-                  className="size-full resize-none rounded-none border-0 focus-visible:ring-0"
-                  value={codeValue}
-                  onChange={(e) => setCodeValue(e.target.value)}
-                  placeholder={t("Enter a literal string value")}
-                  spellCheck={false}
-                />
-              )}
-            </div>
+            {/* Editor areas */}
+            <TabsContent
+              value="flowExpr"
+              className="relative mt-0 min-h-0 flex-1 overflow-hidden border-b">
+              <FlowExprCodeEditor
+                ref={editorRef}
+                className="size-full"
+                value={codeValue}
+                onChange={setCodeValue}
+                placeholder={t('e.g. Url(env("BASE_DIR")) / value("filename")')}
+              />
+            </TabsContent>
+            <TabsContent
+              value="string"
+              className="mt-0 min-h-0 flex-1 border-b">
+              <TextArea
+                className="size-full resize-none rounded-none border-0 focus-visible:ring-0"
+                value={codeValue}
+                onChange={(e) => setCodeValue(e.target.value)}
+                placeholder={t("Enter a literal string value")}
+                spellCheck={false}
+              />
+            </TabsContent>
 
             {/* Hint bar */}
             <div className="shrink-0 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
@@ -270,7 +261,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 <Button onClick={handleSubmit}>{t("Apply")}</Button>
               </div>
             </DialogFooter>
-          </div>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
