@@ -2896,7 +2896,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            ft = attributes.get("__citygml_feature_type") or "";
+            ft = attributes.get("__citygml_feature_type", "");
             if ":" in ft {
               ft.split(":")[1]
             } else {
@@ -2906,7 +2906,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes.get("parentId") or attributes.get("gmlId") or ""
+          value: attributes.get("parentId") or attributes.get("gmlId", "")
   - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
     name: GeometrySplitterForCount
     type: action

@@ -663,9 +663,9 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  sunny_ratio = attributes.get("sunnyRatio") or 0.0;
-                  dt_sunny = attributes.get("radiationSunnySum") or 0.0;
-                  dt_cloudy = attributes.get("radiationCloudySum") or 0.0;
+                  sunny_ratio = attributes.get("sunnyRatio", 0.0);
+                  dt_sunny = attributes.get("radiationSunnySum", 0.0);
+                  dt_cloudy = attributes.get("radiationCloudySum", 0.0);
                   sunny_ratio * dt_sunny + (1.0 - sunny_ratio) * dt_cloudy
 
       # ========================================
@@ -793,8 +793,8 @@ graphs:
                   e_jdn = e_day_val + math.floor((153.0 * e_m + 2.0) / 5.0) + 365.0 * e_y + math.floor(e_y / 4.0) - math.floor(e_y / 100.0) + math.floor(e_y / 400.0) - 32045.0;
                   num_days_raw = e_jdn - s_jdn;
                   if num_days_raw <= 0.0 { num_days = 1.0 } else { num_days = num_days_raw };
-                  dt = attributes.get("totalSolarRadiation") or 0.0;
-                  max_rad = env["maxRadiationPerDay"] or 7.5;
+                  dt = attributes.get("totalSolarRadiation", 0.0);
+                  max_rad = env.get("maxRadiationPerDay", 7.5);
                   t_raw = dt / num_days / max_rad;
                   if t_raw < 0.0 { 0.0 } else if t_raw > 1.0 { 1.0 } else { t_raw }
 
@@ -818,7 +818,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  t = attributes.get("normalizedRadiation") or 0.0;
+                  t = attributes.get("normalizedRadiation", 0.0);
                   v = 4.0 * t - 1.0;
                   if v < 0.0 { r = 0.0 } else if v > 1.0 { r = 1.0 } else { r = v };
                   math.round(255.0 * r)
@@ -827,7 +827,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  t = attributes.get("normalizedRadiation") or 0.0;
+                  t = attributes.get("normalizedRadiation", 0.0);
                   v1_raw = 4.0 * t;
                   if v1_raw < 0.0 { v1 = 0.0 } else if v1_raw > 1.0 { v1 = 1.0 } else { v1 = v1_raw };
                   v2_raw = 4.0 * t - 3.0;
@@ -838,7 +838,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  t = attributes.get("normalizedRadiation") or 0.0;
+                  t = attributes.get("normalizedRadiation", 0.0);
                   v = 4.0 * t - 1.0;
                   if v < 0.0 { clamped = 0.0 } else if v > 1.0 { clamped = 1.0 } else { clamped = v };
                   math.round(255.0 * (1.0 - clamped))
@@ -1584,7 +1584,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: '"land_" + str(attributes.get("_relief_index") or attributes.get("_split_index") or 0)'
+                value: '"land_" + str(attributes.get("_relief_index", attributes.get("_split_index", 0)))'
 
       # Reproject DEM triangles to projected CRS
       - id: 00000002-0000-0000-0000-000000000009
@@ -1613,9 +1613,9 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  dir = env["restrictDirection1"] or -1.0;
+                  dir = env.get("restrictDirection1", -1.0);
                   if dir < 0.0 { 0 } else {
-                    pne = attributes.get("azimuth") or 0.0;
+                    pne = attributes.get("azimuth", 0.0);
                     geo = (180.0 - pne + 360.0) % 360.0;
                     diff = (geo - dir + 360.0) % 360.0;
                     if diff > 180.0 { d = 360.0 - diff } else { d = diff };
@@ -1626,9 +1626,9 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  dir = env["restrictDirection2"] or -1.0;
+                  dir = env.get("restrictDirection2", -1.0);
                   if dir < 0.0 { 0 } else {
-                    pne = attributes.get("azimuth") or 0.0;
+                    pne = attributes.get("azimuth", 0.0);
                     geo = (180.0 - pne + 360.0) % 360.0;
                     diff = (geo - dir + 360.0) % 360.0;
                     if diff > 180.0 { d = 360.0 - diff } else { d = diff };
@@ -1639,9 +1639,9 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  dir = env["restrictDirection3"] or -1.0;
+                  dir = env.get("restrictDirection3", -1.0);
                   if dir < 0.0 { 0 } else {
-                    pne = attributes.get("azimuth") or 0.0;
+                    pne = attributes.get("azimuth", 0.0);
                     geo = (180.0 - pne + 360.0) % 360.0;
                     diff = (geo - dir + 360.0) % 360.0;
                     if diff > 180.0 { d = 360.0 - diff } else { d = diff };
@@ -1696,7 +1696,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'str(attributes.get("_grid_col") or 0) + "_" + str(attributes.get("_grid_row") or 0)'
+                value: 'str(attributes.get("_grid_col", 0)) + "_" + str(attributes.get("_grid_row", 0))'
 
       # Merge DEM radiation from multiple triangle pieces covering the same 5m grid square
       - id: 00000002-0000-0000-0000-00000000000e
@@ -1740,7 +1740,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'str(attributes.get("_grid_col") or 0) + "_" + str(attributes.get("_grid_row") or 0)'
+                value: 'str(attributes.get("_grid_col", 0)) + "_" + str(attributes.get("_grid_row", 0))'
 
       # After RadiationToColorMapper: route bldg → CellGeometryMerger.supplier, dem → DEMCellGeometryMerger.supplier
       - id: 00000002-0000-0000-0000-000000000011

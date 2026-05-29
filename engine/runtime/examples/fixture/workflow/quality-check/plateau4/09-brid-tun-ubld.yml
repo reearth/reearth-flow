@@ -725,7 +725,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes.get("package") or attributes.get("udxDirs") or ""
+          value: attributes.get("package") or attributes.get("udxDirs", "")
       - attribute: validationResult
         method: remove
       - attribute: surfaceId
@@ -873,7 +873,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes.get("package") or attributes.get("udxDirs") or ""
+          value: attributes.get("package") or attributes.get("udxDirs", "")
       - attribute: validationResult
         method: remove
       - attribute: surfaceId
@@ -1016,7 +1016,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes.get("package") or attributes.get("udxDirs") or ""
+          value: attributes.get("package") or attributes.get("udxDirs", "")
       - attribute: validationResult
         method: remove
       - attribute: surfaceId
@@ -1208,7 +1208,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes.get("package") or attributes.get("udxDirs") or ""
+          value: attributes.get("package") or attributes.get("udxDirs", "")
       - attribute: solid_boundary_issues
         method: remove
       - attribute: surfaceId
@@ -1319,7 +1319,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes.get("package") or attributes.get("udxDirs") or ""
+          value: attributes.get("package") or attributes.get("udxDirs", "")
       - attribute: solid_boundary_issues
         method: remove
       - attribute: surfaceId

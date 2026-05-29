@@ -180,7 +180,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  ft = attributes.get("__citygml_feature_type") or "";
+                  ft = attributes.get("__citygml_feature_type", "");
                   if ":" in ft {
                     ft.split(":")[1]
                   } else {
