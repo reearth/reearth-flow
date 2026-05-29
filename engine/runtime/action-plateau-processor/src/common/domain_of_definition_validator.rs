@@ -25,10 +25,8 @@ use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
 use super::errors::PlateauProcessorError;
-
-// CityGML 3.0 uses GML 3.2 (http://www.opengis.net/gml/3.2) for geometry and
-// gml:id, unlike CityGML 2.0 which used GML 3.1.1 (http://www.opengis.net/gml).
-static GML32_NS: &str = "http://www.opengis.net/gml/3.2";
+use super::PlateauProfile;
+use crate::citygml::GML_DICTIONARY_NS;
 
 static VALID_SRS_NAME_6697: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
 static VALID_SRS_NAME_6668: &str = "http://www.opengis.net/def/crs/EPSG/0/6668";
@@ -56,34 +54,6 @@ static VALID_SRS_NAME_FOR_UNF: Lazy<Vec<&'static str>> = Lazy::new(|| {
 });
 
 static DUPLICATE_GML_ID_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("duplicateGmlIdStats"));
-
-static XML_NAMESPACES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
-    HashMap::from([
-        ("app", "http://www.opengis.net/citygml/appearance/3.0"),
-        ("bldg", "http://www.opengis.net/citygml/building/3.0"),
-        ("brid", "http://www.opengis.net/citygml/bridge/3.0"),
-        ("con", "http://www.opengis.net/citygml/construction/3.0"),
-        ("core", "http://www.opengis.net/citygml/3.0"),
-        ("dem", "http://www.opengis.net/citygml/relief/3.0"),
-        ("frn", "http://www.opengis.net/citygml/cityfurniture/3.0"),
-        ("gen", "http://www.opengis.net/citygml/generics/3.0"),
-        ("gml", "http://www.opengis.net/gml/3.2"),
-        ("grp", "http://www.opengis.net/citygml/cityobjectgroup/3.0"),
-        ("luse", "http://www.opengis.net/citygml/landuse/3.0"),
-        ("sch", "http://www.ascc.net/xml/schematron"),
-        ("smil20", "http://www.w3.org/2001/SMIL20/"),
-        ("smil20lang", "http://www.w3.org/2001/SMIL20/Language"),
-        ("tran", "http://www.opengis.net/citygml/transportation/3.0"),
-        ("tun", "http://www.opengis.net/citygml/tunnel/3.0"),
-        ("veg", "http://www.opengis.net/citygml/vegetation/3.0"),
-        ("wtr", "http://www.opengis.net/citygml/waterbody/3.0"),
-        ("xAL", "urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"),
-        ("xlink", "http://www.w3.org/1999/xlink"),
-        ("xsi", "http://www.w3.org/2001/XMLSchema-instance"),
-        ("uro", "https://www.geospatial.jp/iur/uro/4.0"),
-        ("urf", "https://www.geospatial.jp/iur/urf/4.0"),
-    ])
-});
 
 // L03
 // Package : Effective geo-feature type
@@ -293,12 +263,24 @@ pub struct DomainOfDefinitionValidatorParam {
     codelists_path: Option<Expr>,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct DomainOfDefinitionValidatorFactory;
+#[derive(Debug, Clone)]
+pub(crate) struct DomainOfDefinitionValidatorFactory {
+    profile: &'static PlateauProfile,
+    name: String,
+}
+
+impl DomainOfDefinitionValidatorFactory {
+    pub(crate) fn new(profile: &'static PlateauProfile) -> Self {
+        Self {
+            name: profile.action_name("DomainOfDefinitionValidator"),
+            profile,
+        }
+    }
+}
 
 impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
     fn name(&self) -> &str {
-        "PLATEAU6.DomainOfDefinitionValidator"
+        &self.name
     }
 
     fn description(&self) -> &str {
@@ -360,6 +342,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         };
 
         let process = DomainOfDefinitionValidator {
+            profile: self.profile,
             feature_buffer: vec![],
             codelists: None,
             filenames: HashSet::new(),
@@ -374,6 +357,7 @@ type FeatureBuffer = Vec<(Vec<Feature>, HashMap<String, Vec<HashMap<String, Stri
 
 #[derive(Debug, Clone)]
 pub struct DomainOfDefinitionValidator {
+    profile: &'static PlateauProfile,
     feature_buffer: FeatureBuffer,
     codelists: Option<HashMap<String, HashMap<String, String>>>,
     filenames: HashSet<String>,
@@ -427,6 +411,7 @@ impl Processor for DomainOfDefinitionValidator {
         }
         let codelists = self.codelists.as_ref().unwrap();
         let feature_results = process_feature(
+            self.profile,
             &ctx,
             fw,
             codelists,
@@ -524,6 +509,7 @@ impl Processor for DomainOfDefinitionValidator {
 
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn process_feature(
+    profile: &PlateauProfile,
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
     codelists: &HashMap<String, HashMap<String, String>>,
@@ -569,15 +555,19 @@ fn process_feature(
     let t_total = Instant::now();
 
     let t_envelope = Instant::now();
-    let envelope_xpath =
-        "//*[namespace-uri()='http://www.opengis.net/gml/3.2'][local-name()='Envelope']";
-    response.envelope = stream_extract_envelope(&xml_str, envelope_xpath)?;
+    let envelope_xpath = format!(
+        "//*[namespace-uri()='{}'][local-name()='Envelope']",
+        profile.citygml.gml_ns
+    );
+    response.envelope = stream_extract_envelope(&xml_str, &envelope_xpath)?;
     let envelope_ms = t_envelope.elapsed().as_millis();
 
     let mut city_object_groups = Vec::<CityObjectGroupInfo>::new();
     let mut stream_error: Option<PlateauProcessorError> = None;
-    let members_xpath =
-        "//*[namespace-uri()='http://www.opengis.net/citygml/3.0'][local-name()='cityObjectMember']";
+    let members_xpath = format!(
+        "//*[namespace-uri()='{}'][local-name()='cityObjectMember']",
+        profile.citygml.core_ns
+    );
 
     let mut member_count: usize = 0;
 
@@ -591,7 +581,7 @@ fn process_feature(
         })?;
 
     transformer
-        .on(members_xpath, |node| {
+        .on(members_xpath.as_str(), |node| {
             member_count += 1;
             if stream_error.is_some() {
                 return;
@@ -606,10 +596,9 @@ fn process_feature(
             };
 
             let is_city_object_group = member_ref.name() == "CityObjectGroup"
-                && member_ref.namespace_uri().as_deref()
-                    == Some("http://www.opengis.net/citygml/cityobjectgroup/3.0");
+                && member_ref.namespace_uri().as_deref() == profile.citygml.namespace("grp");
             if is_city_object_group {
-                let gml_ns = GML32_NS;
+                let gml_ns = profile.citygml.gml_ns;
                 let gml_id = member_ref
                     .get_attribute_ns(gml_ns, "id")
                     .unwrap_or_default();
@@ -621,6 +610,7 @@ fn process_feature(
             }
 
             match process_member_node(
+                profile,
                 ctx,
                 fw,
                 codelists,
@@ -915,6 +905,7 @@ fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<
 
 #[allow(clippy::too_many_arguments)]
 fn process_member_node(
+    profile: &PlateauProfile,
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
     codelists: &HashMap<String, HashMap<String, String>>,
@@ -929,7 +920,7 @@ fn process_member_node(
     is_city_object_group: bool,
 ) -> super::errors::Result<(Vec<Feature>, Vec<XlinkInfo>)> {
     let mut result = Vec::<Feature>::new();
-    let gml_ns = GML32_NS;
+    let gml_ns = profile.citygml.gml_ns;
     let xlink_ns = "http://www.w3.org/1999/xlink";
     let Some(gml_id) = member.get_attribute_ns(gml_ns, "id") else {
         return Err(PlateauProcessorError::DomainOfDefinitionValidator(
@@ -952,7 +943,7 @@ fn process_member_node(
     let mut base_feature = Feature::new_with_attributes(base_attrs);
     let feature_type = if member
         .prefix()
-        .map(|p| XML_NAMESPACES.contains_key(p.as_str()))
+        .map(|p| profile.is_known_namespace_prefix(p.as_str()))
         .unwrap_or(false)
     {
         let name = member.name();
@@ -1351,9 +1342,7 @@ fn process_member_node(
                         })?;
                     ext_transformer
                         .on(".//*", |node| {
-                            if let Some(id) =
-                                node.get_attribute_ns("http://www.opengis.net/gml", "id")
-                            {
+                            if let Some(id) = node.get_attribute_ns(gml_ns, "id") {
                                 response
                                     .external_file_to_gml_ids
                                     .entry(gml_path_owned.clone())
@@ -1761,24 +1750,26 @@ fn create_detail_codelist(
                 "Failed to parse root namespaces: {e:?}"
             ))
         })?;
+    // Codelist dictionaries use the GML 3.1.1 SimpleDictionary profile namespace
+    // regardless of the CityGML version, so use the fixed value rather than the
+    // feature gml_ns.
+    let definition_xpath =
+        format!("//*[namespace-uri()='{GML_DICTIONARY_NS}'][local-name()='Definition']");
     transformer
-        .on(
-            "//*[namespace-uri()='http://www.opengis.net/gml'][local-name()='Definition']",
-            |node| {
-                let mut name_val = None;
-                let mut desc_val = None;
-                for child in node.children() {
-                    match child.qname().as_str() {
-                        "gml:name" => name_val = child.get_content(),
-                        "gml:description" => desc_val = child.get_content(),
-                        _ => {}
-                    }
+        .on(definition_xpath.as_str(), |node| {
+            let mut name_val = None;
+            let mut desc_val = None;
+            for child in node.children() {
+                match child.qname().as_str() {
+                    "gml:name" => name_val = child.get_content(),
+                    "gml:description" => desc_val = child.get_content(),
+                    _ => {}
                 }
-                if let (Some(name), Some(desc)) = (name_val, desc_val) {
-                    result.insert(name, desc);
-                }
-            },
-        )
+            }
+            if let (Some(name), Some(desc)) = (name_val, desc_val) {
+                result.insert(name, desc);
+            }
+        })
         .for_each()
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
@@ -1811,4 +1802,212 @@ fn handle_code_validation_failure(
     );
     result.push(result_feature.clone());
     fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::utils::{create_default_execute_context, create_default_node_context};
+    use indexmap::IndexMap;
+    use reearth_flow_runtime::{
+        event::EventHub,
+        forwarder::{NoopChannelForwarder, ProcessorChannelForwarder},
+        node::ProcessorFactory,
+    };
+    use reearth_flow_types::Feature;
+    use std::collections::HashMap;
+    use std::fs;
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    fn create_gml_file(file_path: &str, gml_id: &str) -> std::io::Result<()> {
+        let gml_content = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:brid="http://www.opengis.net/citygml/bridge/2.0" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:sch="http://www.ascc.net/xml/schematron" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0" xmlns:tex="http://www.opengis.net/citygml/texturedsurface/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:app="http://www.opengis.net/citygml/appearance/2.0" xmlns:gen="http://www.opengis.net/citygml/generics/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0" xmlns:luse="http://www.opengis.net/citygml/landuse/2.0" xmlns:uro="https://www.geospatial.jp/iur/uro/3.1" xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:smil20="http://www.w3.org/2001/SMIL20/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smil20lang="http://www.w3.org/2001/SMIL20/Language" xmlns:pbase="http://www.opengis.net/citygml/profiles/base/2.0" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0" xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd http://www.opengis.net/citygml/building/2.0 http://schemas.opengis.net/citygml/building/2.0/building.xsd http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd">
+    <gml:boundedBy>
+        <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:lowerCorner>36.6470041354812 137.05268308385453 0</gml:lowerCorner>
+            <gml:upperCorner>36.647798243275254 137.0537094956814 105.03314</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{gml_id}">
+            <core:creationDate>2025-03-21</core:creationDate>
+            <bldg:class codeSpace="../../codelists/Building_class.xml">3003</bldg:class>
+            <bldg:usage codeSpace="../../codelists/Building_usage.xml">411</bldg:usage>
+            <bldg:yearOfConstruction>0001</bldg:yearOfConstruction>
+            <bldg:measuredHeight uom="m">8.6</bldg:measuredHeight>
+            <bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+            <bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
+            <bldg:lod0RoofEdge>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>36.64773967207627 137.0537094956814 0 36.647798243275254 137.05370057460766 0 36.64778832538864 137.053600937653 0 36.64772975430324 137.053609970643 0 36.64773967207627 137.0537094956814 0</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </bldg:lod0RoofEdge>
+        </bldg:Building>
+    </core:cityObjectMember>
+</core:CityModel>"#
+        );
+
+        if let Some(parent) = std::path::Path::new(file_path).parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut file = fs::File::create(file_path)?;
+        file.write_all(gml_content.as_bytes())?;
+        Ok(())
+    }
+
+    fn create_test_feature(
+        name: &str,
+        file_path: &str,
+        codelists_dir: &std::path::Path,
+    ) -> Feature {
+        let mut attributes = IndexMap::new();
+        attributes.insert(
+            Attribute::new("name"),
+            AttributeValue::String(name.to_string()),
+        );
+        attributes.insert(
+            Attribute::new("package"),
+            AttributeValue::String("bldg".to_string()),
+        );
+        attributes.insert(
+            Attribute::new("dirCodelists"),
+            AttributeValue::String(format!("file://{}", codelists_dir.display())),
+        );
+        attributes.insert(
+            Attribute::new("path"),
+            AttributeValue::String(file_path.to_string()),
+        );
+
+        Feature::new_with_attributes(attributes)
+    }
+
+    // Helper function to extract file_stats outputs from ProcessorChannelForwarder
+    fn extract_file_stats_outputs(
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<HashMap<String, u64>, BoxedError> {
+        match fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                let send_features = noop_fw.send_features.lock().unwrap();
+
+                let file_stats_outputs: HashMap<String, u64> = send_ports
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, port)| port.as_ref() == "duplicateGmlIdStats")
+                    .map(|(i, _)| &send_features[i])
+                    .filter_map(|feature| {
+                        if let (
+                            Some(AttributeValue::String(filename)),
+                            Some(AttributeValue::Number(count)),
+                        ) = (feature.get("filename"), feature.get("duplicateGmlIdCount"))
+                        {
+                            Some((filename.clone(), count.as_u64().unwrap_or(0)))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                Ok(file_stats_outputs)
+            }
+            ProcessorChannelForwarder::ChannelManager(_) => {
+                Err("Expected Noop forwarder for testing".into())
+            }
+        }
+    }
+
+    // Helper function to setup and run processor with given GML file configs
+    fn run_processor_test(
+        gml_configs: Vec<(&str, &str)>, // (filename, gml_id) pairs
+    ) -> Result<HashMap<String, u64>, BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+
+        let codelists_dir = temp_dir.path().join("codelists");
+        fs::create_dir_all(&codelists_dir)?;
+
+        // Create GML files and collect features
+        let mut features = Vec::new();
+        for (filename, gml_id) in gml_configs {
+            let file_path = temp_dir.path().join(filename);
+            create_gml_file(&file_path.to_string_lossy(), gml_id)?;
+            features.push(create_test_feature(
+                filename,
+                &format!("file://{}", file_path.display()),
+                &codelists_dir,
+            ));
+        }
+
+        // Create processor (CityGML 2.0 fixture -> PLATEAU4 profile)
+        let factory = DomainOfDefinitionValidatorFactory::new(&crate::plateau4::PLATEAU4);
+        let ctx = create_default_node_context();
+        let mut processor: Box<dyn Processor> =
+            factory.build(ctx, EventHub::new(1024), "test".to_string(), None)?;
+
+        // Process features
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        for feature in features {
+            let ctx = create_default_execute_context(feature);
+            processor.process(ctx, &fw)?;
+        }
+
+        // Call finish to trigger file_stats output
+        let ctx = create_default_node_context();
+        processor.finish(ctx, &fw)?;
+
+        // Extract results
+        let file_stats_outputs = extract_file_stats_outputs(&fw)?;
+
+        Ok(file_stats_outputs)
+    }
+
+    #[test]
+    fn test_gml_id_duplicate_detection() -> Result<(), BoxedError> {
+        // Create test GML files:
+        let gml_id_1 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_2 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_configs = vec![
+            ("file1.gml", gml_id_1.as_str()),
+            ("file2.gml", gml_id_1.as_str()),
+            ("file3.gml", gml_id_2.as_str()),
+        ];
+
+        let file_stats_outputs = run_processor_test(gml_configs)?;
+
+        // Assert the expected duplicate counts:
+        assert_eq!(file_stats_outputs.get("file1.gml"), Some(&1));
+        assert_eq!(file_stats_outputs.get("file2.gml"), Some(&1));
+        assert_eq!(file_stats_outputs.get("file3.gml"), Some(&0));
+        Ok(())
+    }
+
+    #[test]
+    fn test_gml_id_no_duplicates() -> Result<(), BoxedError> {
+        // Create test GML files with all unique gml:ids:
+        let gml_id_1 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_2 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_3 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_configs = vec![
+            ("file1.gml", gml_id_1.as_str()),
+            ("file2.gml", gml_id_2.as_str()),
+            ("file3.gml", gml_id_3.as_str()),
+        ];
+
+        let file_stats_outputs = run_processor_test(gml_configs)?;
+
+        // Assert the expected duplicate counts:
+        assert_eq!(file_stats_outputs.get("file1.gml"), Some(&0));
+        assert_eq!(file_stats_outputs.get("file2.gml"), Some(&0));
+        assert_eq!(file_stats_outputs.get("file3.gml"), Some(&0));
+        Ok(())
+    }
 }

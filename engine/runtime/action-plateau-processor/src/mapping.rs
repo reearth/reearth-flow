@@ -9,7 +9,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
     let mut mapping = HashMap::new();
     mapping.extend(plateau3::mapping::ACTION_FACTORY_MAPPINGS.clone());
     mapping.extend(plateau4::mapping::ACTION_FACTORY_MAPPINGS.clone());
-    mapping.extend(plateau6::mapping::ACTION_FACTORY_MAPPINGS.clone());
+    mapping.extend(plateau6::ACTION_FACTORY_MAPPINGS.clone());
     mapping.extend(solar::mapping::ACTION_FACTORY_MAPPINGS.clone());
     mapping
 });

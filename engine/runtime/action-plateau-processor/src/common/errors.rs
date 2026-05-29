@@ -1,8 +1,9 @@
 use thiserror::Error;
 
+/// Errors returned by the PLATEAU generation-independent common check actions.
 #[allow(dead_code)]
 #[derive(Error, Debug)]
-pub(super) enum PlateauProcessorError {
+pub(crate) enum PlateauProcessorError {
     #[error("UDXFolder Extractor Factory error: {0}")]
     UDXFolderExtractorFactory(String),
     #[error("UDXFolder Extractor error: {0}")]
@@ -13,4 +14,4 @@ pub(super) enum PlateauProcessorError {
     DomainOfDefinitionValidator(String),
 }
 
-pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
+pub(crate) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
