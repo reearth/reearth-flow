@@ -240,7 +240,7 @@ fn env_from_feature(
 }
 
 /// Cyclic values are unsupported — see expr/docs/design.md#no-cycle-detection
-pub fn attribute_value_from_eval(v: ExprValue) -> reearth_flow_expr::Result<AttributeValue> {
+fn attribute_value_from_eval(v: ExprValue) -> reearth_flow_expr::Result<AttributeValue> {
     let eval_err = |msg: String| ExprError::Eval { pos: 0, msg };
     match v {
         ExprValue::Null => Ok(AttributeValue::Null),
