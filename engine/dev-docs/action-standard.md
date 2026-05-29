@@ -76,6 +76,16 @@ Every parameter must have a `description` in the JSON schema.
 - No `SCREAMING_SNAKE_CASE`
 - Values must be self-describing: `overwrite` not `1`, `skipExisting` not `0`
 
+### 3.5 Parameter usability
+
+**Minimize surface area.** Only expose parameters the user needs to control. Parameters that tune internal behavior, work around implementation constraints, or rarely deviate from a sensible default should be omitted or absorbed into the implementation.
+
+**Volume guideline.** More than 8 parameters is a signal to stop and ask: Can any be combined? Can any be given a fixed or derived default? Should the action be split? It is not a hard cap, but it requires justification.
+
+**Ordering.** Define required parameters first, followed by commonly adjusted optional parameters, followed by edge-case optional parameters last. This ordering is the foundation for future UI grouping (such as a collapsible advanced section) and makes the action easier to understand even before any grouping is added.
+
+**No implementation leakage.** Parameters like `timeout`, `retryCount`, `bufferSize`, or `connectionPoolSize` are internal concerns, not user controls. Omit them unless the user genuinely needs to tune them to make their workflow correct.
+
 ---
 
 ## 4. Ports
