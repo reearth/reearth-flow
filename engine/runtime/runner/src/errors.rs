@@ -37,4 +37,8 @@ pub enum Error {
     UnsupportedFeature(String),
     #[error("Runtime Error: {0}")]
     RuntimeError(String),
+    #[error(
+        "sandbox_root `file:///` is reserved as the `Runner::run` (unsandboxed) sentinel and must not be used with `run_with_sandbox_root`"
+    )]
+    UnsandboxedSentinelRejected,
 }

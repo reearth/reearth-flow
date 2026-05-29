@@ -60,7 +60,13 @@ impl DagExecutor {
         let dag_schemas =
             DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params)?;
         let event_hub = EventHub::new(options.event_hub_capacity);
-        let ctx = NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub);
+        let ctx = NodeContext::new(
+            expr_engine,
+            storage_resolver,
+            kv_store,
+            event_hub,
+            options.sandbox_root.clone(),
+        );
         let builder_dag = BuilderDag::new(ctx, dag_schemas).await?;
         Ok(Self {
             builder_dag,
@@ -82,6 +88,9 @@ impl DagExecutor {
         event_handlers: Vec<Arc<dyn EventHandler>>,
         executor_id: uuid::Uuid,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
+        // Extract fields from options before partial moves.
+        let sandbox_root = self.options.sandbox_root.clone();
+
         // Construct execution dag.
         let mut execution_dag = ExecutionDag::new(
             self.builder_dag,
@@ -109,6 +118,7 @@ impl DagExecutor {
             Arc::clone(&storage_resolver),
             Arc::clone(&kv_store),
             execution_dag.event_hub().clone(),
+            sandbox_root.clone(),
         );
 
         let should_run_sources = execution_dag.graph().node_indices().any(|i| {
@@ -161,6 +171,7 @@ impl DagExecutor {
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
+                        sandbox_root.clone(),
                     );
                     let processor_node = ProcessorNode::new(
                         ctx,
@@ -179,6 +190,7 @@ impl DagExecutor {
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
+                        sandbox_root.clone(),
                     );
                     let sink_node = SinkNode::new(
                         ctx,
@@ -221,8 +233,13 @@ impl DagExecutor {
             let injector_handle = std::thread::Builder::new()
                 .name("replay-injector".to_string())
                 .spawn(move || {
-                    let node_ctx =
-                        NodeContext::new(expr_engine2, storage_resolver2, kv_store2, event_hub2);
+                    let node_ctx = NodeContext::new(
+                        expr_engine2,
+                        storage_resolver2,
+                        kv_store2,
+                        event_hub2,
+                        sandbox_root,
+                    );
                     replay_inject(cfg, replay_groups, node_ctx);
                     Ok::<(), ExecutionError>(())
                 })
@@ -497,6 +514,7 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
                             node_ctx.storage_resolver.clone(),
                             node_ctx.kv_store.clone(),
                             node_ctx.event_hub.clone(),
+                            node_ctx.sandbox_root.clone(),
                         );
 
                         if let Err(err) = g.sender.send(ExecutorOperation::Op { ctx }) {

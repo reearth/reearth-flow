@@ -13,6 +13,7 @@ use petgraph::visit::IntoNodeIdentifiers;
 
 use async_stream::stream;
 use futures::{future::select_all, future::Either, Stream, StreamExt};
+use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::{
@@ -59,6 +60,7 @@ pub struct SourceNode<F> {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
+    sandbox_root: Uri,
     span: tracing::Span,
     event_hub: EventHub,
 }
@@ -90,6 +92,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                 Arc::clone(&self.storage_resolver),
                 Arc::clone(&self.kv_store),
                 self.event_hub.clone(),
+                self.sandbox_root.clone(),
             );
             let span = self.span.clone();
             let event_hub = self.event_hub.clone();
@@ -179,6 +182,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         Arc::clone(&self.storage_resolver),
                         Arc::clone(&self.kv_store),
                         self.event_hub.clone(),
+                        self.sandbox_root.clone(),
                     );
 
                     for source in &self.sources {
@@ -214,6 +218,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         Arc::clone(&self.storage_resolver),
                                         Arc::clone(&self.kv_store),
                                         self.event_hub.clone(),
+                                        self.sandbox_root.clone(),
                                     );
 
                                     for source in &self.sources {
@@ -288,6 +293,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 Arc::clone(&self.storage_resolver),
                                 Arc::clone(&self.kv_store),
                                 self.event_hub.clone(),
+                                self.sandbox_root.clone(),
                             ))?;
                         }
                     }
@@ -407,6 +413,7 @@ pub async fn create_source_node<F>(
         expr_engine: Arc::clone(&ctx.expr_engine),
         storage_resolver: Arc::clone(&ctx.storage_resolver),
         kv_store: Arc::clone(&ctx.kv_store),
+        sandbox_root: ctx.sandbox_root.clone(),
         span,
         event_hub: dag.event_hub().clone(),
     }
