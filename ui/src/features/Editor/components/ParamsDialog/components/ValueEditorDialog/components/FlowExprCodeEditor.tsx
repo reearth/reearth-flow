@@ -10,11 +10,14 @@ import {
 import { TextArea } from "@flow/components";
 
 import { type AutocompleteSuggestion } from "./constants";
-import RhaiAutocomplete from "./RhaiAutocomplete";
-import RhaiSyntaxHighlighter from "./RhaiSyntaxHighlighter";
-import { validateRhaiCode, type ValidationError } from "./RhaiValidator";
+import FlowExprAutocomplete from "./FlowExprAutocomplete";
+import FlowExprSyntaxHighlighter from "./FlowExprSyntaxHighlighter";
+import {
+  validateFlowExprCode,
+  type ValidationError,
+} from "./FlowExprValidator";
 
-export type RhaiCodeEditorRef = {
+export type FlowExprCodeEditorRef = {
   insertAtCursor: (text: string) => void;
   focus: () => void;
 };
@@ -29,39 +32,19 @@ type Props = {
   "data-placeholder"?: string;
 };
 
-const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
+const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
   ({ value = "", onChange, placeholder, className = "", ...props }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const highlightRef = useRef<HTMLDivElement>(null);
     const placeholderRef = useRef<HTMLDivElement>(null);
     const errorOverlayRef = useRef<HTMLDivElement>(null);
 
-    // Autocomplete state
     const [autocompleteVisible, setAutocompleteVisible] = useState(false);
-    const autocompleteVisibleRef = useRef(false);
-    autocompleteVisibleRef.current = autocompleteVisible;
-
-    // Capture-phase ESC handler — registered before Radix Dialog's handler so ESC
-    // only closes suggestions when the autocomplete is open, not the dialog.
-    useEffect(() => {
-      const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === "Escape" && autocompleteVisibleRef.current) {
-          e.stopImmediatePropagation();
-          setAutocompleteVisible(false);
-        }
-      };
-      document.addEventListener("keydown", handleEsc, { capture: true });
-      return () =>
-        document.removeEventListener("keydown", handleEsc, { capture: true });
-    }, []);
-
-    // Validation state with debounced validation
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
       [],
     );
     const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Expose methods via ref
     useImperativeHandle(
       ref,
       () => ({
@@ -71,16 +54,11 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
           const textarea = textareaRef.current;
           const start = textarea.selectionStart;
           const end = textarea.selectionEnd;
-          const currentValue = value;
 
-          // Insert text at cursor position
           const newValue =
-            currentValue.substring(0, start) +
-            text +
-            currentValue.substring(end);
+            value.substring(0, start) + text + value.substring(end);
           onChange(newValue);
 
-          // Set cursor position after inserted text
           setTimeout(() => {
             const newCursorPos = start + text.length;
             textarea.setSelectionRange(newCursorPos, newCursorPos);
@@ -94,7 +72,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
       [value, onChange],
     );
 
-    // Sync scroll position between textarea and highlight overlay
     const handleScroll = useCallback(() => {
       if (textareaRef.current && highlightRef.current) {
         highlightRef.current.scrollTop = textareaRef.current.scrollTop;
@@ -106,23 +83,21 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
       }
     }, []);
 
-    // Handle autocomplete trigger
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        // Don't show autocomplete for navigation keys when it's already visible
         if (
           autocompleteVisible &&
           ["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"].includes(e.key)
         ) {
+          // Stop the native event from reaching document-level listeners (e.g. Radix
+          // Dialog's ESC handler) so only the autocomplete handles these keys.
+          e.nativeEvent.stopPropagation();
           return;
         }
 
-        // Trigger autocomplete for typing letters, numbers, underscores, or namespace operators
         if (/^[a-zA-Z0-9_:]$/.test(e.key)) {
-          // Small delay to let the character be added to the input first
           setTimeout(() => setAutocompleteVisible(true), 10);
         } else if (e.key === "Backspace" || e.key === "Delete") {
-          // Keep autocomplete open when deleting, let it filter
           setTimeout(() => {
             const textarea = textareaRef.current;
             if (textarea) {
@@ -130,8 +105,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
               const textBeforeCursor = textarea.value.substring(0, cursorPos);
               const lastWord =
                 textBeforeCursor.split(/[^a-zA-Z0-9_:.]/).pop() || "";
-
-              // Close if no meaningful text to autocomplete
               if (lastWord.length < 1) {
                 setAutocompleteVisible(false);
               }
@@ -144,7 +117,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
           e.key === ";" ||
           e.key === ","
         ) {
-          // Close autocomplete for these characters
           setAutocompleteVisible(false);
         }
       },
@@ -159,35 +131,28 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
         const cursorPos = textarea.selectionStart;
         const text = textarea.value;
 
-        // Find the current word boundaries
         let start = cursorPos;
         while (start > 0 && /[a-zA-Z0-9_:.]/.test(text[start - 1])) {
           start--;
         }
 
-        // Handle cursor positioning placeholder
         const insertText = suggestion.insertText;
         const cursorPlaceholder = "{{cursor}}";
         const hasCursorPlaceholder = insertText.includes(cursorPlaceholder);
-
         const finalText = hasCursorPlaceholder
           ? insertText.replace(cursorPlaceholder, "")
           : insertText;
 
-        // Replace current word with suggestion
         const newText =
           text.substring(0, start) + finalText + text.substring(cursorPos);
         onChange(newText);
 
-        // Set cursor position
         setTimeout(() => {
           if (hasCursorPlaceholder) {
-            // Position cursor where the placeholder was
             const placeholderPos =
               start + insertText.indexOf(cursorPlaceholder);
             textarea.setSelectionRange(placeholderPos, placeholderPos);
           } else {
-            // Position cursor after the inserted text
             const newCursorPos = start + finalText.length;
             textarea.setSelectionRange(newCursorPos, newCursorPos);
           }
@@ -199,11 +164,9 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
       [onChange],
     );
 
-    // Create error overlay content with optimized string building
     const createErrorOverlay = useCallback(() => {
       if (!value) return "";
       if (validationErrors.length === 0) {
-        // If no errors, return transparent content efficiently
         return value.replace(/./g, '<span class="transparent-char">$&</span>');
       }
 
@@ -217,12 +180,10 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
         );
 
         if (lineErrors.length === 0) {
-          // No errors in this line - process efficiently
           overlayParts.push(
             line.replace(/./g, '<span class="transparent-char">$&</span>'),
           );
         } else {
-          // Process line character by character only when there are errors
           let processedLine = "";
           for (let charIndex = 0; charIndex < line.length; charIndex++) {
             const char = line[charIndex];
@@ -231,7 +192,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
                 charIndex >= err.column && charIndex < err.column + err.length,
             );
 
-            // Escape HTML characters
             const escapedChar = char
               .replace(/&/g, "&amp;")
               .replace(/</g, "&lt;")
@@ -240,7 +200,7 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
               .replace(/'/g, "&#39;");
 
             if (charErrors.length > 0) {
-              const error = charErrors[0]; // Use first error if multiple
+              const error = charErrors[0];
               const severity = error.severity === "error" ? "error" : "warning";
               const escapedMessage = error.message
                 .replace(/&/g, "&amp;")
@@ -258,9 +218,7 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
       return overlayParts.join("\n");
     }, [value, validationErrors]);
 
-    // Debounced validation to improve performance
     useEffect(() => {
-      // Clear existing timeout
       if (validationTimeoutRef.current) {
         clearTimeout(validationTimeoutRef.current);
       }
@@ -271,24 +229,19 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
         return;
       }
 
-      // Set new timeout for validation
       const timeoutId = setTimeout(() => {
-        const errors = validateRhaiCode(value);
+        const errors = validateFlowExprCode(value);
         setValidationErrors(errors);
         validationTimeoutRef.current = null;
-      }, 300); // 300ms debounce
+      }, 300);
 
       validationTimeoutRef.current = timeoutId;
 
-      // Cleanup timeout on unmount
       return () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
+        if (timeoutId) clearTimeout(timeoutId);
       };
     }, [value]);
 
-    // Sync positioning and styles exactly
     useEffect(() => {
       const syncStyles = () => {
         if (
@@ -300,7 +253,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
           const textarea = textareaRef.current;
           const computedStyle = window.getComputedStyle(textarea);
 
-          // Copy ALL relevant styles to ensure perfect alignment
           const stylesToCopy = [
             "fontSize",
             "fontFamily",
@@ -332,7 +284,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
             "marginLeft",
             "boxSizing",
             "width",
-            // Additional text layout properties that might affect character positioning
             "fontStretch",
             "fontSizeAdjust",
             "fontVariant",
@@ -341,7 +292,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
             "textDecorationSkipInk",
           ];
 
-          // Sync highlight overlay
           if (highlightRef.current) {
             const highlight = highlightRef.current;
             stylesToCopy.forEach((prop) => {
@@ -349,7 +299,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
                 prop.replace(/([A-Z])/g, "-$1").toLowerCase(),
               );
             });
-
             highlight.style.position = "absolute";
             highlight.style.top = "0";
             highlight.style.left = "0";
@@ -359,7 +308,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
             highlight.style.overflowWrap = "break-word";
           }
 
-          // Sync error overlay
           if (errorOverlayRef.current) {
             const errorOverlay = errorOverlayRef.current;
             stylesToCopy.forEach((prop) => {
@@ -368,38 +316,34 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
                   prop.replace(/([A-Z])/g, "-$1").toLowerCase(),
                 );
             });
-
             errorOverlay.style.position = "absolute";
             errorOverlay.style.top = "0";
             errorOverlay.style.left = "0";
-            errorOverlay.style.pointerEvents = "auto"; // Allow hover for error tooltips
+            errorOverlay.style.pointerEvents = "auto";
             errorOverlay.style.overflow = "hidden";
             errorOverlay.style.whiteSpace = "pre-wrap";
             errorOverlay.style.overflowWrap = "break-word";
           }
 
-          // Sync placeholder
           if (placeholderRef.current) {
-            const placeholder = placeholderRef.current;
+            const ph = placeholderRef.current;
             stylesToCopy.forEach((prop) => {
-              (placeholder.style as any)[prop] = computedStyle.getPropertyValue(
+              (ph.style as any)[prop] = computedStyle.getPropertyValue(
                 prop.replace(/([A-Z])/g, "-$1").toLowerCase(),
               );
             });
-
-            placeholder.style.position = "absolute";
-            placeholder.style.top = "0px";
-            placeholder.style.left = "0px";
-            placeholder.style.pointerEvents = "none";
-            placeholder.style.overflow = "hidden";
-            placeholder.style.whiteSpace = "pre-wrap";
-            placeholder.style.overflowWrap = "break-word";
-            placeholder.style.color = "rgb(107 114 128)"; // text-muted-foreground
+            ph.style.position = "absolute";
+            ph.style.top = "0px";
+            ph.style.left = "0px";
+            ph.style.pointerEvents = "none";
+            ph.style.overflow = "hidden";
+            ph.style.whiteSpace = "pre-wrap";
+            ph.style.overflowWrap = "break-word";
+            ph.style.color = "rgb(107 114 128)";
           }
         }
       };
 
-      // Sync immediately and on resize
       syncStyles();
 
       const resizeObserver = new ResizeObserver(syncStyles);
@@ -440,17 +384,13 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
           transition: background-color 0.1s ease;
           pointer-events: auto;
         }
-        .validation-error:hover, .validation-warning:hover {
-          cursor: default;
-        }
       `}</style>
 
-        {/* Invisible textarea for input */}
         <TextArea
           ref={textareaRef}
           className="relative max-h-full flex-1 resize-none rounded-none border-transparent text-transparent caret-gray-900 selection:bg-blue-200 focus-visible:ring-0 dark:caret-gray-100 dark:selection:bg-logo/25"
           style={{ zIndex: 3 }}
-          placeholder="" // Remove duplicate placeholder
+          placeholder=""
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onScroll={handleScroll}
@@ -459,7 +399,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
           {...props}
         />
 
-        {/* Error highlighting overlay - positioned exactly over textarea */}
         <div
           ref={errorOverlayRef}
           className="pointer-events-none absolute h-full bg-transparent"
@@ -467,31 +406,22 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
           dangerouslySetInnerHTML={{ __html: createErrorOverlay() }}
         />
 
-        {/* Syntax highlighted background - positioned exactly over textarea */}
         <div
           ref={highlightRef}
           className="pointer-events-none absolute h-full bg-transparent"
-          style={{
-            zIndex: 1,
-          }}>
-          <RhaiSyntaxHighlighter code={value} className="" />
+          style={{ zIndex: 1 }}>
+          <FlowExprSyntaxHighlighter code={value} className="" />
         </div>
 
-        {/* Single placeholder when empty */}
         {!value && placeholder && (
           <div
             ref={placeholderRef}
             className="pointer-events-none absolute text-muted-foreground"
-            style={{
-              zIndex: 0,
-              top: 0,
-              left: 0,
-            }}>
+            style={{ zIndex: 0, top: 0, left: 0 }}>
             {placeholder}
           </div>
         )}
 
-        {/* Validation error summary */}
         {validationErrors.length > 0 && (
           <div className="absolute bottom-2 left-2 flex items-center gap-2 text-xs">
             {validationErrors.filter((err) => err.severity === "error").length >
@@ -519,8 +449,7 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
           </div>
         )}
 
-        {/* Autocomplete dropdown */}
-        <RhaiAutocomplete
+        <FlowExprAutocomplete
           textareaRef={textareaRef}
           value={value}
           onSuggestionSelect={handleSuggestionSelect}
@@ -532,6 +461,6 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
   },
 );
 
-RhaiCodeEditor.displayName = "RhaiCodeEditor";
+FlowExprCodeEditor.displayName = "FlowExprCodeEditor";
 
-export default RhaiCodeEditor;
+export default FlowExprCodeEditor;
