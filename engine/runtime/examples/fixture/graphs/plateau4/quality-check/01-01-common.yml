@@ -644,8 +644,9 @@ nodes:
             value: |
               total = 0;
               for key in attributes {
-                if type(attributes[key]) == "int" {
-                  total += attributes[key];
+                v = attributes[key];
+                if type(v) == "int" {
+                  total += v;
                 }
               }
               total
