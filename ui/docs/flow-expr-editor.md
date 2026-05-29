@@ -65,12 +65,18 @@ Validation runs on a 300 ms debounce after each change.
 
 ## Keeping constants in sync with the engine
 
-`flowExprConstants.ts` is the single source of truth for the UI. When the engine changes the language, update **all** of:
+Always read the engine source directly before editing `flowExprConstants.ts` — the markdown reference doc can lag behind the implementation:
+
+| What to check | Engine file |
+|---------------|-------------|
+| Keywords and operators | `engine/runtime/expr/src/core/lexer.rs` — the `Token` enum |
+| Built-in functions (`str`, `int`, `Url`, etc.) | `engine/runtime/expr/src/core/eval.rs` — `default_env()` |
+| Math functions and constants | `engine/runtime/expr/src/core/builtins/` |
+
+After reading the source, update **all five** in `flowExprConstants.ts`:
 
 1. `FLOWEXPR_KEYWORDS` — control-flow keywords, boolean/null literals
 2. `FLOWEXPR_BUILTIN_FUNCTIONS` — classified as `function` token type by syntax highlighter
 3. `FLOWEXPR_MATH_FUNCTIONS` — reference list (not used by syntax highlighter directly)
 4. `FLOWEXPR_OPERATORS` — keep sorted longest → shortest within each group
 5. `getFlowExprAutocompleteSuggestions` — one entry per keyword/function/constant; include `detail` signature and `{{cursor}}` placement
-
-Cross-check against `docs/flow-expr-reference.md` (pinned to the engine version at the top of that file) before and after changes.

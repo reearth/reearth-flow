@@ -94,7 +94,13 @@ yarn test --run     # Ensure all tests pass
 
 ## FlowExpr Editor
 
-`flowExprConstants.ts` is the single source of truth for the editor. When the engine changes the language, always read `docs/flow-expr-reference.md` first (pinned to the engine version), then update **all five** in `flowExprConstants.ts`:
+`flowExprConstants.ts` is the single source of truth for the editor. Before making any changes, read the engine source directly to understand what the language currently supports — do not rely on docs, which can be stale:
+
+- **Keywords/operators** → `engine/runtime/expr/src/core/lexer.rs` (the `Token` enum)
+- **Built-in functions** → `engine/runtime/expr/src/core/eval.rs` (`default_env()`)
+- **Math functions** → `engine/runtime/expr/src/core/builtins/` (individual modules)
+
+Then update **all five** in `flowExprConstants.ts` to match:
 
 - `FLOWEXPR_KEYWORDS`
 - `FLOWEXPR_BUILTIN_FUNCTIONS`
