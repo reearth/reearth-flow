@@ -1,4 +1,4 @@
-import { PencilLineIcon } from "@phosphor-icons/react";
+import { PencilLineIcon, ArrowUDownLeftIcon } from "@phosphor-icons/react";
 import {
   FieldPathId,
   FieldProps,
@@ -6,7 +6,7 @@ import {
   RJSFSchema,
   StrictRJSFSchema,
 } from "@rjsf/utils";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 import { Input } from "@flow/components";
 import { IconButton } from "@flow/components/buttons";
@@ -58,6 +58,7 @@ const FlowExprField = <
   const codeValue = formData as CodeValue | undefined;
   const isExpression = codeValue?.type === "flowExpr";
   const label = schema.title || name;
+  const defaultValue = useRef<CodeValue | undefined>(codeValue);
 
   const handleInlineChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,6 +73,15 @@ const FlowExprField = <
     },
     [onChange, fieldPathId.path, id],
   );
+
+  const handleReset = useCallback(() => {
+    onChange(
+      (defaultValue.current ?? { type: "string", value: "" }) as any,
+      fieldPathId.path,
+      undefined,
+      id,
+    );
+  }, [onChange, fieldPathId.path, id]);
 
   const handleEditorOpen = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -119,6 +129,12 @@ const FlowExprField = <
             onClick={handleEditorOpen}
             disabled={!onFlowExprEditorOpen || readonly || disabled}
           />
+          <IconButton
+            icon={<ArrowUDownLeftIcon />}
+            tooltipText={t("Reset to Default")}
+            onClick={handleReset}
+            disabled={readonly || disabled}
+          />
         </div>
       </div>
     );
@@ -144,6 +160,17 @@ const FlowExprField = <
           tooltipText={t("Open FlowExpr Editor")}
           onClick={handleEditorOpen}
           disabled={!onFlowExprEditorOpen || readonly || disabled}
+        />
+        <IconButton
+          icon={<ArrowUDownLeftIcon />}
+          tooltipText={t("Reset to Default")}
+          onClick={handleReset}
+          disabled={
+            JSON.stringify(codeValue) ===
+              JSON.stringify(defaultValue.current) ||
+            readonly ||
+            disabled
+          }
         />
       </div>
     </div>
