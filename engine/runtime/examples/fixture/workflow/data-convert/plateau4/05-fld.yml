@@ -173,11 +173,12 @@ graphs:
         value:
           type: flowExpr
           value: |
+            filename = attributes.get("name", "");
             if attributes["package"] != "fld" {
               ""
-            } else if "_l1_" in attributes["name"] or "_l1." in attributes["name"] {
+            } else if "_l1_" in filename or "_l1." in filename {
               "l1"
-            } else if "_l2_" in attributes["name"] or "_l2." in attributes["name"] {
+            } else if "_l2_" in filename or "_l2." in filename {
               "l2"
             } else {
               ""
