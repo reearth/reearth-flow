@@ -55,6 +55,22 @@ const ActionPickerDetail = ({ action }: Props) => {
           ))}
         </div>
       </div>
+      {action.tags && action.tags.length > 0 && (
+        <div className="flex flex-col flex-wrap  gap-1.5">
+          <p className="items-center text-xs font-semibold tracking-wide text-muted-foreground">
+            {t("Tags")}
+          </p>
+          <div className="flex gap-1">
+            {action.tags.map((t) => (
+              <div
+                key={t}
+                className="w-fit rounded border bg-secondary/80 p-0.5">
+                <p className="self-center text-xs ">{t}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {action.description && (
         <div>

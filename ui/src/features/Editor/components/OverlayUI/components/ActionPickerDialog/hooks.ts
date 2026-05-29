@@ -11,7 +11,7 @@ import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 type CategoryFiltering = string;
-
+type TagsFiltering = string;
 export default ({
   openedActionType,
   isMainWorkflow,
@@ -46,6 +46,7 @@ export default ({
   const [currentCategories, setCurrentCategories] = useState<
     CategoryFiltering[]
   >([]);
+  const [currentTags, setCurrentTags] = useState<TagsFiltering[]>([]);
 
   const actionTypes: { value: ActionNodeType; label: string }[] = [
     { value: "reader", label: t("Reader") },
@@ -54,6 +55,7 @@ export default ({
   ];
 
   const actionCategories: { value: CategoryFiltering; label: string }[] = [
+    { value: "3D", label: t("3D") },
     { value: "Attribute", label: t("Attribute") },
     { value: "Debug", label: t("Debug") },
     { value: "Feature", label: t("Feature") },
@@ -63,7 +65,54 @@ export default ({
     { value: "Input", label: t("Input") },
     { value: "Merge", label: t("Merge") },
     { value: "Output", label: t("Output") },
+    { value: "PLATEAU", label: t("PLATEAU") },
+    { value: "Python", label: t("Python") },
+    { value: "Script", label: t("Script") },
     { value: "Transform", label: t("Transform") },
+    { value: "Wasm", label: t("Wasm") },
+    { value: "Web", label: t("Web") },
+  ];
+
+  const actionTags: { value: TagsFiltering; label: string }[] = [
+    { value: "2d", label: t("2D") },
+    { value: "3d", label: t("3D") },
+    { value: "3d-tiles", label: t("3D Tiles") },
+    { value: "aggregate", label: t("Aggregate") },
+    { value: "area", label: t("Area") },
+    { value: "citygml", label: t("CityGML") },
+    { value: "compression", label: t("Compression") },
+    { value: "csv", label: t("CSV") },
+    { value: "database", label: t("Database") },
+    { value: "decompose", label: t("Decompose") },
+    { value: "file", label: t("File") },
+    { value: "file-system", label: t("File System") },
+    { value: "geojson", label: t("GeoJSON") },
+    { value: "geometry", label: t("Geometry") },
+    { value: "geopackage", label: t("GeoPackage") },
+    { value: "hierarchy", label: t("Hierarchy") },
+    { value: "image", label: t("Image") },
+    { value: "intersection", label: t("Intersection") },
+    { value: "join", label: t("Join") },
+    { value: "json", label: t("JSON") },
+    { value: "list", label: t("List") },
+    { value: "lod", label: t("LOD") },
+    { value: "mapping", label: t("Mapping") },
+    { value: "measurement", label: t("Measurement") },
+    { value: "mvt", label: t("MVT") },
+    { value: "normal", label: t("Normal") },
+    { value: "path", label: t("Path") },
+    { value: "projection", label: t("Projection") },
+    { value: "raster", label: t("Raster") },
+    { value: "ray", label: t("Ray") },
+    { value: "routing", label: t("Routing") },
+    { value: "scripting", label: t("Scripting") },
+    { value: "shapefile", label: t("Shapefile") },
+    { value: "sort", label: t("Sort") },
+    { value: "split", label: t("Split") },
+    { value: "statistics", label: t("Statistics") },
+    { value: "texture", label: t("Texture") },
+    { value: "validate", label: t("Validate") },
+    { value: "xml", label: t("XML") },
   ];
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,8 +126,15 @@ export default ({
       searchTerm,
       types: currentActionByTypes.length ? currentActionByTypes : undefined,
       categories: currentCategories.length ? currentCategories : undefined,
+      tags: currentTags.length ? currentTags : undefined,
     }),
-    [isMainWorkflow, searchTerm, currentActionByTypes, currentCategories],
+    [
+      isMainWorkflow,
+      searchTerm,
+      currentActionByTypes,
+      currentCategories,
+      currentTags,
+    ],
   );
   const { actions: segregatedActions } = useGetActionsSegregated(filterConfig);
 
@@ -280,9 +336,18 @@ export default ({
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  const handleTagToggle = useCallback((tag: TagsFiltering) => {
+    setCurrentTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
+    setSelectedIndex(-1);
+    containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   const handleClearFilters = useCallback(() => {
     setCurrentActionByTypes([]);
     setCurrentCategories([]);
+    setCurrentTags([]);
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
@@ -294,13 +359,16 @@ export default ({
     selected,
     currentActionByTypes,
     currentCategories,
+    currentTags,
     actionTypes,
     actionCategories,
+    actionTags,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
     handleActionTypeToggle,
     handleCategoryToggle,
+    handleTagToggle,
     handleClearFilters,
   };
 };

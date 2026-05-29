@@ -54,11 +54,14 @@ const ActionPickerDialog: React.FC<Props> = ({
     actionCategories,
     currentActionByTypes,
     currentCategories,
+    currentTags,
+    actionTags,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
     handleActionTypeToggle,
     handleCategoryToggle,
+    handleTagToggle,
     handleClearFilters,
   } = useHooks({
     openedActionType,
@@ -90,11 +93,14 @@ const ActionPickerDialog: React.FC<Props> = ({
               <ActionFilters
                 currentActionByTypes={currentActionByTypes}
                 currentCategories={currentCategories}
+                currentTags={currentTags}
                 actionTypes={actionTypes}
                 actionCategories={actionCategories}
+                actionTags={actionTags}
                 isMainWorkflow={isMainWorkflow}
                 onActionTypeToggle={handleActionTypeToggle}
                 onCategoryToggle={handleCategoryToggle}
+                onTagToggle={handleTagToggle}
                 onClearFilters={handleClearFilters}>
                 <Input
                   className="mx-auto w-full focus-visible:ring-0"
