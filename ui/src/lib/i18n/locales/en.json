@@ -357,7 +357,7 @@
   "Literal string": "",
   "e.g. Url(env(\"BASE_DIR\")) / value(\"filename\")": "",
   "Enter a literal string value": "",
-  "FlowExpr: use value(\"attr\"), env(\"VAR\"), Url(...), math::sqrt(...)": "",
+  "TEMP: FlowExpr: use value(\"attr\"), env(\"VAR\"), Url(...), math::sqrt(...). Expressions are still in early stages and may change without deprecation. Avoid using complex expressions until the API is stabilized.": "",
   "Literal string: no expression evaluation": "",
   "Apply": "",
   "Parameters": "",

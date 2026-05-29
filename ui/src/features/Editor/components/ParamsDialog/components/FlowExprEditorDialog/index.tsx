@@ -245,7 +245,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
               {codeType === "flowExpr" ? (
                 <span>
                   {t(
-                    'FlowExpr: use value("attr"), env("VAR"), Url(...), math::sqrt(...)',
+                    'TEMP: FlowExpr: use value("attr"), env("VAR"), Url(...), math::sqrt(...). Expressions are still in early stages and may change without deprecation. Avoid using complex expressions until the API is stabilized.',
                   )}
                 </span>
               ) : (

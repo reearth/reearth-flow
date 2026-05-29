@@ -7,6 +7,8 @@ import {
   forwardRef,
 } from "react";
 
+import { useHotkeys } from "react-hotkeys-hook";
+
 import { TextArea } from "@flow/components";
 
 import { type AutocompleteSuggestion } from "./constants";
@@ -38,6 +40,21 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
 
     // Autocomplete state
     const [autocompleteVisible, setAutocompleteVisible] = useState(false);
+    const autocompleteVisibleRef = useRef(false);
+    autocompleteVisibleRef.current = autocompleteVisible;
+
+    useHotkeys(
+      "escape",
+      (e) => {
+        e.stopImmediatePropagation();
+        setAutocompleteVisible(false);
+      },
+      {
+        enableOnFormTags: ["TEXTAREA"],
+        enabled: () => autocompleteVisibleRef.current,
+        eventListenerOptions: { capture: true },
+      },
+    );
 
     // Validation state with debounced validation
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
