@@ -525,7 +525,7 @@
   "String/array/map length": "Longueur de chaîne/tableau/carte",
   "Trim leading/trailing whitespace": "Supprimer les espaces blancs au début/à la fin",
   "Split string by separator": "Diviser la chaîne par séparateur",
-  "Check if string starts with prefix": "Vérifier si la chaîne commence par le préfixe  ",
+  "Check if string starts with prefix": "Vérifier si la chaîne commence par le préfixe",
   "Check if string ends with suffix": "Vérifier si la chaîne se termine par le suffixe",
   "Replace all occurrences in string": "Remplacer toutes les occurrences dans la chaîne",
   "Strip prefix from string (no-op if absent)": "Supprimer le préfixe de la chaîne (aucun effet si absent)",
