@@ -1,12 +1,13 @@
+import { Collapsible } from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
-import { ReactNode, useState } from "react";
+import { useState } from "react";
 
+import { CollapsibleContent, CollapsibleTrigger } from "@flow/components";
 import { badgeVariants } from "@flow/components/Badge";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 
 type Props = {
-  children: ReactNode;
   currentActionByTypes: string[];
   currentCategories: string[];
   currentTags: string[];
@@ -34,7 +35,6 @@ const handleRowArrows = (e: React.KeyboardEvent<HTMLButtonElement>) => {
 };
 
 const ActionFilters = ({
-  children,
   currentActionByTypes,
   currentCategories,
   currentTags,
@@ -48,8 +48,9 @@ const ActionFilters = ({
   onClearFilters,
 }: Props) => {
   const t = useT();
+  const [actionTypesOpen, setActionTypesOpen] = useState(true);
+  const [categoriesOpen, setCategoriesOpen] = useState(true);
   const [tagsOpen, setTagsOpen] = useState(false);
-
   const hasActiveFilters =
     currentActionByTypes.length > 0 ||
     currentCategories.length > 0 ||
@@ -57,32 +58,129 @@ const ActionFilters = ({
 
   return (
     <div data-filter-area className="flex flex-col gap-2">
-      {children}
-      <div className="flex flex-wrap gap-1.5 border-b pb-2">
-        {actionTypes.map(({ value, label }) => {
-          const isSelected = currentActionByTypes.includes(value);
-          const isDisabled =
-            (value === "reader" || value === "writer") && !isMainWorkflow;
-          return (
-            <button
-              key={value}
-              type="button"
-              disabled={isDisabled}
-              aria-pressed={isSelected}
-              className={cn(
-                badgeVariants({
-                  variant: isSelected ? "default" : "secondary",
-                }),
-                "cursor-pointer select-none disabled:pointer-events-none disabled:opacity-40",
+      <Collapsible className="flex flex-col" open={actionTypesOpen}>
+        <CollapsibleTrigger
+          asChild
+          className="border-b pb-2"
+          onClick={() => setActionTypesOpen((o) => !o)}>
+          <div className="flex w-full items-center justify-between gap-1 hover:cursor-pointer">
+            <div className="flex w-full items-center gap-1">
+              <span className="ml-1 text-sm font-medium text-foreground">
+                {t("Action Types")}
+              </span>
+            </div>
+            {actionTypesOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-1.5 flex flex-wrap gap-1.5">
+          {actionTypes.map(({ value, label }) => {
+            const isSelected = currentActionByTypes.includes(value);
+            const isDisabled =
+              (value === "reader" || value === "writer") && !isMainWorkflow;
+            return (
+              <button
+                key={value}
+                type="button"
+                disabled={isDisabled}
+                aria-pressed={isSelected}
+                className={cn(
+                  badgeVariants({
+                    variant: isSelected ? "default" : "secondary",
+                  }),
+                  "cursor-pointer select-none disabled:pointer-events-none disabled:opacity-40",
+                )}
+                onClick={() => onActionTypeToggle(value)}
+                onKeyDown={handleRowArrows}>
+                {label}
+              </button>
+            );
+          })}
+        </CollapsibleContent>
+      </Collapsible>
+      <Collapsible className="flex flex-col" open={categoriesOpen}>
+        <CollapsibleTrigger
+          asChild
+          className="border-b pb-2"
+          onClick={() => setCategoriesOpen((o) => !o)}>
+          <div className="flex w-full items-center justify-between gap-1 hover:cursor-pointer">
+            <div className="flex w-full items-center gap-1">
+              <span className="ml-1 text-sm font-medium text-foreground">
+                {t("Categories")}
+              </span>
+              {currentCategories.length > 0 && (
+                <span className="text-xs font-medium text-foreground">
+                  ({currentCategories.length})
+                </span>
               )}
-              onClick={() => onActionTypeToggle(value)}
-              onKeyDown={handleRowArrows}>
-              {label}
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex flex-wrap gap-1.5 border-b pb-2">
+            </div>
+            {categoriesOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-1.5 flex flex-wrap gap-1.5">
+          {actionCategories.map(({ value, label }) => {
+            const isSelected = currentCategories.includes(value);
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={isSelected}
+                className={cn(
+                  badgeVariants({
+                    variant: isSelected ? "default" : "secondary",
+                  }),
+                  "cursor-pointer select-none",
+                )}
+                onClick={() => onCategoryToggle(value)}
+                onKeyDown={handleRowArrows}>
+                {label}
+              </button>
+            );
+          })}
+        </CollapsibleContent>
+      </Collapsible>
+      <Collapsible className="flex flex-col" open={tagsOpen}>
+        <CollapsibleTrigger
+          asChild
+          className="border-b pb-2"
+          onClick={() => setTagsOpen((o) => !o)}>
+          <div className="flex w-full items-center justify-between gap-1 hover:cursor-pointer">
+            <div className="flex w-full items-center gap-1">
+              <span className="ml-1 text-sm font-medium text-foreground">
+                {t("Tags")}
+              </span>
+
+              {currentTags.length > 0 && (
+                <span className="text-xs font-medium text-foreground">
+                  ({currentTags.length})
+                </span>
+              )}
+            </div>
+            {tagsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-1.5 flex flex-wrap gap-1.5">
+          {actionTags.map(({ value, label }) => {
+            const isSelected = currentTags.includes(value);
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={isSelected}
+                className={cn(
+                  badgeVariants({
+                    variant: isSelected ? "default" : "secondary",
+                  }),
+                  "cursor-pointer select-none",
+                )}
+                onClick={() => onTagToggle(value)}
+                onKeyDown={handleRowArrows}>
+                {label}
+              </button>
+            );
+          })}
+        </CollapsibleContent>
+      </Collapsible>
+      {/* <div className="flex flex-wrap gap-1.5 border-b pb-2">
         {actionCategories.map(({ value, label }) => {
           const isSelected = currentCategories.includes(value);
           return (
@@ -102,11 +200,11 @@ const ActionFilters = ({
             </button>
           );
         })}
-      </div>
-      <div className="border-b pb-2">
+      </div> */}
+      {/* <div className="border-b pb-2">
         <button
           type="button"
-          className="flex w-full items-center justify-between py-0.5 text-xs text-muted-foreground hover:text-foreground focus:outline-none"
+          className=""
           onClick={() => setTagsOpen((o) => !o)}>
           <span>
             {t("Tags")}
@@ -141,7 +239,7 @@ const ActionFilters = ({
             })}
           </div>
         )}
-      </div>
+      </div> */}
       {hasActiveFilters && (
         <button
           type="button"

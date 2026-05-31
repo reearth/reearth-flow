@@ -84,12 +84,20 @@ const ActionPickerDialog: React.FC<Props> = ({
         size="3xl"
         position="top"
         className="flex h-[60vh] flex-col gap-0 overflow-hidden p-0">
-        <DialogTitle>{t("Choose Action")}</DialogTitle>
+        <div className="border-b">
+          <DialogTitle>{t("Choose Action")}</DialogTitle>
+        </div>
 
-        <div className="flex min-h-0 flex-1 overflow-hidden border-t">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Left panel — filters + list */}
-          <div className="flex w-2/5 min-w-0 flex-col border-r">
-            <div className="p-3">
+          <div className="flex w-1/4 min-w-0 flex-col overflow-y-auto border-r">
+            <div className="flex flex-col gap-2 p-3">
+              <Input
+                className="mx-auto focus-visible:ring-0"
+                placeholder={t("Search Actions")}
+                autoFocus
+                onChange={(e) => handleSearchTerm(e.target.value)}
+              />
               <ActionFilters
                 currentActionByTypes={currentActionByTypes}
                 currentCategories={currentCategories}
@@ -101,34 +109,29 @@ const ActionPickerDialog: React.FC<Props> = ({
                 onActionTypeToggle={handleActionTypeToggle}
                 onCategoryToggle={handleCategoryToggle}
                 onTagToggle={handleTagToggle}
-                onClearFilters={handleClearFilters}>
-                <Input
-                  className="mx-auto w-full focus-visible:ring-0"
-                  placeholder={t("Search")}
-                  autoFocus
-                  onChange={(e) => handleSearchTerm(e.target.value)}
+                onClearFilters={handleClearFilters}
+              />
+            </div>
+          </div>
+          {/* Centre panel — Action List */}
+          <div
+            ref={containerRef}
+            className="flex-1 overflow-y-auto border-r px-2 pt-1 pb-1">
+            {actionsList?.map((action, idx) => {
+              const isSelected = selected === action.name;
+              return (
+                <ActionItem
+                  key={action.name}
+                  itemRefs={itemRefs}
+                  idx={idx}
+                  action={action}
+                  isSelected={isSelected}
+                  actionsList={actionsList}
+                  onSingleClick={handleSingleClick}
+                  onDoubleClick={handleDoubleClick}
                 />
-              </ActionFilters>
-            </div>
-            <div
-              ref={containerRef}
-              className="flex-1 overflow-y-auto px-2 pb-1">
-              {actionsList?.map((action, idx) => {
-                const isSelected = selected === action.name;
-                return (
-                  <ActionItem
-                    key={action.name}
-                    itemRefs={itemRefs}
-                    idx={idx}
-                    action={action}
-                    isSelected={isSelected}
-                    actionsList={actionsList}
-                    onSingleClick={handleSingleClick}
-                    onDoubleClick={handleDoubleClick}
-                  />
-                );
-              })}
-            </div>
+              );
+            })}
           </div>
           {/* Right panel — detail */}
           <div className="min-w-0 flex-1 overflow-y-auto">
