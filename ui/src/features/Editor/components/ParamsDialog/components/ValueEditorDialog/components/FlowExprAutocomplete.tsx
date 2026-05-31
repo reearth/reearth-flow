@@ -93,7 +93,9 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
         const dotIndex = lowerWord.lastIndexOf(".");
         const hasDot = dotIndex >= 0;
         // After a dot, match only the suffix (the method name being typed).
-        const matchWord = hasDot ? lowerWord.substring(dotIndex + 1) : lowerWord;
+        const matchWord = hasDot
+          ? lowerWord.substring(dotIndex + 1)
+          : lowerWord;
 
         let candidates: AutocompleteSuggestion[];
         if (hasDot) {
@@ -206,7 +208,9 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
 
           switch (key) {
             case "ArrowDown":
-              setSelectedIndex((prev) => (prev + 1) % currentSuggestions.length);
+              setSelectedIndex(
+                (prev) => (prev + 1) % currentSuggestions.length,
+              );
               break;
             case "ArrowUp":
               setSelectedIndex(
@@ -250,7 +254,8 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
       };
 
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }, [visible, onVisibilityChange]);
 
     if (!visible || suggestions.length === 0) {
