@@ -122,10 +122,14 @@ graphs:
       operations:
       - attribute: path
         method: rename
-        value: gmlPath
+        value:
+          type: string
+          value: gmlPath
       - attribute: name
         method: rename
-        value: gmlFilename
+        value:
+          type: string
+          value: gmlFilename
       - attribute: cityGmlPath
         method: remove
   - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7

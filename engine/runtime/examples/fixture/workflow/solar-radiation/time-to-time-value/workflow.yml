@@ -57,31 +57,21 @@ nodes:
       operations:
         - attribute: 出
           method: convert
-          value: |
-            let hour_str = env.get("__value")["出_H"];
-            let hour = parse_int(hour_str);
-            let min_str = env.get("__value")["出_M"];
-            let min = parse_int(min_str);
-            hour * 3600 + min * 60
+          value:
+            type: flowExpr
+            value: int(attributes["出_H"]) * 3600 + int(attributes["出_M"]) * 60
         - attribute: 入り
           method: convert
-          value: |
-            let hour_str = env.get("__value")["入り_H"];
-            let hour = parse_int(hour_str);
-            let min_str = env.get("__value")["入り_M"];
-            let min = parse_int(min_str);
-            hour * 3600 + min * 60
+          value:
+            type: flowExpr
+            value: int(attributes["入り_H"]) * 3600 + int(attributes["入り_M"]) * 60
         - attribute: 南中
           method: convert
-          value: |
-            let dt = env.get("__value")["南中"];
-            let hour_str = str::extract_single_by_regex("(\\d+):(\\d+):(\\d+)", dt);
-            let mins_str = str::extract_single_by_regex("\\d+:(\\d+):\\d+", dt);
-            let secs_str = str::extract_single_by_regex("\\d+:\\d+:(\\d+)", dt);
-            let hour = parse_int(hour_str);
-            let mins = parse_int(mins_str);
-            let seconds = parse_int(secs_str);
-            hour * 3600 + mins * 60 + seconds
+          value:
+            type: flowExpr
+            value: |
+              parts = attributes["南中"].split(":");
+              int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
         - attribute: 出_H
           method: remove
         - attribute: 出_M
@@ -100,14 +90,16 @@ nodes:
       operations:
         - attribute: "日射量[kWh/m2]"
           method: create
-          value: |
-            let entry_time_value = env.get("__value")["入り"];
-            let exit_time_value = env.get("__value")["出"];
-            let altitude_value = env.get("__value")["高度[°]"];
-            let input_time_days = entry_time_value / 86400.0;
-            let output_time_days = exit_time_value / 86400.0;
-            let altitude_radians = math::to_radians(parse_float(altitude_value));
-            (input_time_days - output_time_days) * 24.0 * math::sin(altitude_radians) * (2.0 / math::PI)
+          value:
+            type: flowExpr
+            value: |
+              entry_time = attributes["入り"];
+              exit_time = attributes["出"];
+              altitude = float(attributes["高度[°]"]);
+              altitude_radians = math.radians(altitude);
+              input_time_days = entry_time / 86400.0;
+              output_time_days = exit_time / 86400.0;
+              (input_time_days - output_time_days) * 24.0 * math.sin(altitude_radians) * (2.0 / math.pi)
 
   - id: c60a3004-ded4-11f0-9390-7c70db10a7e3
     name: SolarEnergySum
@@ -127,8 +119,9 @@ nodes:
       operations:
         - attribute: join_key
           method: create
-          value: |
-            "key"
+          value:
+            type: string
+            value: key
 
   - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
     name: SolarEnergyResultCsvWriter
