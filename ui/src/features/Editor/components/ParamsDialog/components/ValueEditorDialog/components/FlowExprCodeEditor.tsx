@@ -10,9 +10,7 @@ import {
 import { TextArea } from "@flow/components";
 
 import { type AutocompleteSuggestion } from "./constants";
-import FlowExprAutocomplete, {
-  type FlowExprAutocompleteRef,
-} from "./FlowExprAutocomplete";
+import FlowExprAutocomplete from "./FlowExprAutocomplete";
 import FlowExprSyntaxHighlighter from "./FlowExprSyntaxHighlighter";
 import {
   validateFlowExprCode,
@@ -40,13 +38,29 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
     const highlightRef = useRef<HTMLDivElement>(null);
     const placeholderRef = useRef<HTMLDivElement>(null);
     const errorOverlayRef = useRef<HTMLDivElement>(null);
-    const autocompleteRef = useRef<FlowExprAutocompleteRef>(null);
 
     const [autocompleteVisible, setAutocompleteVisible] = useState(false);
+    const autocompleteVisibleRef = useRef(false);
+    autocompleteVisibleRef.current = autocompleteVisible;
+
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
       [],
     );
     const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Capture-phase ESC handler — fires before Radix Dialog's bubbling handler
+    // so ESC only closes the autocomplete when it is open, not the dialog.
+    useEffect(() => {
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && autocompleteVisibleRef.current) {
+          e.stopImmediatePropagation();
+          setAutocompleteVisible(false);
+        }
+      };
+      document.addEventListener("keydown", handleEsc, { capture: true });
+      return () =>
+        document.removeEventListener("keydown", handleEsc, { capture: true });
+    }, []);
 
     useImperativeHandle(
       ref,
@@ -92,12 +106,8 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           autocompleteVisible &&
           ["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"].includes(e.key)
         ) {
-          // Deliver to the autocomplete before stopping propagation — the
-          // document listener never fires because we stop propagation to
-          // prevent Radix Dialog's ESC handler from closing the dialog.
-          e.preventDefault();
-          autocompleteRef.current?.handleNavigationKey(e.key);
-          e.nativeEvent.stopPropagation();
+          // Let the event bubble to the autocomplete's document listener.
+          // ESC is intercepted separately via a capture-phase handler.
           return;
         }
 
@@ -462,7 +472,6 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
         )}
 
         <FlowExprAutocomplete
-          ref={autocompleteRef}
           textareaRef={textareaRef}
           value={value}
           onSuggestionSelect={handleSuggestionSelect}
