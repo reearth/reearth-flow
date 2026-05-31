@@ -26,12 +26,16 @@ fn lex_string<'src>(lex: &mut logos::Lexer<'src, Token>) -> Option<String> {
 
 #[derive(Logos, Debug, Clone, PartialEq)]
 #[logos(skip r"[ \t\n\r]+")]
+#[logos(skip r"#[^\n]*")]
 pub enum Token {
     // literals
-    #[regex(r"[0-9]+\.[0-9]+", |lex| lex.slice().parse::<f64>().ok())]
+    #[regex(r"[0-9]+\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+", |lex| lex.slice().parse::<f64>().ok())]
     Float(f64),
 
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
+    #[regex(r"0[bB][01]+", |lex| i64::from_str_radix(&lex.slice()[2..], 2).ok())]
+    #[regex(r"0[oO][0-7]+", |lex| i64::from_str_radix(&lex.slice()[2..], 8).ok())]
+    #[regex(r"0[xX][0-9a-fA-F]+", |lex| i64::from_str_radix(&lex.slice()[2..], 16).ok())]
     Int(i64),
 
     #[regex(r#""([^"\\]|\\.)*""#, lex_string)]
@@ -60,6 +64,8 @@ pub enum Token {
     While,
     #[token("for")]
     For,
+    #[token("return")]
+    Return,
 
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Ident(String),
@@ -122,6 +128,28 @@ pub enum Token {
     #[token("=")]
     Assign,
 
+    // bitwise
+    #[token("&")]
+    Amp,
+    #[token("|")]
+    Pipe,
+    #[token("^")]
+    Caret,
+    #[token("<<=")]
+    LShiftAssign,
+    #[token(">>=")]
+    RShiftAssign,
+    #[token("&=")]
+    AmpAssign,
+    #[token("|=")]
+    PipeAssign,
+    #[token("^=")]
+    CaretAssign,
+    #[token("<<")]
+    LShift,
+    #[token(">>")]
+    RShift,
+
     // comparison
     #[token("==")]
     Eq,
@@ -178,6 +206,14 @@ mod tests {
             tokenize("1 + 2.5"),
             vec![Token::Int(1), Token::Plus, Token::Float(2.5)]
         );
+    }
+
+    #[test]
+    fn test_float_scientific_notation() {
+        assert_eq!(tokenize("1e-10"), vec![Token::Float(1e-10)]);
+        assert_eq!(tokenize("1e10"), vec![Token::Float(1e10)]);
+        assert_eq!(tokenize("1.5e3"), vec![Token::Float(1.5e3)]);
+        assert_eq!(tokenize("2.0E+4"), vec![Token::Float(2.0E+4)]);
     }
 
     #[test]
@@ -308,6 +344,34 @@ mod tests {
         assert_eq!(
             tokenize("elsewhere"),
             vec![Token::Ident("elsewhere".into())]
+        );
+    }
+
+    #[test]
+    fn test_integer_literals() {
+        assert_eq!(tokenize("0b1010"), vec![Token::Int(0b1010)]);
+        assert_eq!(tokenize("0B1010"), vec![Token::Int(0b1010)]);
+        assert_eq!(tokenize("0o777"), vec![Token::Int(0o777)]);
+        assert_eq!(tokenize("0xff"), vec![Token::Int(0xff)]);
+        assert_eq!(tokenize("0XdeadBEEF"), vec![Token::Int(0xDEADBEEF)]);
+    }
+
+    #[test]
+    fn test_line_comment() {
+        assert_eq!(
+            tokenize("1 # comment\n+ 2"),
+            vec![Token::Int(1), Token::Plus, Token::Int(2)]
+        );
+        assert_eq!(tokenize("# full line comment\n42"), vec![Token::Int(42)]);
+        assert_eq!(tokenize("1 # trailing"), vec![Token::Int(1)]);
+        // # inside a string must not start a comment
+        assert_eq!(
+            tokenize(r#""hello#world""#),
+            vec![Token::Str("hello#world".into())]
+        );
+        assert_eq!(
+            tokenize(r#""foo#bar" # strip this"#),
+            vec![Token::Str("foo#bar".into())]
         );
     }
 

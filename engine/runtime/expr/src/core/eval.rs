@@ -4,10 +4,11 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
-use super::builtins::builtin_url;
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
+use super::builtins::{builtin_math, builtin_url};
 use super::error::{Error, InnerError, InnerResult, Result};
 use super::value::{format_float, NativeFn, Value};
+use crate::unpack_args;
 
 #[cfg(debug_assertions)]
 const MAX_EVAL_DEPTH: usize = 64;
@@ -65,12 +66,18 @@ pub fn default_env() -> Env {
     env.insert("list".into(), Value::Fn(NativeFn::new(builtin_list)));
     env.insert("map".into(), Value::Fn(NativeFn::new(builtin_map)));
     env.insert("Url".into(), Value::Fn(NativeFn::new(builtin_url)));
+    env.insert("math".into(), builtin_math());
     env.insert("print".into(), Value::Fn(NativeFn::new(builtin_print)));
+    env.insert("type".into(), Value::Fn(NativeFn::new(builtin_type)));
+    env.insert("len".into(), Value::Fn(NativeFn::new(builtin_len)));
     env
 }
 
 pub fn eval(expr: &Expr, env: &mut Env) -> Result<Value> {
-    eval_inner(expr, env)
+    match eval_inner(expr, env) {
+        Err(Error::Return(v)) => Ok(v),
+        other => other,
+    }
 }
 
 /// Recursion entrypoint for native function/operator/method invocations.
@@ -104,22 +111,38 @@ fn eq_op(args: &[Value]) -> InnerResult<Value> {
     }
 }
 
-// Resolve a method name on a value, returning a NativeFn where args[0] is the receiver.
-fn resolve_method(recv: &Value, method: &str) -> InnerResult<NativeFn> {
+fn resolve_attr(recv: Value, attr: &str) -> InnerResult<Value> {
     match recv {
-        Value::String(_) => str_methods::resolve_method(method),
-        Value::Array(_) => array_methods::resolve_method(method),
-        Value::Map(_) => map_methods::resolve_method(method),
+        Value::Module(m) => m
+            .get(attr)
+            .cloned()
+            .ok_or_else(|| InnerError::new(format!("module has no attribute '{attr}'"))),
+        Value::Int(n) => match attr {
+            "bit_length" => Ok(Value::Fn(NativeFn::new(move |args| {
+                unpack_args!(args =>);
+                if n < 0 {
+                    return Err(InnerError::new(
+                        "bit_length() not supported for negative integers",
+                    ));
+                }
+                Ok(Value::Int((i64::BITS - n.leading_zeros()) as i64))
+            }))),
+            _ => Err(InnerError::new(format!("int has no attribute '{attr}'"))),
+        },
+        recv @ Value::String(_) => str_methods::resolve_method(recv, attr).map(Value::Fn),
+        recv @ Value::Array(_) => array_methods::resolve_method(recv, attr).map(Value::Fn),
+        recv @ Value::Map(_) => map_methods::resolve_method(recv, attr).map(Value::Fn),
         Value::Object(rc) => {
-            let rc = rc.clone();
-            let method_name = method.to_string();
-            Ok(NativeFn::new(move |args| {
-                // args[0] is the receiver; pass the rest to call_method
-                rc.call_method(&method_name, &args[1..])
-            }))
+            if let Some(result) = rc.get_property(attr) {
+                return result;
+            }
+            let attr = attr.to_string();
+            Ok(Value::Fn(NativeFn::new(move |args| {
+                rc.call_method(&attr, args)
+            })))
         }
         v => Err(InnerError::new(format!(
-            "{} has no method '{method}'",
+            "{} has no attribute '{attr}'",
             v.type_name()
         ))),
     }
@@ -325,6 +348,59 @@ fn resolve_op(op: &BinOp) -> NativeFn {
             let (left, right) = binary_args(args)?;
             contains_inner(left, right).map(|b| Value::Bool(!b))
         }),
+        BinOp::BitAnd => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__and__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            Ok(Value::Int(a & b))
+        }),
+        BinOp::BitOr => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__or__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            Ok(Value::Int(a | b))
+        }),
+        BinOp::BitXor => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__xor__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            Ok(Value::Int(a ^ b))
+        }),
+        BinOp::Shl => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__lshift__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            if b >= 63 {
+                return Err(InnerError::new(format!(
+                    "left shift amount {b} out of range [0, 62]"
+                )));
+            }
+            let result = a
+                .checked_shl(b as u32)
+                .filter(|&v| v >= 0)
+                .ok_or_else(|| InnerError::new("left shift result overflows 63-bit integer"))?;
+            Ok(Value::Int(result))
+        }),
+        BinOp::Shr => NativeFn::new(|args| {
+            let (left, right) = binary_args(args)?;
+            if let Value::Object(rc) = &left {
+                return rc.call_method("__rshift__", &[right]);
+            }
+            let (a, b) = bitwise_args(&left, &right)?;
+            if b >= 63 {
+                // shr should not overflow, same as Python
+                return Ok(Value::Int(0));
+            }
+            Ok(Value::Int(a >> b))
+        }),
         BinOp::And | BinOp::Or => {
             unreachable!("and/or are short-circuited in eval_inner before resolve_op is called")
         }
@@ -397,6 +473,20 @@ fn unary_arg(args: &[Value]) -> InnerResult<&Value> {
         .ok_or_else(|| InnerError::new("unary operator requires one operand"))
 }
 
+fn bitwise_args(a: &Value, b: &Value) -> InnerResult<(i64, i64)> {
+    let to_bits = |v: &Value| match v {
+        Value::Int(n) if *n >= 0 => Ok(*n),
+        Value::Int(_) => Err(InnerError::new(
+            "bitwise operands must be non-negative integers",
+        )),
+        other => Err(InnerError::new(format!(
+            "bitwise operands must be non-negative integers, got {}",
+            other.type_name()
+        ))),
+    };
+    Ok((to_bits(a)?, to_bits(b)?))
+}
+
 // Recursion entrypoint for AST expression evaluation.
 fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
     let pos = expr.span.start;
@@ -452,43 +542,25 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             let step = step.as_deref().map(|e| eval_inner(e, env)).transpose()?;
             eval_slice(target, start, stop, step).to_eval_error(pos)
         }
-        ExprKind::FuncCall { name, args } => {
-            let f = env.get(name.as_str()).cloned().ok_or_else(|| Error::Eval {
-                pos,
-                msg: format!("unknown function '{name}'"),
-            })?;
-            match f {
-                Value::Fn(native_fn) => {
-                    let mut evaled = Vec::with_capacity(args.len());
-                    for a in args {
-                        evaled.push(eval_inner(a, env)?);
-                    }
-                    call_func(&native_fn, &evaled, pos)
-                }
-                _ => Err(Error::Eval {
-                    pos,
-                    msg: format!("'{name}' is not a function"),
-                }),
-            }
-        }
         ExprKind::Unary(op, e) => {
             let val = eval_inner(e, env)?;
             let f = resolve_unary_op(op);
             call_func(&f, &[val], pos)
         }
-        ExprKind::MethodCall {
-            receiver,
-            method,
-            args,
-        } => {
+        ExprKind::Attribute { receiver, attr } => {
             let recv = eval_inner(receiver, env)?;
-            let f = resolve_method(&recv, method).to_eval_error(pos)?;
-            let mut call_args = Vec::with_capacity(args.len() + 1);
-            call_args.push(recv);
-            for a in args {
-                call_args.push(eval_inner(a, env)?);
+            resolve_attr(recv, attr).to_eval_error(pos)
+        }
+        ExprKind::Call { callee, args } => {
+            let f = eval_inner(callee, env)?;
+            let evaled: Result<Vec<_>> = args.iter().map(|a| eval_inner(a, env)).collect();
+            match f {
+                Value::Fn(native_fn) => call_func(&native_fn, &evaled?, pos),
+                _ => Err(Error::Eval {
+                    pos,
+                    msg: format!("value of type {} is not callable", f.type_name()),
+                }),
             }
-            call_func(&f, &call_args, pos)
         }
         ExprKind::Binary(left, op, right) => {
             match op {
@@ -562,7 +634,15 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                     .map(|k| Value::String(k.clone()))
                     .collect(),
                 Value::String(s) => s.chars().map(|c| Value::String(c.to_string())).collect(),
-                Value::Null => vec![],
+                Value::Object(rc) => match rc.call_method("__iter__", &[]).to_eval_error(pos)? {
+                    Value::Array(arr) => arr.borrow().clone(),
+                    v => {
+                        return Err(Error::Eval {
+                            pos,
+                            msg: format!("__iter__ must return a list, got {}", v.type_name()),
+                        })
+                    }
+                },
                 v => {
                     return Err(Error::Eval {
                         pos,
@@ -575,6 +655,13 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
                 eval_inner(body, env)?;
             }
             Ok(Value::Null)
+        }
+        ExprKind::Return(expr) => {
+            let val = match expr {
+                Some(e) => eval_inner(e, env)?,
+                None => Value::Null,
+            };
+            Err(Error::Return(val))
         }
     }
 }
@@ -686,24 +773,34 @@ fn eval_compound_assign(
 
 fn eval_index(target: Value, key: Value) -> InnerResult<Value> {
     match (target, key) {
-        (Value::Map(map), Value::String(k)) => {
-            Ok(map.borrow().get(&k).cloned().unwrap_or(Value::Null))
-        }
+        (Value::Map(map), Value::String(k)) => map
+            .borrow()
+            .get(&k)
+            .cloned()
+            .ok_or_else(|| InnerError::new(format!("map key '{k}' not found"))),
         (Value::Array(arr), Value::Int(i)) => {
             let arr = arr.borrow();
-            let i = if i < 0 { arr.len() as i64 + i } else { i };
-            Ok(arr.get(i as usize).cloned().unwrap_or(Value::Null))
+            let len = arr.len() as i64;
+            let i = if i < 0 { len + i } else { i };
+            if i < 0 || i >= len {
+                return Err(InnerError::new(format!(
+                    "array index {i} out of range (len {len})"
+                )));
+            }
+            Ok(arr[i as usize].clone())
         }
         (Value::String(s), Value::Int(i)) => {
             let chars: Vec<char> = s.chars().collect();
             let len = chars.len() as i64;
             let i = if i < 0 { len + i } else { i };
             if i < 0 || i >= len {
-                return Ok(Value::Null);
+                return Err(InnerError::new(format!(
+                    "string index {i} out of range (len {len})"
+                )));
             }
             Ok(Value::String(chars[i as usize].to_string()))
         }
-        (Value::Null, _) => Ok(Value::Null),
+        (Value::Object(rc), key) => rc.call_method("__getitem__", &[key]),
         (target, key) => Err(InnerError::new(format!(
             "cannot index {} with {}",
             target.type_name(),
@@ -881,7 +978,7 @@ fn is_truthy(v: &Value) -> bool {
         Value::String(s) => !s.is_empty(),
         Value::Array(a) => !a.borrow().is_empty(),
         Value::Map(o) => !o.borrow().is_empty(),
-        Value::Fn(_) | Value::Object(_) => true,
+        Value::Fn(_) | Value::Object(_) | Value::Module(_) => true,
     }
 }
 
@@ -1048,6 +1145,24 @@ fn builtin_map(args: &[Value]) -> InnerResult<Value> {
     Ok(Value::map(out))
 }
 
+fn builtin_type(args: &[Value]) -> InnerResult<Value> {
+    unpack_args!(args => v);
+    Ok(Value::String(v.type_name().to_string()))
+}
+
+fn builtin_len(args: &[Value]) -> InnerResult<Value> {
+    unpack_args!(args => v);
+    match v {
+        Value::String(s) => Ok(Value::Int(s.chars().count() as i64)),
+        Value::Array(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
+        Value::Map(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
+        other => Err(InnerError::new(format!(
+            "len() not supported for {}",
+            other.type_name()
+        ))),
+    }
+}
+
 fn builtin_print(args: &[Value]) -> InnerResult<Value> {
     let parts: Vec<String> = args
         .iter()
@@ -1171,12 +1286,14 @@ mod tests {
             "name".into() => Value::from("alice"),
         });
         assert_eval(r#"m["name"]"#, &[("m", m.clone())], Value::from("alice"));
-        assert_eval(r#"m["missing"]"#, &[("m", m)], Value::Null);
+        assert!(try_run(r#"m["missing"]"#, &[("m", m)]).is_err());
         let arr = Value::from(vec![1i64, 2i64, 3i64]);
         assert_eval("arr[0]", &[("arr", arr.clone())], Value::from(1i64));
-        assert_eval("arr[-1]", &[("arr", arr)], Value::from(3i64));
+        assert_eval("arr[-1]", &[("arr", arr.clone())], Value::from(3i64));
+        assert!(try_run("arr[10]", &[("arr", arr)]).is_err());
         assert_eval(r#""hello"[0]"#, &[], Value::from("h"));
         assert_eval(r#""hello"[-1]"#, &[], Value::from("o"));
+        assert!(try_run(r#""hello"[99]"#, &[]).is_err());
     }
 
     #[test]
@@ -1339,13 +1456,20 @@ mod tests {
     fn test_cast() {
         assert_eval(r#"str("hello")"#, &[], Value::from("hello"));
         assert_eval(r#"str(42)"#, &[], Value::from("42"));
-        assert_eval(r#"str(3.14)"#, &[], Value::from("3.14"));
         assert_eval(r#"str(true)"#, &[], Value::from("true"));
         assert_eval(r#"str(false)"#, &[], Value::from("false"));
         assert_eval(r#"str(null)"#, &[], Value::from("null"));
         assert_eval(r#"str([1, 2, 3])"#, &[], Value::from("[1, 2, 3]"));
         assert_eval(r#"str([])"#, &[], Value::from("[]"));
         assert_eval(r#"str({"a": 1})"#, &[], Value::from(r#"{"a": 1}"#));
+        assert_eval(r#"str(0.0)"#, &[], Value::from("0.0"));
+        assert_eval(r#"str(1.0)"#, &[], Value::from("1.0"));
+        assert_eval(r#"str(0.0001)"#, &[], Value::from("0.0001"));
+        assert_eval(r#"str(1e-5)"#, &[], Value::from("1e-5"));
+        assert_eval(r#"str(1e-30)"#, &[], Value::from("1e-30"));
+        assert_eval(r#"str(1.5e-10)"#, &[], Value::from("1.5e-10"));
+        assert_eval(r#"str(1e16)"#, &[], Value::from("1e16"));
+        assert_eval(r#"str(1.5e20)"#, &[], Value::from("1.5e20"));
         assert_eval(r#"int(42)"#, &[], Value::from(42i64));
         assert_eval(r#"int(3.9)"#, &[], Value::from(3i64));
         assert_eval(r#"int(-3.9)"#, &[], Value::from(-3i64));
@@ -1450,6 +1574,64 @@ mod tests {
     }
 
     #[test]
+    fn test_object_getitem_and_iter() {
+        #[derive(Debug, Clone)]
+        struct Bag(Vec<(String, i64)>);
+
+        impl super::super::value::ImmutableObject for Bag {
+            fn type_name(&self) -> &'static str {
+                "Bag"
+            }
+            fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
+                match method {
+                    "__getitem__" => match args.first() {
+                        Some(Value::String(k)) => self
+                            .0
+                            .iter()
+                            .find(|(key, _)| key == k)
+                            .map(|(_, v)| Value::Int(*v))
+                            .ok_or_else(|| InnerError::new(format!("key '{k}' not found"))),
+                        _ => Err(InnerError::new("__getitem__ expects a string")),
+                    },
+                    "__iter__" => Ok(Value::array(
+                        self.0
+                            .iter()
+                            .map(|(k, _)| Value::String(k.clone()))
+                            .collect(),
+                    )),
+                    m => Err(InnerError::new(format!("no method {m}"))),
+                }
+            }
+        }
+
+        let mut env = default_env();
+        env.insert(
+            "bag".into(),
+            Value::object(Bag(vec![("x".into(), 10), ("y".into(), 20)])),
+        );
+
+        // __getitem__
+        assert_eval(
+            r#"bag["x"]"#,
+            &[("bag", env["bag"].clone())],
+            Value::from(10i64),
+        );
+        assert_eval(
+            r#"bag["y"]"#,
+            &[("bag", env["bag"].clone())],
+            Value::from(20i64),
+        );
+        assert!(try_run(r#"bag["z"]"#, &[("bag", env["bag"].clone())]).is_err());
+
+        // __iter__ via for-in
+        assert_eval(
+            "keys = []; for k in bag { keys = keys + [k] } keys",
+            &[("bag", env["bag"].clone())],
+            Value::from(vec!["x", "y"]),
+        );
+    }
+
+    #[test]
     fn test_var() {
         let mut env = default_env();
         assert!(eval(&parse("missing").unwrap(), &mut env).is_err());
@@ -1488,6 +1670,31 @@ mod tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    fn test_len_builtin() {
+        assert_eval(r#"len("hello")"#, &[], Value::from(5i64));
+        assert_eval(r#"len("")"#, &[], Value::from(0i64));
+        let arr = Value::from(vec![1i64, 2i64, 3i64]);
+        assert_eval("len(arr)", &[("arr", arr)], Value::from(3i64));
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eval("len(m)", &[("m", m)], Value::from(2i64));
+        assert!(try_run("len(42)", &[]).is_err());
+    }
+
+    #[test]
+    fn test_type_builtin() {
+        assert_eval("type(null)", &[], Value::from("null"));
+        assert_eval("type(true)", &[], Value::from("bool"));
+        assert_eval("type(42)", &[], Value::from("int"));
+        assert_eval("type(3.14)", &[], Value::from("float"));
+        assert_eval(r#"type("hello")"#, &[], Value::from("string"));
+        assert_eval("type([1, 2])", &[], Value::from("list"));
+        assert_eval(r#"type({"a": 1})"#, &[], Value::from("map"));
     }
 
     #[test]
@@ -1670,7 +1877,71 @@ mod tests {
 
     #[test]
     fn test_for_in_null() {
-        assert_eval("for x in null { x } 1", &[], Value::from(1i64));
+        assert!(try_run("for x in null { x }", &[]).is_err());
+    }
+
+    #[test]
+    fn test_return() {
+        // bare return evaluates to null
+        assert_eval("return", &[], Value::Null);
+        // return with value
+        assert_eval("return 42", &[], Value::from(42i64));
+        // early exit from block: statements after return are not evaluated
+        assert_eval("return 1; 2", &[], Value::from(1i64));
+        // return inside if
+        assert_eval("if true { return 7 } 99", &[], Value::from(7i64));
+        assert_eval("if false { return 7 } 99", &[], Value::from(99i64));
+        // return inside while exits the whole script
+        assert_eval(
+            "i = 0; while true { i = i + 1; if i == 3 { return i } }",
+            &[],
+            Value::from(3i64),
+        );
+        // return with assign expression
+        assert_eval(
+            "return x = 5",
+            &[("x", Value::from(0i64))],
+            Value::from(5i64),
+        );
+    }
+
+    #[test]
+    fn test_bitwise() {
+        assert_eval("0b1010 & 0b1100", &[], Value::from(0b1000i64));
+        assert_eval("0b1010 | 0b1100", &[], Value::from(0b1110i64));
+        assert_eval("0b1010 ^ 0b1100", &[], Value::from(0b0110i64));
+        assert_eval("1 << 3", &[], Value::from(8i64));
+        assert_eval("16 >> 2", &[], Value::from(4i64));
+        assert_eval("1 << 62", &[], Value::from(1i64 << 62));
+        // chaining and precedence
+        assert_eval("1 | 2 & 3", &[], Value::from(3i64)); // & binds tighter: 1 | (2 & 3) = 1 | 2 = 3
+        assert_eval("5 ^ 3 & 6", &[], Value::from(7i64)); // 5 ^ (3 & 6) = 5 ^ 2 = 7
+                                                          // compound assignment
+        assert_eval("x = 0b1111; x &= 0b1010; x", &[], Value::from(0b1010i64));
+        assert_eval("x = 0b1010; x |= 0b0101; x", &[], Value::from(0b1111i64));
+        assert_eval("x = 0b1111; x ^= 0b1010; x", &[], Value::from(0b0101i64));
+        assert_eval("x = 1; x <<= 4; x", &[], Value::from(16i64));
+        assert_eval("x = 32; x >>= 2; x", &[], Value::from(8i64));
+        // errors: negative operand
+        assert!(try_run("-1 & 1", &[]).is_err());
+        assert!(try_run("1 | -1", &[]).is_err());
+        // errors: non-integer operand
+        assert!(try_run("1.0 & 1", &[]).is_err());
+        // errors: shift out of range
+        assert!(try_run("1 << 63", &[]).is_err());
+        assert_eval("1 >> 63", &[], Value::from(0i64));
+        assert!(try_run("1 << -1", &[]).is_err());
+        // errors: left shift overflow
+        assert!(try_run("4611686018427387904 << 1", &[]).is_err()); // 2^62 << 1 overflows
+    }
+
+    #[test]
+    fn test_bit_length() {
+        assert_eval("(0).bit_length()", &[], Value::from(0i64));
+        assert_eval("(1).bit_length()", &[], Value::from(1i64));
+        assert_eval("(0b1010).bit_length()", &[], Value::from(4i64));
+        assert!(try_run("(-1).bit_length()", &[]).is_err());
+        assert!(try_run("(1).bit_length(99)", &[]).is_err());
     }
 
     #[test]

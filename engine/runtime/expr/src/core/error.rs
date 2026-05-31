@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use super::value::Value;
+
 /// Internal error produced by eval helpers; converted to `Error::Eval` with pos by `eval_inner`.
 #[derive(Debug)]
 pub struct InnerError {
@@ -27,6 +29,10 @@ pub enum Error {
 
     #[error("eval_string error: {msg}")]
     EvalString { msg: String },
+
+    /// Control flow: `return <value>` — not a real error.
+    #[error("return")]
+    Return(Value),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -21,7 +21,8 @@ extern {
         "if"    => crate::core::lexer::Token::If,
         "else"  => crate::core::lexer::Token::Else,
         "while" => crate::core::lexer::Token::While,
-        "for"   => crate::core::lexer::Token::For,
+        "for"    => crate::core::lexer::Token::For,
+        "return" => crate::core::lexer::Token::Return,
         "."     => crate::core::lexer::Token::Dot,
         "["     => crate::core::lexer::Token::LBracket,
         "]"     => crate::core::lexer::Token::RBracket,
@@ -40,6 +41,11 @@ extern {
         "/="    => crate::core::lexer::Token::SlashAssign,
         "//="   => crate::core::lexer::Token::DoubleSlashAssign,
         "%="    => crate::core::lexer::Token::PercentAssign,
+        "&="    => crate::core::lexer::Token::AmpAssign,
+        "|="    => crate::core::lexer::Token::PipeAssign,
+        "^="    => crate::core::lexer::Token::CaretAssign,
+        "<<="   => crate::core::lexer::Token::LShiftAssign,
+        ">>="   => crate::core::lexer::Token::RShiftAssign,
         "+"     => crate::core::lexer::Token::Plus,
         "-"     => crate::core::lexer::Token::Minus,
         "*"     => crate::core::lexer::Token::Star,
@@ -53,6 +59,11 @@ extern {
         "<="    => crate::core::lexer::Token::Le,
         ">"     => crate::core::lexer::Token::Gt,
         ">="    => crate::core::lexer::Token::Ge,
+        "&"     => crate::core::lexer::Token::Amp,
+        "|"     => crate::core::lexer::Token::Pipe,
+        "^"     => crate::core::lexer::Token::Caret,
+        "<<"    => crate::core::lexer::Token::LShift,
+        ">>"    => crate::core::lexer::Token::RShift,
     }
 }
 
@@ -74,6 +85,10 @@ pub Expr: Expr = {
 // Right-recursive so `a = b = 1` chains correctly.
 // LHS is a Postfix expression; the evaluator validates it is a legal lvalue at runtime.
 Assign: Expr = {
+    <l:@L> "return" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Return(Some(Box::new(v)))),
+    <l:@L> "return" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Return(None)),
     <l:@L> <lv:Postfix> "=" <v:Assign> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Assign { lvalue: Box::new(lv), value: Box::new(v) }),
     <l:@L> <lv:Postfix> "+=" <v:Assign> <r:@R>
@@ -90,6 +105,16 @@ Assign: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Mod, rhs: Box::new(v) }),
     <l:@L> <lv:Postfix> "**=" <v:Assign> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Pow, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "&=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::BitAnd, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "|=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::BitOr, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "^=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::BitXor, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> "<<=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Shl, rhs: Box::new(v) }),
+    <l:@L> <lv:Postfix> ">>=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Shr, rhs: Box::new(v) }),
     Or,
 };
 
@@ -124,14 +149,40 @@ Equality: Expr = {
 };
 
 Comparison: Expr = {
-    <l:@L> <lhs:Comparison> "<" <rhs:Add> <r:@R>
+    <l:@L> <lhs:Comparison> "<" <rhs:BitOr> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Lt, Box::new(rhs))),
-    <l:@L> <lhs:Comparison> "<=" <rhs:Add> <r:@R>
+    <l:@L> <lhs:Comparison> "<=" <rhs:BitOr> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Le, Box::new(rhs))),
-    <l:@L> <lhs:Comparison> ">" <rhs:Add> <r:@R>
+    <l:@L> <lhs:Comparison> ">" <rhs:BitOr> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Gt, Box::new(rhs))),
-    <l:@L> <lhs:Comparison> ">=" <rhs:Add> <r:@R>
+    <l:@L> <lhs:Comparison> ">=" <rhs:BitOr> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Ge, Box::new(rhs))),
+    BitOr,
+};
+
+BitOr: Expr = {
+    <l:@L> <lhs:BitOr> "|" <rhs:BitXor> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::BitOr, Box::new(rhs))),
+    BitXor,
+};
+
+BitXor: Expr = {
+    <l:@L> <lhs:BitXor> "^" <rhs:BitAnd> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::BitXor, Box::new(rhs))),
+    BitAnd,
+};
+
+BitAnd: Expr = {
+    <l:@L> <lhs:BitAnd> "&" <rhs:Shift> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::BitAnd, Box::new(rhs))),
+    Shift,
+};
+
+Shift: Expr = {
+    <l:@L> <lhs:Shift> "<<" <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Shl, Box::new(rhs))),
+    <l:@L> <lhs:Shift> ">>" <rhs:Add> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Binary(Box::new(lhs), BinOp::Shr, Box::new(rhs))),
     Add,
 };
 
@@ -175,8 +226,10 @@ Postfix: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: None }),
     <l:@L> <e:Postfix> "[" <start:OptExpr> ":" <stop:OptExpr> ":" <step:OptExpr> "]" <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Slice { target: Box::new(e), start: start.map(Box::new), stop: stop.map(Box::new), step: step.map(Box::new) }),
-    <l:@L> <e:Postfix> "." <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::MethodCall { receiver: Box::new(e), method: name, args }),
+    <l:@L> <e:Postfix> "." <name:"ident"> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Attribute { receiver: Box::new(e), attr: name }),
+    <l:@L> <e:Postfix> "(" <args:Comma<Or>> ")" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Call { callee: Box::new(e), args }),
     Primary,
 };
 
@@ -192,8 +245,6 @@ Primary: Expr = {
     <l:@L> "true" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Bool(true)),
     <l:@L> "false" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Bool(false)),
     <l:@L> "null" <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Null),
-    <l:@L> <name:"ident"> "(" <args:Comma<Or>> ")" <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::FuncCall { name, args }),
     <l:@L> <name:"ident"> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Var(name)),
     "(" <Expr> ")",

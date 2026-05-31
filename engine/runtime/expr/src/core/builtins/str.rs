@@ -5,11 +5,10 @@ use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{NativeFn, Value};
 use crate::unpack_args;
 
-type MethodFn = fn(&[Value]) -> InnerResult<Value>;
+use super::MethodFn;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
-        ("len", len as MethodFn),
         ("trim", trim as MethodFn),
         ("split", split as MethodFn),
         ("starts_with", starts_with as MethodFn),
@@ -20,19 +19,16 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     ])
 });
 
-pub fn resolve_method(method: &str) -> InnerResult<NativeFn> {
-    METHODS
+pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
+    let f = METHODS
         .get(method)
-        .map(|&f| NativeFn::new(f))
-        .ok_or_else(|| InnerError::new(format!("String has no method '{method}'")))
-}
-
-fn len(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    Ok(Value::Int(s.chars().count() as i64))
+        .copied()
+        .ok_or_else(|| InnerError::new(format!("String has no method '{method}'")))?;
+    Ok(NativeFn::new(move |args| {
+        let mut a = vec![recv.clone()];
+        a.extend_from_slice(args);
+        f(&a)
+    }))
 }
 
 fn trim(args: &[Value]) -> InnerResult<Value> {
@@ -215,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        assert_eval(r#""hello".len()"#, &[], Value::Int(5));
-        assert_eval(r#""".len()"#, &[], Value::Int(0));
+        assert_eval(r#"len("hello")"#, &[], Value::Int(5));
+        assert_eval(r#"len("")"#, &[], Value::Int(0));
     }
 }
