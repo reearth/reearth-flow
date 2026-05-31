@@ -214,6 +214,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Operation": {
           "attribute": {
             "title": "Attribute name"

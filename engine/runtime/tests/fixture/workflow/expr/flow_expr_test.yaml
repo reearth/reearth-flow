@@ -25,7 +25,7 @@ graphs:
             - attribute: result
               value:
                 type: flowExpr
-                value: 'Url(env("foobar")) / value("filename")'
+                value: 'Url(env["foobar"]) / attributes["filename"]'
 
       - id: e5f6a7b8-c9d0-1234-efab-345678901234
         name: JsonWriter

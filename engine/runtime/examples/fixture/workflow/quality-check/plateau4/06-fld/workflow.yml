@@ -109,22 +109,24 @@ graphs:
           operations:
             - attribute: "_fld_scale"
               method: create
-              value: |
-                let filename = env.get("__value")["name"];
-                if filename == () {
-                  return ();
-                }
-                // Split by underscore and look for l1 or l2
-                let parts = filename.split("_");
-                for part in parts {
-                  if part == "l1" || part.starts_with("l1.") {
-                    return "l1";
+              value:
+                type: flowExpr
+                value: |
+                  filename = attributes.get("name");
+                  if filename == null {
+                    return null
+                  };
+                  # Split by underscore and look for l1 or l2
+                  parts = filename.split("_");
+                  for part in parts {
+                    if part == "l1" or part.starts_with("l1.") {
+                      return "l1"
+                    }
+                    if part == "l2" or part.starts_with("l2.") {
+                      return "l2"
+                    }
                   }
-                  if part == "l2" || part.starts_with("l2.") {
-                    return "l2";
-                  }
-                }
-                return ();
+                  return null
 
       # Clean up unnecessary attributes
       - id: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e

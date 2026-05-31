@@ -10,30 +10,27 @@ use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
 use crate::unpack_args;
 
-type MethodFn = fn(&[Value]) -> InnerResult<Value>;
+use super::MethodFn;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
-        ("len", len as MethodFn),
         ("keys", keys as MethodFn),
         ("values", values as MethodFn),
         ("items", items as MethodFn),
+        ("get", get as MethodFn),
     ])
 });
 
-pub fn resolve_method(method: &str) -> InnerResult<NativeFn> {
-    METHODS
+pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
+    let f = METHODS
         .get(method)
-        .map(|&f| NativeFn::new(f))
-        .ok_or_else(|| InnerError::new(format!("Map has no method '{method}'")))
-}
-
-fn len(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => recv);
-    let Value::Map(rc) = recv else {
-        return Err(InnerError::new("expected map receiver"));
-    };
-    Ok(Value::Int(rc.borrow().len() as i64))
+        .copied()
+        .ok_or_else(|| InnerError::new(format!("Map has no method '{method}'")))?;
+    Ok(NativeFn::new(move |args| {
+        let mut a = vec![recv.clone()];
+        a.extend_from_slice(args);
+        f(&a)
+    }))
 }
 
 fn keys(args: &[Value]) -> InnerResult<Value> {
@@ -68,6 +65,25 @@ fn items(args: &[Value]) -> InnerResult<Value> {
             .map(|(k, v)| Value::array(vec![Value::String(k.clone()), v.clone()]))
             .collect(),
     ))
+}
+
+fn get(args: &[Value]) -> InnerResult<Value> {
+    let (recv, key, fallback) = match args {
+        [recv, key] => (recv, key, None),
+        [recv, key, fallback] => (recv, key, Some(fallback)),
+        _ => return Err(InnerError::new("map.get() requires 1 or 2 arguments")),
+    };
+    let Value::Map(rc) = recv else {
+        return Err(InnerError::new("expected map receiver"));
+    };
+    let Value::String(k) = key else {
+        return Err(InnerError::new("map.get() key must be a string"));
+    };
+    Ok(rc
+        .borrow()
+        .get(k.as_str())
+        .cloned()
+        .unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
 }
 
 pub fn eq_inner(
@@ -106,7 +122,7 @@ mod tests {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
-        assert_eval("m.len()", &[("m", m)], Value::from(2i64));
+        assert_eval("len(m)", &[("m", m)], Value::from(2i64));
     }
 
     #[test]
@@ -125,6 +141,17 @@ mod tests {
             "y".into() => Value::from(2i64),
         });
         assert_eval("m.values()", &[("m", m)], Value::from(vec![1i64, 2i64]));
+    }
+
+    #[test]
+    fn test_get() {
+        let m = Value::map(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+        });
+        assert_eval("m.get(\"x\")", &[("m", m.clone())], Value::from(1i64));
+        assert_eval("m.get(\"z\")", &[("m", m.clone())], Value::Null);
+        assert_eval("m.get(\"z\", 42)", &[("m", m.clone())], Value::from(42i64));
+        assert_eval("m.get(\"x\", 99)", &[("m", m)], Value::from(1i64));
     }
 
     #[test]

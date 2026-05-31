@@ -165,17 +165,24 @@ graphs:
       operations:
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes.get("featureType") or attributes["gmlName"]
       - attribute: __scale
         method: create
-        value: |
-          let pkg = env.get("__value")["package"];
-          if pkg == "fld" {
-            let file_name = file::extract_filename(env.get("__value")["name"]);
-            str::extract_single_by_regex("_(l[12])[_.]", file_name)
-          } else {
-            ""
-          }
+        value:
+          type: flowExpr
+          value: |
+            filename = attributes.get("name", "");
+            if attributes["package"] != "fld" {
+              ""
+            } else if "_l1_" in filename or "_l1." in filename {
+              "l1"
+            } else if "_l2_" in filename or "_l2." in filename {
+              "l2"
+            } else {
+              ""
+            }
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -192,10 +199,14 @@ graphs:
       operations:
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
   - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
     name: AttributeMapperSchema
     type: action
@@ -258,16 +269,16 @@ graphs:
       output:
         type: flowExpr
         value: |
-          udx_dirs = value("udxDirs").replace("/", "_");
-          Url(env("workerArtifactPath")) / (udx_dirs + "_no_texture")
+          udx_dirs = attributes["udxDirs"].replace("/", "_");
+          Url(env["workerArtifactPath"]) / (udx_dirs + "_no_texture")
       compressOutput:
         type: flowExpr
         value: |
-          citygml = Url(env("cityGmlPath")).stem().split("_op_")[0];
-          udx_dirs = value("udxDirs").replace("/", "_");
+          citygml = Url(env["cityGmlPath"]).name.split("_op_")[0];
+          udx_dirs = attributes["udxDirs"].replace("/", "_");
           scale = "";
-          if value("__scale") { scale = "_" + value("__scale") }
-          Url(env("workerArtifactPath")) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
+          if attributes.get("__scale") { scale = "_" + attributes["__scale"] }
+          Url(env["workerArtifactPath"]) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
     name: CreateDictionaryNameDict
     type: action
@@ -276,17 +287,16 @@ graphs:
       operations:
       - attribute: dict_name
         method: create
-        value: |
-          let udx_dirs = env.get("__value")["udxDirs"];
-          let parts = udx_dirs.split("/");
-          let last_segment = parts[parts.len() - 1];
-          let pkg = env.get("__value")["package"];
-          let scale = env.get("__value")["__scale"];
-          if scale != "" {
-            last_segment + "_" + scale
-          } else {
-            last_segment
-          }
+        value:
+          type: flowExpr
+          value: |
+            last_segment = attributes["udxDirs"].split("/")[-1];
+            scale = attributes.get("__scale");
+            if scale {
+              last_segment + "_" + scale
+            } else {
+              last_segment
+            }
   - id: c24dbf9e-1741-4c61-99bc-618582b1e03b
     name: AttributeDuplicateFilterDict
     type: action

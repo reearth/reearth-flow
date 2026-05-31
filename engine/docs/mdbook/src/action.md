@@ -596,8 +596,27 @@ Create, Convert, Rename, and Remove Feature Attributes
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     },
     "Method": {
       "type": "string",
@@ -632,7 +651,7 @@ Create, Convert, Rename, and Remove Feature Attributes
           "description": "Value to use for the operation",
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             },
             {
               "type": "null"
