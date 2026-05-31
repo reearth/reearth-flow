@@ -115,7 +115,7 @@ Use these names when the semantics match. Only use custom names when the action 
 
 ### 4.3 Port completeness
 
-Every feature received by an action that has at least one output port must be emitted to a named output port — no feature may be silently discarded. Actions with no output ports (sinks/writers) are exempt; consuming a feature is their purpose.
+Every feature received must be accounted for — either emitted to a named output port, or intentionally consumed to produce an output (as in merge and join operations). No feature may be silently discarded. Actions with no output ports (sinks/writers) are exempt; consuming a feature is their purpose.
 
 - If an action can fail to process a feature (parse error, missing attribute, invalid geometry) it must have a `rejected` output port for those features
 - Validators and conditional routers must route every feature to a named port
