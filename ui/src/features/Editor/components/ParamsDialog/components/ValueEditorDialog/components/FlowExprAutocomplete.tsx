@@ -212,7 +212,13 @@ const FlowExprAutocomplete: React.FC<Props> = ({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [visible, suggestions, selectedIndex, onSuggestionSelect, onVisibilityChange]);
+  }, [
+    visible,
+    suggestions,
+    selectedIndex,
+    onSuggestionSelect,
+    onVisibilityChange,
+  ]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
