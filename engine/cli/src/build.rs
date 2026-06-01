@@ -165,8 +165,8 @@ impl BuildCliCommand {
         // malformations (unknown action name, dangling edge endpoints, missing
         // entry/subgraph). A validation command should ideally report those as
         // clean diagnostics instead of aborting; hardening those panics into
-        // recoverable errors is deferred (see dev-docs plan, "Phase 1a"). Until
-        // then `build` shares `dot`'s panic-on-malformed-input behavior.
+        // recoverable errors is deferred. Until then `build` shares `dot`'s
+        // panic-on-malformed-input behavior.
         let dag =
             DagSchemas::from_graphs(workflow.entry_graph_id, workflow.graphs, factories, None)
                 .map_err(crate::errors::Error::run)?;
