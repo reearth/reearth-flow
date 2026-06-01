@@ -109,6 +109,94 @@ impl ProcessorFactory for AttributeMapperFactory {
         };
         Ok(Box::new(processor))
     }
+
+    fn infer_output_schema(
+        &self,
+        _inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+        use reearth_flow_types::Attribute;
+
+        let params = parse_params(with)?;
+
+        // AttributeMapper REPLACES the whole attribute set (it builds a fresh
+        // IndexMap and calls `with_attributes`). Input attributes do NOT pass
+        // through, so the seed is an empty, CLOSED schema.
+        let mut out = AttrSchema::empty();
+
+        for mapper in &params.mappers {
+            match &mapper.attribute {
+                Some(name) => {
+                    let attr = Attribute::new(name.clone());
+                    if mapper.expr.is_some() || mapper.value_attribute.is_some() {
+                        // Expression/copy-derived value: key is always inserted,
+                        // type can't be analyzed statically -> Unknown, Always.
+                        out.insert(attr, AttrField::always(AttrType::Unknown));
+                    } else if mapper.parent_attribute.is_some() && mapper.child_attribute.is_some()
+                    {
+                        // Parent/child copy: the key is only inserted when the
+                        // parent map contains the child -> conditional -> Maybe.
+                        out.insert(attr, AttrField::maybe(AttrType::Unknown));
+                    }
+                    // Otherwise the runtime inserts nothing for this mapper; skip.
+                }
+                None => {
+                    // `multipleExpr` returns a Map with unpredictable keys; we
+                    // can't enumerate them, so mark the schema open.
+                    if mapper.multiple_expr.is_some() {
+                        out.open = true;
+                    }
+                    // No `multipleExpr` -> no-op; skip.
+                }
+            }
+        }
+
+        Some(HashMap::from([(DEFAULT_PORT.clone(), out)]))
+    }
+
+    fn referenced_input_attributes(
+        &self,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
+        use reearth_flow_types::attr_schema::AttrRef;
+        use reearth_flow_types::Attribute;
+
+        let Some(params) = parse_params(with) else {
+            return Vec::new();
+        };
+
+        let mut refs = Vec::new();
+        for mapper in &params.mappers {
+            // `valueAttribute` is read directly from the input feature.
+            if let Some(value_attribute) = &mapper.value_attribute {
+                refs.push(AttrRef {
+                    name: Attribute::new(value_attribute.clone()),
+                    port: DEFAULT_PORT.to_string(),
+                });
+            }
+            // `parentAttribute` is the top-level map read from the input feature.
+            // The child is a key inside that map, not a top-level attribute.
+            if let Some(parent_attribute) = &mapper.parent_attribute {
+                refs.push(AttrRef {
+                    name: Attribute::new(parent_attribute.clone()),
+                    port: DEFAULT_PORT.to_string(),
+                });
+            }
+            // `expr` / `multipleExpr` are Rhai expressions whose referenced
+            // attributes can't be statically extracted -> emit nothing.
+        }
+        refs
+    }
+}
+
+/// Deserialize the `AttributeMapperParam` from the node's `with` params,
+/// mirroring the deserialization done in `build`. Returns `None` when `with`
+/// is absent or the params don't deserialize (inference not possible).
+fn parse_params(with: &Option<HashMap<String, Value>>) -> Option<AttributeMapperParam> {
+    let with = with.as_ref()?;
+    let value = serde_json::to_value(with).ok()?;
+    serde_json::from_value::<AttributeMapperParam>(value).ok()
 }
 
 /// # AttributeMapper Parameters
@@ -242,5 +330,119 @@ impl Processor for AttributeMapper {
 
     fn name(&self) -> &str {
         "AttributeMapper"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
+    use reearth_flow_types::Attribute;
+    use serde_json::json;
+
+    fn with_from(value: Value) -> Option<HashMap<String, Value>> {
+        Some(serde_json::from_value(value).unwrap())
+    }
+
+    #[test]
+    fn infer_replaces_with_mapped_attrs_only() {
+        let with = with_from(json!({
+            "mappers": [
+                { "attribute": "a", "valueAttribute": "src" }
+            ]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("keep_me".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input);
+
+        let out = AttributeMapperFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
+
+        // "a" is present, Unknown + Always.
+        assert_eq!(
+            schema.fields.get(&Attribute::new("a".to_string())),
+            Some(&AttrField::always(AttrType::Unknown))
+        );
+        // Input attribute does NOT pass through (replace semantics).
+        assert!(!schema
+            .fields
+            .contains_key(&Attribute::new("keep_me".to_string())));
+        // Only one field, not open.
+        assert_eq!(schema.fields.len(), 1);
+        assert!(!schema.open);
+    }
+
+    #[test]
+    fn infer_multiple_expr_sets_open() {
+        let with = with_from(json!({
+            "mappers": [
+                { "multipleExpr": "#{ x: 1 }" }
+            ]
+        }));
+
+        let inputs = HashMap::new();
+
+        let out = AttributeMapperFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
+
+        assert!(schema.open);
+        // No named fields can be enumerated for multipleExpr.
+        assert!(schema.fields.is_empty());
+    }
+
+    #[test]
+    fn infer_parent_child_is_maybe() {
+        let with = with_from(json!({
+            "mappers": [
+                { "attribute": "a", "parentAttribute": "p", "childAttribute": "c" }
+            ]
+        }));
+
+        let inputs = HashMap::new();
+
+        let out = AttributeMapperFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
+
+        let field = schema
+            .fields
+            .get(&Attribute::new("a".to_string()))
+            .expect("a present");
+        assert_eq!(field.presence, Presence::Maybe);
+        assert_eq!(field.ty, AttrType::Unknown);
+    }
+
+    #[test]
+    fn references_value_and_parent_attributes() {
+        let with = with_from(json!({
+            "mappers": [
+                { "attribute": "a", "valueAttribute": "src" },
+                { "attribute": "b", "parentAttribute": "par", "childAttribute": "c" }
+            ]
+        }));
+
+        let refs = AttributeMapperFactory.referenced_input_attributes(&with);
+
+        assert_eq!(refs.len(), 2);
+        assert_eq!(refs[0].name, Attribute::new("src".to_string()));
+        assert_eq!(refs[0].port, "default".to_string());
+        assert_eq!(refs[1].name, Attribute::new("par".to_string()));
+        assert_eq!(refs[1].port, "default".to_string());
     }
 }
