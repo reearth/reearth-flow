@@ -1,8 +1,8 @@
 use std::{collections::HashMap, io};
 
 use clap::{Arg, ArgMatches, Command};
-use reearth_flow_runtime::{dag_schemas::DagSchemas, node::SYSTEM_ACTION_FACTORY_MAPPINGS};
 use reearth_flow_runtime::schema_infer::{self, Severity};
+use reearth_flow_runtime::{dag_schemas::DagSchemas, node::SYSTEM_ACTION_FACTORY_MAPPINGS};
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
@@ -115,7 +115,10 @@ mod tests {
         let cmd = BuildCliCommand {
             workflow_path: fixture_path("valid.yml"),
         };
-        assert!(cmd.execute().is_ok(), "valid workflow should pass validation");
+        assert!(
+            cmd.execute().is_ok(),
+            "valid workflow should pass validation"
+        );
     }
 
     #[test]

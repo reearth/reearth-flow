@@ -35,7 +35,9 @@ pub struct InferResult {
 
 impl InferResult {
     pub fn has_errors(&self) -> bool {
-        self.diagnostics.iter().any(|d| d.severity == Severity::Error)
+        self.diagnostics
+            .iter()
+            .any(|d| d.severity == Severity::Error)
     }
 }
 
@@ -89,17 +91,13 @@ impl<'a> FactoryRef<'a> {
 }
 
 /// Statically propagate attribute schemas through the DAG and collect validation diagnostics.
-pub fn infer_and_validate(
-    dag: &DagSchemas,
-) -> Result<InferResult, crate::errors::ExecutionError> {
+pub fn infer_and_validate(dag: &DagSchemas) -> Result<InferResult, crate::errors::ExecutionError> {
     let graph = dag.graph();
     let order = petgraph::algo::toposort(graph, None)
         .map_err(|_| crate::errors::ExecutionError::SchemaInferenceCycle)?;
 
-    let mut outputs_by_index: HashMap<
-        petgraph::graph::NodeIndex,
-        HashMap<Port, AttrSchema>,
-    > = HashMap::new();
+    let mut outputs_by_index: HashMap<petgraph::graph::NodeIndex, HashMap<Port, AttrSchema>> =
+        HashMap::new();
     let mut result = InferResult::default();
 
     for idx in order {
@@ -236,9 +234,7 @@ mod tests {
 
     use crate::event::EventHub;
     use crate::executor_operation::NodeContext;
-    use crate::node::{
-        Processor, Source, DEFAULT_PORT,
-    };
+    use crate::node::{Processor, Source, DEFAULT_PORT};
 
     // ---- Stub factories -------------------------------------------------
 
@@ -419,10 +415,22 @@ mod tests {
 
     fn factories() -> HashMap<String, NodeKind> {
         let mut m = HashMap::new();
-        m.insert("StubSource".to_string(), NodeKind::Source(Box::new(StubSource)));
-        m.insert("Adder".to_string(), NodeKind::Processor(Box::new(AdderProc)));
-        m.insert("Maybe".to_string(), NodeKind::Processor(Box::new(MaybeProc)));
-        m.insert("Needs".to_string(), NodeKind::Processor(Box::new(NeedsProc)));
+        m.insert(
+            "StubSource".to_string(),
+            NodeKind::Source(Box::new(StubSource)),
+        );
+        m.insert(
+            "Adder".to_string(),
+            NodeKind::Processor(Box::new(AdderProc)),
+        );
+        m.insert(
+            "Maybe".to_string(),
+            NodeKind::Processor(Box::new(MaybeProc)),
+        );
+        m.insert(
+            "Needs".to_string(),
+            NodeKind::Processor(Box::new(NeedsProc)),
+        );
         m
     }
 
@@ -446,8 +454,7 @@ mod tests {
             edges: vec![edge(src_id, mid_id), edge(mid_id, needs_id)],
         };
 
-        DagSchemas::from_graphs(graph_id, vec![graph], factories(), None)
-            .expect("dag construction")
+        DagSchemas::from_graphs(graph_id, vec![graph], factories(), None).expect("dag construction")
     }
 
     // ---- Tests ----------------------------------------------------------
@@ -471,7 +478,10 @@ mod tests {
         let adder_out = result
             .node_outputs
             .values()
-            .find(|m| m.get("default").is_some_and(|s| s.fields.contains_key(&Attribute::new("foo".to_string()))))
+            .find(|m| {
+                m.get("default")
+                    .is_some_and(|s| s.fields.contains_key(&Attribute::new("foo".to_string())))
+            })
             .expect("an output with field foo");
         assert!(adder_out["default"]
             .fields
@@ -487,13 +497,20 @@ mod tests {
         let dag = build_dag("Maybe");
         let result = infer_and_validate(&dag).expect("infer");
 
-        assert!(!result.has_errors(), "maybe-present reference must not be an error");
+        assert!(
+            !result.has_errors(),
+            "maybe-present reference must not be an error"
+        );
         let warnings: Vec<_> = result
             .diagnostics
             .iter()
             .filter(|d| d.severity == Severity::Warning)
             .collect();
-        assert_eq!(warnings.len(), 1, "exactly one warning expected, got {warnings:?}");
+        assert_eq!(
+            warnings.len(),
+            1,
+            "exactly one warning expected, got {warnings:?}"
+        );
         assert!(warnings[0].message.contains("missing"));
         assert_eq!(warnings[0].node_name, "needs");
     }
@@ -512,7 +529,10 @@ mod tests {
             .iter()
             .filter(|d| d.severity == Severity::Error)
             .collect();
-        assert!(errors.is_empty(), "open schema must suppress reference errors, got {errors:?}");
+        assert!(
+            errors.is_empty(),
+            "open schema must suppress reference errors, got {errors:?}"
+        );
     }
 
     #[test]

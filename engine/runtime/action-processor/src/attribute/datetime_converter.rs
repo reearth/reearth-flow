@@ -105,10 +105,7 @@ impl ProcessorFactory for DateTimeConverterFactory {
             .clone()
             .unwrap_or_else(|| params.attribute.clone());
         let mut default_schema = input.clone();
-        default_schema.insert(
-            Attribute::new(out_name),
-            AttrField::always(produced_type),
-        );
+        default_schema.insert(Attribute::new(out_name), AttrField::always(produced_type));
 
         // `failed` port: the feature passes through untouched.
         Some(HashMap::from([
@@ -435,15 +432,15 @@ mod tests {
             .infer_output_schema(&inputs_with(input), &with)
             .expect("inference should succeed");
 
-        let default = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+        let default = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
         assert_eq!(
             default.fields.get(&Attribute::new("ts".to_string())),
             Some(&AttrField::always(AttrType::DateTime))
         );
 
-        let failed = out
-            .get(&Port::new("failed"))
-            .expect("failed port present");
+        let failed = out.get(&Port::new("failed")).expect("failed port present");
         assert_eq!(
             failed.fields.get(&Attribute::new("ts".to_string())),
             Some(&AttrField::always(AttrType::String))
@@ -468,7 +465,9 @@ mod tests {
             .infer_output_schema(&inputs_with(input), &with)
             .expect("inference should succeed");
 
-        let default = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+        let default = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
         assert_eq!(
             default.fields.get(&Attribute::new("ts".to_string())),
             Some(&AttrField::always(AttrType::DateTime))
@@ -478,9 +477,7 @@ mod tests {
             Some(&AttrField::always(AttrType::Number))
         );
 
-        let failed = out
-            .get(&Port::new("failed"))
-            .expect("failed port present");
+        let failed = out.get(&Port::new("failed")).expect("failed port present");
         assert!(!failed
             .fields
             .contains_key(&Attribute::new("epoch".to_string())));
@@ -500,7 +497,9 @@ mod tests {
             .infer_output_schema(&inputs_with(input), &with)
             .expect("inference should succeed");
 
-        let default = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+        let default = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
         assert_eq!(
             default.fields.get(&Attribute::new("ts".to_string())),
             Some(&AttrField::always(AttrType::String))

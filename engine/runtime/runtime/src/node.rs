@@ -656,10 +656,18 @@ mod schema_hook_tests {
     #[derive(Debug, Clone)]
     struct DummyProc;
     impl ProcessorFactory for DummyProc {
-        fn name(&self) -> &str { "DummyProc" }
-        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> { None }
-        fn get_input_ports(&self) -> Vec<Port> { vec![DEFAULT_PORT.clone()] }
-        fn get_output_ports(&self) -> Vec<Port> { vec![DEFAULT_PORT.clone()] }
+        fn name(&self) -> &str {
+            "DummyProc"
+        }
+        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+            None
+        }
+        fn get_input_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn get_output_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
         fn build(
             &self,
             _ctx: NodeContext,

@@ -103,15 +103,25 @@ impl AttrSchema {
                     out.fields.insert(name.clone(), AttrField { ty, presence });
                 }
                 None => {
-                    out.fields
-                        .insert(name.clone(), AttrField { ty: a.ty, presence: Presence::Maybe });
+                    out.fields.insert(
+                        name.clone(),
+                        AttrField {
+                            ty: a.ty,
+                            presence: Presence::Maybe,
+                        },
+                    );
                 }
             }
         }
         for (name, b) in &other.fields {
             if !self.fields.contains_key(name) {
-                out.fields
-                    .insert(name.clone(), AttrField { ty: b.ty, presence: Presence::Maybe });
+                out.fields.insert(
+                    name.clone(),
+                    AttrField {
+                        ty: b.ty,
+                        presence: Presence::Maybe,
+                    },
+                );
             }
         }
         out
@@ -142,7 +152,10 @@ mod tests {
         let mut b = AttrSchema::empty();
         b.insert(attr("x"), AttrField::always(AttrType::String));
         let j = a.join(&b);
-        assert_eq!(j.fields.get(&attr("x")), Some(&AttrField::always(AttrType::String)));
+        assert_eq!(
+            j.fields.get(&attr("x")),
+            Some(&AttrField::always(AttrType::String))
+        );
         assert!(!j.open);
     }
 

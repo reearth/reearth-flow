@@ -371,7 +371,9 @@ mod tests {
         let out = AttributeManagerFactory
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
-        let schema = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
 
         assert_eq!(
             schema.fields.get(&Attribute::new("bar".to_string())),
@@ -406,7 +408,9 @@ mod tests {
         let out = AttributeManagerFactory
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
-        let schema = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
 
         assert!(!schema.fields.contains_key(&Attribute::new("a".to_string())));
         assert_eq!(
@@ -434,7 +438,9 @@ mod tests {
         let out = AttributeManagerFactory
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
-        let schema = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
 
         assert!(!schema.fields.contains_key(&Attribute::new("a".to_string())));
         assert!(schema.open);
