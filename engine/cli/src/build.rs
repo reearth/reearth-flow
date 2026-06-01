@@ -289,6 +289,57 @@ mod tests {
     }
 
     #[test]
+    fn build_typed_reference_error_with_known_types() {
+        // StatisticsCalculator's `default` port emits a fresh CLOSED *typed* schema
+        // (group_by → String, calculations → Number). This proves the validator
+        // catches a missing reference end-to-end AND that the surviving fields carry
+        // concrete inferred types — not just `Unknown`.
+        let cmd = BuildCliCommand {
+            workflow_path: fixture_path("typed_reference_error.yml"),
+            vars: HashMap::new(),
+            show_schema: false,
+        };
+        assert!(
+            cmd.execute().is_err(),
+            "reference to an attribute the aggregation does not produce must fail"
+        );
+        let result = cmd.infer().expect("inference itself should succeed");
+        // The error names the missing attribute.
+        let errors: Vec<_> = result
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .collect();
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].message.contains("average"));
+        // The Stats node's `default` output carries KNOWN types: region=String, total=Number.
+        let stats_out = result
+            .node_outputs
+            .get("44444444-4444-4444-4444-444444444444")
+            .expect("stats node should have inferred output");
+        let default = stats_out.get("default").expect("default port present");
+        assert!(!default.open, "aggregation output schema is closed");
+        use reearth_flow_types::attr_schema::AttrType;
+        use reearth_flow_types::Attribute;
+        assert_eq!(
+            default
+                .fields
+                .get(&Attribute::new("region".to_string()))
+                .map(|f| f.ty),
+            Some(AttrType::String),
+            "group_by attribute should be inferred as String"
+        );
+        assert_eq!(
+            default
+                .fields
+                .get(&Attribute::new("total".to_string()))
+                .map(|f| f.ty),
+            Some(AttrType::Number),
+            "calculation result should be inferred as Number"
+        );
+    }
+
+    #[test]
     fn build_reference_warning_passes_with_warning() {
         // The parent/child mapper records `maybeAttr` with Presence::Maybe; a
         // reference to it is a WARNING (may not always be present), not an error,
