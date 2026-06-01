@@ -2691,7 +2691,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: attributes["gmlName"] == "bldg:Building" or attributes["gmlName"] == "bldg:BuildingPart"
+          value: attributes.get("gmlName") == "bldg:Building" or attributes.get("gmlName") == "bldg:BuildingPart"
         outputPort: default
   - id: b942f28a-3783-4672-8196-f124e8cc5f51
     name: BuildingUsageAttributeValidator

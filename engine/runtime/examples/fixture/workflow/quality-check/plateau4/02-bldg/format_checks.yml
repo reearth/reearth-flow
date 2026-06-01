@@ -203,7 +203,7 @@ nodes:
       conditions:
       - expr:
           type: flowExpr
-          value: attributes["gmlName"] == "bldg:Building" or attributes["gmlName"] == "bldg:BuildingPart"
+          value: attributes.get("gmlName") == "bldg:Building" or attributes.get("gmlName") == "bldg:BuildingPart"
         outputPort: default
 
   # === Beginning of L-BLDG-04, 05, City Code Checks ===
