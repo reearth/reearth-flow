@@ -184,8 +184,7 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
+          gcloud run services update ${{ env.CLOUD_RUN_SERVICE }} \
             --image ${{ env.IMAGE }} \
-            --region us-central1 \
-            --platform managed \
+            --region ${{ secrets.GC_REGION }} \
             --quiet
