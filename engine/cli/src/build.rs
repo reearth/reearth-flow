@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io};
 
-use clap::{Arg, ArgMatches, Command};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_runtime::schema_infer::{self, Severity};
 use reearth_flow_runtime::{dag_schemas::DagSchemas, node::SYSTEM_ACTION_FACTORY_MAPPINGS};
 use reearth_flow_types::Workflow;
@@ -17,6 +17,7 @@ pub fn build_build_command() -> Command {
         .about("Statically validate a workflow's attribute schemas (no execution).")
         .long_about("Statically validate a workflow's attribute schemas (no execution).")
         .arg(build_cli_arg())
+        .arg(vars_arg())
 }
 
 fn build_cli_arg() -> Arg {
@@ -28,9 +29,19 @@ fn build_cli_arg() -> Arg {
         .display_order(1)
 }
 
+fn vars_arg() -> Arg {
+    Arg::new("var")
+        .long("var")
+        .help("Workflow variables")
+        .required(false)
+        .action(ArgAction::Append)
+        .display_order(2)
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct BuildCliCommand {
     workflow_path: String,
+    vars: HashMap<String, String>,
 }
 
 impl BuildCliCommand {
@@ -38,28 +49,65 @@ impl BuildCliCommand {
         let workflow_path = matches
             .remove_one::<String>("workflow")
             .ok_or(crate::errors::Error::init("No workflow uri provided"))?;
-        Ok(BuildCliCommand { workflow_path })
+        let vars = matches.remove_many::<String>("var");
+        let vars = if let Some(vars) = vars {
+            vars.into_iter()
+                .flat_map(|v| {
+                    let parts: Vec<&str> = v.splitn(2, '=').collect();
+                    if parts.len() == 2 {
+                        Some((parts[0].to_string(), parts[1].to_string()))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else {
+            HashMap::<String, String>::new()
+        };
+        Ok(BuildCliCommand {
+            workflow_path,
+            vars,
+        })
     }
 
     pub fn execute(&self) -> crate::Result<()> {
         debug!(args = ?self, "build");
         let storage_resolver = resolve::StorageResolver::new();
-        let json = if self.workflow_path == "-" {
-            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
+        let (yaml_content, base_dir) = if self.workflow_path == "-" {
+            let content = io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?;
+            (content, None)
         } else {
             let path = Uri::for_test(self.workflow_path.as_str());
+
+            // Extract base directory for !include resolution
+            let base_dir = path.path().parent().map(|p| p.to_path_buf());
+
             let storage = storage_resolver
                 .resolve(&path)
                 .map_err(crate::errors::Error::init)?;
             let bytes = storage
                 .get_sync(path.path().as_path())
                 .map_err(crate::errors::Error::init)?;
-            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
+            let content = String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?;
+            (content, base_dir)
         };
+
+        // Expand !include directives
+        let json = if let Some(base) = base_dir.as_ref() {
+            reearth_flow_common::serde::expand_yaml_includes(&yaml_content, Some(base))
+                .map_err(crate::errors::Error::init)?
+        } else {
+            reearth_flow_common::serde::expand_yaml_includes(&yaml_content, None)
+                .map_err(crate::errors::Error::init)?
+        };
+
         let mut factories = HashMap::new();
         factories.extend(ALL_ACTION_FACTORIES.clone());
         factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
-        let workflow = Workflow::try_from(json.as_str()).map_err(crate::errors::Error::run)?;
+        let mut workflow = Workflow::try_from(json.as_str()).map_err(crate::errors::Error::init)?;
+        workflow
+            .merge_with(self.vars.clone())
+            .map_err(crate::errors::Error::init)?;
         // NOTE: `DagSchemas::from_graphs` currently `panic!`s on structural
         // malformations (unknown action name, dangling edge endpoints, missing
         // entry/subgraph). A validation command should ideally report those as
@@ -120,6 +168,7 @@ mod tests {
     fn build_valid_workflow_succeeds() {
         let cmd = BuildCliCommand {
             workflow_path: fixture_path("valid.yml"),
+            vars: HashMap::new(),
         };
         assert!(
             cmd.execute().is_ok(),
@@ -138,10 +187,37 @@ mod tests {
         // `reearth_flow_runtime::schema_infer` using closed-schema stub producers.
         let cmd = BuildCliCommand {
             workflow_path: fixture_path("invalid.yml"),
+            vars: HashMap::new(),
         };
         assert!(
             cmd.execute().is_ok(),
             "open-source seeding suppresses the reference error end-to-end"
+        );
+    }
+
+    #[test]
+    fn build_plateau_quality_check_workflow_completes() {
+        // The real PLATEAU bldg quality-check workflow uses `!include` directives
+        // and `with:` vars. This proves the static pass scales end-to-end: the
+        // command loads the include-based workflow, expands includes, builds the
+        // full subgraph-expanded DAG (~70 nodes, routers, mergers, 20+ action
+        // types), runs `infer_and_validate` without panicking, and exits cleanly.
+        // CARGO_MANIFEST_DIR for the cli crate is <repo>/engine/cli.
+        let workflow_path = format!(
+            "{}/../worker/workflow/cms/plateau4/quality-check/bldg/template/workflow.yml",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        assert!(
+            std::path::Path::new(&workflow_path).exists(),
+            "PLATEAU quality-check workflow fixture should exist at {workflow_path}"
+        );
+        let cmd = BuildCliCommand {
+            workflow_path,
+            vars: HashMap::new(),
+        };
+        assert!(
+            cmd.execute().is_ok(),
+            "real PLATEAU quality-check workflow should load, expand includes, and validate cleanly"
         );
     }
 }
