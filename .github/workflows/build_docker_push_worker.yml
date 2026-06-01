@@ -165,7 +165,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-worker:nightly
+      IMAGE: ${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-worker:nightly
       CLOUD_RUN_SERVICE: reearth-flow-worker-debug
     steps:
       - name: Harden Runner
