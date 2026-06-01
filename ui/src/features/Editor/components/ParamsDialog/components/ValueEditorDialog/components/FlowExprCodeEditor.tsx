@@ -40,10 +40,27 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
     const errorOverlayRef = useRef<HTMLDivElement>(null);
 
     const [autocompleteVisible, setAutocompleteVisible] = useState(false);
+    const autocompleteVisibleRef = useRef(false);
+    autocompleteVisibleRef.current = autocompleteVisible;
+
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
       [],
     );
     const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Capture-phase ESC handler — fires before Radix Dialog's bubbling handler
+    // so ESC only closes the autocomplete when it is open, not the dialog.
+    useEffect(() => {
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && autocompleteVisibleRef.current) {
+          e.stopImmediatePropagation();
+          setAutocompleteVisible(false);
+        }
+      };
+      document.addEventListener("keydown", handleEsc, { capture: true });
+      return () =>
+        document.removeEventListener("keydown", handleEsc, { capture: true });
+    }, []);
 
     useImperativeHandle(
       ref,
@@ -89,13 +106,12 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           autocompleteVisible &&
           ["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"].includes(e.key)
         ) {
-          // Stop the native event from reaching document-level listeners (e.g. Radix
-          // Dialog's ESC handler) so only the autocomplete handles these keys.
-          e.nativeEvent.stopPropagation();
+          // Let the event bubble to the autocomplete's document listener.
+          // ESC is intercepted separately via a capture-phase handler.
           return;
         }
 
-        if (/^[a-zA-Z0-9_:]$/.test(e.key)) {
+        if (/^[a-zA-Z0-9_:.]$/.test(e.key)) {
           setTimeout(() => setAutocompleteVisible(true), 10);
         } else if (e.key === "Backspace" || e.key === "Delete") {
           setTimeout(() => {
@@ -136,6 +152,10 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           start--;
         }
 
+        const word = text.substring(start, cursorPos);
+        const lastDot = word.lastIndexOf(".");
+        const replaceStart = lastDot >= 0 ? start + lastDot + 1 : start;
+
         const insertText = suggestion.insertText;
         const cursorPlaceholder = "{{cursor}}";
         const hasCursorPlaceholder = insertText.includes(cursorPlaceholder);
@@ -144,16 +164,18 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           : insertText;
 
         const newText =
-          text.substring(0, start) + finalText + text.substring(cursorPos);
+          text.substring(0, replaceStart) +
+          finalText +
+          text.substring(cursorPos);
         onChange(newText);
 
         setTimeout(() => {
           if (hasCursorPlaceholder) {
             const placeholderPos =
-              start + insertText.indexOf(cursorPlaceholder);
+              replaceStart + insertText.indexOf(cursorPlaceholder);
             textarea.setSelectionRange(placeholderPos, placeholderPos);
           } else {
-            const newCursorPos = start + finalText.length;
+            const newCursorPos = replaceStart + finalText.length;
             textarea.setSelectionRange(newCursorPos, newCursorPos);
           }
           textarea.focus();
