@@ -2,7 +2,7 @@ mod citygml;
 mod csv;
 mod json;
 
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use indexmap::IndexMap;
 use reearth_flow_common::{csv::Delimiter, uri::Uri};
@@ -255,8 +255,15 @@ impl Processor for FeatureWriter {
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
-        let output = Uri::from_str(path.as_str())?;
-        let buffer = self.buffer.entry(output).or_default();
+        // Use SinkOutput::from_path so the path is validated as strict-relative
+        // and joined against sandbox_root, rather than against CWD.
+        let sink_out = reearth_flow_action_sink::SinkOutput::from_path(
+            &NodeContext::from(ctx.clone()),
+            path.as_str(),
+        )
+        .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e}")))?;
+        let output_uri = sink_out.uri().clone();
+        let buffer = self.buffer.entry(output_uri).or_default();
         buffer.push(ctx.feature);
         Ok(())
     }
@@ -278,12 +285,13 @@ impl Processor for FeatureWriter {
                 ),
             ])
             .into();
-            // Enforce sandbox: CSV/TSV/JSON/CityGML all write directly to
-            // `output`; without this check `FeatureWriter` would be an
-            // out-of-sandbox escape hatch alongside the sink writers.
+            // Defense-in-depth: ctx.sandbox_root was validated at buffer-insertion
+            // time in process() via SinkOutput::from_path, but ctx here may be a
+            // different NodeContext at flush time. Re-verify before each write to
+            // keep the sandbox gate co-located with put_sync.
             reearth_flow_action_sink::ensure_under(&ctx.sandbox_root, output).map_err(|e| {
                 FeatureProcessorError::FeatureWriter(format!(
-                    "output {output} rejected by sandbox: {e}"
+                    "sink output {output} rejected by sandbox: {e}"
                 ))
             })?;
             match self.params {

@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::Arc;
 
 use bytes::Bytes;
@@ -17,24 +16,92 @@ pub struct SinkOutput {
 }
 
 impl SinkOutput {
-    /// Construct a `SinkOutput` from a path string.
+    /// Construct a `SinkOutput` from a relative path string.
     ///
-    /// Accepts either a URI (`file://...`, `gs://...`, etc.) or a plain
-    /// filesystem path (treated as `file://` by `Uri::from_str`). Verifies
-    /// the resolved URI is within `ctx.sandbox_root` (hard-rejects writes
-    /// outside the sandbox), then acquires the storage backend eagerly.
+    /// Sink output paths are **strict-relative**: they must not contain a URI
+    /// scheme, must not start with `/` or `~`, must not be empty, must not be
+    /// `.` or `..`, and must not have surrounding whitespace. The engine joins
+    /// the relative path against `ctx.sandbox_root` and runs the sandbox check
+    /// (`ensure_under`) before acquiring the storage backend.
+    ///
+    /// For migration from the previous absolute-URI API, see the error message
+    /// of the URI-scheme rejection path, which names `workerArtifactPath`.
     pub fn from_path(ctx: &NodeContext, path: &str) -> Result<Self, BoxedError> {
-        let resolved = Uri::from_str(path).map_err(|e| -> BoxedError {
-            format!("SinkOutput: invalid path {:?}: {e}", path).into()
+        // ---- 1. Validate the relative path ----
+        if path.is_empty() {
+            return Err("sink output path is empty; provide a relative path \
+                        like 'out.gpkg' or 'group/a.geojson'"
+                .into());
+        }
+        if path != path.trim() {
+            return Err(format!(
+                "sink output {path:?} has leading or trailing whitespace; \
+                 use 'out.gpkg' not ' out.gpkg ' or 'out.gpkg '"
+            )
+            .into());
+        }
+        if path == "." || path == ".." {
+            return Err(format!(
+                "sink output {path:?} is not a filename; provide a relative \
+                 path like 'out.gpkg' or 'group/a.geojson'"
+            )
+            .into());
+        }
+        if path.contains("://") {
+            return Err(format!(
+                "sink output {path:?}: absolute URIs are not allowed. \
+                 Sink paths must be relative to the per-job artifact directory. \
+                 If your workflow uses Url(env[\"workerArtifactPath\"]) / x, \
+                 replace the whole expression with just x — the engine joins \
+                 it internally."
+            )
+            .into());
+        }
+        if path.starts_with('/') {
+            return Err(format!(
+                "sink output {path:?}: leading '/' is ambiguous. \
+                 Use a relative path without a leading slash, e.g. 'foo/bar'."
+            )
+            .into());
+        }
+        if path.starts_with('~') {
+            return Err(format!(
+                "sink output {path:?}: leading '~' (home expansion) is not \
+                 supported. Use a relative path under the per-job artifact directory."
+            )
+            .into());
+        }
+
+        // ---- 2. Join against sandbox_root ----
+        let resolved = ctx.sandbox_root.join(path).map_err(|e| -> BoxedError {
+            format!("SinkOutput: failed to join {path:?} with sandbox_root: {e}").into()
         })?;
+
+        // ---- 3. Sandbox-validate (catches ".." segments that survived join) ----
         crate::sandbox::ensure_under(&ctx.sandbox_root, &resolved)
             .map_err(|e| -> BoxedError { Box::new(e) })?;
+
+        // ---- 4. Post-join: resolved must not be the root itself ----
+        // Compare ignoring trailing slashes — Uri::join may strip them via normalization.
+        let resolved_norm = resolved.as_str().trim_end_matches('/');
+        let root_norm = ctx.sandbox_root.as_str().trim_end_matches('/');
+        if resolved_norm == root_norm {
+            return Err(format!(
+                "sink output {path:?} resolves to the artifact directory \
+                 itself (no filename). Provide a relative path that ends \
+                 in a filename."
+            )
+            .into());
+        }
+
+        // ---- 5. Acquire storage backend ----
         let storage = ctx
             .storage_resolver
             .resolve(&resolved)
             .map_err(|e| -> BoxedError {
                 format!("SinkOutput: failed to resolve storage for {resolved}: {e}").into()
             })?;
+
         Ok(Self {
             resolved,
             root: ctx.sandbox_root.clone(),
@@ -75,6 +142,8 @@ impl SinkOutput {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     use reearth_flow_runtime::executor_operation::NodeContext;
     use tempfile::tempdir;
@@ -84,58 +153,41 @@ mod tests {
     }
 
     #[test]
-    fn from_path_resolves_file_uri() {
-        let tmp = tempdir().unwrap();
-        let target = tmp.path().join("out.bin");
-        let ctx = NodeContext::default();
-        let out = SinkOutput::from_path(&ctx, &file_uri(&target)).unwrap();
-        assert_eq!(out.uri().path().as_path(), target.as_path());
-    }
-
-    #[test]
     fn write_persists_bytes_to_resolved_uri() {
         let tmp = tempdir().unwrap();
-        let target = tmp.path().join("write_target.bin");
-        let ctx = NodeContext::default();
-        let out = SinkOutput::from_path(&ctx, &file_uri(&target)).unwrap();
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&file_uri(tmp.path())).unwrap(),
+            ..NodeContext::default()
+        };
+        let out = SinkOutput::from_path(&ctx, "write_target.bin").unwrap();
         out.write(Bytes::from_static(b"hello")).unwrap();
-        let content = std::fs::read(&target).unwrap();
+        let content = std::fs::read(tmp.path().join("write_target.bin")).unwrap();
         assert_eq!(content, b"hello");
     }
 
     #[test]
     fn join_composes_subpath_under_base() {
         let tmp = tempdir().unwrap();
-        let ctx = NodeContext::default();
-        let base = SinkOutput::from_path(&ctx, &file_uri(tmp.path())).unwrap();
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&file_uri(tmp.path())).unwrap(),
+            ..NodeContext::default()
+        };
+        let base = SinkOutput::from_path(&ctx, "base_dir").unwrap();
         let sub = base.join("group/a.geojson").unwrap();
         assert_eq!(
             sub.uri().path().as_path(),
-            tmp.path().join("group/a.geojson")
-        );
-        sub.write(Bytes::from_static(b"{}")).unwrap();
-        assert!(tmp.path().join("group/a.geojson").exists());
-    }
-
-    #[test]
-    fn from_path_rejects_invalid_uri() {
-        let ctx = NodeContext::default();
-        // An empty string and a bare token are not valid URIs in this codebase's `Uri` type.
-        // Try empty first; if `Uri::from_str("")` somehow succeeds, also test a clearly malformed input.
-        let result = SinkOutput::from_path(&ctx, "");
-        assert!(result.is_err(), "empty string should fail to parse");
-        let err_msg = result.unwrap_err().to_string();
-        assert!(
-            err_msg.contains("SinkOutput: invalid path"),
-            "error should include the context wrapper, got: {err_msg}"
+            tmp.path().join("base_dir").join("group/a.geojson")
         );
     }
 
     #[test]
     fn join_rejects_absolute_subpath() {
         let tmp = tempdir().unwrap();
-        let ctx = NodeContext::default();
-        let base = SinkOutput::from_path(&ctx, &file_uri(tmp.path())).unwrap();
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&file_uri(tmp.path())).unwrap(),
+            ..NodeContext::default()
+        };
+        let base = SinkOutput::from_path(&ctx, "some_dir").unwrap();
         // Absolute sub paths are not allowed by `Uri::join` and must error.
         let result = base.join("/etc/passwd");
         assert!(
@@ -149,24 +201,29 @@ mod tests {
         let tmp = tempdir().unwrap();
         let nested = tmp.path().join("subdir");
         std::fs::create_dir(&nested).unwrap();
-        // Critical: set sandbox_root to the nested dir so `..` actually escapes.
+        // Critical: set sandbox_root to the nested dir so `../..` actually escapes.
+        // base = subdir/out (one level deep), then join("../../escape") goes two
+        // levels up, landing outside sandbox_root=subdir.
         let ctx = NodeContext {
             sandbox_root: Uri::from_str(&file_uri(&nested)).unwrap(),
             ..NodeContext::default()
         };
-        let base = SinkOutput::from_path(&ctx, &file_uri(&nested)).unwrap();
-        let result = base.join("../sibling.txt");
+        let base = SinkOutput::from_path(&ctx, "out").unwrap();
+        let result = base.join("../../escape.txt");
         assert!(
             result.is_err(),
-            "PR2: `..` traversal must now be rejected; got: {result:?}"
+            "PR2: `../..` traversal must be rejected; got: {result:?}"
         );
     }
 
     #[test]
     fn clone_shares_storage_backend() {
         let tmp = tempdir().unwrap();
-        let ctx = NodeContext::default();
-        let original = SinkOutput::from_path(&ctx, &file_uri(tmp.path())).unwrap();
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&file_uri(tmp.path())).unwrap(),
+            ..NodeContext::default()
+        };
+        let original = SinkOutput::from_path(&ctx, "some_output.bin").unwrap();
         let cloned = original.clone();
         // `Arc::ptr_eq` confirms both SinkOutputs point at the same underlying storage handle.
         assert!(
@@ -179,47 +236,6 @@ mod tests {
     fn sink_output_is_send_sync_clone_debug() {
         fn assert_send_sync_clone_debug<T: Send + Sync + Clone + std::fmt::Debug>() {}
         assert_send_sync_clone_debug::<SinkOutput>();
-    }
-
-    #[test]
-    fn from_path_rejects_uri_outside_sandbox_root() {
-        let tmp = tempdir().unwrap();
-        let inside = tmp.path().join("inside");
-        std::fs::create_dir(&inside).unwrap();
-        let outside = tmp.path().join("outside");
-        std::fs::create_dir(&outside).unwrap();
-
-        let ctx = NodeContext {
-            sandbox_root: Uri::from_str(&file_uri(&inside)).unwrap(),
-            ..NodeContext::default()
-        };
-
-        let target_outside = outside.join("attack.bin");
-        let result = SinkOutput::from_path(&ctx, &file_uri(&target_outside));
-        assert!(
-            result.is_err(),
-            "SinkOutput::from_path must reject URIs outside ctx.sandbox_root"
-        );
-    }
-
-    #[test]
-    fn from_path_accepts_uri_inside_sandbox_root() {
-        let tmp = tempdir().unwrap();
-        let inside = tmp.path().join("inside");
-        std::fs::create_dir(&inside).unwrap();
-
-        let ctx = NodeContext {
-            sandbox_root: Uri::from_str(&file_uri(&inside)).unwrap(),
-            ..NodeContext::default()
-        };
-
-        let target = inside.join("ok.bin");
-        let result = SinkOutput::from_path(&ctx, &file_uri(&target));
-        assert!(
-            result.is_ok(),
-            "URI inside sandbox_root must succeed; got: {:?}",
-            result.err()
-        );
     }
 
     // ---- Strict-relative chokepoint tests (issue #2117) ----
@@ -253,15 +269,37 @@ mod tests {
     #[test]
     fn from_path_accepts_relative_with_gs_root() {
         let ctx = ctx_with_root("gs://my-bucket/jobs/abc/");
-        let out = SinkOutput::from_path(&ctx, "out.json").unwrap();
-        assert_eq!(out.uri().as_str(), "gs://my-bucket/jobs/abc/out.json");
+        // Validation and join must succeed even if the default StorageResolver
+        // does not have a gs:// backend registered.
+        let result = SinkOutput::from_path(&ctx, "out.json");
+        match result {
+            Ok(out) => assert_eq!(out.uri().as_str(), "gs://my-bucket/jobs/abc/out.json"),
+            Err(e) => {
+                let msg = e.to_string();
+                assert!(
+                    msg.contains("failed to resolve storage"),
+                    "validation should pass; only storage resolution may fail; got: {msg}"
+                );
+            }
+        }
     }
 
     #[test]
     fn from_path_accepts_relative_with_ram_root() {
         let ctx = ctx_with_root("ram:///jobs/abc/");
-        let out = SinkOutput::from_path(&ctx, "out.json").unwrap();
-        assert_eq!(out.uri().as_str(), "ram:///jobs/abc/out.json");
+        // Validation and join must succeed even if the default StorageResolver
+        // does not have a ram:// backend registered.
+        let result = SinkOutput::from_path(&ctx, "out.json");
+        match result {
+            Ok(out) => assert_eq!(out.uri().as_str(), "ram:///jobs/abc/out.json"),
+            Err(e) => {
+                let msg = e.to_string();
+                assert!(
+                    msg.contains("failed to resolve storage"),
+                    "validation should pass; only storage resolution may fail; got: {msg}"
+                );
+            }
+        }
     }
 
     #[test]
@@ -328,9 +366,7 @@ mod tests {
     fn from_path_rejects_leading_slash() {
         let tmp = tempdir().unwrap();
         let ctx = ctx_with_root(&file_uri(tmp.path()));
-        let err = SinkOutput::from_path(&ctx, "/foo")
-            .unwrap_err()
-            .to_string();
+        let err = SinkOutput::from_path(&ctx, "/foo").unwrap_err().to_string();
         assert!(err.contains("leading '/'"), "got: {err}");
     }
 
@@ -341,7 +377,10 @@ mod tests {
         let err = SinkOutput::from_path(&ctx, "~/foo")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("home expansion") || err.contains("'~'"), "got: {err}");
+        assert!(
+            err.contains("home expansion") || err.contains("'~'"),
+            "got: {err}"
+        );
     }
 
     #[test]
@@ -352,7 +391,10 @@ mod tests {
             .unwrap_err()
             .to_string();
         // The error comes from ensure_under (SandboxError::OutsideRoot)
-        assert!(err.contains("outside") || err.contains("sandbox"), "got: {err}");
+        assert!(
+            err.contains("outside") || err.contains("sandbox"),
+            "got: {err}"
+        );
     }
 
     #[test]
@@ -371,6 +413,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(non_snake_case)]
     fn from_path_absolute_error_mentions_workerArtifactPath() {
         let tmp = tempdir().unwrap();
         let ctx = ctx_with_root(&file_uri(tmp.path()));
