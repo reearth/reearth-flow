@@ -84,6 +84,46 @@ impl BuildCliCommand {
     }
 
     pub fn execute(&self) -> crate::Result<()> {
+        let result = self.infer()?;
+
+        if self.show_schema {
+            print_node_schemas(&result);
+        }
+
+        let mut error_count = 0usize;
+        let mut warning_count = 0usize;
+        for diagnostic in &result.diagnostics {
+            let severity = match diagnostic.severity {
+                Severity::Error => {
+                    error_count += 1;
+                    "ERROR"
+                }
+                Severity::Warning => {
+                    warning_count += 1;
+                    "WARNING"
+                }
+            };
+            eprintln!(
+                "[{severity}] {} ({}): {}",
+                diagnostic.node_name, diagnostic.node_id, diagnostic.message
+            );
+        }
+        eprintln!("{error_count} error(s), {warning_count} warning(s)");
+
+        if result.has_errors() {
+            return Err(crate::errors::Error::run(format!(
+                "workflow validation failed: {error_count} error(s)"
+            )));
+        }
+        println!("\u{2714} workflow valid");
+        Ok(())
+    }
+
+    /// Load + expand + parse the workflow, build the static DAG, and run the
+    /// schema-inference pass. Returns the full result (diagnostics + per-node
+    /// schemas) without printing or deciding the exit code — `execute` does that,
+    /// and tests can inspect the result directly.
+    fn infer(&self) -> crate::Result<InferResult> {
         debug!(args = ?self, "build");
         let storage_resolver = resolve::StorageResolver::new();
         let (yaml_content, base_dir) = if self.workflow_path == "-" {
@@ -133,38 +173,7 @@ impl BuildCliCommand {
 
         let result = schema_infer::infer_and_validate(&dag)
             .map_err(|e| crate::errors::Error::run(e.to_string()))?;
-
-        if self.show_schema {
-            print_node_schemas(&result);
-        }
-
-        let mut error_count = 0usize;
-        let mut warning_count = 0usize;
-        for diagnostic in &result.diagnostics {
-            let severity = match diagnostic.severity {
-                Severity::Error => {
-                    error_count += 1;
-                    "ERROR"
-                }
-                Severity::Warning => {
-                    warning_count += 1;
-                    "WARNING"
-                }
-            };
-            eprintln!(
-                "[{severity}] {} ({}): {}",
-                diagnostic.node_name, diagnostic.node_id, diagnostic.message
-            );
-        }
-        eprintln!("{error_count} error(s), {warning_count} warning(s)");
-
-        if result.has_errors() {
-            return Err(crate::errors::Error::run(format!(
-                "workflow validation failed: {error_count} error(s)"
-            )));
-        }
-        println!("\u{2714} workflow valid");
-        Ok(())
+        Ok(result)
     }
 }
 
@@ -226,23 +235,82 @@ mod tests {
     }
 
     #[test]
-    fn build_invalid_workflow_runs() {
-        // NOTE: With the current inference implementation, sources seed `open`
-        // schemas and the implemented processors preserve `open`, so a hard
-        // ERROR is not reachable end-to-end from a real workflow. This fixture
-        // references an attribute no upstream node produces; the validator runs
-        // but emits no error because the schema reaching the consumer is open.
-        // The Error path itself is covered by unit tests in
-        // `reearth_flow_runtime::schema_infer` using closed-schema stub producers.
+    fn build_reference_error_fails_end_to_end() {
+        // AttributeMapper has REPLACE semantics → its output schema is CLOSED, so
+        // a downstream reference to an attribute it does not produce is a hard
+        // ERROR reachable from a real workflow (not just a stub test).
         let cmd = BuildCliCommand {
-            workflow_path: fixture_path("invalid.yml"),
+            workflow_path: fixture_path("reference_error.yml"),
+            vars: HashMap::new(),
+            show_schema: false,
+        };
+        // execute() must return Err (→ non-zero exit).
+        assert!(
+            cmd.execute().is_err(),
+            "a reference to an attribute no upstream node produces (against a closed \
+             schema) must fail validation"
+        );
+        // And the diagnostic must be a single Error naming the missing attribute.
+        let result = cmd.infer().expect("inference itself should succeed");
+        assert!(result.has_errors());
+        let errors: Vec<_> = result
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .collect();
+        assert_eq!(errors.len(), 1, "exactly one error expected");
+        assert!(
+            errors[0].message.contains("perimeter"),
+            "error should name the missing attribute, got: {}",
+            errors[0].message
+        );
+    }
+
+    #[test]
+    fn build_reference_ok_passes_end_to_end() {
+        // The downstream node references `name`, which the AttributeMapper DOES
+        // produce — guards against false positives.
+        let cmd = BuildCliCommand {
+            workflow_path: fixture_path("reference_ok.yml"),
             vars: HashMap::new(),
             show_schema: false,
         };
         assert!(
             cmd.execute().is_ok(),
-            "open-source seeding suppresses the reference error end-to-end"
+            "a satisfied reference must not be flagged"
         );
+        let result = cmd.infer().unwrap();
+        assert!(!result.has_errors());
+        assert!(
+            result.diagnostics.is_empty(),
+            "no diagnostics expected, got: {:?}",
+            result.diagnostics
+        );
+    }
+
+    #[test]
+    fn build_reference_warning_passes_with_warning() {
+        // The parent/child mapper records `maybeAttr` with Presence::Maybe; a
+        // reference to it is a WARNING (may not always be present), not an error,
+        // so the build still succeeds.
+        let cmd = BuildCliCommand {
+            workflow_path: fixture_path("reference_warning.yml"),
+            vars: HashMap::new(),
+            show_schema: false,
+        };
+        assert!(
+            cmd.execute().is_ok(),
+            "a Maybe-presence reference warns but does not fail the build"
+        );
+        let result = cmd.infer().unwrap();
+        assert!(!result.has_errors(), "warning must not be an error");
+        let warnings: Vec<_> = result
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Warning)
+            .collect();
+        assert_eq!(warnings.len(), 1, "exactly one warning expected");
+        assert!(warnings[0].message.contains("maybeAttr"));
     }
 
     #[test]
