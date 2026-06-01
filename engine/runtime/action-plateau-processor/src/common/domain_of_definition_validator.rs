@@ -554,133 +554,47 @@ fn process_feature(
 
     let t_total = Instant::now();
 
-    let t_envelope = Instant::now();
-    let envelope_xpath = format!(
-        "//*[namespace-uri()='{}'][local-name()='Envelope']",
-        profile.citygml.gml_ns
-    );
-    response.envelope = stream_extract_envelope(&xml_str, &envelope_xpath)?;
-    let envelope_ms = t_envelope.elapsed().as_millis();
-
     let mut city_object_groups = Vec::<CityObjectGroupInfo>::new();
-    let mut stream_error: Option<PlateauProcessorError> = None;
-    let members_xpath = format!(
-        "//*[namespace-uri()='{}'][local-name()='cityObjectMember']",
-        profile.citygml.core_ns
-    );
-
     let mut member_count: usize = 0;
 
-    let t_members = Instant::now();
-    let transformer = StreamTransformer::new(&xml_str)
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to parse root namespaces: {e:?}"
-            ))
-        })?;
+    // Parse the city GML and run the per-member domain-of-definition checks.
+    // If the document is not well-formed (e.g. an L01 syntax error), parsing
+    // fails here. Instead of dropping the file from the result set, log the
+    // failure and fall through to emit a Summary feature carrying zero
+    // domain-of-definition findings, so the file still appears in the per-file
+    // summary (01_共通.csv) and the error-count summary (summary_common.json).
+    // The well-formedness problem itself is reported separately as L01 by the
+    // upstream XMLValidator.
+    let parse_outcome = run_domain_of_definition_checks(
+        profile,
+        ctx,
+        fw,
+        codelists,
+        feature,
+        fallback_codelists_path,
+        &xml_str,
+        &valid_feature_types,
+        &gml_id_pattern,
+        &mut response,
+        &mut gml_ids,
+        &mut result,
+        &mut city_object_groups,
+        &mut member_count,
+    );
 
-    transformer
-        .on(members_xpath.as_str(), |node| {
-            member_count += 1;
-            if stream_error.is_some() {
-                return;
-            }
-
-            let children = node.children();
-            let Some(member_ref) = children.first() else {
-                stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
-                    "Failed to get cityObjectMember child".to_string(),
-                ));
-                return;
-            };
-
-            let is_city_object_group = member_ref.name() == "CityObjectGroup"
-                && member_ref.namespace_uri().as_deref() == profile.citygml.namespace("grp");
-            if is_city_object_group {
-                let gml_ns = profile.citygml.gml_ns;
-                let gml_id = member_ref
-                    .get_attribute_ns(gml_ns, "id")
-                    .unwrap_or_default();
-                city_object_groups.push(CityObjectGroupInfo {
-                    feature_type: member_ref.name(),
-                    gml_id,
-                    xlinks: Vec::new(),
-                });
-            }
-
-            match process_member_node(
-                profile,
-                ctx,
-                fw,
-                codelists,
-                feature,
-                member_ref,
-                &valid_feature_types,
-                &mut response,
-                &mut gml_ids,
-                &gml_id_pattern,
-                Arc::clone(&storage_resolver),
-                fallback_codelists_path,
-                is_city_object_group,
-            ) {
-                Ok((process_result, group_xlinks)) => {
-                    result.extend(process_result);
-                    if is_city_object_group {
-                        if let Some(group) = city_object_groups.last_mut() {
-                            group.xlinks = group_xlinks;
-                        }
-                    }
-                }
-                Err(e) => {
-                    stream_error = Some(e);
-                }
-            }
-        })
-        .for_each()
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-
-    let members_ms = t_members.elapsed().as_millis();
-
-    if let Some(err) = stream_error {
-        return Err(err);
+    let parse_failed = parse_outcome.is_err();
+    if let Err(e) = parse_outcome {
+        tracing::warn!(
+            target: "perf",
+            error = ?e,
+            "DomainOfDefinitionValidator: failed to parse/process city GML; emitting zero-finding summary"
+        );
     }
 
-    // On the city object group model T03: Extracting unreferenced xlink:href
-    // CityObjectGroup xlinks are checked against the global gml_ids (all members),
-    // unlike non-CityObjectGroup xlinks which are checked against member-local gml_ids.
-    for member in city_object_groups.iter() {
-        for xlink in member.xlinks.iter() {
-            let xlink_href = &xlink.href;
-            if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
-                let mut result_feature =
-                    create_lightweight_feature(feature, &["index", "udxDirs", "name"]);
-                result_feature.insert(
-                    "flag",
-                    AttributeValue::String("XLink_NoReference".to_string()),
-                );
-                result_feature.insert("tag", AttributeValue::String(xlink.tag.clone()));
-                result_feature.insert("xpath", AttributeValue::String(xlink.xpath.clone()));
-                result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
-                result_feature.insert(
-                    "featureType",
-                    AttributeValue::String(member.feature_type.clone()),
-                );
-                result_feature.insert("gmlId", AttributeValue::String(member.gml_id.clone()));
-                fw.send(
-                    ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()),
-                );
-                result.push(result_feature);
-                response.xlink_has_no_reference_num += 1;
-            }
-        }
-    }
     let total_ms = t_total.elapsed().as_millis();
     tracing::debug!(
         target: "perf",
         total_ms = %total_ms,
-        envelope_ms = %envelope_ms,
-        members_stream_ms = %members_ms,
         member_count,
         "DomainOfDefinitionValidator::process_feature END"
     );
@@ -717,7 +631,11 @@ fn process_feature(
     result_feature.insert(
         "isCorrectSrsName",
         AttributeValue::Bool(
-            envelope.srs_name == VALID_SRS_NAME_6697
+            // When the document could not be parsed (e.g. an L01 not-well-formed
+            // error), the CRS could not be read; do not raise a false L05 CRS
+            // error for it — the only finding is the upstream L01.
+            parse_failed
+                || envelope.srs_name == VALID_SRS_NAME_6697
                 || envelope.srs_name == VALID_SRS_NAME_6668
                 || (package == "unf"
                     && VALID_SRS_NAME_FOR_UNF.contains(&envelope.srs_name.as_str())),
@@ -774,6 +692,145 @@ fn process_feature(
     fw.send(ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()));
     result.push(result_feature);
     Ok((result, gml_ids))
+}
+
+/// Parse the city GML and run the per-`cityObjectMember` domain-of-definition
+/// checks, accumulating findings into `response` / `gml_ids` / `result` /
+/// `city_object_groups` and bumping `member_count`. Returns `Err` if the
+/// document cannot be parsed (e.g. an L01 not-well-formed error) or a member
+/// cannot be processed; callers may log and continue so the file still appears
+/// in the summaries with zero domain-of-definition findings.
+#[allow(clippy::too_many_arguments)]
+fn run_domain_of_definition_checks(
+    profile: &PlateauProfile,
+    ctx: &ExecutorContext,
+    fw: &ProcessorChannelForwarder,
+    codelists: &HashMap<String, HashMap<String, String>>,
+    feature: &Feature,
+    fallback_codelists_path: Option<&Uri>,
+    xml_str: &str,
+    valid_feature_types: &[String],
+    gml_id_pattern: &Regex,
+    response: &mut ValidateResponse,
+    gml_ids: &mut HashMap<String, Vec<HashMap<String, String>>>,
+    result: &mut Vec<Feature>,
+    city_object_groups: &mut Vec<CityObjectGroupInfo>,
+    member_count: &mut usize,
+) -> super::errors::Result<()> {
+    let envelope_xpath = format!(
+        "//*[namespace-uri()='{}'][local-name()='Envelope']",
+        profile.citygml.gml_ns
+    );
+    let members_xpath = format!(
+        "//*[namespace-uri()='{}'][local-name()='cityObjectMember']",
+        profile.citygml.core_ns
+    );
+
+    let mut stream_error: Option<PlateauProcessorError> = None;
+    response.envelope = stream_extract_envelope(xml_str, &envelope_xpath)?;
+
+    let transformer = StreamTransformer::new(xml_str)
+        .with_root_namespaces()
+        .map_err(|e| {
+            PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                "Failed to parse root namespaces: {e:?}"
+            ))
+        })?;
+
+    transformer
+        .on(members_xpath.as_str(), |node| {
+            *member_count += 1;
+            if stream_error.is_some() {
+                return;
+            }
+
+            let children = node.children();
+            let Some(member_ref) = children.first() else {
+                stream_error = Some(PlateauProcessorError::DomainOfDefinitionValidator(
+                    "Failed to get cityObjectMember child".to_string(),
+                ));
+                return;
+            };
+
+            let is_city_object_group = member_ref.name() == "CityObjectGroup"
+                && member_ref.namespace_uri().as_deref() == profile.citygml.namespace("grp");
+            if is_city_object_group {
+                let gml_ns = profile.citygml.gml_ns;
+                let gml_id = member_ref
+                    .get_attribute_ns(gml_ns, "id")
+                    .unwrap_or_default();
+                city_object_groups.push(CityObjectGroupInfo {
+                    feature_type: member_ref.name(),
+                    gml_id,
+                    xlinks: Vec::new(),
+                });
+            }
+
+            match process_member_node(
+                profile,
+                ctx,
+                fw,
+                codelists,
+                feature,
+                member_ref,
+                valid_feature_types,
+                response,
+                gml_ids,
+                gml_id_pattern,
+                Arc::clone(&ctx.storage_resolver),
+                fallback_codelists_path,
+                is_city_object_group,
+            ) {
+                Ok((process_result, group_xlinks)) => {
+                    result.extend(process_result);
+                    if is_city_object_group {
+                        if let Some(group) = city_object_groups.last_mut() {
+                            group.xlinks = group_xlinks;
+                        }
+                    }
+                }
+                Err(e) => {
+                    stream_error = Some(e);
+                }
+            }
+        })
+        .for_each()
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
+
+    if let Some(err) = stream_error {
+        return Err(err);
+    }
+
+    // On the city object group model T03: Extracting unreferenced xlink:href
+    // CityObjectGroup xlinks are checked against the global gml_ids (all members),
+    // unlike non-CityObjectGroup xlinks which are checked against member-local gml_ids.
+    for member in city_object_groups.iter() {
+        for xlink in member.xlinks.iter() {
+            let xlink_href = &xlink.href;
+            if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
+                let mut result_feature =
+                    create_lightweight_feature(feature, &["index", "udxDirs", "name"]);
+                result_feature.insert(
+                    "flag",
+                    AttributeValue::String("XLink_NoReference".to_string()),
+                );
+                result_feature.insert("tag", AttributeValue::String(xlink.tag.clone()));
+                result_feature.insert("xpath", AttributeValue::String(xlink.xpath.clone()));
+                result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
+                result_feature.insert(
+                    "featureType",
+                    AttributeValue::String(member.feature_type.clone()),
+                );
+                result_feature.insert("gmlId", AttributeValue::String(member.gml_id.clone()));
+                fw.send(
+                    ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()),
+                );
+                result.push(result_feature);
+                response.xlink_has_no_reference_num += 1;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Create a lightweight Feature by copying only the specified keys from the
