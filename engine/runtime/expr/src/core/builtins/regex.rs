@@ -25,14 +25,16 @@ impl ImmutableObject for RegexObject {
                 let Value::String(s) = s else {
                     return Err(InnerError::new("Regex.find() requires a string argument"));
                 };
-                Ok(regex_find(&self.regex, &s))
+                Ok(regex_find(&self.regex, s))
             }
             "findall" => {
                 unpack_args!(args => s);
                 let Value::String(s) = s else {
-                    return Err(InnerError::new("Regex.findall() requires a string argument"));
+                    return Err(InnerError::new(
+                        "Regex.findall() requires a string argument",
+                    ));
                 };
-                Ok(Value::array(regex_findall(&self.regex, &s)))
+                Ok(Value::array(regex_findall(&self.regex, s)))
             }
             m => Err(InnerError::new(format!("Regex has no method '{m}'"))),
         }

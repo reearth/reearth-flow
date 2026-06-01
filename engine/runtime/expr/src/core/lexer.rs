@@ -385,10 +385,7 @@ mod tests {
     #[test]
     fn test_raw_string() {
         // backslashes are literal, not escape sequences
-        assert_eq!(
-            tokenize(r#"r"\n\t""#),
-            vec![Token::Str(r"\n\t".into())]
-        );
+        assert_eq!(tokenize(r#"r"\n\t""#), vec![Token::Str(r"\n\t".into())]);
         // regular content works too
         assert_eq!(
             tokenize(r#"r"hello world""#),

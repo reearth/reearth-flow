@@ -88,7 +88,15 @@ mod tests {
         assert_eval("arr.get(-3)", &[("arr", arr.clone())], Value::from(10i64));
         assert_eval("arr.get(5)", &[("arr", arr.clone())], Value::Null);
         assert_eval("arr.get(-5)", &[("arr", arr.clone())], Value::Null);
-        assert_eval("arr.get(5, 99)", &[("arr", arr.clone())], Value::from(99i64));
-        assert_eval("arr.get(1, 99)", &[("arr", arr.clone())], Value::from(20i64));
+        assert_eval(
+            "arr.get(5, 99)",
+            &[("arr", arr.clone())],
+            Value::from(99i64),
+        );
+        assert_eval(
+            "arr.get(1, 99)",
+            &[("arr", arr.clone())],
+            Value::from(20i64),
+        );
     }
 }

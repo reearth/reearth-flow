@@ -785,7 +785,9 @@ fn eval_index(target: Value, key: Value) -> InnerResult<Value> {
             let len = chars.len();
             array_methods::resolve_index(i, len)
                 .map(|pos| Value::String(chars[pos].to_string()))
-                .ok_or_else(|| InnerError::new(format!("string index {i} out of range (len {len})")))
+                .ok_or_else(|| {
+                    InnerError::new(format!("string index {i} out of range (len {len})"))
+                })
         }
         (Value::Object(rc), key) => rc.call_method("__getitem__", &[key]),
         (target, key) => Err(InnerError::new(format!(
