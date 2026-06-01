@@ -7,7 +7,6 @@ React/TypeScript visual workflow builder frontend. See [../AGENTS.md](../AGENTS.
 ```bash
 # Development
 yarn start          # Start dev server on port 3000
-yarn dev:secure     # Start dev server with secrets injected via 1Password CLI (op run)
 yarn test           # Run unit tests with Vitest
 yarn coverage       # Run tests with coverage
 yarn storybook      # Start Storybook on port 6006
@@ -93,6 +92,25 @@ yarn test --run     # Ensure all tests pass
 3. Update affected components with new types
 4. Fix TypeScript errors from type changes
 
+## FlowExpr Editor
+
+`flowExprConstants.ts` is the single source of truth for the editor. Before making any changes, read the engine source directly to understand what the language currently supports — do not rely on docs, which can be stale:
+
+- **Keywords/operators** → `engine/runtime/expr/src/core/lexer.rs` (the `Token` enum)
+- **Built-in functions** → `engine/runtime/expr/src/core/eval.rs` (`default_env()`)
+- **Math functions** → `engine/runtime/expr/src/core/builtins/` (individual modules)
+
+Then update **all five** in `flowExprConstants.ts` to match:
+
+- `FLOWEXPR_KEYWORDS`
+- `FLOWEXPR_BUILTIN_FUNCTIONS`
+- `FLOWEXPR_MATH_FUNCTIONS`
+- `FLOWEXPR_OPERATORS` (keep longest → shortest within each group)
+- `getFlowExprAutocompleteSuggestions` (one entry per item, with `detail` signature and `{{cursor}}` placement)
+
+See [docs/flow-expr-editor.md](docs/flow-expr-editor.md) for architecture details (overlay stack, syntax highlighter quirks, validator scope, autocomplete positioning).
+
 ## Documentation
 
 - [UI Architecture](docs/architecture.md) - Technologies, data flow, component patterns, environment configuration
+- [FlowExpr Editor Architecture](docs/flow-expr-editor.md) - Overlay stack, tokenizer, validator, autocomplete

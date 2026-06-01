@@ -34,6 +34,10 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         &["Attribute"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["hierarchy"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

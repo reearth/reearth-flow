@@ -202,22 +202,36 @@ impl RunCliCommand {
             .get(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE)
             .cloned()
             .or_else(|| flow_var(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE));
-        if let Some(v) = external {
+        // `effective_artifact_path` is the single source of truth: it feeds
+        // both the `workerArtifactPath` global injected into the workflow and
+        // the `sandbox_root` Uri threaded into executor contexts.
+        let effective_artifact_path = if let Some(v) = external {
             tracing::info!(
                 "workerArtifactPath is provided externally. Using caller value in globals: {}",
                 v
             );
-            global.insert(WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(), v);
+            global.insert(
+                WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
+                v.clone(),
+            );
+            v
         } else {
+            let default_path = artifact_path.to_string();
             tracing::info!(
                 "workerArtifactPath is not provided. Injecting job-scoped default: {}",
-                artifact_path
+                default_path
             );
             global.insert(
                 WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE.to_string(),
-                artifact_path.to_string(),
+                default_path.clone(),
             );
-        }
+            default_path
+        };
+        let artifact_uri = Uri::from_str(&effective_artifact_path).map_err(|e| {
+            crate::errors::Error::init(format!(
+                "invalid workerArtifactPath {effective_artifact_path:?}: {e}"
+            ))
+        })?;
         workflow
             .extend_with(global)
             .map_err(crate::errors::Error::init)?;
@@ -303,7 +317,7 @@ impl RunCliCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Runner::run(
+        Runner::run_with_sandbox_root(
             job_id,
             workflow,
             ALL_ACTION_FACTORIES.clone(),
@@ -312,6 +326,7 @@ impl RunCliCommand {
             ingress_state,
             feature_state,
             incremental_run_config,
+            artifact_uri,
         )
         .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
     }

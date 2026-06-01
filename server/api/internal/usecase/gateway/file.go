@@ -74,4 +74,8 @@ type File interface {
 	IssueUploadAssetLink(context.Context, IssueUploadAssetParam) (*UploadAssetLink, error)
 	GetPublicAssetURL(string, string) (*url.URL, error)
 	UploadedAsset(context.Context, *asset.Upload) (*file.File, error)
+	// WriteCancelFlag writes the debug-run cancel marker for jobID.
+	WriteCancelFlag(ctx context.Context, jobID string) error
+	// CancelFlagURI returns the URI of the cancel marker for jobID (the worker polls it).
+	CancelFlagURI(jobID string) string
 }

@@ -1,4 +1,5 @@
 import { GearFineIcon } from "@phosphor-icons/react";
+import { RJSFSchema } from "@rjsf/utils";
 import { useReactFlow } from "@xyflow/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
@@ -18,6 +19,8 @@ import {
   ParamEditor,
   ValueEditorDialog,
   PythonEditorDialog,
+  FlowExprEditorDialog,
+  type CodeValue,
 } from "./components";
 import { FieldContext, getValueAtPath } from "./utils/fieldUtils";
 import {
@@ -37,6 +40,7 @@ type Props = {
       nodeId: string;
       updatedParams: any;
       updatedCustomizations: any;
+      paramsSchema?: RJSFSchema;
     }[],
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
@@ -58,7 +62,14 @@ const ParamsDialog: React.FC<Props> = ({
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
   const [openPythonEditor, setOpenPythonEditor] = useState(false);
-  const [currentFieldContext, setCurrentFieldContext] = useState<
+  const [openFlowExprEditor, setOpenFlowExprEditor] = useState(false);
+  const [valueEditorContext, setValueEditorContext] = useState<
+    FieldContext | undefined
+  >(undefined);
+  const [pythonEditorContext, setPythonEditorContext] = useState<
+    FieldContext | undefined
+  >(undefined);
+  const [flowExprEditorContext, setFlowExprEditorContext] = useState<
     FieldContext | undefined
   >(undefined);
 
@@ -133,7 +144,12 @@ const ParamsDialog: React.FC<Props> = ({
   );
 
   const handleUpdate = useCallback(
-    async (id: string, _updatedParams: any, _updatedCustomizations: any) => {
+    async (
+      id: string,
+      _updatedParams: any,
+      _updatedCustomizations: any,
+      paramsSchema?: RJSFSchema,
+    ) => {
       if (!openNode || openNode.id !== id) return;
 
       const latestNodeDrafts = rawDrafts[id] ?? {};
@@ -151,13 +167,48 @@ const ParamsDialog: React.FC<Props> = ({
       );
 
       yDoc?.transact(() => {
-        onDataSubmit?.([{ nodeId: id, updatedParams, updatedCustomizations }]);
+        onDataSubmit?.([
+          {
+            nodeId: id,
+            updatedParams,
+            updatedCustomizations,
+            paramsSchema,
+          },
+        ]);
       }, "params");
 
       removeMyDraft(id);
       onOpenNode();
     },
     [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft, onOpenNode],
+  );
+
+  const handleMigrate = useCallback(
+    (id: string, newParams: any, paramsSchema?: RJSFSchema) => {
+      if (!openNode || openNode.id !== id) return;
+
+      const latestNodeDrafts = rawDrafts[id] ?? {};
+      const updatedCustomizations = applyMergedPatch(
+        openNode.data.customizations,
+        latestNodeDrafts,
+        "customizationsPatch",
+      );
+
+      yDoc?.transact(() => {
+        onDataSubmit?.([
+          {
+            nodeId: id,
+            updatedParams: newParams,
+            updatedCustomizations,
+            paramsSchema,
+          },
+        ]);
+      }, "params");
+
+      removeMyDraft(id);
+      // Dialog stays open — user reviews migrated values in normal editor and saves explicitly
+    },
+    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -250,19 +301,30 @@ const ParamsDialog: React.FC<Props> = ({
     [openNode, updateMyFieldPatch],
   );
 
-  const handleValueChange = (value: any) => {
-    if (!currentFieldContext || !openNode) return;
-
-    const path = Array.isArray(currentFieldContext.path)
-      ? currentFieldContext.path.join(".")
-      : currentFieldContext.path;
-
+  const applyFieldPatch = (fieldContext: FieldContext, value: any) => {
+    if (!fieldContext || !openNode) return;
+    const path = Array.isArray(fieldContext.path)
+      ? fieldContext.path.join(".")
+      : fieldContext.path;
     updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
   };
 
+  const handleValueChange = (value: any) => {
+    if (valueEditorContext) applyFieldPatch(valueEditorContext, value);
+  };
+
+  const handleFlowExprValueSubmit = (codeValue: CodeValue) => {
+    if (flowExprEditorContext)
+      applyFieldPatch(flowExprEditorContext, codeValue);
+  };
+
+  const handleOpenNode = useCallback(() => {
+    onOpenNode();
+  }, [onOpenNode]);
+
   return (
     <>
-      <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
+      <Dialog open={!!openNode} onOpenChange={handleOpenNode}>
         <DialogContent size="2xl">
           <DialogHeader>
             <DialogTitle>
@@ -316,40 +378,57 @@ const ParamsDialog: React.FC<Props> = ({
               onParamsUpdate={handleParamChange}
               onCustomizationsUpdate={handleCustomizationChange}
               onUpdate={handleUpdate}
+              onMigrate={handleMigrate}
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}
               onValueEditorOpen={(fieldContext) => {
-                setCurrentFieldContext(fieldContext);
+                setValueEditorContext(fieldContext);
                 setOpenValueEditor(true);
               }}
               onPythonEditorOpen={(fieldContext) => {
-                setCurrentFieldContext(fieldContext);
+                setPythonEditorContext(fieldContext);
                 setOpenPythonEditor(true);
+              }}
+              onFlowExprEditorOpen={(fieldContext) => {
+                setFlowExprEditorContext(fieldContext);
+                setOpenFlowExprEditor(true);
               }}
             />
           )}
         </DialogContent>
       </Dialog>
-      {currentFieldContext && (
+      {valueEditorContext && (
         <ValueEditorDialog
           open={openValueEditor}
-          fieldContext={currentFieldContext}
+          fieldContext={valueEditorContext}
           onClose={() => {
             setOpenValueEditor(false);
-            setCurrentFieldContext(undefined);
+            setValueEditorContext(undefined);
           }}
           onValueSubmit={handleValueChange}
         />
       )}
-      {currentFieldContext && (
+      {pythonEditorContext && (
         <PythonEditorDialog
           open={openPythonEditor}
-          fieldContext={currentFieldContext}
+          fieldContext={pythonEditorContext}
           onClose={() => {
             setOpenPythonEditor(false);
-            setCurrentFieldContext(undefined);
+            setPythonEditorContext(undefined);
           }}
-          onValueSubmit={handleValueChange}
+          onValueSubmit={(value) => applyFieldPatch(pythonEditorContext, value)}
+        />
+      )}
+      {flowExprEditorContext && (
+        <FlowExprEditorDialog
+          open={openFlowExprEditor}
+          fieldContext={flowExprEditorContext}
+          onClose={() => {
+            setOpenFlowExprEditor(false);
+            setFlowExprEditorContext(undefined);
+            onParamFieldFocus?.(null);
+          }}
+          onValueSubmit={handleFlowExprValueSubmit}
         />
       )}
     </>

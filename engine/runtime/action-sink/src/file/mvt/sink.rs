@@ -17,8 +17,7 @@ use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::Expr;
-use reearth_flow_types::{Attribute, Feature};
+use reearth_flow_types::{Attribute, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -46,7 +45,11 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["mvt"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -59,12 +62,12 @@ impl SinkFactory for MVTSinkFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, JsonValue>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: MVTWriterParam = if let Some(with) = with.clone() {
+        let params: MVTWriterParam = if let Some(with) = with {
             let value: JsonValue = serde_json::to_value(with).map_err(|e| {
                 SinkError::MvtWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -77,26 +80,24 @@ impl SinkFactory for MVTSinkFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let expr_output = &params.output;
-        let output = expr_engine
-            .compile(expr_output.as_ref())
+        let output = params
+            .output
+            .compile()
             .map_err(|e| SinkError::MvtWriterFactory(format!("{e:?}")))?;
-        let expr_layer_name = &params.layer_name;
-        let layer_name = expr_engine
-            .compile(expr_layer_name.as_ref())
+        let layer_name = params
+            .layer_name
+            .compile()
             .map_err(|e| SinkError::MvtWriterFactory(format!("{e:?}")))?;
-        let compress_output = if let Some(compress_output) = &params.compress_output {
-            let compress_output = expr_engine
-                .compile(compress_output.as_ref())
-                .map_err(|e| SinkError::MvtWriterFactory(format!("{e:?}")))?;
-            Some(compress_output)
-        } else {
-            None
-        };
+        let compress_output = params
+            .compress_output
+            .as_ref()
+            .map(|c| {
+                c.compile()
+                    .map_err(|e| SinkError::MvtWriterFactory(format!("{e:?}")))
+            })
+            .transpose()?;
 
         let sink = MVTWriter {
-            global_params: with,
             buffer: HashMap::new(),
             schema: Default::default(),
             params: MVTWriterCompiledParam {
@@ -121,7 +122,6 @@ type BufferValue = Vec<(Feature, String)>;
 
 #[derive(Debug, Clone)]
 pub struct MVTWriter {
-    pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: MVTWriterCompiledParam,
     pub(super) schema: Schema,
     /// (output, compress_output) -> Vec<(Feature, layer_name)>
@@ -139,10 +139,10 @@ pub struct MVTWriter {
 pub struct MVTWriterParam {
     /// # Output
     /// Output directory path or expression for the generated MVT tiles
-    pub(super) output: Expr,
+    pub(super) output: Code,
     /// # Layer Name
     /// Name of the layer within the MVT tiles
-    pub(super) layer_name: Expr,
+    pub(super) layer_name: Code,
     /// # Minimum Zoom
     /// Minimum zoom level to generate tiles for
     pub(super) min_zoom: u8,
@@ -151,7 +151,7 @@ pub struct MVTWriterParam {
     pub(super) max_zoom: u8,
     /// # Compress Output
     /// Optional expression to determine whether to compress the output tiles
-    pub(super) compress_output: Option<Expr>,
+    pub(super) compress_output: Option<Code>,
     /// # Skip Unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -169,11 +169,11 @@ pub struct MVTWriterParam {
 
 #[derive(Debug, Clone)]
 pub struct MVTWriterCompiledParam {
-    pub(super) output: rhai::AST,
-    pub(super) layer_name: rhai::AST,
+    pub(super) output: CompiledCode,
+    pub(super) layer_name: CompiledCode,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
-    pub(super) compress_output: Option<rhai::AST>,
+    pub(super) compress_output: Option<CompiledCode>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) colon_to_underscore: bool,
     pub(super) extent: i32,
@@ -211,24 +211,21 @@ impl Sink for MVTWriter {
         match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_)
             | geometry_types::GeometryValue::FlowGeometry2D(_) => {
-                let output = self.params.output.clone();
-                let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
-                let path = scope
-                    .eval_ast::<String>(&output)
-                    .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
-                let compress_output = if let Some(compress_output) = &self.params.compress_output {
-                    let compress_output = compress_output.clone();
-                    let path = scope
-                        .eval_ast::<String>(&compress_output)
-                        .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
-                    Some(Uri::from_str(path.as_str())?)
+                let env_vars = ctx.expr_engine.vars();
+                let eval = |c: &CompiledCode| {
+                    c.eval_string(feature, Arc::clone(&env_vars))
+                        .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))
+                };
+                let output = Uri::from_str(eval(&self.params.output)?.as_str())?;
+                let compress_output = if let Some(c) = &self.params.compress_output {
+                    Some(
+                        Uri::from_str(eval(c)?.as_str())
+                            .map_err(|e| SinkError::MvtWriter(e.to_string()))?,
+                    )
                 } else {
                     None
                 };
-                let output = Uri::from_str(path.as_str())?;
-                let layer_name = scope
-                    .eval_ast::<String>(&self.params.layer_name)
-                    .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
+                let layer_name = eval(&self.params.layer_name)?;
                 // the flushing logic requires sorted features, or the output file will be corrupted
                 if !self
                     .buffer
@@ -409,48 +406,65 @@ impl MVTWriter {
                 }
 
                 if let Some(compress_output) = compress_output {
-                    if let Ok(storage) = gctx.storage_resolver.resolve(&compress_output) {
-                        let buffer = Vec::new();
-                        let mut cursor = Cursor::new(buffer);
-                        let writer = BufWriter::new(&mut cursor);
-                        let zip_result =
-                            reearth_flow_common::zip::write(writer, out.path().as_path()).map_err(
-                                |e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()),
-                            );
-                        match zip_result {
-                            Ok(_) => {
-                                match storage
-                                    .put_sync(
-                                        compress_output.path().as_path(),
-                                        bytes::Bytes::from(cursor.into_inner()),
-                                    )
-                                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)
-                                {
-                                    Ok(_) => match std::fs::remove_dir_all(out.path().as_path()) {
-                                        Ok(_) => {}
+                    let compress_node_ctx = NodeContext::from(gctx.clone());
+                    match crate::SinkOutput::from_path(
+                        &compress_node_ctx,
+                        compress_output.as_str(),
+                    ) {
+                        Ok(compress_sink_out) => {
+                            let buffer = Vec::new();
+                            let mut cursor = Cursor::new(buffer);
+                            let writer = BufWriter::new(&mut cursor);
+                            let zip_result = reearth_flow_common::zip::write(
+                                writer,
+                                out.path().as_path(),
+                            )
+                            .map_err(|e| {
+                                crate::errors::SinkError::MvtWriter(e.to_string())
+                            });
+                            match zip_result {
+                                Ok(_) => {
+                                    match compress_sink_out
+                                        .write(bytes::Bytes::from(cursor.into_inner()))
+                                        .map_err(|e| {
+                                            crate::errors::SinkError::MvtWriter(e.to_string())
+                                        }) {
+                                        Ok(_) => {
+                                            match std::fs::remove_dir_all(out.path().as_path()) {
+                                                Ok(_) => {}
+                                                Err(e) => {
+                                                    gctx.event_hub.error_log(
+                                                        None,
+                                                        format!(
+                                                            "Failed to remove directory with error = {e:?}"
+                                                        ),
+                                                    );
+                                                }
+                                            }
+                                        }
                                         Err(e) => {
                                             gctx.event_hub.error_log(
                                                 None,
                                                 format!(
-                                                    "Failed to remove directory with error = {e:?}"
+                                                    "Failed to write zip file with error = {e:?}"
                                                 ),
                                             );
                                         }
-                                    },
-                                    Err(e) => {
-                                        gctx.event_hub.error_log(
-                                            None,
-                                            format!("Failed to write zip file with error = {e:?}"),
-                                        );
                                     }
                                 }
+                                Err(e) => {
+                                    gctx.event_hub.error_log(
+                                        None,
+                                        format!("Failed to write zip file with error = {e:?}"),
+                                    );
+                                }
                             }
-                            Err(e) => {
-                                gctx.event_hub.error_log(
-                                    None,
-                                    format!("Failed to write zip file with error = {e:?}"),
-                                );
-                            }
+                        }
+                        Err(e) => {
+                            gctx.event_hub.error_log(
+                                None,
+                                format!("Failed to resolve compress output with error = {e:?}"),
+                            );
                         }
                     }
                 }

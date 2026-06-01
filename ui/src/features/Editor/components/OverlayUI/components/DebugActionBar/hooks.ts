@@ -10,11 +10,12 @@ export default ({
   onDebugRunStart,
   onDebugRunStop,
   refetchWorkflowVariables,
-
+  onUserFocusedElement,
   customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  onUserFocusedElement?: (isOpen: boolean) => void;
   refetchWorkflowVariables: () => void;
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
 }) => {
@@ -27,15 +28,26 @@ export default ({
     | undefined
   >(undefined);
 
-  const handleShowDebugStartPopover = () => setshowOverlayElement("debugStart");
-  const handleShowDebugStopPopover = () => setshowOverlayElement("debugStop");
-  const handleShowDebugActiveRunsPopover = () =>
+  const handleShowDebugStartPopover = () => {
+    onUserFocusedElement?.(true);
+    setshowOverlayElement("debugStart");
+  };
+  const handleShowDebugStopPopover = () => {
+    onUserFocusedElement?.(true);
+    setshowOverlayElement("debugStop");
+  };
+  const handleShowDebugActiveRunsPopover = () => {
+    onUserFocusedElement?.(true);
     setshowOverlayElement("debugRuns");
+  };
   const handleShowDebugWorkflowVariablesDialog = () => {
     refetchWorkflowVariables();
     setshowOverlayElement("debugWorkflowVariables");
   };
-  const handlePopoverClose = () => setshowOverlayElement(undefined);
+  const handlePopoverClose = () => {
+    onUserFocusedElement?.(false);
+    setshowOverlayElement(undefined);
+  };
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 
   const { useGetJob } = useJob();

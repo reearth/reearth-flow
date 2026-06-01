@@ -111,18 +111,18 @@ const AssetsManager: React.FC = () => {
             <IconButton
               size="icon"
               variant="outline"
-              className={layoutView === "list" ? "bg-accent" : ""}
-              tooltipText={t("List Layout")}
-              onClick={handleListView}
-              icon={<ListIcon size={"18px"} />}
-            />
-            <IconButton
-              size="icon"
-              variant="outline"
               className={layoutView === "grid" ? "bg-accent" : ""}
               tooltipText={t("Grid Layout")}
               onClick={handleGridView}
               icon={<SquaresFourIcon size={"18px"} />}
+            />
+            <IconButton
+              size="icon"
+              variant="outline"
+              className={layoutView === "list" ? "bg-accent" : ""}
+              tooltipText={t("List Layout")}
+              onClick={handleListView}
+              icon={<ListIcon size={"18px"} />}
             />
           </div>
         </div>

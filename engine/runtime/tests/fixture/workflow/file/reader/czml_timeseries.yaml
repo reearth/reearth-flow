@@ -2,7 +2,7 @@ id: "a0a0a0a0-0001-4000-8000-000000000001"
 name: "CZML Timeseries Reader Test"
 entryGraphId: "a0a0a0a0-0001-4000-8000-000000000010"
 with:
-  outputFilePath: "/tmp/czml-timeseries-reader-output.json"
+  outputFilePath: "czml-timeseries-reader-output.json"
 
 graphs:
   - id: "a0a0a0a0-0001-4000-8000-000000000010"
@@ -23,7 +23,7 @@ graphs:
         type: "action"
         action: "FeatureWriter"
         with:
-          output: "env.get(\"outputFilePath\")"
+          output: "env.get(\"workerArtifactPath\") + \"/\" + env.get(\"outputFilePath\")"
           format: "json"
 
     edges:

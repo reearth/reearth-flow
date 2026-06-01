@@ -350,26 +350,28 @@ graphs:
           operations:
             - attribute: year
               method: create
-              value: |
-                let dt = env.get("__value")["solarTime"];
-                parse_int(dt.split("-")[0])
+              value:
+                type: flowExpr
+                value: 'int(attributes["solarTime"].split("-")[0])'
             - attribute: month
               method: create
-              value: |
-                let dt = env.get("__value")["solarTime"];
-                parse_int(dt.split("-")[1])
+              value:
+                type: flowExpr
+                value: 'int(attributes["solarTime"].split("-")[1])'
             - attribute: date
               method: create
-              value: |
-                let dt = env.get("__value")["solarTime"];
-                let day_part = dt.split("T")[0];
-                parse_int(day_part.split("-")[2])
+              value:
+                type: flowExpr
+                value: |
+                  dt = attributes["solarTime"].split("T")[0];
+                  int(dt.split("-")[2])
             - attribute: hour
               method: create
-              value: |
-                let dt = env.get("__value")["solarTime"];
-                let time_part = dt.split("T")[1];
-                parse_int(time_part.split(":")[0])
+              value:
+                type: flowExpr
+                value: |
+                  dt = attributes["solarTime"].split("T")[1];
+                  int(dt.split(":")[0])
 
       - id: 00000001-0000-0000-0000-00000000000c
         name: AreaCalculator
@@ -539,15 +541,17 @@ graphs:
             # cos(theta) = solar_dir · normal (dot product of unit vectors)
             - attribute: cosTheta
               method: create
-              value: |
-                let sdx = env.get("__value")["solarDirectionX"];
-                let sdy = env.get("__value")["solarDirectionY"];
-                let sdz = env.get("__value")["solarDirectionZ"];
-                let nx = env.get("__value")["normalX"];
-                let ny = env.get("__value")["normalY"];
-                let nz = env.get("__value")["normalZ"];
-                let cos_th = sdx * nx + sdy * ny + sdz * nz;
-                if cos_th < 0.0 { 0.0 } else { cos_th }
+              value:
+                type: flowExpr
+                value: |
+                  sdx = attributes["solarDirectionX"];
+                  sdy = attributes["solarDirectionY"];
+                  sdz = attributes["solarDirectionZ"];
+                  nx = attributes["normalX"];
+                  ny = attributes["normalY"];
+                  nz = attributes["normalZ"];
+                  cos_th = sdx * nx + sdy * ny + sdz * nz;
+                  if cos_th < 0.0 { 0.0 } else { cos_th }
 
       # Compute DT using the cos_theta from previous step
       # month is already an integer from ConvertDateTimeToIntegers
@@ -559,43 +563,47 @@ graphs:
           operations:
             - attribute: radiationSunny
               method: create
-              value: |
-                let p = env.get("monthlyTransmissivity")[env.get("__value").month - 1];
-                let h_rad = env.get("__value").solarAltitude * math::PI / 180.0;
-                let m = 1.0 / math::sin(h_rad);
-                let beta_m = math::pow(p, m);
-                let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cosTheta * env.get("__value").cellArea;
+              value:
+                type: flowExpr
+                value: |
+                  p = env["monthlyTransmissivity"][attributes["month"] - 1];
+                  h_rad = attributes["solarAltitude"] * math.pi / 180.0;
+                  m = 1.0 / math.sin(h_rad);
+                  beta_m = p ** m;
+                  DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
-                let dN = 1 - beta_m;
-                let dD = 1 - 1.4 * math::ln(p);
-                let SH = env.get("directNormalIrradianceFactor") * math::sin(h_rad) * (dN / dD) * 0.5;
-                let tilt_rad = env.get("__value").slope * math::PI / 180.0;
-                let ST = SH * (1 + math::cos(tilt_rad)) / 2;
+                  dN = 1 - beta_m;
+                  dD = 1 - 1.4 * math.log(p);
+                  SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
+                  tilt_rad = attributes["slope"] * math.pi / 180.0;
+                  ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-                let TH = env.get("directNormalIrradianceFactor") * math::sin(h_rad) + SH;
-                let RT = TH * (1 - math::cos(tilt_rad)) / 2 * env.get("__value").groundReflectivity;
+                  TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
+                  RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
-                DT + ST + RT
+                  DT + ST + RT
 
             - attribute: radiationCloudy
               method: create
-              value: |
-                let p = 1.0 - env.get("monthlyTransmissivity")[env.get("__value").month - 1];
-                let h_rad = env.get("__value").solarAltitude * math::PI / 180.0;
-                let m = 1.0 / math::sin(h_rad);
-                let beta_m = math::pow(p, m);
-                let DT = env.get("directNormalIrradianceFactor") * beta_m * env.get("__value").cosTheta * env.get("__value").cellArea;
+              value:
+                type: flowExpr
+                value: |
+                  p = 1.0 - env["monthlyTransmissivity"][attributes["month"] - 1];
+                  h_rad = attributes["solarAltitude"] * math.pi / 180.0;
+                  m = 1.0 / math.sin(h_rad);
+                  beta_m = p ** m;
+                  DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
-                let dN = 1 - beta_m;
-                let dD = 1 - 1.4 * math::ln(p);
-                let SH = env.get("directNormalIrradianceFactor") * math::sin(h_rad) * (dN / dD) * 0.5;
-                let tilt_rad = env.get("__value").slope * math::PI / 180.0;
-                let ST = SH * (1 + math::cos(tilt_rad)) / 2;
+                  dN = 1 - beta_m;
+                  dD = 1 - 1.4 * math.log(p);
+                  SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
+                  tilt_rad = attributes["slope"] * math.pi / 180.0;
+                  ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-                let TH = env.get("directNormalIrradianceFactor") * math::sin(h_rad) + SH;
-                let RT = TH * (1 - math::cos(tilt_rad)) / 2 * env.get("__value").groundReflectivity;
+                  TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
+                  RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
-                DT + ST + RT
+                  DT + ST + RT
 
       # ========================================
       # Section 6b: Monthly Radiation with Cloud Factor
@@ -652,11 +660,13 @@ graphs:
           operations:
             - attribute: radiationPerMonth
               method: create
-              value: |
-                let sunny_ratio = env.get("__value")["sunnyRatio"] ?? 0.0;
-                let dt_sunny = env.get("__value")["radiationSunnySum"] ?? 0.0;
-                let dt_cloudy = env.get("__value")["radiationCloudySum"] ?? 0.0;
-                sunny_ratio * dt_sunny + (1.0 - sunny_ratio) * dt_cloudy
+              value:
+                type: flowExpr
+                value: |
+                  sunny_ratio = attributes.get("sunnyRatio", 0.0);
+                  dt_sunny = attributes.get("radiationSunnySum", 0.0);
+                  dt_cloudy = attributes.get("radiationCloudySum", 0.0);
+                  sunny_ratio * dt_sunny + (1.0 - sunny_ratio) * dt_cloudy
 
       # ========================================
       # Section 6c: Total Radiation Aggregation for 3D Tiles
@@ -728,20 +738,24 @@ graphs:
           operations:
             - attribute: 予測日射量
               method: create
-              value: |
-                env.get("__value")["totalSolarRadiation"] ?? ()
+              value:
+                type: flowExpr
+                value: 'attributes["totalSolarRadiation"]'
             - attribute: 予測発電量
               method: create
-              value: |
-                env.get("__value")["totalSolarPower"] ?? ()
+              value:
+                type: flowExpr
+                value: 'attributes["totalSolarPower"]'
             - attribute: シミュレーション開始日時
               method: create
-              value: |
-                env.get("startTime")
+              value:
+                type: flowExpr
+                value: 'env["startTime"]'
             - attribute: シミュレーション終了日時
               method: create
-              value: |
-                env.get("endTime")
+              value:
+                type: flowExpr
+                value: 'env["endTime"]'
 
       # ========================================
       # Section 6d: Textured 3D Tiles Output
@@ -756,31 +770,33 @@ graphs:
           operations:
             - attribute: normalizedRadiation
               method: create
-              value: |
-                let start_str = env.get("startTime");
-                let s_date_parts = start_str.split("-");
-                let s_year = parse_float(s_date_parts[0]);
-                let s_month = parse_float(s_date_parts[1]);
-                let s_day_val = parse_float(s_date_parts[2][..2]);
-                let s_a = math::floor((14.0 - s_month) / 12.0);
-                let s_y = s_year + 4800.0 - s_a;
-                let s_m = s_month + 12.0 * s_a - 3.0;
-                let s_jdn = s_day_val + math::floor((153.0 * s_m + 2.0) / 5.0) + 365.0 * s_y + math::floor(s_y / 4.0) - math::floor(s_y / 100.0) + math::floor(s_y / 400.0) - 32045.0;
-                let end_str = env.get("endTime");
-                let e_date_parts = end_str.split("-");
-                let e_year = parse_float(e_date_parts[0]);
-                let e_month = parse_float(e_date_parts[1]);
-                let e_day_val = parse_float(e_date_parts[2][..2]);
-                let e_a = math::floor((14.0 - e_month) / 12.0);
-                let e_y = e_year + 4800.0 - e_a;
-                let e_m = e_month + 12.0 * e_a - 3.0;
-                let e_jdn = e_day_val + math::floor((153.0 * e_m + 2.0) / 5.0) + 365.0 * e_y + math::floor(e_y / 4.0) - math::floor(e_y / 100.0) + math::floor(e_y / 400.0) - 32045.0;
-                let num_days_raw = e_jdn - s_jdn;
-                let num_days = if num_days_raw <= 0.0 { 1.0 } else { num_days_raw };
-                let dt = env.get("__value")["totalSolarRadiation"] ?? 0.0;
-                let max_rad = env.get("maxRadiationPerDay") ?? 7.5;
-                let t_raw = dt / num_days / max_rad;
-                if t_raw < 0.0 { 0.0 } else if t_raw > 1.0 { 1.0 } else { t_raw }
+              value:
+                type: flowExpr
+                value: |
+                  start_str = env["startTime"];
+                  s_date_parts = start_str.split("-");
+                  s_year = float(s_date_parts[0]);
+                  s_month = float(s_date_parts[1]);
+                  s_day_val = float(s_date_parts[2][:2]);
+                  s_a = math.floor((14.0 - s_month) / 12.0);
+                  s_y = s_year + 4800.0 - s_a;
+                  s_m = s_month + 12.0 * s_a - 3.0;
+                  s_jdn = s_day_val + math.floor((153.0 * s_m + 2.0) / 5.0) + 365.0 * s_y + math.floor(s_y / 4.0) - math.floor(s_y / 100.0) + math.floor(s_y / 400.0) - 32045.0;
+                  end_str = env["endTime"];
+                  e_date_parts = end_str.split("-");
+                  e_year = float(e_date_parts[0]);
+                  e_month = float(e_date_parts[1]);
+                  e_day_val = float(e_date_parts[2][:2]);
+                  e_a = math.floor((14.0 - e_month) / 12.0);
+                  e_y = e_year + 4800.0 - e_a;
+                  e_m = e_month + 12.0 * e_a - 3.0;
+                  e_jdn = e_day_val + math.floor((153.0 * e_m + 2.0) / 5.0) + 365.0 * e_y + math.floor(e_y / 4.0) - math.floor(e_y / 100.0) + math.floor(e_y / 400.0) - 32045.0;
+                  num_days_raw = e_jdn - s_jdn;
+                  if num_days_raw <= 0.0 { num_days = 1.0 } else { num_days = num_days_raw };
+                  dt = attributes.get("totalSolarRadiation", 0.0);
+                  max_rad = env.get("maxRadiationPerDay", 7.5);
+                  t_raw = dt / num_days / max_rad;
+                  if t_raw < 0.0 { 0.0 } else if t_raw > 1.0 { 1.0 } else { t_raw }
 
       # Force 2D for rasterization (project 3D cells to 2D plane)
       - id: 00000001-0000-0000-0000-00000000005f
@@ -799,27 +815,33 @@ graphs:
             # r = clamp(4t-1), g = clamp(4t) - clamp(4t-3), b = 1 - clamp(4t-1)
             - attribute: color_r
               method: create
-              value: |
-                let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
-                let v = 4.0 * t - 1.0;
-                let r = if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v };
-                math::round(255.0 * r)
+              value:
+                type: flowExpr
+                value: |
+                  t = attributes.get("normalizedRadiation", 0.0);
+                  v = 4.0 * t - 1.0;
+                  if v < 0.0 { r = 0.0 } else if v > 1.0 { r = 1.0 } else { r = v };
+                  math.round(255.0 * r)
             - attribute: color_g
               method: create
-              value: |
-                let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
-                let v1_raw = 4.0 * t;
-                let v1 = if v1_raw < 0.0 { 0.0 } else if v1_raw > 1.0 { 1.0 } else { v1_raw };
-                let v2_raw = 4.0 * t - 3.0;
-                let v2 = if v2_raw < 0.0 { 0.0 } else if v2_raw > 1.0 { 1.0 } else { v2_raw };
-                math::round(255.0 * (v1 - v2))
+              value:
+                type: flowExpr
+                value: |
+                  t = attributes.get("normalizedRadiation", 0.0);
+                  v1_raw = 4.0 * t;
+                  if v1_raw < 0.0 { v1 = 0.0 } else if v1_raw > 1.0 { v1 = 1.0 } else { v1 = v1_raw };
+                  v2_raw = 4.0 * t - 3.0;
+                  if v2_raw < 0.0 { v2 = 0.0 } else if v2_raw > 1.0 { v2 = 1.0 } else { v2 = v2_raw };
+                  math.round(255.0 * (v1 - v2))
             - attribute: color_b
               method: create
-              value: |
-                let t = env.get("__value")["normalizedRadiation"] ?? 0.0;
-                let v = 4.0 * t - 1.0;
-                let clamped = if v < 0.0 { 0.0 } else if v > 1.0 { 1.0 } else { v };
-                math::round(255.0 * (1.0 - clamped))
+              value:
+                type: flowExpr
+                value: |
+                  t = attributes.get("normalizedRadiation", 0.0);
+                  v = 4.0 * t - 1.0;
+                  if v < 0.0 { clamped = 0.0 } else if v > 1.0 { clamped = 1.0 } else { clamped = v };
+                  math.round(255.0 * (1.0 - clamped))
 
       # Merge colors back to original cell polygons (which have geometry)
       # The aggregation pipeline loses geometry, so we need to restore it from CellIdCounter
@@ -909,12 +931,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       # Vertical reprojection for textured geometry
       - id: 00000001-0000-0000-0000-000000000065
@@ -935,10 +959,12 @@ graphs:
           maxZoom: 18
           attachTexture: true
           dracoCompression: false
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles")
-          compressOutput: |
-            file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles.zip")
+          output:
+            type: flowExpr
+            value: 'Url(env["workerArtifactPath"]) / "textured_roof_3dtiles"'
+          compressOutput:
+            type: flowExpr
+            value: 'Url(env["workerArtifactPath"]) / "textured_roof_3dtiles.zip"'
 
       # ========================================
       # Section 7: Reflection Computation
@@ -965,16 +991,19 @@ graphs:
             # I = -solarDirection, I·N = -cosTheta, so R = -solarDirection + 2*cosTheta*normal
             - attribute: reflectDirX
               method: create
-              value: |
-                -env.get("__value")["solarDirectionX"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalX"]
+              value:
+                type: flowExpr
+                value: '-attributes["solarDirectionX"] + 2.0 * attributes["cosTheta"] * attributes["normalX"]'
             - attribute: reflectDirY
               method: create
-              value: |
-                -env.get("__value")["solarDirectionY"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalY"]
+              value:
+                type: flowExpr
+                value: '-attributes["solarDirectionY"] + 2.0 * attributes["cosTheta"] * attributes["normalY"]'
             - attribute: reflectDirZ
               method: create
-              value: |
-                -env.get("__value")["solarDirectionZ"] + 2.0 * env.get("__value").cosTheta * env.get("__value")["normalZ"]
+              value:
+                type: flowExpr
+                value: '-attributes["solarDirectionZ"] + 2.0 * attributes["cosTheta"] * attributes["normalZ"]'
 
       - id: 00000001-0000-0000-0000-000000000014
         name: RayIntersectorReflect
@@ -1286,12 +1315,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       - id: 00000001-0000-0000-0000-0000000000a2
         name: VerticalReprojectorByLod1
@@ -1310,10 +1341,12 @@ graphs:
           maxZoom: 18
           attachTexture: false
           dracoCompression: false
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "bldg_lod1")
-          compressOutput: |
-            file::join_path(env.get("workerArtifactPath"), "bldg_lod1.zip")
+          output:
+            type: flowExpr
+            value: 'Url(env["workerArtifactPath"]) / "bldg_lod1"'
+          compressOutput:
+            type: flowExpr
+            value: 'Url(env["workerArtifactPath"]) / "bldg_lod1.zip"'
 
       # --- LOD3 Pipeline ---
       - id: 00000001-0000-0000-0000-0000000000a4
@@ -1336,12 +1369,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       - id: 00000001-0000-0000-0000-0000000000a6
         name: VerticalReprojectorByLod3
@@ -1360,10 +1395,12 @@ graphs:
           maxZoom: 18
           attachTexture: false
           dracoCompression: false
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "bldg_lod3")
-          compressOutput: |
-            file::join_path(env.get("workerArtifactPath"), "bldg_lod3.zip")
+          output:
+            type: flowExpr
+            value: 'Url(env["workerArtifactPath"]) / "bldg_lod3"'
+          compressOutput:
+            type: flowExpr
+            value: 'Url(env["workerArtifactPath"]) / "bldg_lod3.zip"'
 
       # --- LOD4 Pipeline ---
       - id: 00000001-0000-0000-0000-0000000000a8
@@ -1386,12 +1423,14 @@ graphs:
           operations:
             - attribute: _x
               method: create
-              value: |
-                (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
             - attribute: _y
               method: create
-              value: |
-                (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       - id: 00000001-0000-0000-0000-0000000000aa
         name: VerticalReprojectorByLod4
@@ -1410,10 +1449,12 @@ graphs:
           maxZoom: 18
           attachTexture: false
           dracoCompression: false
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "bldg_lod4")
-          compressOutput: |
-            file::join_path(env.get("workerArtifactPath"), "bldg_lod4.zip")
+          output:
+            type: flowExpr
+            value: 'Url(env["workerArtifactPath"]) / "bldg_lod4"'
+          compressOutput:
+            type: flowExpr
+            value: 'Url(env["workerArtifactPath"]) / "bldg_lod4.zip"'
 
       # ========================================
       # CityGML Output Pipeline
@@ -1536,12 +1577,14 @@ graphs:
           operations:
             - attribute: featureType
               method: create
-              value: |
-                "dem:Triangle"
+              value:
+                type: string
+                value: "dem:Triangle"
             - attribute: gmlId
               method: create
-              value: |
-                "land_" + to_string(env.get("__value")["_relief_index"] ?? env.get("__value")["_split_index"] ?? 0)
+              value:
+                type: flowExpr
+                value: '"land_" + str(attributes.get("_relief_index", attributes.get("_split_index", 0)))'
 
       # Reproject DEM triangles to projected CRS
       - id: 00000002-0000-0000-0000-000000000009
@@ -1567,37 +1610,43 @@ graphs:
           operations:
             - attribute: dirMatch1
               method: create
-              value: |
-                let dir = env.get("restrictDirection1") ?? -1.0;
-                if dir < 0.0 { 0 } else {
-                  let pne = env.get("__value")["azimuth"] ?? 0.0;
-                  let geo = (180.0 - pne + 360.0) % 360.0;
-                  let diff = (geo - dir + 360.0) % 360.0;
-                  let d = if diff > 180.0 { 360.0 - diff } else { diff };
-                  if d <= 11.25 { 1 } else { 0 }
-                }
+              value:
+                type: flowExpr
+                value: |
+                  dir = env.get("restrictDirection1", -1.0);
+                  if dir < 0.0 { 0 } else {
+                    pne = attributes.get("azimuth", 0.0);
+                    geo = (180.0 - pne + 360.0) % 360.0;
+                    diff = (geo - dir + 360.0) % 360.0;
+                    if diff > 180.0 { d = 360.0 - diff } else { d = diff };
+                    if d <= 11.25 { 1 } else { 0 }
+                  }
             - attribute: dirMatch2
               method: create
-              value: |
-                let dir = env.get("restrictDirection2") ?? -1.0;
-                if dir < 0.0 { 0 } else {
-                  let pne = env.get("__value")["azimuth"] ?? 0.0;
-                  let geo = (180.0 - pne + 360.0) % 360.0;
-                  let diff = (geo - dir + 360.0) % 360.0;
-                  let d = if diff > 180.0 { 360.0 - diff } else { diff };
-                  if d <= 11.25 { 1 } else { 0 }
-                }
+              value:
+                type: flowExpr
+                value: |
+                  dir = env.get("restrictDirection2", -1.0);
+                  if dir < 0.0 { 0 } else {
+                    pne = attributes.get("azimuth", 0.0);
+                    geo = (180.0 - pne + 360.0) % 360.0;
+                    diff = (geo - dir + 360.0) % 360.0;
+                    if diff > 180.0 { d = 360.0 - diff } else { d = diff };
+                    if d <= 11.25 { 1 } else { 0 }
+                  }
             - attribute: dirMatch3
               method: create
-              value: |
-                let dir = env.get("restrictDirection3") ?? -1.0;
-                if dir < 0.0 { 0 } else {
-                  let pne = env.get("__value")["azimuth"] ?? 0.0;
-                  let geo = (180.0 - pne + 360.0) % 360.0;
-                  let diff = (geo - dir + 360.0) % 360.0;
-                  let d = if diff > 180.0 { 360.0 - diff } else { diff };
-                  if d <= 11.25 { 1 } else { 0 }
-                }
+              value:
+                type: flowExpr
+                value: |
+                  dir = env.get("restrictDirection3", -1.0);
+                  if dir < 0.0 { 0 } else {
+                    pne = attributes.get("azimuth", 0.0);
+                    geo = (180.0 - pne + 360.0) % 360.0;
+                    diff = (geo - dir + 360.0) % 360.0;
+                    if diff > 180.0 { d = 360.0 - diff } else { d = diff };
+                    if d <= 11.25 { 1 } else { 0 }
+                  }
 
       # Route bldg:RoofSurface → building GridDivider; dem:Triangle → DEMGridDivider
       - id: 00000002-0000-0000-0000-00000000000b
@@ -1645,8 +1694,9 @@ graphs:
           operations:
             - attribute: _dem_grid_key
               method: create
-              value: |
-                to_string(env.get("__value")["_grid_col"] ?? 0) + "_" + to_string(env.get("__value")["_grid_row"] ?? 0)
+              value:
+                type: flowExpr
+                value: 'str(attributes.get("_grid_col", 0)) + "_" + str(attributes.get("_grid_row", 0))'
 
       # Merge DEM radiation from multiple triangle pieces covering the same 5m grid square
       - id: 00000002-0000-0000-0000-00000000000e
@@ -1688,8 +1738,9 @@ graphs:
           operations:
             - attribute: _dem_grid_key
               method: create
-              value: |
-                to_string(env.get("__value")["_grid_col"] ?? 0) + "_" + to_string(env.get("__value")["_grid_row"] ?? 0)
+              value:
+                type: flowExpr
+                value: 'str(attributes.get("_grid_col", 0)) + "_" + str(attributes.get("_grid_row", 0))'
 
       # After RadiationToColorMapper: route bldg → CellGeometryMerger.supplier, dem → DEMCellGeometryMerger.supplier
       - id: 00000002-0000-0000-0000-000000000011

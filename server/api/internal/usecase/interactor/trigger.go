@@ -140,10 +140,6 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 }
 
 func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
-		return nil, err
-	}
-
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -164,9 +160,15 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, fmt.Errorf("trigger is disabled")
 	}
 
+	// API-driven triggers use their own secret token as the auth mechanism.
+	// No workspace membership is required — the token is sufficient proof of authorization.
 	if trigger.EventSource() == "API_DRIVEN" {
 		if p.AuthenticationToken != *trigger.AuthToken() {
 			return nil, fmt.Errorf("invalid auth token")
+		}
+	} else {
+		if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+			return nil, err
 		}
 	}
 

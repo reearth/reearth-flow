@@ -46,7 +46,11 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["PLATEAU"]
+        &["Transform"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["xml", "validate"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -724,6 +728,7 @@ mod tests {
                 storage_resolver.clone(),
                 kv_store.clone(),
                 event_hub.clone(),
+                reearth_flow_common::uri::Uri::for_test("file:///"),
             );
 
             let mut with = HashMap::new();
@@ -776,6 +781,7 @@ mod tests {
                     storage_resolver,
                     kv_store,
                     EventHub::new(1024),
+                    reearth_flow_common::uri::Uri::for_test("file:///"),
                 );
                 let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
 

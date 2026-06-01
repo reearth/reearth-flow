@@ -6,11 +6,13 @@ import {
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { IconButton, LoadingSkeleton } from "@flow/components";
+import { Icon, IconButton, LoadingSkeleton } from "@flow/components";
 import { DataTable as Table } from "@flow/components/DataTable";
 import { ASSET_FETCH_RATE } from "@flow/lib/gql/assets/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Asset } from "@flow/types";
+
+import { getIconFileType } from "./utils";
 
 type Props = {
   assets?: Asset[];
@@ -53,6 +55,16 @@ const AssetsListView: React.FC<Props> = ({
     {
       accessorKey: "name",
       header: t("Name"),
+      cell: ({ row }) => {
+        const ext = row.original.fileName.split(".").pop()?.toLowerCase();
+        const icon = getIconFileType(ext);
+        return (
+          <div className="flex items-center gap-1.5">
+            {icon && <Icon icon={icon} size={25} className="opacity-50" />}
+            <strong>{row.original.name}</strong>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "createdAt",

@@ -10,6 +10,7 @@ use crossbeam::channel::Receiver;
 use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -83,6 +84,7 @@ pub struct ProcessorNode<F> {
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
+    sandbox_root: Uri,
     source_intermediate_recorder: SourceIntermediateRecorder,
     /// State for writing source intermediate data
     feature_state: Arc<State>,
@@ -134,6 +136,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
+        let sandbox_root = ctx.sandbox_root.clone();
         let num_threads = processor.num_threads();
 
         let source_intermediate_recorder =
@@ -163,6 +166,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
+            sandbox_root,
             source_intermediate_recorder,
             feature_state,
             incremental_mode,
@@ -219,6 +223,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 self.storage_resolver.clone(),
                 self.kv_store.clone(),
                 self.event_hub.clone(),
+                self.sandbox_root.clone(),
             ))
             .map_err(ExecutionError::Processor)?;
 
@@ -316,6 +321,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),
+                        self.sandbox_root.clone(),
                     ));
 
                     if terminate_result.is_err()
@@ -453,12 +459,19 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             None
         };
 
-        channel_manager.wait_until_downstream_empty(std::time::Duration::from_secs(300));
+        // Enable spill mode: if finish() emits more features than the bounded
+        // channel can hold, excess features are written to disk as JSONL files
+        // instead of blocking on send(). This prevents shutdown deadlocks where
+        // finish() blocks on a full channel that the downstream can't drain.
+        channel_manager.enable_spill_mode();
         channel_manager.reset_send_count();
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
+        // Flush any features that were spilled to disk during finish().
+        // These are sent as FileBackedOps which the downstream already handles.
+        channel_manager.flush_spill_files(&ctx.as_context());
         let finish_feature_count = channel_manager.get_send_count();
 
         drop(_accumulating_guard);

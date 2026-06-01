@@ -2,6 +2,118 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.17 - 2026-05-26
+
+### Web
+
+#### 🧪 Testing
+
+- Added e2e tests for editor canvas workflows ([#2106](https://github.com/reearth/reearth-flow/pull/2106)) [`fd6440`](https://github.com/reearth/reearth-flow/commit/fd6440)
+
+### Misc
+
+#### 
+
+- Update CODEOWNERS for UI and server ownership ([#2096](https://github.com/reearth/reearth-flow/pull/2096)) [`5dba25`](https://github.com/reearth/reearth-flow/commit/5dba25)
+
+### api
+
+#### 🔧 Bug Fixes
+
+- Finalize Cloud Run debug jobs via the monitoring loop ([#2107](https://github.com/reearth/reearth-flow/pull/2107)) [`8a4dc3`](https://github.com/reearth/reearth-flow/commit/8a4dc3)
+
+### engine
+
+#### 🚀 Features
+
+- Migrate Cesium3DTilesWriter and MVTWriter to FlowExpr ([#2087](https://github.com/reearth/reearth-flow/pull/2087)) [`ca3917`](https://github.com/reearth/reearth-flow/commit/ca3917)
+- Introducing the new expression language ([#2030](https://github.com/reearth/reearth-flow/pull/2030)) [`29a12e`](https://github.com/reearth/reearth-flow/commit/29a12e)
+
+#### ⚡️ Performance
+
+- Spill features to disk during finish() to prevent shutdown deadlocks ([#2049](https://github.com/reearth/reearth-flow/pull/2049)) [`59eae2`](https://github.com/reearth/reearth-flow/commit/59eae2)
+
+### engine&#x2F;sink
+
+#### ✨ Refactor
+
+- Introduce SinkOutput abstraction ([#2102](https://github.com/reearth/reearth-flow/pull/2102)) [`0958be`](https://github.com/reearth/reearth-flow/commit/0958be)
+
+### server,engine
+
+#### 🚀 Features
+
+- Debug runs via Cloud Run Service for fast cold start ([#2103](https://github.com/reearth/reearth-flow/pull/2103)) [`08f397`](https://github.com/reearth/reearth-flow/commit/08f397)
+
+### ui
+
+#### 🚀 Features
+
+- Add node spacing actions and update keyboard shortcuts [FLOW-DEV-135] ([#2105](https://github.com/reearth/reearth-flow/pull/2105)) [`1d984d`](https://github.com/reearth/reearth-flow/commit/1d984d)
+- Workflow Dialog Collaboration and Awareness [FLOW-DEV-131] ([#2097](https://github.com/reearth/reearth-flow/pull/2097)) [`24bfd1`](https://github.com/reearth/reearth-flow/commit/24bfd1)
+- Add user focused element handling in various components [FLOW-DEV-133] ([#2101](https://github.com/reearth/reearth-flow/pull/2101)) [`a81879`](https://github.com/reearth/reearth-flow/commit/a81879)
+- Action Params migrator for params editor [FLOW-DEV-127] ([#2091](https://github.com/reearth/reearth-flow/pull/2091)) [`5200c6`](https://github.com/reearth/reearth-flow/commit/5200c6)
+
+#### 🔧 Bug Fixes
+
+- Make grid view primary view for assets and add icons to asset list [FLOW-DEV-132] ([#2098](https://github.com/reearth/reearth-flow/pull/2098)) [`109655`](https://github.com/reearth/reearth-flow/commit/109655)
+
+#### 🧪 Testing
+
+- Add e2e tests for projects and import workflow ([#2100](https://github.com/reearth/reearth-flow/pull/2100)) [`c73a25`](https://github.com/reearth/reearth-flow/commit/c73a25)
+
+#### Miscellaneous Tasks
+
+- Remove deprecated dev:secure script [FLOW-DEV-136] ([#2099](https://github.com/reearth/reearth-flow/pull/2099)) [`d20b8b`](https://github.com/reearth/reearth-flow/commit/d20b8b)
+
+### 
+
+#### 
+
+- Update CODEOWNERS for UI and server ownership ([#2096](https://github.com/reearth/reearth-flow/pull/2096)) [`5dba25`](https://github.com/reearth/reearth-flow/commit/5dba25)
+
+## 0.1.0-alpha.16 - 2026-05-19
+
+### Misc
+
+#### 
+
+- Set up Playwright test framework ([#2084](https://github.com/reearth/reearth-flow/pull/2084)) [`ca0362`](https://github.com/reearth/reearth-flow/commit/ca0362)
+
+### job
+
+#### 🔧 Bug Fixes
+
+- Remove permission check from StartMonitoring method ([#2095](https://github.com/reearth/reearth-flow/pull/2095)) [`3938af`](https://github.com/reearth/reearth-flow/commit/3938af)
+
+### trigger
+
+#### 🔧 Bug Fixes
+
+- Adjust permission check for API-driven triggers ([#2094](https://github.com/reearth/reearth-flow/pull/2094)) [`a5fbf4`](https://github.com/reearth/reearth-flow/commit/a5fbf4)
+
+### ui
+
+#### 🚀 Features
+
+- Add new custom icons for asset file types [FLOW-DEV-99] ([#2088](https://github.com/reearth/reearth-flow/pull/2088)) [`30c820`](https://github.com/reearth/reearth-flow/commit/30c820)
+- Enhance action filters with multi-select capabilities and improve NodePickerDialog layout [FLOW-DEV-97] ([#2079](https://github.com/reearth/reearth-flow/pull/2079)) [`fc883d`](https://github.com/reearth/reearth-flow/commit/fc883d)
+
+#### 🔧 Bug Fixes
+
+- Ran prettier to fix CI error ([#2086](https://github.com/reearth/reearth-flow/pull/2086)) [`684f82`](https://github.com/reearth/reearth-flow/commit/684f82)
+
+#### Miscellaneous Tasks
+
+- Tanstack packages update ([#2093](https://github.com/reearth/reearth-flow/pull/2093)) [`5dffb0`](https://github.com/reearth/reearth-flow/commit/5dffb0)
+- Add secure development script for local environment [FLOW-DEV-126] ([#2080](https://github.com/reearth/reearth-flow/pull/2080)) [`c086d8`](https://github.com/reearth/reearth-flow/commit/c086d8)
+
+### 
+
+#### 
+
+- Set up Playwright test framework ([#2084](https://github.com/reearth/reearth-flow/pull/2084)) [`ca0362`](https://github.com/reearth/reearth-flow/commit/ca0362)
+
 ## 0.1.0-alpha.15 - 2026-05-13
 
 ### Misc

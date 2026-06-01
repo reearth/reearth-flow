@@ -1,3 +1,4 @@
+use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     event::EventHub,
@@ -17,6 +18,7 @@ pub(crate) fn create_default_execute_context(feature: Feature) -> ExecutorContex
         Arc::new(StorageResolver::new()),
         Arc::new(create_kv_store()),
         EventHub::new(30),
+        Uri::for_test("file:///"),
     )
 }
 
@@ -25,5 +27,11 @@ pub(crate) fn create_default_node_context() -> NodeContext {
     let storage_resolver = Arc::new(StorageResolver::new());
     let kv_store = Arc::new(create_kv_store());
     let event_hub = EventHub::new(1024);
-    NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub)
+    NodeContext::new(
+        expr_engine,
+        storage_resolver,
+        kv_store,
+        event_hub,
+        Uri::for_test("file:///"),
+    )
 }

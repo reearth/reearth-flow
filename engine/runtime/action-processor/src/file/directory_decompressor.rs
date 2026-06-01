@@ -34,6 +34,10 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
         &["File"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["file-system", "compression"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

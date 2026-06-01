@@ -316,16 +316,19 @@ graphs:
       operations:
       - attribute: meshcode
         method: create
-        value: |
-          let file = file::extract_filename(env.get("__value")["path"]);
-          file.split("_")[0]
+        value:
+          type: flowExpr
+          value: Url(attributes["path"]).name.split("_")[0]
       - attribute: gml_id
         method: create
-        value: |
-          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_gml_id") or attributes["gmlId"]
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes.get("featureType") or attributes["gmlName"]
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -362,10 +365,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
   - id: 1ad1a773-2954-4fbf-8556-8ad0079927ad
     name: FeatureSorter
     type: action
@@ -384,18 +391,15 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        file::join_path(env.get("workerArtifactPath"), env.get("__value")["package"] + "_lod" + env.get("__value")["lod"])
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let pkg = env.get("__value")["package"];
-        let lod = env.get("__value")["lod"];
-        let suffix = "_" + pkg;
-        if city_gml.ends_with(suffix) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-        }
-        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod" + lod + ".zip")
+      output:
+        type: flowExpr
+        value: |
+          Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod" + attributes["lod"])
+      compressOutput:
+        type: flowExpr
+        value: |
+          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+          Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod" + attributes["lod"] + ".zip")
   edges:
   - id: 25accc00-50d0-4fe9-a289-0e84ecaca659
     from: 29140f72-79e9-456b-9f38-7861c1c56299

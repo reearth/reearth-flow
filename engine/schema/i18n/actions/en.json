@@ -212,6 +212,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Operation": {
           "attribute": {
             "title": "Attribute name"
@@ -541,6 +545,12 @@
         "skipUnexposedAttributes": {
           "title": "Skip unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -1285,6 +1295,25 @@
         },
         "filePathAttribute": {
           "description": "Attribute name containing the file path to analyze for properties"
+        }
+      }
+    },
+    {
+      "name": "FlowExprTest",
+      "parameterI18n": {
+        "": {
+          "title": "FlowExprTestParam"
+        },
+        "mappings": {}
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
+        "Mapping": {
+          "attribute": {},
+          "value": {}
         }
       }
     },
@@ -2127,6 +2156,12 @@
         "skipUnexposedAttributes": {
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

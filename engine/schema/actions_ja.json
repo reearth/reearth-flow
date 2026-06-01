@@ -14,6 +14,10 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
       ]
     },
     {
@@ -76,6 +80,10 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "area",
+        "measurement"
       ]
     },
     {
@@ -159,7 +167,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "AttributeAggregator",
@@ -303,6 +312,9 @@
       ],
       "categories": [
         "Attribute"
+      ],
+      "tags": [
+        "aggregate"
       ]
     },
     {
@@ -342,7 +354,8 @@
       ],
       "categories": [
         "Attribute"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "AttributeConversionTable",
@@ -458,6 +471,9 @@
       ],
       "categories": [
         "Attribute"
+      ],
+      "tags": [
+        "mapping"
       ]
     },
     {
@@ -496,7 +512,8 @@
       ],
       "categories": [
         "Attribute"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "AttributeFilePathInfoExtractor",
@@ -536,7 +553,8 @@
       ],
       "categories": [
         "Attribute"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "AttributeFlattener",
@@ -574,6 +592,9 @@
       ],
       "categories": [
         "Attribute"
+      ],
+      "tags": [
+        "hierarchy"
       ]
     },
     {
@@ -598,8 +619,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           },
           "Method": {
             "type": "string",
@@ -634,7 +674,7 @@
                 "description": "操作に使用する値",
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   },
                   {
                     "type": "null"
@@ -654,7 +694,8 @@
       ],
       "categories": [
         "Attribute"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "AttributeMapper",
@@ -747,6 +788,9 @@
       ],
       "categories": [
         "Attribute"
+      ],
+      "tags": [
+        "mapping"
       ]
     },
     {
@@ -825,7 +869,8 @@
       ],
       "categories": [
         "Attribute"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "BoundaryExtractor",
@@ -858,7 +903,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "BoundsExtractor",
@@ -958,7 +1004,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "Bufferer",
@@ -1022,6 +1069,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "2d"
       ]
     },
     {
@@ -1158,7 +1208,8 @@
       ],
       "categories": [
         "Attribute"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "CSGBuilder",
@@ -1218,7 +1269,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "CSGEvaluator",
@@ -1260,7 +1312,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "CenterPointReplacer",
@@ -1320,7 +1373,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "Cesium3DTilesWriter",
@@ -1349,7 +1403,7 @@
             "description": "圧縮アーカイブ出力の出力先パス（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -1383,7 +1437,7 @@
             "description": "3D タイルを書き出すディレクトリパス",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -1405,8 +1459,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -1417,7 +1490,11 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "3d-tiles",
+        "3d"
       ]
     },
     {
@@ -1473,7 +1550,11 @@
         "default"
       ],
       "categories": [
-        "File"
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
       ]
     },
     {
@@ -1540,7 +1621,11 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
       ]
     },
     {
@@ -1560,6 +1645,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "2d"
       ]
     },
     {
@@ -1578,7 +1666,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "ConvexHullAccumulator",
@@ -1617,7 +1706,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "CoordinateExtractor",
@@ -1748,7 +1838,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "CsvReader",
@@ -1932,7 +2023,10 @@
         "default"
       ],
       "categories": [
-        "File"
+        "Input"
+      ],
+      "tags": [
+        "csv"
       ]
     },
     {
@@ -2061,7 +2155,10 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "csv"
       ]
     },
     {
@@ -2160,7 +2257,8 @@
       ],
       "categories": [
         "File"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "CzmlWriter",
@@ -2320,7 +2418,8 @@
       "outputPorts": [],
       "categories": [
         "File"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "DateTimeConverter",
@@ -2484,7 +2583,8 @@
       ],
       "categories": [
         "Attribute"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "DimensionFilter",
@@ -2501,7 +2601,11 @@
         "rejected"
       ],
       "categories": [
-        "Geometry"
+        "Filter"
+      ],
+      "tags": [
+        "2d",
+        "3d"
       ]
     },
     {
@@ -2547,6 +2651,10 @@
       ],
       "categories": [
         "File"
+      ],
+      "tags": [
+        "file-system",
+        "compression"
       ]
     },
     {
@@ -2636,7 +2744,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "EchoProcessor",
@@ -2652,7 +2761,8 @@
       ],
       "categories": [
         "Debug"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "EchoSink",
@@ -2666,7 +2776,8 @@
       "outputPorts": [],
       "categories": [
         "Debug"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "ElevationExtractor",
@@ -2706,6 +2817,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "3d"
       ]
     },
     {
@@ -2750,7 +2864,8 @@
       "outputPorts": [],
       "categories": [
         "File"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "Extruder",
@@ -2790,6 +2905,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "3d"
       ]
     },
     {
@@ -2838,7 +2956,8 @@
       ],
       "categories": [
         "Feature"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "FeatureCityGmlReader",
@@ -2897,7 +3016,11 @@
         "default"
       ],
       "categories": [
-        "Feature"
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
       ]
     },
     {
@@ -2952,8 +3075,9 @@
         "rejected"
       ],
       "categories": [
-        "Feature"
-      ]
+        "Debug"
+      ],
+      "tags": []
     },
     {
       "name": "FeatureCreator",
@@ -2990,8 +3114,9 @@
         "default"
       ],
       "categories": [
-        "Feature"
-      ]
+        "Input"
+      ],
+      "tags": []
     },
     {
       "name": "FeatureDuplicateFilter",
@@ -3007,7 +3132,8 @@
       ],
       "categories": [
         "Feature"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "FeatureFilePathExtractor",
@@ -3062,6 +3188,10 @@
       ],
       "categories": [
         "Feature"
+      ],
+      "tags": [
+        "file",
+        "path"
       ]
     },
     {
@@ -3128,8 +3258,9 @@
         "unfiltered"
       ],
       "categories": [
-        "Feature"
-      ]
+        "Filter"
+      ],
+      "tags": []
     },
     {
       "name": "FeatureJoiner",
@@ -3269,7 +3400,10 @@
         "unjoinedSupplier"
       ],
       "categories": [
-        "Feature"
+        "Merge"
+      ],
+      "tags": [
+        "join"
       ]
     },
     {
@@ -3313,7 +3447,11 @@
         "unfiltered"
       ],
       "categories": [
-        "Feature"
+        "Filter"
+      ],
+      "tags": [
+        "lod",
+        "citygml"
       ]
     },
     {
@@ -3395,8 +3533,9 @@
         "unmerged"
       ],
       "categories": [
-        "Feature"
-      ]
+        "Merge"
+      ],
+      "tags": []
     },
     {
       "name": "FeatureReader",
@@ -3554,7 +3693,8 @@
       ],
       "categories": [
         "Feature"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "FeatureSorter",
@@ -3607,7 +3747,10 @@
         "default"
       ],
       "categories": [
-        "Feature"
+        "Merge"
+      ],
+      "tags": [
+        "sort"
       ]
     },
     {
@@ -3661,8 +3804,9 @@
         "default"
       ],
       "categories": [
-        "Feature"
-      ]
+        "Transform"
+      ],
+      "tags": []
     },
     {
       "name": "FeatureTypeFilter",
@@ -3695,8 +3839,9 @@
         "unfiltered"
       ],
       "categories": [
-        "Feature"
-      ]
+        "Filter"
+      ],
+      "tags": []
     },
     {
       "name": "FeatureWriter",
@@ -3860,7 +4005,8 @@
       ],
       "categories": [
         "Feature"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "FilePathExtractor",
@@ -3903,7 +4049,10 @@
         "default"
       ],
       "categories": [
-        "File"
+        "Input"
+      ],
+      "tags": [
+        "file-system"
       ]
     },
     {
@@ -3935,7 +4084,81 @@
       ],
       "categories": [
         "File"
+      ],
+      "tags": [
+        "file-system"
       ]
+    },
+    {
+      "name": "FlowExprTest",
+      "type": "processor",
+      "description": "Flow式エンジンの実験的テストベッド",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FlowExprTestParam パラメータ",
+        "type": "object",
+        "required": [
+          "mappings"
+        ],
+        "properties": {
+          "mappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Mapping"
+            }
+          }
+        },
+        "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
+          "Mapping": {
+            "type": "object",
+            "required": [
+              "attribute",
+              "value"
+            ],
+            "properties": {
+              "attribute": {
+                "type": "string"
+              },
+              "value": {
+                "$ref": "#/definitions/Code"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": []
     },
     {
       "name": "FootprintReplacer",
@@ -3952,6 +4175,10 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
       ]
     },
     {
@@ -4001,7 +4228,10 @@
         "default"
       ],
       "categories": [
-        "File"
+        "Input"
+      ],
+      "tags": [
+        "geojson"
       ]
     },
     {
@@ -4051,7 +4281,10 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "geojson"
       ]
     },
     {
@@ -4170,8 +4403,10 @@
         "default"
       ],
       "categories": [
-        "File",
-        "Database"
+        "Input"
+      ],
+      "tags": [
+        "geopackage"
       ]
     },
     {
@@ -4239,8 +4474,10 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File",
-        "Database"
+        "Output"
+      ],
+      "tags": [
+        "geopackage"
       ]
     },
     {
@@ -4285,7 +4522,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "GeometryExtractor",
@@ -4325,7 +4563,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "GeometryFilter",
@@ -4401,7 +4640,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "GeometryPartExtractor",
@@ -4449,6 +4689,10 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "geometry",
+        "decompose"
       ]
     },
     {
@@ -4465,7 +4709,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "GeometryReplacer",
@@ -4505,7 +4750,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "GeometrySplitter",
@@ -4558,6 +4804,10 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "split",
+        "geometry"
       ]
     },
     {
@@ -4653,6 +4903,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "validate"
       ]
     },
     {
@@ -4672,7 +4925,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "GltfReader",
@@ -4740,7 +4994,8 @@
       "categories": [
         "File",
         "3D"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "GltfWriter",
@@ -4798,7 +5053,8 @@
       "outputPorts": [],
       "categories": [
         "File"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "GridDivider",
@@ -4854,6 +5110,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "2d"
       ]
     },
     {
@@ -6036,7 +6295,8 @@
       ],
       "categories": [
         "Web"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "HoleCounter",
@@ -6076,7 +6336,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "HoleExtractor",
@@ -6094,7 +6355,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "HorizontalReprojector",
@@ -6147,6 +6409,10 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "projection",
+        "2d"
       ]
     },
     {
@@ -6254,6 +6520,11 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "raster",
+        "image",
+        "texture"
       ]
     },
     {
@@ -6279,7 +6550,10 @@
         "default"
       ],
       "categories": [
-        "System"
+        "Filter"
+      ],
+      "tags": [
+        "routing"
       ]
     },
     {
@@ -6297,7 +6571,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "JSONFragmenter",
@@ -6432,7 +6707,8 @@
       ],
       "categories": [
         "Feature"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "JsonReader",
@@ -6481,7 +6757,10 @@
         "default"
       ],
       "categories": [
-        "File"
+        "Input"
+      ],
+      "tags": [
+        "json"
       ]
     },
     {
@@ -6529,7 +6808,10 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "json"
       ]
     },
     {
@@ -6583,7 +6865,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "ListConcatenator",
@@ -6645,7 +6928,8 @@
       ],
       "categories": [
         "Feature"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "ListExploder",
@@ -6683,7 +6967,10 @@
         "default"
       ],
       "categories": [
-        "Feature"
+        "Transform"
+      ],
+      "tags": [
+        "list"
       ]
     },
     {
@@ -6746,7 +7033,8 @@
       ],
       "categories": [
         "Feature"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "MVTWriter",
@@ -6777,7 +7065,7 @@
             "description": "出力タイルを圧縮するかを決定する式（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6799,7 +7087,7 @@
             "description": "MVT タイル内のレイヤー名",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -6822,7 +7110,7 @@
             "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -6844,8 +7132,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -6856,7 +7163,10 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "mvt"
       ]
     },
     {
@@ -7004,7 +7314,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "NoopProcessor",
@@ -7019,8 +7330,9 @@
         "default"
       ],
       "categories": [
-        "Noop"
-      ]
+        "Debug"
+      ],
+      "tags": []
     },
     {
       "name": "NoopSink",
@@ -7033,8 +7345,9 @@
       ],
       "outputPorts": [],
       "categories": [
-        "Noop"
-      ]
+        "Debug"
+      ],
+      "tags": []
     },
     {
       "name": "NullAttributeMapper",
@@ -7187,6 +7500,9 @@
       ],
       "categories": [
         "Attribute"
+      ],
+      "tags": [
+        "mapping"
       ]
     },
     {
@@ -7281,7 +7597,8 @@
       "categories": [
         "File",
         "3D"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "ObjWriter",
@@ -7347,7 +7664,8 @@
       "categories": [
         "File",
         "3D"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "Offsetter",
@@ -7397,7 +7715,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "OrientationExtractor",
@@ -7437,7 +7756,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "OutputRouter",
@@ -7462,7 +7782,10 @@
       ],
       "outputPorts": [],
       "categories": [
-        "System"
+        "Filter"
+      ],
+      "tags": [
+        "routing"
       ]
     },
     {
@@ -7479,7 +7802,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
@@ -7495,7 +7819,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.BuildingUsageAttributeValidator",
@@ -7525,7 +7850,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.DictionariesInitiator",
@@ -7542,7 +7868,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.DomainOfDefinitionValidator",
@@ -7559,7 +7886,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.MaxLodExtractor",
@@ -7575,7 +7903,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.TranXLinkChecker",
@@ -7591,7 +7920,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.UDXFolderExtractor",
@@ -7608,7 +7938,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.UnmatchedXlinkDetector",
@@ -7626,7 +7957,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU3.XMLAttributeExtractor",
@@ -7692,7 +8024,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.AttributeFlattener",
@@ -7720,7 +8053,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
@@ -7736,7 +8070,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.BuildingPartConnectivityChecker",
@@ -7805,7 +8140,8 @@
       "categories": [
         "Feature",
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
@@ -7840,7 +8176,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.CityCodeExtractor",
@@ -7888,7 +8225,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.CityGmlMeshBuilder",
@@ -7948,7 +8286,8 @@
       "categories": [
         "PLATEAU",
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
@@ -7966,7 +8305,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
@@ -8019,7 +8359,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
@@ -8060,7 +8401,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.FaceExtractor",
@@ -8100,7 +8442,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
@@ -8155,7 +8498,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.GmlNameCodeSpaceValidator",
@@ -8196,7 +8540,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.MaxLodExtractor",
@@ -8234,7 +8579,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.MissingAttributeDetector",
@@ -8272,7 +8618,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.ObjectListExtractor",
@@ -8306,7 +8653,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.SolarCityGmlAttributeInserter",
@@ -8418,7 +8766,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.SolarPositionCalculator",
@@ -8623,7 +8972,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
@@ -8661,7 +9011,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.TransportationXlinkDetector",
@@ -8695,7 +9046,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.UDXFolderExtractor",
@@ -8753,7 +9105,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.UnmatchedXlinkDetector",
@@ -8771,7 +9124,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PLATEAU4.UnsharedEdgeDetector",
@@ -8816,7 +9170,8 @@
       ],
       "categories": [
         "PLATEAU"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PlanarityFilter",
@@ -8886,7 +9241,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "PolygonNormalExtractor",
@@ -8902,6 +9258,10 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "normal",
+        "3d"
       ]
     },
     {
@@ -8972,7 +9332,8 @@
       "categories": [
         "Script",
         "Python"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "RayIntersector",
@@ -9164,6 +9525,11 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "ray",
+        "intersection",
+        "3d"
       ]
     },
     {
@@ -9181,6 +9547,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "3d"
       ]
     },
     {
@@ -9228,7 +9597,10 @@
         "default"
       ],
       "categories": [
-        "Feature"
+        "Transform"
+      ],
+      "tags": [
+        "scripting"
       ]
     },
     {
@@ -9395,7 +9767,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "ShapefileReader",
@@ -9464,7 +9837,10 @@
         "default"
       ],
       "categories": [
-        "File"
+        "Input"
+      ],
+      "tags": [
+        "shapefile"
       ]
     },
     {
@@ -9514,7 +9890,10 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "shapefile"
       ]
     },
     {
@@ -9557,7 +9936,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "SpatialFilter",
@@ -9698,8 +10078,9 @@
         "rejected"
       ],
       "categories": [
-        "Geometry"
-      ]
+        "Filter"
+      ],
+      "tags": []
     },
     {
       "name": "SqlReader",
@@ -9746,7 +10127,10 @@
         "default"
       ],
       "categories": [
-        "Feature"
+        "Input"
+      ],
+      "tags": [
+        "database"
       ]
     },
     {
@@ -9838,6 +10222,10 @@
       ],
       "categories": [
         "Attribute"
+      ],
+      "tags": [
+        "statistics",
+        "aggregate"
       ]
     },
     {
@@ -9928,7 +10316,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "ThreeDimensionForcer",
@@ -9974,6 +10363,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "3d"
       ]
     },
     {
@@ -9991,7 +10383,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "ThreeDimensionRotator",
@@ -10091,7 +10484,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "TwoDimensionForcer",
@@ -10107,6 +10501,9 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "2d"
       ]
     },
     {
@@ -10147,7 +10544,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "VertexRemover",
@@ -10164,7 +10562,8 @@
       ],
       "categories": [
         "Geometry"
-      ]
+      ],
+      "tags": []
     },
     {
       "name": "VerticalReprojector",
@@ -10207,6 +10606,10 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": [
+        "projection",
+        "3d"
       ]
     },
     {
@@ -10263,7 +10666,10 @@
         "default"
       ],
       "categories": [
-        "XML"
+        "Transform"
+      ],
+      "tags": [
+        "xml"
       ]
     },
     {
@@ -10320,7 +10726,11 @@
         "failed"
       ],
       "categories": [
-        "PLATEAU"
+        "Transform"
+      ],
+      "tags": [
+        "xml",
+        "validate"
       ]
     },
     {
@@ -10357,7 +10767,10 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "xml"
       ]
     },
     {
@@ -10394,7 +10807,11 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
+      ],
+      "tags": [
+        "file-system",
+        "compression"
       ]
     }
   ]

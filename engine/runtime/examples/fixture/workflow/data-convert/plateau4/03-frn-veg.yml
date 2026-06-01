@@ -326,8 +326,9 @@ graphs:
       operations:
       - attribute: feature_type_without_prefix
         method: create
-        value: |
-          env.get("__value")["featureType"].split(":")[1]
+        value:
+          type: flowExpr
+          value: attributes["featureType"].split(":")[1]
   - id: 69992005-2bdf-41f8-b298-59460b822bec
     name: AttributeDuplicateFilterDict
     type: action
@@ -374,16 +375,19 @@ graphs:
       operations:
       - attribute: meshcode
         method: create
-        value: |
-          let file = file::extract_filename(env.get("__value")["path"]);
-          file.split("_")[0]
+        value:
+          type: flowExpr
+          value: Url(attributes["path"]).name.split("_")[0]
       - attribute: gml_id
         method: create
-        value: |
-          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_gml_id") or attributes["gmlId"]
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes.get("featureType") or attributes["gmlName"]
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -466,10 +470,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
   - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
     name: Reprojector
     type: action
@@ -485,17 +493,16 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "frn_lod" + env.get("__value").lod)
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let lod = env.get("__value").lod;
-        let suffix = "_frn";
-        if city_gml.ends_with(suffix) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-        }
-        file::join_path(artifact, city_gml + "_frn_3dtiles_lod" + lod + ".zip")
+      output:
+        type: flowExpr
+        value: |
+          Url(env["workerArtifactPath"]) / ("frn_lod" + attributes["lod"])
+      compressOutput:
+        type: flowExpr
+        value: |
+          stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_frn");
+          lod = attributes["lod"];
+          Url(env["workerArtifactPath"]) / (stem + "_frn_3dtiles_lod" + lod + ".zip")
   - id: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
     name: AttributeManagerByDmGeometricAttributeFrn
     type: action
@@ -504,10 +511,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: lod
         method: remove
       - attribute: gmlId
@@ -526,7 +537,9 @@ graphs:
         method: remove
       - attribute: package
         method: rename
-        value: __package
+        value:
+          type: string
+          value: __package
       - attribute: extension
         method: remove
       - attribute: dirRoot
@@ -605,21 +618,20 @@ graphs:
     action: MVTWriter
     with:
       schemaKey: __citygml_feature_type
-      layerName: |
-        env.get("__value").feature_type.split(":")[1]
+      layerName:
+        type: flowExpr
+        value: attributes["feature_type"].split(":")[1]
       minZoom: 8
       maxZoom: 18
       extent: 65536
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "frn_dm_geometric_attributes")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let suffix = "_frn";
-        if city_gml.ends_with(suffix) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-        }
-        file::join_path(artifact, city_gml + "_frn_dm_geometric_attributes.zip")
+      output:
+        type: flowExpr
+        value: Url(env["workerArtifactPath"]) / "frn_dm_geometric_attributes"
+      compressOutput:
+        type: flowExpr
+        value: |
+          stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_frn");
+          Url(env["workerArtifactPath"]) / (stem + "_frn_dm_geometric_attributes.zip")
       colonToUnderscore: true
   - id: bd4ff879-8448-434d-9c47-ef85722b40cb
     name: LodSplitterWithDMVeg1
@@ -680,10 +692,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
   - id: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
     name: ReprojectorVeg1
     type: action
@@ -698,16 +714,19 @@ graphs:
       operations:
       - attribute: veg:height
         method: convert
-        value: |
-          env.get("__value")["veg:height"] * 1.0
+        value:
+          type: flowExpr
+          value: attributes["veg:height"] * 1.0
       - attribute: veg:trunkDiameter
         method: convert
-        value: |
-          env.get("__value")["veg:trunkDiameter"] * 1.0
+        value:
+          type: flowExpr
+          value: attributes["veg:trunkDiameter"] * 1.0
       - attribute: veg:crownDiameter
         method: convert
-        value: |
-          env.get("__value")["veg:crownDiameter"] * 1.0
+        value:
+          type: flowExpr
+          value: attributes["veg:crownDiameter"] * 1.0
   - id: b5222fc2-f67b-4e89-8b8a-029181748511
     name: Cesium3DTilesWriterVeg1
     type: action
@@ -717,17 +736,16 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_lod" + env.get("__value").lod)
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let lod = env.get("__value").lod;
-        let suffix = "_veg";
-        if city_gml.ends_with(suffix) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-        }
-        file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip")
+      output:
+        type: flowExpr
+        value: |
+          Url(env["workerArtifactPath"]) / ("veg_SolitaryVegetationObject_lod" + attributes["lod"])
+      compressOutput:
+        type: flowExpr
+        value: |
+          stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_veg");
+          lod = attributes["lod"];
+          Url(env["workerArtifactPath"]) / (stem + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip")
   - id: 591050d4-8284-4708-a3e3-0bcb99bbd83c
     name: AttributeManagerByDmGeometricAttributeVeg1
     type: action
@@ -736,10 +754,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: lod
         method: remove
       - attribute: gmlId
@@ -758,7 +780,9 @@ graphs:
         method: remove
       - attribute: package
         method: rename
-        value: __package
+        value:
+          type: string
+          value: __package
       - attribute: extension
         method: remove
       - attribute: dirRoot
@@ -855,21 +879,20 @@ graphs:
     action: MVTWriter
     with:
       schemaKey: __citygml_feature_type
-      layerName: |
-        env.get("__value").feature_type.split(":")[1]
+      layerName:
+        type: flowExpr
+        value: attributes["feature_type"].split(":")[1]
       minZoom: 8
       maxZoom: 18
       extent: 65536
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_dm_geometric_attributes")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let suffix = "_veg";
-        if city_gml.ends_with(suffix) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-        }
-        file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip")
+      output:
+        type: flowExpr
+        value: Url(env["workerArtifactPath"]) / "veg_SolitaryVegetationObject_dm_geometric_attributes"
+      compressOutput:
+        type: flowExpr
+        value: |
+          stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_veg");
+          Url(env["workerArtifactPath"]) / (stem + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip")
       colonToUnderscore: true
   - id: 2233fddd-fdc3-44a1-93e2-86805de13a3a
     name: LodSplitterWithDMVeg2
@@ -922,10 +945,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
   - id: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
     name: ReprojectorVeg2
     type: action
@@ -941,17 +968,16 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: true
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_lod" + env.get("__value").lod)
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let lod = env.get("__value").lod;
-        let suffix = "_veg";
-        if city_gml.ends_with(suffix) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-        }
-        file::join_path(artifact, city_gml + "_veg_PlantCover_3dtiles_lod" + lod + ".zip")
+      output:
+        type: flowExpr
+        value: |
+          Url(env["workerArtifactPath"]) / ("veg_PlantCover_lod" + attributes["lod"])
+      compressOutput:
+        type: flowExpr
+        value: |
+          stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_veg");
+          lod = attributes["lod"];
+          Url(env["workerArtifactPath"]) / (stem + "_veg_PlantCover_3dtiles_lod" + lod + ".zip")
   - id: aa9b681b-0cc1-4445-bff6-be41bb9c764f
     name: AttributeManagerByDmGeometricAttributeVeg2
     type: action
@@ -960,10 +986,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: lod
         method: remove
       - attribute: gmlId
@@ -982,7 +1012,9 @@ graphs:
         method: remove
       - attribute: package
         method: rename
-        value: __package
+        value:
+          type: string
+          value: __package
       - attribute: extension
         method: remove
       - attribute: dirRoot
@@ -1071,21 +1103,20 @@ graphs:
     action: MVTWriter
     with:
       schemaKey: __citygml_feature_type
-      layerName: |
-        env.get("__value").feature_type.split(":")[1]
+      layerName:
+        type: flowExpr
+        value: attributes["feature_type"].split(":")[1]
       minZoom: 8
       maxZoom: 18
       extent: 65536
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_dm_geometric_attributes")
-      compressOutput: |
-        let artifact = env.get("workerArtifactPath");
-        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
-        let suffix = "_veg";
-        if city_gml.ends_with(suffix) {
-          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
-        }
-        file::join_path(artifact, city_gml + "_veg_PlantCover_dm_geometric_attributes.zip")
+      output:
+        type: flowExpr
+        value: Url(env["workerArtifactPath"]) / "veg_PlantCover_dm_geometric_attributes"
+      compressOutput:
+        type: flowExpr
+        value: |
+          stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_veg");
+          Url(env["workerArtifactPath"]) / (stem + "_veg_PlantCover_dm_geometric_attributes.zip")
       colonToUnderscore: true
   edges:
   - id: 315405f0-0c40-41c7-989b-85ab55935795

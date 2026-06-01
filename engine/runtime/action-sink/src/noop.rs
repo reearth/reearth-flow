@@ -23,7 +23,7 @@ impl SinkFactory for NoopSinkFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Noop"]
+        &["Debug"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

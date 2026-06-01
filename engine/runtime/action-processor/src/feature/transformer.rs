@@ -33,7 +33,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Transform"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

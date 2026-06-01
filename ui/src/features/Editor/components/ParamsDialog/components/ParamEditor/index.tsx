@@ -4,7 +4,8 @@ import {
   PuzzlePieceIcon,
   QuestionIcon,
 } from "@phosphor-icons/react";
-import { memo, useState } from "react";
+import { RJSFSchema } from "@rjsf/utils";
+import { memo, useEffect, useState } from "react";
 
 import {
   SchemaForm,
@@ -27,6 +28,9 @@ import type { AwarenessUser, NodeData, NodeParams } from "@flow/types";
 
 import { extractDescriptions } from "../../utils/extractDescriptions";
 import { FieldContext } from "../../utils/fieldUtils";
+import { schemaKeysMatch } from "../../utils/schemaFingerprint";
+
+import SchemaMigrationView from "./SchemaMigrationView";
 
 type Props = {
   readonly?: boolean;
@@ -42,11 +46,18 @@ type Props = {
     nodeId: string,
     updatedParams: any,
     updatedCustomizations: any,
+    paramsSchema?: RJSFSchema,
   ) => Promise<void>;
+  onMigrate: (
+    nodeId: string,
+    newParams: NodeParams,
+    paramsSchema?: RJSFSchema,
+  ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
   onParamFieldFocus?: (fieldId: string | null) => void;
   onValueEditorOpen: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
+  onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
 };
 
 const ParamEditor: React.FC<Props> = ({
@@ -60,10 +71,12 @@ const ParamEditor: React.FC<Props> = ({
   onParamsUpdate,
   onCustomizationsUpdate,
   onUpdate,
+  onMigrate,
   onWorkflowRename,
   onParamFieldFocus,
   onValueEditorOpen,
   onPythonEditorOpen,
+  onFlowExprEditorOpen,
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
@@ -78,6 +91,16 @@ const ParamEditor: React.FC<Props> = ({
 
   // Generate UI schema from original schema (before patching) to preserve Expr detection
   const originalSchema = createdAction?.parameter;
+
+  const needsMigration =
+    !!createdAction?.parameter &&
+    !schemaKeysMatch(nodeMeta.paramsSchema, createdAction.parameter);
+
+  const [migrationComplete, setMigrationComplete] = useState(false);
+
+  useEffect(() => {
+    setMigrationComplete(false);
+  }, [nodeId]);
 
   const [isParamsValid, setIsParamsValid] = useState(true);
   const [isCustomizationsValid, setIsCustomizationsValid] = useState(true);
@@ -105,7 +128,12 @@ const ParamEditor: React.FC<Props> = ({
         nodeCustomizations?.customName || nodeMeta?.officialName,
       );
     }
-    onUpdate(nodeId, nodeParams, nodeCustomizations);
+    onUpdate(nodeId, nodeParams, nodeCustomizations, createdAction?.parameter);
+  };
+
+  const handleMigrate = (newParams: NodeParams) => {
+    setMigrationComplete(true);
+    onMigrate(nodeId, newParams, createdAction?.parameter);
   };
 
   const customizationDescriptions = extractDescriptions(
@@ -113,7 +141,7 @@ const ParamEditor: React.FC<Props> = ({
   );
 
   return (
-    <div className="flex h-[60vh] flex-col gap-4">
+    <div className="relative flex h-[60vh] flex-col gap-4">
       <Tabs
         onValueChange={setActiveTab}
         value={activeTab}
@@ -163,6 +191,7 @@ const ParamEditor: React.FC<Props> = ({
                   onValidationChange={handleParamsValidationChange}
                   onEditorOpen={onValueEditorOpen}
                   onPythonEditorOpen={onPythonEditorOpen}
+                  onFlowExprEditorOpen={onFlowExprEditorOpen}
                 />
               )}
             </div>
@@ -273,6 +302,24 @@ const ParamEditor: React.FC<Props> = ({
           </div>
         </TabsContent>
       </Tabs>
+
+      {needsMigration && !migrationComplete && (
+        <div className="absolute inset-0 z-10 rounded bg-background">
+          <SchemaMigrationView
+            readonly={readonly}
+            storedSchema={nodeMeta.paramsSchema}
+            storedParams={nodeMeta.params}
+            newSchema={originalSchema}
+            actionName={nodeMeta.officialName}
+            fieldFocusMap={fieldFocusMap}
+            onParamFieldFocus={onParamFieldFocus}
+            onMigrate={handleMigrate}
+            onValueEditorOpen={onValueEditorOpen}
+            onPythonEditorOpen={onPythonEditorOpen}
+            onFlowExprEditorOpen={onFlowExprEditorOpen}
+          />
+        </div>
+      )}
     </div>
   );
 };

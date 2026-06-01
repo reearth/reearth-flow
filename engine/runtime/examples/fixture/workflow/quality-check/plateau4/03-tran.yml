@@ -302,9 +302,11 @@ graphs:
       operations:
       - attribute: issue
         method: create
-        value: |
-          let vr = env.get("__value").validationResult;
-          vr.details[0][0]
+        value:
+          type: flowExpr
+          value: |
+            vr = attributes["validationResult"];
+            vr["details"][0][0]
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
     name: GeometryCoercerRingNotClosed
     type: action
@@ -407,8 +409,9 @@ graphs:
       operations:
       - attribute: issue
         method: create
-        value: |
-          "IntersectionBetweenInteriorAndInterior"
+        value:
+          type: string
+          value: IntersectionBetweenInteriorAndInterior
   - id: 6b5d8a3f-1c4e-4b7d-a9c2-5d6b8a3f1c4e
     name: OrientationExtractorIncorrectInterior
     type: action
@@ -442,8 +445,9 @@ graphs:
       operations:
       - attribute: issue
         method: create
-        value: |
-          "IncorrectInteriorOrientation"
+        value:
+          type: string
+          value: IncorrectInteriorOrientation
   - id: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
     name: InvalidSurfaceRouter
     type: action
@@ -704,8 +708,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "VALID"
+        value:
+          type: string
+          value: VALID
   - id: 9293ff92-7cde-422d-a157-011d54b23cf0
     name: AttributeManagerCreateNotWellFormed
     type: action
@@ -714,8 +719,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "NOT_WELL_FORMED"
+        value:
+          type: string
+          value: NOT_WELL_FORMED
   - id: 6c235d0b-26fb-47dd-a3df-709fa961855c
     name: AttributeManagerCreateInvalid
     type: action
@@ -724,8 +730,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "INVALID"
+        value:
+          type: string
+          value: INVALID
   - id: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
     name: SummaryRouter
     type: action
@@ -1034,20 +1041,24 @@ graphs:
       operations:
       - attribute: L01Errors
         method: create
-        value: |
-          if env.get("__value").status == "NOT_WELL_FORMED" {
-            env.get("__value").xmlError.len
-          } else {
-            0
-          }
+        value:
+          type: flowExpr
+          value: |
+            if attributes["status"] == "NOT_WELL_FORMED" {
+              len(attributes["xmlError"])
+            } else {
+              0
+            }
       - attribute: L02Errors
         method: create
-        value: |
-          if env.get("__value").status == "INVALID" {
-            env.get("__value").xmlError.len
-          } else {
-            0
-          }
+        value:
+          type: flowExpr
+          value: |
+            if attributes["status"] == "INVALID" {
+              len(attributes["xmlError"])
+            } else {
+              0
+            }
   - id: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
     name: AttributeMapperNotWellFormedXml
     type: action
@@ -1544,15 +1555,17 @@ graphs:
       operations:
       - attribute: totalErrorCount
         method: create
-        value: |
-          let total = 0;
-          for key in env.get("__value").keys() {
-            let val = env.get("__value")[key];
-            if val.type_of() == "i64" {
-              total += val;
+        value:
+          type: flowExpr
+          value: |
+            total = 0;
+            for key in attributes {
+              v = attributes[key];
+              if type(v) == "int" {
+                total += v;
+              }
             }
-          }
-          total
+            total
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
@@ -2043,20 +2056,22 @@ graphs:
       operations:
       - attribute: totalErrorCount
         method: create
-        value: |
-          let total = 0;
-          let data = env.get("__value")["dataFileData"];
-          if data != () {
-            for item in data {
-              if item.type_of() == "map" {
-                let count = item["count"];
-                if count != () && count.type_of() == "i64" {
-                  total += count;
+        value:
+          type: flowExpr
+          value: |
+            total = 0;
+            data = attributes.get("dataFileData");
+            if data != null {
+              for item in data {
+                if type(item) == "map" {
+                  count = item.get("count");
+                  if count != null and type(count) == "int" {
+                    total += count;
+                  }
                 }
               }
             }
-          }
-          total
+            total
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
     type: action

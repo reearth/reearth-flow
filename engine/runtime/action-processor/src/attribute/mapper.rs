@@ -36,6 +36,10 @@ impl ProcessorFactory for AttributeMapperFactory {
         &["Attribute"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["mapping"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

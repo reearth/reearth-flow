@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::io::{BufWriter, Cursor};
 use std::str::FromStr;
-use std::sync::Arc;
 use std::vec;
 
 use reearth_flow_common::uri::Uri;
@@ -34,7 +33,11 @@ impl SinkFactory for ZipFileWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["file-system", "compression"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -112,14 +115,12 @@ impl Sink for ZipFileWriter {
         if self.buffer.is_empty() {
             return Ok(());
         }
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.output.clone();
-        let scope = expr_engine.new_scope();
+        let scope = ctx.expr_engine.new_scope();
         let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
+            .eval::<String>(self.output.as_ref())
+            .unwrap_or_else(|_| self.output.as_ref().to_string());
+        let out = crate::SinkOutput::from_path(&ctx, &path)
+            .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
         dir::move_files_with_structure(&temp_dir_path, &self.buffer)?;
         let buffer = Vec::new();
@@ -127,15 +128,8 @@ impl Sink for ZipFileWriter {
         let writer = BufWriter::new(&mut cursor);
         zip::write(writer, temp_dir_path.as_path())
             .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
-        let storage = storage_resolver.resolve(&output).map_err(|e| {
-            crate::errors::SinkError::ZipFileWriter(format!(
-                "Failed to resolve storage for {output}: {e}"
-            ))
-        })?;
-        storage.put_sync(
-            output.path().as_path(),
-            bytes::Bytes::from(cursor.into_inner()),
-        )?;
+        out.write(bytes::Bytes::from(cursor.into_inner()))
+            .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         Ok(())
     }
 }
