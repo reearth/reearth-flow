@@ -25,6 +25,9 @@ export const FLOWEXPR_BUILTIN_FUNCTIONS = [
   "value",
   "env",
   "print",
+  "len",
+  "type",
+  "math",
 ];
 
 export const FLOWEXPR_OPERATORS = [
@@ -128,7 +131,7 @@ export const getFlowExprAutocompleteSuggestions = (
     description: t("Null value"),
   },
 
-  // Built-in functions
+  // Built-in global functions
   {
     label: "value",
     insertText: 'value("{{cursor}}")',
@@ -148,7 +151,7 @@ export const getFlowExprAutocompleteSuggestions = (
     insertText: "Url({{cursor}})",
     type: "function",
     description: t("Construct a URL/path value"),
-    detail: "Url(path) → Url",
+    detail: "Url(path: string) → Url",
   },
   {
     label: "str",
@@ -199,15 +202,22 @@ export const getFlowExprAutocompleteSuggestions = (
     description: t("Debug print (returns first argument)"),
     detail: "print(...) → any",
   },
-
-  // String methods
   {
     label: "len",
-    insertText: "len()",
+    insertText: "len({{cursor}})",
     type: "function",
-    description: t("String/array/map length"),
-    detail: "s.len() → int",
+    description: t("Length of a string, array, or map"),
+    detail: "len(value) → int",
   },
+  {
+    label: "type",
+    insertText: "type({{cursor}})",
+    type: "function",
+    description: t("Return the type name of a value"),
+    detail: "type(value) → string",
+  },
+
+  // String methods
   {
     label: "trim",
     insertText: "trim()",
@@ -280,35 +290,100 @@ export const getFlowExprAutocompleteSuggestions = (
     description: t("Map entries as [[key, value], …]"),
     detail: "m.items() → array",
   },
+  {
+    label: "get",
+    insertText: "get({{cursor}})",
+    type: "function",
+    description: t("Map value by key (null if absent)"),
+    detail: "m.get(key: string) → any",
+  },
 
-  // Url methods
+  // Url properties (accessed without parentheses)
   {
     label: "parent",
-    insertText: "parent()",
-    type: "function",
+    insertText: "parent",
+    type: "variable",
     description: t("Parent directory of URL path"),
-    detail: "url.parent() → Url",
+    detail: "url.parent → Url",
   },
   {
     label: "name",
-    insertText: "name()",
-    type: "function",
+    insertText: "name",
+    type: "variable",
     description: t("Final path component of URL"),
-    detail: "url.name() → string",
+    detail: "url.name → string",
   },
   {
-    label: "stem",
-    insertText: "stem()",
-    type: "function",
-    description: t("File name without extension"),
-    detail: "url.stem() → string",
-  },
-  {
-    label: "extension",
-    insertText: "extension()",
-    type: "function",
+    label: "suffix",
+    insertText: "suffix",
+    type: "variable",
     description: t("File extension of URL path"),
-    detail: "url.extension() → string",
+    detail: "url.suffix → string",
+  },
+
+  // Math module (access as math.function)
+  {
+    label: "sin",
+    insertText: "sin({{cursor}})",
+    type: "function",
+    description: t("Sine — math module"),
+    detail: "math.sin(x: float) → float",
+  },
+  {
+    label: "cos",
+    insertText: "cos({{cursor}})",
+    type: "function",
+    description: t("Cosine — math module"),
+    detail: "math.cos(x: float) → float",
+  },
+  {
+    label: "floor",
+    insertText: "floor({{cursor}})",
+    type: "function",
+    description: t("Floor — math module"),
+    detail: "math.floor(x: float) → float",
+  },
+  {
+    label: "round",
+    insertText: "round({{cursor}})",
+    type: "function",
+    description: t("Round away from zero — math module"),
+    detail: "math.round(x: float) → float",
+  },
+  {
+    label: "log",
+    insertText: "log({{cursor}})",
+    type: "function",
+    description: t("Natural log or log with base — math module"),
+    detail: "math.log(x: float[, base: float]) → float",
+  },
+  {
+    label: "log2",
+    insertText: "log2({{cursor}})",
+    type: "function",
+    description: t("Base-2 logarithm — math module"),
+    detail: "math.log2(x: float) → float",
+  },
+  {
+    label: "log10",
+    insertText: "log10({{cursor}})",
+    type: "function",
+    description: t("Base-10 logarithm — math module"),
+    detail: "math.log10(x: float) → float",
+  },
+  {
+    label: "radians",
+    insertText: "radians({{cursor}})",
+    type: "function",
+    description: t("Degrees to radians — math module"),
+    detail: "math.radians(deg: float) → float",
+  },
+  {
+    label: "pi",
+    insertText: "pi",
+    type: "variable",
+    description: t("π constant — math module"),
+    detail: "math.pi → float (≈ 3.14159)",
   },
 
   // Operators

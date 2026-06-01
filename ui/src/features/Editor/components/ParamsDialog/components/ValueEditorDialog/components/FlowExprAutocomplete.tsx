@@ -36,7 +36,8 @@ const FlowExprAutocomplete: React.FC<Props> = ({
       if (!index.has(firstChar)) index.set(firstChar, []);
       const bucket = index.get(firstChar);
       if (bucket) bucket.push(suggestion);
-      if (suggestion.type === "function") functions.push(suggestion);
+      if (suggestion.type === "function" || suggestion.type === "variable")
+        functions.push(suggestion);
     });
 
     return { indexedSuggestions: index, functionSuggestions: functions };
@@ -81,7 +82,7 @@ const FlowExprAutocomplete: React.FC<Props> = ({
         } else {
           const firstChar = matchWord.charAt(0);
           candidates = (indexedSuggestions.get(firstChar) || []).filter(
-            (s) => s.type === "function",
+            (s) => s.type === "function" || s.type === "variable",
           );
         }
       } else {
