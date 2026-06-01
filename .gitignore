@@ -5,3 +5,4 @@
 reearth-flow-websocket/
 reearth-flow-websocket-rs/
 target/
+.local-specs/
