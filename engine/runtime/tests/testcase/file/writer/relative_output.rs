@@ -14,7 +14,10 @@ fn absolute_output_fails_with_migration_hint() {
     // Fixture uses OLD Url(env["workerArtifactPath"]) / "x" pattern.
     // The new chokepoint rejects absolute URIs; the error must name
     // workerArtifactPath so customers can locate the migration from logs.
-    let err = execute_expect_err("file/writer/absolute_output_fails", vec!["test_geopackage.gpkg"]);
+    let err = execute_expect_err(
+        "file/writer/absolute_output_fails",
+        vec!["test_geopackage.gpkg"],
+    );
     assert!(
         err.contains("workerArtifactPath"),
         "error must name workerArtifactPath; got: {err}"

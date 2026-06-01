@@ -109,11 +109,8 @@ fn test_proximity_search_with_geojson() {
         Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
 
     // Run the workflow with sandbox_root = temp_dir so relative paths resolve there
-    let sandbox_root = Uri::from_str(&format!(
-        "file://{}/",
-        temp_dir.path().to_str().unwrap()
-    ))
-    .expect("sandbox_root URI must be valid");
+    let sandbox_root = Uri::from_str(&format!("file://{}/", temp_dir.path().to_str().unwrap()))
+        .expect("sandbox_root URI must be valid");
     Runner::run_with_sandbox_root(
         uuid::Uuid::new_v4(),
         workflow,

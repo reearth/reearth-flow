@@ -86,10 +86,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         .merge_with(HashMap::from([
             ("outputFilePath".to_string(), "result.json".to_string()),
             ("outputDir".to_string(), folder_str.to_string()),
-            (
-                "joinedOutputPath".to_string(),
-                "joined.json".to_string(),
-            ),
+            ("joinedOutputPath".to_string(), "joined.json".to_string()),
             (
                 "unjoinedRequestorOutputPath".to_string(),
                 "unjoined_requestor.json".to_string(),
@@ -158,10 +155,7 @@ pub(crate) fn execute_expect_err(test_id: &str, fixture_files: Vec<&str>) -> Str
         .merge_with(HashMap::from([
             ("outputFilePath".to_string(), "result.json".to_string()),
             ("outputDir".to_string(), folder_str.to_string()),
-            (
-                "joinedOutputPath".to_string(),
-                "joined.json".to_string(),
-            ),
+            ("joinedOutputPath".to_string(), "joined.json".to_string()),
             (
                 "unjoinedRequestorOutputPath".to_string(),
                 "unjoined_requestor.json".to_string(),
@@ -186,7 +180,9 @@ pub(crate) fn execute_expect_err(test_id: &str, fixture_files: Vec<&str>) -> Str
     );
     match result {
         Err(e) => format!("{e:?}"),
-        Ok(()) => panic!("execute_expect_err: workflow '{test_id}' succeeded but was expected to fail"),
+        Ok(()) => {
+            panic!("execute_expect_err: workflow '{test_id}' succeeded but was expected to fail")
+        }
     }
 }
 
