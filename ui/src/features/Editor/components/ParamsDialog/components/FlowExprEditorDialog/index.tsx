@@ -107,12 +107,9 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   const handleVariableSelect = useCallback(
     (variableName: string) => {
-      // FlowExpr uses env("VAR") — Rhai uses env.get("VAR")
-      const snippet =
-        codeType === "flowExpr" ? `env("${variableName}")` : variableName;
-      insertAtCursor(snippet);
+      insertAtCursor(`env["${variableName}"]`);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleSubmit = useCallback(() => {
@@ -225,7 +222,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 className="size-full"
                 value={codeValue}
                 onChange={setCodeValue}
-                placeholder={t('e.g. Url(env("BASE_DIR")) / value("filename")')}
+                placeholder={t('e.g. Url(env.get("BASE_DIR")) / "filename"')}
               />
             </TabsContent>
             <TabsContent
@@ -245,7 +242,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
               {codeType === "flowExpr" ? (
                 <span>
                   {t(
-                    'TEMP: FlowExpr: use value("attr"), env("VAR"), Url(...), math::sqrt(...). Expressions are still in early stages and may change without deprecation. Avoid using complex expressions until the API is stabilized.',
+                    'FlowExpr: env["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
                   )}
                 </span>
               ) : (
