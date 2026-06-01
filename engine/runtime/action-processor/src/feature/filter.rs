@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{AttributeValue, Code, CompiledCode};
+use reearth_flow_types::{Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -142,8 +142,8 @@ impl Processor for FeatureFilter {
         let feature = &ctx.feature;
         let mut routing = false;
         for condition in &self.conditions {
-            match condition.expr.eval(feature, Arc::clone(&env_vars)) {
-                Ok(AttributeValue::Bool(true)) => {
+            match condition.expr.eval_bool(feature, Arc::clone(&env_vars)) {
+                Ok(true) => {
                     fw.send(
                         ctx.new_with_feature_and_port(
                             feature.clone(),
@@ -152,7 +152,7 @@ impl Processor for FeatureFilter {
                     );
                     routing = true;
                 }
-                Ok(_) => {}
+                Ok(false) => {}
                 Err(err) => {
                     ctx.event_hub.error_log(
                         Some(ctx.error_span()),

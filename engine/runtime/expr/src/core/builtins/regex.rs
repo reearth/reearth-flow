@@ -27,14 +27,14 @@ impl ImmutableObject for RegexObject {
                 };
                 Ok(regex_find(&self.regex, s))
             }
-            "findall" => {
+            "find_all" => {
                 unpack_args!(args => s);
                 let Value::String(s) = s else {
                     return Err(InnerError::new(
-                        "Regex.findall() requires a string argument",
+                        "Regex.find_all() requires a string argument",
                     ));
                 };
-                Ok(Value::array(regex_findall(&self.regex, s)))
+                Ok(Value::array(regex_find_all(&self.regex, s)))
             }
             m => Err(InnerError::new(format!("Regex has no method '{m}'"))),
         }
@@ -49,18 +49,27 @@ impl ImmutableObject for RegexObject {
     }
 }
 
+// follow Python re.findall element type convention
 fn capture_to_value(cap: &regex::Captures, num_groups: usize) -> Value {
     if num_groups == 1 {
-        Value::String(cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string())
+        cap.get(1)
+            .map(|m| Value::String(m.as_str().to_string()))
+            .unwrap_or(Value::Null)
     } else {
         Value::array(
             (1..=num_groups)
-                .map(|i| Value::String(cap.get(i).map(|m| m.as_str()).unwrap_or("").to_string()))
+                .map(|i| {
+                    cap.get(i)
+                        .map(|m| Value::String(m.as_str().to_string()))
+                        .unwrap_or(Value::Null)
+                })
                 .collect(),
         )
     }
 }
 
+// note that `if Regex(".*").find("1")` does not match, although constructing patterns that match empty string is considered bad practice
+// Still, for dynamic/user input pattern, it is safer to test with `== null`
 fn regex_find(regex: &Regex, s: &str) -> Value {
     let num_groups = regex.captures_len() - 1;
     if num_groups == 0 {
@@ -76,7 +85,7 @@ fn regex_find(regex: &Regex, s: &str) -> Value {
     }
 }
 
-fn regex_findall(regex: &Regex, s: &str) -> Vec<Value> {
+fn regex_find_all(regex: &Regex, s: &str) -> Vec<Value> {
     let num_groups = regex.captures_len() - 1;
     if num_groups == 0 {
         regex
@@ -107,6 +116,8 @@ pub fn builtin_regex(args: &[Value]) -> InnerResult<Value> {
             )))
         }
     };
+    // FlowExpr is general-purpose. Do not do implicit caching for Regex patterns here.
+    // Compile-time constant folding might be a proper future solution, but currently it is overkill.
     let regex = Regex::new(&pattern).map_err(|e| InnerError::new(format!("invalid regex: {e}")))?;
     Ok(Value::object(RegexObject { pattern, regex }))
 }
@@ -133,24 +144,48 @@ mod tests {
     }
 
     #[test]
-    fn test_regex_findall() {
+    fn test_regex_optional_group_null() {
+        // single optional group that did not participate → Null, not ""
+        assert_val(&run(r#"Regex(r"a(b)?c").find("ac")"#, &[]), &Value::Null);
+        // single optional group that did participate → String
         assert_val(
-            &run(r#"Regex(r"\d+").findall("abc 123 def 456")"#, &[]),
+            &run(r#"Regex(r"a(b)?c").find("abc")"#, &[]),
+            &Value::from("b"),
+        );
+        // multi-group: second optional group absent → Null in that slot
+        assert_val(
+            &run(r#"Regex(r"(\d+)(x)?").find("123")"#, &[]),
+            &Value::array(vec![Value::from("123"), Value::Null]),
+        );
+        // find_all: optional group absent → Null per match
+        assert_val(
+            &run(r#"Regex(r"(\d+)(x)?").find_all("123 456x")"#, &[]),
+            &Value::array(vec![
+                Value::array(vec![Value::from("123"), Value::Null]),
+                Value::array(vec![Value::from("456"), Value::from("x")]),
+            ]),
+        );
+    }
+
+    #[test]
+    fn test_regex_find_all() {
+        assert_val(
+            &run(r#"Regex(r"\d+").find_all("abc 123 def 456")"#, &[]),
             &Value::array(vec![Value::from("123"), Value::from("456")]),
         );
         assert_val(
-            &run(r#"Regex(r"(\d+)").findall("abc 123 def 456")"#, &[]),
+            &run(r#"Regex(r"(\d+)").find_all("abc 123 def 456")"#, &[]),
             &Value::array(vec![Value::from("123"), Value::from("456")]),
         );
         assert_val(
-            &run(r#"Regex(r"(\w+)@(\w+)").findall("a@b x@y")"#, &[]),
+            &run(r#"Regex(r"(\w+)@(\w+)").find_all("a@b x@y")"#, &[]),
             &Value::array(vec![
                 Value::array(vec![Value::from("a"), Value::from("b")]),
                 Value::array(vec![Value::from("x"), Value::from("y")]),
             ]),
         );
         assert_val(
-            &run(r#"Regex(r"\d+").findall("no digits here")"#, &[]),
+            &run(r#"Regex(r"\d+").find_all("no digits here")"#, &[]),
             &Value::array(vec![]),
         );
     }

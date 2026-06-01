@@ -5,7 +5,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_expr::{
-    compile, eval, eval_string, Error as ExprError, InnerError, InnerResult, Value as ExprValue,
+    bool_cast, compile, eval, str_cast, Error as ExprError, InnerError, InnerResult,
+    Value as ExprValue,
 };
 
 use crate::attribute::{Attribute, AttributeValue};
@@ -80,13 +81,27 @@ impl CompiledCode {
         attribute_value_from_eval(v)
     }
 
+    pub fn eval_bool(
+        &self,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> reearth_flow_expr::Result<bool> {
+        match self {
+            CompiledCode::Expr(e) => {
+                eval(e, &mut env_from_feature(feature, env_vars)).map(bool_cast)
+            }
+            CompiledCode::Literal(s) => Ok(!s.is_empty()),
+        }
+    }
+
     pub fn eval_string(
         &self,
         feature: &Feature,
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval_string(e, &mut env_from_feature(feature, env_vars)),
+            CompiledCode::Expr(e) => eval(e, &mut env_from_feature(feature, env_vars))
+                .and_then(|v| str_cast(v).map_err(|e| ExprError::EvalString { msg: e.msg })),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
     }

@@ -971,7 +971,11 @@ fn is_truthy(v: &Value) -> bool {
     }
 }
 
-pub(crate) fn str_cast(v: Value) -> InnerResult<String> {
+pub fn bool_cast(v: Value) -> bool {
+    is_truthy(&v)
+}
+
+pub fn str_cast(v: Value) -> InnerResult<String> {
     match builtin_str(std::slice::from_ref(&v))? {
         Value::String(s) => Ok(s),
         _ => unreachable!(),
