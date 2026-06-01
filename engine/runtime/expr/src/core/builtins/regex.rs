@@ -68,7 +68,7 @@ fn capture_to_value(cap: &regex::Captures, num_groups: usize) -> Value {
     }
 }
 
-// note that `if Regex(".*").find("1")` does not match, although constructing patterns that match empty string is considered bad practice
+// note that `if Regex(".*").find("1")` is falsy even though constructing patterns that match empty string is considered bad practice
 // Still, for dynamic/user input pattern, it is safer to test with `== null`
 fn regex_find(regex: &Regex, s: &str) -> Value {
     let num_groups = regex.captures_len() - 1;
