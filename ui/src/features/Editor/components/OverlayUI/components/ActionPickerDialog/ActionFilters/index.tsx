@@ -1,8 +1,12 @@
-import { Collapsible } from "@radix-ui/react-collapsible";
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 
-import { CollapsibleContent, CollapsibleTrigger } from "@flow/components";
+import {
+  Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@flow/components";
 import { badgeVariants } from "@flow/components/Badge";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
@@ -180,74 +184,13 @@ const ActionFilters = ({
           })}
         </CollapsibleContent>
       </Collapsible>
-      {/* <div className="flex flex-wrap gap-1.5 border-b pb-2">
-        {actionCategories.map(({ value, label }) => {
-          const isSelected = currentCategories.includes(value);
-          return (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={isSelected}
-              className={cn(
-                badgeVariants({
-                  variant: isSelected ? "default" : "secondary",
-                }),
-                "cursor-pointer select-none",
-              )}
-              onClick={() => onCategoryToggle(value)}
-              onKeyDown={handleRowArrows}>
-              {label}
-            </button>
-          );
-        })}
-      </div> */}
-      {/* <div className="border-b pb-2">
-        <button
-          type="button"
-          className=""
-          onClick={() => setTagsOpen((o) => !o)}>
-          <span>
-            {t("Tags")}
-            {currentTags.length > 0 && (
-              <span className="ml-1 font-medium text-foreground">
-                ({currentTags.length})
-              </span>
-            )}
-          </span>
-          {tagsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-        </button>
-        {tagsOpen && (
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {actionTags.map(({ value, label }) => {
-              const isSelected = currentTags.includes(value);
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={isSelected}
-                  className={cn(
-                    badgeVariants({
-                      variant: isSelected ? "default" : "secondary",
-                    }),
-                    "cursor-pointer select-none",
-                  )}
-                  onClick={() => onTagToggle(value)}
-                  onKeyDown={handleRowArrows}>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div> */}
-      {hasActiveFilters && (
-        <button
-          type="button"
-          className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline focus:underline focus:outline-none"
-          onClick={onClearFilters}>
-          {t("Clear filters")}
-        </button>
-      )}
+      <Button
+        disabled={!hasActiveFilters}
+        variant="link"
+        className="ml-1 self-start p-0 text-xs text-muted-foreground"
+        onClick={onClearFilters}>
+        {t("Clear filters")}
+      </Button>
     </div>
   );
 };

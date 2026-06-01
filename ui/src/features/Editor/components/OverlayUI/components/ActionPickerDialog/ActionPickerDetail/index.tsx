@@ -61,11 +61,11 @@ const ActionPickerDetail = ({ action }: Props) => {
             {t("Tags")}
           </p>
           <div className="flex gap-1">
-            {action.tags.map((t) => (
+            {action.tags.map((tag) => (
               <div
-                key={t}
+                key={tag}
                 className="w-fit rounded border bg-secondary/80 p-0.5">
-                <p className="self-center text-xs ">{t}</p>
+                <p className="self-center text-xs ">{tag}</p>
               </div>
             ))}
           </div>

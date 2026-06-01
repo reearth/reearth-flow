@@ -132,6 +132,11 @@ const ActionPickerDialog: React.FC<Props> = ({
                 />
               );
             })}
+            {actionsList?.length === 0 && (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {t("No actions found")}
+              </div>
+            )}
           </div>
           {/* Right panel — detail */}
           <div className="min-w-0 flex-1 overflow-y-auto">

@@ -11,7 +11,7 @@ import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 type CategoryFiltering = string;
-type TagsFiltering = string;
+type TagFiltering = string;
 export default ({
   openedActionType,
   isMainWorkflow,
@@ -46,7 +46,7 @@ export default ({
   const [currentCategories, setCurrentCategories] = useState<
     CategoryFiltering[]
   >([]);
-  const [currentTags, setCurrentTags] = useState<TagsFiltering[]>([]);
+  const [currentTags, setCurrentTags] = useState<TagFiltering[]>([]);
 
   const actionTypes: { value: ActionNodeType; label: string }[] = [
     { value: "reader", label: t("Reader") },
@@ -73,7 +73,7 @@ export default ({
     { value: "Web", label: t("Web") },
   ];
 
-  const actionTags: { value: TagsFiltering; label: string }[] = [
+  const actionTags: { value: TagFiltering; label: string }[] = [
     { value: "2d", label: t("2D") },
     { value: "3d", label: t("3D") },
     { value: "3d-tiles", label: t("3D Tiles") },
@@ -336,7 +336,7 @@ export default ({
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const handleTagToggle = useCallback((tag: TagsFiltering) => {
+  const handleTagToggle = useCallback((tag: TagFiltering) => {
     setCurrentTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
