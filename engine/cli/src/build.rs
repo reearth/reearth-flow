@@ -1,8 +1,9 @@
 use std::{collections::HashMap, io};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use reearth_flow_runtime::schema_infer::{self, Severity};
+use reearth_flow_runtime::schema_infer::{self, InferResult, Severity};
 use reearth_flow_runtime::{dag_schemas::DagSchemas, node::SYSTEM_ACTION_FACTORY_MAPPINGS};
+use reearth_flow_types::attr_schema::Presence;
 use reearth_flow_types::Workflow;
 use tracing::debug;
 
@@ -18,6 +19,7 @@ pub fn build_build_command() -> Command {
         .long_about("Statically validate a workflow's attribute schemas (no execution).")
         .arg(build_cli_arg())
         .arg(vars_arg())
+        .arg(show_schema_arg())
 }
 
 fn build_cli_arg() -> Arg {
@@ -38,10 +40,19 @@ fn vars_arg() -> Arg {
         .display_order(2)
 }
 
+fn show_schema_arg() -> Arg {
+    Arg::new("show-schema")
+        .long("show-schema")
+        .action(ArgAction::SetTrue)
+        .help("Print the inferred attribute schema per node to stdout.")
+        .display_order(3)
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct BuildCliCommand {
     workflow_path: String,
     vars: HashMap<String, String>,
+    show_schema: bool,
 }
 
 impl BuildCliCommand {
@@ -64,9 +75,11 @@ impl BuildCliCommand {
         } else {
             HashMap::<String, String>::new()
         };
+        let show_schema = matches.get_flag("show-schema");
         Ok(BuildCliCommand {
             workflow_path,
             vars,
+            show_schema,
         })
     }
 
@@ -121,6 +134,10 @@ impl BuildCliCommand {
         let result = schema_infer::infer_and_validate(&dag)
             .map_err(|e| crate::errors::Error::run(e.to_string()))?;
 
+        if self.show_schema {
+            print_node_schemas(&result);
+        }
+
         let mut error_count = 0usize;
         let mut warning_count = 0usize;
         for diagnostic in &result.diagnostics {
@@ -151,6 +168,37 @@ impl BuildCliCommand {
     }
 }
 
+/// Print the statically-inferred per-node attribute schemas to stdout in a
+/// stable, greppable form. Node ids and port names are sorted for determinism;
+/// fields keep their IndexMap insertion order.
+fn print_node_schemas(result: &InferResult) {
+    let mut node_ids: Vec<&String> = result.node_outputs.keys().collect();
+    node_ids.sort();
+    for node_id in node_ids {
+        let ports = &result.node_outputs[node_id];
+        if ports.is_empty() {
+            println!("node {node_id}: (no output schema)");
+            continue;
+        }
+        println!("node {node_id}:");
+        let mut port_names: Vec<&String> = ports.keys().collect();
+        port_names.sort();
+        for port_name in port_names {
+            let schema = &ports[port_name];
+            let open = if schema.open { " (open)" } else { "" };
+            println!("  port {port_name}{open}:");
+            for (attr, field) in &schema.fields {
+                let maybe = if field.presence == Presence::Maybe {
+                    " ?"
+                } else {
+                    ""
+                };
+                println!("    {attr}: {:?}{maybe}", field.ty);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,6 +217,7 @@ mod tests {
         let cmd = BuildCliCommand {
             workflow_path: fixture_path("valid.yml"),
             vars: HashMap::new(),
+            show_schema: false,
         };
         assert!(
             cmd.execute().is_ok(),
@@ -188,6 +237,7 @@ mod tests {
         let cmd = BuildCliCommand {
             workflow_path: fixture_path("invalid.yml"),
             vars: HashMap::new(),
+            show_schema: false,
         };
         assert!(
             cmd.execute().is_ok(),
@@ -214,10 +264,36 @@ mod tests {
         let cmd = BuildCliCommand {
             workflow_path,
             vars: HashMap::new(),
+            show_schema: false,
         };
         assert!(
             cmd.execute().is_ok(),
             "real PLATEAU quality-check workflow should load, expand includes, and validate cleanly"
+        );
+    }
+
+    #[test]
+    fn build_plateau_with_show_schema_succeeds() {
+        // Same real PLATEAU bldg quality-check workflow as the e2e test above,
+        // but with `--show-schema` enabled. We can't easily assert on stdout from
+        // inside `execute()`, so this just proves the schema-dump path doesn't
+        // panic or regress on the full subgraph-expanded DAG and still exits Ok.
+        let workflow_path = format!(
+            "{}/../worker/workflow/cms/plateau4/quality-check/bldg/template/workflow.yml",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        assert!(
+            std::path::Path::new(&workflow_path).exists(),
+            "PLATEAU quality-check workflow fixture should exist at {workflow_path}"
+        );
+        let cmd = BuildCliCommand {
+            workflow_path,
+            vars: HashMap::new(),
+            show_schema: true,
+        };
+        assert!(
+            cmd.execute().is_ok(),
+            "PLATEAU quality-check workflow should validate cleanly with --show-schema"
         );
     }
 }
