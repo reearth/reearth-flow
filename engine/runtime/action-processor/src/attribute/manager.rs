@@ -72,6 +72,75 @@ impl ProcessorFactory for AttributeManagerFactory {
         let process = AttributeManager { operations };
         Ok(Box::new(process))
     }
+
+    fn infer_output_schema(
+        &self,
+        inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+        use reearth_flow_types::Attribute;
+
+        let params = parse_params(with)?;
+
+        let mut out = inputs
+            .get(&DEFAULT_PORT.clone())
+            .cloned()
+            .unwrap_or_else(AttrSchema::open);
+
+        for op in &params.operations {
+            let attr = Attribute::new(op.attribute.clone());
+            match op.method {
+                // Create/Convert both set the attribute to an expression-derived value,
+                // whose type we can't analyze statically -> Unknown, Always present.
+                Method::Create | Method::Convert => {
+                    out.insert(attr, AttrField::always(AttrType::Unknown));
+                }
+                // Rename's destination name is an expression -> not statically knowable.
+                // Drop the source key and mark the schema open (an unknown-named attr appears).
+                Method::Rename => {
+                    out.fields.shift_remove(&attr);
+                    out.open = true;
+                }
+                Method::Remove => {
+                    out.fields.shift_remove(&attr);
+                }
+            }
+        }
+
+        Some(HashMap::from([(DEFAULT_PORT.clone(), out)]))
+    }
+
+    fn referenced_input_attributes(
+        &self,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
+        use reearth_flow_types::attr_schema::AttrRef;
+        use reearth_flow_types::Attribute;
+
+        let Some(params) = parse_params(with) else {
+            return Vec::new();
+        };
+
+        params
+            .operations
+            .iter()
+            .filter(|op| matches!(op.method, Method::Convert | Method::Rename))
+            .map(|op| AttrRef {
+                name: Attribute::new(op.attribute.clone()),
+                port: DEFAULT_PORT.to_string(),
+            })
+            .collect()
+    }
+}
+
+/// Deserialize the `AttributeManagerParam` from the node's `with` params,
+/// mirroring the deserialization done in `build`. Returns `None` when `with`
+/// is absent or the params don't deserialize (inference not possible).
+fn parse_params(with: &Option<HashMap<String, Value>>) -> Option<AttributeManagerParam> {
+    let with = with.as_ref()?;
+    let value = serde_json::to_value(with).ok()?;
+    serde_json::from_value::<AttributeManagerParam>(value).ok()
 }
 
 #[derive(Debug, Clone)]
@@ -270,4 +339,124 @@ fn convert_single_operation(operations: &[Operation]) -> super::errors::Result<V
         result.push(value);
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+    use reearth_flow_types::Attribute;
+    use serde_json::json;
+
+    fn with_from(value: Value) -> Option<HashMap<String, Value>> {
+        Some(serde_json::from_value(value).unwrap())
+    }
+
+    #[test]
+    fn infer_create_adds_unknown_attribute() {
+        let with = with_from(json!({
+            "operations": [
+                { "attribute": "foo", "method": "create", "value": null }
+            ]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("bar".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input);
+
+        let out = AttributeManagerFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+
+        assert_eq!(
+            schema.fields.get(&Attribute::new("bar".to_string())),
+            Some(&AttrField::always(AttrType::String))
+        );
+        assert_eq!(
+            schema.fields.get(&Attribute::new("foo".to_string())),
+            Some(&AttrField::always(AttrType::Unknown))
+        );
+    }
+
+    #[test]
+    fn infer_remove_drops_attribute() {
+        let with = with_from(json!({
+            "operations": [
+                { "attribute": "a", "method": "remove", "value": null }
+            ]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("a".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        input.insert(
+            Attribute::new("b".to_string()),
+            AttrField::always(AttrType::Number),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input);
+
+        let out = AttributeManagerFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+
+        assert!(!schema.fields.contains_key(&Attribute::new("a".to_string())));
+        assert_eq!(
+            schema.fields.get(&Attribute::new("b".to_string())),
+            Some(&AttrField::always(AttrType::Number))
+        );
+    }
+
+    #[test]
+    fn infer_rename_sets_open_and_drops_source() {
+        let with = with_from(json!({
+            "operations": [
+                { "attribute": "a", "method": "rename", "value": { "type": "string", "value": "new_name" } }
+            ]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("a".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input);
+
+        let out = AttributeManagerFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out.get(&DEFAULT_PORT.clone()).expect("default port present");
+
+        assert!(!schema.fields.contains_key(&Attribute::new("a".to_string())));
+        assert!(schema.open);
+    }
+
+    #[test]
+    fn references_lists_convert_and_rename_only() {
+        let with = with_from(json!({
+            "operations": [
+                { "attribute": "x", "method": "create", "value": null },
+                { "attribute": "y", "method": "convert", "value": { "type": "flowExpr", "value": "env.get(\"foo\")" } },
+                { "attribute": "z", "method": "rename", "value": { "type": "string", "value": "renamed" } },
+                { "attribute": "w", "method": "remove", "value": null }
+            ]
+        }));
+
+        let refs = AttributeManagerFactory.referenced_input_attributes(&with);
+
+        assert_eq!(refs.len(), 2);
+        assert_eq!(refs[0].name, Attribute::new("y".to_string()));
+        assert_eq!(refs[0].port, "default".to_string());
+        assert_eq!(refs[1].name, Attribute::new("z".to_string()));
+        assert_eq!(refs[1].port, "default".to_string());
+    }
 }
