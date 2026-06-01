@@ -11,4 +11,5 @@ pub mod forwarder;
 pub mod incremental;
 pub mod kvs;
 pub mod node;
+pub mod schema_infer;
 pub mod shutdown;
