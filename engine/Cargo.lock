@@ -7031,6 +7031,7 @@ dependencies = [
  "lalrpop",
  "lalrpop-util",
  "logos",
+ "regex",
  "thiserror 2.0.18",
  "url",
 ]

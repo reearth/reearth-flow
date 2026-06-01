@@ -143,8 +143,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").extension == "gml"
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
               outputPort: default
 
       - id: 00000002-0000-0000-0000-000000000005
@@ -183,21 +184,21 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                let lod = env.get("__value").lod;
-                lod == 1 || lod == "1";
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] in [1, "1"]
               outputPort: lod1
-            - expr: |
-                let lod = env.get("__value").lod;
-                lod == 2 || lod == "2";
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] in [2, "2"]
               outputPort: default
-            - expr: |
-                let lod = env.get("__value").lod;
-                lod == 3 || lod == "3";
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] in [3, "3"]
               outputPort: lod3
-            - expr: |
-                let lod = env.get("__value").lod;
-                lod == 4 || lod == "4";
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] in [4, "4"]
               outputPort: lod4
 
       # Keep only featureType attribute to reduce memory footprint
@@ -271,8 +272,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-          - expr: |
-              env.get("__value")["featureType"] != "bldg:Building";
+          - expr:
+              type: flowExpr
+              value: attributes["featureType"] != "bldg:Building"
             outputPort: default
 
       - id: 00000001-0000-0000-0000-000000000006
@@ -308,8 +310,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] == "bldg:RoofSurface";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:RoofSurface"
               outputPort: default
 
       # Counter to assign stable cellId per physical grid cell (before timestep expansion)
@@ -495,8 +498,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["column1"] == "9";
+            - expr:
+                type: flowExpr
+                value: attributes["column1"] == "9"
               outputPort: default
 
       - id: 00000003-0000-0000-0000-000000000003
@@ -870,8 +874,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] != "bldg:Building";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] != "bldg:Building"
               outputPort: default
 
       # Filter to keep only roof surfaces for texture assignment
@@ -881,8 +886,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] == "bldg:RoofSurface";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:RoofSurface"
               outputPort: default
 
       # ImageRasterizer: creates texture from colored cells and assigns UV to roof geometry
@@ -976,9 +982,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                let v = env.get("outputReflection");
-                v == true || v == "true";
+            - expr:
+                type: flowExpr
+                value: env["outputReflection"] == true or env["outputReflection"] == "true"
               outputPort: default
 
       - id: 00000001-0000-0000-0000-000000000013
@@ -1500,8 +1506,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] == "bldg:Building";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:Building"
               outputPort: default
 
       # Extract and preserve building-level CityGML attributes
@@ -1558,8 +1565,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("considerDEM") == true;
+            - expr:
+                type: flowExpr
+                value: env["considerDEM"] == true
               outputPort: default
 
       # Decompose DEM TriangularMesh → individual Polygon3D triangles
@@ -1655,11 +1663,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] == "bldg:RoofSurface";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:RoofSurface"
               outputPort: bldg
-            - expr: |
-                env.get("__value")["featureType"] == "dem:Triangle";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "dem:Triangle"
               outputPort: dem
 
       # DEM-specific GridDivider: 5m cells, keepSquareOnly=false (partial cells kept)
@@ -1678,11 +1688,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] == "bldg:RoofSurface";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:RoofSurface"
               outputPort: bldg
-            - expr: |
-                env.get("__value")["featureType"] == "dem:Triangle";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "dem:Triangle"
               outputPort: dem
 
       # Assign _dem_grid_key for DEM cells (before merging radiation across same-position pieces)
@@ -1722,11 +1734,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] == "bldg:RoofSurface";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:RoofSurface"
               outputPort: bldg
-            - expr: |
-                env.get("__value")["featureType"] == "dem:Triangle";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "dem:Triangle"
               outputPort: dem
 
       # Assign _dem_grid_key to original DEM geometry pieces (for joining colors back)
@@ -1749,11 +1763,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] == "bldg:RoofSurface";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:RoofSurface"
               outputPort: bldg
-            - expr: |
-                env.get("__value")["featureType"] == "dem:Triangle";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "dem:Triangle"
               outputPort: dem
 
       # Merge DEM colors back onto geometry pieces (requestor=geometry, supplier=colors)
@@ -1778,11 +1794,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"] == "dem:Triangle";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "dem:Triangle"
               outputPort: land
-            - expr: |
-                env.get("__value")["featureType"] == "bldg:RoofSurface";
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"] == "bldg:RoofSurface"
               outputPort: default
 
       # ========================================

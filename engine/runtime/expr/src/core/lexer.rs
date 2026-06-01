@@ -2,6 +2,12 @@ use logos::Logos;
 
 use super::error::Error;
 
+fn lex_raw_string<'src>(lex: &mut logos::Lexer<'src, Token>) -> Option<String> {
+    let raw = lex.slice();
+    // strip leading r" and trailing "
+    Some(raw[2..raw.len() - 1].to_string())
+}
+
 fn lex_string<'src>(lex: &mut logos::Lexer<'src, Token>) -> Option<String> {
     let raw = lex.slice();
     let quote = raw.chars().next()?;
@@ -39,6 +45,7 @@ pub enum Token {
     Int(i64),
 
     #[regex(r#""([^"\\]|\\.)*""#, lex_string)]
+    #[regex(r#"r"[^"]*""#, lex_raw_string)]
     Str(String),
 
     // keywords — must be defined before Ident so logos gives them priority
@@ -372,6 +379,20 @@ mod tests {
         assert_eq!(
             tokenize(r#""foo#bar" # strip this"#),
             vec![Token::Str("foo#bar".into())]
+        );
+    }
+
+    #[test]
+    fn test_raw_string() {
+        // backslashes are literal, not escape sequences
+        assert_eq!(
+            tokenize(r#"r"\n\t""#),
+            vec![Token::Str(r"\n\t".into())]
+        );
+        // regular content works too
+        assert_eq!(
+            tokenize(r#"r"hello world""#),
+            vec![Token::Str("hello world".into())]
         );
     }
 

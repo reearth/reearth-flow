@@ -163,32 +163,41 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").flag == "Summary"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "Summary"
         outputPort: summary
-      - expr: |
-          env.get("__value").flag == "CodeValidation"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "CodeValidation"
         outputPort: codeValidation
-      - expr: |
-          env.get("__value").flag == "inCorrectCodeSpace"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "inCorrectCodeSpace"
         outputPort: inCorrectCodeSpace
-      - expr: |
-          env.get("__value").flag == "ExtentsValidation"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "ExtentsValidation"
         outputPort: extentsValidation
-      - expr: |
-          env.get("__value").flag == "GMLID_NotWellFormed"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "GMLID_NotWellFormed"
         outputPort: gmlIdNotWellFormed
-      - expr: |
-          env.get("__value").flag == "GMLID_NotUnique"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "GMLID_NotUnique"
         outputPort: gmlIdNotUnique
-      - expr: |
-          env.get("__value").flag == "XLink_NoReference"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "XLink_NoReference"
         outputPort: xlinkNoReference
-      - expr: |
-          env.get("__value").flag == "XLink_InvalidObjectType"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "XLink_InvalidObjectType"
         outputPort: xLinkInvalidObjectType
-      - expr: |
-          env.get("__value").flag == "InvalidLodXGeometry"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "InvalidLodXGeometry"
         outputPort: invalidLodXGeometry
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
     name: SummaryRouter
@@ -335,8 +344,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 4b5c6d7e-8f9a-4b5c-9d0e-1f2a3b4c5d6e
     name: FeatureSorterByName
@@ -1229,8 +1239,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 740ac9e5-6eeb-439b-9860-23a125919a2e
     name: PLATEAU4.UDXFolderExtractor
@@ -1655,8 +1666,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 6a08f964-a46d-4226-a4dc-2c283136e157
     name: FeatureCounterFileIndex
@@ -1680,8 +1692,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: 7568f48a-0858-4244-b473-2a8a63909341
     name: PLATEAU4.CityGmlMeshBuilder
@@ -1869,8 +1882,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").boundaryIndex != 1 && env.get("__value").vertexCount < 50
+      - expr:
+          type: flowExpr
+          value: attributes["boundaryIndex"] != 1 and attributes["vertexCount"] < 50
         outputPort: default
   - id: 057a1995-8af0-4a8e-8699-cbb77e1ed374
     name: AttributeMapperInvalidBoundaries
@@ -2016,8 +2030,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["totalErrorCount"] == 0
+      - expr:
+          type: flowExpr
+          value: attributes["totalErrorCount"] == 0
         outputPort: default
   - id: fc5b71bd-e34b-4381-b8f4-83919b5966df
     name: JsonWriterQcResultOk
