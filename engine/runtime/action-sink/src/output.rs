@@ -221,4 +221,175 @@ mod tests {
             result.err()
         );
     }
+
+    // ---- Strict-relative chokepoint tests (issue #2117) ----
+
+    fn ctx_with_root(root: &str) -> NodeContext {
+        NodeContext {
+            sandbox_root: Uri::from_str(root).unwrap(),
+            ..NodeContext::default()
+        }
+    }
+
+    #[test]
+    fn from_path_accepts_simple_relative() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let out = SinkOutput::from_path(&ctx, "out.gpkg").unwrap();
+        assert_eq!(out.uri().path().as_path(), tmp.path().join("out.gpkg"));
+    }
+
+    #[test]
+    fn from_path_accepts_subdir_relative() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let out = SinkOutput::from_path(&ctx, "group/a.geojson").unwrap();
+        assert_eq!(
+            out.uri().path().as_path(),
+            tmp.path().join("group").join("a.geojson")
+        );
+    }
+
+    #[test]
+    fn from_path_accepts_relative_with_gs_root() {
+        let ctx = ctx_with_root("gs://my-bucket/jobs/abc/");
+        let out = SinkOutput::from_path(&ctx, "out.json").unwrap();
+        assert_eq!(out.uri().as_str(), "gs://my-bucket/jobs/abc/out.json");
+    }
+
+    #[test]
+    fn from_path_accepts_relative_with_ram_root() {
+        let ctx = ctx_with_root("ram:///jobs/abc/");
+        let out = SinkOutput::from_path(&ctx, "out.json").unwrap();
+        assert_eq!(out.uri().as_str(), "ram:///jobs/abc/out.json");
+    }
+
+    #[test]
+    fn from_path_rejects_empty() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "").unwrap_err().to_string();
+        assert!(err.contains("empty"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_leading_whitespace() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, " foo").unwrap_err().to_string();
+        assert!(err.contains("whitespace"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_trailing_whitespace() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "foo ").unwrap_err().to_string();
+        assert!(err.contains("whitespace"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_dot() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, ".").unwrap_err().to_string();
+        assert!(err.contains("not a filename"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_dotdot() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "..").unwrap_err().to_string();
+        assert!(err.contains("not a filename"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_network_uri() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "gs://bucket/x")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("absolute URIs are not allowed"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_file_uri() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "file:///abs/path")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("absolute URIs are not allowed"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_leading_slash() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "/foo")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("leading '/'"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_leading_tilde() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "~/foo")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("home expansion") || err.contains("'~'"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_traversal_after_normalize() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "foo/../../escape")
+            .unwrap_err()
+            .to_string();
+        // The error comes from ensure_under (SandboxError::OutsideRoot)
+        assert!(err.contains("outside") || err.contains("sandbox"), "got: {err}");
+    }
+
+    #[test]
+    fn from_path_rejects_path_resolving_to_root() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        // "foo/.." normalizes to "" / root itself — must be rejected.
+        let err = SinkOutput::from_path(&ctx, "foo/..")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("resolves to the artifact directory itself")
+                || err.contains("no filename"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn from_path_absolute_error_mentions_workerArtifactPath() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = SinkOutput::from_path(&ctx, "gs://bucket/x")
+            .unwrap_err()
+            .to_string();
+        // Load-bearing: customers searching logs need this keyword to find the migration.
+        assert!(
+            err.contains("workerArtifactPath"),
+            "absolute-URI error must mention workerArtifactPath for migration; got: {err}"
+        );
+    }
+
+    #[test]
+    fn from_path_then_join_is_consistent() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let parent = SinkOutput::from_path(&ctx, "a").unwrap();
+        let child = parent.join("b").unwrap();
+        assert_eq!(child.uri().path().as_path(), tmp.path().join("a").join("b"));
+    }
 }
