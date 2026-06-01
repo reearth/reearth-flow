@@ -124,7 +124,7 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: true
+            value: "true"
           outputPort: default
         - expr:
             type: flowExpr
