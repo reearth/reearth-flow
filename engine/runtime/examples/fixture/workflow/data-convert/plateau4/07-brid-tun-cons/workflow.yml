@@ -12,7 +12,6 @@ with:
     - brid
     - tun
     - cons
-  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -363,13 +362,13 @@ graphs:
             type: flowExpr
             value: |
               dir = attributes["__package"] + "_dm_geometric_attributes";
-              Url(env["workerArtifactPath"]) / dir
+              dir
           compressOutput:
             type: flowExpr
             value: |
               city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
               filename = city_gml + "_" + attributes["__package"] + "_dm_geometric_attributes.zip";
-              Url(env["workerArtifactPath"]) / filename
+              filename
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
@@ -429,12 +428,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env["workerArtifactPath"]) / (attributes["__package"] + "_lod1")
+              attributes["__package"] + "_lod1"
           compressOutput:
             type: flowExpr
             value: |
               city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
-              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_3dtiles_lod1.zip")
+              city_gml + "_" + attributes["__package"] + "_3dtiles_lod1.zip"
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
         name: cesium3DTilesWriterByLod2
@@ -448,12 +447,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env["workerArtifactPath"]) / (attributes["__package"] + "_lod2")
+              attributes["__package"] + "_lod2"
           compressOutput:
             type: flowExpr
             value: |
               city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
-              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_3dtiles_lod2.zip")
+              city_gml + "_" + attributes["__package"] + "_3dtiles_lod2.zip"
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
         name: cesium3DTilesWriterByLod3
@@ -467,12 +466,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env["workerArtifactPath"]) / (attributes["__package"] + "_lod3")
+              attributes["__package"] + "_lod3"
           compressOutput:
             type: flowExpr
             value: |
               city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
-              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_3dtiles_lod3.zip")
+              city_gml + "_" + attributes["__package"] + "_3dtiles_lod3.zip"
 
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
         name: cesium3DTilesWriterByLod4
@@ -486,12 +485,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod4")
+              attributes["package"] + "_lod4"
           compressOutput:
             type: flowExpr
             value: |
               city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
-              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod4.zip")
+              city_gml + "_" + attributes["package"] + "_3dtiles_lod4.zip"
 
     edges:
       # Main processing pipeline

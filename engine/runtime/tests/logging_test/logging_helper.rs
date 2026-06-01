@@ -168,8 +168,12 @@ fn execute_workflow(fixture_dir: &str, workflow_name: &str, expect_success: bool
                 )]))
                 .unwrap();
 
+            let sandbox_root = Uri::for_test(&format!(
+                "file://{}/",
+                folder_path.to_str().unwrap()
+            ));
             let catch_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                Runner::run(
+                Runner::run_with_sandbox_root(
                     job_id,
                     workflow,
                     BUILTIN_ACTION_FACTORIES.clone(),
@@ -178,6 +182,7 @@ fn execute_workflow(fixture_dir: &str, workflow_name: &str, expect_success: bool
                     ingress_state,
                     feature_state,
                     None,
+                    sandbox_root,
                 )
             }));
             match catch_result {

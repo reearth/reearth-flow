@@ -53,7 +53,7 @@ graphs:
         type: "action"
         action: "FeatureWriter"
         with:
-          output: "env.get(\"workerArtifactPath\") + \"/output_all_features.json\""
+          output: "output_all_features.json"
           format: "json"
 
       - id: "550e8400-e29b-41d4-a716-446655440006"
@@ -61,7 +61,7 @@ graphs:
         type: "action"
         action: "FeatureWriter"
         with:
-          output: "env.get(\"workerArtifactPath\") + \"/output_triangulated.json\""
+          output: "output_triangulated.json"
           format: "json"
 
       - id: "550e8400-e29b-41d4-a716-446655440007"
@@ -69,7 +69,7 @@ graphs:
         type: "action"
         action: "FeatureWriter"
         with:
-          output: "env.get(\"workerArtifactPath\") + \"/output_merged.json\""
+          output: "output_merged.json"
           format: "json"
 
     edges:

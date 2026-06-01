@@ -10,7 +10,6 @@ with:
   schemas: null
   targetPackages:
   - ubld
-  workerArtifactPath: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -394,12 +393,12 @@ graphs:
       output:
         type: flowExpr
         value: |
-          Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod" + attributes["lod"])
+          attributes["package"] + "_lod" + attributes["lod"]
       compressOutput:
         type: flowExpr
         value: |
           city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
-          Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod" + attributes["lod"] + ".zip")
+          city_gml + "_" + attributes["package"] + "_3dtiles_lod" + attributes["lod"] + ".zip"
   edges:
   - id: 25accc00-50d0-4fe9-a289-0e84ecaca659
     from: 29140f72-79e9-456b-9f38-7861c1c56299

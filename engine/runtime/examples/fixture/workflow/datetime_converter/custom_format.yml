@@ -36,7 +36,7 @@ graphs:
         with:
           format: json
           output: |
-            file::join_path(env.get("workerArtifactPath"), "expected_output.json")
+            "expected_output.json"
 
     edges:
       - id: 550e8400-e29b-41d4-a716-446655440305

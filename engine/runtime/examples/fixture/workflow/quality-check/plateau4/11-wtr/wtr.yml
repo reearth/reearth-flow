@@ -69,7 +69,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "11_水部_無効な空間属性の型.csv")
+        "11_水部_無効な空間属性の型.csv"
 
   - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
     name: StatisticsCalculatorInvalidSpatialAttr
@@ -146,7 +146,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "11_水部_LOD1面のエラー.csv")
+        "11_水部_LOD1面のエラー.csv"
 
   - id: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
     name: StatisticsCalculatorLod1SurfaceErrors
@@ -222,7 +222,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "11_水部_LOD2-3非水密立体.csv")
+        "11_水部_LOD2-3非水密立体.csv"
 
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
     name: StatisticsCalculatorNotClosed
@@ -278,7 +278,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "11_水部_LOD2-3立体のエラー.csv")
+        "11_水部_LOD2-3立体のエラー.csv"
 
   - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
     name: StatisticsCalculatorOtherSolidErrors
@@ -355,7 +355,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "11_水部_LOD2-3境界面のエラー.csv")
+        "11_水部_LOD2-3境界面のエラー.csv"
 
   - id: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
     name: StatisticsCalculatorBoundarySurfaceErrors

@@ -10,7 +10,6 @@ with:
   schemas:
   objectListsPath:
   objectLists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["bldg"]
 graphs:
@@ -356,7 +355,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "02_建築物_検査結果一覧.csv")
+            "02_建築物_検査結果一覧.csv"
 
       # Phase 5: StatisticsCalculator for JSON aggregation
       - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
@@ -496,7 +495,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_bldg.json")
+            "summary_bldg.json"
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
@@ -526,8 +525,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # ZipFileWriter - Bundle all output files
       - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
@@ -537,8 +535,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f

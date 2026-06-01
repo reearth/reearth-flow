@@ -10,7 +10,6 @@ with:
   schemas:
   objectListsPath:
   objectLists:
-  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
@@ -62,8 +61,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
@@ -93,8 +91,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

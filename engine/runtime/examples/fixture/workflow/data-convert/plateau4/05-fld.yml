@@ -14,7 +14,6 @@ with:
   - htd
   - ifld
   - rfld
-  workerArtifactPath: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -270,7 +269,7 @@ graphs:
         type: flowExpr
         value: |
           udx_dirs = attributes["udxDirs"].replace("/", "_");
-          Url(env["workerArtifactPath"]) / (udx_dirs + "_no_texture")
+          udx_dirs + "_no_texture"
       compressOutput:
         type: flowExpr
         value: |
@@ -278,7 +277,7 @@ graphs:
           udx_dirs = attributes["udxDirs"].replace("/", "_");
           scale = "";
           if attributes.get("__scale") { scale = "_" + attributes["__scale"] }
-          Url(env["workerArtifactPath"]) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
+          citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip"
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
     name: CreateDictionaryNameDict
     type: action
@@ -311,7 +310,7 @@ graphs:
     action: JsonWriter
     with:
       output: |
-        file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+        "dictionary.json"
       converter: |
         let packages = #{};
         for feature in env.get("__features") {

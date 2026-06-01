@@ -48,7 +48,7 @@ graphs:
         action: ZipFileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
+            file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip"
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

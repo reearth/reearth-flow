@@ -84,41 +84,24 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
     let folder_str = folder_path.to_str().unwrap();
     workflow
         .merge_with(HashMap::from([
-            (
-                "outputFilePath".to_string(),
-                format!(
-                    "file://{}",
-                    folder_path.join("result.json").to_str().unwrap()
-                ),
-            ),
+            ("outputFilePath".to_string(), "result.json".to_string()),
             ("outputDir".to_string(), folder_str.to_string()),
             (
                 "joinedOutputPath".to_string(),
-                format!(
-                    "file://{}",
-                    folder_path.join("joined.json").to_str().unwrap()
-                ),
+                "joined.json".to_string(),
             ),
             (
                 "unjoinedRequestorOutputPath".to_string(),
-                format!(
-                    "file://{}",
-                    folder_path
-                        .join("unjoined_requestor.json")
-                        .to_str()
-                        .unwrap()
-                ),
+                "unjoined_requestor.json".to_string(),
             ),
             (
                 "unjoinedSupplierOutputPath".to_string(),
-                format!(
-                    "file://{}",
-                    folder_path.join("unjoined_supplier.json").to_str().unwrap()
-                ),
+                "unjoined_supplier.json".to_string(),
             ),
         ]))
         .unwrap();
-    Runner::run(
+    let sandbox_root = Uri::for_test(&format!("file://{}/", folder_str));
+    Runner::run_with_sandbox_root(
         uuid::Uuid::new_v4(),
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),
@@ -127,6 +110,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         ingress_state,
         feature_state,
         None,
+        sandbox_root,
     )
     .unwrap();
     Ok(binding)

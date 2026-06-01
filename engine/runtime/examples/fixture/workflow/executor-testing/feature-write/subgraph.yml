@@ -2,7 +2,6 @@ id: 10000000-0000-0000-0000-000000000001
 name: "feature-write-1"
 entryGraphId: 10000000-0000-0000-0000-000000000010
 with:
-  workerArtifactPath:
 
 graphs:
   - id: 10000000-0000-0000-0000-000000000020
@@ -85,7 +84,7 @@ graphs:
         action: CsvWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "output.csv")
+            "output.csv"
           format: csv
 
     edges:

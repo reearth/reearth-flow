@@ -11,7 +11,6 @@ with:
   targetPackages:
   - luse
   - lsld
-  workerArtifactPath: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -235,13 +234,13 @@ graphs:
       maxZoom: 16
       extent: 65536
       output:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "luse"
+        type: string
+        value: luse
       compressOutput:
         type: flowExpr
         value: |
           city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
-          Url(env["workerArtifactPath"]) / (city_gml.remove_suffix("_luse") + "_luse_mvt.zip")
+          city_gml.remove_suffix("_luse") + "_luse_mvt.zip"
   - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
     name: AttributeMapperLsld
     type: action
@@ -329,13 +328,13 @@ graphs:
       maxZoom: 16
       extent: 65536
       output:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "lsld"
+        type: string
+        value: lsld
       compressOutput:
         type: flowExpr
         value: |
           city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
-          Url(env["workerArtifactPath"]) / (city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip")
+          city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip"
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae

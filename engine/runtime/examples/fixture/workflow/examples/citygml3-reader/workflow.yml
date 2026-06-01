@@ -6,7 +6,6 @@ with:
   cityGmlPath:
   codelistsPath:
   schemasPath:
-  workerArtifactPath:
 graphs:
   - id: b2c3d4e5-f6a7-8901-bcde-f12345678901
     name: main
@@ -94,8 +93,8 @@ graphs:
         action: Cesium3DTilesWriter
         with:
           output:
-            type: flowExpr
-            value: Url(env["workerArtifactPath"]) / "citygml3-3dtiles"
+            type: string
+            value: citygml3-3dtiles
           minZoom: 15
           maxZoom: 18
 

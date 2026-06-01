@@ -7,7 +7,6 @@ with:
   schemas:
   codelistsPath:
   codelists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["luse", "urf", "area"]
   objectListsPath:
@@ -193,7 +192,7 @@ graphs:
           output: |
             let pkg = env.get("__value")["Folder"] ?? "";
             let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
-            file::join_path(env.get("workerArtifactPath"), name + "_地物インスタンス数.csv")
+            name + "_地物インスタンス数.csv"
 
       # Surface inspection flow
       - id: 7ccbb722-d0cc-4843-a42e-179576530340
@@ -255,7 +254,7 @@ graphs:
           output: |
             let pkg = env.get("__value")["Folder"] ?? "";
             let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
-            file::join_path(env.get("workerArtifactPath"), name + "_面の向き不正.csv")
+            name + "_面の向き不正.csv"
 
       - id: 26751290-4ac7-4884-908a-7c231b5f820a
         name: SurfaceOrientationErrorCounter
@@ -305,7 +304,7 @@ graphs:
           output: |
             let pkg = env.get("__value")["Folder"] ?? "";
             let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
-            file::join_path(env.get("workerArtifactPath"), name + "_面のエラー.csv")
+            name + "_面のエラー.csv"
 
       - id: 667c37eb-2b19-4a86-8aa4-70679f7787b5
         name: SurfaceErrorCounter
@@ -363,7 +362,7 @@ graphs:
           output: |
             let pkg = env.get("__value")["Folder"] ?? "";
             let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
-            file::join_path(env.get("workerArtifactPath"), name + "_検査結果一覧.csv")
+            name + "_検査結果一覧.csv"
 
       # StatisticsCalculator for JSON aggregation
       - id: 521b2dea-51af-460f-9eb5-672917768692
@@ -412,7 +411,7 @@ graphs:
             }
           output: |
             let pkg = env.get("__value")["Folder"] ?? "";
-            file::join_path(env.get("workerArtifactPath"), "summary_" + pkg + ".json")
+            "summary_" + pkg + ".json"
 
       # Calculate total errors for no-error check
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
@@ -445,8 +444,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # ZipFileWriter - Bundle all output files
       - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
@@ -456,8 +454,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       # Data preparation flow

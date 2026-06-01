@@ -12,7 +12,6 @@ with:
   targetPackages:
     - luse
     - lsld
-  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 0e500d5a-7882-4835-9285-9763ba8b5b65
@@ -144,13 +143,13 @@ graphs:
           maxZoom: 16
           extent: 65536
           output:
-            type: flowExpr
-            value: Url(env["workerArtifactPath"]) / "luse"
+            type: string
+            value: luse
           compressOutput:
             type: flowExpr
             value: |
               city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
-              Url(env["workerArtifactPath"]) / (city_gml.remove_suffix("_luse") + "_luse_mvt.zip")
+              city_gml.remove_suffix("_luse") + "_luse_mvt.zip"
 
       # LSLD processing branch
       - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
@@ -243,13 +242,13 @@ graphs:
           maxZoom: 16
           extent: 65536
           output:
-            type: flowExpr
-            value: Url(env["workerArtifactPath"]) / "lsld"
+            type: string
+            value: lsld
           compressOutput:
             type: flowExpr
             value: |
               city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
-              Url(env["workerArtifactPath"]) / (city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip")
+              city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip"
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
