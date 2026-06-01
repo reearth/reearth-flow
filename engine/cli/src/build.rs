@@ -60,6 +60,12 @@ impl BuildCliCommand {
         factories.extend(ALL_ACTION_FACTORIES.clone());
         factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let workflow = Workflow::try_from(json.as_str()).map_err(crate::errors::Error::run)?;
+        // NOTE: `DagSchemas::from_graphs` currently `panic!`s on structural
+        // malformations (unknown action name, dangling edge endpoints, missing
+        // entry/subgraph). A validation command should ideally report those as
+        // clean diagnostics instead of aborting; hardening those panics into
+        // recoverable errors is deferred (see dev-docs plan, "Phase 1a"). Until
+        // then `build` shares `dot`'s panic-on-malformed-input behavior.
         let dag =
             DagSchemas::from_graphs(workflow.entry_graph_id, workflow.graphs, factories, None)
                 .map_err(crate::errors::Error::run)?;
