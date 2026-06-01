@@ -1,0 +1,52 @@
+id: 73f4d2b7-73ec-4c25-bdc6-8b6af0c5ec64
+name: "schema_infer valid"
+entryGraphId: e816d58b-aac1-4975-8780-89b796d2945a
+with:
+  outputFilePath:
+graphs:
+  - id: e816d58b-aac1-4975-8780-89b796d2945a
+    name: entrypoint
+    nodes:
+      - id: 737f0d20-ed48-4576-8b16-3c394761f19a
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{ id: "feature1", depth: 0.5 },
+              #{ id: "feature2", depth: 3.5 }
+            ]
+
+      - id: d56a8f79-c36f-4df9-afb6-6a43bcf35d63
+        name: AttributeManager
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: "area"
+              method: create
+              value:
+                type: string
+                value: "100"
+
+      - id: 9a84ab17-91f2-487f-b11f-bbdae62873d4
+        name: Sink-Json-Writer
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: 41d96b6f-592c-49f2-ac62-56e22abca56a
+        from: 737f0d20-ed48-4576-8b16-3c394761f19a
+        to: d56a8f79-c36f-4df9-afb6-6a43bcf35d63
+        fromPort: default
+        toPort: default
+
+      - id: 80f09f45-af45-4d71-bd7d-e2ea0ee2076b
+        from: d56a8f79-c36f-4df9-afb6-6a43bcf35d63
+        to: 9a84ab17-91f2-487f-b11f-bbdae62873d4
+        fromPort: default
+        toPort: default
