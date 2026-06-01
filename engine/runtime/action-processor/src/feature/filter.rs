@@ -105,6 +105,38 @@ impl ProcessorFactory for FeatureFilterFactory {
         };
         Ok(Box::new(process))
     }
+
+    fn infer_output_schema(
+        &self,
+        inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        _with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        use reearth_flow_types::attr_schema::AttrSchema;
+
+        // FeatureFilter routes whole features by expression; it never modifies
+        // attributes. So each statically-declared output port carries the input
+        // schema unchanged (identity).
+        let input = inputs
+            .get(&DEFAULT_PORT.clone())
+            .cloned()
+            .unwrap_or_else(AttrSchema::open);
+
+        let map = self
+            .get_output_ports()
+            .into_iter()
+            .map(|port| (port, input.clone()))
+            .collect();
+        Some(map)
+    }
+
+    fn referenced_input_attributes(
+        &self,
+        _with: &Option<HashMap<String, Value>>,
+    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
+        // Conditions are arbitrary expressions we can't statically parse for
+        // attribute names; no statically-known references for v1.
+        Vec::new()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -191,5 +223,42 @@ impl Processor for FeatureFilter {
 
     fn num_threads(&self) -> usize {
         5
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+    use reearth_flow_types::Attribute;
+
+    #[test]
+    fn infer_is_identity_on_each_output_port() {
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("a".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        input.insert(
+            Attribute::new("b".to_string()),
+            AttrField::always(AttrType::Number),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+
+        let out = FeatureFilterFactory
+            .infer_output_schema(&inputs, &None)
+            .expect("filter is schema-transparent and returns Some");
+
+        let unfiltered = out
+            .get(&UNFILTERED_PORT.clone())
+            .expect("unfiltered port present");
+        assert_eq!(*unfiltered, input);
+    }
+
+    #[test]
+    fn references_is_empty() {
+        let refs = FeatureFilterFactory.referenced_input_attributes(&None);
+        assert!(refs.is_empty());
     }
 }
