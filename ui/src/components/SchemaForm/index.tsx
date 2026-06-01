@@ -31,144 +31,98 @@ type SchemaFormProps = {
   onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
 };
 
-// Function to recursively scan schema for Expr types and build UI schema
+// Function to recursively scan schema for Expr/Code types and build UI schema.
+// rootDefinitions is threaded through recursion so $ref can be resolved at any depth.
 const buildExprUiSchema = (
   schemaObj: any,
   actionName?: string,
   path = "",
+  rootDefinitions?: Record<string, any>,
 ): any => {
   if (!schemaObj || typeof schemaObj !== "object") return {};
-  const uiSchema: any = {};
+
+  // Capture root definitions on the first call; reuse them in every recursive call.
+  const defs: Record<string, any> =
+    rootDefinitions ?? schemaObj.definitions ?? {};
 
   if (schemaObj.format === "wysiwyg") {
     return { "ui:widget": "WysiwygWidget" };
   }
-
-  // Determine if this is a Python script field or regular Rhai expression
-
-  const isExprType =
-    schemaObj.$ref === "#/definitions/Expr" ||
-    schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr") ||
-    schemaObj.anyOf?.some((item: any) => item.$ref === "#/definitions/Expr");
 
   const isCodeType =
     schemaObj.$ref === "#/definitions/Code" ||
     schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Code") ||
     schemaObj.anyOf?.some((item: any) => item.$ref === "#/definitions/Code");
 
-  // Check if this schema references any definition that contains expressions
-  let referencesExprDefinition = false;
-  if (schemaObj.$ref) {
-    const refName = schemaObj.$ref.replace("#/definitions/", "");
-    const referencedDef = schemaObj.definitions?.[refName];
-    if (referencedDef?.properties) {
-      referencesExprDefinition = Object.values(referencedDef.properties).some(
-        (prop: any) =>
-          prop?.$ref === "#/definitions/Expr" ||
-          prop?.allOf?.some(
-            (item: any) => item.$ref === "#/definitions/Expr",
-          ) ||
-          prop?.anyOf?.some((item: any) => item.$ref === "#/definitions/Expr"),
-      );
-    }
-  }
-
-  // Handle schemas that define ANY type with expression fields - apply UI schema dynamically
-  let hasExprDefinitions = false;
-  const exprFieldUiSchema: any = {};
-  if (schemaObj.definitions) {
-    Object.entries(schemaObj.definitions).forEach(
-      ([_defName, def]: [string, any]) => {
-        if (def?.properties) {
-          Object.entries(def.properties).forEach(
-            ([propName, prop]: [string, any]) => {
-              const propHasExpr =
-                prop?.$ref === "#/definitions/Expr" ||
-                prop?.allOf?.some(
-                  (item: any) => item.$ref === "#/definitions/Expr",
-                ) ||
-                prop?.anyOf?.some(
-                  (item: any) => item.$ref === "#/definitions/Expr",
-                );
-
-              const propHasCode =
-                prop?.$ref === "#/definitions/Code" ||
-                prop?.allOf?.some(
-                  (item: any) => item.$ref === "#/definitions/Code",
-                ) ||
-                prop?.anyOf?.some(
-                  (item: any) => item.$ref === "#/definitions/Code",
-                );
-
-              if (propHasExpr) {
-                hasExprDefinitions = true;
-                exprFieldUiSchema[propName] = { "ui:exprType": "rhai" };
-              }
-
-              if (propHasCode) {
-                hasExprDefinitions = true;
-                exprFieldUiSchema[propName] = { "ui:field": "FlowExprField" };
-              }
-            },
-          );
-        }
-      },
-    );
-  }
-
   if (isCodeType) {
     return { "ui:field": "FlowExprField" };
   }
 
-  if (isExprType || referencesExprDefinition) {
-    const fieldName = path.split(".").pop() || "";
+  const isExprType =
+    schemaObj.$ref === "#/definitions/Expr" ||
+    schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr") ||
+    schemaObj.anyOf?.some((item: any) => item.$ref === "#/definitions/Expr");
 
-    // Only treat as Python script if it's specifically PythonScriptProcessor and the field is 'script'
+  if (isExprType) {
+    const fieldName = path.split(".").pop() || "";
     const isPythonScript =
       actionName === "PythonScriptProcessor" && fieldName === "script";
-
-    return {
-      "ui:exprType": isPythonScript ? "python" : "rhai",
-    };
+    return { "ui:exprType": isPythonScript ? "python" : "rhai" };
   }
 
-  // Return dynamic UI schema for expression fields found in definitions
-  if (hasExprDefinitions) {
-    return {
-      ...exprFieldUiSchema,
-    };
+  // Resolve a plain $ref to its definition and recurse into it.
+  if (schemaObj.$ref) {
+    const refName = (schemaObj.$ref as string).replace("#/definitions/", "");
+    const refDef = defs[refName];
+    if (refDef) {
+      return buildExprUiSchema(refDef, actionName, path, defs);
+    }
+    return {};
   }
 
-  // Recursively check properties
+  const uiSchema: any = {};
+
+  // Recurse into object properties.
   if (schemaObj.properties) {
     for (const [key, value] of Object.entries(schemaObj.properties)) {
       const childPath = path ? `${path}.${key}` : key;
-      const childUiSchema = buildExprUiSchema(value, actionName, childPath);
+      const childUiSchema = buildExprUiSchema(
+        value,
+        actionName,
+        childPath,
+        defs,
+      );
       if (Object.keys(childUiSchema).length > 0) {
         uiSchema[key] = childUiSchema;
       }
     }
   }
 
-  // Also recursively check allOf, oneOf, anyOf structures
-  if (schemaObj.allOf) {
-    for (const subSchema of schemaObj.allOf) {
-      const childUiSchema = buildExprUiSchema(subSchema, actionName, path);
-      Object.assign(uiSchema, childUiSchema);
+  // Recurse into array items so nested Code/Expr fields inside arrays are found.
+  if (schemaObj.items) {
+    const itemsUiSchema = buildExprUiSchema(
+      schemaObj.items,
+      actionName,
+      path,
+      defs,
+    );
+    if (Object.keys(itemsUiSchema).length > 0) {
+      uiSchema.items = itemsUiSchema;
     }
   }
 
-  if (schemaObj.oneOf) {
-    for (const subSchema of schemaObj.oneOf) {
-      const childUiSchema = buildExprUiSchema(subSchema, actionName, path);
-      Object.assign(uiSchema, childUiSchema);
-    }
-  }
-
-  if (schemaObj.anyOf) {
-    for (const subSchema of schemaObj.anyOf) {
-      const childUiSchema = buildExprUiSchema(subSchema, actionName, path);
-      Object.assign(uiSchema, childUiSchema);
+  // Recurse into allOf / oneOf / anyOf.
+  for (const keyword of ["allOf", "oneOf", "anyOf"] as const) {
+    if (schemaObj[keyword]) {
+      for (const subSchema of schemaObj[keyword]) {
+        const childUiSchema = buildExprUiSchema(
+          subSchema,
+          actionName,
+          path,
+          defs,
+        );
+        Object.assign(uiSchema, childUiSchema);
+      }
     }
   }
 
