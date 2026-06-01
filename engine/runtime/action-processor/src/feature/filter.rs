@@ -89,10 +89,12 @@ impl ProcessorFactory for FeatureFilterFactory {
         }
         let mut conditions = Vec::new();
         for condition in &params.conditions {
-            let compiled = condition
-                .expr
-                .compile()
-                .map_err(|e| FeatureProcessorError::FilterFactory(format!("{e:?}")))?;
+            let compiled = condition.expr.compile().map_err(|e| {
+                FeatureProcessorError::FilterFactory(format!(
+                    "failed to compile condition for port {:?}: {e:?}",
+                    condition.output_port
+                ))
+            })?;
             conditions.push(CompiledCondition {
                 expr: compiled,
                 output_port: condition.output_port.clone(),
