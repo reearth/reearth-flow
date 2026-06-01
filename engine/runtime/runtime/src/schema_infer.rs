@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use petgraph::visit::EdgeRef;
 use reearth_flow_types::attr_schema::{AttrRef, AttrSchema, Presence};
 
-use crate::dag_schemas::{DagSchemas, SchemaEdgeType};
+use crate::dag_schemas::{DagSchemas, SchemaEdgeType, SchemaNodeType};
 use crate::node::{NodeKind, Port, ProcessorFactory, SinkFactory, SourceFactory};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -107,56 +107,13 @@ pub fn infer_and_validate(
 
         // (b) Gather inputs per consumer input-port, joining when multiple
         // producers feed the same port.
-        let mut inputs: HashMap<Port, AttrSchema> = HashMap::new();
-        for e in graph.edges_directed(idx, petgraph::Direction::Incoming) {
-            let src = e.source();
-            let ew: &SchemaEdgeType = e.weight();
-            let incoming = outputs_by_index
-                .get(&src)
-                .and_then(|m| m.get(&ew.from))
-                .cloned()
-                .unwrap_or_else(AttrSchema::open);
-            inputs
-                .entry(ew.to.clone())
-                .and_modify(|existing| *existing = existing.join(&incoming))
-                .or_insert(incoming);
-        }
+        let inputs = gather_inputs(graph, idx, &outputs_by_index);
 
         let factory = node.kind.as_ref().map(FactoryRef::of);
 
         // (c) Reference validation.
         if let Some(factory) = &factory {
-            for AttrRef { name, port } in factory.referenced_input_attributes(&node.with) {
-                let Some(schema) = inputs.get(&Port::new(port.clone())) else {
-                    // Input port absent: cannot disprove the reference.
-                    continue;
-                };
-                if schema.open {
-                    // Open schema: any attribute may exist, so no diagnostic.
-                    continue;
-                }
-                match schema.fields.get(&name) {
-                    None => result.diagnostics.push(Diagnostic {
-                        severity: Severity::Error,
-                        node_id: node.handle.id.to_string(),
-                        node_name: node.name.clone(),
-                        message: format!(
-                            "references attribute `{name}` which is not produced by any upstream node on port `{port}`"
-                        ),
-                    }),
-                    Some(field) if field.presence == Presence::Maybe => {
-                        result.diagnostics.push(Diagnostic {
-                            severity: Severity::Warning,
-                            node_id: node.handle.id.to_string(),
-                            node_name: node.name.clone(),
-                            message: format!(
-                                "references attribute `{name}` on port `{port}` which may not always be present"
-                            ),
-                        });
-                    }
-                    Some(_) => {}
-                }
-            }
+            check_references(factory, node, &inputs, &mut result);
         }
 
         // (d) Compute this node's outputs.
@@ -189,6 +146,73 @@ pub fn infer_and_validate(
     }
 
     Ok(result)
+}
+
+/// Gather inputs per consumer input-port, joining when multiple producers feed
+/// the same port. Producers with no recorded output for the referenced port (or
+/// no recorded outputs at all) contribute an `open` schema.
+fn gather_inputs(
+    graph: &petgraph::graph::DiGraph<SchemaNodeType, SchemaEdgeType>,
+    idx: petgraph::graph::NodeIndex,
+    outputs_by_index: &HashMap<petgraph::graph::NodeIndex, HashMap<Port, AttrSchema>>,
+) -> HashMap<Port, AttrSchema> {
+    let mut inputs: HashMap<Port, AttrSchema> = HashMap::new();
+    for e in graph.edges_directed(idx, petgraph::Direction::Incoming) {
+        let src = e.source();
+        let ew: &SchemaEdgeType = e.weight();
+        let incoming = outputs_by_index
+            .get(&src)
+            .and_then(|m| m.get(&ew.from))
+            .cloned()
+            .unwrap_or_else(AttrSchema::open);
+        inputs
+            .entry(ew.to.clone())
+            .and_modify(|existing| *existing = existing.join(&incoming))
+            .or_insert(incoming);
+    }
+    inputs
+}
+
+/// Validate a node's referenced input attributes against the schemas reaching
+/// it, pushing diagnostics onto `result` for absent (Error) or maybe-present
+/// (Warning) references.
+fn check_references(
+    factory: &FactoryRef<'_>,
+    node: &SchemaNodeType,
+    inputs: &HashMap<Port, AttrSchema>,
+    result: &mut InferResult,
+) {
+    for AttrRef { name, port } in factory.referenced_input_attributes(&node.with) {
+        let Some(schema) = inputs.get(&Port::new(port.clone())) else {
+            // Input port absent: cannot disprove the reference.
+            continue;
+        };
+        if schema.open {
+            // Open schema: any attribute may exist, so no diagnostic.
+            continue;
+        }
+        match schema.fields.get(&name) {
+            None => result.diagnostics.push(Diagnostic {
+                severity: Severity::Error,
+                node_id: node.handle.id.to_string(),
+                node_name: node.name.clone(),
+                message: format!(
+                    "references attribute `{name}` which is not produced by any upstream node on port `{port}`"
+                ),
+            }),
+            Some(field) if field.presence == Presence::Maybe => {
+                result.diagnostics.push(Diagnostic {
+                    severity: Severity::Warning,
+                    node_id: node.handle.id.to_string(),
+                    node_name: node.name.clone(),
+                    message: format!(
+                        "references attribute `{name}` on port `{port}` which may not always be present"
+                    ),
+                });
+            }
+            Some(_) => {}
+        }
+    }
 }
 
 /// Join all input-port schemas into one; `open` if there are no inputs at all.
@@ -291,6 +315,48 @@ mod tests {
         }
     }
 
+    /// Produces a CLOSED schema with a single field "missing" (String, Maybe).
+    #[derive(Debug, Clone)]
+    struct MaybeProc;
+
+    impl ProcessorFactory for MaybeProc {
+        fn name(&self) -> &str {
+            "Maybe"
+        }
+        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+            None
+        }
+        fn get_input_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn get_output_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn build(
+            &self,
+            _ctx: NodeContext,
+            _event_hub: EventHub,
+            _action: String,
+            _with: Option<HashMap<String, serde_json::Value>>,
+        ) -> Result<Box<dyn Processor>, crate::errors::BoxedError> {
+            unreachable!("not built in schema inference tests")
+        }
+        fn infer_output_schema(
+            &self,
+            _inputs: &HashMap<Port, AttrSchema>,
+            _with: &Option<HashMap<String, serde_json::Value>>,
+        ) -> Option<HashMap<Port, AttrSchema>> {
+            let mut schema = AttrSchema::empty();
+            schema.insert(
+                Attribute::new("missing".to_string()),
+                AttrField::maybe(AttrType::String),
+            );
+            let mut out = HashMap::new();
+            out.insert(DEFAULT_PORT.clone(), schema);
+            Some(out)
+        }
+    }
+
     /// Reads attribute "missing" from its default input. Output inference unimplemented.
     #[derive(Debug, Clone)]
     struct NeedsProc;
@@ -355,6 +421,7 @@ mod tests {
         let mut m = HashMap::new();
         m.insert("StubSource".to_string(), NodeKind::Source(Box::new(StubSource)));
         m.insert("Adder".to_string(), NodeKind::Processor(Box::new(AdderProc)));
+        m.insert("Maybe".to_string(), NodeKind::Processor(Box::new(MaybeProc)));
         m.insert("Needs".to_string(), NodeKind::Processor(Box::new(NeedsProc)));
         m
     }
@@ -409,6 +476,26 @@ mod tests {
         assert!(adder_out["default"]
             .fields
             .contains_key(&Attribute::new("foo".to_string())));
+    }
+
+    #[test]
+    fn flags_maybe_present_reference_as_warning() {
+        // source -> Maybe -> Needs. The "Maybe" node emits a closed schema with
+        // field "missing" present only conditionally (Presence::Maybe). "Needs"
+        // references "missing", so the reference is satisfiable but not
+        // guaranteed -> exactly one Warning, no errors.
+        let dag = build_dag("Maybe");
+        let result = infer_and_validate(&dag).expect("infer");
+
+        assert!(!result.has_errors(), "maybe-present reference must not be an error");
+        let warnings: Vec<_> = result
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Warning)
+            .collect();
+        assert_eq!(warnings.len(), 1, "exactly one warning expected, got {warnings:?}");
+        assert!(warnings[0].message.contains("missing"));
+        assert_eq!(warnings[0].node_name, "needs");
     }
 
     #[test]
