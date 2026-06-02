@@ -619,28 +619,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Method": {
             "type": "string",
             "enum": [
@@ -674,7 +652,11 @@
                 "description": "操作に使用する値",
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Code"
+                    "codeTypes": [
+                      "flowExpr",
+                      "string"
+                    ],
+                    "type": "code"
                   },
                   {
                     "type": "null"
@@ -1403,7 +1385,11 @@
             "description": "圧縮アーカイブ出力の出力先パス（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Code"
+                "codeTypes": [
+                  "flowExpr",
+                  "string"
+                ],
+                "type": "code"
               },
               {
                 "type": "null"
@@ -1435,11 +1421,11 @@
           "output": {
             "title": "出力パス",
             "description": "3D タイルを書き出すディレクトリパス",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
+            "codeTypes": [
+              "flowExpr",
+              "string"
+            ],
+            "type": "code"
           },
           "schemaKey": {
             "title": "スキーマキー",
@@ -1455,30 +1441,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -3217,28 +3179,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Condition": {
             "type": "object",
             "required": [
@@ -3248,11 +3188,10 @@
             "properties": {
               "expr": {
                 "title": "条件式",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
-                  }
-                ]
+                "codeTypes": [
+                  "flowExpr"
+                ],
+                "type": "code"
               },
               "outputPort": {
                 "title": "出力ポート",
@@ -4128,28 +4067,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Mapping": {
             "type": "object",
             "required": [
@@ -4161,7 +4078,11 @@
                 "type": "string"
               },
               "value": {
-                "$ref": "#/definitions/Code"
+                "codeTypes": [
+                  "flowExpr",
+                  "string"
+                ],
+                "type": "code"
               }
             }
           }
@@ -7084,7 +7005,11 @@
             "description": "出力タイルを圧縮するかを決定する式（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Code"
+                "codeTypes": [
+                  "flowExpr",
+                  "string"
+                ],
+                "type": "code"
               },
               {
                 "type": "null"
@@ -7104,11 +7029,11 @@
           "layerName": {
             "title": "レイヤー名",
             "description": "MVT タイル内のレイヤー名",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
+            "codeTypes": [
+              "flowExpr",
+              "string"
+            ],
+            "type": "code"
           },
           "maxZoom": {
             "title": "最大ズームレベル",
@@ -7127,11 +7052,11 @@
           "output": {
             "title": "出力先",
             "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
+            "codeTypes": [
+              "flowExpr",
+              "string"
+            ],
+            "type": "code"
           },
           "schemaKey": {
             "title": "スキーマキー",
@@ -7147,30 +7072,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }

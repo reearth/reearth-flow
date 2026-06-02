@@ -596,28 +596,6 @@ Create, Convert, Rename, and Remove Feature Attributes
     }
   },
   "definitions": {
-    "Code": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
-      ]
-    },
     "Method": {
       "type": "string",
       "enum": [
@@ -651,7 +629,11 @@ Create, Convert, Rename, and Remove Feature Attributes
           "description": "Value to use for the operation",
           "anyOf": [
             {
-              "$ref": "#/definitions/Code"
+              "codeTypes": [
+                "flowExpr",
+                "string"
+              ],
+              "type": "code"
             },
             {
               "type": "null"
@@ -1366,7 +1348,11 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Optional path for compressed archive output",
       "anyOf": [
         {
-          "$ref": "#/definitions/Code"
+          "codeTypes": [
+            "flowExpr",
+            "string"
+          ],
+          "type": "code"
         },
         {
           "type": "null"
@@ -1398,11 +1384,11 @@ Export Features as Cesium 3D Tiles for Web Visualization
     "output": {
       "title": "Output Path",
       "description": "Directory path where the 3D tiles will be written",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Code"
-        }
-      ]
+      "codeTypes": [
+        "flowExpr",
+        "string"
+      ],
+      "type": "code"
     },
     "schemaKey": {
       "title": "Schema Key",
@@ -1418,30 +1404,6 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "type": [
         "boolean",
         "null"
-      ]
-    }
-  },
-  "definitions": {
-    "Code": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
       ]
     }
   }
@@ -3121,28 +3083,6 @@ Filter Features Based on Custom Conditions
     }
   },
   "definitions": {
-    "Code": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
-      ]
-    },
     "Condition": {
       "type": "object",
       "required": [
@@ -3152,11 +3092,10 @@ Filter Features Based on Custom Conditions
       "properties": {
         "expr": {
           "title": "Condition expression",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Code"
-            }
-          ]
+          "codeTypes": [
+            "flowExpr"
+          ],
+          "type": "code"
         },
         "outputPort": {
           "title": "Output port",
@@ -4011,28 +3950,6 @@ Experimental testbed for the Flow expression engine
     }
   },
   "definitions": {
-    "Code": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
-      ]
-    },
     "Mapping": {
       "type": "object",
       "required": [
@@ -4044,7 +3961,11 @@ Experimental testbed for the Flow expression engine
           "type": "string"
         },
         "value": {
-          "$ref": "#/definitions/Code"
+          "codeTypes": [
+            "flowExpr",
+            "string"
+          ],
+          "type": "code"
         }
       }
     }
@@ -6898,7 +6819,11 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Optional expression to determine whether to compress the output tiles",
       "anyOf": [
         {
-          "$ref": "#/definitions/Code"
+          "codeTypes": [
+            "flowExpr",
+            "string"
+          ],
+          "type": "code"
         },
         {
           "type": "null"
@@ -6918,11 +6843,11 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     "layerName": {
       "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Code"
-        }
-      ]
+      "codeTypes": [
+        "flowExpr",
+        "string"
+      ],
+      "type": "code"
     },
     "maxZoom": {
       "title": "Maximum Zoom",
@@ -6941,11 +6866,11 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     "output": {
       "title": "Output",
       "description": "Output directory path or expression for the generated MVT tiles",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Code"
-        }
-      ]
+      "codeTypes": [
+        "flowExpr",
+        "string"
+      ],
+      "type": "code"
     },
     "schemaKey": {
       "title": "Schema Key",
@@ -6961,30 +6886,6 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "type": [
         "boolean",
         "null"
-      ]
-    }
-  },
-  "definitions": {
-    "Code": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
       ]
     }
   }
