@@ -373,7 +373,9 @@ pub(super) fn tile_writing_stage(
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
     let node_ctx = NodeContext::from(ctx.clone());
-    let sink_out = crate::SinkOutput::from_path(&node_ctx, output_path.as_str())
+    // `output_path` is already sandbox-resolved (produced by SinkOutput::from_path in
+    // process_default); use from_resolved_uri to skip the strict-relative check.
+    let sink_out = crate::SinkOutput::from_resolved_uri(&node_ctx, output_path)
         .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
     // Pre-initialize property_stats from schema to preserve attribute order

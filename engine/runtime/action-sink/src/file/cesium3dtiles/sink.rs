@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     io::{BufWriter, Cursor},
-    str::FromStr,
     sync::Arc,
     time, vec,
 };
@@ -217,8 +216,10 @@ impl Cesium3DTilesWriter {
             .output
             .eval_string(&ctx.feature, Arc::clone(&env_vars))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-        // URI parse only; sandbox-validated when SinkOutput::from_path runs at write time (pipeline.rs).
-        let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
+        let node_ctx = reearth_flow_runtime::executor_operation::NodeContext::from(ctx.clone());
+        let sink_out = crate::SinkOutput::from_path(&node_ctx, path.as_str())
+            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e}")))?;
+        let output = sink_out.uri().clone();
         let compress_output = self
             .params
             .compress_output
@@ -227,7 +228,9 @@ impl Cesium3DTilesWriter {
                 let path = c
                     .eval_string(&ctx.feature, Arc::clone(&env_vars))
                     .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-                Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)
+                let sink_out = crate::SinkOutput::from_path(&node_ctx, path.as_str())
+                    .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e}")))?;
+                Ok(sink_out.uri().clone())
             })
             .transpose()?;
 
@@ -426,13 +429,13 @@ impl Cesium3DTilesWriter {
                         );
 
                         if let Some(compress_output) = compress_output {
-                            // Sandbox: `compress_output` (zip) runs through
-                            // the same chokepoint as the tiles dir above, so
-                            // both Cesium outputs share one bounded location.
+                            // `compress_output` is already sandbox-resolved (produced by
+                            // SinkOutput::from_path in process_default); use
+                            // from_resolved_uri to skip the strict-relative check.
                             let compress_node_ctx = NodeContext::from(ctx.clone());
-                            match crate::SinkOutput::from_path(
+                            match crate::SinkOutput::from_resolved_uri(
                                 &compress_node_ctx,
-                                compress_output.as_str(),
+                                compress_output.clone(),
                             ) {
                                 Ok(compress_sink_out) => {
                                     let now = time::Instant::now();

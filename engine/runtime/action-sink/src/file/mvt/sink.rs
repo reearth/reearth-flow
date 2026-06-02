@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::io::BufWriter;
 use std::io::Cursor;
-use std::str::FromStr;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
@@ -216,11 +215,18 @@ impl Sink for MVTWriter {
                     c.eval_string(feature, Arc::clone(&env_vars))
                         .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))
                 };
-                let output = Uri::from_str(eval(&self.params.output)?.as_str())?;
+                let node_ctx = NodeContext::from(ctx.as_context());
+                let output =
+                    crate::SinkOutput::from_path(&node_ctx, eval(&self.params.output)?.as_str())
+                        .map_err(|e| SinkError::MvtWriter(format!("{e}")))?
+                        .uri()
+                        .clone();
                 let compress_output = if let Some(c) = &self.params.compress_output {
                     Some(
-                        Uri::from_str(eval(c)?.as_str())
-                            .map_err(|e| SinkError::MvtWriter(e.to_string()))?,
+                        crate::SinkOutput::from_path(&node_ctx, eval(c)?.as_str())
+                            .map_err(|e| SinkError::MvtWriter(format!("{e}")))?
+                            .uri()
+                            .clone(),
                     )
                 } else {
                     None
@@ -406,10 +412,13 @@ impl MVTWriter {
                 }
 
                 if let Some(compress_output) = compress_output {
+                    // `compress_output` is already sandbox-resolved (produced by
+                    // SinkOutput::from_path in process()); use from_resolved_uri
+                    // to skip the strict-relative check.
                     let compress_node_ctx = NodeContext::from(gctx.clone());
-                    match crate::SinkOutput::from_path(
+                    match crate::SinkOutput::from_resolved_uri(
                         &compress_node_ctx,
-                        compress_output.as_str(),
+                        compress_output,
                     ) {
                         Ok(compress_sink_out) => {
                             let buffer = Vec::new();

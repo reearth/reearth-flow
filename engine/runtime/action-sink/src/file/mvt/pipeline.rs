@@ -54,7 +54,9 @@ pub(super) fn geometry_slicing_stage(
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let layer_names = Arc::new(Mutex::new(std::collections::HashSet::new()));
     let node_ctx = NodeContext::from(ctx.clone());
-    let sink_out = crate::SinkOutput::from_path(&node_ctx, output_path.as_str())
+    // `output_path` is already sandbox-resolved (produced by SinkOutput::from_path in
+    // process()); use from_resolved_uri to skip the strict-relative check.
+    let sink_out = crate::SinkOutput::from_resolved_uri(&node_ctx, output_path.clone())
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     // Convert CityObjects to sliced features
@@ -274,7 +276,9 @@ pub(super) fn tile_writing_stage(
     let min_extent: i32 = 512;
 
     let node_ctx = NodeContext::from(ctx);
-    let sink_out = crate::SinkOutput::from_path(&node_ctx, output_path.as_str())
+    // `output_path` is already sandbox-resolved (produced by SinkOutput::from_path in
+    // process()); use from_resolved_uri to skip the strict-relative check.
+    let sink_out = crate::SinkOutput::from_resolved_uri(&node_ctx, output_path.clone())
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     receiver_sorted

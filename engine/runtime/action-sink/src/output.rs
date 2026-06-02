@@ -123,6 +123,31 @@ impl SinkOutput {
         Ok(())
     }
 
+    /// Construct a `SinkOutput` from an already-resolved, sandbox-validated URI.
+    ///
+    /// This is intended for pipeline stages that receive a buffer key URI that
+    /// was already validated by [`SinkOutput::from_path`] at process time. It
+    /// skips the strict-relative-path checks (the URI is already absolute) but
+    /// still records the sandbox root so that subsequent [`SinkOutput::join`]
+    /// calls remain sandbox-bounded.
+    ///
+    /// Callers are responsible for ensuring that `resolved` was produced by a
+    /// prior `SinkOutput::from_path` call and therefore lies inside
+    /// `ctx.sandbox_root`.
+    pub fn from_resolved_uri(ctx: &NodeContext, resolved: Uri) -> Result<Self, BoxedError> {
+        let storage = ctx
+            .storage_resolver
+            .resolve(&resolved)
+            .map_err(|e| -> BoxedError {
+                format!("SinkOutput: failed to resolve storage for {resolved}: {e}").into()
+            })?;
+        Ok(Self {
+            resolved,
+            root: ctx.sandbox_root.clone(),
+            storage,
+        })
+    }
+
     /// Derive a child `SinkOutput` whose URI is `self.uri()` joined with `sub`.
     ///
     /// `sub` must be a relative path. Absolute sub-paths will return an error
