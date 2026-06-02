@@ -44,8 +44,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
@@ -129,8 +130,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["dm_feature_type"] == "DmGeometricAttribute"
+      - expr:
+          type: flowExpr
+          value: attributes.get("dm_feature_type") == "DmGeometricAttribute"
         outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
@@ -144,8 +146,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("exceptSplit") ?? false
+      - expr:
+          type: flowExpr
+          value: env.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -157,20 +160,25 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").lod == "0"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "0"
         outputPort: lod0
-      - expr: |
-          env.get("__value").lod == "1"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "1"
         outputPort: lod1
-      - expr: |
-          env.get("__value").lod == "2"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "2"
         outputPort: lod2
-      - expr: |
-          env.get("__value").lod == "3"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "3"
         outputPort: lod3
-      - expr: |
-          env.get("__value").lod == "4"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "4"
         outputPort: lod4
   - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
     name: DmGeometricAttributeRouter
@@ -305,8 +313,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: ea263dcf-70c9-42a2-8385-07eb1d76270f
     name: VegPackageFilterDict
@@ -314,8 +323,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"].starts_with("veg:")
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"].starts_with("veg:")
         outputPort: veg_only
   - id: 7b83c850-7a02-44e0-ae6c-168bb7ef5206
     name: StripFeatureTypePrefixDict
@@ -401,14 +411,17 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").feature_type == "frn:CityFurniture"
+      - expr:
+          type: flowExpr
+          value: attributes["feature_type"] == "frn:CityFurniture"
         outputPort: frn_CityFurniture
-      - expr: |
-          env.get("__value").feature_type == "veg:SolitaryVegetationObject"
+      - expr:
+          type: flowExpr
+          value: attributes["feature_type"] == "veg:SolitaryVegetationObject"
         outputPort: veg_SolitaryVegetationObject
-      - expr: |
-          env.get("__value").feature_type == "veg:PlantCover"
+      - expr:
+          type: flowExpr
+          value: attributes["feature_type"] == "veg:PlantCover"
         outputPort: veg_PlantCover
   - id: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
     name: LodSplitterWithDM
@@ -420,8 +433,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["__citygml_feature_type"] == "frn:CityFurniture"
+      - expr:
+          type: flowExpr
+          value: attributes["__citygml_feature_type"] == "frn:CityFurniture"
         outputPort: frn_CityFurniture_schema
   - id: bbccddee-2222-3333-4444-555566667777
     name: SchemaAttributeMapperForFrn
@@ -642,8 +656,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["__citygml_feature_type"] == "veg:SolitaryVegetationObject"
+      - expr:
+          type: flowExpr
+          value: attributes["__citygml_feature_type"] == "veg:SolitaryVegetationObject"
         outputPort: veg_SolitaryVegetationObject_schema
   - id: 22bb33cc-4444-5555-6666-777788889999
     name: SchemaAttributeMapperForVeg1
@@ -903,8 +918,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["__citygml_feature_type"] == "veg:PlantCover"
+      - expr:
+          type: flowExpr
+          value: attributes["__citygml_feature_type"] == "veg:PlantCover"
         outputPort: veg_PlantCover_schema
   - id: 44dd55ee-6666-7777-8888-999900001111
     name: SchemaAttributeMapperForVeg2

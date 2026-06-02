@@ -26,20 +26,21 @@ const FlowExprAutocomplete: React.FC<Props> = ({
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const indexedSuggestions = useMemo(() => {
+  const { indexedSuggestions, functionSuggestions } = useMemo(() => {
     const index = new Map<string, AutocompleteSuggestion[]>();
+    const functions: AutocompleteSuggestion[] = [];
     const allSuggestions = getFlowExprAutocompleteSuggestions(t);
 
     allSuggestions.forEach((suggestion) => {
       const firstChar = suggestion.label.charAt(0).toLowerCase();
-      if (!index.has(firstChar)) {
-        index.set(firstChar, []);
-      }
+      if (!index.has(firstChar)) index.set(firstChar, []);
       const bucket = index.get(firstChar);
       if (bucket) bucket.push(suggestion);
+      if (suggestion.type === "function" || suggestion.type === "variable")
+        functions.push(suggestion);
     });
 
-    return index;
+    return { indexedSuggestions: index, functionSuggestions: functions };
   }, [t]);
 
   const getCurrentWordAndPosition = useCallback(() => {
@@ -69,29 +70,45 @@ const FlowExprAutocomplete: React.FC<Props> = ({
       if (word.length < 1) return [];
 
       const lowerWord = word.toLowerCase();
-      const firstChar = lowerWord.charAt(0);
-      const candidateSuggestions = indexedSuggestions.get(firstChar) || [];
+      const dotIndex = lowerWord.lastIndexOf(".");
+      const hasDot = dotIndex >= 0;
+      // After a dot, match only the suffix (the method name being typed).
+      const matchWord = hasDot ? lowerWord.substring(dotIndex + 1) : lowerWord;
 
-      const filtered = candidateSuggestions.filter((suggestion) =>
-        suggestion.label.toLowerCase().startsWith(lowerWord),
+      let candidates: AutocompleteSuggestion[];
+      if (hasDot) {
+        if (matchWord.length === 0) {
+          candidates = functionSuggestions;
+        } else {
+          const firstChar = matchWord.charAt(0);
+          candidates = (indexedSuggestions.get(firstChar) || []).filter(
+            (s) => s.type === "function" || s.type === "variable",
+          );
+        }
+      } else {
+        const firstChar = lowerWord.charAt(0);
+        candidates = indexedSuggestions.get(firstChar) || [];
+      }
+
+      const filtered = candidates.filter((suggestion) =>
+        suggestion.label.toLowerCase().startsWith(matchWord),
       );
 
       return filtered.sort((a, b) => {
-        const aExact = a.label.toLowerCase() === lowerWord ? 0 : 1;
-        const bExact = b.label.toLowerCase() === lowerWord ? 0 : 1;
+        const aExact = a.label.toLowerCase() === matchWord ? 0 : 1;
+        const bExact = b.label.toLowerCase() === matchWord ? 0 : 1;
         if (aExact !== bExact) return aExact - bExact;
 
         const typePriority: Record<string, number> = {
           keyword: 0,
           function: 1,
           variable: 2,
-          namespace: 3,
-          operator: 4,
+          operator: 3,
         };
         return (typePriority[a.type] || 5) - (typePriority[b.type] || 5);
       });
     },
-    [indexedSuggestions],
+    [indexedSuggestions, functionSuggestions],
   );
 
   const calculatePosition = useCallback(() => {
@@ -156,6 +173,15 @@ const FlowExprAutocomplete: React.FC<Props> = ({
     onVisibilityChange,
   ]);
 
+  // Scroll selected item into view when navigating with arrow keys.
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const selectedEl = containerRef.current.children[selectedIndex];
+    if (selectedEl) selectedEl.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]);
+
+  // Handle keyboard navigation via document listener. Arrow/Enter/Tab bubble
+  // here naturally; ESC is handled separately in the editor (capture phase).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!visible || suggestions.length === 0) return;
@@ -220,8 +246,6 @@ const FlowExprAutocomplete: React.FC<Props> = ({
         return "text-purple-600 dark:text-purple-400";
       case "function":
         return "text-blue-600 dark:text-blue-400";
-      case "namespace":
-        return "text-teal-600 dark:text-teal-400";
       case "variable":
         return "text-green-600 dark:text-green-400";
       case "operator":

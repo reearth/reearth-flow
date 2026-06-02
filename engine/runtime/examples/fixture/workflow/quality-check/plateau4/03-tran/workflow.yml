@@ -81,8 +81,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").extension == "gml"
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
               outputPort: default
 
       - id: c29be788-be8d-43a2-97bf-3e15228a72a1
@@ -109,8 +110,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-          - expr: |
-              (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+          - expr:
+              type: flowExpr
+              value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
             outputPort: default
 
       - id: 242e339a-c7df-4be4-82f7-3223a6ed2145
@@ -246,8 +248,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["orientation"] == "clockwise"
+            - expr:
+                type: flowExpr
+                value: attributes["orientation"] == "clockwise"
               outputPort: incorrectOrientation
 
       # Map attributes for CSV output
@@ -307,8 +310,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["package"] != "rwy"
+            - expr:
+                type: flowExpr
+                value: attributes["package"] != "rwy"
               outputPort: notRwy
 
       # Convert surfaces to 2D for overlap detection
@@ -362,11 +366,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["lod"] == "1"
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] == "1"
               outputPort: lod1
-            - expr: |
-                env.get("__value")["lod"] == "2" || env.get("__value")["lod"] == "3"
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] == "2" or attributes["lod"] == "3"
               outputPort: lod23
 
       # Detect overlaps between different Road instances for LOD1
@@ -398,8 +404,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["overlayCount"] > 1
+            - expr:
+                type: flowExpr
+                value: attributes["overlayCount"] > 1
               outputPort: hasLineOverlap
 
       # Attach the overlap index
@@ -455,8 +462,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["overlayCount"] > 1
+            - expr:
+                type: flowExpr
+                value: attributes["overlayCount"] > 1
               outputPort: hasAreaOverlap
 
       # Attach area overlap index
@@ -721,8 +729,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["totalErrorCount"] == 0
+            - expr:
+                type: flowExpr
+                value: attributes["totalErrorCount"] == 0
               outputPort: default
 
       # Phase 10: Write qc_result_ok file

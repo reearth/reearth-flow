@@ -55,8 +55,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            - expr:
+                type: flowExpr
+                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
               outputPort: default
 
       # Dictionary writer branch for veg
@@ -66,8 +67,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["featureType"].starts_with("veg:")
+            - expr:
+                type: flowExpr
+                value: attributes["featureType"].starts_with("veg:")
               outputPort: veg_only
 
       - id: 7b83c850-7a02-44e0-ae6c-168bb7ef5206
@@ -160,14 +162,17 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").feature_type == "frn:CityFurniture"
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "frn:CityFurniture"
               outputPort: frn_CityFurniture
-            - expr: |
-                env.get("__value").feature_type == "veg:SolitaryVegetationObject"
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "veg:SolitaryVegetationObject"
               outputPort: veg_SolitaryVegetationObject
-            - expr: |
-                env.get("__value").feature_type == "veg:PlantCover"
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "veg:PlantCover"
               outputPort: veg_PlantCover
 
       - id: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
@@ -182,8 +187,9 @@ graphs:
         with:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
-            - expr: |
-                env.get("__value")["__citygml_feature_type"] == "frn:CityFurniture"
+            - expr:
+                type: flowExpr
+                value: attributes["__citygml_feature_type"] == "frn:CityFurniture"
               outputPort: frn_CityFurniture_schema
 
       - id: bbccddee-2222-3333-4444-555566667777
@@ -419,8 +425,9 @@ graphs:
         with:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
-            - expr: |
-                env.get("__value")["__citygml_feature_type"] == "veg:SolitaryVegetationObject"
+            - expr:
+                type: flowExpr
+                value: attributes["__citygml_feature_type"] == "veg:SolitaryVegetationObject"
               outputPort: veg_SolitaryVegetationObject_schema
 
       - id: 22bb33cc-4444-5555-6666-777788889999
@@ -694,8 +701,9 @@ graphs:
         with:
           conditions:
             # the feature_type is not part of the schema, get it from metadata
-            - expr: |
-                env.get("__value")["__citygml_feature_type"] == "veg:PlantCover"
+            - expr:
+                type: flowExpr
+                value: attributes["__citygml_feature_type"] == "veg:PlantCover"
               outputPort: veg_PlantCover_schema
 
       - id: 44dd55ee-6666-7777-8888-999900001111

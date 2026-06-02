@@ -55,8 +55,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            - expr:
+                type: flowExpr
+                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
               outputPort: default
 
       - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
@@ -403,9 +404,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                let ft = env.get("__value").feature_type;
-                ft == "tun:Tunnel" || ft == "tun:TunnelPart"
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] in ["tun:Tunnel", "tun:TunnelPart"]
               outputPort: tunnel
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6

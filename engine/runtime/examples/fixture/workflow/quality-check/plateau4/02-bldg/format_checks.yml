@@ -201,8 +201,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["gmlName"] == "bldg:Building" || env.get("__value")["gmlName"] == "bldg:BuildingPart"
+      - expr:
+          type: flowExpr
+          value: attributes.get("gmlName") == "bldg:Building" or attributes.get("gmlName") == "bldg:BuildingPart"
         outputPort: default
 
   # === Beginning of L-BLDG-04, 05, City Code Checks ===
@@ -320,29 +321,25 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            let building_id = building_id_attribute["uro:buildingID"] ?? "";
-            let branch_id = building_id_attribute["uro:branchID"]  ?? "";
-            let part_id = building_id_attribute["uro:partID"] ?? "";
-            let gml_name = env.get("__value").gmlName ?? "";
-            
-            // Condition 1: buildingID matches regex ^\d{5}-bldg-\d+$
-            let building_id_valid = str::matches(building_id, `^\d{5}-bldg-\d+$`);
-
-            // Condition 2: branchID is missing or integer type
-            let branch_id_valid = branch_id == "" || type_of(branch_id) == "i64";
-
-            // Condition 3: Building with missing partID, or BuildingPart with integer partID
-            let part_id_valid = false;
-            if gml_name == "bldg:Building" {
+        - expr:
+            type: flowExpr
+            value: |
+              attrs = attributes.get("cityGmlAttributes", {});
+              building_id_attr = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+              building_id = building_id_attr.get("uro:buildingID", "");
+              branch_id = building_id_attr.get("uro:branchID", "");
+              part_id = building_id_attr.get("uro:partID", "");
+              gml_name = attributes.get("gmlName", "");
+              building_id_valid = Regex(r"^\d{5}-bldg-\d+$").find(building_id);
+              branch_id_valid = branch_id == "" or type(branch_id) == "int";
+              if gml_name == "bldg:Building" {
                 part_id_valid = part_id == "";
-            } else if gml_name == "bldg:BuildingPart" {
-                part_id_valid = type_of(part_id) == "i64";
-            }
-            
-            building_id_valid && branch_id_valid && part_id_valid
+              } else if gml_name == "bldg:BuildingPart" {
+                part_id_valid = type(part_id) == "int";
+              } else {
+                part_id_valid = false;
+              }
+              building_id_valid and branch_id_valid and part_id_valid
           outputPort: goodUroFormatting
 
   - id: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
@@ -430,8 +427,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").uroBuildingIdCount > 1
+        - expr:
+            type: flowExpr
+            value: attributes["uroBuildingIdCount"] > 1
           outputPort: multipleBuildingId
 
   - id: b6238f2d-e1d3-497b-a632-93d9d489ccfc

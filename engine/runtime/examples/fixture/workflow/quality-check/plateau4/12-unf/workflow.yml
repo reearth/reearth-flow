@@ -78,8 +78,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").extension == "gml"
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
               outputPort: default
 
       - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2f
@@ -392,8 +393,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["totalErrorCount"] == 0
+            - expr:
+                type: flowExpr
+                value: attributes["totalErrorCount"] == 0
               outputPort: default
 
       - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d11

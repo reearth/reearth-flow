@@ -24,6 +24,46 @@ All notable changes to this project will be documented in this file.
   All built-in plateau example fixtures (87 files) have been migrated as
   part of this release.
 
+## 0.1.0-alpha.18 - 2026-06-02
+
+### engine
+
+#### 🚀 Features
+
+- Migrate AttributeManager to FlowExpr ([#2109](https://github.com/reearth/reearth-flow/pull/2109)) [`7ce0be`](https://github.com/reearth/reearth-flow/commit/7ce0be)
+
+### engine&#x2F;api
+
+#### ✨ Refactor
+
+- Added hidden and tags to actions and improved categorization  [FLOW DEV 98] ([#2114](https://github.com/reearth/reearth-flow/pull/2114)) [`070257`](https://github.com/reearth/reearth-flow/commit/070257)
+
+### engine&#x2F;sink
+
+#### 🚀 Features
+
+- Sandbox sink writes against per-job artifact directory ([#2108](https://github.com/reearth/reearth-flow/pull/2108)) [`7e6c45`](https://github.com/reearth/reearth-flow/commit/7e6c45)
+
+### i18n
+
+#### 🚀 Features
+
+- Update action labels and add new categories for localization ([#2115](https://github.com/reearth/reearth-flow/pull/2115)) [`7e9d98`](https://github.com/reearth/reearth-flow/commit/7e9d98)
+
+### ui
+
+#### 🚀 Features
+
+- Add FlowExpr syntax highlighter, validator, and constants [FLOW-DEV-55] ([#2116](https://github.com/reearth/reearth-flow/pull/2116)) [`08a73c`](https://github.com/reearth/reearth-flow/commit/08a73c)
+- Add LayoutSubToolbar component with direction and checkbox to pick whether to apply to all workflows [FLOW-DEV-134] ([#2113](https://github.com/reearth/reearth-flow/pull/2113)) [`59f673`](https://github.com/reearth/reearth-flow/commit/59f673)
+
+#### 🔧 Bug Fixes
+
+- Enhance WorkflowVariablesDialog with ref-based state management and cleanup logic [FLOW-DEV-147] ([#2110](https://github.com/reearth/reearth-flow/pull/2110)) [`ce6d23`](https://github.com/reearth/reearth-flow/commit/ce6d23)
+- Added missing expressions, fixed autocomplete keyboard shortcuts and translations [FLOW-DEV-161] ([#2121](https://github.com/reearth/reearth-flow/pull/2121)) [`da10c6`](https://github.com/reearth/reearth-flow/commit/da10c6)
+- Simplify schema fingerprint computation by removing deep sorting [FLOW-DEV-148] ([#2111](https://github.com/reearth/reearth-flow/pull/2111)) [`c49d79`](https://github.com/reearth/reearth-flow/commit/c49d79)
+- Enhance click handling for Port component with double-click support and prevent node selection on singleClick ([#2112](https://github.com/reearth/reearth-flow/pull/2112)) [`0be63d`](https://github.com/reearth/reearth-flow/commit/0be63d)
+
 ## 0.1.0-alpha.17 - 2026-05-26
 
 ### Web

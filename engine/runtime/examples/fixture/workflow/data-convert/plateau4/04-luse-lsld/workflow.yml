@@ -52,8 +52,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            - expr:
+                type: flowExpr
+                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
               outputPort: default
 
       - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
@@ -72,11 +73,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["package"] == "luse"
+            - expr:
+                type: flowExpr
+                value: attributes["package"] == "luse"
               outputPort: luse
-            - expr: |
-                env.get("__value")["package"] == "lsld"
+            - expr:
+                type: flowExpr
+                value: attributes["package"] == "lsld"
               outputPort: lsld
 
       # LUSE processing branch

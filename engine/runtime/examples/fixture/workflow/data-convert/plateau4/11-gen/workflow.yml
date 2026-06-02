@@ -54,8 +54,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            - expr:
+                type: flowExpr
+                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
               outputPort: default
 
       - id: 7bd12def-bc00-4340-adf5-1a2d68995dd7

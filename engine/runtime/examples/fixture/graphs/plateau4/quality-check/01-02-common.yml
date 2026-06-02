@@ -31,8 +31,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").extension == "gml"
+        - expr:
+            type: flowExpr
+            value: attributes["extension"] == "gml"
           outputPort: default
 
   - id: 740ac9e5-6eeb-439b-9860-23a125919a2e

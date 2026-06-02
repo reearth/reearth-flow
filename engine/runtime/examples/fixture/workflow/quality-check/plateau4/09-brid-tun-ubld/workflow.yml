@@ -70,8 +70,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
     name: FeatureCounterFileIndex
@@ -95,8 +96,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
     name: FeatureCityGmlReader
@@ -288,14 +290,17 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").udxDirs == "brid"
+      - expr:
+          type: flowExpr
+          value: attributes["udxDirs"] == "brid"
         outputPort: brid
-      - expr: |
-          env.get("__value").udxDirs == "tun"
+      - expr:
+          type: flowExpr
+          value: attributes["udxDirs"] == "tun"
         outputPort: tun
-      - expr: |
-          env.get("__value").udxDirs == "ubld"
+      - expr:
+          type: flowExpr
+          value: attributes["udxDirs"] == "ubld"
         outputPort: ubld
   - id: 5cd2bea0-0723-4123-9df8-bc663f493744
     name: CsvWriterBridgeInstanceCounts
@@ -522,8 +527,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["totalErrorCount"] == 0
+      - expr:
+          type: flowExpr
+          value: attributes["totalErrorCount"] == 0
         outputPort: default
   - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: FileWriterQcResultOk

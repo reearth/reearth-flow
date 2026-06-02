@@ -153,9 +153,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            let issue = env.get("__value").solid_boundary_issues.issue;
-            issue == "NotA2Manifold"
+        - expr:
+            type: flowExpr
+            value: attributes["solid_boundary_issues"]["issue"] == "NotA2Manifold"
           outputPort: notClosed
 
   # AttributeMapper for NotClosed errors (lowercase format like wtr/bldg)

@@ -44,8 +44,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
@@ -149,8 +150,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
     name: AttributeFlattener
@@ -166,11 +168,13 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["package"] == "luse"
+      - expr:
+          type: flowExpr
+          value: attributes["package"] == "luse"
         outputPort: luse
-      - expr: |
-          env.get("__value")["package"] == "lsld"
+      - expr:
+          type: flowExpr
+          value: attributes["package"] == "lsld"
         outputPort: lsld
   - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     name: AttributeMapperLuse

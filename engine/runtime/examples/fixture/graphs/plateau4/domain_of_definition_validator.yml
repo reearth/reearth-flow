@@ -22,32 +22,41 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").flag == "Summary"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "Summary"
           outputPort: summary
-        - expr: |
-            env.get("__value").flag == "CodeValidation"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "CodeValidation"
           outputPort: codeValidation
-        - expr: |
-            env.get("__value").flag == "inCorrectCodeSpace"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "inCorrectCodeSpace"
           outputPort: inCorrectCodeSpace
-        - expr: |
-            env.get("__value").flag == "ExtentsValidation"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "ExtentsValidation"
           outputPort: extentsValidation
-        - expr: |
-            env.get("__value").flag == "GMLID_NotWellFormed"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "GMLID_NotWellFormed"
           outputPort: gmlIdNotWellFormed
-        - expr: |
-            env.get("__value").flag == "GMLID_NotUnique"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "GMLID_NotUnique"
           outputPort: gmlIdNotUnique
-        - expr: |
-            env.get("__value").flag == "XLink_NoReference"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "XLink_NoReference"
           outputPort: xlinkNoReference
-        - expr: |
-            env.get("__value").flag == "XLink_InvalidObjectType"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "XLink_InvalidObjectType"
           outputPort: xLinkInvalidObjectType
-        - expr: |
-            env.get("__value").flag == "InvalidLodXGeometry"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "InvalidLodXGeometry"
           outputPort: invalidLodXGeometry
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
