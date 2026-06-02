@@ -179,7 +179,7 @@ pub(crate) fn execute_expect_err(test_id: &str, fixture_files: Vec<&str>) -> Str
         sandbox_root,
     );
     match result {
-        Err(e) => format!("{e:?}"),
+        Err(e) => e.to_string(),
         Ok(()) => {
             panic!("execute_expect_err: workflow '{test_id}' succeeded but was expected to fail")
         }

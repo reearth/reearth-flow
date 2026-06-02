@@ -5,8 +5,14 @@ fn relative_output_writes_under_sandbox_root() {
     // Fixture uses `output: test_output.gpkg` (relative).
     // After Runner::run_with_sandbox_root joins it against sandbox_root,
     // the file should land at <sandbox_root>/test_output.gpkg.
-    let result = execute("file/writer/relative_output", vec!["test_geopackage.gpkg"]);
-    assert!(result.is_ok(), "got: {result:?}");
+    let tempdir = execute("file/writer/relative_output", vec!["test_geopackage.gpkg"])
+        .expect("workflow should succeed");
+    let expected_path = tempdir.path().join("test_output.gpkg");
+    assert!(
+        expected_path.exists(),
+        "expected file {:?} to exist under sandbox_root after relative-path sink write",
+        expected_path
+    );
 }
 
 #[test]
