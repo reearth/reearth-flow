@@ -21,6 +21,7 @@ export class EditorPage {
   readonly paramsDialog: Locator;
   readonly confirmDialog: Locator;
   readonly deployButton: Locator;
+  readonly deployPopover: Locator;
   readonly deployDescriptionInput: Locator;
   readonly deploySubmitButton: Locator;
   readonly deploymentCreatedToast: Locator;
@@ -43,10 +44,13 @@ export class EditorPage {
       .last()
       .locator("button")
       .first();
-    this.deployDescriptionInput = page.getByPlaceholder(
+    this.deployPopover = page
+      .getByRole("dialog")
+      .filter({ hasText: "Deploy Project" });
+    this.deployDescriptionInput = this.deployPopover.getByPlaceholder(
       "Give your deployment a meaningful description...",
     );
-    this.deploySubmitButton = page.getByRole("button", {
+    this.deploySubmitButton = this.deployPopover.getByRole("button", {
       name: /^(Deploy|Update)$/,
     });
     this.deploymentCreatedToast = page.getByText("Deployment Created", {

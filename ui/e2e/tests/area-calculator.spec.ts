@@ -24,7 +24,7 @@ test.describe("Area calculator pipeline", { tag: "@pipeline" }, () => {
 
   test.afterEach(async () => {
     await deployments.goto();
-    await deployments.deleteDeploymentIfExists(description).catch(() => { });
+    await deployments.deleteDeploymentIfExists(description).catch(() => {});
   });
 
   test("deploys, runs to completion, and produces the park-areas artifact", async ({
@@ -41,7 +41,7 @@ test.describe("Area calculator pipeline", { tag: "@pipeline" }, () => {
     await expect(page).toHaveURL(/\/workspaces\/[^/]+\/jobs\/[^/]+$/, {
       timeout: 15_000,
     });
-    console.log("JOB_URL:", page.url());
+    test.info().annotations.push({ type: "job-url", description: page.url() });
 
     // Wait for a terminal status; engine cold start can take minutes.
     const terminalStatus = page
@@ -53,6 +53,9 @@ test.describe("Area calculator pipeline", { tag: "@pipeline" }, () => {
     // The output artifact is listed asynchronously after completion.
     const outputUrl = page.getByText(/park-areas\.geojson/).first();
     await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-    console.log("OUTPUT_URL:", (await outputUrl.textContent())?.trim());
+    test.info().annotations.push({
+      type: "output-url",
+      description: (await outputUrl.textContent())?.trim() ?? "",
+    });
   });
 });

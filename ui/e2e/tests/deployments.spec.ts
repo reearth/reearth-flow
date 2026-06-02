@@ -48,10 +48,10 @@ test.describe("Deployment lifecycle", { tag: "@regression" }, () => {
   test.afterEach(async () => {
     await deployments.goto();
     for (const description of deploymentDescriptions) {
-      await deployments.deleteDeploymentIfExists(description).catch(() => { });
+      await deployments.deleteDeploymentIfExists(description).catch(() => {});
     }
     await projects.goto();
-    await projects.deleteProjectIfExists(projectName).catch(() => { });
+    await projects.deleteProjectIfExists(projectName).catch(() => {});
   });
 
   test("deploys a workflow and it appears in the Deployments table with correct metadata", async () => {
@@ -214,15 +214,19 @@ test.describe("Deployment lifecycle", { tag: "@regression" }, () => {
       page.getByText(/^(queued|running|completed|failed|cancelled)$/).first(),
     ).toBeVisible({ timeout: 15_000 });
 
+    // Cancel the job so it does not keep consuming the shared dev engine.
+    // The button only renders while the job is queued/running.
     const cancelJob = page.getByRole("button", { name: "Cancel Job" });
-    await cancelJob
-      .click({ timeout: 10_000 })
-      .then(() =>
-        expect(page.getByText("Job Cancelled", { exact: true })).toBeVisible({
-          timeout: 15_000,
-        }),
-      )
-      .catch(() => { });
+    const canCancel = await cancelJob
+      .waitFor({ state: "visible", timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (canCancel) {
+      await cancelJob.click();
+      await expect(
+        page.getByText("Job Cancelled", { exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+    }
   });
 });
 
@@ -240,7 +244,7 @@ test.describe("Deployment from file upload", { tag: "@regression" }, () => {
     await deployments.goto();
     await deployments
       .deleteDeploymentIfExists(deploymentDescription)
-      .catch(() => { });
+      .catch(() => {});
   });
 
   test("creates a deployment from an uploaded workflow file", async () => {

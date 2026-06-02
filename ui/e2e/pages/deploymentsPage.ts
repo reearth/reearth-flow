@@ -192,6 +192,7 @@ export class DeploymentsPage {
     const alert = this.page.getByRole("alertdialog");
     await alert.getByRole("button", { name: "Continue" }).click();
     await alert.waitFor({ state: "hidden" });
+    await expect(this.deploymentRow(description)).toHaveCount(0);
   }
 
   async deleteDeploymentIfExists(description: string) {
