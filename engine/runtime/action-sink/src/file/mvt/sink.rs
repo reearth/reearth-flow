@@ -217,16 +217,12 @@ impl Sink for MVTWriter {
                 };
                 let node_ctx = NodeContext::from(ctx.as_context());
                 let output =
-                    crate::SinkOutput::from_path(&node_ctx, eval(&self.params.output)?.as_str())
-                        .map_err(|e| SinkError::MvtWriter(format!("{e}")))?
-                        .uri()
-                        .clone();
+                    crate::ensure_relative_path(&node_ctx, eval(&self.params.output)?.as_str())
+                        .map_err(|e| SinkError::MvtWriter(format!("{e}")))?;
                 let compress_output = if let Some(c) = &self.params.compress_output {
                     Some(
-                        crate::SinkOutput::from_path(&node_ctx, eval(c)?.as_str())
-                            .map_err(|e| SinkError::MvtWriter(format!("{e}")))?
-                            .uri()
-                            .clone(),
+                        crate::ensure_relative_path(&node_ctx, eval(c)?.as_str())
+                            .map_err(|e| SinkError::MvtWriter(format!("{e}")))?,
                     )
                 } else {
                     None

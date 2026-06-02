@@ -15,6 +15,89 @@ pub struct SinkOutput {
     storage: Arc<Storage>,
 }
 
+/// Validate `path` as a strict-relative sink output and resolve it against
+/// `ctx.sandbox_root`. Returns the joined and sandbox-validated URI without
+/// acquiring a storage backend.
+///
+/// This is the validation half of [`SinkOutput::from_path`]. Use it when you
+/// only need the resolved URI (e.g. as a per-feature buffer key) and will
+/// acquire the storage handle later via [`SinkOutput::from_resolved_uri`].
+///
+/// Rejection rules match [`SinkOutput::from_path`]: empty / leading-trailing
+/// whitespace / `.` / `..` / `scheme://...` / leading `/` / leading `~` /
+/// post-join paths that escape via `..` / post-join paths that resolve to
+/// the sandbox root itself.
+pub fn ensure_relative_path(ctx: &NodeContext, path: &str) -> Result<Uri, BoxedError> {
+    // ---- 1. Validate the relative path ----
+    if path.is_empty() {
+        return Err("sink output path is empty; provide a relative path \
+                    like 'out.gpkg' or 'group/a.geojson'"
+            .into());
+    }
+    if path != path.trim() {
+        return Err(format!(
+            "sink output {path:?} has leading or trailing whitespace; \
+             use 'out.gpkg' not ' out.gpkg ' or 'out.gpkg '"
+        )
+        .into());
+    }
+    if path == "." || path == ".." {
+        return Err(format!(
+            "sink output {path:?} is not a filename; provide a relative \
+             path like 'out.gpkg' or 'group/a.geojson'"
+        )
+        .into());
+    }
+    if path.contains("://") {
+        return Err(format!(
+            "sink output {path:?}: absolute URIs are not allowed. \
+             Sink paths must be relative to the per-job artifact directory. \
+             If your workflow uses Url(env[\"workerArtifactPath\"]) / x, \
+             replace the whole expression with just x — the engine joins \
+             it internally."
+        )
+        .into());
+    }
+    if path.starts_with('/') {
+        return Err(format!(
+            "sink output {path:?}: leading '/' is ambiguous. \
+             Use a relative path without a leading slash, e.g. 'foo/bar'."
+        )
+        .into());
+    }
+    if path.starts_with('~') {
+        return Err(format!(
+            "sink output {path:?}: leading '~' (home expansion) is not \
+             supported. Use a relative path under the per-job artifact directory."
+        )
+        .into());
+    }
+
+    // ---- 2. Join against sandbox_root ----
+    let resolved = ctx.sandbox_root.join(path).map_err(|e| -> BoxedError {
+        format!("SinkOutput: failed to join {path:?} with sandbox_root: {e}").into()
+    })?;
+
+    // ---- 3. Sandbox-validate (catches ".." segments that survived join) ----
+    crate::sandbox::ensure_under(&ctx.sandbox_root, &resolved)
+        .map_err(|e| -> BoxedError { Box::new(e) })?;
+
+    // ---- 4. Post-join: resolved must not be the root itself ----
+    // Compare ignoring trailing slashes — Uri::join may strip them via normalization.
+    let resolved_norm = resolved.as_str().trim_end_matches('/');
+    let root_norm = ctx.sandbox_root.as_str().trim_end_matches('/');
+    if resolved_norm == root_norm {
+        return Err(format!(
+            "sink output {path:?} resolves to the artifact directory \
+             itself (no filename). Provide a relative path that ends \
+             in a filename."
+        )
+        .into());
+    }
+
+    Ok(resolved)
+}
+
 impl SinkOutput {
     /// Construct a `SinkOutput` from a relative path string.
     ///
@@ -27,86 +110,8 @@ impl SinkOutput {
     /// For migration from the previous absolute-URI API, see the error message
     /// of the URI-scheme rejection path, which names `workerArtifactPath`.
     pub fn from_path(ctx: &NodeContext, path: &str) -> Result<Self, BoxedError> {
-        // ---- 1. Validate the relative path ----
-        if path.is_empty() {
-            return Err("sink output path is empty; provide a relative path \
-                        like 'out.gpkg' or 'group/a.geojson'"
-                .into());
-        }
-        if path != path.trim() {
-            return Err(format!(
-                "sink output {path:?} has leading or trailing whitespace; \
-                 use 'out.gpkg' not ' out.gpkg ' or 'out.gpkg '"
-            )
-            .into());
-        }
-        if path == "." || path == ".." {
-            return Err(format!(
-                "sink output {path:?} is not a filename; provide a relative \
-                 path like 'out.gpkg' or 'group/a.geojson'"
-            )
-            .into());
-        }
-        if path.contains("://") {
-            return Err(format!(
-                "sink output {path:?}: absolute URIs are not allowed. \
-                 Sink paths must be relative to the per-job artifact directory. \
-                 If your workflow uses Url(env[\"workerArtifactPath\"]) / x, \
-                 replace the whole expression with just x — the engine joins \
-                 it internally."
-            )
-            .into());
-        }
-        if path.starts_with('/') {
-            return Err(format!(
-                "sink output {path:?}: leading '/' is ambiguous. \
-                 Use a relative path without a leading slash, e.g. 'foo/bar'."
-            )
-            .into());
-        }
-        if path.starts_with('~') {
-            return Err(format!(
-                "sink output {path:?}: leading '~' (home expansion) is not \
-                 supported. Use a relative path under the per-job artifact directory."
-            )
-            .into());
-        }
-
-        // ---- 2. Join against sandbox_root ----
-        let resolved = ctx.sandbox_root.join(path).map_err(|e| -> BoxedError {
-            format!("SinkOutput: failed to join {path:?} with sandbox_root: {e}").into()
-        })?;
-
-        // ---- 3. Sandbox-validate (catches ".." segments that survived join) ----
-        crate::sandbox::ensure_under(&ctx.sandbox_root, &resolved)
-            .map_err(|e| -> BoxedError { Box::new(e) })?;
-
-        // ---- 4. Post-join: resolved must not be the root itself ----
-        // Compare ignoring trailing slashes — Uri::join may strip them via normalization.
-        let resolved_norm = resolved.as_str().trim_end_matches('/');
-        let root_norm = ctx.sandbox_root.as_str().trim_end_matches('/');
-        if resolved_norm == root_norm {
-            return Err(format!(
-                "sink output {path:?} resolves to the artifact directory \
-                 itself (no filename). Provide a relative path that ends \
-                 in a filename."
-            )
-            .into());
-        }
-
-        // ---- 5. Acquire storage backend ----
-        let storage = ctx
-            .storage_resolver
-            .resolve(&resolved)
-            .map_err(|e| -> BoxedError {
-                format!("SinkOutput: failed to resolve storage for {resolved}: {e}").into()
-            })?;
-
-        Ok(Self {
-            resolved,
-            root: ctx.sandbox_root.clone(),
-            storage,
-        })
+        let resolved = ensure_relative_path(ctx, path)?;
+        Self::from_resolved_uri(ctx, resolved)
     }
 
     /// Return the resolved URI this output writes to.
@@ -459,5 +464,47 @@ mod tests {
         let parent = SinkOutput::from_path(&ctx, "a").unwrap();
         let child = parent.join("b").unwrap();
         assert_eq!(child.uri().path().as_path(), tmp.path().join("a").join("b"));
+    }
+
+    // ---- ensure_relative_path tests ----
+
+    #[test]
+    fn ensure_relative_path_accepts_simple_relative() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let uri = ensure_relative_path(&ctx, "out.gpkg").unwrap();
+        assert_eq!(uri.path().as_path(), tmp.path().join("out.gpkg"));
+    }
+
+    #[test]
+    fn ensure_relative_path_rejects_absolute_uri() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = ensure_relative_path(&ctx, "gs://bucket/x")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("workerArtifactPath"), "got: {err}");
+    }
+
+    #[test]
+    fn ensure_relative_path_rejects_traversal() {
+        let tmp = tempdir().unwrap();
+        let ctx = ctx_with_root(&file_uri(tmp.path()));
+        let err = ensure_relative_path(&ctx, "foo/../../escape")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("outside") || err.contains("sandbox"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn ensure_relative_path_does_not_acquire_storage() {
+        // The helper should succeed even when StorageResolver doesn't have the
+        // backend registered — proving it doesn't call resolver.resolve().
+        let ctx = ctx_with_root("gs://my-bucket/jobs/abc/");
+        let uri = ensure_relative_path(&ctx, "out.json").unwrap();
+        assert_eq!(uri.as_str(), "gs://my-bucket/jobs/abc/out.json");
     }
 }

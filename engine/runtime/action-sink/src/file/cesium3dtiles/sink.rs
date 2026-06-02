@@ -217,9 +217,8 @@ impl Cesium3DTilesWriter {
             .eval_string(&ctx.feature, Arc::clone(&env_vars))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
         let node_ctx = reearth_flow_runtime::executor_operation::NodeContext::from(ctx.clone());
-        let sink_out = crate::SinkOutput::from_path(&node_ctx, path.as_str())
+        let output = crate::ensure_relative_path(&node_ctx, path.as_str())
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e}")))?;
-        let output = sink_out.uri().clone();
         let compress_output = self
             .params
             .compress_output
@@ -228,9 +227,8 @@ impl Cesium3DTilesWriter {
                 let path = c
                     .eval_string(&ctx.feature, Arc::clone(&env_vars))
                     .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-                let sink_out = crate::SinkOutput::from_path(&node_ctx, path.as_str())
-                    .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e}")))?;
-                Ok(sink_out.uri().clone())
+                crate::ensure_relative_path(&node_ctx, path.as_str())
+                    .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e}")))
             })
             .transpose()?;
 

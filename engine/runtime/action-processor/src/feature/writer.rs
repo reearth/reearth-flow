@@ -255,14 +255,14 @@ impl Processor for FeatureWriter {
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
-        // Use SinkOutput::from_path so the path is validated as strict-relative
-        // and joined against sandbox_root, rather than against CWD.
-        let sink_out = reearth_flow_action_sink::SinkOutput::from_path(
+        // Use ensure_relative_path so the path is validated as strict-relative
+        // and joined against sandbox_root without acquiring a storage backend
+        // per feature — storage is acquired once at flush time via from_resolved_uri.
+        let output_uri = reearth_flow_action_sink::ensure_relative_path(
             &NodeContext::from(ctx.clone()),
             path.as_str(),
         )
         .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e}")))?;
-        let output_uri = sink_out.uri().clone();
         let buffer = self.buffer.entry(output_uri).or_default();
         buffer.push(ctx.feature);
         Ok(())
