@@ -188,6 +188,16 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
                     .map(|k| ExprValue::String(k.as_ref().to_string()))
                     .collect(),
             )),
+            "__contains__" => {
+                reearth_flow_expr::unpack_args!(args => key);
+                let ExprValue::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "'in attributes' key must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
+                Ok(ExprValue::Bool(self.get_value(name).is_some()))
+            }
             m => Err(InnerError::new(format!("Attributes has no method '{m}'"))),
         }
     }
@@ -297,5 +307,39 @@ fn attribute_value_from_eval(v: ExprValue) -> reearth_flow_expr::Result<Attribut
                 )))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use indexmap::indexmap;
+
+    use super::*;
+    use crate::attribute::AttributeValue;
+    use crate::feature::Feature;
+
+    fn eval_bool(expr: &str, feature: &Feature) -> bool {
+        let code = Code {
+            ty: CodeType::FlowExpr,
+            value: expr.to_string(),
+        };
+        let env_vars = Arc::new(serde_json::Map::new());
+        code.compile()
+            .unwrap()
+            .eval_bool(feature, env_vars)
+            .unwrap()
+    }
+
+    #[test]
+    fn test_attributes_in_operator() {
+        let feature = Feature::from(indexmap! {
+            "foo".to_string() => AttributeValue::String("bar".to_string()),
+        });
+        assert!(eval_bool(r#""foo" in attributes"#, &feature));
+        assert!(!eval_bool(r#""missing" in attributes"#, &feature));
+        assert!(!eval_bool(r#""foo" not in attributes"#, &feature));
+        assert!(eval_bool(r#""missing" not in attributes"#, &feature));
     }
 }

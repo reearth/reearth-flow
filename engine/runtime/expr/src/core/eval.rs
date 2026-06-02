@@ -433,6 +433,15 @@ fn contains_inner(left: Value, right: Value) -> InnerResult<bool> {
                 l.type_name()
             ))),
         },
+        Value::Object(rc) => rc
+            .call_method("__contains__", &[left])
+            .and_then(|v| match v {
+                Value::Bool(b) => Ok(b),
+                other => Err(InnerError::new(format!(
+                    "__contains__ must return bool, got {}",
+                    other.type_name()
+                ))),
+            }),
         r => Err(InnerError::new(format!(
             "'in' not supported between {} and {}",
             left.type_name(),

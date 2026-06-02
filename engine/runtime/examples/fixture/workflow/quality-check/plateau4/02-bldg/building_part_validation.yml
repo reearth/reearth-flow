@@ -20,15 +20,25 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr: env.get("__value").fileIndex
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: env.get("__value").gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: Building.gml_id
-          expr: env.get("__value").gmlId
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: BuildingPart.gml_id
-          expr: env.get("__value").featureId
+          expr:
+            type: flowExpr
+            value: attributes["featureId"]
         - attribute: lod
-          expr: env.get("__value").lod
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
 
   - id: 9e8f7a6b-5c4d-3e2f-1a0b-9c8d7e6f5a4b
     name: CsvWriterBuildingPartLod0Or1
@@ -110,21 +120,37 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr: env.get("__value").fileIndex
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: env.get("__value").gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: Building.gml_id
-          expr: env.get("__value").gmlId
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: BuildingPart.gml_id
-          expr: env.get("__value").featureId
+          expr:
+            type: flowExpr
+            value: attributes["featureId"]
         - attribute: lod
-          expr: env.get("__value").lod
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
         - attribute: status
-          expr: env.get("__value")._status
+          expr:
+            type: flowExpr
+            value: attributes["_status"]
         - attribute: connected_id
-          expr: env.get("__value")._connected_id
+          expr:
+            type: flowExpr
+            value: attributes["_connected_id"]
         - attribute: connected_parts
-          expr: env.get("__value")._connected_parts
+          expr:
+            type: flowExpr
+            value: attributes["_connected_parts"]
 
   - id: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     name: CsvWriterLbldg02Errors

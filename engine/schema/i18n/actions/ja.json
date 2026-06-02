@@ -248,6 +248,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Mapper": {
           "attribute": {
             "title": "属性名"
