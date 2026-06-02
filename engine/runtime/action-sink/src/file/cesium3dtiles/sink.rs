@@ -41,7 +41,11 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["3d-tiles", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -213,7 +217,7 @@ impl Cesium3DTilesWriter {
             .output
             .eval_string(&ctx.feature, Arc::clone(&env_vars))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-        // URI parse only; SinkOutput is constructed once at write time in pipeline.rs (see MVT pattern).
+        // URI parse only; sandbox-validated when SinkOutput::from_path runs at write time (pipeline.rs).
         let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
         let compress_output = self
             .params
@@ -422,6 +426,9 @@ impl Cesium3DTilesWriter {
                         );
 
                         if let Some(compress_output) = compress_output {
+                            // Sandbox: `compress_output` (zip) runs through
+                            // the same chokepoint as the tiles dir above, so
+                            // both Cesium outputs share one bounded location.
                             let compress_node_ctx = NodeContext::from(ctx.clone());
                             match crate::SinkOutput::from_path(
                                 &compress_node_ctx,

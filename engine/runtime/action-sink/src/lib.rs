@@ -9,3 +9,6 @@ pub mod schema;
 mod zip_eq_logged;
 
 pub use output::SinkOutput;
+
+mod sandbox;
+pub use sandbox::{ensure_under, SandboxError};

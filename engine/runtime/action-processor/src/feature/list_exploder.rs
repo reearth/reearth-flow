@@ -31,7 +31,11 @@ impl ProcessorFactory for ListExploderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Transform"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["list"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

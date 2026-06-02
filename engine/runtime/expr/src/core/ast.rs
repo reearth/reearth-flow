@@ -23,6 +23,11 @@ pub enum BinOp {
     Or,
     In,
     NotIn,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Shl,
+    Shr,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -50,15 +55,14 @@ pub enum ExprKind {
         stop: Option<Box<Expr>>,
         step: Option<Box<Expr>>,
     },
-    /// function call: `value("key")`
-    FuncCall {
-        name: String,
-        args: Vec<Expr>,
-    },
-    /// method call: `expr.method(args)`
-    MethodCall {
+    /// attribute access: `expr.attr`
+    Attribute {
         receiver: Box<Expr>,
-        method: String,
+        attr: String,
+    },
+    /// call expression: `expr(args)`
+    Call {
+        callee: Box<Expr>,
         args: Vec<Expr>,
     },
     Unary(UnaryOp, Box<Expr>),
@@ -96,6 +100,8 @@ pub enum ExprKind {
         iterable: Box<Expr>,
         body: Box<Expr>,
     },
+    /// `return [expr]` — exits the current script (or future closure) with a value
+    Return(Option<Box<Expr>>),
 }
 
 #[derive(Debug, Clone)]

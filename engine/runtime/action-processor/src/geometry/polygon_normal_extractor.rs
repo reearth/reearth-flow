@@ -34,6 +34,10 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["normal", "3d"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone()]
     }

@@ -12,6 +12,7 @@ use reearth_flow_storage::storage::Storage;
 #[derive(Clone, Debug)]
 pub struct SinkOutput {
     resolved: Uri,
+    root: Uri,
     storage: Arc<Storage>,
 }
 
@@ -19,19 +20,26 @@ impl SinkOutput {
     /// Construct a `SinkOutput` from a path string.
     ///
     /// Accepts either a URI (`file://...`, `gs://...`, etc.) or a plain
-    /// filesystem path (treated as `file://` by `Uri::from_str`). Resolves
-    /// the storage backend eagerly.
+    /// filesystem path (treated as `file://` by `Uri::from_str`). Verifies
+    /// the resolved URI is within `ctx.sandbox_root` (hard-rejects writes
+    /// outside the sandbox), then acquires the storage backend eagerly.
     pub fn from_path(ctx: &NodeContext, path: &str) -> Result<Self, BoxedError> {
         let resolved = Uri::from_str(path).map_err(|e| -> BoxedError {
             format!("SinkOutput: invalid path {:?}: {e}", path).into()
         })?;
+        crate::sandbox::ensure_under(&ctx.sandbox_root, &resolved)
+            .map_err(|e| -> BoxedError { Box::new(e) })?;
         let storage = ctx
             .storage_resolver
             .resolve(&resolved)
             .map_err(|e| -> BoxedError {
                 format!("SinkOutput: failed to resolve storage for {resolved}: {e}").into()
             })?;
-        Ok(Self { resolved, storage })
+        Ok(Self {
+            resolved,
+            root: ctx.sandbox_root.clone(),
+            storage,
+        })
     }
 
     /// Return the resolved URI this output writes to.
@@ -51,13 +59,15 @@ impl SinkOutput {
     /// Derive a child `SinkOutput` whose URI is `self.uri()` joined with `sub`.
     ///
     /// `sub` must be a relative path. Absolute sub-paths will return an error
-    /// from `Uri::join`. The storage backend is reused (scheme+authority cannot
-    /// change via join).
+    /// from `Uri::join`. The joined URI is checked against the captured
+    /// sandbox root so traversal like `"../escape"` is hard-rejected.
     pub fn join(&self, sub: &str) -> Result<Self, BoxedError> {
         let joined = self.resolved.join(sub)?;
-        // join preserves scheme+authority, so the storage backend is the same
+        crate::sandbox::ensure_under(&self.root, &joined)
+            .map_err(|e| -> BoxedError { Box::new(e) })?;
         Ok(Self {
             resolved: joined,
+            root: self.root.clone(),
             storage: self.storage.clone(),
         })
     }
@@ -135,23 +145,20 @@ mod tests {
     }
 
     #[test]
-    fn join_with_dotdot_pins_current_behavior() {
+    fn join_with_dotdot_now_rejected_by_sandbox() {
         let tmp = tempdir().unwrap();
         let nested = tmp.path().join("subdir");
         std::fs::create_dir(&nested).unwrap();
-        let ctx = NodeContext::default();
+        // Critical: set sandbox_root to the nested dir so `..` actually escapes.
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&file_uri(&nested)).unwrap(),
+            ..NodeContext::default()
+        };
         let base = SinkOutput::from_path(&ctx, &file_uri(&nested)).unwrap();
-        // Pin current behavior: `Uri::join` normalizes `..` and the result
-        // escapes the base directory. PR2 will replace this with a rejection
-        // assertion once sandboxing lands.
-        let sub = base
-            .join("../sibling.txt")
-            .expect("Uri::join currently resolves `..` segments");
-        let expected = tmp.path().join("sibling.txt");
-        assert_eq!(
-            sub.uri().path().as_path(),
-            expected.as_path(),
-            "traversal currently resolves to parent — PR2 will block this"
+        let result = base.join("../sibling.txt");
+        assert!(
+            result.is_err(),
+            "PR2: `..` traversal must now be rejected; got: {result:?}"
         );
     }
 
@@ -172,5 +179,46 @@ mod tests {
     fn sink_output_is_send_sync_clone_debug() {
         fn assert_send_sync_clone_debug<T: Send + Sync + Clone + std::fmt::Debug>() {}
         assert_send_sync_clone_debug::<SinkOutput>();
+    }
+
+    #[test]
+    fn from_path_rejects_uri_outside_sandbox_root() {
+        let tmp = tempdir().unwrap();
+        let inside = tmp.path().join("inside");
+        std::fs::create_dir(&inside).unwrap();
+        let outside = tmp.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&file_uri(&inside)).unwrap(),
+            ..NodeContext::default()
+        };
+
+        let target_outside = outside.join("attack.bin");
+        let result = SinkOutput::from_path(&ctx, &file_uri(&target_outside));
+        assert!(
+            result.is_err(),
+            "SinkOutput::from_path must reject URIs outside ctx.sandbox_root"
+        );
+    }
+
+    #[test]
+    fn from_path_accepts_uri_inside_sandbox_root() {
+        let tmp = tempdir().unwrap();
+        let inside = tmp.path().join("inside");
+        std::fs::create_dir(&inside).unwrap();
+
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&file_uri(&inside)).unwrap(),
+            ..NodeContext::default()
+        };
+
+        let target = inside.join("ok.bin");
+        let result = SinkOutput::from_path(&ctx, &file_uri(&target));
+        assert!(
+            result.is_ok(),
+            "URI inside sandbox_root must succeed; got: {:?}",
+            result.err()
+        );
     }
 }

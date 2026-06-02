@@ -32,7 +32,11 @@ impl SourceFactory for SqlReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["database"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

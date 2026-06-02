@@ -45,7 +45,7 @@ impl ProcessorFactory for FeatureMergerFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Merge"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -453,6 +453,7 @@ impl Processor for FeatureMerger {
                                     storage_resolver: ctx.storage_resolver.clone(),
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),
+                                    sandbox_root: ctx.sandbox_root.clone(),
                                 },
                                 fw,
                             )?;
@@ -495,6 +496,7 @@ impl Processor for FeatureMerger {
                                     storage_resolver: ctx.storage_resolver.clone(),
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),
+                                    sandbox_root: ctx.sandbox_root.clone(),
                                 },
                                 fw,
                             )?;

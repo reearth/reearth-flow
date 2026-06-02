@@ -95,7 +95,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / "citygml3-3dtiles"
+            value: Url(env["workerArtifactPath"]) / "citygml3-3dtiles"
           minZoom: 15
           maxZoom: 18
 

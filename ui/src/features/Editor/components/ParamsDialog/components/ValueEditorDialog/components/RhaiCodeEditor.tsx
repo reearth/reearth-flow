@@ -38,6 +38,22 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
 
     // Autocomplete state
     const [autocompleteVisible, setAutocompleteVisible] = useState(false);
+    const autocompleteVisibleRef = useRef(false);
+    autocompleteVisibleRef.current = autocompleteVisible;
+
+    // Capture-phase ESC handler — registered before Radix Dialog's handler so ESC
+    // only closes suggestions when the autocomplete is open, not the dialog.
+    useEffect(() => {
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && autocompleteVisibleRef.current) {
+          e.stopImmediatePropagation();
+          setAutocompleteVisible(false);
+        }
+      };
+      document.addEventListener("keydown", handleEsc, { capture: true });
+      return () =>
+        document.removeEventListener("keydown", handleEsc, { capture: true });
+    }, []);
 
     // Validation state with debounced validation
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(

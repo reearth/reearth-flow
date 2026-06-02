@@ -25,7 +25,7 @@ graphs:
         type: "action"
         action: "FeatureWriter"
         with:
-          output: "output.json"
+          output: "env.get(\"workerArtifactPath\") + \"/output.json\""
           format: "json"
 
     edges:

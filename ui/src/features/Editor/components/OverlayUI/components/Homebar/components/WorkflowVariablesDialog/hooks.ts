@@ -186,16 +186,27 @@ export default ({
     });
   }, [yVarSession, currentWorkflowVariables, rawSession?.pendingRefetch]);
 
-  // Broadcast awareness that this user has the dialog open, and clean up on
-  // unmount (navigation / accidental close without Cancel/Save).
-  const workflowVarAwarenessRef = useRef(workflowVarAwareness);
-  workflowVarAwarenessRef.current = workflowVarAwareness;
-  useEffect(() => {
-    workflowVarAwarenessRef.current?.onDialogOpen();
-    return () => {
-      workflowVarAwarenessRef.current?.onDialogClose();
-    };
-  }, []);
+  // ── Always-current refs ───────────────────────────────────────────────────
+  // All mutable state that cancel / unmount cleanup needs to read freshly.
+  // Reading via ref inside a useCallback (or unmount closure) avoids stale
+  // captures without adding those values to useCallback dep arrays.
+
+  const sessionVarsRef = useRef(sessionVars);
+  sessionVarsRef.current = sessionVars;
+
+  const sessionBaseRef = useRef(sessionBase);
+  sessionBaseRef.current = sessionBase;
+
+  const usersRef = useRef(users);
+  usersRef.current = users;
+
+  const pendingRefetchRef = useRef<
+    WorkflowVarSession["pendingRefetch"] | undefined
+  >(rawSession?.pendingRefetch);
+  pendingRefetchRef.current = rawSession?.pendingRefetch;
+
+  const clearSessionRef = useRef(clearSession);
+  clearSessionRef.current = clearSession;
 
   // ── Unsaved-changes detection ─────────────────────────────────────────────
 
@@ -208,12 +219,6 @@ export default ({
   }, [sessionVars, sessionBase]);
 
   // ── Variable list mutations (all write directly to shared Yjs) ────────────
-
-  // Always-current ref used by callbacks that must not recreate on every Yjs
-  // tick (handleUpdate, handleDeleteSingle, etc.) — reading the ref inside
-  // useCallback keeps those functions stable while still seeing fresh data.
-  const sessionVarsRef = useRef(sessionVars);
-  sessionVarsRef.current = sessionVars;
 
   // Snapshot of session vars at the moment this user joined (or initialised)
   // the dialog. Used in handleCancel to know what to revert TO for vars this
@@ -237,6 +242,17 @@ export default ({
   // handleCancel to revert only this user's changes when others are present.
   const myChangedVarIdsRef = useRef(new Set<string>());
 
+  // Tracks IDs this user explicitly deleted, split by kind so the cancel
+  // revert can treat them differently:
+  //  • real (non-temp_): need to be re-inserted at their original position
+  //  • temp_: need to be removed even when another user renamed them
+  const myDeletedRealVarIdsRef = useRef(new Set<string>());
+  const myDeletedTempVarIdsRef = useRef(new Set<string>());
+
+  // True if this user moved any variable — used in cancel to restore the
+  // joined order so other users see the reorder undone.
+  const myReorderedRef = useRef(false);
+
   const handleLocalAdd = useCallback(
     (type: VarType) => {
       const tempId = `temp_${generateUUID()}`;
@@ -250,9 +266,9 @@ export default ({
         public: true,
       };
       myAddedTempVarsRef.current.set(tempId, newVariable);
-      writeVars([...sessionVars, newVariable]);
+      writeVars([...sessionVarsRef.current, newVariable]);
     },
-    [writeVars, sessionVars, t],
+    [writeVars, t],
   );
 
   const handleUpdate = useCallback(
@@ -274,6 +290,11 @@ export default ({
 
   const handleDeleteSingle = useCallback(
     (variableId: string) => {
+      if (variableId.startsWith("temp_")) {
+        myDeletedTempVarIdsRef.current.add(variableId);
+      } else {
+        myDeletedRealVarIdsRef.current.add(variableId);
+      }
       writeVars(sessionVarsRef.current.filter((v) => v.id !== variableId));
     },
     [writeVars],
@@ -282,20 +303,151 @@ export default ({
   const handleReorder = useCallback(
     (oldIndex: number, newIndex: number) => {
       if (oldIndex === newIndex) return;
-      const next = [...sessionVars];
+      myReorderedRef.current = true;
+      const next = [...sessionVarsRef.current];
       const [moved] = next.splice(oldIndex, 1);
       next.splice(newIndex, 0, moved);
       writeVars(next);
     },
-    [writeVars, sessionVars],
+    [writeVars],
   );
 
+  // ── Cancel session cleanup ────────────────────────────────────────────────
+  // Extracted into a ref-based function so it can be called both from
+  // handleCancel (explicit user action) and from the unmount cleanup
+  // (navigation away without Cancel/Save). Reading all mutable state via refs
+  // means the unmount closure never captures stale values.
+
+  const performCancelCleanupRef = useRef<() => void>(() => {});
+  performCancelCleanupRef.current = () => {
+    const currentUsers = usersRef.current;
+    const otherUsersInDialog = Object.values(currentUsers ?? {}).some(
+      (u) => u.openWorkflowVariablesDialog && String(u.clientId) !== myClientId,
+    );
+
+    if (!otherUsersInDialog) {
+      if (pendingRefetchRef.current && yVarSession) {
+        // A save with creates is pending temp_→real ID resolution. Wiping the
+        // session here would delete the pendingRefetch flag, so the next opener
+        // would init from a potentially stale TQ cache and miss the new variable.
+        // Instead, revert variables back to the saved base (discarding this
+        // user's unsaved additions) while keeping pendingRefetch so the next
+        // opener's watcher can resolve temp_ IDs once TQ is fresh.
+        yVarSession.doc?.transact(() => {
+          yVarSession.set("variables", [...sessionBaseRef.current]);
+          yVarSession.set("timestamp", Date.now());
+        });
+      } else {
+        // No pending save — wipe the session entirely.
+        clearSessionRef.current();
+      }
+    } else {
+      // Other collaborators are still editing.
+      // 1. Revert existing vars this user changed back to their joined-state values.
+      // 2. Remove temp_ vars this user added that nobody else has touched.
+      // 3. Restore real vars this user deleted (re-insert at original position).
+      const myChangedIds = myChangedVarIdsRef.current;
+      const myTempIds = myAddedTempVarsRef.current;
+      const myDeletedRealIds = myDeletedRealVarIdsRef.current;
+      const myDeletedTempIds = myDeletedTempVarIdsRef.current;
+      const joinedVars = joinedSessionVarsRef.current;
+      const joinedMap = joinedVars
+        ? new Map(joinedVars.map((v) => [v.id, v]))
+        : null;
+
+      const currentVars = sessionVarsRef.current;
+
+      const reverted = currentVars
+        .map((v) => {
+          if (v.id.startsWith("temp_")) return v;
+          if (myChangedIds.has(v.id) && joinedMap?.has(v.id)) {
+            return joinedMap.get(v.id) as WorkflowVariable;
+          }
+          return v;
+        })
+        .filter((v) => {
+          if (!v.id.startsWith("temp_") || !myTempIds.has(v.id)) return true;
+          // If this user explicitly deleted it, always remove it regardless of
+          // whether another user modified the name in the meantime.
+          if (myDeletedTempIds.has(v.id)) return false;
+          // Remove if nobody else modified it from our last-authored version.
+          return JSON.stringify(v) !== JSON.stringify(myTempIds.get(v.id));
+        });
+
+      // If this user reordered, sort reverted back to the joined order so other
+      // users see the sequence restored. Vars not present in joinedVars (added
+      // by other users) are appended after, preserving their relative order.
+      if (myReorderedRef.current && joinedVars) {
+        const joinedRank = new Map(joinedVars.map((v, i) => [v.id, i]));
+        reverted.sort(
+          (a, b) =>
+            (joinedRank.get(a.id) ?? Infinity) -
+            (joinedRank.get(b.id) ?? Infinity),
+        );
+      }
+
+      // Re-insert real vars this user deleted at their original joined position.
+      if (joinedVars && myDeletedRealIds.size > 0) {
+        for (let i = 0; i < joinedVars.length; i++) {
+          const jv = joinedVars[i];
+          if (!myDeletedRealIds.has(jv.id)) continue;
+          if (reverted.some((v) => v.id === jv.id)) continue; // already present
+          // Prefer inserting after the nearest preceding var still in reverted.
+          // Fall back to inserting before the nearest following var — handles the
+          // case where the deleted var was first or all preceding vars are gone.
+          let insertAt = reverted.length;
+          for (let j = i - 1; j >= 0; j--) {
+            const prevIdx = reverted.findIndex(
+              (v) => v.id === joinedVars[j].id,
+            );
+            if (prevIdx !== -1) {
+              insertAt = prevIdx + 1;
+              break;
+            }
+          }
+          if (insertAt === reverted.length) {
+            for (let j = i + 1; j < joinedVars.length; j++) {
+              const nextIdx = reverted.findIndex(
+                (v) => v.id === joinedVars[j].id,
+              );
+              if (nextIdx !== -1) {
+                insertAt = nextIdx;
+                break;
+              }
+            }
+          }
+          reverted.splice(insertAt, 0, jv);
+        }
+      }
+
+      const changed =
+        reverted.length !== currentVars.length ||
+        reverted.some(
+          (v, i) => JSON.stringify(v) !== JSON.stringify(currentVars[i]),
+        );
+
+      if (changed && yVarSession) {
+        yVarSession.doc?.transact(() => {
+          yVarSession.set("variables", reverted);
+          yVarSession.set("timestamp", Date.now());
+        });
+      }
+    }
+  };
+
   // ── Submit / Cancel ───────────────────────────────────────────────────────
+
+  // Set to true by handleSubmit and handleCancel so the unmount cleanup knows
+  // not to duplicate the session revert (the dialog is closing intentionally).
+  const hasExplicitlyClosedRef = useRef(false);
 
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
     try {
-      const changes = computeSessionChanges(sessionVars, sessionBase);
+      const changes = computeSessionChanges(
+        sessionVarsRef.current,
+        sessionBaseRef.current,
+      );
       const hasChanges =
         changes.creates.length > 0 ||
         changes.updates.length > 0 ||
@@ -313,13 +465,15 @@ export default ({
       } else if (hasChanges) {
         // Fallback: individual API calls (no reorders supported here)
         for (const c of changes.creates) {
-          const variable = sessionVars.find(
+          const variable = sessionVarsRef.current.find(
             (v) => v.id.startsWith("temp_") && v.name === c.name,
           );
           if (variable) await onAdd(variable);
         }
         for (const u of changes.updates) {
-          const variable = sessionVars.find((v) => v.id === u.paramId);
+          const variable = sessionVarsRef.current.find(
+            (v) => v.id === u.paramId,
+          );
           if (variable) await onChange(variable);
         }
         if (changes.deletes.length > 0) {
@@ -342,8 +496,8 @@ export default ({
       // re-initialised with real server IDs once TanStack Query refetches.
       if (yVarSession) {
         yVarSession.doc?.transact(() => {
-          yVarSession.set("variables", [...sessionVars]);
-          yVarSession.set("base", [...sessionVars]);
+          yVarSession.set("variables", [...sessionVarsRef.current]);
+          yVarSession.set("base", [...sessionVarsRef.current]);
           yVarSession.set("timestamp", Date.now());
           if (hasChanges && changes.creates.length > 0) {
             yVarSession.set("pendingRefetch", myClientId);
@@ -351,6 +505,7 @@ export default ({
         });
       }
 
+      hasExplicitlyClosedRef.current = true;
       workflowVarAwareness?.onDialogClose();
       onClose();
     } catch (error) {
@@ -359,8 +514,6 @@ export default ({
       setIsSubmitting(false);
     }
   }, [
-    sessionVars,
-    sessionBase,
     onBatchUpdate,
     projectId,
     onAdd,
@@ -374,79 +527,29 @@ export default ({
   ]);
 
   const handleCancel = useCallback(() => {
-    const otherUsersInDialog = Object.values(users ?? {}).some(
-      (u) => u.openWorkflowVariablesDialog && String(u.clientId) !== myClientId,
-    );
-
-    if (!otherUsersInDialog) {
-      if (rawSession?.pendingRefetch && yVarSession) {
-        // A save with creates is pending temp_→real ID resolution. Wiping the
-        // session here would delete the pendingRefetch flag, so the next opener
-        // would init from a potentially stale TQ cache and miss the new variable.
-        // Instead, revert variables back to the saved base (discarding this
-        // user's unsaved additions) while keeping pendingRefetch so the next
-        // opener's watcher can resolve temp_ IDs once TQ is fresh.
-        yVarSession.doc?.transact(() => {
-          yVarSession.set("variables", [...sessionBase]);
-          yVarSession.set("timestamp", Date.now());
-        });
-      } else {
-        // No pending save — wipe the session entirely.
-        clearSession();
-      }
-    } else {
-      // Other collaborators are still editing.
-      // 1. Revert existing vars this user changed back to their joined-state
-      //    values (covers both live name edits and inner-dialog saves).
-      // 2. Remove temp_ vars this user added that nobody else has touched.
-      const myChangedIds = myChangedVarIdsRef.current;
-      const myTempIds = myAddedTempVarsRef.current;
-      const joinedVars = joinedSessionVarsRef.current;
-      const joinedMap = joinedVars
-        ? new Map(joinedVars.map((v) => [v.id, v]))
-        : null;
-
-      const reverted = sessionVars
-        .map((v) => {
-          if (v.id.startsWith("temp_")) return v;
-          if (myChangedIds.has(v.id) && joinedMap?.has(v.id)) {
-            return joinedMap.get(v.id) as WorkflowVariable;
-          }
-          return v;
-        })
-        .filter((v) => {
-          if (!v.id.startsWith("temp_") || !myTempIds.has(v.id)) return true;
-          // Remove if nobody else modified it from our last-authored version
-          return JSON.stringify(v) !== JSON.stringify(myTempIds.get(v.id));
-        });
-
-      const changed =
-        reverted.length !== sessionVars.length ||
-        reverted.some(
-          (v, i) => JSON.stringify(v) !== JSON.stringify(sessionVars[i]),
-        );
-
-      if (changed && yVarSession) {
-        yVarSession.doc?.transact(() => {
-          yVarSession.set("variables", reverted);
-          yVarSession.set("timestamp", Date.now());
-        });
-      }
-    }
-
+    performCancelCleanupRef.current();
+    hasExplicitlyClosedRef.current = true;
     workflowVarAwareness?.onDialogClose();
     onClose();
-  }, [
-    users,
-    myClientId,
-    rawSession?.pendingRefetch,
-    clearSession,
-    yVarSession,
-    sessionVars,
-    sessionBase,
-    workflowVarAwareness,
-    onClose,
-  ]);
+  }, [workflowVarAwareness, onClose]);
+
+  // ── Awareness lifecycle ───────────────────────────────────────────────────
+
+  // Broadcast awareness that this user has the dialog open. On unmount, clear
+  // awareness and — if the dialog was not explicitly closed via Cancel/Save
+  // (e.g., the user navigated away) — revert/clear the Yjs session so stale
+  // temp_ variables do not leak into the next open.
+  const workflowVarAwarenessRef = useRef(workflowVarAwareness);
+  workflowVarAwarenessRef.current = workflowVarAwareness;
+  useEffect(() => {
+    workflowVarAwarenessRef.current?.onDialogOpen();
+    return () => {
+      workflowVarAwarenessRef.current?.onDialogClose();
+      if (!hasExplicitlyClosedRef.current) {
+        performCancelCleanupRef.current();
+      }
+    };
+  }, []);
 
   // ── VariableEditDialog open/close ─────────────────────────────────────────
 

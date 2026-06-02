@@ -82,34 +82,54 @@ graphs:
           operations:
             - attribute: dm_feature_type
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_attributes
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_dmCode
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_dmCode_code
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_geometryType
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_geometryType_code
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_mapLevel
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_mapLevel_code
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_shapeType
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
             - attribute: dm_shapeType_code
               method: create
-              value: '""'
+              value:
+                type: string
+                value: ""
 
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
         name: AttributeManagerForMerger
@@ -119,8 +139,9 @@ graphs:
           operations:
             - attribute: __schema_definition
               method: create
-              value: |
-                env.get("__value")["feature_type"]
+              value:
+                type: flowExpr
+                value: 'attributes["feature_type"]'
 
       # DM Branch - New parallel branch for DmGeometricAttribute processing
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e7
@@ -142,16 +163,19 @@ graphs:
           operations:
             - attribute: meshcode
               method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
+              value:
+                type: flowExpr
+                value: 'Url(attributes["path"]).name.split("_")[0]'
             - attribute: gml_id
               method: create
-              value: |
-                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+              value:
+                type: flowExpr
+                value: 'attributes.get("__citygml_gml_id") or attributes["gmlId"]'
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+              value:
+                type: flowExpr
+                value: 'attributes.get("featureType") or attributes["gmlName"]'
 
       - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
         name: AttributeFlattenerForDm
@@ -166,10 +190,14 @@ graphs:
           operations:
             - attribute: cityCode
               method: rename
-              value: city_code
+              value:
+                type: string
+                value: city_code
             - attribute: cityName
               method: rename
-              value: city_name
+              value:
+                type: string
+                value: city_name
 
       - id: c32a279d-97be-4584-b282-4d65627b1133
         name: LodSplitterWithDmForDm
@@ -227,13 +255,19 @@ graphs:
           operations:
             - attribute: cityCode
               method: rename
-              value: city_code
+              value:
+                type: string
+                value: city_code
             - attribute: cityName
               method: rename
-              value: city_name
+              value:
+                type: string
+                value: city_name
             - attribute: package
               method: rename
-              value: __package
+              value:
+                type: string
+                value: __package
             - attribute: baseCityCode
               method: remove
             - attribute: lod
@@ -312,7 +346,7 @@ graphs:
           layerName:
             type: flowExpr
             value: |
-              pkg = value("__package");
+              pkg = attributes["__package"];
               if pkg == "brid" {
                 "Bridge"
               } else if pkg == "tun" {
@@ -328,14 +362,14 @@ graphs:
           output:
             type: flowExpr
             value: |
-              dir = value("__package") + "_dm_geometric_attributes";
-              Url(env("workerArtifactPath")) / dir
+              dir = attributes["__package"] + "_dm_geometric_attributes";
+              Url(env["workerArtifactPath"]) / dir
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
-              filename = city_gml + "_" + value("__package") + "_dm_geometric_attributes.zip";
-              Url(env("workerArtifactPath")) / filename
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              filename = city_gml + "_" + attributes["__package"] + "_dm_geometric_attributes.zip";
+              Url(env["workerArtifactPath"]) / filename
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
@@ -395,12 +429,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / (value("__package") + "_lod1")
+              Url(env["workerArtifactPath"]) / (attributes["__package"] + "_lod1")
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_3dtiles_lod1.zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_3dtiles_lod1.zip")
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
         name: cesium3DTilesWriterByLod2
@@ -414,12 +448,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / (value("__package") + "_lod2")
+              Url(env["workerArtifactPath"]) / (attributes["__package"] + "_lod2")
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_3dtiles_lod2.zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_3dtiles_lod2.zip")
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
         name: cesium3DTilesWriterByLod3
@@ -433,12 +467,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / (value("__package") + "_lod3")
+              Url(env["workerArtifactPath"]) / (attributes["__package"] + "_lod3")
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("__package") + "_3dtiles_lod3.zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_3dtiles_lod3.zip")
 
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
         name: cesium3DTilesWriterByLod4
@@ -452,12 +486,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / (value("package") + "_lod4")
+              Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod4")
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_3dtiles_lod4.zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod4.zip")
 
     edges:
       # Main processing pipeline

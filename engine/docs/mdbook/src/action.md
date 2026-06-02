@@ -596,8 +596,27 @@ Create, Convert, Rename, and Remove Feature Attributes
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     },
     "Method": {
       "type": "string",
@@ -632,7 +651,7 @@ Create, Convert, Rename, and Remove Feature Attributes
           "description": "Value to use for the operation",
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             },
             {
               "type": "null"
@@ -1433,7 +1452,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
 * schema
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## CityGmlReader
 ### Type
@@ -1490,7 +1509,7 @@ Reads 3D city models from CityGML files.
 ### Output Ports
 * default
 ### Category
-* File
+* Input
 
 ## CityGmlWriter
 ### Type
@@ -1558,7 +1577,7 @@ Writes features to CityGML 2.0 files
 * default
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## Clipper
 ### Type
@@ -1947,7 +1966,7 @@ Read Features from CSV or TSV File
 ### Output Ports
 * default
 ### Category
-* File
+* Input
 
 ## CsvWriter
 ### Type
@@ -2077,7 +2096,7 @@ Writes features to CSV or TSV files.
 * default
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## CzmlReader
 ### Type
@@ -2517,7 +2536,7 @@ Filter Features by Geometry Dimension
 * 3d
 * rejected
 ### Category
-* Geometry
+* Filter
 
 ## DirectoryDecompressor
 ### Type
@@ -2911,7 +2930,7 @@ Reads and processes features from CityGML files with optional flattening
 ### Output Ports
 * default
 ### Category
-* Feature
+* Input
 
 ## FeatureCounter
 ### Type
@@ -2966,7 +2985,7 @@ Count Features and Add Counter to Attribute
 * default
 * rejected
 ### Category
-* Feature
+* Debug
 
 ## FeatureCreator
 ### Type
@@ -3005,7 +3024,7 @@ Generate Custom Features Using Scripts
 ### Output Ports
 * default
 ### Category
-* Feature
+* Input
 
 ## FeatureDuplicateFilter
 ### Type
@@ -3141,7 +3160,7 @@ Filter Features Based on Custom Conditions
 ### Output Ports
 * unfiltered
 ### Category
-* Feature
+* Filter
 
 ## FeatureJoiner
 ### Type
@@ -3282,7 +3301,7 @@ Joins requestor and supplier features based on matching attribute values with co
 * unjoinedRequestor
 * unjoinedSupplier
 ### Category
-* Feature
+* Merge
 
 ## FeatureLodFilter
 ### Type
@@ -3326,7 +3345,7 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
 * up_to_lod4
 * unfiltered
 ### Category
-* Feature
+* Filter
 
 ## FeatureMerger
 ### Type
@@ -3408,7 +3427,7 @@ Merges requestor and supplier features based on matching attribute values
 * merged
 * unmerged
 ### Category
-* Feature
+* Merge
 
 ## FeatureReader
 ### Type
@@ -3620,7 +3639,7 @@ Sorts features based on specified attributes in ascending or descending order
 ### Output Ports
 * default
 ### Category
-* Feature
+* Merge
 
 ## FeatureTransformer
 ### Type
@@ -3674,7 +3693,7 @@ Applies transformation expressions to modify feature attributes and properties
 ### Output Ports
 * default
 ### Category
-* Feature
+* Transform
 
 ## FeatureTypeFilter
 ### Type
@@ -3708,7 +3727,7 @@ Filter CityGML features by feature type
 * default
 * unfiltered
 ### Category
-* Feature
+* Filter
 
 ## FeatureWriter
 ### Type
@@ -3917,7 +3936,7 @@ Extracts file paths from directories or archives, creating features for each dis
 ### Output Ports
 * default
 ### Category
-* File
+* Input
 
 ## FilePropertyExtractor
 ### Type
@@ -4084,7 +4103,7 @@ Reads geographic features from GeoJSON files, supporting both single features an
 ### Output Ports
 * default
 ### Category
-* File
+* Input
 
 ## GeoJsonWriter
 ### Type
@@ -4135,7 +4154,7 @@ Writes geographic features to GeoJSON files with optional grouping
 * default
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## GeoPackageReader
 ### Type
@@ -4255,8 +4274,7 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
 ### Output Ports
 * default
 ### Category
-* File
-* Database
+* Input
 
 ## GeoPackageWriter
 ### Type
@@ -4325,8 +4343,7 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
 * default
 ### Output Ports
 ### Category
-* File
-* Database
+* Output
 
 ## GeometryCoercer
 ### Type
@@ -6362,7 +6379,7 @@ Action for first port forwarding for sub-workflows.
 ### Output Ports
 * default
 ### Category
-* System
+* Filter
 
 ## JPStandardGridAccumulator
 ### Type
@@ -6563,7 +6580,7 @@ Reads features from JSON files, supporting both single objects and arrays of obj
 ### Output Ports
 * default
 ### Category
-* File
+* Input
 
 ## JsonWriter
 ### Type
@@ -6612,7 +6629,7 @@ Writes features to JSON files.
 * default
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## LineOnLineOverlayer
 ### Type
@@ -6766,7 +6783,7 @@ Explodes array attributes into separate features, creating one feature per array
 ### Output Ports
 * default
 ### Category
-* Feature
+* Transform
 
 ## ListIndexer
 ### Type
@@ -6959,7 +6976,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
 * schema
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## NeighborFinder
 ### Type
@@ -7120,7 +7137,7 @@ No-Operation Pass-Through Processor
 ### Output Ports
 * default
 ### Category
-* Noop
+* Debug
 
 ## NoopSink
 ### Type
@@ -7133,7 +7150,7 @@ No-Operation Sink (Discard Features)
 * default
 ### Output Ports
 ### Category
-* Noop
+* Debug
 
 ## NullAttributeMapper
 ### Type
@@ -7565,7 +7582,7 @@ Action for last port forwarding for sub-workflows.
 * default
 ### Output Ports
 ### Category
-* System
+* Filter
 
 ## PLATEAU3.AttributeFlattener
 ### Type
@@ -9305,7 +9322,7 @@ Executes Rhai script expressions to conditionally process and transform features
 ### Output Ports
 * default
 ### Category
-* Feature
+* Transform
 
 ## Rotator3D
 ### Type
@@ -9542,7 +9559,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
 ### Output Ports
 * default
 ### Category
-* File
+* Input
 
 ## ShapefileWriter
 ### Type
@@ -9593,7 +9610,7 @@ Writes geographic features to ESRI Shapefile format with optional grouping
 * default
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## SolidBoundaryValidator
 ### Type
@@ -9777,7 +9794,7 @@ Filter Features by Spatial Relationship
 * failed
 * rejected
 ### Category
-* Geometry
+* Filter
 
 ## SqlReader
 ### Type
@@ -9826,7 +9843,7 @@ Read Features from SQL Database
 ### Output Ports
 * default
 ### Category
-* Feature
+* Input
 
 ## StatisticsCalculator
 ### Type
@@ -10337,7 +10354,7 @@ Fragments large XML documents into smaller pieces based on specified element pat
 ### Output Ports
 * default
 ### Category
-* XML
+* Transform
 
 ## XMLValidator
 ### Type
@@ -10394,7 +10411,7 @@ Validates XML documents against XSD schemas with success/failure routing
 * success
 * failed
 ### Category
-* PLATEAU
+* Transform
 
 ## XmlWriter
 ### Type
@@ -10432,7 +10449,7 @@ Writes features to XML files.
 * default
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## ZipFileWriter
 ### Type
@@ -10470,4 +10487,4 @@ Writes features to a zip file
 * default
 ### Output Ports
 ### Category
-* File
+* Output

@@ -31,7 +31,11 @@ impl ProcessorFactory for DimensionFilterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Geometry"]
+        &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["2d", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

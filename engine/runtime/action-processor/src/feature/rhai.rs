@@ -32,7 +32,11 @@ impl ProcessorFactory for RhaiCallerFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Transform"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["scripting"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

@@ -2,7 +2,7 @@ id: "b0b0b0b0-0001-4000-8000-000000000001"
 name: "CZML Timeseries Roundtrip Test (Option B - PreserveRaw)"
 entryGraphId: "b0b0b0b0-0001-4000-8000-000000000010"
 with:
-  outputFilePath: "/tmp/czml-timeseries-roundtrip-output.czml"
+  outputFilePath: "czml-timeseries-roundtrip-output.czml"
 
 graphs:
   - id: "b0b0b0b0-0001-4000-8000-000000000010"
@@ -23,7 +23,7 @@ graphs:
         type: "action"
         action: "CzmlWriter"
         with:
-          output: "env.get(\"outputFilePath\")"
+          output: "env.get(\"workerArtifactPath\") + \"/\" + env.get(\"outputFilePath\")"
 
     edges:
       - id: "b0b0b0b0-0001-4000-8000-000000001000"

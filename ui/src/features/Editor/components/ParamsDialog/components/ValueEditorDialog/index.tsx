@@ -1,11 +1,6 @@
 import {
   PencilLineIcon,
-  CaretLeftIcon,
   CircleIcon,
-  CaretDownIcon,
-  CaretUpIcon,
-  WrenchIcon,
-  CodeIcon,
   CornersInIcon,
   CornersOutIcon,
   FileIcon,
@@ -19,7 +14,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  ScrollArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -27,9 +21,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   DialogFooter,
   IconButton,
   CmsLogo,
@@ -43,15 +34,6 @@ import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
 
-import ConditionalBuilder from "./components/ConditionalBuilder";
-import EnvironmentVariableBuilder from "./components/EnvironmentVariableBuilder";
-import ExpressionTypePicker, {
-  type ExpressionType,
-} from "./components/ExpressionTypePicker";
-import FeatureAttributeBuilder from "./components/FeatureAttributeBuilder";
-import FilePathBuilder from "./components/FilePathBuilder";
-import JsonQueryBuilder from "./components/JsonQueryBuilder";
-import MathBuilder from "./components/MathBuilder";
 import RhaiCodeEditor, {
   type RhaiCodeEditorRef,
 } from "./components/RhaiCodeEditor";
@@ -81,15 +63,6 @@ const ValueEditorDialog: React.FC<Props> = ({
   const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
   const handleDialogClose = () => setShowDialog(undefined);
   const [value, setValue] = useState(fieldContext.value);
-
-  // Track selected expression type for Simple Builder
-  const [selectedExpressionType, setSelectedExpressionType] =
-    useState<ExpressionType | null>(null);
-
-  // Track Simple Builder panel visibility
-  const [simpleBuilderOpen, setSimpleBuilderOpen] = useState(
-    !value || value.trim() === "",
-  );
 
   // Template-related state
   const [selectedTemplate, setSelectedTemplate] =
@@ -163,20 +136,6 @@ const ValueEditorDialog: React.FC<Props> = ({
     handleDialogClose();
   };
 
-  const handleExpressionTypeSelect = useCallback((type: ExpressionType) => {
-    setSelectedExpressionType(type);
-  }, []);
-
-  const handleExpressionBuilderChange = useCallback((expression: string) => {
-    // Insert at cursor position instead of replacing entire content
-    if (rhaiEditorRef.current) {
-      rhaiEditorRef.current.insertAtCursor(expression);
-    } else {
-      // Fallback to setValue if ref is not available
-      setValue(expression);
-    }
-  }, []);
-
   // Template handlers
   const handleTemplateSelect = useCallback((template: ExpressionTemplate) => {
     setSelectedTemplate(template);
@@ -224,13 +183,13 @@ const ValueEditorDialog: React.FC<Props> = ({
                   {fieldType ? `(${fieldType})` : ""}
                 </div>
                 <div className="flex flex-1 items-center gap-2">
-                  <Button
+                  {/* <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleDialogOpen("templates")}>
                     <CodeIcon className="h-4 w-4" />
                     {t("Templates")}
-                  </Button>
+                  </Button> */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -324,118 +283,6 @@ const ValueEditorDialog: React.FC<Props> = ({
                 </TooltipContent>
               </Tooltip>
             </div>
-
-            {/* Collapsible Simple Builder Panel */}
-            <Collapsible
-              open={simpleBuilderOpen}
-              onOpenChange={setSimpleBuilderOpen}>
-              <div className="border-b">
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex h-12 w-full items-center justify-between rounded-none px-4 hover:bg-accent/50">
-                    <div className="flex items-center gap-2">
-                      <WrenchIcon className="h-4 w-4" />
-                      <span className="text-sm font-medium">
-                        {t("Simple Builder")}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {t("Visual expression builder")}
-                      </span>
-                    </div>
-                    {simpleBuilderOpen ? (
-                      <CaretUpIcon className="h-4 w-4" />
-                    ) : (
-                      <CaretDownIcon className="h-4 w-4" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-
-              <CollapsibleContent className="border-b">
-                <div className="flex h-[350px] flex-col">
-                  {/* Simple Builder Navigation */}
-                  {selectedExpressionType && (
-                    <div className="px-2 pt-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedExpressionType(null)}
-                        className="h-8 gap-1 px-2">
-                        <CaretLeftIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Simple Builder Content */}
-                  <ScrollArea className="flex-1">
-                    <div className="px-4 pt-4">
-                      {!selectedExpressionType ? (
-                        <ExpressionTypePicker
-                          onTypeSelect={handleExpressionTypeSelect}
-                        />
-                      ) : (
-                        <div className="min-h-0">
-                          {selectedExpressionType === "file-path" && (
-                            <FilePathBuilder
-                              onExpressionChange={handleExpressionBuilderChange}
-                            />
-                          )}
-                          {selectedExpressionType === "feature-attribute" && (
-                            <FeatureAttributeBuilder
-                              onExpressionChange={handleExpressionBuilderChange}
-                            />
-                          )}
-                          {selectedExpressionType === "conditional" && (
-                            <ConditionalBuilder
-                              onExpressionChange={handleExpressionBuilderChange}
-                            />
-                          )}
-                          {selectedExpressionType === "math" && (
-                            <MathBuilder
-                              onExpressionChange={handleExpressionBuilderChange}
-                            />
-                          )}
-                          {selectedExpressionType ===
-                            "environment-variable" && (
-                            <EnvironmentVariableBuilder
-                              onExpressionChange={handleExpressionBuilderChange}
-                            />
-                          )}
-                          {selectedExpressionType === "json-query" && (
-                            <JsonQueryBuilder
-                              onExpressionChange={handleExpressionBuilderChange}
-                            />
-                          )}
-                          {![
-                            "file-path",
-                            "feature-attribute",
-                            "conditional",
-                            "math",
-                            "environment-variable",
-                            "json-query",
-                          ].includes(selectedExpressionType) && (
-                            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
-                              <p className="mb-4">
-                                {t("Selected:")} {selectedExpressionType}
-                              </p>
-                              <div className="text-sm">
-                                {t(
-                                  "Expression builder for {{type}} will go here",
-                                  {
-                                    type: selectedExpressionType,
-                                  },
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
             <DialogFooter className="flex justify-end gap-2 p-4">
               <Button variant="outline" onClick={onClose}>
                 {t("Cancel")}

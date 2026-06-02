@@ -36,6 +36,7 @@ type Props = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
+  showLayoutOptions: boolean;
   onRedo: () => void;
   onUndo: () => void;
   onLayoutChange: () => void;
@@ -45,6 +46,7 @@ const Toolbox: React.FC<Props> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
+  showLayoutOptions,
   onRedo,
   onUndo,
   onLayoutChange,
@@ -215,7 +217,7 @@ const Toolbox: React.FC<Props> = ({
           ) : (
             <IconButton
               key={action.id}
-              className="h-8 w-10 gap-0 rounded-[4px] hover:bg-primary/60"
+              className={`h-8 w-10 gap-0 rounded-[4px] hover:bg-primary/60 ${action.id === "layout" && showLayoutOptions ? "bg-primary/60" : ""}`}
               tooltipPosition="bottom"
               tooltipText={action.name}
               tooltipOffset={4}
