@@ -97,11 +97,8 @@ pub fn run_workflow(
     // sandbox_root must resolve relative sink paths against the per-job
     // artifact directory; using Runner::run (legacy file:/// sentinel) would
     // make the engine try to write to the filesystem root.
-    let sandbox_root = reearth_flow_common::uri::Uri::from_str(&format!(
-        "file://{}",
-        flow_dir.display()
-    ))
-    .unwrap();
+    let sandbox_root =
+        reearth_flow_common::uri::Uri::from_str(&format!("file://{}", flow_dir.display())).unwrap();
 
     tracing::info!("Starting workflow run...");
     Runner::run_with_sandbox_root(
