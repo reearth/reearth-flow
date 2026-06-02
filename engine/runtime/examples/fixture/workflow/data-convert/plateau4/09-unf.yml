@@ -550,7 +550,7 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: 'attributes["__package"] + "_" + attributes["feature_type"].split(":")[1] + "_dm_geometric_attributes"'
+        value: attributes["__package"] + "_" + attributes["feature_type"].split(":")[1] + "_dm_geometric_attributes"
       compressOutput:
         type: flowExpr
         value: |

@@ -442,7 +442,7 @@ graphs:
       attachTexture: true
       output:
         type: flowExpr
-        value: 'attributes["__package"] + "_lod3"'
+        value: attributes["__package"] + "_lod3"
       compressOutput:
         type: flowExpr
         value: |
@@ -527,7 +527,7 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: 'attributes["__package"] + "_lod" + attributes["__lod"]'
+        value: attributes["__package"] + "_lod" + attributes["__lod"]
       compressOutput:
         type: flowExpr
         value: |
@@ -638,7 +638,7 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: 'attributes["__package"] + "_dm_geometric_attributes"'
+        value: attributes["__package"] + "_dm_geometric_attributes"
       compressOutput:
         type: flowExpr
         value: |

@@ -404,7 +404,7 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: 'attributes["package"] + "_lod0"'
+        value: attributes["package"] + "_lod0"
       compressOutput:
         type: flowExpr
         value: |
