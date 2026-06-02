@@ -450,8 +450,9 @@ nodes:
   action: FeatureFilter
   with:
     conditions:
-    - expr: |
-        env.get("__value").overlap > 1
+    - expr:
+        type: flowExpr
+        value: attributes["overlap"] > 1
       outputPort: intersectionSurface
 - id: ee1ff2aa-3bb4-4cc5-9dd6-7ee8ff3aa9bb
   name: ListIndexer1
@@ -499,9 +500,9 @@ nodes:
   action: FeatureFilter
   with:
     conditions:
-    - expr: |
-        let issue = env.get("__value").solid_boundary_issues.issue;
-        issue == "NotA2Manifold"
+    - expr:
+        type: flowExpr
+        value: attributes["solid_boundary_issues"]["issue"] == "NotA2Manifold"
       outputPort: notClosed
 - id: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
   name: AttributeManagerSolidBoundaryInvalidNotClosed
