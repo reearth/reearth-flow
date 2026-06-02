@@ -55,7 +55,6 @@ export default ({
   ];
 
   const actionCategories: { value: CategoryFiltering; label: string }[] = [
-    { value: "3D", label: t("3D") },
     { value: "Attribute", label: t("Attribute") },
     { value: "Debug", label: t("Debug") },
     { value: "Feature", label: t("Feature") },
@@ -65,12 +64,7 @@ export default ({
     { value: "Input", label: t("Input") },
     { value: "Merge", label: t("Merge") },
     { value: "Output", label: t("Output") },
-    { value: "PLATEAU", label: t("PLATEAU") },
-    { value: "Python", label: t("Python") },
-    { value: "Script", label: t("Script") },
     { value: "Transform", label: t("Transform") },
-    { value: "Wasm", label: t("Wasm") },
-    { value: "Web", label: t("Web") },
   ];
 
   const actionTags: { value: TagFiltering; label: string }[] = [
