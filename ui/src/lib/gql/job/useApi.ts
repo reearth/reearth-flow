@@ -6,11 +6,7 @@ import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { useQueries } from "./useQueries";
 
 export const useJob = () => {
-  const {
-    useGetJobsQuery,
-    useGetJobQuery,
-    cancelJobMutation,
-  } = useQueries();
+  const { useGetJobsQuery, useGetJobQuery, cancelJobMutation } = useQueries();
   const { toast } = useToast();
   const t = useT();
   const useGetJobs = (
