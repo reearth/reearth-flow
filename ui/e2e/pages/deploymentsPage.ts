@@ -137,8 +137,6 @@ export class DeploymentsPage {
 
   async openDetails(description: string) {
     const row = this.deploymentRow(description).first();
-    // Click the description cell so the row's navigation handler fires
-    // instead of one of the Quick Actions buttons.
     await row.getByText(description, { exact: true }).click();
     await expect(this.detailsTitle).toBeVisible();
   }
@@ -172,7 +170,6 @@ export class DeploymentsPage {
   async createFromFile(workflowFile: string, description: string) {
     await this.newDeploymentButton.click();
     await expect(this.addDialog).toBeVisible();
-    // Submit needs both a valid workflow file and a description.
     await expect(this.addDialogSubmitButton).toBeDisabled();
     await this.addDialogFileInput.setInputFiles(workflowFile);
     await this.addDialogDescriptionInput.fill(description);
@@ -191,7 +188,6 @@ export class DeploymentsPage {
   async deleteDeployment(description: string) {
     const row = this.deploymentRow(description).first();
     await row.waitFor({ state: "visible" });
-    // Quick Actions cell: Run, Edit, Delete — Delete is the last button.
     await row.getByRole("button").last().click();
     const alert = this.page.getByRole("alertdialog");
     await alert.getByRole("button", { name: "Continue" }).click();
