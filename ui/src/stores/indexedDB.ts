@@ -12,6 +12,11 @@ export type SelectedIntermediateData = {
   displayName?: string;
 };
 
+export type AvailableIntermediateData = {
+  nodeId: string;
+  portName: string;
+};
+
 export type JobState = {
   projectId: string;
   jobId: string;
@@ -19,6 +24,7 @@ export type JobState = {
   nodeExecutions?: NodeExecution[];
   focusedIntermediateData?: string;
   selectedIntermediateData?: SelectedIntermediateData[]; // undefined = never touched, [] = user has selected/deselected
+  availableIntermediateData?: AvailableIntermediateData[];
 };
 
 export type DebugRunState = {
