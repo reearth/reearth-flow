@@ -3,14 +3,12 @@ import { useMemo } from "react";
 import {
   FLOWEXPR_BUILTIN_FUNCTIONS,
   FLOWEXPR_KEYWORDS,
-  FLOWEXPR_MATH_NAMESPACE,
   FLOWEXPR_OPERATORS,
 } from "./flowExprConstants";
 
 type TokenType =
   | "keyword"
   | "function"
-  | "namespace"
   | "string"
   | "number"
   | "operator"
@@ -99,23 +97,12 @@ const FlowExprSyntaxHighlighter: React.FC<Props> = ({
         continue;
       }
 
-      // Identifiers, keywords, functions, math namespace
+      // Identifiers, keywords, functions
       if (/[a-zA-Z_]/.test(char)) {
         let identifier = "";
         while (i < code.length && /[a-zA-Z0-9_]/.test(code[i])) {
           identifier += code[i];
           i++;
-        }
-
-        // math:: namespace
-        if (
-          identifier === FLOWEXPR_MATH_NAMESPACE &&
-          code.substring(i, i + 2) === "::"
-        ) {
-          result.push({ type: "namespace", content: identifier });
-          result.push({ type: "operator", content: "::" });
-          i += 2;
-          continue;
         }
 
         let tokenType: TokenType = "identifier";
@@ -142,8 +129,6 @@ const FlowExprSyntaxHighlighter: React.FC<Props> = ({
         return "text-purple-600 dark:text-purple-400";
       case "function":
         return "text-blue-600 dark:text-blue-400";
-      case "namespace":
-        return "text-teal-600 dark:text-teal-400";
       case "string":
         return "text-green-600 dark:text-green-400";
       case "number":
