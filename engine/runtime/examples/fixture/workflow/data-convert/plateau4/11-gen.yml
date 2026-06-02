@@ -44,8 +44,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
@@ -129,8 +130,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["dm_feature_type"] == "DmGeometricAttribute"
+      - expr:
+          type: flowExpr
+          value: attributes.get("dm_feature_type") == "DmGeometricAttribute"
         outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
@@ -144,8 +146,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("exceptSplit") ?? false
+      - expr:
+          type: flowExpr
+          value: env.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -157,20 +160,25 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").lod == "0"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "0"
         outputPort: lod0
-      - expr: |
-          env.get("__value").lod == "1"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "1"
         outputPort: lod1
-      - expr: |
-          env.get("__value").lod == "2"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "2"
         outputPort: lod2
-      - expr: |
-          env.get("__value").lod == "3"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "3"
         outputPort: lod3
-      - expr: |
-          env.get("__value").lod == "4"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "4"
         outputPort: lod4
   - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
     name: DmGeometricAttributeRouter
@@ -305,8 +313,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: 7bd12def-bc00-4340-adf5-1a2d68995dd7
     name: AttributeManagerPreFlattener
@@ -316,16 +325,19 @@ graphs:
       operations:
       - attribute: meshcode
         method: create
-        value: |
-          let file = file::extract_filename(env.get("__value")["path"]);
-          file.split("_")[0]
+        value:
+          type: flowExpr
+          value: Url(attributes["path"]).name.split("_")[0]
       - attribute: gml_id
         method: create
-        value: |
-          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_gml_id") or attributes["gmlId"]
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes.get("featureType") or attributes["gmlName"]
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -342,12 +354,14 @@ graphs:
       operations:
       - attribute: code
         method: create
-        value: |
-          env.get("__value")["gml:name_code"]
+        value:
+          type: flowExpr
+          value: attributes.get("gml:name_code")
       - attribute: description
         method: create
-        value: |
-          env.get("__value")["gml:name"]
+        value:
+          type: flowExpr
+          value: attributes.get("gml:name")
   - id: abc6a99c-5730-423c-a449-38911ab4a4e7
     name: AttributeDuplicateFilterDict
     type: action
@@ -381,19 +395,29 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: lod
         method: rename
-        value: __lod
+        value:
+          type: string
+          value: __lod
       - attribute: package
         method: rename
-        value: __package
+        value:
+          type: string
+          value: __package
       - attribute: gml:name_code
         method: rename
-        value: __gml_name_code
+        value:
+          type: string
+          value: __gml_name_code
   - id: 2469c61e-dbda-488e-af80-e3b4105197b7
     name: TwoDimensionForcer
     type: action
@@ -406,16 +430,16 @@ graphs:
       schemaKey: __citygml_feature_type
       layerName:
         type: flowExpr
-        value: '"gen_" + value("__gml_name_code")'
+        value: '"gen_" + attributes["__gml_name_code"]'
       minZoom: 8
       maxZoom: 16
       extent: 65536
       output:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / ("gen_" + value("__gml_name_code") + "_lod" + value("__lod"))
+        value: Url(env["workerArtifactPath"]) / ("gen_" + attributes["__gml_name_code"] + "_lod" + attributes["__lod"])
       compressOutput:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / (Url(env("cityGmlPath")).stem().remove_suffix("_gen") + "_gen_" + value("__gml_name_code") + "_mvt_lod" + value("__lod") + ".zip")
+        value: Url(env["workerArtifactPath"]) / (Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_gen") + "_gen_" + attributes["__gml_name_code"] + "_mvt_lod" + attributes["__lod"] + ".zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:

@@ -214,6 +214,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Operation": {
           "attribute": {
             "title": "Attribute name"
@@ -1111,6 +1115,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Condition": {
           "expr": {
             "title": "Condition expression"

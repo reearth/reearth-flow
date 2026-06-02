@@ -55,8 +55,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            - expr:
+                type: flowExpr
+                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
               outputPort: default
 
       - id: a04c645b-4651-4f7f-b6b5-0565428ef445
@@ -67,16 +68,19 @@ graphs:
           operations:
             - attribute: meshcode
               method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
+              value:
+                type: flowExpr
+                value: 'Url(attributes["path"]).name.split("_")[0]'
             - attribute: gml_id
               method: create
-              value: |
-                env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+              value:
+                type: flowExpr
+                value: 'attributes.get("__citygml_gml_id") or attributes["gmlId"]'
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+              value:
+                type: flowExpr
+                value: 'attributes.get("featureType") or attributes["gmlName"]'
             - attribute: codelists
               method: remove
             - attribute: schemas
@@ -98,9 +102,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                let ft = env.get("__value").feature_type;
-                ft != "uro:UndergroundBuilding" && ft != "bldg:BuildingPart"
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] not in ["uro:UndergroundBuilding", "bldg:BuildingPart"]
               outputPort: passed
 
       - id: 35fa118f-c8dd-456e-abc0-1fb6319c3931
@@ -118,10 +122,14 @@ graphs:
           operations:
             - attribute: cityCode
               method: rename
-              value: city_code
+              value:
+                type: string
+                value: city_code
             - attribute: cityName
               method: rename
-              value: city_name
+              value:
+                type: string
+                value: city_name
 
       - id: 1ad1a773-2954-4fbf-8556-8ad0079927ad
         name: FeatureSorter
@@ -145,12 +153,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env("workerArtifactPath")) / (value("package") + "_lod" + value("lod"))
+              Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod" + attributes["lod"])
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
-              Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_3dtiles_lod" + value("lod") + ".zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod" + attributes["lod"] + ".zip")
 
     edges:
       - id: 25accc00-50d0-4fe9-a289-0e84ecaca659

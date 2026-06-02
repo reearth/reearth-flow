@@ -28,14 +28,19 @@ nodes:
       operations:
         - attribute: Attribute
           method: create
-          value: |
-            "参照元 xlink:href"
+          value:
+            type: string
+            value: 参照元 xlink:href
         - attribute: unmatchedXlinkFromTag
           method: rename
-          value: unmatchedXlinkTag
+          value:
+            type: string
+            value: unmatchedXlinkTag
         - attribute: unmatchedXlinkFromId
           method: rename
-          value: unmatchedXlinkId
+          value:
+            type: string
+            value: unmatchedXlinkId
 
   - id: 2d024ca7-cb00-47bb-aa50-12a395a6c8b8
     name: AttributeManagerTo
@@ -45,14 +50,19 @@ nodes:
       operations:
         - attribute: Attribute
           method: create
-          value: |
-            "参照先 gml:id"
+          value:
+            type: string
+            value: 参照先 gml:id
         - attribute: unmatchedXlinkToTag
           method: rename
-          value: unmatchedXlinkTag
+          value:
+            type: string
+            value: unmatchedXlinkTag
         - attribute: unmatchedXlinkToId
           method: rename
-          value: unmatchedXlinkId
+          value:
+            type: string
+            value: unmatchedXlinkId
 
   - id: 7c7dd820-2c7e-4e79-ab3f-1566fc4bd2ca
     name: AttributeMapperL-bldg-06
@@ -130,8 +140,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            !(env.get("__value").geomTag in ["gml:MultiSurface", "gml:Solid"])
+        - expr:
+            type: flowExpr
+            value: attributes["geomTag"] not in ["gml:MultiSurface", "gml:Solid"]
           outputPort: default
 
   - id: 38b305d1-d716-48da-b578-419e15f66b4b

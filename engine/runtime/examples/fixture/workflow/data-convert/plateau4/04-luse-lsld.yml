@@ -45,8 +45,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
@@ -150,8 +151,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
     name: AttributeFlattener
@@ -167,11 +169,13 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["package"] == "luse"
+      - expr:
+          type: flowExpr
+          value: attributes["package"] == "luse"
         outputPort: luse
-      - expr: |
-          env.get("__value")["package"] == "lsld"
+      - expr:
+          type: flowExpr
+          value: attributes["package"] == "lsld"
         outputPort: lsld
   - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     name: AttributeMapperLuse
@@ -236,12 +240,12 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "luse"
+        value: Url(env["workerArtifactPath"]) / "luse"
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env("cityGmlPath")).stem();
-          Url(env("workerArtifactPath")) / (city_gml.remove_suffix("_luse") + "_luse_mvt.zip")
+          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
+          Url(env["workerArtifactPath"]) / (city_gml.remove_suffix("_luse") + "_luse_mvt.zip")
   - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
     name: AttributeMapperLsld
     type: action
@@ -330,12 +334,12 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / "lsld"
+        value: Url(env["workerArtifactPath"]) / "lsld"
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env("cityGmlPath")).stem();
-          Url(env("workerArtifactPath")) / (city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip")
+          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
+          Url(env["workerArtifactPath"]) / (city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip")
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae

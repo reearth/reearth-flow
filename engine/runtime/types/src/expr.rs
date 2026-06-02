@@ -4,7 +4,10 @@ use nutype::nutype;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_expr::{compile, eval, eval_string};
+use reearth_flow_expr::{
+    bool_cast, compile, eval, str_cast, Error as ExprError, InnerError, InnerResult,
+    Value as ExprValue,
+};
 
 use crate::attribute::{Attribute, AttributeValue};
 use crate::feature::Feature;
@@ -68,11 +71,26 @@ pub enum CompiledCode {
 impl CompiledCode {
     pub fn eval(
         &self,
-        env: &mut reearth_flow_expr::Env,
-    ) -> reearth_flow_expr::Result<reearth_flow_expr::Value> {
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> reearth_flow_expr::Result<AttributeValue> {
+        let v = match self {
+            CompiledCode::Expr(e) => eval(e, &mut env_from_feature(feature, env_vars))?,
+            CompiledCode::Literal(s) => ExprValue::String(s.clone()),
+        };
+        attribute_value_from_eval(v)
+    }
+
+    pub fn eval_bool(
+        &self,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> reearth_flow_expr::Result<bool> {
         match self {
-            CompiledCode::Expr(e) => eval(e, env),
-            CompiledCode::Literal(s) => Ok(reearth_flow_expr::Value::String(s.clone())),
+            CompiledCode::Expr(e) => {
+                eval(e, &mut env_from_feature(feature, env_vars)).map(bool_cast)
+            }
+            CompiledCode::Literal(s) => Ok(!s.is_empty()),
         }
     }
 
@@ -82,30 +100,32 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval_string(e, &mut env_from_feature(feature, env_vars)),
+            CompiledCode::Expr(e) => eval(e, &mut env_from_feature(feature, env_vars))
+                .and_then(|v| str_cast(v).map_err(|e| ExprError::EvalString { msg: e.msg })),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
     }
 }
 
-pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
-    use reearth_flow_expr::Value;
+pub fn json_to_value(v: serde_json::Value) -> ExprValue {
     match v {
-        serde_json::Value::Null => Value::Null,
-        serde_json::Value::Bool(b) => Value::Bool(b),
+        serde_json::Value::Null => ExprValue::Null,
+        serde_json::Value::Bool(b) => ExprValue::Bool(b),
         serde_json::Value::Number(n) => {
             if let Some(i) = n.as_i64() {
-                Value::Int(i)
+                ExprValue::Int(i)
             } else if let Some(f) = n.as_f64() {
-                Value::Float(f)
+                ExprValue::Float(f)
             } else {
                 tracing::warn!(value = %n, "flow expr unrepresentable number converted to null");
-                Value::Null
+                ExprValue::Null
             }
         }
-        serde_json::Value::String(s) => Value::String(s),
-        serde_json::Value::Array(arr) => Value::array(arr.into_iter().map(json_to_value).collect()),
-        serde_json::Value::Object(map) => Value::map(
+        serde_json::Value::String(s) => ExprValue::String(s),
+        serde_json::Value::Array(arr) => {
+            ExprValue::array(arr.into_iter().map(json_to_value).collect())
+        }
+        serde_json::Value::Object(map) => ExprValue::map(
             map.into_iter()
                 .map(|(k, v)| (k, json_to_value(v)))
                 .collect(),
@@ -113,91 +133,168 @@ pub fn json_to_value(v: serde_json::Value) -> reearth_flow_expr::Value {
     }
 }
 
-pub fn env_from_feature(
+#[derive(Debug)]
+struct AttributesObject(Arc<crate::feature::Attributes>);
+
+impl AttributesObject {
+    fn get_value(&self, name: &str) -> Option<ExprValue> {
+        self.0
+            .get(&Attribute::new(name))
+            .map(|v| json_to_value(serde_json::Value::from(v.clone())))
+    }
+}
+
+impl reearth_flow_expr::ImmutableObject for AttributesObject {
+    fn type_name(&self) -> &'static str {
+        "Attributes"
+    }
+
+    fn call_method(&self, method: &str, args: &[ExprValue]) -> InnerResult<ExprValue> {
+        match method {
+            "__getitem__" => {
+                reearth_flow_expr::unpack_args!(args => key);
+                let ExprValue::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "attributes index must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
+                self.get_value(name)
+                    .ok_or_else(|| InnerError::new(format!("attribute '{name}' not found")))
+            }
+            "get" => {
+                let (key, fallback) = match args {
+                    [key] => (key, None),
+                    [key, fallback] => (key, Some(fallback)),
+                    _ => {
+                        return Err(InnerError::new(
+                            "attributes.get() requires 1 or 2 arguments",
+                        ))
+                    }
+                };
+                let ExprValue::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "attributes.get() key must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
+                Ok(self
+                    .get_value(name)
+                    .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))
+            }
+            "__iter__" => Ok(ExprValue::array(
+                self.0
+                    .keys()
+                    .map(|k| ExprValue::String(k.as_ref().to_string()))
+                    .collect(),
+            )),
+            m => Err(InnerError::new(format!("Attributes has no method '{m}'"))),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct EnvObject(Arc<serde_json::Map<String, serde_json::Value>>);
+
+impl EnvObject {
+    fn get_value(&self, name: &str) -> Option<ExprValue> {
+        self.0.get(name).cloned().map(json_to_value)
+    }
+}
+
+impl reearth_flow_expr::ImmutableObject for EnvObject {
+    fn type_name(&self) -> &'static str {
+        "Env"
+    }
+
+    fn call_method(&self, method: &str, args: &[ExprValue]) -> InnerResult<ExprValue> {
+        match method {
+            "__getitem__" => {
+                reearth_flow_expr::unpack_args!(args => key);
+                let ExprValue::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "env index must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
+                self.get_value(name)
+                    .ok_or_else(|| InnerError::new(format!("env var '{name}' not found")))
+            }
+            "get" => {
+                let (key, fallback) = match args {
+                    [key] => (key, None),
+                    [key, fallback] => (key, Some(fallback)),
+                    _ => return Err(InnerError::new("env.get() requires 1 or 2 arguments")),
+                };
+                let ExprValue::String(name) = key else {
+                    return Err(InnerError::new(format!(
+                        "env.get() key must be a string, got {}",
+                        key.type_name()
+                    )));
+                };
+                Ok(self
+                    .get_value(name)
+                    .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))
+            }
+            m => Err(InnerError::new(format!("Env has no method '{m}'"))),
+        }
+    }
+}
+
+fn env_from_feature(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> reearth_flow_expr::Env {
-    use reearth_flow_expr::{NativeFn, Value};
     let mut env = reearth_flow_expr::default_env();
-    let attrs = Arc::clone(&feature.attributes);
     env.insert(
-        "value".into(),
-        Value::Fn(NativeFn::new(move |args| {
-            reearth_flow_expr::unpack_args!(args => arg);
-            let Value::String(name) = arg else {
-                return Err(reearth_flow_expr::InnerError::new(format!(
-                    "value() expects a string argument, got {}",
-                    arg.type_name()
-                )));
-            };
-            Ok(attrs
-                .get(&Attribute::new(name))
-                .map(|v| json_to_value(serde_json::Value::from(v.clone())))
-                .unwrap_or(Value::Null))
-        })),
+        "attributes".into(),
+        ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
     );
-    env.insert(
-        "env".into(),
-        Value::Fn(NativeFn::new(move |args| {
-            reearth_flow_expr::unpack_args!(args => arg);
-            let Value::String(name) = arg else {
-                return Err(reearth_flow_expr::InnerError::new(format!(
-                    "env() expects a string argument, got {}",
-                    arg.type_name()
-                )));
-            };
-            Ok(env_vars
-                .get(name.as_str())
-                .cloned()
-                .map(json_to_value)
-                .unwrap_or(Value::Null))
-        })),
-    );
+    env.insert("env".into(), ExprValue::object(EnvObject(env_vars)));
     env
 }
 
 /// Cyclic values are unsupported — see expr/docs/design.md#no-cycle-detection
-pub fn attribute_value_from_eval(v: reearth_flow_expr::Value) -> AttributeValue {
-    use reearth_flow_expr::Value;
+fn attribute_value_from_eval(v: ExprValue) -> reearth_flow_expr::Result<AttributeValue> {
+    let eval_err = |msg: String| ExprError::Eval { pos: 0, msg };
     match v {
-        Value::Null => AttributeValue::Null,
-        Value::Bool(b) => AttributeValue::Bool(b),
-        Value::Int(n) => AttributeValue::Number(n.into()),
-        Value::Float(f) => serde_json::Number::from_f64(f)
+        ExprValue::Null => Ok(AttributeValue::Null),
+        ExprValue::Bool(b) => Ok(AttributeValue::Bool(b)),
+        ExprValue::Int(n) => Ok(AttributeValue::Number(n.into())),
+        ExprValue::Float(f) => serde_json::Number::from_f64(f)
             .map(AttributeValue::Number)
-            .unwrap_or_else(|| {
-                tracing::warn!(
-                    value = f,
-                    "flow expr nan/inf float converted to null attribute"
-                );
-                AttributeValue::Null
+            .ok_or_else(|| {
+                eval_err(format!(
+                    "float value {f} is not representable as an attribute (nan/inf)"
+                ))
             }),
-        Value::String(s) => AttributeValue::String(s),
-        Value::Array(arr) => AttributeValue::Array(
+        ExprValue::String(s) => Ok(AttributeValue::String(s)),
+        ExprValue::Array(arr) => Ok(AttributeValue::Array(
             arr.borrow()
                 .iter()
                 .map(|v| attribute_value_from_eval(v.clone()))
-                .collect(),
-        ),
-        Value::Map(map) => AttributeValue::Map(
+                .collect::<reearth_flow_expr::Result<Vec<_>>>()?,
+        )),
+        ExprValue::Map(map) => Ok(AttributeValue::Map(
             map.borrow()
                 .iter()
-                .map(|(k, v)| (k.clone(), attribute_value_from_eval(v.clone())))
-                .collect(),
-        ),
-        Value::Fn(_) => {
-            tracing::warn!("flow expr function value converted to null attribute");
-            AttributeValue::Null
-        }
-        Value::Object(rc) => {
+                .map(|(k, v)| attribute_value_from_eval(v.clone()).map(|v| (k.clone(), v)))
+                .collect::<reearth_flow_expr::Result<_>>()?,
+        )),
+        ExprValue::Fn(_) => Err(eval_err(
+            "function value cannot be stored as an attribute".into(),
+        )),
+        ExprValue::Module(_) => Err(eval_err(
+            "module value cannot be stored as an attribute".into(),
+        )),
+        ExprValue::Object(rc) => {
             if let Some(v) = rc.serialize() {
                 attribute_value_from_eval(v)
             } else {
-                tracing::warn!(
-                    type_name = rc.type_name(),
-                    "flow expr object converted to type-name string"
-                );
-                AttributeValue::String(format!("<{}>", rc.type_name()))
+                Err(eval_err(format!(
+                    "{} object cannot be stored as an attribute",
+                    rc.type_name()
+                )))
             }
         }
     }

@@ -79,8 +79,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").extension == "gml"
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
               outputPort: default
 
       - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2f
@@ -177,13 +178,15 @@ graphs:
           operations:
             - attribute: featureTypeName
               method: create
-              value: |
-                let ft = env.get("__value")["__citygml_feature_type"] ?? "";
-                if ft.contains(":") {
-                  ft.split(":")[1]
-                } else {
-                  ft
-                }
+              value:
+                type: flowExpr
+                value: |
+                  ft = attributes.get("__citygml_feature_type", "");
+                  if ":" in ft {
+                    ft.split(":")[1]
+                  } else {
+                    ft
+                  }
 
       # GeometrySplitter for LOD-based counting (split features by LOD before counting)
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
@@ -391,8 +394,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["totalErrorCount"] == 0
+            - expr:
+                type: flowExpr
+                value: attributes["totalErrorCount"] == 0
               outputPort: default
 
       - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d11

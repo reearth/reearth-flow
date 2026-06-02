@@ -596,8 +596,27 @@ Create, Convert, Rename, and Remove Feature Attributes
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     },
     "Method": {
       "type": "string",
@@ -632,7 +651,7 @@ Create, Convert, Rename, and Remove Feature Attributes
           "description": "Value to use for the operation",
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             },
             {
               "type": "null"
@@ -3102,6 +3121,28 @@ Filter Features Based on Custom Conditions
     }
   },
   "definitions": {
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
+    },
     "Condition": {
       "type": "object",
       "required": [
@@ -3113,7 +3154,7 @@ Filter Features Based on Custom Conditions
           "title": "Condition expression",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         },
@@ -3126,9 +3167,6 @@ Filter Features Based on Custom Conditions
           ]
         }
       }
-    },
-    "Expr": {
-      "type": "string"
     },
     "Port": {
       "type": "string"

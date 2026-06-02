@@ -28,11 +28,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").type == "candidate"
+            - expr:
+                type: flowExpr
+                value: attributes["type"] == "candidate"
               outputPort: candidate
-            - expr: |
-                env.get("__value").type == "base"
+            - expr:
+                type: flowExpr
+                value: attributes["type"] == "base"
               outputPort: base
 
       - id: c3d4e5f6-a7b8-9012-cdef-345678901234

@@ -50,8 +50,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").extension == "gml"
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
               outputPort: default
 
       - id: c1d2e3f4-a5b6-7890-cdef-1234567890ab
@@ -95,7 +96,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / "citygml3-3dtiles"
+            value: Url(env["workerArtifactPath"]) / "citygml3-3dtiles"
           minZoom: 15
           maxZoom: 18
 

@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#   GeoJsonReader ──> AreaCalculator ──> GeoJsonWriter
+#
+id: 7efa24a6-19fa-4be1-8f5b-7e5e14b6e551
+name: "Area Calculator"
+entryGraphId: dfb479fd-caf1-48c6-beff-257262ebb59d
+with:
+  # Injected by the worker at runtime; points at the job's artifact sandbox.
+  workerArtifactPath: null
+  parks: |
+    {"type":"FeatureCollection","features":[
+      {"type":"Feature","properties":{"name":"Imperial Palace East Gardens"},"geometry":{"type":"Polygon","coordinates":[[[139.7528,35.6838],[139.7628,35.6838],[139.7628,35.6919],[139.7528,35.6919],[139.7528,35.6838]]]}},
+      {"type":"Feature","properties":{"name":"Yoyogi Park"},"geometry":{"type":"Polygon","coordinates":[[[139.6929,35.6664],[139.7010,35.6664],[139.7010,35.6751],[139.6929,35.6751],[139.6929,35.6664]]]}},
+      {"type":"Feature","properties":{"name":"Ueno Park"},"geometry":{"type":"Polygon","coordinates":[[[139.7702,35.7110],[139.7774,35.7110],[139.7774,35.7196],[139.7702,35.7196],[139.7702,35.7110]]]}}
+    ]}
+graphs:
+  - id: dfb479fd-caf1-48c6-beff-257262ebb59d
+    name: main
+    nodes:
+      - id: 975a786f-5738-48a1-8666-8e7ecf38cb93
+        name: Read Park Boundaries
+        type: action
+        action: GeoJsonReader
+        with:
+          inline: |
+            env.get("parks")
+
+      - id: 854740f8-8159-480c-80c1-b0b7596a03f2
+        name: Calculate Area
+        type: action
+        action: AreaCalculator
+        with:
+          areaType: planeArea
+          # Coordinates are EPSG:4326 degrees, so the raw planar area is in
+          # square degrees. Near Tokyo (35.7°N) one square degree is roughly
+          # 1.0029e10 m², so this multiplier converts to approximate m².
+          multiplier: 10029000000.0
+          outputAttribute: areaSqm
+
+      - id: a287e65d-e503-40cb-9188-5edf1d0e263b
+        name: Write Park Areas
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "park-areas.geojson")
+
+    edges:
+      - id: f5fe8722-2c01-4227-a61a-5d5a91071fd2
+        from: 975a786f-5738-48a1-8666-8e7ecf38cb93
+        to: 854740f8-8159-480c-80c1-b0b7596a03f2
+        fromPort: default
+        toPort: default
+      - id: c81306e8-a0c5-4c6f-bf25-a5e4821dc2f4
+        from: 854740f8-8159-480c-80c1-b0b7596a03f2
+        to: a287e65d-e503-40cb-9188-5edf1d0e263b
+        fromPort: default
+        toPort: default

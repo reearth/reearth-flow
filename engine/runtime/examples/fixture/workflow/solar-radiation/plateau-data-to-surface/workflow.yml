@@ -28,8 +28,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").featureType == "bldg:Building"
+        - expr:
+            type: flowExpr
+            value: attributes["featureType"] == "bldg:Building"
           outputPort: default
 
   # Step 1: Deaggregator equivalent - using geometry part extractor to decompose aggregate features
@@ -87,16 +88,19 @@ nodes:
       operations:
         - attribute: alpha_slope
           method: create
-          value: |
-            math::to_radians((env.get("__value")["Azimuth"]))
+          value:
+            type: flowExpr
+            value: math.radians(attributes["Azimuth"])
         - attribute: theta_slope
           method: create
-          value: |
-            math::to_radians((env.get("__value")["Slope"]))
+          value:
+            type: flowExpr
+            value: math.radians(attributes["Slope"])
         - attribute: join_key
           method: create
-          value: |
-            "key"
+          value:
+            type: string
+            value: key
 
   - id: f184fdfe-d597-11f0-945f-7c70db10a7e3
     name: SolarEnergyResultWriter

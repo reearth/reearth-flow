@@ -43,8 +43,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
@@ -128,8 +129,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["dm_feature_type"] == "DmGeometricAttribute"
+      - expr:
+          type: flowExpr
+          value: attributes.get("dm_feature_type") == "DmGeometricAttribute"
         outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
@@ -143,8 +145,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("exceptSplit") ?? false
+      - expr:
+          type: flowExpr
+          value: env.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -156,20 +159,25 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").lod == "0"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "0"
         outputPort: lod0
-      - expr: |
-          env.get("__value").lod == "1"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "1"
         outputPort: lod1
-      - expr: |
-          env.get("__value").lod == "2"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "2"
         outputPort: lod2
-      - expr: |
-          env.get("__value").lod == "3"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "3"
         outputPort: lod3
-      - expr: |
-          env.get("__value").lod == "4"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "4"
         outputPort: lod4
   - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
     name: DmGeometricAttributeRouter
@@ -304,8 +312,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
     name: AttributeManagerDict
@@ -315,8 +324,9 @@ graphs:
       operations:
       - attribute: feature_type_without_prefix
         method: create
-        value: |
-          env.get("__value")["featureType"].split(":")[1]
+        value:
+          type: flowExpr
+          value: attributes["featureType"].split(":")[1]
   - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
     name: AttributeDuplicateFilterDict
     type: action
@@ -373,16 +383,19 @@ graphs:
       operations:
       - attribute: meshcode
         method: create
-        value: |
-          let file = file::extract_filename(env.get("__value")["path"]);
-          file.split("_")[0]
+        value:
+          type: flowExpr
+          value: Url(attributes["path"]).name.split("_")[0]
       - attribute: gml_id
         method: create
-        value: |
-          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_gml_id") or attributes["gmlId"]
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes.get("featureType") or attributes["gmlName"]
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -429,10 +442,14 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
   - id: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
     name: HorizontalReprojector
     type: action
@@ -457,14 +474,14 @@ graphs:
       output:
         type: flowExpr
         value: |
-          ft = value("feature_type").split(":")[-1];
-          Url(env("workerArtifactPath")) / (value("package") + "_" + ft + "_lod" + value("lod"))
+          ft = attributes["feature_type"].split(":")[-1];
+          Url(env["workerArtifactPath"]) / (attributes["package"] + "_" + ft + "_lod" + attributes["lod"])
       compressOutput:
         type: flowExpr
         value: |
-          ft = value("feature_type").split(":")[-1];
-          city_gml = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("package"));
-          Url(env("workerArtifactPath")) / (city_gml + "_" + value("package") + "_" + ft + "_3dtiles_lod" + value("lod") + ".zip")
+          ft = attributes["feature_type"].split(":")[-1];
+          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+          Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_" + ft + "_3dtiles_lod" + attributes["lod"] + ".zip")
   - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
     name: FeatureSorterDmGeometricAttribute
     type: action
@@ -537,19 +554,19 @@ graphs:
       schemaKey: __citygml_feature_type
       layerName:
         type: flowExpr
-        value: value("feature_type").split(":")[1]
+        value: attributes["feature_type"].split(":")[1]
       minZoom: 8
       maxZoom: 18
       extent: 65536
       output:
         type: flowExpr
-        value: Url(env("workerArtifactPath")) / (value("__package") + "_" + value("feature_type").split(":")[1] + "_dm_geometric_attributes")
+        value: Url(env["workerArtifactPath"]) / (attributes["__package"] + "_" + attributes["feature_type"].split(":")[1] + "_dm_geometric_attributes")
       compressOutput:
         type: flowExpr
         value: |
-          stem = Url(env("cityGmlPath")).stem().remove_suffix("_" + value("__package"));
-          ft = value("feature_type").split(":")[1];
-          Url(env("workerArtifactPath")) / (stem + "_" + value("__package") + "_" + ft + "_dm_geometric_attributes.zip")
+          stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+          ft = attributes["feature_type"].split(":")[1];
+          Url(env["workerArtifactPath"]) / (stem + "_" + attributes["__package"] + "_" + ft + "_dm_geometric_attributes.zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:

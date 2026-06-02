@@ -53,8 +53,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            - expr:
+                type: flowExpr
+                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
               outputPort: default
 
       - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
@@ -73,11 +74,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["package"] == "luse"
+            - expr:
+                type: flowExpr
+                value: attributes["package"] == "luse"
               outputPort: luse
-            - expr: |
-                env.get("__value")["package"] == "lsld"
+            - expr:
+                type: flowExpr
+                value: attributes["package"] == "lsld"
               outputPort: lsld
 
       # LUSE processing branch
@@ -145,12 +148,12 @@ graphs:
           extent: 65536
           output:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / "luse"
+            value: Url(env["workerArtifactPath"]) / "luse"
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem();
-              Url(env("workerArtifactPath")) / (city_gml.remove_suffix("_luse") + "_luse_mvt.zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
+              Url(env["workerArtifactPath"]) / (city_gml.remove_suffix("_luse") + "_luse_mvt.zip")
 
       # LSLD processing branch
       - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
@@ -244,12 +247,12 @@ graphs:
           extent: 65536
           output:
             type: flowExpr
-            value: Url(env("workerArtifactPath")) / "lsld"
+            value: Url(env["workerArtifactPath"]) / "lsld"
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env("cityGmlPath")).stem();
-              Url(env("workerArtifactPath")) / (city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip")
+              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
+              Url(env["workerArtifactPath"]) / (city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

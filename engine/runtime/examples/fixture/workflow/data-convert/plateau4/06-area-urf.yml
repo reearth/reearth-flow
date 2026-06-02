@@ -45,8 +45,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
@@ -151,8 +152,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
     name: AttributeManagerPreFlattener
@@ -162,16 +164,19 @@ graphs:
       operations:
       - attribute: meshcode
         method: create
-        value: |
-          let file = file::extract_filename(env.get("__value")["path"]);
-          file.split("_")[0]
+        value:
+          type: flowExpr
+          value: Url(attributes["path"]).name.split("_")[0]
       - attribute: gml_id
         method: create
-        value: |
-          env.get("__value")["__citygml_gml_id"] ?? env.get("__value")["gmlId"]
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_gml_id") or attributes["gmlId"]
       - attribute: feature_type
         method: create
-        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+        value:
+          type: flowExpr
+          value: attributes.get("featureType") or attributes["gmlName"]
       - attribute: codelists
         method: remove
       - attribute: schemas
@@ -188,24 +193,33 @@ graphs:
       operations:
       - attribute: cityCode
         method: rename
-        value: city_code
+        value:
+          type: string
+          value: city_code
       - attribute: cityName
         method: rename
-        value: city_name
+        value:
+          type: string
+          value: city_name
       - attribute: lod
         method: rename
-        value: __lod
+        value:
+          type: string
+          value: __lod
       - attribute: package
         method: rename
-        value: __package
+        value:
+          type: string
+          value: __package
   - id: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     name: FilterUrfPackage
     type: action
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["package"] == "urf"
+      - expr:
+          type: flowExpr
+          value: attributes["package"] == "urf"
         outputPort: default
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
     name: StripFeatureTypePrefix
@@ -215,8 +229,9 @@ graphs:
       operations:
       - attribute: feature_type_without_prefix
         method: create
-        value: |
-          env.get("__value").feature_type.split(":")[1]
+        value:
+          type: flowExpr
+          value: attributes["feature_type"].split(":")[1]
   - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
     name: AttributeDuplicateFilter
     type: action
@@ -371,7 +386,7 @@ graphs:
       layerName:
         type: flowExpr
         value: |
-          value("feature_type").split(":")[1]
+          attributes["feature_type"].split(":")[1]
       minZoom: 8
       maxZoom: 16
       skipUnexposedAttributes: true
@@ -380,17 +395,17 @@ graphs:
       output:
         type: flowExpr
         value: |
-          ft = value("feature_type").split(":")[1];
-          dir = value("__package") + "_" + ft;
-          Url(env("workerArtifactPath")) / dir
+          ft = attributes["feature_type"].split(":")[1];
+          dir = attributes["__package"] + "_" + ft;
+          Url(env["workerArtifactPath"]) / dir
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env("cityGmlPath")).stem();
-          ft = value("feature_type").split(":")[1];
+          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
+          ft = attributes["feature_type"].split(":")[1];
           stem = city_gml.remove_suffix("_" + ft);
-          filename = stem + "_" + ft + "_mvt_lod" + value("__lod") + ".zip";
-          Url(env("workerArtifactPath")) / filename
+          filename = stem + "_" + ft + "_mvt_lod" + attributes["__lod"] + ".zip";
+          Url(env["workerArtifactPath"]) / filename
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae

@@ -44,8 +44,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").outerOrientation != "counter_clockwise"
+        - expr:
+            type: flowExpr
+            value: attributes["outerOrientation"] != "counter_clockwise"
           outputPort: inCorrectOrientation
 
   - id: 9e2b5f8a-1c4d-4a7e-f2b5-8a1e4b7c2f5d
@@ -121,11 +122,13 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            true
+        - expr:
+            type: flowExpr
+            value: "true"
           outputPort: default
-        - expr: |
-            env.get("__value").holeCount > 0
+        - expr:
+            type: flowExpr
+            value: attributes["holeCount"] > 0
           outputPort: hole
 
   - id: 5d2c7f4a-8b1e-4c6d-a9f2-4a7d2c5f8b1e
@@ -147,9 +150,11 @@ nodes:
       operations:
         - attribute: issue
           method: create
-          value: |
-            let vr = env.get("__value").validationResult;
-            vr.details[0][0]
+          value:
+            type: flowExpr
+            value: |
+              vr = attributes["validationResult"];
+              vr["details"][0][0]
 
   ## Ring not closed
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
@@ -260,8 +265,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").overlap > 1
+        - expr:
+            type: flowExpr
+            value: attributes["overlap"] > 1
           outputPort: intersectionInterior
 
   - id: 5a3b7e9c-2f4d-4a6e-b8c1-3e7a5b9c2f4d
@@ -272,8 +278,9 @@ nodes:
       operations:
         - attribute: issue
           method: create
-          value: |
-            "IntersectionBetweenInteriorAndInterior"
+          value:
+            type: string
+            value: IntersectionBetweenInteriorAndInterior
 
   ## Incorrect Interior Orientation
   - id: 6b5d8a3f-1c4e-4b7d-a9c2-5d6b8a3f1c4e
@@ -300,8 +307,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").innerOrientation == env.get("__value").outerOrientation
+        - expr:
+            type: flowExpr
+            value: attributes["innerOrientation"] == attributes["outerOrientation"]
           outputPort: incorrectInterior
 
   - id: 4b8e2a7d-3f6c-4a1e-b9d5-7a4b8e2d3f6c
@@ -312,8 +320,9 @@ nodes:
       operations:
       - attribute: issue
         method: create
-        value: |
-          "IncorrectInteriorOrientation"
+        value:
+          type: string
+          value: IncorrectInteriorOrientation
 
   - id: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
     name: InvalidSurfaceRouter

@@ -51,8 +51,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "VALID"
+        value:
+          type: string
+          value: VALID
   - id: 9293ff92-7cde-422d-a157-011d54b23cf0
     name: AttributeManagerCreateNotWellFormed
     type: action
@@ -61,8 +62,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "NOT_WELL_FORMED"
+        value:
+          type: string
+          value: NOT_WELL_FORMED
   - id: 6c235d0b-26fb-47dd-a3df-709fa961855c
     name: AttributeManagerCreateInvalid
     type: action
@@ -71,8 +73,9 @@ graphs:
       operations:
       - attribute: status
         method: create
-        value: |
-          "INVALID"
+        value:
+          type: string
+          value: INVALID
   - id: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
     name: SummaryRouter
     type: action
@@ -164,32 +167,41 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").flag == "Summary"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "Summary"
         outputPort: summary
-      - expr: |
-          env.get("__value").flag == "CodeValidation"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "CodeValidation"
         outputPort: codeValidation
-      - expr: |
-          env.get("__value").flag == "inCorrectCodeSpace"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "inCorrectCodeSpace"
         outputPort: inCorrectCodeSpace
-      - expr: |
-          env.get("__value").flag == "ExtentsValidation"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "ExtentsValidation"
         outputPort: extentsValidation
-      - expr: |
-          env.get("__value").flag == "GMLID_NotWellFormed"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "GMLID_NotWellFormed"
         outputPort: gmlIdNotWellFormed
-      - expr: |
-          env.get("__value").flag == "GMLID_NotUnique"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "GMLID_NotUnique"
         outputPort: gmlIdNotUnique
-      - expr: |
-          env.get("__value").flag == "XLink_NoReference"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "XLink_NoReference"
         outputPort: xlinkNoReference
-      - expr: |
-          env.get("__value").flag == "XLink_InvalidObjectType"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "XLink_InvalidObjectType"
         outputPort: xLinkInvalidObjectType
-      - expr: |
-          env.get("__value").flag == "InvalidLodXGeometry"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "InvalidLodXGeometry"
         outputPort: invalidLodXGeometry
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
     name: SummaryRouter
@@ -336,8 +348,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 4b5c6d7e-8f9a-4b5c-9d0e-1f2a3b4c5d6e
     name: FeatureSorterByName
@@ -381,20 +394,24 @@ graphs:
       operations:
       - attribute: L01Errors
         method: create
-        value: |
-          if env.get("__value").status == "NOT_WELL_FORMED" {
-            env.get("__value").xmlError.len
-          } else {
-            0
-          }
+        value:
+          type: flowExpr
+          value: |
+            if attributes["status"] == "NOT_WELL_FORMED" {
+              len(attributes["xmlError"])
+            } else {
+              0
+            }
       - attribute: L02Errors
         method: create
-        value: |
-          if env.get("__value").status == "INVALID" {
-            env.get("__value").xmlError.len
-          } else {
-            0
-          }
+        value:
+          type: flowExpr
+          value: |
+            if attributes["status"] == "INVALID" {
+              len(attributes["xmlError"])
+            } else {
+              0
+            }
   - id: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
     name: AttributeMapperNotWellFormedXml
     type: action
@@ -891,15 +908,17 @@ graphs:
       operations:
       - attribute: totalErrorCount
         method: create
-        value: |
-          let total = 0;
-          for key in env.get("__value").keys() {
-            let val = env.get("__value")[key];
-            if val.type_of() == "i64" {
-              total += val;
+        value:
+          type: flowExpr
+          value: |
+            total = 0;
+            for key in attributes {
+              v = attributes[key];
+              if type(v) == "int" {
+                total += v;
+              }
             }
-          }
-          total
+            total
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
@@ -1224,8 +1243,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 740ac9e5-6eeb-439b-9860-23a125919a2e
     name: PLATEAU4.UDXFolderExtractor
@@ -1390,20 +1410,22 @@ graphs:
       operations:
       - attribute: totalErrorCount
         method: create
-        value: |
-          let total = 0;
-          let data = env.get("__value")["dataFileData"];
-          if data != () {
-            for item in data {
-              if item.type_of() == "map" {
-                let count = item["count"];
-                if count != () && count.type_of() == "i64" {
-                  total += count;
+        value:
+          type: flowExpr
+          value: |
+            total = 0;
+            data = attributes.get("dataFileData");
+            if data != null {
+              for item in data {
+                if type(item) == "map" {
+                  count = item.get("count");
+                  if count != null and type(count) == "int" {
+                    total += count;
+                  }
                 }
               }
             }
-          }
-          total
+            total
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
     type: action
@@ -1647,8 +1669,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
     name: UDXFolderExtractor
@@ -1665,8 +1688,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
     name: FldScaleExtractor
@@ -1676,22 +1700,24 @@ graphs:
       operations:
       - attribute: _fld_scale
         method: create
-        value: |
-          let filename = env.get("__value")["name"];
-          if filename == () {
-            return ();
-          }
-          // Split by underscore and look for l1 or l2
-          let parts = filename.split("_");
-          for part in parts {
-            if part == "l1" || part.starts_with("l1.") {
-              return "l1";
+        value:
+          type: flowExpr
+          value: |
+            filename = attributes.get("name");
+            if filename == null {
+              return null
+            };
+            # Split by underscore and look for l1 or l2
+            parts = filename.split("_");
+            for part in parts {
+              if part == "l1" or part.starts_with("l1.") {
+                return "l1"
+              }
+              if part == "l2" or part.starts_with("l2.") {
+                return "l2"
+              }
             }
-            if part == "l2" || part.starts_with("l2.") {
-              return "l2";
-            }
-          }
-          return ();
+            return null
   - id: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
     name: AttributeCleanup
     type: action
@@ -1942,8 +1968,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["totalErrorCount"] == 0
+      - expr:
+          type: flowExpr
+          value: attributes["totalErrorCount"] == 0
         outputPort: default
   - id: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
     name: FileWriterQcResultOk
