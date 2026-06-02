@@ -33,8 +33,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["dm_feature_type"] == "DmGeometricAttribute"
+      - expr:
+          type: flowExpr
+          value: attributes.get("dm_feature_type") == "DmGeometricAttribute"
         outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
@@ -48,8 +49,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("exceptSplit") ?? false
+      - expr:
+          type: flowExpr
+          value: env.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -61,20 +63,25 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").lod == "0"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "0"
         outputPort: lod0
-      - expr: |
-          env.get("__value").lod == "1"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "1"
         outputPort: lod1
-      - expr: |
-          env.get("__value").lod == "2"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "2"
         outputPort: lod2
-      - expr: |
-          env.get("__value").lod == "3"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "3"
         outputPort: lod3
-      - expr: |
-          env.get("__value").lod == "4"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "4"
         outputPort: lod4
   - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
     name: DmGeometricAttributeRouter
@@ -212,8 +219,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").outerOrientation != "counter_clockwise"
+      - expr:
+          type: flowExpr
+          value: attributes["outerOrientation"] != "counter_clockwise"
         outputPort: inCorrectOrientation
   - id: 9e2b5f8a-1c4d-4a7e-f2b5-8a1e4b7c2f5d
     name: GeometryReplacer
@@ -280,11 +288,13 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          true
+      - expr:
+          type: flowExpr
+          value: 'true'
         outputPort: default
-      - expr: |
-          env.get("__value").holeCount > 0
+      - expr:
+          type: flowExpr
+          value: attributes["holeCount"] > 0
         outputPort: hole
   - id: 5d2c7f4a-8b1e-4c6d-a9f2-4a7d2c5f8b1e
     name: GeometryValidatorSelfIntersection
@@ -398,8 +408,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").overlap > 1
+      - expr:
+          type: flowExpr
+          value: attributes["overlap"] > 1
         outputPort: intersectionInterior
   - id: 5a3b7e9c-2f4d-4a6e-b8c1-3e7a5b9c2f4d
     name: AttributeManagerIntersectionInterior
@@ -434,8 +445,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").innerOrientation == env.get("__value").outerOrientation
+      - expr:
+          type: flowExpr
+          value: attributes["innerOrientation"] == attributes["outerOrientation"]
         outputPort: incorrectInterior
   - id: 4b8e2a7d-3f6c-4a1e-b9d5-7a4b8e2d3f6c
     name: AttributeManagerIncorrectInteriorOrientation
@@ -824,32 +836,41 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").flag == "Summary"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "Summary"
         outputPort: summary
-      - expr: |
-          env.get("__value").flag == "CodeValidation"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "CodeValidation"
         outputPort: codeValidation
-      - expr: |
-          env.get("__value").flag == "inCorrectCodeSpace"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "inCorrectCodeSpace"
         outputPort: inCorrectCodeSpace
-      - expr: |
-          env.get("__value").flag == "ExtentsValidation"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "ExtentsValidation"
         outputPort: extentsValidation
-      - expr: |
-          env.get("__value").flag == "GMLID_NotWellFormed"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "GMLID_NotWellFormed"
         outputPort: gmlIdNotWellFormed
-      - expr: |
-          env.get("__value").flag == "GMLID_NotUnique"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "GMLID_NotUnique"
         outputPort: gmlIdNotUnique
-      - expr: |
-          env.get("__value").flag == "XLink_NoReference"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "XLink_NoReference"
         outputPort: xlinkNoReference
-      - expr: |
-          env.get("__value").flag == "XLink_InvalidObjectType"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "XLink_InvalidObjectType"
         outputPort: xLinkInvalidObjectType
-      - expr: |
-          env.get("__value").flag == "InvalidLodXGeometry"
+      - expr:
+          type: flowExpr
+          value: attributes["flag"] == "InvalidLodXGeometry"
         outputPort: invalidLodXGeometry
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
     name: SummaryRouter
@@ -996,8 +1017,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 4b5c6d7e-8f9a-4b5c-9d0e-1f2a3b4c5d6e
     name: FeatureSorterByName
@@ -1890,8 +1912,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 740ac9e5-6eeb-439b-9860-23a125919a2e
     name: PLATEAU4.UDXFolderExtractor
@@ -2316,8 +2339,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: c29be788-be8d-43a2-97bf-3e15228a72a1
     name: FeatureCounterFileIndex
@@ -2341,8 +2365,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: 242e339a-c7df-4be4-82f7-3223a6ed2145
     name: FeatureCityGmlReader
@@ -2459,8 +2484,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["orientation"] == "clockwise"
+      - expr:
+          type: flowExpr
+          value: attributes["orientation"] == "clockwise"
         outputPort: incorrectOrientation
   - id: 0740c8ce-3c27-416f-9a13-5b2086090426
     name: AttributeMapper
@@ -2509,8 +2535,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["package"] != "rwy"
+      - expr:
+          type: flowExpr
+          value: attributes["package"] != "rwy"
         outputPort: notRwy
   - id: b4d2d577-28a0-43a3-8a23-0ae562be1d04
     name: TwoDimensionForcer
@@ -2553,11 +2580,13 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["lod"] == "1"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "1"
         outputPort: lod1
-      - expr: |
-          env.get("__value")["lod"] == "2" || env.get("__value")["lod"] == "3"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "2" or attributes["lod"] == "3"
         outputPort: lod23
   - id: b684d916-5efe-4dfa-be20-fed9b101239d
     name: LineOnLineOverlayerLOD1
@@ -2583,8 +2612,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["overlayCount"] > 1
+      - expr:
+          type: flowExpr
+          value: attributes["overlayCount"] > 1
         outputPort: hasLineOverlap
   - id: db59af73-a1b7-49d3-92c3-e8485cb047bd
     name: OverlapCounter
@@ -2629,8 +2659,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["overlayCount"] > 1
+      - expr:
+          type: flowExpr
+          value: attributes["overlayCount"] > 1
         outputPort: hasAreaOverlap
   - id: ee3e5022-7f8c-4b9b-ab71-cba35cab287b
     name: AreaOverlapCounter
@@ -2854,8 +2885,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["totalErrorCount"] == 0
+      - expr:
+          type: flowExpr
+          value: attributes["totalErrorCount"] == 0
         outputPort: default
   - id: 6f05d51b-3587-4625-8b9d-5f0ca614eed5
     name: FileWriterQcResultOk

@@ -1103,6 +1103,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Condition": {
           "expr": {
             "title": "Condition expression"

@@ -75,8 +75,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").extension == "gml"
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
               outputPort: default
 
       - id: 6a08f964-a46d-4226-a4dc-2c283136e157
@@ -103,8 +104,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-          - expr: |
-              (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+          - expr:
+              type: flowExpr
+              value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
             outputPort: default
 
       - id: 7568f48a-0858-4244-b473-2a8a63909341
@@ -318,8 +320,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").boundaryIndex != 1 && env.get("__value").vertexCount < 50
+            - expr:
+                type: flowExpr
+                value: attributes["boundaryIndex"] != 1 and attributes["vertexCount"] < 50
               outputPort: default
 
       - id: 057a1995-8af0-4a8e-8699-cbb77e1ed374
@@ -484,8 +487,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["totalErrorCount"] == 0
+            - expr:
+                type: flowExpr
+                value: attributes["totalErrorCount"] == 0
               outputPort: default
 
       # Write qc_result_ok file

@@ -3121,6 +3121,28 @@ Filter Features Based on Custom Conditions
     }
   },
   "definitions": {
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
+    },
     "Condition": {
       "type": "object",
       "required": [
@@ -3132,7 +3154,7 @@ Filter Features Based on Custom Conditions
           "title": "Condition expression",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         },
@@ -3145,9 +3167,6 @@ Filter Features Based on Custom Conditions
           ]
         }
       }
-    },
-    "Expr": {
-      "type": "string"
     },
     "Port": {
       "type": "string"

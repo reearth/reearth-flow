@@ -44,8 +44,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").outerOrientation != "counter_clockwise"
+        - expr:
+            type: flowExpr
+            value: attributes["outerOrientation"] != "counter_clockwise"
           outputPort: inCorrectOrientation
 
   - id: 9e2b5f8a-1c4d-4a7e-f2b5-8a1e4b7c2f5d
@@ -121,11 +122,13 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            true
+        - expr:
+            type: flowExpr
+            value: "true"
           outputPort: default
-        - expr: |
-            env.get("__value").holeCount > 0
+        - expr:
+            type: flowExpr
+            value: attributes["holeCount"] > 0
           outputPort: hole
 
   - id: 5d2c7f4a-8b1e-4c6d-a9f2-4a7d2c5f8b1e
@@ -262,8 +265,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").overlap > 1
+        - expr:
+            type: flowExpr
+            value: attributes["overlap"] > 1
           outputPort: intersectionInterior
 
   - id: 5a3b7e9c-2f4d-4a6e-b8c1-3e7a5b9c2f4d
@@ -303,8 +307,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value").innerOrientation == env.get("__value").outerOrientation
+        - expr:
+            type: flowExpr
+            value: attributes["innerOrientation"] == attributes["outerOrientation"]
           outputPort: incorrectInterior
 
   - id: 4b8e2a7d-3f6c-4a1e-b9d5-7a4b8e2d3f6c
