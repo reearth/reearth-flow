@@ -7,7 +7,6 @@ import type { NodeData } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import { getNodeColors } from "./nodeColors";
-// import useNodeStatus from "./useNodeStatus";
 
 export default ({
   data,

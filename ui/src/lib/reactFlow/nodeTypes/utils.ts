@@ -1,22 +1,3 @@
-import { NodeStatus } from "@flow/types";
-
-export const getPropsFrom = (status?: NodeStatus) => {
-  const style =
-    status === "completed"
-      ? "border-success"
-      : status === "failed"
-        ? "border-destructive"
-        : status === "processing"
-          ? "active-node-status-border"
-          : status === "pending"
-            ? "queued-node-status"
-            : "";
-
-  return {
-    style,
-  };
-};
-
 export const convertHextoRgba = (hex: string, alpha: number) => {
   let r, g, b;
 
