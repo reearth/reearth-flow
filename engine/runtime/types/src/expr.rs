@@ -33,33 +33,135 @@ use crate::feature::Feature;
 )]
 pub struct Expr(String);
 
-impl Expr {
-    pub fn compile(&self) -> reearth_flow_expr::Result<CompiledCode> {
-        compile(self.as_ref()).map(CompiledCode::Expr)
+#[repr(u32)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum CodeType {
+    FlowExpr = 1 << 0,
+    String = 1 << 1,
+}
+
+impl CodeType {
+    pub const ALL: u32 = Self::FlowExpr as u32 | Self::String as u32;
+
+    pub fn all_variants() -> &'static [CodeType] {
+        &[CodeType::FlowExpr, CodeType::String]
+    }
+
+    pub fn as_mask(self) -> u32 {
+        self as u32
+    }
+
+    pub fn serde_name(self) -> &'static str {
+        match self {
+            CodeType::FlowExpr => "flowExpr",
+            CodeType::String => "string",
+        }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum CodeType {
-    FlowExpr,
-    String,
-}
+/// Bitmask constant covering all [`CodeType`] variants; used as the default for [`Code`].
+pub const ALL_CODE_TYPES: u32 = CodeType::ALL;
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct Code {
-    #[serde(rename = "type")]
+#[derive(Debug, Clone)]
+pub struct Code<const MASK: u32 = ALL_CODE_TYPES> {
     pub ty: CodeType,
     pub value: String,
 }
 
-impl Code {
+impl<const MASK: u32> Code<MASK> {
     pub fn compile(&self) -> reearth_flow_expr::Result<CompiledCode> {
         match self.ty {
             CodeType::FlowExpr => compile(&self.value).map(CompiledCode::Expr),
             CodeType::String => Ok(CompiledCode::Literal(self.value.clone())),
         }
+    }
+}
+
+impl<const MASK: u32> Serialize for Code<MASK> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("Code", 2)?;
+        state.serialize_field("type", &self.ty)?;
+        state.serialize_field("value", &self.value)?;
+        state.end()
+    }
+}
+
+impl<'de, const MASK: u32> Deserialize<'de> for Code<MASK> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Helper {
+            #[serde(rename = "type")]
+            ty: CodeType,
+            value: String,
+        }
+        let h = Helper::deserialize(deserializer)?;
+        if h.ty.as_mask() & MASK == 0 {
+            let allowed: Vec<&str> = CodeType::all_variants()
+                .iter()
+                .copied()
+                .filter(|v| v.as_mask() & MASK != 0)
+                .map(|v| v.serde_name())
+                .collect();
+            return Err(serde::de::Error::custom(format!(
+                "code type `{}` is not allowed here; allowed: [{}]",
+                h.ty.serde_name(),
+                allowed.join(", ")
+            )));
+        }
+        Ok(Code {
+            ty: h.ty,
+            value: h.value,
+        })
+    }
+}
+
+impl<const MASK: u32> schemars::JsonSchema for Code<MASK> {
+    fn schema_name() -> String {
+        let parts: Vec<&str> = CodeType::all_variants()
+            .iter()
+            .copied()
+            .filter(|v| v.as_mask() & MASK != 0)
+            .map(|v| v.serde_name())
+            .collect();
+        format!("Code_{}", parts.join("_"))
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        use schemars::schema::*;
+
+        let allowed: Vec<serde_json::Value> = CodeType::all_variants()
+            .iter()
+            .copied()
+            .filter(|v| v.as_mask() & MASK != 0)
+            .map(|v| serde_json::Value::String(v.serde_name().to_string()))
+            .collect();
+
+        let type_schema = Schema::Object(SchemaObject {
+            enum_values: Some(allowed),
+            ..Default::default()
+        });
+
+        let value_schema = gen.subschema_for::<String>();
+
+        let mut properties = schemars::Map::new();
+        properties.insert("type".to_string(), type_schema);
+        properties.insert("value".to_string(), value_schema);
+
+        let mut required = std::collections::BTreeSet::new();
+        required.insert("type".to_string());
+        required.insert("value".to_string());
+
+        Schema::Object(SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            object: Some(Box::new(ObjectValidation {
+                required,
+                properties,
+                ..Default::default()
+            })),
+            ..Default::default()
+        })
     }
 }
 
