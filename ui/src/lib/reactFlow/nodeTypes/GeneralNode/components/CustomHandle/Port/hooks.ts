@@ -100,26 +100,24 @@ export default ({
     if (writtenForJobRef.current === writeKey) return;
     writtenForJobRef.current = writeKey;
 
-    updateValue({
-      jobs: (debugRunState?.jobs ?? []).map((job) => {
+    updateValue((prev) => ({
+      ...prev,
+      jobs: (prev.jobs ?? []).map((job) => {
         if (job.projectId !== currentProject.id) return job;
         const existing: AvailableIntermediateData[] =
           job.availableIntermediateData ?? [];
-        if (
-          existing.some((e) => e.nodeId === nodeId && e.portName === portName)
-        )
+        if (existing.some((e) => e.nodeId === nodeId && e.portName === portName))
           return job;
         return {
           ...job,
           availableIntermediateData: [...existing, { nodeId, portName }],
         };
       }),
-    });
+    }));
   }, [
     hasIntermediateData,
     debugJobState?.jobId,
     currentProject?.id,
-    debugRunState?.jobs,
     nodeId,
     portName,
     updateValue,
