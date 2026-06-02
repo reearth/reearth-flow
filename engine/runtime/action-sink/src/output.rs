@@ -128,18 +128,20 @@ impl SinkOutput {
         Ok(())
     }
 
-    /// Construct a `SinkOutput` from an already-resolved, sandbox-validated URI.
+    /// Construct a `SinkOutput` from an already-validated, sandbox-bounded URI.
     ///
-    /// This is intended for pipeline stages that receive a buffer key URI that
-    /// was already validated by [`SinkOutput::from_path`] at process time. It
-    /// skips the strict-relative-path checks (the URI is already absolute) but
-    /// still records the sandbox root so that subsequent [`SinkOutput::join`]
-    /// calls remain sandbox-bounded.
+    /// Intentionally `pub(crate)`: this is the storage-acquisition half of the
+    /// chokepoint, exposed only to other modules inside `action-sink` that
+    /// already produced `resolved` via [`ensure_relative_path`] (e.g. the
+    /// cesium3dtiles and mvt sinks that buffer features keyed by URI and need
+    /// to skip a second validation at write time).
     ///
-    /// Callers are responsible for ensuring that `resolved` was produced by a
-    /// prior `SinkOutput::from_path` call and therefore lies inside
-    /// `ctx.sandbox_root`.
-    pub fn from_resolved_uri(ctx: &NodeContext, resolved: Uri) -> Result<Self, BoxedError> {
+    /// External callers (outside `action-sink`) must go through
+    /// [`SinkOutput::from_path`], which always validates. This preserves the
+    /// chokepoint property: there is no way to acquire a `SinkOutput` (and
+    /// therefore `SinkOutput::write`) from outside this crate without passing
+    /// the sandbox gate.
+    pub(crate) fn from_resolved_uri(ctx: &NodeContext, resolved: Uri) -> Result<Self, BoxedError> {
         let storage = ctx
             .storage_resolver
             .resolve(&resolved)
