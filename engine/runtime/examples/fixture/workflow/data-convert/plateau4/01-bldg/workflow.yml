@@ -52,8 +52,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+            - expr:
+                type: flowExpr
+                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
               outputPort: default
 
       - id: 33e32a91-5ade-4265-8665-b061f552839c
@@ -111,10 +112,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                let code = env.get("__value").cityCode;
-                let base = env.get("__value").baseCityCode;
-                code == base || env.get("__value").__wardParentCode == base
+            - expr:
+                type: flowExpr
+                value: attributes["cityCode"] == attributes["baseCityCode"] or attributes["__wardParentCode"] == attributes["baseCityCode"]
               outputPort: default
 
       - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b

@@ -37,11 +37,13 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-          - expr: |
-              env.get("__value").year == 2024
+          - expr:
+              type: flowExpr
+              value: attributes["year"] == 2024
             outputPort: year2024
-          - expr: |
-              env.get("__value").year == 2025
+          - expr:
+              type: flowExpr
+              value: attributes["year"] == 2025
             outputPort: year2025
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c

@@ -44,8 +44,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
         outputPort: default
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
@@ -129,8 +130,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["dm_feature_type"] == "DmGeometricAttribute"
+      - expr:
+          type: flowExpr
+          value: attributes.get("dm_feature_type") == "DmGeometricAttribute"
         outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
@@ -144,8 +146,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("exceptSplit") ?? false
+      - expr:
+          type: flowExpr
+          value: env.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -157,20 +160,25 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          env.get("__value").lod == "0"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "0"
         outputPort: lod0
-      - expr: |
-          env.get("__value").lod == "1"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "1"
         outputPort: lod1
-      - expr: |
-          env.get("__value").lod == "2"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "2"
         outputPort: lod2
-      - expr: |
-          env.get("__value").lod == "3"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "3"
         outputPort: lod3
-      - expr: |
-          env.get("__value").lod == "4"
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] == "4"
         outputPort: lod4
   - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
     name: DmGeometricAttributeRouter
@@ -305,8 +313,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-      - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+      - expr:
+          type: flowExpr
+          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
         outputPort: default
   - id: e2441531-649a-4dcd-916f-ac59f7d56de3
     name: AttributeManagerPreFlattener

@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
-use super::builtins::{builtin_math, builtin_url};
+use super::builtins::{builtin_math, builtin_regex, builtin_url};
 use super::error::{Error, InnerError, InnerResult, Result};
 use super::value::{format_float, NativeFn, Value};
 use crate::unpack_args;
@@ -66,6 +66,7 @@ pub fn default_env() -> Env {
     env.insert("list".into(), Value::Fn(NativeFn::new(builtin_list)));
     env.insert("map".into(), Value::Fn(NativeFn::new(builtin_map)));
     env.insert("Url".into(), Value::Fn(NativeFn::new(builtin_url)));
+    env.insert("Regex".into(), Value::Fn(NativeFn::new(builtin_regex)));
     env.insert("math".into(), builtin_math());
     env.insert("print".into(), Value::Fn(NativeFn::new(builtin_print)));
     env.insert("type".into(), Value::Fn(NativeFn::new(builtin_type)));
@@ -678,15 +679,12 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
             let key_val = eval_inner(key, env)?;
             match (container, &key_val) {
                 (Value::Array(rc), Value::Int(i)) => {
-                    let len = rc.borrow().len() as i64;
-                    let idx = if *i < 0 { len + i } else { *i };
-                    if idx < 0 || idx as usize >= len as usize {
-                        return Err(Error::Eval {
-                            pos,
-                            msg: format!("array index {} out of range (len {})", i, len),
-                        });
-                    }
-                    rc.borrow_mut()[idx as usize] = value;
+                    let len = rc.borrow().len();
+                    let idx = array_methods::resolve_index(*i, len).ok_or_else(|| Error::Eval {
+                        pos,
+                        msg: format!("array index {} out of range (len {})", i, len),
+                    })?;
+                    rc.borrow_mut()[idx] = value;
                 }
                 (Value::Map(rc), Value::String(k)) => {
                     rc.borrow_mut().insert(k.clone(), value);
@@ -735,17 +733,14 @@ fn eval_compound_assign(
             let key_val = eval_inner(key, env)?;
             match (container, &key_val) {
                 (Value::Array(rc), Value::Int(i)) => {
-                    let len = rc.borrow().len() as i64;
-                    let idx = if *i < 0 { len + i } else { *i };
-                    if idx < 0 || idx as usize >= len as usize {
-                        return Err(Error::Eval {
-                            pos,
-                            msg: format!("array index {} out of range (len {})", i, len),
-                        });
-                    }
-                    let current = rc.borrow()[idx as usize].clone();
+                    let len = rc.borrow().len();
+                    let idx = array_methods::resolve_index(*i, len).ok_or_else(|| Error::Eval {
+                        pos,
+                        msg: format!("array index {} out of range (len {})", i, len),
+                    })?;
+                    let current = rc.borrow()[idx].clone();
                     let new_val = call_func(&f, &[current, rhs_val], pos)?;
-                    rc.borrow_mut()[idx as usize] = new_val.clone();
+                    rc.borrow_mut()[idx] = new_val.clone();
                     Ok(new_val)
                 }
                 (Value::Map(rc), Value::String(k)) => {
@@ -780,25 +775,19 @@ fn eval_index(target: Value, key: Value) -> InnerResult<Value> {
             .ok_or_else(|| InnerError::new(format!("map key '{k}' not found"))),
         (Value::Array(arr), Value::Int(i)) => {
             let arr = arr.borrow();
-            let len = arr.len() as i64;
-            let i = if i < 0 { len + i } else { i };
-            if i < 0 || i >= len {
-                return Err(InnerError::new(format!(
-                    "array index {i} out of range (len {len})"
-                )));
-            }
-            Ok(arr[i as usize].clone())
+            let len = arr.len();
+            array_methods::resolve_index(i, len)
+                .map(|pos| arr[pos].clone())
+                .ok_or_else(|| InnerError::new(format!("array index {i} out of range (len {len})")))
         }
         (Value::String(s), Value::Int(i)) => {
             let chars: Vec<char> = s.chars().collect();
-            let len = chars.len() as i64;
-            let i = if i < 0 { len + i } else { i };
-            if i < 0 || i >= len {
-                return Err(InnerError::new(format!(
-                    "string index {i} out of range (len {len})"
-                )));
-            }
-            Ok(Value::String(chars[i as usize].to_string()))
+            let len = chars.len();
+            array_methods::resolve_index(i, len)
+                .map(|pos| Value::String(chars[pos].to_string()))
+                .ok_or_else(|| {
+                    InnerError::new(format!("string index {i} out of range (len {len})"))
+                })
         }
         (Value::Object(rc), key) => rc.call_method("__getitem__", &[key]),
         (target, key) => Err(InnerError::new(format!(
@@ -982,7 +971,11 @@ fn is_truthy(v: &Value) -> bool {
     }
 }
 
-pub(crate) fn str_cast(v: Value) -> InnerResult<String> {
+pub fn bool_cast(v: Value) -> bool {
+    is_truthy(&v)
+}
+
+pub fn str_cast(v: Value) -> InnerResult<String> {
     match builtin_str(std::slice::from_ref(&v))? {
         Value::String(s) => Ok(s),
         _ => unreachable!(),
