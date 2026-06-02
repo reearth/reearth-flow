@@ -1,0 +1,49 @@
+{
+  "description": "Test quality check L03 for plateau6 (CityGML 3.0). A veg:PlantCover is placed under the bldg package; bldg accepts only Building / CityObjectGroup, so L03 reports one invalid feature type (L03エラー=1, L03エラー詳細={\"PlantCover\": Number(Number(1))}). The injected member has no codeSpace attribute so the codeSpace check stays clean (不正なcodeSpace数=0). PACKAGE_TO_VALID_FEATURE_TYPES is local-name based, so the same map applies to CityGML 3.0 (Building/PlantCover keep their 2.0 local-names). The loosely-structured PlantCover is also XSD-invalid, so it raises one L02 error as a side effect (L02エラー=1 in summary_common.json); the XML検証結果 / L02エラー columns are therefore excluded from the 01_共通.csv comparison (mirrors plateau4 L03). The objectlist xlsx under fixtures/plateau6-citymodel/ is a stand-in (copied from plateau4) until the i-UR 4.0 取得項目一覧 is finalized.",
+  "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "bldg_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "01_共通.csv",
+      "excludeColumns": [
+        "XML検証結果",
+        "L02エラー"
+      ]
+    }
+  },
+  "expectResultOkFile": false
+}
