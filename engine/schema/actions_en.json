@@ -616,28 +616,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Method": {
             "type": "string",
             "enum": [
@@ -671,7 +649,11 @@
                 "description": "Value to use for the operation",
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Code"
+                    "codeTypes": [
+                      "flowExpr",
+                      "string"
+                    ],
+                    "type": "code"
                   },
                   {
                     "type": "null"
@@ -1419,7 +1401,11 @@
             "description": "Optional path for compressed archive output",
             "anyOf": [
               {
-                "$ref": "#/definitions/Code"
+                "codeTypes": [
+                  "flowExpr",
+                  "string"
+                ],
+                "type": "code"
               },
               {
                 "type": "null"
@@ -1451,11 +1437,11 @@
           "output": {
             "title": "Output Path",
             "description": "Directory path where the 3D tiles will be written",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
+            "codeTypes": [
+              "flowExpr",
+              "string"
+            ],
+            "type": "code"
           },
           "schemaKey": {
             "title": "Schema Key",
@@ -1471,30 +1457,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -3423,28 +3385,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Condition": {
             "type": "object",
             "required": [
@@ -3454,11 +3394,10 @@
             "properties": {
               "expr": {
                 "title": "Condition expression",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
-                  }
-                ]
+                "codeTypes": [
+                  "flowExpr"
+                ],
+                "type": "code"
               },
               "outputPort": {
                 "title": "Output port",
@@ -4391,28 +4330,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Mapping": {
             "type": "object",
             "required": [
@@ -4424,7 +4341,11 @@
                 "type": "string"
               },
               "value": {
-                "$ref": "#/definitions/Code"
+                "codeTypes": [
+                  "flowExpr",
+                  "string"
+                ],
+                "type": "code"
               }
             }
           }
@@ -7499,7 +7420,11 @@
             "description": "Optional expression to determine whether to compress the output tiles",
             "anyOf": [
               {
-                "$ref": "#/definitions/Code"
+                "codeTypes": [
+                  "flowExpr",
+                  "string"
+                ],
+                "type": "code"
               },
               {
                 "type": "null"
@@ -7519,11 +7444,11 @@
           "layerName": {
             "title": "Layer Name",
             "description": "Name of the layer within the MVT tiles",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
+            "codeTypes": [
+              "flowExpr",
+              "string"
+            ],
+            "type": "code"
           },
           "maxZoom": {
             "title": "Maximum Zoom",
@@ -7542,11 +7467,11 @@
           "output": {
             "title": "Output",
             "description": "Output directory path or expression for the generated MVT tiles",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
+            "codeTypes": [
+              "flowExpr",
+              "string"
+            ],
+            "type": "code"
           },
           "schemaKey": {
             "title": "Schema Key",
@@ -7562,30 +7487,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }

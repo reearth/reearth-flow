@@ -119,47 +119,35 @@ impl<'de, const MASK: u32> Deserialize<'de> for Code<MASK> {
 
 impl<const MASK: u32> schemars::JsonSchema for Code<MASK> {
     fn schema_name() -> String {
-        let parts: Vec<&str> = CodeType::all_variants()
-            .iter()
-            .copied()
-            .filter(|v| v.as_mask() & MASK != 0)
-            .map(|v| v.serde_name())
-            .collect();
-        format!("Code_{}", parts.join("_"))
+        "Code".to_string()
     }
 
-    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn is_referenceable() -> bool {
+        false
+    }
+
+    fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
         use schemars::schema::*;
 
-        let allowed: Vec<serde_json::Value> = CodeType::all_variants()
+        let code_types: Vec<serde_json::Value> = CodeType::all_variants()
             .iter()
             .copied()
             .filter(|v| v.as_mask() & MASK != 0)
             .map(|v| serde_json::Value::String(v.serde_name().to_string()))
             .collect();
 
-        let type_schema = Schema::Object(SchemaObject {
-            enum_values: Some(allowed),
-            ..Default::default()
-        });
-
-        let value_schema = gen.subschema_for::<String>();
-
-        let mut properties = schemars::Map::new();
-        properties.insert("type".to_string(), type_schema);
-        properties.insert("value".to_string(), value_schema);
-
-        let mut required = std::collections::BTreeSet::new();
-        required.insert("type".to_string());
-        required.insert("value".to_string());
+        let mut extensions = schemars::Map::new();
+        extensions.insert(
+            "type".to_string(),
+            serde_json::Value::String("code".to_string()),
+        );
+        extensions.insert(
+            "codeTypes".to_string(),
+            serde_json::Value::Array(code_types),
+        );
 
         Schema::Object(SchemaObject {
-            instance_type: Some(InstanceType::Object.into()),
-            object: Some(Box::new(ObjectValidation {
-                required,
-                properties,
-                ..Default::default()
-            })),
+            extensions,
             ..Default::default()
         })
     }
