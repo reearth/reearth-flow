@@ -170,33 +170,30 @@ const GeoJsonData: React.FC<Props> = ({
     [viewer],
   );
 
-  const flyTo = useCallback(
-    async () => {
-      const ds = dataSourceRef.current;
-      if (!ds || !viewer || viewer.isDestroyed()) return;
+  const flyTo = useCallback(async () => {
+    const ds = dataSourceRef.current;
+    if (!ds || !viewer || viewer.isDestroyed()) return;
 
-      try {
-        const selectedId = selectedFeatureIdRef.current;
-        const records = selectedId
-          ? featureMapRef.current.get(selectedId)
-          : undefined;
-        const entity = records?.[0]?.entity;
+    try {
+      const selectedId = selectedFeatureIdRef.current;
+      const records = selectedId
+        ? featureMapRef.current.get(selectedId)
+        : undefined;
+      const entity = records?.[0]?.entity;
 
-        if (entity) {
-          await viewer.flyTo(entity, { duration: 0 });
-        } else if (!hasEverLoadedRef.current || selectedId) {
-          await viewer.zoomTo(ds);
-        }
-
-        if (!viewer.isDestroyed()) {
-          viewer.scene.requestRender();
-        }
-      } catch {
-        // viewer was destroyed during async camera operation
+      if (entity) {
+        await viewer.flyTo(entity, { duration: 0 });
+      } else if (!hasEverLoadedRef.current || selectedId) {
+        await viewer.zoomTo(ds);
       }
-    },
-    [viewer],
-  );
+
+      if (!viewer.isDestroyed()) {
+        viewer.scene.requestRender();
+      }
+    } catch {
+      // viewer was destroyed during async camera operation
+    }
+  }, [viewer]);
 
   const handleLoad = useCallback(
     async (ds: GeoJsonDataSource) => {
