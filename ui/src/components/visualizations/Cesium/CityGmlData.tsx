@@ -51,13 +51,20 @@ const CityGmlData: React.FC<Props> = ({
   const featureMapRef = useRef<Map<string, FeatureInstanceData>>(new Map());
   const prevSelectedRef = useRef<string | null>(null);
   const { buildLodGeometry, cancelPending } = useLodWorker();
-  const hasInitializedRef = useRef(false);
 
   // Refs to read current prop values inside effects without adding them as deps
   const selectedFeatureIdRef = useRef(selectedFeatureId ?? null);
   selectedFeatureIdRef.current = selectedFeatureId ?? null;
   const detailsOverlayOpenRef = useRef(detailsOverlayOpen);
   detailsOverlayOpenRef.current = detailsOverlayOpen;
+
+  // Stable refs for callbacks so the data-setup effect doesn't re-run when they change.
+  // cancelPending is available now; upgradeLod is assigned below after it's defined.
+  const cancelPendingRef = useRef(cancelPending);
+  cancelPendingRef.current = cancelPending;
+  const upgradeLodRef = useRef<(entry: FeatureInstanceData) => Promise<void>>(
+    async () => {},
+  );
 
   const waitForPrimitive = useCallback(
     (primitive: Primitive | null, callback: () => void) => {
@@ -145,12 +152,13 @@ const CityGmlData: React.FC<Props> = ({
     },
     [viewer, waitForPrimitive, buildLodGeometry],
   );
+  upgradeLodRef.current = upgradeLod;
 
   // Process CityGML data and create primitives (only on data change)
   useEffect(() => {
     if (!cityGmlData || !viewer) return;
     // Cancel any in-flight worker requests
-    cancelPending();
+    cancelPendingRef.current();
 
     // Remove any active LOD primitives first
     featureMapRef.current.forEach((entry) => {
@@ -182,28 +190,21 @@ const CityGmlData: React.FC<Props> = ({
     if (absolutePrimitive) viewer.scene.primitives.add(absolutePrimitive);
     if (groundPrimitive) viewer.scene.primitives.add(groundPrimitive);
 
-    if (!hasInitializedRef.current && boundingSphere) {
+    if (boundingSphere) {
       viewer.camera.viewBoundingSphere(boundingSphere);
       setCityGmlBoundingSphere(boundingSphere);
-      hasInitializedRef.current = true;
     }
 
     if (selectedFeatureIdRef.current && detailsOverlayOpenRef.current) {
       const entry = featureMap.get(selectedFeatureIdRef.current);
       if (entry) {
-        upgradeLod(entry);
+        upgradeLodRef.current(entry);
         prevSelectedRef.current = selectedFeatureIdRef.current;
       }
     }
 
     viewer.scene.requestRender();
-  }, [
-    cityGmlData,
-    viewer,
-    setCityGmlBoundingSphere,
-    cancelPending,
-    upgradeLod,
-  ]);
+  }, [cityGmlData, viewer, setCityGmlBoundingSphere]);
 
   // Handle LOD upgrade/revert when selectedFeatureId or detailsOverlayOpen changes
   useEffect(() => {
@@ -245,6 +246,7 @@ const CityGmlData: React.FC<Props> = ({
   useEffect(() => {
     return () => {
       cancelPending();
+      setCityGmlBoundingSphere(null);
       if (viewer) {
         featureMapRef.current.forEach((entry) => {
           if (entry.lodPrimitiveCollection) {
@@ -253,10 +255,9 @@ const CityGmlData: React.FC<Props> = ({
         });
         viewer.scene.primitives.remove(absolutePrimitiveRef.current);
         viewer.scene.primitives.remove(groundPrimitiveRef.current);
-        hasInitializedRef.current = false;
       }
     };
-  }, [viewer, cancelPending]);
+  }, [viewer, cancelPending, setCityGmlBoundingSphere]);
 
   useEffect(() => {
     if (!viewer) return;
