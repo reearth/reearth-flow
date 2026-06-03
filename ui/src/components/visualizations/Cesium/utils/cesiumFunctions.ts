@@ -74,7 +74,9 @@ export const zoomToBoundingSphere = (
     Math.max(sphere.radius * 1.2, 10),
   );
 
-  cesiumViewerRef.current?.cesiumElement.camera.flyToBoundingSphere(
+  const ce = cesiumViewerRef.current?.cesiumElement;
+  if (!ce || ce.isDestroyed()) return;
+  ce.camera.flyToBoundingSphere(
     paddedSphere,
     {
       duration,

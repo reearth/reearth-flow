@@ -68,6 +68,7 @@ const CesiumViewer: React.FC<Props> = ({
     (movement: any) => {
       if (!viewerRef?.current?.cesiumElement) return null;
       const cesiumViewer = viewerRef.current.cesiumElement;
+      if (cesiumViewer.isDestroyed()) return null;
       const pickedObject = cesiumViewer.scene.pick(movement.position);
       if (!defined(pickedObject) || !defined(pickedObject.id)) return null;
       const pickedId = pickedObject.id;

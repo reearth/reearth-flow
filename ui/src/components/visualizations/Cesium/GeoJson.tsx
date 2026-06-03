@@ -80,6 +80,14 @@ const GeoJsonData: React.FC<Props> = ({
   const dataSourceRef = useRef<GeoJsonDataSource | null>(null);
   const prevSelectedRef = useRef<string | null>(null);
   const featureMapRef = useRef<Map<string, EntityRecord[]>>(new Map());
+  const hasEverLoadedRef = useRef(false);
+
+  // Keep prop values in refs so callbacks that use them don't need them in deps,
+  // preventing handleLoad from being recreated (and re-called by Resium) on every selection.
+  const selectedFeatureIdRef = useRef(selectedFeatureId ?? null);
+  selectedFeatureIdRef.current = selectedFeatureId ?? null;
+  const showSelectedFeatureOnlyRef = useRef(showSelectedFeatureOnly);
+  showSelectedFeatureOnlyRef.current = showSelectedFeatureOnly;
 
   const sanitizedData = useMemo(() => {
     if (!geoJsonData) return null;
@@ -93,7 +101,7 @@ const GeoJsonData: React.FC<Props> = ({
   const updateVisibility = useCallback(() => {
     featureMapRef.current.forEach((records) => {
       records.forEach(({ entity }) => {
-        if (!showSelectedFeatureOnly) {
+        if (!showSelectedFeatureOnlyRef.current) {
           entity.show = true;
           return;
         }
@@ -101,10 +109,10 @@ const GeoJsonData: React.FC<Props> = ({
         const props = entity.properties?.getValue?.();
         const entityId = props?._originalId ?? entity.id;
 
-        entity.show = entityId === selectedFeatureId;
+        entity.show = entityId === selectedFeatureIdRef.current;
       });
     });
-  }, [selectedFeatureId, showSelectedFeatureOnly]);
+  }, []); // stable — reads props via refs
 
   const handleDeselectFeature = useCallback(
     (prevId: string) => {
@@ -163,28 +171,35 @@ const GeoJsonData: React.FC<Props> = ({
   );
 
   const flyTo = useCallback(
-    async (isInitial?: boolean) => {
+    async () => {
       const ds = dataSourceRef.current;
-      if (!ds || !viewer) return;
+      if (!ds || !viewer || viewer.isDestroyed()) return;
 
-      if (!selectedFeatureId) {
-        await viewer.zoomTo(ds);
-        if (isInitial) {
+      try {
+        // Read selectedFeatureId from ref so flyTo stays stable across selections
+        const selectedId = selectedFeatureIdRef.current;
+        const records = selectedId
+          ? featureMapRef.current.get(selectedId)
+          : undefined;
+        const entity = records?.[0]?.entity;
+
+        if (entity) {
+          await viewer.flyTo(entity, { duration: 0 });
+        } else if (!hasEverLoadedRef.current || selectedId) {
+          // Zoom to full dataset on first load, or when the previously selected
+          // feature no longer exists in the new data (dataset was switched).
+          await viewer.zoomTo(ds);
+        }
+        // Otherwise keep camera: same dataset, user panned/zoomed, no selection
+
+        if (!viewer.isDestroyed()) {
           viewer.scene.requestRender();
         }
-        return;
+      } catch {
+        // viewer was destroyed during async camera operation
       }
-      const records = featureMapRef.current.get(selectedFeatureId);
-      const entity = records?.[0]?.entity;
-
-      if (entity) {
-        await viewer.flyTo(entity, {
-          duration: isInitial ? 0 : 1.2,
-        });
-      }
-      viewer.scene.requestRender();
     },
-    [viewer, selectedFeatureId],
+    [viewer], // stable — selectedFeatureId read via ref
   );
 
   const handleLoad = useCallback(
@@ -211,7 +226,8 @@ const GeoJsonData: React.FC<Props> = ({
       });
 
       updateVisibility();
-      await flyTo(true);
+      await flyTo();
+      hasEverLoadedRef.current = true;
     },
     [updateVisibility, flyTo],
   );
@@ -234,9 +250,11 @@ const GeoJsonData: React.FC<Props> = ({
     handleDeselectFeature,
   ]);
 
+  // Re-run visibility whenever the filtering props change (updateVisibility itself is stable)
   useEffect(() => {
     updateVisibility();
-  }, [updateVisibility]);
+    viewer?.scene.requestRender();
+  }, [selectedFeatureId, showSelectedFeatureOnly, updateVisibility, viewer]);
 
   if (!sanitizedData) return null;
 
