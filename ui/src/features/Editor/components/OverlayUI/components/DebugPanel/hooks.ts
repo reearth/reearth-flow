@@ -278,11 +278,8 @@ export default () => {
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
-      // setEnableClustering(false);
       const normalizedId = JSON.parse(value?.id);
       handleFeatureSelect(normalizedId ?? null);
-      // Look up the feature synchronously from current data — convertedSelectedFeature
-      // is stale at call time because setSelectedFeatureId hasn't re-rendered yet.
       const feature =
         normalizedId != null
           ? (selectedOutputData?.features?.find(

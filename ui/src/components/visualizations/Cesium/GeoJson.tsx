@@ -176,7 +176,6 @@ const GeoJsonData: React.FC<Props> = ({
       if (!ds || !viewer || viewer.isDestroyed()) return;
 
       try {
-        // Read selectedFeatureId from ref so flyTo stays stable across selections
         const selectedId = selectedFeatureIdRef.current;
         const records = selectedId
           ? featureMapRef.current.get(selectedId)
@@ -186,11 +185,8 @@ const GeoJsonData: React.FC<Props> = ({
         if (entity) {
           await viewer.flyTo(entity, { duration: 0 });
         } else if (!hasEverLoadedRef.current || selectedId) {
-          // Zoom to full dataset on first load, or when the previously selected
-          // feature no longer exists in the new data (dataset was switched).
           await viewer.zoomTo(ds);
         }
-        // Otherwise keep camera: same dataset, user panned/zoomed, no selection
 
         if (!viewer.isDestroyed()) {
           viewer.scene.requestRender();
@@ -199,7 +195,7 @@ const GeoJsonData: React.FC<Props> = ({
         // viewer was destroyed during async camera operation
       }
     },
-    [viewer], // stable — selectedFeatureId read via ref
+    [viewer],
   );
 
   const handleLoad = useCallback(
