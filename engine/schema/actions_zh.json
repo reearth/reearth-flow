@@ -9072,7 +9072,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "UDXFolderExtractor Parameters",
-        "description": "Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.",
+        "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
         "type": "object",
         "required": [
           "cityGmlPath"
@@ -9183,6 +9183,107 @@
       ],
       "outputPorts": [
         "unshared"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.DomainOfDefinitionValidator",
+      "type": "processor",
+      "description": "验证PLATEAU6的定义域",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DomainOfDefinitionValidator Parameters",
+        "description": "Configuration for validating domain of definition of CityGML features.",
+        "type": "object",
+        "properties": {
+          "codelistsPath": {
+            "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected",
+        "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.UDXFolderExtractor",
+      "type": "processor",
+      "description": "从PLATEAU6数据中提取UDX文件夹",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UDXFolderExtractor Parameters",
+        "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
+        "type": "object",
+        "required": [
+          "cityGmlPath"
+        ],
+        "properties": {
+          "cityGmlPath": {
+            "$ref": "#/definitions/Expr"
+          },
+          "codelistsPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemasPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"
