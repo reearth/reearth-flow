@@ -1,10 +1,11 @@
 use indexmap::IndexMap;
+use serde::Serialize;
 
 use crate::attribute::Attribute;
 
 /// Coarse attribute type, mirroring AttributeValue variants but value-free.
 /// `Unknown` = key known, type not statically determinable (e.g. behind an expression).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum AttrType {
     Bool,
     Number,
@@ -18,7 +19,8 @@ pub enum AttrType {
 }
 
 /// Whether a field is guaranteed present, or only conditionally produced.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Presence {
     Always,
     Maybe,
@@ -128,6 +130,55 @@ impl AttrSchema {
     }
 }
 
+/// Top-level JSON contract returned by the `schema` command.
+#[derive(Debug, Serialize)]
+pub struct SchemaReport {
+    pub version: u32,
+    #[serde(rename = "sampleSize")]
+    pub sample_size: usize,
+    pub nodes: IndexMap<String, NodeReport>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NodeReport {
+    pub name: String,
+    pub ports: IndexMap<String, PortReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PortReport {
+    pub open: bool,
+    pub fields: Vec<FieldReport>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FieldReport {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub ty: AttrType,
+    pub presence: Presence,
+}
+
+impl PortReport {
+    /// Build the ordered DTO from the in-memory schema (preserves IndexMap order).
+    pub fn from_schema(schema: &AttrSchema) -> Self {
+        PortReport {
+            open: schema.open,
+            fields: schema
+                .fields
+                .iter()
+                .map(|(name, field)| FieldReport {
+                    name: name.to_string(),
+                    ty: field.ty,
+                    presence: field.presence,
+                })
+                .collect(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,5 +226,50 @@ mod tests {
         let a = AttrSchema::open();
         let b = AttrSchema::empty();
         assert!(a.join(&b).open);
+    }
+
+    #[test]
+    fn schema_report_serializes_to_expected_json() {
+        use indexmap::IndexMap;
+        let mut fields = IndexMap::new();
+        fields.insert(
+            Attribute::new("myAttribute".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        fields.insert(
+            Attribute::new("address".to_string()),
+            AttrField::maybe(AttrType::String),
+        );
+        let schema = AttrSchema { fields, open: false };
+
+        let mut ports: IndexMap<String, PortReport> = IndexMap::new();
+        ports.insert("default".to_string(), PortReport::from_schema(&schema));
+        let mut nodes: IndexMap<String, NodeReport> = IndexMap::new();
+        nodes.insert(
+            "node-1".to_string(),
+            NodeReport {
+                name: "GeoJsonReader".to_string(),
+                ports,
+                note: None,
+            },
+        );
+        let report = SchemaReport {
+            version: 1,
+            sample_size: 10,
+            nodes,
+        };
+
+        let json = serde_json::to_value(&report).unwrap();
+        assert_eq!(json["version"], 1);
+        assert_eq!(json["sampleSize"], 10);
+        let fields_json = &json["nodes"]["node-1"]["ports"]["default"]["fields"];
+        assert_eq!(fields_json[0]["name"], "myAttribute");
+        assert_eq!(fields_json[0]["type"], "String");
+        assert_eq!(fields_json[0]["presence"], "always");
+        assert_eq!(fields_json[1]["name"], "address");
+        assert_eq!(fields_json[1]["presence"], "maybe");
+        assert_eq!(json["nodes"]["node-1"]["ports"]["default"]["open"], false);
+        // note: None must be omitted
+        assert!(json["nodes"]["node-1"].get("note").is_none());
     }
 }
