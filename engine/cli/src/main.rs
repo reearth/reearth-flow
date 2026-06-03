@@ -1,4 +1,3 @@
-mod build;
 mod cli;
 mod doc_action;
 mod dot;
