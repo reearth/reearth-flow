@@ -458,28 +458,31 @@ graphs:
     action: AttributeMapper
     with:
       mappers:
-      - multipleExpr: |
-          let result = #{};
-          let val = env.get("__value");
-          let exclude = [
-            "package", "fileIndex", "extension", "root", "gmlRootId", "udxDirs", "cityGmlPath",
-            "schemas", "dirCodelists", "dirSchemas", "gmlName", "codelists", "maxLod", "dirRoot",
-            "path", "cityCode", "cityName", "gmlId"
-          ];
-          for key in val.keys() {
-            if !exclude.contains(key) {
-              result[key] = val[key];
-            }
-          }
-          result
+      - multipleExpr:
+          type: flowExpr
+          value: |
+            result = {};
+            exclude = [
+              "package", "fileIndex", "extension", "root", "gmlRootId", "udxDirs", "cityGmlPath",
+              "schemas", "dirCodelists", "dirSchemas", "gmlName", "codelists", "maxLod", "dirRoot",
+              "path", "cityCode", "cityName", "gmlId"
+            ];
+            for key in attributes {
+              if key not in exclude {
+                result[key] = attributes[key]
+              }
+            };
+            result
       - attribute: gml_id
         valueAttribute: gmlId
       - attribute: meshcode
-        expr: |
-          file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1].split("_")[0]
       - attribute: feature_type
-        expr: |
-          env.get("__value")["__citygml_feature_type"]
+        expr:
+          type: flowExpr
+          value: attributes["__citygml_feature_type"]
       - attribute: city_code
         valueAttribute: cityCode
       - attribute: city_name

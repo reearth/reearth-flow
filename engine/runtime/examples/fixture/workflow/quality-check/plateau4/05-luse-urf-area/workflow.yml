@@ -171,20 +171,25 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["udxDirs"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["udxDirs"]
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["name"]
             - attribute: フィーチャータイプ
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["featureType"]
             - attribute: インスタンス数
-              expr: |
-                env.get("__value")["_num_instances"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes["_num_instances"]
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["fileIndex"]
       
       - id: a453192e-603c-417e-9f65-f57b8e15f7d3
         name: CsvWriterInstanceCount
@@ -205,14 +210,17 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              expr:
+                type: flowExpr
+                value: attributes["fileIndex"]
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              expr:
+                type: flowExpr
+                value: attributes["name"]
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"]
+              expr:
+                type: flowExpr
+                value: attributes["package"]
 
       - id: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
         name: PLATEAU3.SurfaceValidator2D
@@ -226,27 +234,34 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["udxDirs"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["udxDirs"]
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["fileIndex"]
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["name"]
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["featureType"]
             - attribute: エラー数
-              expr: |
-                1
+              expr:
+                type: string
+                value: "1"
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["featureId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["featureId"]
             - attribute: 面の向き
               # It is okay to hardcode here since this mapper is connected to the surface orientation error port of surface validator.
-              expr: |
-                "right_hand_rule" 
+              expr:
+                type: string
+                value: right_hand_rule
 
       - id: f0fc0309-6d76-4a6b-9fdf-84c433b615f2
         name: CsvWriterSurfaceOrientationErrors
@@ -277,26 +292,33 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["udxDirs"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["udxDirs"]
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["fileIndex"]
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["name"]
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["featureType"]
             - attribute: エラー数
-              expr: |
-                1
+              expr:
+                type: string
+                value: "1"
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["featureId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes["featureId"]
             - attribute: エラー内容
-              expr: |
-                env.get("__value")["issue"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("issue", "")
 
       - id: eb34119b-592f-4140-b9b9-f3712a805c47
         name: CsvWriterSurfaceErrors
@@ -340,20 +362,25 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value").Folder
+              expr:
+                type: flowExpr
+                value: attributes["Folder"]
             - attribute: Index
-              expr: |
-                env.get("__value").Index
+              expr:
+                type: flowExpr
+                value: attributes["Index"]
             - attribute: Filename
-              expr: |
-                env.get("__value").Filename
+              expr:
+                type: flowExpr
+                value: attributes["Filename"]
             - attribute: "面の向き不正"
-              expr: |
-                env.get("__value")._num_incorrect_orientation ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_orientation", 0)
             - attribute: "面のエラー"
-              expr: |
-                env.get("__value")._num_surface_issues ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_surface_issues", 0)
 
       # CSV output
       - id: f38c754b-98cd-48e1-bfa7-adbf7c390899

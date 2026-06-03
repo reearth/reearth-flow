@@ -208,9 +208,9 @@ graphs:
         with:
           mappers:
           - attribute: featureType
-            expr: env.get("__value").featureType
+            valueAttribute: featureType
           - attribute: gmlId
-            expr: env.get("__value").gmlId
+            valueAttribute: gmlId
 
       - id: 00000001-0000-0000-0000-000000000004
         name: GeometryPartExtractor

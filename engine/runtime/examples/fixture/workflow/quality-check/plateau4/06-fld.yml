@@ -2021,29 +2021,25 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Index
-        expr: |
-          env.get("__value")._file_index
+        valueAttribute: _file_index
       - attribute: Filename
-        expr: |
-          env.get("__value").name
+        valueAttribute: name
       - attribute: 頂点数が不正な三角形
-        expr: |
-          env.get("__value")._num_incorrect_num_vertices
+        valueAttribute: _num_incorrect_num_vertices
       - attribute: 向きが不正な三角形
-        expr: |
-          env.get("__value")._num_wrong_orientation
+        valueAttribute: _num_wrong_orientation
       - attribute: 閉じていない三角形
-        expr: |
-          env.get("__value")._num_not_closed
+        valueAttribute: _num_not_closed
       - attribute: 線状・点状の三角形
-        expr: |
-          env.get("__value")._num_degenerate_triangles ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_degenerate_triangles", 0)
       - attribute: 共有先のない辺
-        expr: |
-          env.get("__value")._num_unshared_edges ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_unshared_edges", 0)
   - id: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
     name: PrepareSummaryForJSON
     type: action
@@ -2051,20 +2047,19 @@ graphs:
     with:
       mappers:
       - attribute: 頂点数が不正な三角形
-        expr: |
-          env.get("__value")._num_incorrect_num_vertices
+        valueAttribute: _num_incorrect_num_vertices
       - attribute: 閉じていない三角形
-        expr: |
-          env.get("__value")._num_not_closed
+        valueAttribute: _num_not_closed
       - attribute: 向きが不正な三角形
-        expr: |
-          env.get("__value")._num_wrong_orientation
+        valueAttribute: _num_wrong_orientation
       - attribute: 線状・点状の三角形
-        expr: |
-          env.get("__value")._num_degenerate_triangles ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_degenerate_triangles", 0)
       - attribute: _json_filename
-        expr: |
-          env.get("__value")._json_filename
+        expr:
+          type: flowExpr
+          value: attributes.get("_json_filename")
   - id: 1f2a3b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
     name: CSVWriter
     type: action
