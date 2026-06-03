@@ -31,7 +31,6 @@ export default () => {
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
   );
-  const [, setConvertedSelectedFeature] = useState<any>(null);
   const cesiumViewerRef = useRef<any>(null);
 
   const [currentProject] = useCurrentProject();
@@ -389,7 +388,6 @@ export default () => {
     detailsFeature,
     formattedData,
     handleFeatureSelect,
-    setConvertedSelectedFeature,
     // setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
