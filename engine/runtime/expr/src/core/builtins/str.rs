@@ -232,11 +232,7 @@ mod tests {
 
     #[test]
     fn test_join() {
-        assert_eval(
-            r#"", ".join(["a", "b", "c"])"#,
-            &[],
-            Value::from("a, b, c"),
-        );
+        assert_eval(r#"", ".join(["a", "b", "c"])"#, &[], Value::from("a, b, c"));
         assert_eval(r#""".join(["x", "y"])"#, &[], Value::from("xy"));
         assert_eval(r#""-".join([])"#, &[], Value::from(""));
     }
