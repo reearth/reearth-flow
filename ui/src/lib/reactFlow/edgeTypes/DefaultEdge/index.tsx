@@ -11,6 +11,8 @@ export type CustomEdgeProps = EdgeProps<Edge> & {
 
 const DefaultEdge: React.FC<CustomEdgeProps> = ({
   id,
+  source,
+  sourceHandleId,
   sourceX,
   sourceY,
   sourcePosition,
@@ -31,17 +33,17 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     targetPosition,
   });
 
-  const {
-    // sourceNodeStatus,
-    jobStatus,
-  } = useHooks({
+  const { jobStatus, hasIntermediateData } = useHooks({
     currentWorkflowId,
+    sourceNodeId: source,
+    sourcePortName: sourceHandleId,
   });
 
   return (
     <>
       <BaseEdge id={id} path={edgePath} />
       {jobStatus === "completed" &&
+        hasIntermediateData &&
         (selected ? (
           <path
             className="stroke-success"

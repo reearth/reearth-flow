@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { config } from "@flow/config";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
+  AvailableIntermediateData,
   DebugRunState,
   SelectedIntermediateData,
   useCurrentProject,
@@ -88,6 +89,40 @@ export default ({
     debugJobState?.jobId,
     dataUrl,
     hasIntermediateData,
+  ]);
+
+  const writtenForJobRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const jobId = debugJobState?.jobId;
+    if (!hasIntermediateData || !jobId || !currentProject?.id) return;
+    const writeKey = `${nodeId}:${portName}:${jobId}`;
+    if (writtenForJobRef.current === writeKey) return;
+    writtenForJobRef.current = writeKey;
+
+    updateValue((prev) => ({
+      ...prev,
+      jobs: (prev.jobs ?? []).map((job) => {
+        if (job.projectId !== currentProject.id) return job;
+        const existing: AvailableIntermediateData[] =
+          job.availableIntermediateData ?? [];
+        if (
+          existing.some((e) => e.nodeId === nodeId && e.portName === portName)
+        )
+          return job;
+        return {
+          ...job,
+          availableIntermediateData: [...existing, { nodeId, portName }],
+        };
+      }),
+    }));
+  }, [
+    hasIntermediateData,
+    debugJobState?.jobId,
+    currentProject?.id,
+    nodeId,
+    portName,
+    updateValue,
   ]);
 
   const handleClick = useCallback(async () => {
