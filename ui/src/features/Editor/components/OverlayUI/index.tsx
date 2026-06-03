@@ -173,35 +173,41 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <div
           id="top-middle"
-          className="pointer-events-none absolute inset-x-0 top-2 flex shrink-0 justify-center *:pointer-events-auto">
-          <Toolbox
-            canUndo={canUndo}
-            canRedo={canRedo}
-            isMainWorkflow={isMainWorkflow}
-            showLayoutOptions={showDialog === "layout"}
-            onLayoutChange={handleLayoutOptionsToggle}
-            onRedo={onWorkflowRedo}
-            onUndo={onWorkflowUndo}
-          />
-          {showDialog === "layout" && !isLocked && (
-            <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
-              <LayoutSubToolbar
-                Ydoc={yDoc}
-                onLayoutChange={onLayoutChange}
-                onClose={handleDialogClose}
+          className="pointer-events-none absolute inset-x-0 top-2 flex shrink-0 justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <div className="pointer-events-auto">
+              <Toolbox
+                canUndo={canUndo}
+                canRedo={canRedo}
+                isMainWorkflow={isMainWorkflow}
+                showLayoutOptions={showDialog === "layout"}
+                onLayoutChange={handleLayoutOptionsToggle}
+                onRedo={onWorkflowRedo}
+                onUndo={onWorkflowUndo}
               />
             </div>
-          )}
-          {isLocked && (
-            <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
-              <div className="flex items-center gap-2 rounded p-2 text-xs">
-                <LockIcon weight="thin" size={18} />
-                <p className="font-light text-accent-foreground select-none">
-                  {t("Locked")}
-                </p>
+            {showDialog === "layout" && !isLocked && (
+              <div className="pointer-events-auto z-10">
+                <LayoutSubToolbar
+                  Ydoc={yDoc}
+                  onLayoutChange={onLayoutChange}
+                  onClose={handleDialogClose}
+                />
               </div>
-            </div>
-          )}
+            )}
+            {isLocked && (
+              <div className="pointer-events-auto z-10">
+                <div
+                  className="flex cursor-pointer items-center gap-2 rounded-xl bg-accent/50 px-6 py-4 text-xs"
+                  onDoubleClick={() => onProjectLockChange(false)}>
+                  <LockIcon weight="thin" size={18} />
+                  <p className="font-light text-accent-foreground select-none">
+                    {t("Locked")}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div
           id="left-top"
