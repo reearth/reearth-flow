@@ -50,7 +50,6 @@ const DebugPanel: React.FC = () => {
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
-    setConvertedSelectedFeature,
     handleFeatureSelect,
     handleFullscreenExpand,
     handleExpand,
@@ -264,9 +263,6 @@ const DebugPanel: React.FC = () => {
                           selectedOutputData={selectedOutputData}
                           selectedFeatureId={selectedFeatureId}
                           cesiumViewerRef={cesiumViewerRef}
-                          onConvertedSelectedFeature={
-                            setConvertedSelectedFeature
-                          }
                           onSelectedFeature={handleFeatureSelect}
                           onFlyToSelectedFeature={handleFlyToSelectedFeature}
                           onShowFeatureDetailsOverlay={
