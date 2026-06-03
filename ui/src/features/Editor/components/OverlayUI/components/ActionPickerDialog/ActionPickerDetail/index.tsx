@@ -1,3 +1,4 @@
+import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 import type { Action } from "@flow/types";
@@ -7,9 +8,10 @@ import { typeColorClass } from "../utils";
 
 type Props = {
   action?: Action;
+  onAdd?: (name: string) => void;
 };
 
-const ActionPickerDetail = ({ action }: Props) => {
+const ActionPickerDetail = ({ action, onAdd }: Props) => {
   const t = useT();
 
   if (!action) {
@@ -80,6 +82,10 @@ const ActionPickerDetail = ({ action }: Props) => {
           <p className="text-sm leading-relaxed">{action.description}</p>
         </div>
       )}
+
+      <Button className="mt-auto w-full" onClick={() => onAdd?.(action.name)}>
+        {t("Add to canvas")}
+      </Button>
     </div>
   );
 };

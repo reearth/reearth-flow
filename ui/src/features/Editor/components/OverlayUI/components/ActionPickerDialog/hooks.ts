@@ -12,6 +12,9 @@ import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 type CategoryFiltering = string;
 type TagFiltering = string;
+
+const ACTION_TYPE_ORDER: ActionNodeType[] = ["reader", "transformer", "writer"];
+
 export default ({
   openedActionType,
   isMainWorkflow,
@@ -118,7 +121,9 @@ export default ({
     () => ({
       isMainWorkflow,
       searchTerm,
-      types: currentActionByTypes.length ? currentActionByTypes : undefined,
+      types: currentActionByTypes.length
+        ? currentActionByTypes
+        : ACTION_TYPE_ORDER,
       categories: currentCategories.length ? currentCategories : undefined,
       tags: currentTags.length ? currentTags : undefined,
     }),
@@ -164,7 +169,7 @@ export default ({
     }
   }, [selectedIndex]);
 
-  const [handleSingleClick, handleDoubleClick] = useDoubleClick(
+  const [handleSelectAction, handleAddAction] = useDoubleClick(
     (name?: string) => {
       if (!name) return;
       const idx = actionsList.findIndex((a) => a.name === name);
@@ -284,7 +289,7 @@ export default ({
       switch (e.key) {
         case "Enter":
           e.preventDefault();
-          handleDoubleClick(selected);
+          handleAddAction(selected);
           break;
         case "ArrowUp":
           e.preventDefault();
@@ -307,41 +312,48 @@ export default ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [actionsList, selectedIndex, selected, handleDoubleClick]);
+  }, [actionsList, selectedIndex, selected, handleAddAction]);
 
-  const handleActionTypeToggle = useCallback((type: string) => {
-    const nodeType = type as ActionNodeType;
-    setCurrentActionByTypes((prev) =>
-      prev.includes(nodeType)
-        ? prev.filter((t) => t !== nodeType)
-        : [...prev, nodeType],
-    );
+  const handleActionTypeToggle = useCallback((type?: ActionNodeType) => {
+    if (!type) {
+      setCurrentActionByTypes([]);
+    } else {
+      const nodeType = type as ActionNodeType;
+      setCurrentActionByTypes((prev) =>
+        prev.includes(nodeType)
+          ? prev.filter((t) => t !== nodeType)
+          : [...prev, nodeType].sort(
+              (a, b) =>
+                ACTION_TYPE_ORDER.indexOf(a) - ACTION_TYPE_ORDER.indexOf(b),
+            ),
+      );
+    }
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const handleCategoryToggle = useCallback((category: CategoryFiltering) => {
-    setCurrentCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category],
-    );
+  const handleCategoryToggle = useCallback((category?: CategoryFiltering) => {
+    if (!category) {
+      setCurrentCategories([]);
+    } else {
+      setCurrentCategories((prev) =>
+        prev.includes(category)
+          ? prev.filter((c) => c !== category)
+          : [...prev, category],
+      );
+    }
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const handleTagToggle = useCallback((tag: TagFiltering) => {
-    setCurrentTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
-    setSelectedIndex(-1);
-    containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
-
-  const handleClearFilters = useCallback(() => {
-    setCurrentActionByTypes([]);
-    setCurrentCategories([]);
-    setCurrentTags([]);
+  const handleTagToggle = useCallback((tag?: TagFiltering) => {
+    if (!tag) {
+      setCurrentTags([]);
+    } else {
+      setCurrentTags((prev) =>
+        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+      );
+    }
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
@@ -358,11 +370,10 @@ export default ({
     actionCategories,
     actionTags,
     handleSearchTerm,
-    handleSingleClick,
-    handleDoubleClick,
+    handleSelectAction,
+    handleAddAction,
     handleActionTypeToggle,
     handleCategoryToggle,
     handleTagToggle,
-    handleClearFilters,
   };
 };

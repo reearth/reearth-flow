@@ -57,12 +57,11 @@ const ActionPickerDialog: React.FC<Props> = ({
     currentTags,
     actionTags,
     handleSearchTerm,
-    handleSingleClick,
-    handleDoubleClick,
+    handleSelectAction,
+    handleAddAction,
     handleActionTypeToggle,
     handleCategoryToggle,
     handleTagToggle,
-    handleClearFilters,
   } = useHooks({
     openedActionType,
     isMainWorkflow,
@@ -83,7 +82,7 @@ const ActionPickerDialog: React.FC<Props> = ({
       <DialogContent
         size="3xl"
         position="top"
-        className="flex h-[60vh] flex-col gap-0 overflow-hidden p-0">
+        className="flex max-h-[70vh] min-h-[60vh] flex-col gap-0 overflow-hidden p-0">
         <div className="border-b">
           <DialogTitle>{t("Choose Action")}</DialogTitle>
         </div>
@@ -109,7 +108,6 @@ const ActionPickerDialog: React.FC<Props> = ({
                 onActionTypeToggle={handleActionTypeToggle}
                 onCategoryToggle={handleCategoryToggle}
                 onTagToggle={handleTagToggle}
-                onClearFilters={handleClearFilters}
               />
             </div>
           </div>
@@ -127,8 +125,8 @@ const ActionPickerDialog: React.FC<Props> = ({
                   action={action}
                   isSelected={isSelected}
                   actionsList={actionsList}
-                  onSingleClick={handleSingleClick}
-                  onDoubleClick={handleDoubleClick}
+                  onSingleClick={handleSelectAction}
+                  onDoubleClick={handleAddAction}
                 />
               );
             })}
@@ -140,7 +138,10 @@ const ActionPickerDialog: React.FC<Props> = ({
           </div>
           {/* Right panel — detail */}
           <div className="min-w-0 flex-1 overflow-y-auto">
-            <ActionPickerDetail action={selectedAction} />
+            <ActionPickerDetail
+              action={selectedAction}
+              onAdd={handleAddAction}
+            />
           </div>
         </div>
       </DialogContent>
