@@ -126,11 +126,7 @@ geo-types = "0.7.18"
 geojson = "0.24.2"
 glam = "0.30.10"
 # gltf = { version = "1.4", features = ["extensions", "extras"] }
-# Local fork at ~/git/fastxml: includes the xs:group ref expansion fix required
-# for CityGML 3.0 schema validation (cityObjectMember is a local element inside a
-# referenced xs:group, not a global element). Revert to the published crate once
-# the fix is released on crates.io.
-fastxml = { path = "../../../fastxml", features = ["ureq"] }
+fastxml = { version = "0.8.2", features = ["ureq"] }
 gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238179ea5a6152c5cf22", features = [
   "EXT_texture_webp",
   "extensions",
