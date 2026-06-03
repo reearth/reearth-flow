@@ -507,7 +507,31 @@ impl Processor for DomainOfDefinitionValidator {
     }
 }
 
-#[allow(clippy::type_complexity, clippy::too_many_arguments)]
+/// Read-only inputs shared across the domain-of-definition check call chain
+/// (`process_feature` -> `run_domain_of_definition_checks` -> `process_member_node`).
+struct DomainOfDefinitionContext<'a> {
+    profile: &'a PlateauProfile,
+    ctx: &'a ExecutorContext,
+    fw: &'a ProcessorChannelForwarder,
+    codelists: &'a HashMap<String, HashMap<String, String>>,
+    feature: &'a Feature,
+    fallback_codelists_path: Option<&'a Uri>,
+    valid_feature_types: &'a [String],
+    gml_id_pattern: &'a Regex,
+}
+
+/// Mutable state accumulated while running the per-`cityObjectMember`
+/// domain-of-definition checks.
+#[derive(Default)]
+struct DomainOfDefinitionAccumulator {
+    response: ValidateResponse,
+    gml_ids: HashMap<String, Vec<HashMap<String, String>>>,
+    result: Vec<Feature>,
+    city_object_groups: Vec<CityObjectGroupInfo>,
+    member_count: usize,
+}
+
+#[allow(clippy::type_complexity)]
 fn process_feature(
     profile: &PlateauProfile,
     ctx: &ExecutorContext,
@@ -516,9 +540,7 @@ fn process_feature(
     feature: &Feature,
     fallback_codelists_path: Option<&Uri>,
 ) -> super::errors::Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
-    let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
-    let mut result = Vec::<Feature>::new();
     let package = feature.attributes.get(&Attribute::new("package")).ok_or(
         PlateauProcessorError::DomainOfDefinitionValidator("package key empty".to_string()),
     )?;
@@ -550,12 +572,8 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let xml_str = String::from_utf8(xml_content.to_vec())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let mut response = ValidateResponse::default();
 
     let t_total = Instant::now();
-
-    let mut city_object_groups = Vec::<CityObjectGroupInfo>::new();
-    let mut member_count: usize = 0;
 
     // Parse the city GML and run the per-member domain-of-definition checks.
     // If the document is not well-formed (e.g. an L01 syntax error), parsing
@@ -565,22 +583,18 @@ fn process_feature(
     // summary (01_共通.csv) and the error-count summary (summary_common.json).
     // The well-formedness problem itself is reported separately as L01 by the
     // upstream XMLValidator.
-    let parse_outcome = run_domain_of_definition_checks(
+    let context = DomainOfDefinitionContext {
         profile,
         ctx,
         fw,
         codelists,
         feature,
         fallback_codelists_path,
-        &xml_str,
-        &valid_feature_types,
-        &gml_id_pattern,
-        &mut response,
-        &mut gml_ids,
-        &mut result,
-        &mut city_object_groups,
-        &mut member_count,
-    );
+        valid_feature_types: &valid_feature_types,
+        gml_id_pattern: &gml_id_pattern,
+    };
+    let mut accumulator = DomainOfDefinitionAccumulator::default();
+    let parse_outcome = run_domain_of_definition_checks(&context, &xml_str, &mut accumulator);
 
     let parse_failed = parse_outcome.is_err();
     if let Err(e) = parse_outcome {
@@ -595,10 +609,11 @@ fn process_feature(
     tracing::debug!(
         target: "perf",
         total_ms = %total_ms,
-        member_count,
+        member_count = accumulator.member_count,
         "DomainOfDefinitionValidator::process_feature END"
     );
     let mut result_feature = create_lightweight_feature(feature, &["index"]);
+    let response = &accumulator.response;
     let envelope = &response.envelope;
     result_feature.insert("flag", AttributeValue::String("Summary".to_string()));
     result_feature.insert("srsName", AttributeValue::String(envelope.srs_name.clone()));
@@ -690,8 +705,8 @@ fn process_feature(
         AttributeValue::Number(Number::from(response.invalid_lod_x_geometry_num)),
     );
     fw.send(ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()));
-    result.push(result_feature);
-    Ok((result, gml_ids))
+    accumulator.result.push(result_feature);
+    Ok((accumulator.result, accumulator.gml_ids))
 }
 
 /// Parse the city GML and run the per-`cityObjectMember` domain-of-definition
@@ -700,34 +715,22 @@ fn process_feature(
 /// document cannot be parsed (e.g. an L01 not-well-formed error) or a member
 /// cannot be processed; callers may log and continue so the file still appears
 /// in the summaries with zero domain-of-definition findings.
-#[allow(clippy::too_many_arguments)]
 fn run_domain_of_definition_checks(
-    profile: &PlateauProfile,
-    ctx: &ExecutorContext,
-    fw: &ProcessorChannelForwarder,
-    codelists: &HashMap<String, HashMap<String, String>>,
-    feature: &Feature,
-    fallback_codelists_path: Option<&Uri>,
+    context: &DomainOfDefinitionContext,
     xml_str: &str,
-    valid_feature_types: &[String],
-    gml_id_pattern: &Regex,
-    response: &mut ValidateResponse,
-    gml_ids: &mut HashMap<String, Vec<HashMap<String, String>>>,
-    result: &mut Vec<Feature>,
-    city_object_groups: &mut Vec<CityObjectGroupInfo>,
-    member_count: &mut usize,
+    accumulator: &mut DomainOfDefinitionAccumulator,
 ) -> super::errors::Result<()> {
     let envelope_xpath = format!(
         "//*[namespace-uri()='{}'][local-name()='Envelope']",
-        profile.citygml.gml_ns
+        context.profile.citygml.gml_ns
     );
     let members_xpath = format!(
         "//*[namespace-uri()='{}'][local-name()='cityObjectMember']",
-        profile.citygml.core_ns
+        context.profile.citygml.core_ns
     );
 
     let mut stream_error: Option<PlateauProcessorError> = None;
-    response.envelope = stream_extract_envelope(xml_str, &envelope_xpath)?;
+    accumulator.response.envelope = stream_extract_envelope(xml_str, &envelope_xpath)?;
 
     let transformer = StreamTransformer::new(xml_str)
         .with_root_namespaces()
@@ -739,7 +742,7 @@ fn run_domain_of_definition_checks(
 
     transformer
         .on(members_xpath.as_str(), |node| {
-            *member_count += 1;
+            accumulator.member_count += 1;
             if stream_error.is_some() {
                 return;
             }
@@ -753,38 +756,25 @@ fn run_domain_of_definition_checks(
             };
 
             let is_city_object_group = member_ref.name() == "CityObjectGroup"
-                && member_ref.namespace_uri().as_deref() == profile.citygml.namespace("grp");
+                && member_ref.namespace_uri().as_deref()
+                    == context.profile.citygml.namespace("grp");
             if is_city_object_group {
-                let gml_ns = profile.citygml.gml_ns;
+                let gml_ns = context.profile.citygml.gml_ns;
                 let gml_id = member_ref
                     .get_attribute_ns(gml_ns, "id")
                     .unwrap_or_default();
-                city_object_groups.push(CityObjectGroupInfo {
+                accumulator.city_object_groups.push(CityObjectGroupInfo {
                     feature_type: member_ref.name(),
                     gml_id,
                     xlinks: Vec::new(),
                 });
             }
 
-            match process_member_node(
-                profile,
-                ctx,
-                fw,
-                codelists,
-                feature,
-                member_ref,
-                valid_feature_types,
-                response,
-                gml_ids,
-                gml_id_pattern,
-                Arc::clone(&ctx.storage_resolver),
-                fallback_codelists_path,
-                is_city_object_group,
-            ) {
+            match process_member_node(context, member_ref, accumulator, is_city_object_group) {
                 Ok((process_result, group_xlinks)) => {
-                    result.extend(process_result);
+                    accumulator.result.extend(process_result);
                     if is_city_object_group {
-                        if let Some(group) = city_object_groups.last_mut() {
+                        if let Some(group) = accumulator.city_object_groups.last_mut() {
                             group.xlinks = group_xlinks;
                         }
                     }
@@ -804,12 +794,15 @@ fn run_domain_of_definition_checks(
     // On the city object group model T03: Extracting unreferenced xlink:href
     // CityObjectGroup xlinks are checked against the global gml_ids (all members),
     // unlike non-CityObjectGroup xlinks which are checked against member-local gml_ids.
-    for member in city_object_groups.iter() {
+    for member in accumulator.city_object_groups.iter() {
         for xlink in member.xlinks.iter() {
             let xlink_href = &xlink.href;
-            if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
+            if !accumulator
+                .gml_ids
+                .contains_key(&xlink_href.chars().skip(1).collect::<String>())
+            {
                 let mut result_feature =
-                    create_lightweight_feature(feature, &["index", "udxDirs", "name"]);
+                    create_lightweight_feature(context.feature, &["index", "udxDirs", "name"]);
                 result_feature.insert(
                     "flag",
                     AttributeValue::String("XLink_NoReference".to_string()),
@@ -822,11 +815,13 @@ fn run_domain_of_definition_checks(
                     AttributeValue::String(member.feature_type.clone()),
                 );
                 result_feature.insert("gmlId", AttributeValue::String(member.gml_id.clone()));
-                fw.send(
-                    ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()),
+                context.fw.send(
+                    context
+                        .ctx
+                        .new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()),
                 );
-                result.push(result_feature);
-                response.xlink_has_no_reference_num += 1;
+                accumulator.result.push(result_feature);
+                accumulator.response.xlink_has_no_reference_num += 1;
             }
         }
     }
@@ -960,24 +955,14 @@ fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 fn process_member_node(
-    profile: &PlateauProfile,
-    ctx: &ExecutorContext,
-    fw: &ProcessorChannelForwarder,
-    codelists: &HashMap<String, HashMap<String, String>>,
-    feature: &Feature,
+    context: &DomainOfDefinitionContext,
     member: &fastxml::transform::EditableNodeRef,
-    valid_feature_types: &[String],
-    response: &mut ValidateResponse,
-    all_gml_ids: &mut HashMap<String, Vec<HashMap<String, String>>>,
-    gml_id_pattern: &Regex,
-    storage_resolver: Arc<StorageResolver>,
-    fallback_codelists_path: Option<&Uri>,
+    accumulator: &mut DomainOfDefinitionAccumulator,
     is_city_object_group: bool,
 ) -> super::errors::Result<(Vec<Feature>, Vec<XlinkInfo>)> {
     let mut result = Vec::<Feature>::new();
-    let gml_ns = profile.citygml.gml_ns;
+    let gml_ns = context.profile.citygml.gml_ns;
     let xlink_ns = "http://www.w3.org/1999/xlink";
     let Some(gml_id) = member.get_attribute_ns(gml_ns, "id") else {
         return Err(PlateauProcessorError::DomainOfDefinitionValidator(
@@ -989,7 +974,7 @@ fn process_member_node(
     // parent Feature.
     let mut base_attrs = Attributes::new();
     for key in ["index", "udxDirs", "name", "path"] {
-        if let Some(val) = feature.get(key) {
+        if let Some(val) = context.feature.get(key) {
             base_attrs.insert(Attribute::new(key), val.clone());
         }
     }
@@ -1000,19 +985,27 @@ fn process_member_node(
     let mut base_feature = Feature::new_with_attributes(base_attrs);
     let feature_type = if member
         .prefix()
-        .map(|p| profile.is_known_namespace_prefix(p.as_str()))
+        .map(|p| context.profile.is_known_namespace_prefix(p.as_str()))
         .unwrap_or(false)
     {
         let name = member.name();
-        if !valid_feature_types.contains(&name) {
-            response.invalid_feature_types_num += 1;
-            if response.invalid_feature_types.contains_key(name.as_str()) {
-                *response
+        if !context.valid_feature_types.contains(&name) {
+            accumulator.response.invalid_feature_types_num += 1;
+            if accumulator
+                .response
+                .invalid_feature_types
+                .contains_key(name.as_str())
+            {
+                *accumulator
+                    .response
                     .invalid_feature_types
                     .get_mut(name.as_str())
                     .unwrap() += 1;
             } else {
-                response.invalid_feature_types.insert(name.clone(), 1);
+                accumulator
+                    .response
+                    .invalid_feature_types
+                    .insert(name.clone(), 1);
             }
         }
         name
@@ -1024,7 +1017,7 @@ fn process_member_node(
 
     // Verification of the format of gml:id of a geographical object instance
     // grp:CityObjectGroup pattern should be {any prefix}_{UUID}.
-    if !(gml_id_pattern.is_match(gml_id.as_str())
+    if !(context.gml_id_pattern.is_match(gml_id.as_str())
         || (tag == "grp:CityObjectGroup" && GML_ID_GROUP_PATTERN.is_match(gml_id.as_str())))
     {
         let mut result_feature = base_feature.clone();
@@ -1034,8 +1027,12 @@ fn process_member_node(
         );
         result_feature.insert("tag", AttributeValue::String(tag.clone()));
         result.push(result_feature.clone());
-        fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
-        response.gml_id_not_well_formed_num += 1;
+        context.fw.send(
+            context
+                .ctx
+                .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+        );
+        accumulator.response.gml_id_not_well_formed_num += 1;
     }
 
     // One-pass collection of all descendant information
@@ -1051,7 +1048,8 @@ fn process_member_node(
             ("xpath".to_string(), tag.clone()),
             (
                 "index".to_string(),
-                feature
+                context
+                    .feature
                     .attributes
                     .get(&Attribute::new("index"))
                     .map(|v| v.to_string())
@@ -1059,7 +1057,8 @@ fn process_member_node(
             ),
             (
                 "udxDirs".to_string(),
-                feature
+                context
+                    .feature
                     .attributes
                     .get(&Attribute::new("udxDirs"))
                     .map(|v| v.to_string())
@@ -1067,7 +1066,8 @@ fn process_member_node(
             ),
             (
                 "name".to_string(),
-                feature
+                context
+                    .feature
                     .attributes
                     .get(&Attribute::new("name"))
                     .map(|v| v.to_string())
@@ -1084,7 +1084,8 @@ fn process_member_node(
                 ("xpath".to_string(), entry.xpath.clone()),
                 (
                     "index".to_string(),
-                    feature
+                    context
+                        .feature
                         .attributes
                         .get(&Attribute::new("index"))
                         .map(|v| v.to_string())
@@ -1092,7 +1093,8 @@ fn process_member_node(
                 ),
                 (
                     "udxDirs".to_string(),
-                    feature
+                    context
+                        .feature
                         .attributes
                         .get(&Attribute::new("udxDirs"))
                         .map(|v| v.to_string())
@@ -1100,7 +1102,8 @@ fn process_member_node(
                 ),
                 (
                     "name".to_string(),
-                    feature
+                    context
+                        .feature
                         .attributes
                         .get(&Attribute::new("name"))
                         .map(|v| v.to_string())
@@ -1110,16 +1113,24 @@ fn process_member_node(
         );
     }
     for (key, value) in gml_ids.iter() {
-        if all_gml_ids.contains_key(key) {
-            all_gml_ids.get_mut(key).unwrap().extend(value.clone());
+        if accumulator.gml_ids.contains_key(key) {
+            accumulator
+                .gml_ids
+                .get_mut(key)
+                .unwrap()
+                .extend(value.clone());
         } else {
-            all_gml_ids.insert(key.clone(), value.clone());
+            accumulator.gml_ids.insert(key.clone(), value.clone());
         }
     }
     // L04: code definition area verification
-    let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
-        PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
-    )?;
+    let city_gml_path = context
+        .feature
+        .attributes
+        .get(&Attribute::new("path"))
+        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
+            "path key empty".to_string(),
+        ))?;
     let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let base_dir = city_gml_uri
@@ -1135,11 +1146,12 @@ fn process_member_node(
         let mut code = None;
         let mut dynamically_loaded_codelist;
         if let Some(codelists_relative) = extract_codelists_relative_path(code_space) {
-            if let Some(dir_codelists) = get_dir_codelists(feature) {
+            if let Some(dir_codelists) = get_dir_codelists(context.feature) {
                 // Build the expected path by finding matching entry in codelists dictionary
                 // We search for entries ending with the relative path since URI formats may vary
                 let suffix = format!("/{}", codelists_relative);
-                code = codelists
+                code = context
+                    .codelists
                     .iter()
                     .find(|(k, _)| k.ends_with(&suffix))
                     .map(|(_, v)| v);
@@ -1147,7 +1159,7 @@ fn process_member_node(
                 // If not found by suffix, try direct join
                 if code.is_none() {
                     if let Ok(resolved_path) = dir_codelists.join(&codelists_relative) {
-                        code = codelists.get(&resolved_path.to_string());
+                        code = context.codelists.get(&resolved_path.to_string());
                     }
                 }
 
@@ -1155,9 +1167,10 @@ fn process_member_node(
                 // This handles cases where the codelists dictionary was loaded from a different directory
                 if code.is_none() {
                     if let Ok(resolved_path) = dir_codelists.join(&codelists_relative) {
-                        if let Ok(loaded) =
-                            try_load_codelist_file(Arc::clone(&storage_resolver), &resolved_path)
-                        {
+                        if let Ok(loaded) = try_load_codelist_file(
+                            Arc::clone(&context.ctx.storage_resolver),
+                            &resolved_path,
+                        ) {
                             dynamically_loaded_codelist = loaded;
                             code = Some(&dynamically_loaded_codelist);
                         }
@@ -1171,12 +1184,12 @@ fn process_member_node(
             let code_space_path = base_dir.join(Path::new(code_space.as_str())).map_err(|e| {
                 PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
             })?;
-            code = codelists.get(&code_space_path.to_string());
+            code = context.codelists.get(&code_space_path.to_string());
         }
 
         // If still not found and fallback path is provided, try the fallback path
         if code.is_none() {
-            if let Some(fallback_path) = fallback_codelists_path {
+            if let Some(fallback_path) = context.fallback_codelists_path {
                 // Extract the filename from codeSpace (e.g., "../../codelists/Building_class.xml" -> "Building_class.xml")
                 if let Some(filename) = Path::new(code_space.as_str()).file_name() {
                     let fallback_code_space_path =
@@ -1184,12 +1197,12 @@ fn process_member_node(
                             PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                         })?;
                     // First try dictionary lookup
-                    code = codelists.get(&fallback_code_space_path.to_string());
+                    code = context.codelists.get(&fallback_code_space_path.to_string());
 
                     // If not in dictionary, try dynamic loading
                     if code.is_none() {
                         if let Ok(loaded) = try_load_codelist_file(
-                            Arc::clone(&storage_resolver),
+                            Arc::clone(&context.ctx.storage_resolver),
                             &fallback_code_space_path,
                         ) {
                             dynamically_loaded_codelist = loaded;
@@ -1204,14 +1217,14 @@ fn process_member_node(
 
         if let Some(code) = code {
             if code.contains_key(code_value.as_str()) {
-                response.correct_code_values += 1;
+                accumulator.response.correct_code_values += 1;
                 continue;
             }
 
-            response.code_value_errors += 1;
+            accumulator.response.code_value_errors += 1;
             handle_code_validation_failure(
-                ctx,
-                fw,
+                context.ctx,
+                context.fw,
                 "CodeValidation",
                 &base_feature,
                 &cs_entry.tag,
@@ -1221,10 +1234,10 @@ fn process_member_node(
                 &mut result,
             );
         } else {
-            response.code_space_errors += 1;
+            accumulator.response.code_space_errors += 1;
             handle_code_validation_failure(
-                ctx,
-                fw,
+                context.ctx,
+                context.fw,
                 "inCorrectCodeSpace",
                 &base_feature,
                 &cs_entry.tag,
@@ -1252,7 +1265,7 @@ fn process_member_node(
         );
     }
     if !positions.is_empty() {
-        let envelope = &response.envelope;
+        let envelope = &accumulator.response.envelope;
         let min_x = *positions
             .iter()
             .step_by(3)
@@ -1294,9 +1307,9 @@ fn process_member_node(
             && envelope.lower_z <= min_z
             && max_z <= envelope.upper_z
         {
-            response.correct_extents += 1;
+            accumulator.response.correct_extents += 1;
         } else {
-            response.incorrect_extents += 1;
+            accumulator.response.incorrect_extents += 1;
             let mut result_feature = base_feature.clone();
             result_feature.insert(
                 "flag",
@@ -1352,7 +1365,11 @@ fn process_member_node(
                 AttributeValue::Number(Number::from_f64(max_z).unwrap()),
             );
             result.push(result_feature.clone());
-            fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+            context.fw.send(
+                context
+                    .ctx
+                    .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+            );
         }
     }
 
@@ -1375,13 +1392,21 @@ fn process_member_node(
             if let Some(caps) = GML_LINK_PATTERN.captures(xlink_href.as_str()) {
                 let gml_path = caps.get(1).map(|m| m.as_str()).unwrap_or_default();
                 let ext_gml_id = caps.get(2).map(|m| m.as_str()).unwrap_or_default();
-                if !response.external_file_to_gml_ids.contains_key(gml_path) {
+                if !accumulator
+                    .response
+                    .external_file_to_gml_ids
+                    .contains_key(gml_path)
+                {
                     let gml_path_uri = Uri::from_str(gml_path).map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
-                    let storage = storage_resolver.resolve(&gml_path_uri).map_err(|e| {
-                        PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
-                    })?;
+                    let storage = context
+                        .ctx
+                        .storage_resolver
+                        .resolve(&gml_path_uri)
+                        .map_err(|e| {
+                            PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
+                        })?;
                     let xml_content =
                         storage
                             .get_sync(gml_path_uri.path().as_path())
@@ -1400,7 +1425,8 @@ fn process_member_node(
                     ext_transformer
                         .on(".//*", |node| {
                             if let Some(id) = node.get_attribute_ns(gml_ns, "id") {
-                                response
+                                accumulator
+                                    .response
                                     .external_file_to_gml_ids
                                     .entry(gml_path_owned.clone())
                                     .or_default()
@@ -1412,8 +1438,12 @@ fn process_member_node(
                             PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                         })?;
                 }
-                if !response.external_file_to_gml_ids.contains_key(gml_path)
-                    || !response
+                if !accumulator
+                    .response
+                    .external_file_to_gml_ids
+                    .contains_key(gml_path)
+                    || !accumulator
+                        .response
                         .external_file_to_gml_ids
                         .get(gml_path)
                         .unwrap()
@@ -1429,8 +1459,12 @@ fn process_member_node(
                         .insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
                     result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
                     result.push(result_feature.clone());
-                    fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
-                    response.xlink_has_no_reference_num += 1;
+                    context.fw.send(
+                        context
+                            .ctx
+                            .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                    );
+                    accumulator.response.xlink_has_no_reference_num += 1;
                 }
             } else if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
                 let mut result_feature = base_feature.clone();
@@ -1442,8 +1476,12 @@ fn process_member_node(
                 result_feature.insert("xpath", AttributeValue::String(xlink_entry.xpath.clone()));
                 result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
                 result.push(result_feature.clone());
-                fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
-                response.xlink_has_no_reference_num += 1;
+                context.fw.send(
+                    context
+                        .ctx
+                        .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                );
+                accumulator.response.xlink_has_no_reference_num += 1;
             } else if let Some(gml_ids) =
                 gml_ids.get(&xlink_href.chars().skip(1).collect::<String>())
             {
@@ -1473,8 +1511,12 @@ fn process_member_node(
                         AttributeValue::String(item.get("xpath").cloned().unwrap_or_default()),
                     );
                     result.push(result_feature.clone());
-                    fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
-                    response.xlink_invalid_object_type_num += 1;
+                    context.fw.send(
+                        context
+                            .ctx
+                            .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                    );
+                    accumulator.response.xlink_invalid_object_type_num += 1;
                 }
             }
         }
@@ -1535,8 +1577,12 @@ fn process_member_node(
                 AttributeValue::String(lod_entry.gml_child_tag.clone()),
             );
             result.push(result_feature.clone());
-            fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
-            response.invalid_lod_x_geometry_num += 1;
+            context.fw.send(
+                context
+                    .ctx
+                    .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+            );
+            accumulator.response.invalid_lod_x_geometry_num += 1;
         }
     }
     Ok((result, group_xlinks))
