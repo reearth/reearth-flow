@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L04 #2 for plateau6 (CityGML 3.0). Building bldg_b3eef114 has bldg:class with codeSpace pointing at https://www.geospatial.jp/iur/codelists/4.0/invalid_codespace.xml, a codelist file that does not exist in the bundled i-UR 4.0 codelists; the codeSpace cannot be resolved, so 不正なcodeSpace数=1, L04エラー=0. The code value 3003 itself is a valid Building_class code; only the codeSpace is broken. The other building (bldg_b3eef115) is clean. This is the CityGML 3.0 counterpart of plateau4/01-01-common/L04_02; the only material difference from plateau4 is the codeSpace form (relative ../../codelists/... -> absolute https URL). The objectlist xlsx under fixtures/plateau6-citymodel/ is a stand-in (copied from plateau4) until the i-UR 4.0 取得項目一覧 is finalized.",
+  "description": "L04 #2 for plateau6 (CityGML 3.0): bldg:class codeSpace points at a nonexistent codelist (invalid_codespace.xml) that cannot be resolved → 不正なcodeSpace数=1, L04エラー=0 (value 3003 itself is valid).",
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {
@@ -41,11 +41,7 @@
       "expectedFile": "summary_common.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "01_共通.csv",
-      "excludeColumns": [
-        "XML検証結果",
-        "L02エラー"
-      ]
+      "expectedFile": "01_共通.csv"
     }
   },
   "expectResultOkFile": false

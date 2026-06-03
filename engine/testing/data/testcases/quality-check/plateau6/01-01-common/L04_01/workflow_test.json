@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L04 #1 for plateau6 (CityGML 3.0). Building bldg_b3eef114 has bldg:class with codeSpace pointing at the i-UR 4.0 absolute URL https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml (resolvable via the codeSpace filename fallback), but the code value 100 is not defined in that codelist. So the codeSpace resolves yet the value is invalid: L04エラー=1, 不正なcodeSpace数=0. The other building (bldg_b3eef115) is clean. This is the CityGML 3.0 counterpart of plateau4/01-01-common/L04_01; the only material difference from plateau4 is the codeSpace form (relative ../../codelists/... -> absolute https URL), which exercises the fallback resolution branch that plateau4 does not. The objectlist xlsx under fixtures/plateau6-citymodel/ is a stand-in (copied from plateau4) until the i-UR 4.0 取得項目一覧 is finalized.",
+  "description": "L04 #1 for plateau6 (CityGML 3.0): bldg:class codeSpace resolves (absolute https URL via filename fallback) but value 100 is undefined in Building_class → L04エラー=1, 不正なcodeSpace数=0.",
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {
@@ -41,11 +41,7 @@
       "expectedFile": "summary_common.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "01_共通.csv",
-      "excludeColumns": [
-        "XML検証結果",
-        "L02エラー"
-      ]
+      "expectedFile": "01_共通.csv"
     }
   },
   "expectResultOkFile": false

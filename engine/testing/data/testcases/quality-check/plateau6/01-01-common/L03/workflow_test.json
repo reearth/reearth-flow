@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L03 for plateau6 (CityGML 3.0). A veg:PlantCover is placed under the bldg package; bldg accepts only Building / CityObjectGroup, so L03 reports one invalid feature type (L03エラー=1, L03エラー詳細={\"PlantCover\": Number(Number(1))}). The injected member has no codeSpace attribute so the codeSpace check stays clean (不正なcodeSpace数=0). PACKAGE_TO_VALID_FEATURE_TYPES is local-name based, so the same map applies to CityGML 3.0 (Building/PlantCover keep their 2.0 local-names). The loosely-structured PlantCover is also XSD-invalid, so it raises one L02 error as a side effect (L02エラー=1 in summary_common.json); the XML検証結果 / L02エラー columns are therefore excluded from the 01_共通.csv comparison (mirrors plateau4 L03). The objectlist xlsx under fixtures/plateau6-citymodel/ is a stand-in (copied from plateau4) until the i-UR 4.0 取得項目一覧 is finalized.",
+  "description": "L03 for plateau6 (CityGML 3.0): a veg:PlantCover placed under the bldg package (which accepts only Building / CityObjectGroup) yields one invalid feature type (L03エラー=1, 詳細={PlantCover:1}). PACKAGE_TO_VALID_FEATURE_TYPES is local-name based, so the 2.0 map applies unchanged.",
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {
@@ -38,11 +38,7 @@
       "expectedFile": "summary_common.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "01_共通.csv",
-      "excludeColumns": [
-        "XML検証結果",
-        "L02エラー"
-      ]
+      "expectedFile": "01_共通.csv"
     }
   },
   "expectResultOkFile": false
