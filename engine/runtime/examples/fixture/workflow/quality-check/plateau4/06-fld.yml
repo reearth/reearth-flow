@@ -526,12 +526,12 @@ graphs:
       - attribute: サイズ[KB]
         expr:
           type: flowExpr
-          value: attributes["fileSize"] / 1024
+          value: attributes["fileSize"] // 1024
       - attribute: 1GB以下
         expr:
           type: flowExpr
           value: |
-            if attributes["fileSize"] / 1024 / 1024 / 1024 <= 1 {
+            if attributes["fileSize"] // 1024 // 1024 // 1024 <= 1 {
               "OK"
             } else {
               "Over"
