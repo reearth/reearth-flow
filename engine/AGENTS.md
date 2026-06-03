@@ -64,7 +64,7 @@ Use the `add-action` skill for a full step-by-step guide including i18n workflow
 Sinks accept a **relative path** for their `output` parameter. The engine
 joins the path against `ctx.sandbox_root` (the per-job artifact directory)
 and validates the result via `sandbox::ensure_under`. The chokepoint is
-`reearth_flow_action_sink::SinkOutput::from_path`.
+`reearth_flow_action_sink::SinkOutput::new`.
 
 Workflow authors write:
 
@@ -79,7 +79,7 @@ launched with — `file:///var/jobs/abc/`, `gs://bucket/jobs/abc/`,
 `ram:///jobs/abc/`, etc. The same workflow YAML is portable across storage
 backends.
 
-`SinkOutput::from_path` rejects:
+`SinkOutput::new(sandbox_root, relative_path, resolver)` rejects:
 - Empty strings, leading/trailing whitespace, literal `.` / `..`
 - Absolute URIs (`scheme://...`) — error message names `workerArtifactPath`
   to direct customers to the migration
@@ -87,13 +87,24 @@ backends.
 - Paths that resolve to the artifact directory itself after normalization
 - Paths that escape the sandbox via `..` (caught by `ensure_under`)
 
-**All sink-side writes MUST go through `SinkOutput`.** Calling
-`Storage::put_sync` (or any other raw I/O like `std::fs::write`) from a
-sink or sink-adjacent code path skips the check and reintroduces
-unbounded writes. If a new sink format or sidecar write is needed, route
-it through `SinkOutput::from_path` / `SinkOutput::join` /
-`SinkOutput::write`. Reviewers should flag any direct `put_sync` /
-`std::fs` calls in sink code as regressions.
+**All sink-side writes MUST go through `SinkOutput::new` → `SinkOutput::write`.**
+Calling `Storage::put_sync` (or any other raw I/O like `std::fs::write`)
+from a sink or sink-adjacent code path skips the check and reintroduces
+unbounded writes. There is no public way to construct a `SinkOutput`
+without passing through `SinkOutput::new`, which always validates.
+Buffering sinks (cesium3dtiles, mvt, FeatureWriter) buffer features keyed
+by the relative path **String** and call `SinkOutput::new` once per output
+file at flush time. Sinks that build hierarchical paths (e.g. cesium tile
+coordinates) **compose path strings directly** (`format!("{base}/{child}")`)
+and call `SinkOutput::new` per file — there is no `SinkOutput::join`
+method; the unified constructor is the only chokepoint. Reviewers should
+flag any direct `put_sync` / `std::fs` calls in sink code as regressions.
+
+For fail-fast validation at intake time (before reaching the write step),
+buffering sinks may also call `sandbox::ensure_valid_relative_path`. This
+runs the same validation rules without acquiring storage. `SinkOutput::new`
+re-validates at write time, so calling `ensure_valid_relative_path` is
+optional — only used to surface bad paths earlier in the workflow.
 
 Production entrypoints (`Runner::run_with_sandbox_root`,
 `AsyncRunner::run_with_sandbox_root`) reject the `file:///` sentinel so a
