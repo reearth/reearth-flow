@@ -1,44 +1,22 @@
 //! Static attribute-schema propagation over a [`DagSchemas`] graph.
 //!
 //! Walks the DAG in topological order, threading inferred per-port
-//! [`AttrSchema`]s from producers to consumers, and collects validation
-//! diagnostics (e.g. references to attributes that no upstream node produces).
+//! [`AttrSchema`]s from producers to consumers.
 
 use std::collections::HashMap;
 
 use petgraph::visit::EdgeRef;
-use reearth_flow_types::attr_schema::{AttrRef, AttrSchema, Presence};
+use reearth_flow_types::attr_schema::AttrSchema;
 
 use crate::dag_schemas::{DagSchemas, SchemaEdgeType, SchemaNodeType};
 use crate::node::{NodeKind, Port, ProcessorFactory, SinkFactory, SourceFactory};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Severity {
-    Error,
-    Warning,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Diagnostic {
-    pub severity: Severity,
-    pub node_id: String,
-    pub node_name: String,
-    pub message: String,
-}
-
 #[derive(Debug, Default)]
 pub struct InferResult {
-    pub diagnostics: Vec<Diagnostic>,
-    /// Inferred output schema per node id, keyed by output port name (port.to_string()).
+    /// Inferred output schema per node id, keyed by output port name.
     pub node_outputs: HashMap<String, HashMap<String, AttrSchema>>,
-}
-
-impl InferResult {
-    pub fn has_errors(&self) -> bool {
-        self.diagnostics
-            .iter()
-            .any(|d| d.severity == Severity::Error)
-    }
+    /// Per-node note (e.g. why a source could not be sampled). Keyed by node id.
+    pub notes: HashMap<String, String>,
 }
 
 /// The schema-relevant view of a node's factory, regardless of its concrete kind.
@@ -54,17 +32,6 @@ impl<'a> FactoryRef<'a> {
             NodeKind::Source(f) => FactoryRef::Source(f.as_ref()),
             NodeKind::Processor(f) => FactoryRef::Processor(f.as_ref()),
             NodeKind::Sink(f) => FactoryRef::Sink(f.as_ref()),
-        }
-    }
-
-    fn referenced_input_attributes(
-        &self,
-        with: &Option<HashMap<String, serde_json::Value>>,
-    ) -> Vec<AttrRef> {
-        match self {
-            FactoryRef::Source(f) => f.referenced_input_attributes(with),
-            FactoryRef::Processor(f) => f.referenced_input_attributes(with),
-            FactoryRef::Sink(f) => f.referenced_input_attributes(with),
         }
     }
 
@@ -90,7 +57,7 @@ impl<'a> FactoryRef<'a> {
     }
 }
 
-/// Statically propagate attribute schemas through the DAG and collect validation diagnostics.
+/// Statically propagate attribute schemas through the DAG.
 pub fn infer_and_validate(dag: &DagSchemas) -> Result<InferResult, crate::errors::ExecutionError> {
     let graph = dag.graph();
     let order = petgraph::algo::toposort(graph, None)
@@ -109,12 +76,7 @@ pub fn infer_and_validate(dag: &DagSchemas) -> Result<InferResult, crate::errors
 
         let factory = node.kind.as_ref().map(FactoryRef::of);
 
-        // (c) Reference validation.
-        if let Some(factory) = &factory {
-            check_references(factory, node, &inputs, &mut result);
-        }
-
-        // (d) Compute this node's outputs.
+        // (c) Compute this node's outputs.
         let outputs: HashMap<Port, AttrSchema> = match &factory {
             Some(factory) => match factory.infer_output_schema(&inputs, &node.with) {
                 Some(map) => map,
@@ -169,48 +131,6 @@ fn gather_inputs(
             .or_insert(incoming);
     }
     inputs
-}
-
-/// Validate a node's referenced input attributes against the schemas reaching
-/// it, pushing diagnostics onto `result` for absent (Error) or maybe-present
-/// (Warning) references.
-fn check_references(
-    factory: &FactoryRef<'_>,
-    node: &SchemaNodeType,
-    inputs: &HashMap<Port, AttrSchema>,
-    result: &mut InferResult,
-) {
-    for AttrRef { name, port } in factory.referenced_input_attributes(&node.with) {
-        let Some(schema) = inputs.get(&Port::new(port.clone())) else {
-            // Input port absent: cannot disprove the reference.
-            continue;
-        };
-        if schema.open {
-            // Open schema: any attribute may exist, so no diagnostic.
-            continue;
-        }
-        match schema.fields.get(&name) {
-            None => result.diagnostics.push(Diagnostic {
-                severity: Severity::Error,
-                node_id: node.handle.id.to_string(),
-                node_name: node.name.clone(),
-                message: format!(
-                    "references attribute `{name}` which is not produced by any upstream node on port `{port}`"
-                ),
-            }),
-            Some(field) if field.presence == Presence::Maybe => {
-                result.diagnostics.push(Diagnostic {
-                    severity: Severity::Warning,
-                    node_id: node.handle.id.to_string(),
-                    node_name: node.name.clone(),
-                    message: format!(
-                        "references attribute `{name}` on port `{port}` which may not always be present"
-                    ),
-                });
-            }
-            Some(_) => {}
-        }
-    }
 }
 
 /// Join all input-port schemas into one; `open` if there are no inputs at all.
@@ -299,7 +219,6 @@ mod tests {
                 .get(&DEFAULT_PORT)
                 .cloned()
                 .unwrap_or_else(AttrSchema::empty);
-            // Force closed so downstream reference checks can fire.
             schema.open = false;
             schema.insert(
                 Attribute::new("foo".to_string()),
@@ -308,85 +227,6 @@ mod tests {
             let mut out = HashMap::new();
             out.insert(DEFAULT_PORT.clone(), schema);
             Some(out)
-        }
-    }
-
-    /// Produces a CLOSED schema with a single field "missing" (String, Maybe).
-    #[derive(Debug, Clone)]
-    struct MaybeProc;
-
-    impl ProcessorFactory for MaybeProc {
-        fn name(&self) -> &str {
-            "Maybe"
-        }
-        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-            None
-        }
-        fn get_input_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
-        }
-        fn get_output_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
-        }
-        fn build(
-            &self,
-            _ctx: NodeContext,
-            _event_hub: EventHub,
-            _action: String,
-            _with: Option<HashMap<String, serde_json::Value>>,
-        ) -> Result<Box<dyn Processor>, crate::errors::BoxedError> {
-            unreachable!("not built in schema inference tests")
-        }
-        fn infer_output_schema(
-            &self,
-            _inputs: &HashMap<Port, AttrSchema>,
-            _with: &Option<HashMap<String, serde_json::Value>>,
-        ) -> Option<HashMap<Port, AttrSchema>> {
-            let mut schema = AttrSchema::empty();
-            schema.insert(
-                Attribute::new("missing".to_string()),
-                AttrField::maybe(AttrType::String),
-            );
-            let mut out = HashMap::new();
-            out.insert(DEFAULT_PORT.clone(), schema);
-            Some(out)
-        }
-    }
-
-    /// Reads attribute "missing" from its default input. Output inference unimplemented.
-    #[derive(Debug, Clone)]
-    struct NeedsProc;
-
-    impl ProcessorFactory for NeedsProc {
-        fn name(&self) -> &str {
-            "Needs"
-        }
-        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-            None
-        }
-        fn get_input_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
-        }
-        fn get_output_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
-        }
-        fn build(
-            &self,
-            _ctx: NodeContext,
-            _event_hub: EventHub,
-            _action: String,
-            _with: Option<HashMap<String, serde_json::Value>>,
-        ) -> Result<Box<dyn Processor>, crate::errors::BoxedError> {
-            unreachable!("not built in schema inference tests")
-        }
-        fn referenced_input_attributes(
-            &self,
-            _with: &Option<HashMap<String, serde_json::Value>>,
-        ) -> Vec<AttrRef> {
-            vec![AttrRef {
-                name: Attribute::new("missing".to_string()),
-                port: "default".to_string(),
-            }]
         }
     }
 
@@ -423,24 +263,15 @@ mod tests {
             "Adder".to_string(),
             NodeKind::Processor(Box::new(AdderProc)),
         );
-        m.insert(
-            "Maybe".to_string(),
-            NodeKind::Processor(Box::new(MaybeProc)),
-        );
-        m.insert(
-            "Needs".to_string(),
-            NodeKind::Processor(Box::new(NeedsProc)),
-        );
         m
     }
 
-    /// source -> Adder -> Needs. `adder_action` selects whether the middle node
-    /// closes the schema ("Adder") or stays transparent/open ("StubSource"-style
-    /// via Adder None fallback). We just vary the middle action name.
+    /// source -> mid. `middle_action` selects whether the middle node closes the
+    /// schema ("Adder") or stays transparent/open ("StubSource"-style via the
+    /// None -> open fallback).
     fn build_dag(middle_action: &str) -> DagSchemas {
         let src_id = Uuid::new_v4();
         let mid_id = Uuid::new_v4();
-        let needs_id = Uuid::new_v4();
         let graph_id = Uuid::new_v4();
 
         let graph = Graph {
@@ -449,9 +280,8 @@ mod tests {
             nodes: vec![
                 action_node(src_id, "src", "StubSource"),
                 action_node(mid_id, "mid", middle_action),
-                action_node(needs_id, "needs", "Needs"),
             ],
-            edges: vec![edge(src_id, mid_id), edge(mid_id, needs_id)],
+            edges: vec![edge(src_id, mid_id)],
         };
 
         DagSchemas::from_graphs(graph_id, vec![graph], factories(), None).expect("dag construction")
@@ -460,19 +290,9 @@ mod tests {
     // ---- Tests ----------------------------------------------------------
 
     #[test]
-    fn propagates_and_flags_missing_reference() {
+    fn propagates_node_outputs() {
         let dag = build_dag("Adder");
         let result = infer_and_validate(&dag).expect("infer");
-
-        assert!(result.has_errors(), "expected an error diagnostic");
-        let errors: Vec<_> = result
-            .diagnostics
-            .iter()
-            .filter(|d| d.severity == Severity::Error)
-            .collect();
-        assert_eq!(errors.len(), 1, "exactly one error expected");
-        assert!(errors[0].message.contains("missing"));
-        assert_eq!(errors[0].node_name, "needs");
 
         // The Adder node's output schema must carry "foo" on the default port.
         let adder_out = result
@@ -486,53 +306,6 @@ mod tests {
         assert!(adder_out["default"]
             .fields
             .contains_key(&Attribute::new("foo".to_string())));
-    }
-
-    #[test]
-    fn flags_maybe_present_reference_as_warning() {
-        // source -> Maybe -> Needs. The "Maybe" node emits a closed schema with
-        // field "missing" present only conditionally (Presence::Maybe). "Needs"
-        // references "missing", so the reference is satisfiable but not
-        // guaranteed -> exactly one Warning, no errors.
-        let dag = build_dag("Maybe");
-        let result = infer_and_validate(&dag).expect("infer");
-
-        assert!(
-            !result.has_errors(),
-            "maybe-present reference must not be an error"
-        );
-        let warnings: Vec<_> = result
-            .diagnostics
-            .iter()
-            .filter(|d| d.severity == Severity::Warning)
-            .collect();
-        assert_eq!(
-            warnings.len(),
-            1,
-            "exactly one warning expected, got {warnings:?}"
-        );
-        assert!(warnings[0].message.contains("missing"));
-        assert_eq!(warnings[0].node_name, "needs");
-    }
-
-    #[test]
-    fn open_input_suppresses_reference_error() {
-        // Middle node is "StubSource" action -> NodeKind::Source whose
-        // infer_output_schema is None -> fallback. As a source-style factory in
-        // the middle it still has a default output port; with an open input
-        // joined through, the schema reaching "Needs" is open, suppressing errors.
-        let dag = build_dag("StubSource");
-        let result = infer_and_validate(&dag).expect("infer");
-
-        let errors: Vec<_> = result
-            .diagnostics
-            .iter()
-            .filter(|d| d.severity == Severity::Error)
-            .collect();
-        assert!(
-            errors.is_empty(),
-            "open schema must suppress reference errors, got {errors:?}"
-        );
     }
 
     #[test]

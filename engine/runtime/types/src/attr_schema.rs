@@ -128,14 +128,6 @@ impl AttrSchema {
     }
 }
 
-/// An attribute a node reads from its input — checked against the inferred input schema later.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AttrRef {
-    pub name: Attribute,
-    /// Input port name the reference applies to (use "default" when single-input).
-    pub port: String,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

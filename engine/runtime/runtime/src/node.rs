@@ -250,15 +250,6 @@ pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
     ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
         None
     }
-
-    /// Attributes this node reads from its input, for static reference validation.
-    /// Default empty = no statically-known references.
-    fn referenced_input_attributes(
-        &self,
-        _with: &Option<HashMap<String, Value>>,
-    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
-        Vec::new()
-    }
 }
 
 pub trait SourceFactoryClone {
@@ -338,15 +329,6 @@ pub trait ProcessorFactory: Send + Sync + Debug + ProcessorFactoryClone {
     ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
         None
     }
-
-    /// Attributes this node reads from its input, for static reference validation.
-    /// Default empty = no statically-known references.
-    fn referenced_input_attributes(
-        &self,
-        _with: &Option<HashMap<String, Value>>,
-    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
-        Vec::new()
-    }
 }
 
 pub trait ProcessorFactoryClone {
@@ -425,15 +407,6 @@ pub trait SinkFactory: Send + Sync + Debug + SinkFactoryClone {
         _with: &Option<HashMap<String, Value>>,
     ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
         None
-    }
-
-    /// Attributes this node reads from its input, for static reference validation.
-    /// Default empty = no statically-known references.
-    fn referenced_input_attributes(
-        &self,
-        _with: &Option<HashMap<String, Value>>,
-    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
-        Vec::new()
     }
 }
 
@@ -683,6 +656,5 @@ mod schema_hook_tests {
     fn schema_hook_defaults_are_none_and_empty() {
         let f = DummyProc;
         assert!(f.infer_output_schema(&HashMap::new(), &None).is_none());
-        assert!(f.referenced_input_attributes(&None).is_empty());
     }
 }
