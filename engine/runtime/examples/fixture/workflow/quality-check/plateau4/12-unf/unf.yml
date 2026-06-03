@@ -36,31 +36,41 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value").udxDirs ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["udxDirs"]
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex ?? 0
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: FeatureType
-          expr: |
-            let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "UndergroundFacility"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: LOD
-          expr: |
-            env.get("__value").lod ?? "2"
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
         - attribute: "gml:id"
-          expr: |
-            env.get("__value").gmlId ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: "無効な空間属性の型"
-          expr: |
-            env.get("__value").geometryName ?? "Unknown"
+          expr:
+            type: flowExpr
+            value: attributes.get("geometryName", "Unknown")
 
   # ===== LOD3-4: Detect non-Surface geometry using GeometryFilter =====
   - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
@@ -78,31 +88,41 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value").udxDirs ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["udxDirs"]
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex ?? 0
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: FeatureType
-          expr: |
-            let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "UndergroundFacility"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: LOD
-          expr: |
-            env.get("__value").lod ?? "3"
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
         - attribute: "gml:id"
-          expr: |
-            env.get("__value").gmlId ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: "無効な空間属性の型"
-          expr: |
-            env.get("__value").geometryName ?? "Unknown"
+          expr:
+            type: flowExpr
+            value: attributes.get("geometryName", "Unknown")
 
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0c
     name: FeatureWriterInvalidSpatialAttr
@@ -161,25 +181,33 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: feature_type
-          expr: |
-            let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "UndergroundFacility"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: issue
-          expr: |
-            "SurfaceNotClosed"
+          expr:
+            type: string
+            value: SurfaceNotClosed
 
   - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
     name: FeatureWriterNotClosed
@@ -218,25 +246,33 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: feature_type
-          expr: |
-            let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "UndergroundFacility"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: issue
-          expr: |
-            "Invalid Solid Boundaries"
+          expr:
+            type: string
+            value: Invalid Solid Boundaries
 
   - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1b
     name: FeatureWriterOtherSolidErrors
@@ -280,41 +316,53 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value").udxDirs ?? "unf"
+          expr:
+            type: flowExpr
+            value: attributes["udxDirs"]
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex ?? 1
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: FeatureType
-          expr: |
-            let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "UndergroundFacility"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: LOD
-          expr: |
-            env.get("__value").lod ?? "2"
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
         - attribute: "gml:id"
-          expr: |
-            env.get("__value").gmlId ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   - id: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
     name: FeatureWriterBoundarySurfaceErrors
@@ -358,41 +406,53 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value").udxDirs ?? "unf"
+          expr:
+            type: flowExpr
+            value: attributes["udxDirs"]
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex ?? 1
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: FeatureType
-          expr: |
-            let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "UndergroundFacility"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: LOD
-          expr: |
-            env.get("__value").lod ?? "3"
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
         - attribute: "gml:id"
-          expr: |
-            env.get("__value").gmlId ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   - id: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
     name: FeatureWriterLod34SurfaceErrors
@@ -436,31 +496,41 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value").udxDirs ?? "unf"
+          expr:
+            type: flowExpr
+            value: attributes["udxDirs"]
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex ?? 1
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: FeatureType
-          expr: |
-            let ft = env.get("__value").featureType ?? "UndergroundFacility";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "UndergroundFacility"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: LOD
-          expr: |
-            env.get("__value").lod ?? "3"
+          expr:
+            type: flowExpr
+            value: attributes["lod"]
         - attribute: "gml:id"
-          expr: |
-            env.get("__value").gmlId ?? ""
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: 不連続パート数
-          expr: |
-            env.get("__value").discontinuous_parts_count ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("discontinuous_parts_count", 0)
 
   - id: 22a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
     name: FeatureWriterDiscontinuousCS

@@ -337,14 +337,17 @@ graphs:
     with:
       mappers:
       - attribute: index
-        expr: |
-          env.get("__value").fileIndex
+        expr:
+          type: flowExpr
+          value: attributes["fileIndex"]
       - attribute: filename
-        expr: |
-          env.get("__value").gmlFilename
+        expr:
+          type: flowExpr
+          value: attributes["gmlFilename"]
       - attribute: folder
-        expr: |
-          env.get("__value")["package"]
+        expr:
+          type: flowExpr
+          value: attributes["package"]
   - id: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     name: ErrorSummaryMerger
     type: action
@@ -361,59 +364,77 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value").folder
+        expr:
+          type: flowExpr
+          value: attributes["folder"]
       - attribute: Index
-        expr: |
-          env.get("__value").index
+        expr:
+          type: flowExpr
+          value: attributes["index"]
       - attribute: Filename
-        expr: |
-          env.get("__value").filename
+        expr:
+          type: flowExpr
+          value: attributes["filename"]
       - attribute: LOD0 面のエラー
-        expr: |
-          env.get("__value")._num_lod0_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod0_invalid_surface", 0)
       - attribute: LOD0 面の向きエラー
-        expr: |
-          env.get("__value")._num_lod0_incorrect_orientation ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod0_incorrect_orientation", 0)
       - attribute: LOD0 面の交差
-        expr: |
-          env.get("__value")._num_lod0_surface_intersection ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod0_surface_intersection", 0)
       - attribute: LOD1 境界面のエラー
-        expr: |
-          env.get("__value")._num_lod1_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod1_invalid_surface", 0)
       - attribute: LOD1 非水密立体
-        expr: |
-          env.get("__value")._num_lod1_not_closed_solid ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod1_not_closed_solid", 0)
       - attribute: LOD1 立体のエラー
-        expr: |
-          env.get("__value")._num_lod1_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod1_solid_issues", 0)
       - attribute: LOD2 境界面のエラー
-        expr: |
-          env.get("__value")._num_lod2_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod2_invalid_surface", 0)
       - attribute: LOD3 境界面のエラー
-        expr: |
-          env.get("__value")._num_lod3_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod3_invalid_surface", 0)
       - attribute: LOD4 境界面のエラー
-        expr: |
-          env.get("__value")._num_lod4_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod4_invalid_surface", 0)
       - attribute: LOD2 非水密立体
-        expr: |
-          env.get("__value")._num_lod2_not_closed_solid ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod2_not_closed_solid", 0)
       - attribute: LOD3 非水密立体
-        expr: |
-          env.get("__value")._num_lod3_not_closed_solid ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod3_not_closed_solid", 0)
       - attribute: LOD4 非水密立体
-        expr: |
-          env.get("__value")._num_lod4_not_closed_solid ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod4_not_closed_solid", 0)
       - attribute: LOD2 立体のエラー
-        expr: |
-          env.get("__value")._num_lod2_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod2_solid_issues", 0)
       - attribute: LOD3 立体のエラー
-        expr: |
-          env.get("__value")._num_lod3_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod3_solid_issues", 0)
       - attribute: LOD4 立体のエラー
-        expr: |
-          env.get("__value")._num_lod4_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod4_solid_issues", 0)
   - id: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
     name: CSVSummaryWriter
     type: action

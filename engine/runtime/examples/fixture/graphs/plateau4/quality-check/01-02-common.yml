@@ -100,8 +100,9 @@ nodes:
         - attribute: dirs
           valueAttribute: udxDirs
         - attribute: filename
-          expr: |
-            file::extract_filename(env.get("__value")["path"])
+          expr:
+            type: flowExpr
+            value: attributes["path"].split("/")[-1]
         - attribute: gml_id
           valueAttribute: gmlId
         - attribute: severity
@@ -153,8 +154,9 @@ nodes:
         - attribute: dirs
           valueAttribute: udxDirs
         - attribute: filename
-          expr: |
-            file::extract_filename(env.get("__value")["path"])
+          expr:
+            type: flowExpr
+            value: attributes["path"].split("/")[-1]
         - attribute: gml_id
           valueAttribute: gmlId
         - attribute: feature_type
@@ -184,8 +186,9 @@ nodes:
         - attribute: dirs
           valueAttribute: udxDirs
         - attribute: filename
-          expr: |
-            file::extract_filename(env.get("__value")["path"])
+          expr:
+            type: flowExpr
+            value: attributes["path"].split("/")[-1]
         - attribute: gml_id
           valueAttribute: gmlId
         - attribute: feature_type
