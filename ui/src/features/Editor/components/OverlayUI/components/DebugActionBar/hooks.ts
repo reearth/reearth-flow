@@ -104,8 +104,13 @@ export default ({
         handleShowDebugWorkflowVariablesDialog();
       } else {
         setDebugRunStarted(true);
-        await onDebugRunStart();
         handlePopoverClose();
+        try {
+          await onDebugRunStart();
+        } catch (e) {
+          setDebugRunStarted(false);
+          throw e;
+        }
       }
     } finally {
       isStartingRef.current = false;
@@ -139,7 +144,7 @@ export default ({
 
   return {
     showOverlayElement,
-    debugRunStarted: isStartingRef.current || debugRunStarted,
+    debugRunStarted,
     jobStatus,
     debugJob,
     handleDebugRunStart,
