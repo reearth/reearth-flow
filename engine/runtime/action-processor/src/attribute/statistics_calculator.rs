@@ -181,33 +181,6 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             (COMPLETE_PORT.clone(), complete_schema),
         ]))
     }
-
-    fn referenced_input_attributes(
-        &self,
-        with: &Option<HashMap<String, Value>>,
-    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
-        use reearth_flow_types::attr_schema::AttrRef;
-
-        let Some(params) = parse_params(with) else {
-            return Vec::new();
-        };
-
-        // Only `group_by` attributes are READ from the input. `group_id` and
-        // `new_attribute`s are produced, and `expr` is Rhai (not statically analyzable).
-        params
-            .group_by
-            .as_ref()
-            .map(|group_by| {
-                group_by
-                    .iter()
-                    .map(|attr| AttrRef {
-                        name: attr.clone(),
-                        port: DEFAULT_PORT.to_string(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
 }
 
 /// Deserialize the `StatisticsCalculatorParam` from the node's `with` params,
@@ -472,25 +445,6 @@ mod tests {
     }
 
     #[test]
-    fn references_group_by_attributes() {
-        let with = with_from(json!({
-            "groupBy": ["region", "city"],
-            "groupId": "gid",
-            "calculations": [{ "newAttribute": "total", "expr": "1.0" }]
-        }));
-
-        let refs = StatisticsCalculatorFactory.referenced_input_attributes(&with);
-
-        assert_eq!(refs.len(), 2);
-        assert_eq!(refs[0].name, attr("region"));
-        assert_eq!(refs[0].port, DEFAULT_PORT.to_string());
-        assert_eq!(refs[1].name, attr("city"));
-        assert_eq!(refs[1].port, DEFAULT_PORT.to_string());
-        assert!(refs.iter().all(|r| r.name != attr("gid")));
-        assert!(refs.iter().all(|r| r.name != attr("total")));
-    }
-
-    #[test]
     fn infer_no_group_by_only_calculations() {
         let with = with_from(json!({
             "calculations": [{ "newAttribute": "cnt", "expr": "1" }]
@@ -514,8 +468,5 @@ mod tests {
                 presence: Presence::Always
             })
         );
-
-        let refs = StatisticsCalculatorFactory.referenced_input_attributes(&with);
-        assert!(refs.is_empty());
     }
 }

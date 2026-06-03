@@ -154,40 +154,6 @@ impl ProcessorFactory for AttributeMapperFactory {
 
         Some(HashMap::from([(DEFAULT_PORT.clone(), out)]))
     }
-
-    fn referenced_input_attributes(
-        &self,
-        with: &Option<HashMap<String, Value>>,
-    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
-        use reearth_flow_types::attr_schema::AttrRef;
-        use reearth_flow_types::Attribute;
-
-        let Some(params) = parse_params(with) else {
-            return Vec::new();
-        };
-
-        let mut refs = Vec::new();
-        for mapper in &params.mappers {
-            // `valueAttribute` is read directly from the input feature.
-            if let Some(value_attribute) = &mapper.value_attribute {
-                refs.push(AttrRef {
-                    name: Attribute::new(value_attribute.clone()),
-                    port: DEFAULT_PORT.to_string(),
-                });
-            }
-            // `parentAttribute` is the top-level map read from the input feature.
-            // The child is a key inside that map, not a top-level attribute.
-            if let Some(parent_attribute) = &mapper.parent_attribute {
-                refs.push(AttrRef {
-                    name: Attribute::new(parent_attribute.clone()),
-                    port: DEFAULT_PORT.to_string(),
-                });
-            }
-            // `expr` / `multipleExpr` are Rhai expressions whose referenced
-            // attributes can't be statically extracted -> emit nothing.
-        }
-        refs
-    }
 }
 
 /// Deserialize the `AttributeMapperParam` from the node's `with` params,
@@ -426,23 +392,5 @@ mod tests {
             .expect("a present");
         assert_eq!(field.presence, Presence::Maybe);
         assert_eq!(field.ty, AttrType::Unknown);
-    }
-
-    #[test]
-    fn references_value_and_parent_attributes() {
-        let with = with_from(json!({
-            "mappers": [
-                { "attribute": "a", "valueAttribute": "src" },
-                { "attribute": "b", "parentAttribute": "par", "childAttribute": "c" }
-            ]
-        }));
-
-        let refs = AttributeMapperFactory.referenced_input_attributes(&with);
-
-        assert_eq!(refs.len(), 2);
-        assert_eq!(refs[0].name, Attribute::new("src".to_string()));
-        assert_eq!(refs[0].port, "default".to_string());
-        assert_eq!(refs[1].name, Attribute::new("par".to_string()));
-        assert_eq!(refs[1].port, "default".to_string());
     }
 }

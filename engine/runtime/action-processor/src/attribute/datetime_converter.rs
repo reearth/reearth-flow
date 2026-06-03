@@ -113,23 +113,6 @@ impl ProcessorFactory for DateTimeConverterFactory {
             (Port::new(FAILED_PORT), input),
         ]))
     }
-
-    fn referenced_input_attributes(
-        &self,
-        with: &Option<HashMap<String, Value>>,
-    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
-        use reearth_flow_types::attr_schema::AttrRef;
-        use reearth_flow_types::Attribute;
-
-        let Some(params) = parse_params(with) else {
-            return Vec::new();
-        };
-
-        vec![AttrRef {
-            name: Attribute::new(params.attribute.clone()),
-            port: DEFAULT_PORT.to_string(),
-        }]
-    }
 }
 
 /// Deserialize the `DateTimeConverterParam` from the node's `with` params,
@@ -504,17 +487,6 @@ mod tests {
             default.fields.get(&Attribute::new("ts".to_string())),
             Some(&AttrField::always(AttrType::String))
         );
-    }
-
-    #[test]
-    fn references_lists_source_attribute() {
-        let with = with_from(json!({ "attribute": "ts", "outputFormat": "auto" }));
-
-        let refs = DateTimeConverterFactory.referenced_input_attributes(&with);
-
-        assert_eq!(refs.len(), 1);
-        assert_eq!(refs[0].name, Attribute::new("ts".to_string()));
-        assert_eq!(refs[0].port, "default".to_string());
     }
 
     #[test]

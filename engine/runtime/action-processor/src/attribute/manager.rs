@@ -110,28 +110,6 @@ impl ProcessorFactory for AttributeManagerFactory {
 
         Some(HashMap::from([(DEFAULT_PORT.clone(), out)]))
     }
-
-    fn referenced_input_attributes(
-        &self,
-        with: &Option<HashMap<String, Value>>,
-    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
-        use reearth_flow_types::attr_schema::AttrRef;
-        use reearth_flow_types::Attribute;
-
-        let Some(params) = parse_params(with) else {
-            return Vec::new();
-        };
-
-        params
-            .operations
-            .iter()
-            .filter(|op| matches!(op.method, Method::Convert | Method::Rename))
-            .map(|op| AttrRef {
-                name: Attribute::new(op.attribute.clone()),
-                port: DEFAULT_PORT.to_string(),
-            })
-            .collect()
-    }
 }
 
 /// Deserialize the `AttributeManagerParam` from the node's `with` params,
@@ -444,25 +422,5 @@ mod tests {
 
         assert!(!schema.fields.contains_key(&Attribute::new("a".to_string())));
         assert!(schema.open);
-    }
-
-    #[test]
-    fn references_lists_convert_and_rename_only() {
-        let with = with_from(json!({
-            "operations": [
-                { "attribute": "x", "method": "create", "value": null },
-                { "attribute": "y", "method": "convert", "value": { "type": "flowExpr", "value": "env.get(\"foo\")" } },
-                { "attribute": "z", "method": "rename", "value": { "type": "string", "value": "renamed" } },
-                { "attribute": "w", "method": "remove", "value": null }
-            ]
-        }));
-
-        let refs = AttributeManagerFactory.referenced_input_attributes(&with);
-
-        assert_eq!(refs.len(), 2);
-        assert_eq!(refs[0].name, Attribute::new("y".to_string()));
-        assert_eq!(refs[0].port, "default".to_string());
-        assert_eq!(refs[1].name, Attribute::new("z".to_string()));
-        assert_eq!(refs[1].port, "default".to_string());
     }
 }

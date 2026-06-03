@@ -128,15 +128,6 @@ impl ProcessorFactory for FeatureFilterFactory {
             .collect();
         Some(map)
     }
-
-    fn referenced_input_attributes(
-        &self,
-        _with: &Option<HashMap<String, Value>>,
-    ) -> Vec<reearth_flow_types::attr_schema::AttrRef> {
-        // Conditions are arbitrary expressions we can't statically parse for
-        // attribute names; no statically-known references for v1.
-        Vec::new()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -254,11 +245,5 @@ mod tests {
             .get(&UNFILTERED_PORT.clone())
             .expect("unfiltered port present");
         assert_eq!(*unfiltered, input);
-    }
-
-    #[test]
-    fn references_is_empty() {
-        let refs = FeatureFilterFactory.referenced_input_attributes(&None);
-        assert!(refs.is_empty());
     }
 }
