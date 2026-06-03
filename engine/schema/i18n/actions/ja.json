@@ -1118,6 +1118,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Condition": {
           "expr": {
             "title": "条件式"

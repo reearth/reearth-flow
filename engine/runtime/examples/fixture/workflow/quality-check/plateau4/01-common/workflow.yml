@@ -81,8 +81,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["totalErrorCount"] == 0
+            - expr:
+                type: flowExpr
+                value: attributes["totalErrorCount"] == 0
               outputPort: default
 
       - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e

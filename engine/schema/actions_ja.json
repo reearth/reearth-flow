@@ -3217,6 +3217,28 @@
           }
         },
         "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
           "Condition": {
             "type": "object",
             "required": [
@@ -3228,7 +3250,7 @@
                 "title": "条件式",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               },
@@ -3241,9 +3263,6 @@
                 ]
               }
             }
-          },
-          "Expr": {
-            "type": "string"
           },
           "Port": {
             "type": "string"

@@ -79,8 +79,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__value")._status != "full"
+        - expr:
+            type: flowExpr
+            value: attributes["_status"] != "full"
           outputPort: filtered
 
   # Deduplicate Building IDs

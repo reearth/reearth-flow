@@ -140,8 +140,9 @@ nodes:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            !(env.get("__value").geomTag in ["gml:MultiSurface", "gml:Solid"])
+        - expr:
+            type: flowExpr
+            value: attributes["geomTag"] not in ["gml:MultiSurface", "gml:Solid"]
           outputPort: default
 
   - id: 38b305d1-d716-48da-b578-419e15f66b4b

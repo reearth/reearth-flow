@@ -9,7 +9,8 @@ use crate::core::value::{NativeFn, Value};
 
 use super::MethodFn;
 
-static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| HashMap::from([]));
+static METHODS: LazyLock<HashMap<&'static str, MethodFn>> =
+    LazyLock::new(|| HashMap::from([("get", get as MethodFn)]));
 
 pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
     let f = METHODS
@@ -21,6 +22,33 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
         a.extend_from_slice(args);
         f(&a)
     }))
+}
+
+/// Resolves a possibly-negative index into a concrete `usize`, or `None` if out of bounds.
+pub fn resolve_index(i: i64, len: usize) -> Option<usize> {
+    let pos = if i >= 0 {
+        i as usize
+    } else {
+        len.checked_sub(i.unsigned_abs() as usize)?
+    };
+    (pos < len).then_some(pos)
+}
+
+fn get(args: &[Value]) -> InnerResult<Value> {
+    let (recv, idx, fallback) = match args {
+        [recv, idx] => (recv, idx, None),
+        [recv, idx, fallback] => (recv, idx, Some(fallback)),
+        _ => return Err(InnerError::new("array.get() requires 1 or 2 arguments")),
+    };
+    let Value::Array(rc) = recv else {
+        return Err(InnerError::new("expected array receiver"));
+    };
+    let Value::Int(i) = idx else {
+        return Err(InnerError::new("array.get() index must be an integer"));
+    };
+    let arr = rc.borrow();
+    let elem = resolve_index(*i, arr.len()).map(|pos| arr[pos].clone());
+    Ok(elem.unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
 }
 
 pub fn eq_inner(a: &Rc<RefCell<Vec<Value>>>, b: &Rc<RefCell<Vec<Value>>>) -> InnerResult<bool> {
@@ -49,5 +77,26 @@ mod tests {
     fn test_len() {
         let arr = Value::from(vec![1i64, 2i64, 3i64]);
         assert_eval("len(arr)", &[("arr", arr)], Value::from(3i64));
+    }
+
+    #[test]
+    fn test_get() {
+        let arr = Value::from(vec![10i64, 20i64, 30i64]);
+        assert_eval("arr.get(0)", &[("arr", arr.clone())], Value::from(10i64));
+        assert_eval("arr.get(2)", &[("arr", arr.clone())], Value::from(30i64));
+        assert_eval("arr.get(-1)", &[("arr", arr.clone())], Value::from(30i64));
+        assert_eval("arr.get(-3)", &[("arr", arr.clone())], Value::from(10i64));
+        assert_eval("arr.get(5)", &[("arr", arr.clone())], Value::Null);
+        assert_eval("arr.get(-5)", &[("arr", arr.clone())], Value::Null);
+        assert_eval(
+            "arr.get(5, 99)",
+            &[("arr", arr.clone())],
+            Value::from(99i64),
+        );
+        assert_eval(
+            "arr.get(1, 99)",
+            &[("arr", arr.clone())],
+            Value::from(20i64),
+        );
     }
 }

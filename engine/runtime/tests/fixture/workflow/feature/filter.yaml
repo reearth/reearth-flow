@@ -19,8 +19,9 @@ graphs:
         action: FeatureFilter
         with:
           conditions:
-            - expr: |
-                env.get("__value").city in ["Tokyo", "Osaka"]
+            - expr:
+                type: flowExpr
+                value: attributes["city"] in ["Tokyo", "Osaka"]
               outputPort: default
 
     edges:
