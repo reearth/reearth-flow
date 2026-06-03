@@ -16,6 +16,7 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
         ("replace", replace as MethodFn),
         ("remove_prefix", remove_prefix as MethodFn),
         ("remove_suffix", remove_suffix as MethodFn),
+        ("join", join as MethodFn),
     ])
 });
 
@@ -114,6 +115,31 @@ fn replace(args: &[Value]) -> InnerResult<Value> {
     Ok(Value::String(s.replace(from.as_str(), to.as_str())))
 }
 
+fn join(args: &[Value]) -> InnerResult<Value> {
+    unpack_args!(args => sep, list);
+    let Value::String(sep) = sep else {
+        return Err(InnerError::new("expected string receiver"));
+    };
+    let Value::Array(list) = list else {
+        return Err(InnerError::new(format!(
+            "join() argument must be an array, got {}",
+            list.type_name()
+        )));
+    };
+    let parts = list
+        .borrow()
+        .iter()
+        .map(|v| match v {
+            Value::String(s) => Ok(s.clone()),
+            other => Err(InnerError::new(format!(
+                "join() array elements must be strings, got {}",
+                other.type_name()
+            ))),
+        })
+        .collect::<InnerResult<Vec<_>>>()?;
+    Ok(Value::String(parts.join(sep.as_str())))
+}
+
 fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
     unpack_args!(args => s, suffix);
     let Value::String(s) = s else {
@@ -202,6 +228,17 @@ mod tests {
             Value::from("foo/bar/baz"),
         );
         assert_eval(r#""hello".replace("x", "y")"#, &[], Value::from("hello"));
+    }
+
+    #[test]
+    fn test_join() {
+        assert_eval(
+            r#"", ".join(["a", "b", "c"])"#,
+            &[],
+            Value::from("a, b, c"),
+        );
+        assert_eval(r#""".join(["x", "y"])"#, &[], Value::from("xy"));
+        assert_eval(r#""-".join([])"#, &[], Value::from(""));
     }
 
     #[test]

@@ -668,24 +668,30 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").Index
+              expr:
+                type: flowExpr
+                value: attributes["Index"]
             - attribute: Filename
-              expr: |
-                env.get("__value").Filename
+              expr:
+                type: flowExpr
+                value: attributes["Filename"]
             # Domain-specific error columns
             - attribute: "L-TRAN-03 xlink参照エラー"
-              expr: |
-                env.get("__value")._num_unreferenced_surface ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_unreferenced_surface", 0)
             - attribute: "面の向き不正"
-              expr: |
-                env.get("__value")._num_incorrect_orientation ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_orientation", 0)
             - attribute: "L-TRAN-02 隣接面重複"
-              expr: |
-                env.get("__value")._num_overlaps ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_overlaps", 0)
             - attribute: "面のエラー"
-              expr: |
-                env.get("__value")._surface_issues ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_surface_issues", 0)
 
       # Phase 5: CSV output
       - id: be20e492-76d2-4afc-a985-e040f43d55fb

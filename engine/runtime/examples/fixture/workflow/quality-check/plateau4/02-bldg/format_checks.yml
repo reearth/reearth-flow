@@ -222,20 +222,25 @@ nodes:
     with:
       mappers:
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: Building Usage Attribute Error
-          expr: |
-            env.get("__value").errors
+          expr:
+            type: flowExpr
+            value: attributes["errors"]
         - attribute: Feature Type
-          expr: |
-            env.get("__value").featureType
+          expr:
+            type: flowExpr
+            value: attributes["featureType"]
 
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
@@ -253,20 +258,25 @@ nodes:
     with:
       mappers:
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: City Code Error
-          expr: |
-            env.get("__value").cityCodeError
+          expr:
+            type: flowExpr
+            value: attributes["cityCodeError"]
         - attribute: Feature Type
-          expr: |
-            env.get("__value").featureType
+          expr:
+            type: flowExpr
+            value: attributes["featureType"]
 
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
@@ -349,29 +359,38 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: FeatureType
-          expr: |
-            env.get("__value").gmlName
+          expr:
+            type: flowExpr
+            value: attributes["gmlName"]
         - attribute: "uro:buildingID"
-          expr: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:buildingID"] ?? ""
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr.get("uro:buildingID", "")
         - attribute: "uro:branchID"
-          expr: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:branchID"] ?? "（なし）"
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr.get("uro:branchID", "（なし）")
         - attribute: "uro:partID"
-          expr: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:partID"] ?? "（なし）"
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr.get("uro:partID", "（なし）")
 
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
     name: FeatureWriter-invalid-building-id-format
@@ -439,40 +458,40 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          expr:
+            type: flowExpr
+            value: attributes["fileIndex"]
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["gmlFilename"]
         - attribute: GmlId
-          expr: |
-            env.get("__value").gmlId
+          expr:
+            type: flowExpr
+            value: attributes["gmlId"]
         - attribute: UroBuildingId
-          expr: |
-            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            bldg_id_attr["uro:buildingID"] ?? ""
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr.get("uro:buildingID", "")
         - attribute: UroBranchId
-          expr: |
-            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            let branch_id = bldg_id_attr["uro:branchID"] ?? "";
-            if (branch_id == "") {
-              "（なし）"
-            } else {
-              branch_id
-            }
-
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              branch_id = bldg_id_attr.get("uro:branchID", "");
+              if branch_id == "" { "（なし）" } else { branch_id }
         - attribute: UroPartId
-          expr: |
-            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            let part_id = bldg_id_attr["uro:partID"] ?? "";
-            if (part_id == "") {
-              "（なし）"
-            } else {
-              part_id
-            }
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              part_id = bldg_id_attr.get("uro:partID", "");
+              if part_id == "" { "（なし）" } else { part_id }
 
   - id: bba483d0-9813-499e-a0f6-22874646450d
     name: FeatureWriterCsv-c-bldg-01
