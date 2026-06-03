@@ -389,3 +389,17 @@ fn attribute_value_from_eval(v: ExprValue) -> reearth_flow_expr::Result<Attribut
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn code_mask_enforced_on_deserialize() {
+        type FlowExprOnly = Code<{ CodeType::FlowExpr as u32 }>;
+        serde_json::from_str::<FlowExprOnly>(r#"{"type":"flowExpr","value":"1+1"}"#).unwrap();
+        let err =
+            serde_json::from_str::<FlowExprOnly>(r#"{"type":"string","value":"x"}"#).unwrap_err();
+        assert!(err.to_string().contains("not allowed"));
+    }
+}
