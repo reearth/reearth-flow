@@ -163,17 +163,13 @@ export default () => {
               zoomToBoundingSphere(geometry, cesiumViewerRef, 1.5);
             } else {
               // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
-              const entityValues =
-                cesiumViewer?.entities?.values ?? [];
-              const matchingEntities = entityValues.filter(
-                (entity: any) => {
-                  const props = entity.properties?.getValue?.();
-                  return (
-                    props?._originalId === featureId ||
-                    entity.id === featureId
-                  );
-                },
-              );
+              const entityValues = cesiumViewer?.entities?.values ?? [];
+              const matchingEntities = entityValues.filter((entity: any) => {
+                const props = entity.properties?.getValue?.();
+                return (
+                  props?._originalId === featureId || entity.id === featureId
+                );
+              });
               if (matchingEntities.length > 0) {
                 cesiumViewer.zoomTo(matchingEntities);
               } else {

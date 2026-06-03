@@ -76,15 +76,12 @@ export const zoomToBoundingSphere = (
 
   const ce = cesiumViewerRef.current?.cesiumElement;
   if (!ce || ce.isDestroyed()) return;
-  ce.camera.flyToBoundingSphere(
-    paddedSphere,
-    {
-      duration,
-      offset: new HeadingPitchRange(
-        0,
-        CesiumMath.toRadians(-35),
-        paddedSphere.radius * 2.5,
-      ),
-    },
-  );
+  ce.camera.flyToBoundingSphere(paddedSphere, {
+    duration,
+    offset: new HeadingPitchRange(
+      0,
+      CesiumMath.toRadians(-35),
+      paddedSphere.radius * 2.5,
+    ),
+  });
 };
