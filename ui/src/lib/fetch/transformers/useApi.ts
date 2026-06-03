@@ -47,6 +47,7 @@ export const useAction = (lang: string) => {
     searchTerm?: string;
     types?: string[];
     categories?: string[];
+    tags?: string[];
     nodes?: Node[];
   }): GetActionsSegregated => {
     const { data, ...rest } = useGetActionsSegregatedFetch(lang);
@@ -69,6 +70,11 @@ export const useAction = (lang: string) => {
         ),
         byType: filterActionsByPredicate(
           result.byType,
+          (action) => combinedFilter(action, filter),
+          hasActiveFilter,
+        ),
+        byTag: filterActionsByPredicate(
+          result.byTag,
           (action) => combinedFilter(action, filter),
           hasActiveFilter,
         ),
@@ -106,6 +112,7 @@ const combinedFilter = (
     searchTerm?: string;
     types?: string[];
     categories?: string[];
+    tags?: string[];
     nodes?: Node[];
   },
 ) => {
@@ -135,6 +142,16 @@ const combinedFilter = (
     }
   }
 
+  if (filter?.tags?.length) {
+    if (
+      !action.tags?.some((t) =>
+        filter.tags?.some((ft) => ft.toLowerCase() === t.toLowerCase()),
+      )
+    ) {
+      return false;
+    }
+  }
+
   if (filter?.searchTerm) {
     return filterBySearchTerm(action, filter.searchTerm);
   }
@@ -155,25 +172,26 @@ const filterActions = (
     return combinedFilter(action, filter);
   });
 };
-
 const filterActionsByPredicate = (
-  obj: Record<string, Action[] | undefined>,
+  obj: Record<string, Action[] | undefined> | undefined | null,
   predicate: (action: Action) => boolean,
   removeEmptyArrays = false,
 ) =>
   Object.fromEntries(
-    Object.entries(obj).reduce(
+    Object.entries(obj ?? {}).reduce<[string, Action[] | undefined][]>(
       (acc, [key, actions]) => {
         const filteredActions = actions?.filter(predicate);
+
         if (
           !removeEmptyArrays ||
           (filteredActions && filteredActions.length > 0)
         ) {
           acc.push([key, filteredActions]);
         }
+
         return acc;
       },
-      [] as [string, Action[] | undefined][],
+      [],
     ),
   );
 
