@@ -255,10 +255,8 @@ impl Processor for FeatureWriter {
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
-        // Validate eagerly so bad paths fail fast at process time. Storage is
-        // acquired once at flush time via SinkOutput::new.
-        reearth_flow_action_sink::sandbox::ensure_valid_relative_path(&path)
-            .map_err(FeatureProcessorError::FeatureWriterFactory)?;
+        // Validation happens at flush time via SinkOutput::new; nothing to
+        // pre-check here. The buffer is keyed by the raw relative-path string.
         let buffer = self.buffer.entry(path).or_default();
         buffer.push(ctx.feature);
         Ok(())

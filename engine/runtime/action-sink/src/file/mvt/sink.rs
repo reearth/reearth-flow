@@ -215,14 +215,8 @@ impl Sink for MVTWriter {
                         .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))
                 };
                 let output = eval(&self.params.output)?;
-                // Validate eagerly so bad paths fail fast at process time.
-                crate::sandbox::ensure_valid_relative_path(&output)
-                    .map_err(SinkError::MvtWriter)?;
                 let compress_output = if let Some(c) = &self.params.compress_output {
-                    let compress_path = eval(c)?;
-                    crate::sandbox::ensure_valid_relative_path(&compress_path)
-                        .map_err(SinkError::MvtWriter)?;
-                    Some(compress_path)
+                    Some(eval(c)?)
                 } else {
                     None
                 };

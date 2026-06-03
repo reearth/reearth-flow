@@ -100,11 +100,11 @@ and call `SinkOutput::new` per file — there is no `SinkOutput::join`
 method; the unified constructor is the only chokepoint. Reviewers should
 flag any direct `put_sync` / `std::fs` calls in sink code as regressions.
 
-For fail-fast validation at intake time (before reaching the write step),
-buffering sinks may also call `sandbox::ensure_valid_relative_path`. This
-runs the same validation rules without acquiring storage. `SinkOutput::new`
-re-validates at write time, so calling `ensure_valid_relative_path` is
-optional — only used to surface bad paths earlier in the workflow.
+Validation happens exclusively inside `SinkOutput::new`. There is no
+separate "validate-only" public API — bad paths fail at flush time when
+the sink calls `SinkOutput::new`, not at intake. Single chokepoint, single
+validation site, no way for callers to manually pre-check (and therefore
+no way to drift out of sync with the real check).
 
 Production entrypoints (`Runner::run_with_sandbox_root`,
 `AsyncRunner::run_with_sandbox_root`) reject the `file:///` sentinel so a

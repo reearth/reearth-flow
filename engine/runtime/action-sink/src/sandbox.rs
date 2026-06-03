@@ -25,41 +25,6 @@ impl fmt::Display for SandboxError {
 
 impl std::error::Error for SandboxError {}
 
-/// Quickly validate that `path` is a strict-relative path string without acquiring storage.
-///
-/// Performs the same syntactic checks as [`crate::SinkOutput::new`] (empty /
-/// whitespace / `.` / `..` / scheme / leading `/` / leading `~`) but does NOT
-/// join against sandbox_root or call `ensure_under`. Use this for early
-/// validation in buffering sinks where the full sandbox check will happen at
-/// flush time via `SinkOutput::new`.
-pub fn ensure_valid_relative_path(path: &str) -> Result<(), String> {
-    if path.is_empty() {
-        return Err("sink output path is empty".to_string());
-    }
-    if path != path.trim() {
-        return Err(format!(
-            "sink output {path:?} has leading or trailing whitespace"
-        ));
-    }
-    if path == "." || path == ".." {
-        return Err(format!("sink output {path:?} is not a filename"));
-    }
-    if path.contains("://") {
-        return Err(format!(
-            "sink output {path:?}: absolute URIs are not allowed"
-        ));
-    }
-    if path.starts_with('/') {
-        return Err(format!("sink output {path:?}: leading '/' is ambiguous"));
-    }
-    if path.starts_with('~') {
-        return Err(format!(
-            "sink output {path:?}: leading '~' (home expansion) is not supported"
-        ));
-    }
-    Ok(())
-}
-
 /// Verify that `candidate` resolves under `root`. Same scheme, same authority,
 /// segment-aligned path prefix. Any `..` segment in the candidate (after the
 /// root prefix) is hard-rejected; the candidate is NOT normalized through them.

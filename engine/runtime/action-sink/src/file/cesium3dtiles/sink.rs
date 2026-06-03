@@ -215,9 +215,6 @@ impl Cesium3DTilesWriter {
             .output
             .eval_string(&ctx.feature, Arc::clone(&env_vars))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-        // Validate eagerly so bad paths fail fast at process time.
-        crate::sandbox::ensure_valid_relative_path(&output)
-            .map_err(SinkError::Cesium3DTilesWriter)?;
         let compress_output = self
             .params
             .compress_output
@@ -226,9 +223,6 @@ impl Cesium3DTilesWriter {
                 let compress_path = c
                     .eval_string(&ctx.feature, Arc::clone(&env_vars))
                     .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-                // Validate eagerly so bad paths fail fast at process time.
-                crate::sandbox::ensure_valid_relative_path(&compress_path)
-                    .map_err(SinkError::Cesium3DTilesWriter)?;
                 Ok(compress_path)
             })
             .transpose()?;
