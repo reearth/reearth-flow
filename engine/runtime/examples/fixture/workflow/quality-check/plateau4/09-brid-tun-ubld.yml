@@ -3881,17 +3881,11 @@ graphs:
     with:
       mappers:
       - attribute: index
-        expr:
-          type: flowExpr
-          value: attributes["fileIndex"]
+        valueAttribute: fileIndex
       - attribute: filename
-        expr:
-          type: flowExpr
-          value: attributes["gmlFilename"]
+        valueAttribute: gmlFilename
       - attribute: folder
-        expr:
-          type: flowExpr
-          value: attributes["package"]
+        valueAttribute: package
   - id: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     name: ErrorSummaryMerger
     type: action
@@ -3908,17 +3902,11 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["folder"]
+        valueAttribute: folder
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["filename"]
+        valueAttribute: filename
       - attribute: LOD0 面のエラー
         expr:
           type: flowExpr

@@ -120,29 +120,17 @@ graphs:
         with:
           mappers:
             - attribute: gmlPath
-              expr:
-                type: flowExpr
-                value: attributes["path"]
+              valueAttribute: path
             - attribute: gmlFilename
-              expr:
-                type: flowExpr
-                value: attributes["name"]
+              valueAttribute: name
             - attribute: fileIndex
-              expr:
-                type: flowExpr
-                value: attributes["fileIndex"]
+              valueAttribute: fileIndex
             - attribute: codelists
-              expr:
-                type: flowExpr
-                value: attributes["codelists"]
+              valueAttribute: codelists
             - attribute: schemas
-              expr:
-                type: flowExpr
-                value: attributes["schemas"]
+              valueAttribute: schemas
             - attribute: udxDirs
-              expr:
-                type: flowExpr
-                value: attributes["path"].split("/")[-2]
+              valueAttribute: path.split("/")[-2]
 
       - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
         name: FeatureCityGmlReader
@@ -192,25 +180,15 @@ graphs:
         with:
           mappers:
             - attribute: index
-              expr:
-                type: flowExpr
-                value: attributes["fileIndex"]
+              valueAttribute: fileIndex
             - attribute: filename
-              expr:
-                type: flowExpr
-                value: attributes["gmlFilename"]
+              valueAttribute: gmlFilename
             - attribute: udxDirs
-              expr:
-                type: flowExpr
-                value: attributes["udxDirs"]
+              valueAttribute: udxDirs
             - attribute: gmlFilename
-              expr:
-                type: flowExpr
-                value: attributes["gmlFilename"]
+              valueAttribute: gmlFilename
             - attribute: WaterBody
-              expr:
-                type: flowExpr
-                value: attributes["WaterBody"]
+              valueAttribute: WaterBody
             - attribute: lod
               expr:
                 type: flowExpr
@@ -263,9 +241,7 @@ graphs:
                 type: flowExpr
                 value: attributes.get("fileIndex", attributes.get("index"))
             - attribute: Folder
-              expr:
-                type: flowExpr
-                value: attributes["udxDirs"]
+              valueAttribute: udxDirs
             - attribute: Filename
               expr:
                 type: flowExpr

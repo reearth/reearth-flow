@@ -2954,13 +2954,9 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["fileIndex"]
+        valueAttribute: fileIndex
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
   - id: f34d9a25-1b29-4ead-93ea-873cc5589bf1
     name: XlinkErrorCounter
     type: action
@@ -3017,13 +3013,9 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["Index"]
+        valueAttribute: Index
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["Filename"]
+        valueAttribute: Filename
       - attribute: L-TRAN-03 xlink参照エラー
         expr:
           type: flowExpr

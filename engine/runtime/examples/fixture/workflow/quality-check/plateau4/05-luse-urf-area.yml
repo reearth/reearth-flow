@@ -2608,23 +2608,23 @@ graphs:
       - attribute: Folder
         expr:
           type: flowExpr
-          value: attributes["udxDirs"]
+          value: attributes.get("udxDirs", "")
       - attribute: Filename
         expr:
           type: flowExpr
-          value: attributes["name"]
+          value: attributes.get("name", "")
       - attribute: フィーチャータイプ
         expr:
           type: flowExpr
-          value: attributes["featureType"]
+          value: attributes.get("featureType", "")
       - attribute: インスタンス数
         expr:
           type: flowExpr
-          value: attributes["_num_instances"]
+          value: attributes.get("_num_instances", 0)
       - attribute: Index
         expr:
           type: flowExpr
-          value: attributes["fileIndex"]
+          value: attributes.get("fileIndex", "")
   - id: a453192e-603c-417e-9f65-f57b8e15f7d3
     name: CsvWriterInstanceCount
     type: action
@@ -2642,17 +2642,11 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["fileIndex"]
+        valueAttribute: fileIndex
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["package"]
+        valueAttribute: package
   - id: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
     name: PLATEAU3.SurfaceValidator2D
     type: subGraph
@@ -2666,19 +2660,19 @@ graphs:
       - attribute: Folder
         expr:
           type: flowExpr
-          value: attributes["udxDirs"]
+          value: attributes.get("udxDirs", "")
       - attribute: Index
         expr:
           type: flowExpr
-          value: attributes["fileIndex"]
+          value: attributes.get("fileIndex", "")
       - attribute: Filename
         expr:
           type: flowExpr
-          value: attributes["name"]
+          value: attributes.get("name", "")
       - attribute: FeatureType
         expr:
           type: flowExpr
-          value: attributes["featureType"]
+          value: attributes.get("featureType", "")
       - attribute: エラー数
         expr:
           type: string
@@ -2686,7 +2680,7 @@ graphs:
       - attribute: gml:id
         expr:
           type: flowExpr
-          value: attributes["featureId"]
+          value: attributes.get("featureId", "")
       - attribute: 面の向き
         expr:
           type: string
@@ -2720,19 +2714,19 @@ graphs:
       - attribute: Folder
         expr:
           type: flowExpr
-          value: attributes["udxDirs"]
+          value: attributes.get("udxDirs", "")
       - attribute: Index
         expr:
           type: flowExpr
-          value: attributes["fileIndex"]
+          value: attributes.get("fileIndex", "")
       - attribute: Filename
         expr:
           type: flowExpr
-          value: attributes["name"]
+          value: attributes.get("name", "")
       - attribute: FeatureType
         expr:
           type: flowExpr
-          value: attributes["featureType"]
+          value: attributes.get("featureType", "")
       - attribute: エラー数
         expr:
           type: string
@@ -2740,7 +2734,7 @@ graphs:
       - attribute: gml:id
         expr:
           type: flowExpr
-          value: attributes["featureId"]
+          value: attributes.get("featureId", "")
       - attribute: エラー内容
         expr:
           type: flowExpr
@@ -2781,17 +2775,11 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["Folder"]
+        valueAttribute: Folder
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["Index"]
+        valueAttribute: Index
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["Filename"]
+        valueAttribute: Filename
       - attribute: 面の向き不正
         expr:
           type: flowExpr

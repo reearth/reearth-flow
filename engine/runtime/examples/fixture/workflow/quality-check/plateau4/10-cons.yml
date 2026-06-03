@@ -3066,29 +3066,17 @@ graphs:
     with:
       mappers:
       - attribute: gmlPath
-        expr:
-          type: flowExpr
-          value: attributes["path"]
+        valueAttribute: path
       - attribute: gmlFilename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: fileIndex
-        expr:
-          type: flowExpr
-          value: attributes["fileIndex"]
+        valueAttribute: fileIndex
       - attribute: codelists
-        expr:
-          type: flowExpr
-          value: attributes["codelists"]
+        valueAttribute: codelists
       - attribute: schemas
-        expr:
-          type: flowExpr
-          value: attributes["schemas"]
+        valueAttribute: schemas
       - attribute: udxDirs
-        expr:
-          type: flowExpr
-          value: attributes["path"].split("/")[-2]
+        valueAttribute: path.split("/")[-2]
   - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f60
     name: FeatureCityGmlReader
     type: action
@@ -3171,29 +3159,17 @@ graphs:
     with:
       mappers:
       - attribute: index
-        expr:
-          type: flowExpr
-          value: attributes["fileIndex"]
+        valueAttribute: fileIndex
       - attribute: filename
-        expr:
-          type: flowExpr
-          value: attributes["gmlFilename"]
+        valueAttribute: gmlFilename
       - attribute: udxDirs
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: gmlFilename
-        expr:
-          type: flowExpr
-          value: attributes["gmlFilename"]
+        valueAttribute: gmlFilename
       - attribute: featureTypeName
-        expr:
-          type: flowExpr
-          value: attributes["featureTypeName"]
+        valueAttribute: featureTypeName
       - attribute: instanceCount
-        expr:
-          type: flowExpr
-          value: attributes["instanceCount"]
+        valueAttribute: instanceCount
       - attribute: lod
         expr:
           type: flowExpr
@@ -3223,9 +3199,7 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Index
         expr:
           type: flowExpr

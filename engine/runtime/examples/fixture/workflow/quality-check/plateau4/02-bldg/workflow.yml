@@ -137,25 +137,15 @@ graphs:
         with:
           mappers:
             - attribute: gmlPath
-              expr:
-                type: flowExpr
-                value: attributes["path"]
+              valueAttribute: path
             - attribute: gmlFilename
-              expr:
-                type: flowExpr
-                value: attributes["name"]
+              valueAttribute: name
             - attribute: fileIndex
-              expr:
-                type: flowExpr
-                value: attributes["fileIndex"]
+              valueAttribute: fileIndex
             - attribute: codelists
-              expr:
-                type: flowExpr
-                value: attributes["dirCodelists"]
+              valueAttribute: dirCodelists
             - attribute: schemas
-              expr:
-                type: flowExpr
-                value: attributes["dirSchemas"]
+              valueAttribute: dirSchemas
 
       - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         name: FeatureSorter
@@ -237,13 +227,9 @@ graphs:
         with:
           mappers:
             - attribute: index
-              expr:
-                type: flowExpr
-                value: attributes["fileIndex"]
+              valueAttribute: fileIndex
             - attribute: filename
-              expr:
-                type: flowExpr
-                value: attributes["gmlFilename"]
+              valueAttribute: gmlFilename
 
       # Phase 2: FeatureMerger for aggregating error counts
       - id: 4712539b-5103-41ee-9359-0333eefb82ef
@@ -269,13 +255,9 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr:
-                type: flowExpr
-                value: attributes["index"]
+              valueAttribute: index
             - attribute: Filename
-              expr:
-                type: flowExpr
-                value: attributes["filename"]
+              valueAttribute: filename
             - attribute: "市区町村コードエラー"
               expr:
                 type: flowExpr
