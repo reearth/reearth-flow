@@ -240,7 +240,10 @@ mod tests {
             Attribute::new("address".to_string()),
             AttrField::maybe(AttrType::String),
         );
-        let schema = AttrSchema { fields, open: false };
+        let schema = AttrSchema {
+            fields,
+            open: false,
+        };
 
         let mut ports: IndexMap<String, PortReport> = IndexMap::new();
         ports.insert("default".to_string(), PortReport::from_schema(&schema));

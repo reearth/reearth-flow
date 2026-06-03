@@ -142,8 +142,8 @@ impl SchemaCliCommand {
             DagSchemas::from_graphs(workflow.entry_graph_id, workflow.graphs, factories, None)
                 .map_err(crate::errors::Error::run)?;
 
-        let inferred = infer_with_sampling(&dag, self.sample_size)
-            .map_err(|e| crate::errors::Error::run(e.to_string()))?;
+        let inferred =
+            infer_with_sampling(&dag, self.sample_size).map_err(crate::errors::Error::run)?;
 
         let mut node_ids: Vec<&String> = inferred.node_outputs.keys().collect();
         node_ids.sort();
@@ -300,6 +300,21 @@ graphs:
         assert!(
             reader_fields.iter().any(|f| f == "name"),
             "reader default port should include sampled `name`, got {reader_fields:?}"
+        );
+
+        // A successfully sampled reader produces a closed schema (not the open
+        // fallback). Guards against a silent regression to open schemas.
+        let reader_node = report
+            .nodes
+            .get(READER_ID)
+            .expect("reader node present in report");
+        let reader_default_port = reader_node
+            .ports
+            .get("default")
+            .expect("reader has a default port");
+        assert!(
+            !reader_default_port.open,
+            "a sampled reader yields a closed schema"
         );
 
         // 4b. The AttributeManager removal propagates on top of the sampled schema:

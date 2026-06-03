@@ -182,7 +182,11 @@ pub(crate) fn union_features(features: &[Feature]) -> AttrSchema {
 
     let mut schema = AttrSchema::empty();
     for (name, a) in acc {
-        let ty = if a.conflicting { AttrType::Unknown } else { a.ty };
+        let ty = if a.conflicting {
+            AttrType::Unknown
+        } else {
+            a.ty
+        };
         let field = if a.count == total {
             AttrField::always(ty)
         } else {
@@ -274,7 +278,11 @@ mod tests {
             .fields
             .get(&Attribute::new("x".to_string()))
             .expect("x present");
-        assert_eq!(x.ty, AttrType::Unknown, "conflicting types collapse to Unknown");
+        assert_eq!(
+            x.ty,
+            AttrType::Unknown,
+            "conflicting types collapse to Unknown"
+        );
         assert_eq!(
             x.presence,
             Presence::Always,
