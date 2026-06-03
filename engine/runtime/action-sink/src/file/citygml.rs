@@ -150,21 +150,18 @@ pub fn write_citygml_to_storage(
                     continue;
                 }
             };
-            let dst_out = match crate::SinkOutput::new(
-                sandbox_root,
-                &texture_rel_path,
-                storage_resolver,
-            ) {
-                Ok(o) => o,
-                Err(e) => {
-                    tracing::warn!(
+            let dst_out =
+                match crate::SinkOutput::new(sandbox_root, &texture_rel_path, storage_resolver) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        tracing::warn!(
                         "failed to acquire sandboxed SinkOutput for texture destination '{}': {}",
                         texture_rel_path,
                         e
                     );
-                    continue;
-                }
-            };
+                        continue;
+                    }
+                };
             if let Err(e) = dst_out.write(bytes) {
                 tracing::warn!("failed to write texture file '{}': {}", texture_rel_path, e);
                 continue;
