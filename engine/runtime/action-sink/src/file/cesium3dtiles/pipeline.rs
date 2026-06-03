@@ -373,11 +373,22 @@ pub(super) fn tile_writing_stage(
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
     let node_ctx = NodeContext::from(ctx.clone());
-    // `output_path` is already sandbox-resolved (produced by SinkOutput::from_path in
-    // process_default); use from_resolved_uri to skip the strict-relative check.
-    let sink_out = crate::SinkOutput::from_resolved_uri(&node_ctx, output_path)
-        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-
+    // output_path is the resolved absolute URI produced by SinkOutput::new in write().
+    // We use it as the base URI for sub-paths written by this pipeline. Since we cannot
+    // pass it back through SinkOutput::new (which expects relative paths), we derive
+    // the tile sub-paths by stripping the sandbox_root prefix and composing strings.
+    let sandbox_root_str = node_ctx.sandbox_root.as_str().trim_end_matches('/');
+    let output_rel = output_path
+        .as_str()
+        .strip_prefix(sandbox_root_str)
+        .map(|s| s.trim_start_matches('/').to_string())
+        .unwrap_or_else(|| {
+            output_path
+                .path()
+                .file_name()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        });
     // Pre-initialize property_stats from schema to preserve attribute order
     let property_stats: Arc<Mutex<IndexMap<String, PropertyMetadata>>> = {
         let mut stats = IndexMap::new();
@@ -469,10 +480,14 @@ pub(super) fn tile_writing_stage(
             )
             .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
-            sink_out
-                .join(&content_path)
-                .and_then(|tile_out| tile_out.write(bytes::Bytes::from(buffer)))
-                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+            let tile_rel = format!("{}/{}", output_rel, content_path);
+            crate::SinkOutput::new(
+                &node_ctx.sandbox_root,
+                &tile_rel,
+                &node_ctx.storage_resolver,
+            )
+            .and_then(|tile_out| tile_out.write(bytes::Bytes::from(buffer)))
+            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
             Ok::<(), crate::errors::SinkError>(())
         })?;
@@ -529,10 +544,14 @@ pub(super) fn tile_writing_stage(
 
     let tileset_json = serde_json::to_string_pretty(&tileset)
         .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-    sink_out
-        .join("tileset.json")
-        .and_then(|manifest_out| manifest_out.write(tileset_json.into()))
-        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+    let tileset_rel = format!("{}/tileset.json", output_rel);
+    crate::SinkOutput::new(
+        &node_ctx.sandbox_root,
+        &tileset_rel,
+        &node_ctx.storage_resolver,
+    )
+    .and_then(|manifest_out| manifest_out.write(tileset_json.into()))
+    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
     Ok(())
 }

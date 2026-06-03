@@ -5,7 +5,7 @@ mod json;
 use std::{collections::HashMap, sync::Arc};
 
 use indexmap::IndexMap;
-use reearth_flow_common::{csv::Delimiter, uri::Uri};
+use reearth_flow_common::csv::Delimiter;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -165,7 +165,7 @@ impl ProcessorFactory for FeatureWriterFactory {
 struct FeatureWriter {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureWriterParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
+    pub(super) buffer: HashMap<String, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -255,15 +255,11 @@ impl Processor for FeatureWriter {
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
-        // Use ensure_relative_path so the path is validated as strict-relative
-        // and joined against sandbox_root without acquiring a storage backend
-        // per feature — storage is acquired once at flush time via from_resolved_uri.
-        let output_uri = reearth_flow_action_sink::ensure_relative_path(
-            &NodeContext::from(ctx.clone()),
-            path.as_str(),
-        )
-        .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e}")))?;
-        let buffer = self.buffer.entry(output_uri).or_default();
+        // Validate eagerly so bad paths fail fast at process time. Storage is
+        // acquired once at flush time via SinkOutput::new.
+        reearth_flow_action_sink::sandbox::ensure_valid_relative_path(&path)
+            .map_err(FeatureProcessorError::FeatureWriterFactory)?;
+        let buffer = self.buffer.entry(path).or_default();
         buffer.push(ctx.feature);
         Ok(())
     }
@@ -273,7 +269,20 @@ impl Processor for FeatureWriter {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for (output, features) in &self.buffer {
+        for (rel_path, features) in &self.buffer {
+            // SinkOutput::new validates the path and acquires the storage backend,
+            // providing the sandbox gate at flush time.
+            let sink_output = reearth_flow_action_sink::SinkOutput::new(
+                &ctx.sandbox_root,
+                rel_path,
+                &ctx.storage_resolver,
+            )
+            .map_err(|e| {
+                FeatureProcessorError::FeatureWriter(format!(
+                    "sink output {rel_path:?} rejected by sandbox: {e}"
+                ))
+            })?;
+            let output = sink_output.uri();
             let feature: Feature = IndexMap::<Attribute, AttributeValue>::from([
                 (
                     Attribute::new("filePath".to_string()),
@@ -285,15 +294,6 @@ impl Processor for FeatureWriter {
                 ),
             ])
             .into();
-            // Defense-in-depth: ctx.sandbox_root was validated at buffer-insertion
-            // time in process() via SinkOutput::from_path, but ctx here may be a
-            // different NodeContext at flush time. Re-verify before each write to
-            // keep the sandbox gate co-located with put_sync.
-            reearth_flow_action_sink::ensure_under(&ctx.sandbox_root, output).map_err(|e| {
-                FeatureProcessorError::FeatureWriter(format!(
-                    "sink output {output} rejected by sandbox: {e}"
-                ))
-            })?;
             match self.params {
                 CompiledFeatureWriterParam::Csv { .. } => {
                     csv::write_csv(output, Delimiter::Comma, &ctx.storage_resolver, features)?;

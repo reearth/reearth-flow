@@ -8,7 +8,6 @@ use std::vec;
 
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::Event;
 use reearth_flow_runtime::event::EventHub;
@@ -123,8 +122,8 @@ type BufferValue = Vec<(Feature, String)>;
 pub struct MVTWriter {
     pub(super) params: MVTWriterCompiledParam,
     pub(super) schema: Schema,
-    /// (output, compress_output) -> Vec<(Feature, layer_name)>
-    pub(super) buffer: HashMap<(Uri, Option<Uri>), BufferValue>,
+    /// (output_rel_path, compress_output_rel_path) -> Vec<(Feature, layer_name)>
+    pub(super) buffer: HashMap<(String, Option<String>), BufferValue>,
     #[allow(clippy::type_complexity)]
     pub(super) join_handles: Vec<JoinHandle>,
 }
@@ -215,15 +214,15 @@ impl Sink for MVTWriter {
                     c.eval_string(feature, Arc::clone(&env_vars))
                         .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))
                 };
-                let node_ctx = NodeContext::from(ctx.as_context());
-                let output =
-                    crate::ensure_relative_path(&node_ctx, eval(&self.params.output)?.as_str())
-                        .map_err(|e| SinkError::MvtWriter(format!("{e}")))?;
+                let output = eval(&self.params.output)?;
+                // Validate eagerly so bad paths fail fast at process time.
+                crate::sandbox::ensure_valid_relative_path(&output)
+                    .map_err(SinkError::MvtWriter)?;
                 let compress_output = if let Some(c) = &self.params.compress_output {
-                    Some(
-                        crate::ensure_relative_path(&node_ctx, eval(c)?.as_str())
-                            .map_err(|e| SinkError::MvtWriter(format!("{e}")))?,
-                    )
+                    let compress_path = eval(c)?;
+                    crate::sandbox::ensure_valid_relative_path(&compress_path)
+                        .map_err(SinkError::MvtWriter)?;
+                    Some(compress_path)
                 } else {
                     None
                 };
@@ -285,7 +284,7 @@ impl MVTWriter {
     #[allow(clippy::type_complexity)]
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
         let mut result = Vec::new();
-        let mut features = HashMap::<(Uri, Option<Uri>), BufferValue>::new();
+        let mut features = HashMap::<(String, Option<String>), BufferValue>::new();
         for ((output, compress_output), buffer) in &self.buffer {
             features
                 .entry((output.clone(), compress_output.clone()))
@@ -326,9 +325,11 @@ impl MVTWriter {
         &self,
         ctx: Context,
         upstream: BufferValue,
-        output: &Uri,
-        compress_output: &Option<Uri>,
+        output: &str,
+        compress_output: &Option<String>,
     ) -> crate::errors::Result<Vec<JoinHandle>> {
+        let node_ctx = NodeContext::from(ctx.clone());
+
         let tile_id_conv = TileIdMethod::Hilbert;
         let name = self.name().to_string();
         let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
@@ -336,19 +337,27 @@ impl MVTWriter {
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
         let gctx = ctx.clone();
-        let out = output.clone();
 
         let mut result = Vec::new();
 
+        let sandbox_root = node_ctx.sandbox_root.clone();
+        let resolver = node_ctx.storage_resolver.clone();
+        let output_rel = output.to_string();
+
         let (tx, rx) = std::sync::mpsc::channel();
         result.push(Arc::new(parking_lot::Mutex::new(rx)));
+        let sandbox_root_clone = sandbox_root.clone();
+        let resolver_clone = resolver.clone();
+        let output_rel_clone = output_rel.clone();
         std::thread::spawn(move || {
             let result = super::pipeline::geometry_slicing_stage(
                 gctx.clone(),
                 &upstream,
                 tile_id_conv,
                 sender_sliced,
-                &out,
+                &sandbox_root_clone,
+                &output_rel_clone,
+                &resolver_clone,
                 min_zoom,
                 max_zoom,
             );
@@ -378,10 +387,10 @@ impl MVTWriter {
             }
             tx.send(result).unwrap();
         });
-        let out = output.clone();
         let gctx = gctx.clone();
         let name = self.name().to_string();
         let compress_output = compress_output.clone();
+        let node_ctx_for_compress = node_ctx.clone();
         let extent = self.params.extent;
         let (tx, rx) = std::sync::mpsc::channel();
         result.push(Arc::new(parking_lot::Mutex::new(rx)));
@@ -393,7 +402,9 @@ impl MVTWriter {
             pool.install(|| {
                 let result = super::pipeline::tile_writing_stage(
                     gctx.clone(),
-                    &out,
+                    &sandbox_root,
+                    &output_rel,
+                    &resolver,
                     receiver_sorted,
                     tile_id_conv,
                     extent,
@@ -407,22 +418,36 @@ impl MVTWriter {
                         .send(Event::SinkFinishFailed { name: name.clone() });
                 }
 
-                if let Some(compress_output) = compress_output {
-                    // `compress_output` is already sandbox-resolved (produced by
-                    // SinkOutput::from_path in process()); use from_resolved_uri
-                    // to skip the strict-relative check.
-                    let compress_node_ctx = NodeContext::from(gctx.clone());
-                    match crate::SinkOutput::from_resolved_uri(
-                        &compress_node_ctx,
-                        compress_output,
+                if let Some(ref compress_rel) = compress_output {
+                    // Resolve the output URI to get its path for zipping.
+                    let output_abs_path = crate::SinkOutput::new(
+                        &node_ctx_for_compress.sandbox_root,
+                        &output_rel,
+                        &node_ctx_for_compress.storage_resolver,
+                    )
+                    .map(|s| s.uri().clone());
+                    match crate::SinkOutput::new(
+                        &node_ctx_for_compress.sandbox_root,
+                        compress_rel,
+                        &node_ctx_for_compress.storage_resolver,
                     ) {
                         Ok(compress_sink_out) => {
+                            let abs_path = match output_abs_path {
+                                Ok(ref uri) => uri.path().as_path().to_path_buf(),
+                                Err(e) => {
+                                    gctx.event_hub.error_log(
+                                        None,
+                                        format!("Failed to resolve output path: {e}"),
+                                    );
+                                    return;
+                                }
+                            };
                             let buffer = Vec::new();
                             let mut cursor = Cursor::new(buffer);
                             let writer = BufWriter::new(&mut cursor);
                             let zip_result = reearth_flow_common::zip::write(
                                 writer,
-                                out.path().as_path(),
+                                abs_path.as_path(),
                             )
                             .map_err(|e| {
                                 crate::errors::SinkError::MvtWriter(e.to_string())
@@ -435,7 +460,7 @@ impl MVTWriter {
                                             crate::errors::SinkError::MvtWriter(e.to_string())
                                         }) {
                                         Ok(_) => {
-                                            match std::fs::remove_dir_all(out.path().as_path()) {
+                                            match std::fs::remove_dir_all(abs_path.as_path()) {
                                                 Ok(_) => {}
                                                 Err(e) => {
                                                     gctx.event_hub.error_log(

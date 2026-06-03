@@ -18,7 +18,6 @@ use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::executor_operation::Context;
-use reearth_flow_runtime::executor_operation::NodeContext;
 use reearth_flow_types::Feature;
 use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
@@ -43,21 +42,18 @@ pub(super) struct SortKey {
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn geometry_slicing_stage(
-    ctx: Context,
+    _ctx: Context,
     upstream: &[(Feature, String)],
     tile_id_conv: TileIdMethod,
     sender_sliced: std::sync::mpsc::SyncSender<(SortKey, Vec<u8>)>,
-    output_path: &Uri,
+    sandbox_root: &Uri,
+    output_rel: &str,
+    resolver: &Arc<reearth_flow_storage::resolve::StorageResolver>,
     min_zoom: u8,
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let layer_names = Arc::new(Mutex::new(std::collections::HashSet::new()));
-    let node_ctx = NodeContext::from(ctx.clone());
-    // `output_path` is already sandbox-resolved (produced by SinkOutput::from_path in
-    // process()); use from_resolved_uri to skip the strict-relative check.
-    let sink_out = crate::SinkOutput::from_resolved_uri(&node_ctx, output_path.clone())
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     // Convert CityObjects to sliced features
     upstream
@@ -170,14 +166,14 @@ pub(super) fn geometry_slicing_stage(
         tile_content.max_lat = tile_content.max_lat.max(content.max_lat);
     }
 
-    // Get tileset name from output path
-    let basename: Option<String> = output_path
+    // Get tileset name from output rel path
+    let basename: Option<String> = std::path::Path::new(output_rel)
         .file_name()
         .map(|s| s.to_string_lossy().to_string());
     if basename.is_none() {
         tracing::warn!(
             "Basename extraction failed from output path: {}",
-            output_path
+            output_rel
         );
     }
 
@@ -209,8 +205,8 @@ pub(super) fn geometry_slicing_stage(
     serde_json::to_string_pretty(&metadata)
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
         .and_then(|metadata| {
-            sink_out
-                .join("tilejson.json")
+            let tilejson_rel = format!("{}/tilejson.json", output_rel);
+            crate::SinkOutput::new(sandbox_root, &tilejson_rel, resolver)
                 .and_then(|out| out.write(bytes::Bytes::from(metadata)))
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
         })?;
@@ -267,19 +263,15 @@ pub(super) struct LayerData {
 }
 
 pub(super) fn tile_writing_stage(
-    ctx: Context,
-    output_path: &Uri,
+    _ctx: Context,
+    sandbox_root: &Uri,
+    output_rel: &str,
+    resolver: &Arc<reearth_flow_storage::resolve::StorageResolver>,
     receiver_sorted: std::sync::mpsc::Receiver<(u64, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
     default_extent: i32,
 ) -> crate::errors::Result<()> {
     let min_extent: i32 = 512;
-
-    let node_ctx = NodeContext::from(ctx);
-    // `output_path` is already sandbox-resolved (produced by SinkOutput::from_path in
-    // process()); use from_resolved_uri to skip the strict-relative check.
-    let sink_out = crate::SinkOutput::from_resolved_uri(&node_ctx, output_path.clone())
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     receiver_sorted
         .into_iter()
@@ -289,10 +281,7 @@ pub(super) fn tile_writing_stage(
 
             let mut extent = default_extent;
             while extent >= min_extent {
-                let bytes = make_tile(
-                    extent,
-                    &serialized_feats,
-                )?;
+                let bytes = make_tile(extent, &serialized_feats)?;
                 let compressed_size = {
                     let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
                     e.write_all(&bytes)
@@ -310,8 +299,8 @@ pub(super) fn tile_writing_stage(
                     extent /= 2;
                     continue;
                 }
-                sink_out
-                    .join(&format!("{zoom}/{x}/{y}.mvt"))
+                let tile_rel = format!("{output_rel}/{zoom}/{x}/{y}.mvt");
+                crate::SinkOutput::new(sandbox_root, &tile_rel, resolver)
                     .and_then(|tile_out| tile_out.write(bytes::Bytes::from(bytes)))
                     .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
                 break;

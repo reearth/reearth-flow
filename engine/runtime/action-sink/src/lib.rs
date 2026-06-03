@@ -8,7 +8,7 @@ mod output;
 pub mod schema;
 mod zip_eq_logged;
 
-pub use output::{ensure_relative_path, SinkOutput};
+pub use output::SinkOutput;
 
-mod sandbox;
+pub mod sandbox;
 pub use sandbox::{ensure_under, SandboxError};
