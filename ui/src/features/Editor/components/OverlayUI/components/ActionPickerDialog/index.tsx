@@ -54,12 +54,14 @@ const ActionPickerDialog: React.FC<Props> = ({
     actionCategories,
     currentActionByTypes,
     currentCategories,
+    currentTags,
+    actionTags,
     handleSearchTerm,
-    handleSingleClick,
-    handleDoubleClick,
+    handleSelectAction,
+    handleAddAction,
     handleActionTypeToggle,
     handleCategoryToggle,
-    handleClearFilters,
+    handleTagToggle,
   } = useHooks({
     openedActionType,
     isMainWorkflow,
@@ -80,53 +82,66 @@ const ActionPickerDialog: React.FC<Props> = ({
       <DialogContent
         size="3xl"
         position="top"
-        className="flex h-[60vh] flex-col gap-0 overflow-hidden p-0">
-        <DialogTitle>{t("Choose Action")}</DialogTitle>
+        className="flex max-h-[70vh] min-h-[60vh] flex-col gap-0 overflow-hidden p-0">
+        <div className="border-b">
+          <DialogTitle>{t("Choose Action")}</DialogTitle>
+        </div>
 
-        <div className="flex min-h-0 flex-1 overflow-hidden border-t">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Left panel — filters + list */}
-          <div className="flex w-2/5 min-w-0 flex-col border-r">
-            <div className="p-3">
+          <div className="flex w-1/4 min-w-0 flex-col overflow-y-auto border-r">
+            <div className="flex flex-col gap-2 p-3">
+              <Input
+                className="mx-auto focus-visible:ring-0"
+                placeholder={t("Search Actions")}
+                autoFocus
+                onChange={(e) => handleSearchTerm(e.target.value)}
+              />
               <ActionFilters
                 currentActionByTypes={currentActionByTypes}
                 currentCategories={currentCategories}
+                currentTags={currentTags}
                 actionTypes={actionTypes}
                 actionCategories={actionCategories}
+                actionTags={actionTags}
                 isMainWorkflow={isMainWorkflow}
                 onActionTypeToggle={handleActionTypeToggle}
                 onCategoryToggle={handleCategoryToggle}
-                onClearFilters={handleClearFilters}>
-                <Input
-                  className="mx-auto w-full focus-visible:ring-0"
-                  placeholder={t("Search")}
-                  autoFocus
-                  onChange={(e) => handleSearchTerm(e.target.value)}
+                onTagToggle={handleTagToggle}
+              />
+            </div>
+          </div>
+          {/* Centre panel — Action List */}
+          <div
+            ref={containerRef}
+            className="flex-1 overflow-y-auto border-r px-2 pt-1 pb-1">
+            {actionsList?.map((action, idx) => {
+              const isSelected = selected === action.name;
+              return (
+                <ActionItem
+                  key={action.name}
+                  itemRefs={itemRefs}
+                  idx={idx}
+                  action={action}
+                  isSelected={isSelected}
+                  actionsList={actionsList}
+                  onSingleClick={handleSelectAction}
+                  onDoubleClick={handleAddAction}
                 />
-              </ActionFilters>
-            </div>
-            <div
-              ref={containerRef}
-              className="flex-1 overflow-y-auto px-2 pb-1">
-              {actionsList?.map((action, idx) => {
-                const isSelected = selected === action.name;
-                return (
-                  <ActionItem
-                    key={action.name}
-                    itemRefs={itemRefs}
-                    idx={idx}
-                    action={action}
-                    isSelected={isSelected}
-                    actionsList={actionsList}
-                    onSingleClick={handleSingleClick}
-                    onDoubleClick={handleDoubleClick}
-                  />
-                );
-              })}
-            </div>
+              );
+            })}
+            {actionsList?.length === 0 && (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {t("No actions found")}
+              </div>
+            )}
           </div>
           {/* Right panel — detail */}
           <div className="min-w-0 flex-1 overflow-y-auto">
-            <ActionPickerDetail action={selectedAction} />
+            <ActionPickerDetail
+              action={selectedAction}
+              onAdd={handleAddAction}
+            />
           </div>
         </div>
       </DialogContent>
