@@ -108,6 +108,74 @@ pub fn infer_and_validate(dag: &DagSchemas) -> Result<InferResult, crate::errors
     Ok(result)
 }
 
+/// Like [`infer_and_validate`], but seeds source nodes by sampling their
+/// datasets (up to `sample_size` features; `0` = unbounded). Non-source nodes
+/// propagate exactly as in [`infer_and_validate`]. Per-source failures degrade
+/// to an `open` schema with a recorded note (in [`InferResult::notes`], keyed by
+/// node id).
+pub fn infer_with_sampling(
+    dag: &DagSchemas,
+    sample_size: usize,
+) -> Result<InferResult, crate::errors::ExecutionError> {
+    let graph = dag.graph();
+    let order = petgraph::algo::toposort(graph, None)
+        .map_err(|_| crate::errors::ExecutionError::SchemaInferenceCycle)?;
+
+    let mut outputs_by_index: HashMap<petgraph::graph::NodeIndex, HashMap<Port, AttrSchema>> =
+        HashMap::new();
+    let mut result = InferResult::default();
+
+    for idx in order {
+        let node = &graph[idx];
+        let inputs = gather_inputs(graph, idx, &outputs_by_index);
+
+        let outputs: HashMap<Port, AttrSchema> = match node.kind.as_ref() {
+            // Source node: sample its dataset; map the sampled schema onto every
+            // declared output port.
+            Some(kind @ NodeKind::Source(_)) => {
+                let factory = FactoryRef::of(kind);
+                let outcome = crate::schema_sample::sample_source(kind, &node.with, sample_size);
+                if let Some(note) = outcome.note {
+                    result.notes.insert(node.handle.id.to_string(), note);
+                }
+                factory
+                    .output_ports()
+                    .into_iter()
+                    .map(|p| (p, outcome.schema.clone()))
+                    .collect()
+            }
+            // Processor/Sink: existing inference + passthrough fallback.
+            Some(kind) => {
+                let factory = FactoryRef::of(kind);
+                match factory.infer_output_schema(&inputs, &node.with) {
+                    Some(map) => map,
+                    None => {
+                        let joined = join_all_inputs(&inputs);
+                        factory
+                            .output_ports()
+                            .into_iter()
+                            .map(|p| (p, joined.clone()))
+                            .collect()
+                    }
+                }
+            }
+            // No factory (e.g. unexpanded subgraph node): produce nothing.
+            None => HashMap::new(),
+        };
+
+        result.node_outputs.insert(
+            node.handle.id.to_string(),
+            outputs
+                .iter()
+                .map(|(p, s)| (p.to_string(), s.clone()))
+                .collect(),
+        );
+        outputs_by_index.insert(idx, outputs);
+    }
+
+    Ok(result)
+}
+
 /// Gather inputs per consumer input-port, joining when multiple producers feed
 /// the same port. Producers with no recorded output for the referenced port (or
 /// no recorded outputs at all) contribute an `open` schema.
@@ -179,9 +247,12 @@ mod tests {
             _with: Option<HashMap<String, serde_json::Value>>,
             _state: Option<Vec<u8>>,
         ) -> Result<Box<dyn Source>, crate::errors::BoxedError> {
-            unreachable!("not built in schema inference tests")
+            // Not a real reader: returning an error makes `sample_source`
+            // degrade to an open schema plus a note (instead of panicking),
+            // which is exactly the behaviour the sampling test exercises.
+            Err("StubSource is not built in schema inference tests".into())
         }
-        // Rely on the None -> open fallback for output.
+        // For static inference, rely on the None -> open fallback for output.
     }
 
     /// Produces a CLOSED schema with a single field "foo" (Number, Always).
@@ -295,6 +366,35 @@ mod tests {
         let result = infer_and_validate(&dag).expect("infer");
 
         // The Adder node's output schema must carry "foo" on the default port.
+        let adder_out = result
+            .node_outputs
+            .values()
+            .find(|m| {
+                m.get("default")
+                    .is_some_and(|s| s.fields.contains_key(&Attribute::new("foo".to_string())))
+            })
+            .expect("an output with field foo");
+        assert!(adder_out["default"]
+            .fields
+            .contains_key(&Attribute::new("foo".to_string())));
+    }
+
+    #[test]
+    fn infer_with_sampling_records_source_note_and_propagates() {
+        // Reuse the StubSource -> Adder dag from propagates_node_outputs.
+        let dag = build_dag("Adder");
+        let result = infer_with_sampling(&dag, 10).expect("inference ok");
+
+        // 1) The StubSource node gets a note: it is not a real reader, so
+        //    sampling falls back to open + note. This proves the sampling path
+        //    ran for the source node.
+        assert!(
+            !result.notes.is_empty(),
+            "source sampling should record a note for the stub source"
+        );
+
+        // 2) Downstream propagation still works: the Adder still produces "foo"
+        //    on its default port (mirrors propagates_node_outputs).
         let adder_out = result
             .node_outputs
             .values()
