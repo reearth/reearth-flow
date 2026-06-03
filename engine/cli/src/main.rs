@@ -7,6 +7,7 @@ mod incremental;
 mod logger;
 mod run;
 mod scaffold_i18n;
+mod schema;
 mod schema_action;
 mod schema_workflow;
 mod utils;
