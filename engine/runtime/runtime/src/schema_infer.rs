@@ -383,12 +383,7 @@ mod tests {
         }
     }
 
-    fn action_node_with(
-        id: Uuid,
-        name: &str,
-        action: &str,
-        with: serde_json::Value,
-    ) -> Node {
+    fn action_node_with(id: Uuid, name: &str, action: &str, with: serde_json::Value) -> Node {
         let with = match with {
             serde_json::Value::Object(map) => Some(map),
             _ => panic!("with must be a JSON object"),
