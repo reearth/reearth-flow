@@ -48,13 +48,15 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
             )}>
             <Icon size={12} weight="thin" className="text-white" />
           </div>
-          <span className="flex-1 truncate text-sm">{action.name}</span>
+          <span className="flex-1 truncate text-sm select-none">
+            {action.name}
+          </span>
           <div
             className={cn(
               "self-center rounded border p-1 align-middle",
               typeColorClass(action.type),
             )}>
-            <p className="self-center text-xs text-zinc-200 capitalize">
+            <p className="self-center text-xs text-zinc-200 capitalize select-none">
               {action.type}
             </p>
           </div>

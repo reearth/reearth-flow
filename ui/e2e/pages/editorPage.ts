@@ -20,6 +20,12 @@ export class EditorPage {
   readonly actionPicker: Locator;
   readonly paramsDialog: Locator;
   readonly confirmDialog: Locator;
+  readonly deployButton: Locator;
+  readonly deployPopover: Locator;
+  readonly deployDescriptionInput: Locator;
+  readonly deploySubmitButton: Locator;
+  readonly deploymentCreatedToast: Locator;
+  readonly deploymentUpdatedToast: Locator;
 
   constructor(private page: Page) {
     this.canvas = page.locator(".react-flow");
@@ -33,6 +39,26 @@ export class EditorPage {
       .getByRole("dialog")
       .filter({ hasText: "Action Editor" });
     this.confirmDialog = page.getByRole("alertdialog");
+    this.deployButton = page
+      .locator("#right-top > div > div")
+      .last()
+      .locator("button")
+      .first();
+    this.deployPopover = page
+      .getByRole("dialog")
+      .filter({ hasText: "Deploy Project" });
+    this.deployDescriptionInput = this.deployPopover.getByPlaceholder(
+      "Give your deployment a meaningful description...",
+    );
+    this.deploySubmitButton = this.deployPopover.getByRole("button", {
+      name: /^(Deploy|Update)$/,
+    });
+    this.deploymentCreatedToast = page.getByText("Deployment Created", {
+      exact: true,
+    });
+    this.deploymentUpdatedToast = page.getByText("Deployment Updated", {
+      exact: true,
+    });
   }
 
   toolButton(tool: ToolId): Locator {
@@ -232,5 +258,29 @@ export class EditorPage {
   async openSubworkflow(node: Locator) {
     await this.openNodeContextMenu(node);
     await this.contextMenuItem("Open Subworkflow").click();
+  }
+
+  async openDeployPopover() {
+    await this.deployButton.click();
+    await expect(this.deployDescriptionInput).toBeVisible();
+  }
+
+  async deploy(description: string) {
+    await this.openDeployPopover();
+    await this.deployDescriptionInput.fill(description);
+    await this.deploySubmitButton.click();
+    await expect(this.deploymentCreatedToast).toBeVisible({ timeout: 30_000 });
+    await expect(this.deployDescriptionInput).toBeHidden();
+  }
+
+  async updateDeployment(newDescription: string) {
+    await this.openDeployPopover();
+    await expect(this.deploySubmitButton).toHaveText("Update", {
+      timeout: 15_000,
+    });
+    await this.deployDescriptionInput.fill(newDescription);
+    await this.deploySubmitButton.click();
+    await expect(this.deploymentUpdatedToast).toBeVisible({ timeout: 30_000 });
+    await expect(this.deployDescriptionInput).toBeHidden();
   }
 }

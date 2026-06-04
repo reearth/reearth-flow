@@ -96,6 +96,7 @@ export default (
           inputPorts: ["input"],
           outputPorts: ["output"],
           categories: ["organization"],
+          tags: [],
           builtin: true,
         };
         break;
@@ -110,6 +111,7 @@ export default (
           inputPorts: ["input"],
           outputPorts: ["output"],
           categories: ["organization"],
+          tags: [],
           builtin: true,
         };
         break;
@@ -126,6 +128,7 @@ export default (
           inputPorts: ["input"],
           outputPorts: ["output"],
           categories: ["organization"],
+          tags: [],
           builtin: true,
         };
         break;
