@@ -1,10 +1,8 @@
-import { LockIcon } from "@phosphor-icons/react";
 import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback } from "react";
 import { Doc } from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
-import { useT } from "@flow/lib/i18n";
 import type {
   ActionNodeType,
   Algorithm,
@@ -27,6 +25,7 @@ import {
   Homebar,
   VersionDialog,
   SearchActionBar,
+  LockedBadge,
 } from "./components";
 import useHooks from "./hooks";
 
@@ -169,8 +168,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
     }
   }, [showDialog, handleDialogOpen, handleDialogClose]);
 
-  const t = useT();
-
   return (
     <>
       <div
@@ -205,14 +202,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             )}
             {isLocked && (
               <div className="pointer-events-auto z-10">
-                <div
-                  className="flex cursor-pointer items-center gap-2 rounded-xl bg-accent/50 px-6 py-4 text-xs"
-                  onDoubleClick={() => onProjectLockChange(false)}>
-                  <LockIcon weight="thin" size={18} />
-                  <p className="font-light text-accent-foreground select-none">
-                    {t("Locked")}
-                  </p>
-                </div>
+                <LockedBadge onUnlock={() => onProjectLockChange(false)} />
               </div>
             )}
           </div>
