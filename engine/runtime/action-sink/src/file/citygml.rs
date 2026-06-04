@@ -78,19 +78,20 @@ pub fn write_citygml_to_storage(
     // sandbox_root prefix. This is used to derive the texture dst relative path.
     let sandbox_root_str = sandbox_root.as_str().trim_end_matches('/');
     let output_str = output.as_str();
-    // Strip the sandbox root prefix to get the GML's relative path (e.g. "group/foo.gml")
-    // Strip sandbox_root prefix to get the GML's relative path (e.g. "group/foo.gml")
+    // `output` was produced by SinkOutput::new (sandbox_root.join(relative)),
+    // so it must always start with sandbox_root. If the prefix strip ever fails,
+    // something upstream is broken — fail loudly rather than silently writing
+    // textures to a flat appearance dir, which would collide across groups
+    // and corrupt data.
     let gml_rel_path: String = output_str
         .strip_prefix(sandbox_root_str)
         .map(|s| s.trim_start_matches('/').to_string())
-        .unwrap_or_else(|| {
-            // Fallback: use the file name only
-            output
-                .path()
-                .file_name()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_default()
-        });
+        .ok_or_else(|| {
+            SinkError::CityGmlWriter(format!(
+                "output URI {output} is not under sandbox_root {sandbox_root_str}; \
+                 refusing to fall back to a flat appearance directory"
+            ))
+        })?;
     // Parent directory of the GML's relative path (e.g. "group" or "" if at root)
     let gml_rel_parent = gml_rel_path
         .rsplit_once('/')
