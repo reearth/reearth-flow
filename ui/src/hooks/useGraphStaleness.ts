@@ -410,6 +410,16 @@ export default function useGraphStaleness({
                 yEdges?.get(edgeId)?.get("target") as Y.Text | undefined
               )?.toString();
               if (target) changedEdgeTargets.add(target);
+            } else if (change.action === "update") {
+              const oldEdge = change.oldValue as Y.Map<any> | undefined;
+              const oldTarget = (
+                oldEdge?.get("target") as Y.Text | undefined
+              )?.toString();
+              if (oldTarget) changedEdgeTargets.add(oldTarget);
+              const newTarget = (
+                yEdges?.get(edgeId)?.get("target") as Y.Text | undefined
+              )?.toString();
+              if (newTarget) changedEdgeTargets.add(newTarget);
             }
           });
         }
