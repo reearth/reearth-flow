@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Doc, Map as YMap } from "yjs";
 
@@ -54,6 +54,20 @@ const LayoutSubToolbar: React.FC<Props> = ({
     onLayoutChange("dagre", direction, applyToAll);
     onClose();
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   return (
     <div className="flex items-center gap-4 rounded-xl border border-primary bg-primary/50 p-1 text-popover-foreground shadow-md shadow-[black]/10 backdrop-blur dark:shadow-secondary">

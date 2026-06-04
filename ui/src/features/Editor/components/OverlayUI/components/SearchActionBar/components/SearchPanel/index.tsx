@@ -164,6 +164,24 @@ const SearchPanel = ({
     }
   }, [showSearchPanel, searchInputRef]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onShowSearchPanel(false);
+      }
+    };
+
+    if (showSearchPanel) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      if (showSearchPanel) {
+        document.removeEventListener("keydown", handleKeyDown);
+      }
+    };
+  }, [onShowSearchPanel, showSearchPanel]);
+
   return (
     <div
       className={`absolute z-50 flex h-[600px] w-[550px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
