@@ -2661,9 +2661,9 @@ graphs:
           type: flowExpr
           value: |
             vr = attributes.get("validationResult");
-            if vr != null && vr["details"] != null {
+            if vr != null and "details" in vr {
               vr["details"][0][0]
-            } else if attributes.get("issue") != null {
+            } else if "issue" in attributes {
               attributes["issue"]
             } else {
               "UnknownError"
