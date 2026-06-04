@@ -196,7 +196,7 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
                         key.type_name()
                     )));
                 };
-                Ok(ExprValue::Bool(self.get_value(name).is_some()))
+                Ok(ExprValue::Bool(self.0.contains_key(&Attribute::new(name))))
             }
             m => Err(InnerError::new(format!("Attributes has no method '{m}'"))),
         }
