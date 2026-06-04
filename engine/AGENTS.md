@@ -76,8 +76,20 @@ output:
 
 The engine joins this against whatever `sandbox_root` the worker/CLI was
 launched with — `file:///var/jobs/abc/`, `gs://bucket/jobs/abc/`,
-`ram:///jobs/abc/`, etc. The same workflow YAML is portable across storage
-backends.
+`ram:///jobs/abc/`, etc. The chokepoint itself (`SinkOutput::new` plus the
+storage-resolver layer) is scheme-agnostic.
+
+**Individual sink portability varies.** Sinks that write a single byte
+buffer through `SinkOutput::write` are backend-portable (e.g. CSV/JSON/
+GeoJSON/CityGML XML). Sinks that depend on filesystem-only third-party
+crates or staging directories — currently ShapefileWriter
+(`shapefile::Writer::from_path`), GltfWriter atlas dirs, Cesium3DTilesWriter
+atlas + post-zip cleanup, MvtWriter post-zip cleanup, and GeoPackageWriter
+temp-file staging — call `std::fs::*` directly and effectively require a
+`file://` `sandbox_root` to function. They will fail at write time against
+`gs://`/`s3://`/`ram://` roots even though the sandbox check itself
+accepts those schemes. Closing this gap is tracked as a future hardening
+(wrapping the remaining `std::fs` calls behind the storage backend).
 
 `SinkOutput::new(sandbox_root, relative_path, resolver)` rejects:
 - Empty strings, leading/trailing whitespace, literal `.` / `..`
