@@ -134,7 +134,9 @@ function VirtualizedTable<TData, TValue>({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 24,
+    // condensed: py-[2px] + text-xs (~16px) ≈ 20px, capped up to 24 by the forced row height
+    // non-condensed: p-2 (8px×2) + text-xs line-height (16px) = 32px — tr height is a minimum in HTML tables
+    estimateSize: () => (condensed ? 24 : 34),
   });
 
   const activeFilter = searchTerm ?? globalFilter;
