@@ -26,6 +26,7 @@ function captureSnapshot(yWorkflows: Y.Map<YWorkflow>): GraphSnapshot {
   const nodeHashes: GraphSnapshot["nodeHashes"] = {};
   const nodeIds: GraphSnapshot["nodeIds"] = {};
   const edgeSignatures: GraphSnapshot["edgeSignatures"] = {};
+  const subworkflowBridges: GraphSnapshot["subworkflowBridges"] = [];
 
   yWorkflows.forEach((yWorkflow, workflowId) => {
     const yNodes = yWorkflow.get("nodes") as YNodesMap | undefined;
@@ -43,6 +44,27 @@ function captureSnapshot(yWorkflows: Y.Map<YWorkflow>): GraphSnapshot {
         params,
         isDisabled,
       });
+
+      const isSubworkflow = !!(
+        yData?.get("subworkflowId") as Y.Text | undefined
+      )?.toString();
+      if (isSubworkflow) {
+        const pseudoOutputs = yData?.get("pseudoOutputs") as
+          | Y.Array<Y.Map<any>>
+          | undefined;
+        pseudoOutputs?.forEach((po) => {
+          const routerId = (po.get("nodeId") as Y.Text | undefined)?.toString();
+          if (routerId) subworkflowBridges.push([routerId, nodeId]);
+        });
+
+        const pseudoInputs = yData?.get("pseudoInputs") as
+          | Y.Array<Y.Map<any>>
+          | undefined;
+        pseudoInputs?.forEach((pi) => {
+          const routerId = (pi.get("nodeId") as Y.Text | undefined)?.toString();
+          if (routerId) subworkflowBridges.push([nodeId, routerId]);
+        });
+      }
     });
 
     nodeIds[workflowId] = wfNodeIds.sort();
@@ -58,7 +80,7 @@ function captureSnapshot(yWorkflows: Y.Map<YWorkflow>): GraphSnapshot {
     edgeSignatures[workflowId] = sigs.sort();
   });
 
-  return { nodeHashes, nodeIds, edgeSignatures };
+  return { nodeHashes, nodeIds, edgeSignatures, subworkflowBridges };
 }
 
 function isSnapshotDifferent(a: GraphSnapshot, b: GraphSnapshot): boolean {
@@ -87,6 +109,7 @@ function buildAdjacencyFromSnapshot(
   snapshot: GraphSnapshot,
 ): Map<string, Set<string>> {
   const adj = new Map<string, Set<string>>();
+
   for (const wfId of Object.keys(snapshot.edgeSignatures)) {
     for (const sig of snapshot.edgeSignatures[wfId]) {
       // Format: "edgeId:source→target"
@@ -102,6 +125,13 @@ function buildAdjacencyFromSnapshot(
       }
     }
   }
+
+  // Apply stored subworkflow bridge links.
+  for (const [from, to] of snapshot.subworkflowBridges ?? []) {
+    if (!adj.has(from)) adj.set(from, new Set());
+    adj.get(from)?.add(to);
+  }
+
   return adj;
 }
 
@@ -109,6 +139,7 @@ function buildAdjacency(
   yWorkflows: Y.Map<YWorkflow>,
 ): Map<string, Set<string>> {
   const adj = new Map<string, Set<string>>();
+
   yWorkflows.forEach((yWorkflow) => {
     const yEdges = yWorkflow.get("edges") as YEdgesMap | undefined;
     yEdges?.forEach((yEdge) => {
@@ -119,7 +150,38 @@ function buildAdjacency(
         adj.get(source)?.add(target);
       }
     });
+
+    const yNodes = yWorkflow.get("nodes") as YNodesMap | undefined;
+    yNodes?.forEach((yNode, nodeId) => {
+      const yData = yNode.get("data") as Y.Map<any> | undefined;
+      if (!(yData?.get("subworkflowId") as Y.Text | undefined)?.toString())
+        return;
+
+      // internalOutputRouter → subworkflowNode (propagate out)
+      const pseudoOutputs = yData?.get("pseudoOutputs") as
+        | Y.Array<Y.Map<any>>
+        | undefined;
+      pseudoOutputs?.forEach((po) => {
+        const routerId = (po.get("nodeId") as Y.Text | undefined)?.toString();
+        if (routerId) {
+          if (!adj.has(routerId)) adj.set(routerId, new Set());
+          adj.get(routerId)?.add(nodeId);
+        }
+      });
+
+      const pseudoInputs = yData?.get("pseudoInputs") as
+        | Y.Array<Y.Map<any>>
+        | undefined;
+      pseudoInputs?.forEach((pi) => {
+        const routerId = (pi.get("nodeId") as Y.Text | undefined)?.toString();
+        if (routerId) {
+          if (!adj.has(nodeId)) adj.set(nodeId, new Set());
+          adj.get(nodeId)?.add(routerId);
+        }
+      });
+    });
   });
+
   return adj;
 }
 

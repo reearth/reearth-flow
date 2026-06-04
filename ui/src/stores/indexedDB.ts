@@ -21,6 +21,7 @@ export type GraphSnapshot = {
   nodeHashes: Record<string, Record<string, string>>;
   nodeIds: Record<string, string[]>;
   edgeSignatures: Record<string, string[]>;
+  subworkflowBridges: [string, string][];
 };
 
 export type JobState = {
