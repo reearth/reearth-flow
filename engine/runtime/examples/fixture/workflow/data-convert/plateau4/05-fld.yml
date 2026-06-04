@@ -236,13 +236,13 @@ graphs:
         valueAttribute: uro:rank
       - attribute: uro:rank_code
         expr:
-          type: string
+          type: flowExpr
           value: '0'
       - attribute: uro:rankOrg
         valueAttribute: uro:rankOrg
       - attribute: uro:rankOrg_code
         expr:
-          type: string
+          type: flowExpr
           value: '0'
       - attribute: uro:adminType
         valueAttribute: uro:adminType
