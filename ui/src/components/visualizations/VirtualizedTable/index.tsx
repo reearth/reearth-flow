@@ -312,7 +312,7 @@ function VirtualizedTable<TData, TValue>({
       )}
       <div
         ref={parentRef}
-        className="min-h-0 flex-1 overflow-auto rounded-md bg-primary/40"
+        className="min-h-0 flex-1 overflow-auto rounded-md"
         style={{ contain: "paint", willChange: "transform" }}>
         <div
           className="relative w-full"

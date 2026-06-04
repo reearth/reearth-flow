@@ -275,7 +275,7 @@ const ParamEditor: React.FC<Props> = ({
               />
             )}
             {createdAction && (
-              <div className="p-4">
+              <div className="px-4">
                 <ActionDetails action={createdAction} />
               </div>
             )}

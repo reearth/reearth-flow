@@ -80,7 +80,7 @@ const SearchPanel = ({
               <div className="flex w-[300px] items-center gap-2">
                 <div
                   className={`flex w-[24px] justify-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/60" : row.original?.nodeType === "reader" ? "bg-node-reader/60" : row.original?.nodeType === "writer" ? "bg-node-writer/60" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/60" : "bg-popover"} p-1 align-middle`}>
-                  <p className="self-center text-xs text-zinc-200 capitalize">
+                  <p className="self-center text-xs text-zinc-200">
                     {row.original?.nodeType === "reader" ? (
                       <DatabaseIcon className="self-center" />
                     ) : row.original?.nodeType === "writer" ? (
@@ -184,7 +184,7 @@ const SearchPanel = ({
 
   return (
     <div
-      className={`absolute z-50 flex h-[600px] w-[550px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
+      className={`absolute z-50 flex h-[600px] w-[550px] flex-col rounded-xl border border-primary bg-secondary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
       ${showSearchPanel ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}
       `}>
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">

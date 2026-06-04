@@ -7,7 +7,6 @@ import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
 type Props = {
   itemRefs: React.RefObject<(HTMLDivElement | null)[]>;
-  actionsList: Action[];
   idx: number;
   action: Action;
   isSelected?: boolean;
@@ -16,15 +15,7 @@ type Props = {
 };
 
 const ActionItem = forwardRef<HTMLDivElement, Props>(
-  ({
-    itemRefs,
-    idx,
-    action,
-    isSelected,
-    actionsList,
-    onSingleClick,
-    onDoubleClick,
-  }) => {
+  ({ itemRefs, idx, action, isSelected, onSingleClick, onDoubleClick }) => {
     const Icon = getNodeIcon(action.type);
 
     return (

@@ -126,7 +126,6 @@ const ActionPickerDialog: React.FC<Props> = ({
                   idx={idx}
                   action={action}
                   isSelected={isSelected}
-                  actionsList={actionsList}
                   onSingleClick={handleSelectAction}
                   onDoubleClick={handleAddAction}
                 />
