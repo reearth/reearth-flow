@@ -846,7 +846,7 @@ nodes:
             type: flowExpr
             value: |
               item = attributes["attrList"][0];
-              "lod" + item["lod"] + "_" + item["pair_id"]
+              "lod" + str(item["lod"]) + "_" + str(item["pair_id"])
         - attribute: gmlFilenameA
           expr:
             type: flowExpr
