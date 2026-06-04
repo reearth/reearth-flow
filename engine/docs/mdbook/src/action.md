@@ -8825,7 +8825,7 @@ Extracts UDX folders from cityGML path
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "UDXFolderExtractor Parameters",
-  "description": "Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.",
+  "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
   "type": "object",
   "required": [
     "cityGmlPath"
@@ -8931,6 +8931,105 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 * default
 ### Output Ports
 * unshared
+### Category
+* PLATEAU
+
+## PLATEAU6.DomainOfDefinitionValidator
+### Type
+* processor
+### Description
+Validates domain of definition of CityGML features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomainOfDefinitionValidator Parameters",
+  "description": "Configuration for validating domain of definition of CityGML features.",
+  "type": "object",
+  "properties": {
+    "codelistsPath": {
+      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+* duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU6.UDXFolderExtractor
+### Type
+* processor
+### Description
+Extracts UDX folders from cityGML path
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UDXFolderExtractor Parameters",
+  "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
+  "type": "object",
+  "required": [
+    "cityGmlPath"
+  ],
+  "properties": {
+    "cityGmlPath": {
+      "$ref": "#/definitions/Expr"
+    },
+    "codelistsPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schemasPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * PLATEAU
 
