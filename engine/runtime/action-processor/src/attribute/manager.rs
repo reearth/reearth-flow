@@ -78,7 +78,7 @@ impl ProcessorFactory for AttributeManagerFactory {
         inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
         with: &Option<HashMap<String, Value>>,
     ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
-        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
         use reearth_flow_types::Attribute;
 
         let params = parse_params(with)?;
@@ -88,20 +88,40 @@ impl ProcessorFactory for AttributeManagerFactory {
             .cloned()
             .unwrap_or_else(AttrSchema::open);
 
+        // Inference must NOT over-claim presence relative to the conditional
+        // runtime in `process_feature`: Create/Convert/Rename are all applied
+        // conditionally (eval failure, missing source, destination collision),
+        // so we stay conservative about whether a key is present.
         for op in &params.operations {
             let attr = Attribute::new(op.attribute.clone());
             match op.method {
-                // Create/Convert both set the attribute to an expression-derived value,
-                // whose type we can't analyze statically -> Unknown, Always present.
+                // Create/Convert derive the value from an expression whose type
+                // we can't analyze statically -> Unknown.
+                // Runtime: Create overwrites on success (else warns + skips);
+                // Convert requires the source present and keeps the original on
+                // failure. So an already-present key stays present (downgrade is
+                // unwarranted), but a key that wasn't there only appears when the
+                // expression succeeds -> Maybe.
                 Method::Create | Method::Convert => {
-                    out.insert(attr, AttrField::always(AttrType::Unknown));
+                    if let Some(existing) = out.fields.get_mut(&attr) {
+                        existing.ty = AttrType::Unknown;
+                    } else {
+                        out.insert(attr, AttrField::maybe(AttrType::Unknown));
+                    }
                 }
-                // Rename's destination name is an expression -> not statically knowable.
-                // Drop the source key and mark the schema open (an unknown-named attr appears).
+                // Rename's destination name is an expression -> not statically
+                // knowable, and the runtime keeps the source when eval fails or
+                // the destination already exists. So downgrade the source to
+                // Maybe (it might be removed, might not) rather than dropping it,
+                // and mark the schema open (an unknown-named attr may appear).
                 Method::Rename => {
-                    out.fields.shift_remove(&attr);
+                    if let Some(existing) = out.fields.get_mut(&attr) {
+                        existing.presence = Presence::Maybe;
+                    }
                     out.open = true;
                 }
+                // Remove deletes the key when present (and is a no-op when absent),
+                // so dropping it from the schema is correct.
                 Method::Remove => {
                     out.fields.shift_remove(&attr);
                 }
@@ -357,9 +377,11 @@ mod tests {
             schema.fields.get(&Attribute::new("bar".to_string())),
             Some(&AttrField::always(AttrType::String))
         );
+        // "foo" was not present on input, so Create only produces it when the
+        // expression succeeds -> Maybe, not Always.
         assert_eq!(
             schema.fields.get(&Attribute::new("foo".to_string())),
-            Some(&AttrField::always(AttrType::Unknown))
+            Some(&AttrField::maybe(AttrType::Unknown))
         );
     }
 
@@ -398,7 +420,7 @@ mod tests {
     }
 
     #[test]
-    fn infer_rename_sets_open_and_drops_source() {
+    fn infer_rename_downgrades_source_and_sets_open() {
         let with = with_from(json!({
             "operations": [
                 { "attribute": "a", "method": "rename", "value": { "type": "string", "value": "new_name" } }
@@ -420,7 +442,14 @@ mod tests {
             .get(&DEFAULT_PORT.clone())
             .expect("default port present");
 
-        assert!(!schema.fields.contains_key(&Attribute::new("a".to_string())));
+        // The runtime keeps the source key when eval fails or the destination
+        // already exists, so the source is downgraded to Maybe rather than
+        // dropped. Its type is unchanged.
+        assert_eq!(
+            schema.fields.get(&Attribute::new("a".to_string())),
+            Some(&AttrField::maybe(AttrType::String))
+        );
+        // The destination name is an expression, so the schema is open.
         assert!(schema.open);
     }
 }
