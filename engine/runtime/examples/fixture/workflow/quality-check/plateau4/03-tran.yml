@@ -2717,7 +2717,7 @@ graphs:
       - attribute: エラー数
         expr:
           type: flowExpr
-          value: 1
+          value: '1'
       - attribute: エラー内容
         expr:
           type: string

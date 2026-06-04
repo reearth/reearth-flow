@@ -304,7 +304,7 @@ graphs:
             - attribute: "エラー数"
               expr:
                 type: flowExpr
-                value: 1
+                value: "1"
 
             # We hardcode the following two attributes since coming here means the orientation is incorrect
             - attribute: "エラー内容"
