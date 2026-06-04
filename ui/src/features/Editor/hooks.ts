@@ -242,7 +242,7 @@ export default ({
     yAwareness,
   });
 
-  useGraphStaleness({ yWorkflows, undoManager });
+  const { staleNodeIds } = useGraphStaleness({ yWorkflows, undoManager });
 
   const handleBeforeDeleteNodes = useCallback(
     ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
@@ -504,6 +504,7 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    staleNodeIds,
     handleProjectLockChange,
     isLocked,
     handleSpotlightUserSelect,

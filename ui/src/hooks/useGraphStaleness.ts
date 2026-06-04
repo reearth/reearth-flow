@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as Y from "yjs";
 
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -112,7 +112,6 @@ function buildAdjacencyFromSnapshot(
 
   for (const wfId of Object.keys(snapshot.edgeSignatures)) {
     for (const sig of snapshot.edgeSignatures[wfId]) {
-      // Format: "edgeId:source→target"
       const colonIdx = sig.indexOf(":");
       const rest = sig.slice(colonIdx + 1);
       const arrowIdx = rest.indexOf("→");
@@ -126,7 +125,6 @@ function buildAdjacencyFromSnapshot(
     }
   }
 
-  // Apply stored subworkflow bridge links.
   for (const [from, to] of snapshot.subworkflowBridges ?? []) {
     if (!adj.has(from)) adj.set(from, new Set());
     adj.get(from)?.add(to);
@@ -157,7 +155,6 @@ function buildAdjacency(
       if (!(yData?.get("subworkflowId") as Y.Text | undefined)?.toString())
         return;
 
-      // internalOutputRouter → subworkflowNode (propagate out)
       const pseudoOutputs = yData?.get("pseudoOutputs") as
         | Y.Array<Y.Map<any>>
         | undefined;
@@ -191,9 +188,10 @@ function bfsDownstream(
 ): Set<string> {
   const visited = new Set<string>();
   const queue = [startId];
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current || visited.has(current)) continue;
+  let i = 0;
+  while (i < queue.length) {
+    const current = queue[i++];
+    if (visited.has(current)) continue;
     visited.add(current);
     adj.get(current)?.forEach((next) => queue.push(next));
   }
@@ -206,9 +204,15 @@ function computeStaleNodesFromDiff(
   yWorkflows: Y.Map<YWorkflow>,
 ): string[] {
   const changedNodeIds = new Set<string>();
-  const removedEdgeTargets = new Set<string>();
+  const changedEdgeTargets = new Set<string>();
 
   const deletedNodeIds = new Set<string>();
+
+  const extractTarget = (sig: string): string | undefined => {
+    const rest = sig.slice(sig.indexOf(":") + 1);
+    const arrowIdx = rest.indexOf("→");
+    return arrowIdx !== -1 ? rest.slice(arrowIdx + 1) : undefined;
+  };
 
   for (const wfId of Object.keys(snapshot.nodeHashes)) {
     const snapHashes = snapshot.nodeHashes[wfId] ?? {};
@@ -217,23 +221,25 @@ function computeStaleNodesFromDiff(
 
     for (const nodeId of Object.keys(snapHashes)) {
       if (!currNodeIds.has(nodeId)) {
-        // Node was deleted since the snapshot.
         deletedNodeIds.add(nodeId);
       } else if (snapHashes[nodeId] !== currHashes[nodeId]) {
-        // Params or isDisabled changed.
         changedNodeIds.add(nodeId);
       }
     }
 
-    // Edges removed
     const snapSigs = new Set(snapshot.edgeSignatures[wfId] ?? []);
     const currSigs = new Set(current.edgeSignatures[wfId] ?? []);
+
     for (const sig of snapSigs) {
       if (!currSigs.has(sig)) {
-        const colonIdx = sig.indexOf(":");
-        const rest = sig.slice(colonIdx + 1);
-        const arrowIdx = rest.indexOf("→");
-        if (arrowIdx !== -1) removedEdgeTargets.add(rest.slice(arrowIdx + 1));
+        const target = extractTarget(sig);
+        if (target) changedEdgeTargets.add(target);
+      }
+    }
+    for (const sig of currSigs) {
+      if (!snapSigs.has(sig)) {
+        const target = extractTarget(sig);
+        if (target) changedEdgeTargets.add(target);
       }
     }
   }
@@ -241,7 +247,7 @@ function computeStaleNodesFromDiff(
   const adj = buildAdjacency(yWorkflows);
   const staleIds = new Set<string>();
 
-  for (const id of [...changedNodeIds, ...removedEdgeTargets]) {
+  for (const id of [...changedNodeIds, ...changedEdgeTargets]) {
     bfsDownstream(id, adj).forEach((n) => staleIds.add(n));
   }
 
@@ -257,6 +263,23 @@ function computeStaleNodesFromDiff(
   return Array.from(staleIds);
 }
 
+function isRelevantEvent(event: Y.YEvent<any>): boolean {
+  const path = event.path as string[];
+  if (path[1] === "edges") return true;
+  if (path[1] === "nodes") {
+    if (path.length === 2) return true;
+    if (path.length >= 4 && path[3] === "data") {
+      let relevant = false;
+      event.changes.keys.forEach((_, key) => {
+        if (key === "params" || key === "isDisabled") relevant = true;
+      });
+      return relevant;
+    }
+    return false;
+  }
+  return false;
+}
+
 export default function useGraphStaleness({
   yWorkflows,
   undoManager,
@@ -267,12 +290,11 @@ export default function useGraphStaleness({
   const [currentProject] = useCurrentProject();
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
-  // Refs so observeDeep / undo callbacks always see latest values without
-  // needing to re-subscribe whenever they change.
   const debugJobRef = useRef<JobState | undefined>(undefined);
   const updateValueRef = useRef(updateValue);
   const projectIdRef = useRef(currentProject?.id);
   const undoManagerRef = useRef(undoManager);
+  const adjacencyRef = useRef<Map<string, Set<string>> | null>(null);
 
   useEffect(() => {
     const job = debugRunState?.jobs?.find(
@@ -284,20 +306,24 @@ export default function useGraphStaleness({
     undoManagerRef.current = undoManager;
   });
 
-  // Track the previous job id to detect when a new run starts.
   const prevJobIdRef = useRef<string | undefined>(undefined);
   const debugJob = debugRunState?.jobs?.find(
     (j) => j.projectId === currentProject?.id,
-  );
+  ) as JobState | undefined;
 
-  // Capture a fresh snapshot whenever a new debug job begins.
   useEffect(() => {
     const jobId = debugJob?.jobId;
-    if (!jobId || jobId === prevJobIdRef.current) return;
+
+    if (!jobId) {
+      prevJobIdRef.current = undefined;
+      return;
+    }
+
+    if (jobId === prevJobIdRef.current) return;
     prevJobIdRef.current = jobId;
 
     const snapshot = captureSnapshot(yWorkflows);
-    updateValue((prev) => ({
+    updateValueRef.current((prev) => ({
       ...prev,
       jobs: (prev.jobs ?? []).map((j) => {
         if (j.projectId !== currentProject?.id) return j;
@@ -309,24 +335,23 @@ export default function useGraphStaleness({
         };
       }),
     }));
-  }, [debugJob?.jobId, yWorkflows, currentProject?.id, updateValue]);
+  }, [debugJob?.jobId, yWorkflows, currentProject?.id]);
 
-  // Deep-observe all workflow changes and update staleness accordingly.
   useEffect(() => {
+    adjacencyRef.current = null;
+
     const handleGraphChange = (events: Y.YEvent<any>[]) => {
       const job = debugJobRef.current;
       if (!job?.jobId || !job.graphSnapshot) return;
-      // Don't flag stale while a run is actively in progress.
       if (job.status === "running" || job.status === "queued") return;
 
-      // Skip events that originated from an undo/redo — handled separately.
       const um = undoManagerRef.current;
       if (um && events.some((e) => e.transaction.origin === um)) return;
 
+      if (!events.some(isRelevantEvent)) return;
+
       const currentSnapshot = captureSnapshot(yWorkflows);
       if (!isSnapshotDifferent(job.graphSnapshot, currentSnapshot)) {
-        // Graph matches the run-time snapshot — clear any stale flags that
-        // were set by a previous change that has since been manually reverted.
         if (job.isRunStale) {
           const projectId = projectIdRef.current;
           updateValueRef.current((prev) => ({
@@ -340,10 +365,9 @@ export default function useGraphStaleness({
         return;
       }
 
-      // Classify events to determine which nodes have stale downstream data.
       const changedParamNodeIds = new Set<string>();
       const deletedNodeIds = new Set<string>();
-      const removedEdgeTargets = new Set<string>();
+      const changedEdgeTargets = new Set<string>();
 
       for (const event of events) {
         const path = event.path as string[];
@@ -354,7 +378,6 @@ export default function useGraphStaleness({
               if (change.action === "delete") deletedNodeIds.add(nodeId);
             });
           } else if (path.length >= 4 && path[3] === "data") {
-            // Node data map changed — check if params or isDisabled was the key.
             const nodeId = path[2];
             event.changes.keys.forEach((change, key) => {
               if (
@@ -370,22 +393,42 @@ export default function useGraphStaleness({
           path[1] === "edges" &&
           path.length === 2
         ) {
-          event.changes.keys.forEach((change, _edgeId) => {
+          const workflowId = path[0];
+          const yEdges = yWorkflows.get(workflowId)?.get("edges") as
+            | YEdgesMap
+            | undefined;
+
+          event.changes.keys.forEach((change, edgeId) => {
             if (change.action === "delete") {
               const oldEdge = change.oldValue as Y.Map<any> | undefined;
               const target = (
                 oldEdge?.get("target") as Y.Text | undefined
               )?.toString();
-              if (target) removedEdgeTargets.add(target);
+              if (target) changedEdgeTargets.add(target);
+            } else if (change.action === "add") {
+              const target = (
+                yEdges?.get(edgeId)?.get("target") as Y.Text | undefined
+              )?.toString();
+              if (target) changedEdgeTargets.add(target);
             }
           });
         }
       }
 
-      const adj = buildAdjacency(yWorkflows);
+      const affectsTopology = events.some((e) => {
+        const p = e.path as string[];
+        return (
+          (p[1] === "edges" && p.length === 2) ||
+          (p[1] === "nodes" && p.length === 2)
+        );
+      });
+      if (affectsTopology || !adjacencyRef.current) {
+        adjacencyRef.current = buildAdjacency(yWorkflows);
+      }
+      const adj = adjacencyRef.current;
       const staleIds = new Set<string>();
 
-      for (const id of [...changedParamNodeIds, ...removedEdgeTargets]) {
+      for (const id of [...changedParamNodeIds, ...changedEdgeTargets]) {
         bfsDownstream(id, adj).forEach((n) => staleIds.add(n));
       }
 
@@ -412,16 +455,20 @@ export default function useGraphStaleness({
     };
 
     yWorkflows.observeDeep(handleGraphChange);
-    return () => yWorkflows.unobserveDeep(handleGraphChange);
+    return () => {
+      yWorkflows.unobserveDeep(handleGraphChange);
+      adjacencyRef.current = null;
+    };
   }, [yWorkflows]);
 
-  // After undo/redo, re-diff against the snapshot to potentially clear staleness.
   useEffect(() => {
     if (!undoManager) return;
 
     const handleUndoRedo = () => {
       const job = debugJobRef.current;
       if (!job?.jobId || !job.graphSnapshot) return;
+
+      adjacencyRef.current = null;
 
       const currentSnapshot = captureSnapshot(yWorkflows);
       const projectId = projectIdRef.current;
@@ -457,4 +504,18 @@ export default function useGraphStaleness({
     undoManager.on("stack-item-popped", handleUndoRedo);
     return () => undoManager.off("stack-item-popped", handleUndoRedo);
   }, [undoManager, yWorkflows]);
+
+  const staleIdsKey = debugJob?.isRunStale
+    ? (debugJob.staleNodeIds ?? []).slice().sort().join("\0")
+    : "";
+
+  const staleNodeIds = useMemo(
+    () =>
+      staleIdsKey
+        ? new Set<string>(staleIdsKey.split("\0"))
+        : new Set<string>(),
+    [staleIdsKey],
+  );
+
+  return { staleNodeIds };
 }
