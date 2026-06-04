@@ -207,28 +207,14 @@ impl Processor for AttributeMapper {
                 }
                 None => {
                     if let Some(multiple_expr) = &mapper.multiple_expr {
-                        match scope.eval_ast::<Dynamic>(multiple_expr) {
-                            Err(e) => {
-                                tracing::error!("Failed to evaluate multiple_expr: {e:?}");
-                            }
-                            Ok(new_value) => {
-                                if new_value.is::<rhai::Map>() {
-                                    match new_value.try_into() {
-                                        Ok(AttributeValue::Map(new_value)) => {
-                                            attributes.extend(new_value.iter().map(|(k, v)| {
-                                                (Attribute::new(k.clone()), v.clone())
-                                            }));
-                                        }
-                                        Ok(other) => {
-                                            tracing::error!("multiple_expr did not produce a Map, got: {other:?}");
-                                        }
-                                        Err(e) => {
-                                            tracing::error!("Failed to convert multiple_expr result to AttributeValue::Map: {e:?}");
-                                        }
-                                    }
-                                } else {
-                                    tracing::error!(
-                                        "multiple_expr result is not a rhai::Map: {new_value:?}"
+                        let new_value = scope.eval_ast::<Dynamic>(multiple_expr);
+                        if let Ok(new_value) = new_value {
+                            if new_value.is::<rhai::Map>() {
+                                if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
+                                    attributes.extend(
+                                        new_value
+                                            .iter()
+                                            .map(|(k, v)| (Attribute::new(k.clone()), v.clone())),
                                     );
                                 }
                             }
