@@ -904,7 +904,7 @@ graphs:
       - attribute: FeatureType
         expr:
           type: flowExpr
-          value: attributes.get("parentTag", attributes["featureType"])
+          value: attributes.get("parentTag") or attributes.get("featureType")
       - attribute: gml:id
         valueAttribute: gmlId
       - attribute: InvalidGeometry
