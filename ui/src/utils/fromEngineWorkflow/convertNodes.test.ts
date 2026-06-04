@@ -27,6 +27,7 @@ describe("convertNodes", () => {
     builtin: true,
     parameter: {},
     type: "testAction",
+    tags: ["test"],
     inputPorts: ["input1"],
     outputPorts: ["output1"],
   };

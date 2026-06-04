@@ -6,22 +6,6 @@ export enum JobOrderBy {
   Status = "status",
 }
 
-export type NodeStatus =
-  | "pending"
-  | "starting"
-  | "processing"
-  | "completed"
-  | "failed";
-
-export type NodeExecution = {
-  id: string;
-  nodeId: string;
-  jobId: string;
-  status?: NodeStatus;
-  startedAt?: string;
-  completedAt?: string;
-};
-
 export type JobStatus =
   | "queued"
   | "running"

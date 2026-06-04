@@ -1,3 +1,4 @@
+import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 import type { Action } from "@flow/types";
@@ -7,9 +8,10 @@ import { typeColorClass } from "../utils";
 
 type Props = {
   action?: Action;
+  onAdd?: (name: string) => void;
 };
 
-const ActionPickerDetail = ({ action }: Props) => {
+const ActionPickerDetail = ({ action, onAdd }: Props) => {
   const t = useT();
 
   if (!action) {
@@ -55,6 +57,22 @@ const ActionPickerDetail = ({ action }: Props) => {
           ))}
         </div>
       </div>
+      {action.tags && action.tags.length > 0 && (
+        <div className="flex flex-col flex-wrap  gap-1.5">
+          <p className="items-center text-xs font-semibold tracking-wide text-muted-foreground">
+            {t("Tags")}
+          </p>
+          <div className="flex gap-1">
+            {action.tags.map((tag) => (
+              <div
+                key={tag}
+                className="w-fit rounded border bg-secondary/80 p-0.5">
+                <p className="self-center text-xs ">{tag}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {action.description && (
         <div>
@@ -64,6 +82,10 @@ const ActionPickerDetail = ({ action }: Props) => {
           <p className="text-sm leading-relaxed">{action.description}</p>
         </div>
       )}
+
+      <Button className="mt-auto w-full" onClick={() => onAdd?.(action.name)}>
+        {t("Add to canvas")}
+      </Button>
     </div>
   );
 };
