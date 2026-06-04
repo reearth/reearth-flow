@@ -15,7 +15,15 @@ import { createRoot } from "react-dom/client";
 import { IconButton } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import type { NodeType } from "@flow/types";
+import { buildNewCanvasNode } from "@flow/lib/reactFlow/buildNewCanvasNode";
+import {
+  actionNodeTypes,
+  Node,
+  type NodeType,
+  type ActionNodeType,
+} from "@flow/types";
+
+import { XYPosition } from "../ActionPickerDialog";
 
 type BreakItem = { id: "break" };
 
@@ -40,6 +48,12 @@ type Props = {
   onRedo: () => void;
   onUndo: () => void;
   onLayoutChange: () => void;
+  onNodesAdd?: (nodes: Node[]) => void;
+  onNodePickerOpen?: (
+    position: XYPosition,
+    nodeType?: ActionNodeType,
+    isMainWorkflow?: boolean,
+  ) => void;
 };
 
 const Toolbox: React.FC<Props> = ({
@@ -50,6 +64,8 @@ const Toolbox: React.FC<Props> = ({
   onRedo,
   onUndo,
   onLayoutChange,
+  onNodesAdd,
+  onNodePickerOpen,
 }) => {
   const t = useT();
   const { isLocked } = useEditorContext();
@@ -122,6 +138,37 @@ const Toolbox: React.FC<Props> = ({
       onClick: onRedo,
     },
   ];
+
+  const handleSingleClick = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    nodeType: NodeType,
+  ) => {
+    event.preventDefault();
+    if (actionNodeTypes.includes(nodeType as ActionNodeType)) {
+      onNodePickerOpen?.(
+        { x: 0, y: 0 },
+        nodeType as ActionNodeType,
+        isMainWorkflow,
+      );
+    } else {
+      const officialName =
+        nodeType === "batch"
+          ? t("Batch")
+          : nodeType === "note"
+            ? t("Note")
+            : nodeType;
+
+      const newNode = await buildNewCanvasNode({
+        position: { x: 0, y: 0 },
+        type: nodeType,
+        officialName,
+      });
+
+      if (!newNode) return;
+
+      onNodesAdd?.([newNode]);
+    }
+  };
 
   const onDragStart = (
     event: DragEvent<HTMLButtonElement>,
@@ -203,6 +250,7 @@ const Toolbox: React.FC<Props> = ({
                 showArrow
                 tooltipText={tool.name}
                 icon={tool.icon}
+                onDoubleClick={(e) => handleSingleClick?.(e, tool.id)}
                 onDragStart={(event) => onDragStart(event, tool.id)}
                 draggable
                 disabled={tool.disabled}
