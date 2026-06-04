@@ -130,7 +130,9 @@ graphs:
             - attribute: schemas
               valueAttribute: schemas
             - attribute: udxDirs
-              valueAttribute: path.split("/")[-2]
+              expr:
+                type: flowExpr
+                value: attributes["path"].split("/")[-2]
 
       - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
         name: FeatureCityGmlReader
