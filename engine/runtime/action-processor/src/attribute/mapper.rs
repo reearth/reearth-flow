@@ -172,35 +172,25 @@ impl Processor for AttributeMapper {
             match &mapper.attribute {
                 Some(attribute) => {
                     if let Some(expr) = &mapper.expr {
-                        match scope.eval_ast::<Dynamic>(expr) {
-                            Err(e) => {
-                                tracing::error!(
-                                    "Failed to evaluate expr for attribute `{attribute}`: {e:?}"
-                                );
+                        let new_value = scope.eval_ast::<Dynamic>(expr);
+                        if let Ok(new_value) = new_value {
+                            if let Ok(new_value) = new_value.try_into() {
+                                attributes.insert(Attribute::new(attribute.clone()), new_value);
+                            } else {
                                 attributes.insert(
                                     Attribute::new(attribute.clone()),
                                     AttributeValue::Null,
                                 );
                             }
-                            Ok(new_value) => match new_value.try_into() {
-                                Ok(new_value) => {
-                                    attributes.insert(Attribute::new(attribute.clone()), new_value);
-                                }
-                                Err(e) => {
-                                    tracing::error!("Failed to convert expr result for attribute `{attribute}`: {e:?}");
-                                    attributes.insert(
-                                        Attribute::new(attribute.clone()),
-                                        AttributeValue::Null,
-                                    );
-                                }
-                            },
+                        } else {
+                            attributes
+                                .insert(Attribute::new(attribute.clone()), AttributeValue::Null);
                         }
                         continue;
                     } else if let Some(value_attribute) = &mapper.value_attribute {
                         if let Some(value) = feature.get(value_attribute) {
                             attributes.insert(Attribute::new(attribute.clone()), value.clone());
                         } else {
-                            tracing::error!("value_attribute `{value_attribute}` not found in feature for attribute `{attribute}`");
                             attributes
                                 .insert(Attribute::new(attribute.clone()), AttributeValue::Null);
                         }
