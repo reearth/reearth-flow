@@ -2,7 +2,9 @@ import { useCallback, useMemo } from "react";
 import * as Y from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useIndexedDB } from "@flow/lib/indexedDB";
 import type { YNodesMap, YNodeValue } from "@flow/lib/yjs/types";
+import { useCurrentProject } from "@flow/stores";
 import type { NodeData } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
@@ -19,6 +21,15 @@ export default ({
 }) => {
   const { officialName, inputs: defaultInputs, outputs: defaultOutputs } = data;
   const { currentYWorkflow, undoTrackerActionWrapper } = useEditorContext();
+
+  const [currentProject] = useCurrentProject();
+  const { value: debugRunState } = useIndexedDB("debugRun");
+  const isNodeStale = useMemo(() => {
+    const job = debugRunState?.jobs?.find(
+      (j) => j.projectId === currentProject?.id,
+    );
+    return !!job?.isRunStale && !!job.staleNodeIds?.includes(nodeId);
+  }, [debugRunState, currentProject?.id, nodeId]);
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -75,6 +86,7 @@ export default ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
+    isNodeStale,
     handleCollapsedToggle,
   };
 };

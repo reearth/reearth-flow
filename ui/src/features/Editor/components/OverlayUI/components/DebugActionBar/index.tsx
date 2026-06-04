@@ -5,6 +5,7 @@ import {
   CircleIcon,
   PlayIcon,
   StopIcon,
+  WarningCircleIcon,
 } from "@phosphor-icons/react";
 import { getConnectedEdges, useReactFlow } from "@xyflow/react";
 import { memo, useMemo, useState } from "react";
@@ -190,6 +191,9 @@ const StartButton: React.FC<{
     !debugJob,
   );
 
+  const isRunStale =
+    !!debugJob?.isRunStale && jobStatus !== "running" && jobStatus !== "queued";
+
   return (
     <div>
       <Popover
@@ -212,27 +216,37 @@ const StartButton: React.FC<{
                 jobStatus === "running" ||
                 jobStatus === "queued"
               }
-              tooltipText={jobStatus ?? t("Start debug run of workflow")}
+              tooltipText={
+                isRunStale
+                  ? t("Debug Cache is Stale")
+                  : (jobStatus ?? t("Start debug run of workflow"))
+              }
               tooltipOffset={tooltipOffset}
               delayDuration={200}
               icon={
                 debugRunStarted || jobStatus ? (
                   <div className="flex items-center gap-2">
-                    <div
-                      className={`${
-                        jobStatus === "completed"
-                          ? "bg-success"
-                          : jobStatus === "running"
-                            ? "active-node-status"
-                            : jobStatus === "cancelled"
-                              ? "bg-warning"
-                              : jobStatus === "failed"
-                                ? "bg-destructive"
-                                : jobStatus === "queued"
-                                  ? "queued-node-status"
-                                  : "bg-secondary"
-                      } size-3 rounded-full`}
-                    />
+                    <div className="relative">
+                      {isRunStale ? (
+                        <WarningCircleIcon className="size-4 text-warning" />
+                      ) : (
+                        <div
+                          className={`${
+                            jobStatus === "completed"
+                              ? "bg-success"
+                              : jobStatus === "running"
+                                ? "active-node-status"
+                                : jobStatus === "cancelled"
+                                  ? "bg-warning"
+                                  : jobStatus === "failed"
+                                    ? "bg-destructive"
+                                    : jobStatus === "queued"
+                                      ? "queued-node-status"
+                                      : "bg-secondary"
+                          } size-3 rounded-full`}
+                        />
+                      )}
+                    </div>
                     <PlayIcon weight="thin" size={18} />
                   </div>
                 ) : (

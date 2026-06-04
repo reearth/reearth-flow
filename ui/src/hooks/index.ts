@@ -16,3 +16,4 @@ export { default as useWorkflowVars } from "./useWorkflowVars";
 export { default as useAssets } from "./useAssets";
 export { default as useProjectLock } from "./useProjectLock";
 export { default as useProjectShare } from "./useProjectShare";
+export { default as useGraphStaleness } from "./useGraphStaleness";
