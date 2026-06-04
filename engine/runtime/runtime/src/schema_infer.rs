@@ -57,6 +57,40 @@ impl<'a> FactoryRef<'a> {
     }
 }
 
+/// Output ports for a node including dynamically-configured ones (OutputRouter
+/// `routingPort`, FeatureFilter `conditions[].outputPort`) that are derivable
+/// from `with` but not reported by the factory's static `get_output_ports()`.
+/// Mirrors the dynamic-port derivation in `builder_dag`.
+fn effective_output_ports(
+    factory: &FactoryRef<'_>,
+    action: &str,
+    with: &Option<HashMap<String, serde_json::Value>>,
+) -> Vec<Port> {
+    let mut ports = factory.output_ports();
+    if let Some(with) = with {
+        if action == crate::node::OUTPUT_ROUTING_ACTION {
+            if let Some(serde_json::Value::String(rp)) = with.get(crate::node::ROUTING_PARAM_KEY) {
+                let p = Port::new(rp.clone());
+                if !ports.contains(&p) {
+                    ports.push(p);
+                }
+            }
+        } else if action == crate::node::FEATURE_FILTER_ACTION {
+            if let Some(serde_json::Value::Array(conditions)) = with.get("conditions") {
+                for c in conditions {
+                    if let Some(serde_json::Value::String(port)) = c.get("outputPort") {
+                        let p = Port::new(port.clone());
+                        if !ports.contains(&p) {
+                            ports.push(p);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    ports
+}
+
 /// Statically propagate attribute schemas through the DAG.
 pub fn infer_and_validate(dag: &DagSchemas) -> Result<InferResult, crate::errors::ExecutionError> {
     let graph = dag.graph();
@@ -82,10 +116,10 @@ pub fn infer_and_validate(dag: &DagSchemas) -> Result<InferResult, crate::errors
                 Some(map) => map,
                 None => {
                     // Schema-transparent fallback: pass the join of all inputs
-                    // through to every declared output port.
+                    // through to every effective output port (including dynamic
+                    // router/filter ports derived from `with`).
                     let joined = join_all_inputs(&inputs);
-                    factory
-                        .output_ports()
+                    effective_output_ports(factory, node.node.action(), &node.with)
                         .into_iter()
                         .map(|p| (p, joined.clone()))
                         .collect()
@@ -150,9 +184,11 @@ pub fn infer_with_sampling(
                 match factory.infer_output_schema(&inputs, &node.with) {
                     Some(map) => map,
                     None => {
+                        // Schema-transparent fallback: pass the join of all inputs
+                        // through to every effective output port (including dynamic
+                        // router/filter ports derived from `with`).
                         let joined = join_all_inputs(&inputs);
-                        factory
-                            .output_ports()
+                        effective_output_ports(&factory, node.node.action(), &node.with)
                             .into_iter()
                             .map(|p| (p, joined.clone()))
                             .collect()
@@ -301,6 +337,39 @@ mod tests {
         }
     }
 
+    /// Mirrors OutputRouter: declares NO static output ports, has no
+    /// `infer_output_schema` (so it hits the passthrough fallback). Its routed
+    /// output port is carried only via `with["routingPort"]`.
+    #[derive(Debug, Clone)]
+    struct RouterStub;
+
+    impl ProcessorFactory for RouterStub {
+        fn name(&self) -> &str {
+            "OutputRouter"
+        }
+        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+            None
+        }
+        fn get_input_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn get_output_ports(&self) -> Vec<Port> {
+            // OutputRouter declares no static output ports.
+            vec![]
+        }
+        fn build(
+            &self,
+            _ctx: NodeContext,
+            _event_hub: EventHub,
+            _action: String,
+            _with: Option<HashMap<String, serde_json::Value>>,
+        ) -> Result<Box<dyn Processor>, crate::errors::BoxedError> {
+            unreachable!("not built in schema inference tests")
+        }
+        // No infer_output_schema: rely on the None -> passthrough fallback,
+        // which must surface the dynamic routingPort.
+    }
+
     // ---- Helpers --------------------------------------------------------
 
     fn action_node(id: Uuid, name: &str, action: &str) -> Node {
@@ -309,6 +378,26 @@ mod tests {
                 id,
                 name: name.to_string(),
                 with: None,
+            },
+            action: action.to_string(),
+        }
+    }
+
+    fn action_node_with(
+        id: Uuid,
+        name: &str,
+        action: &str,
+        with: serde_json::Value,
+    ) -> Node {
+        let with = match with {
+            serde_json::Value::Object(map) => Some(map),
+            _ => panic!("with must be a JSON object"),
+        };
+        Node::Action {
+            entity: NodeEntity {
+                id,
+                name: name.to_string(),
+                with,
             },
             action: action.to_string(),
         }
@@ -333,6 +422,10 @@ mod tests {
         m.insert(
             "Adder".to_string(),
             NodeKind::Processor(Box::new(AdderProc)),
+        );
+        m.insert(
+            "OutputRouter".to_string(),
+            NodeKind::Processor(Box::new(RouterStub)),
         );
         m
     }
@@ -406,6 +499,57 @@ mod tests {
         assert!(adder_out["default"]
             .fields
             .contains_key(&Attribute::new("foo".to_string())));
+    }
+
+    #[test]
+    fn infer_with_sampling_includes_output_router_dynamic_port() {
+        // StubSource -> OutputRouter. OutputRouter declares no static output
+        // ports; its routed port is configured via with["routingPort"]. The
+        // passthrough fallback must surface that dynamic port.
+        let src_id = Uuid::new_v4();
+        let router_id = Uuid::new_v4();
+        let graph_id = Uuid::new_v4();
+
+        let graph = Graph {
+            id: graph_id,
+            name: "g".to_string(),
+            nodes: vec![
+                action_node(src_id, "src", "StubSource"),
+                action_node_with(
+                    router_id,
+                    "router",
+                    "OutputRouter",
+                    serde_json::json!({ "routingPort": "myroute" }),
+                ),
+            ],
+            edges: vec![edge(src_id, router_id)],
+        };
+
+        let dag = DagSchemas::from_graphs(graph_id, vec![graph], factories(), None)
+            .expect("dag construction");
+
+        // Exercise both entrypoints: the router port must appear in each.
+        let sampled = infer_with_sampling(&dag, 10).expect("inference ok");
+        let router_out = sampled
+            .node_outputs
+            .get(&router_id.to_string())
+            .expect("router node outputs present");
+        assert!(
+            router_out.contains_key("myroute"),
+            "infer_with_sampling: routed port `myroute` should appear, got {:?}",
+            router_out.keys().collect::<Vec<_>>()
+        );
+
+        let validated = infer_and_validate(&dag).expect("inference ok");
+        let router_out = validated
+            .node_outputs
+            .get(&router_id.to_string())
+            .expect("router node outputs present");
+        assert!(
+            router_out.contains_key("myroute"),
+            "infer_and_validate: routed port `myroute` should appear, got {:?}",
+            router_out.keys().collect::<Vec<_>>()
+        );
     }
 
     #[test]
