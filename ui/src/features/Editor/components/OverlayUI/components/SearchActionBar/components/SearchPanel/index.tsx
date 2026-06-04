@@ -79,7 +79,7 @@ const SearchPanel = ({
             <TooltipTrigger asChild>
               <div className="flex w-[300px] items-center gap-2">
                 <div
-                  className={`flex w-[24px] justify-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/35" : row.original?.nodeType === "reader" ? "bg-node-reader/35" : row.original?.nodeType === "writer" ? "bg-node-writer/35" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/35" : "bg-popover"} p-1 align-middle`}>
+                  className={`flex w-[24px] justify-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/60" : row.original?.nodeType === "reader" ? "bg-node-reader/60" : row.original?.nodeType === "writer" ? "bg-node-writer/60" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/60" : "bg-popover"} p-1 align-middle`}>
                   <p className="self-center text-xs text-zinc-200 capitalize">
                     {row.original?.nodeType === "reader" ? (
                       <DatabaseIcon className="self-center" />

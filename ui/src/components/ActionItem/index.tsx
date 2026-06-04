@@ -51,13 +51,9 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
           <span className="flex-1 truncate text-sm select-none">
             {action.name}
           </span>
-          <div
-            className={cn(
-              "self-center rounded border p-1 align-middle",
-              typeColorClass(action.type),
-            )}>
-            <p className="self-center text-xs text-zinc-200 capitalize select-none">
-              {action.type}
+          <div className="self-center rounded border bg-secondary/80 p-0.5 align-middle">
+            <p className="text-xs capitalize select-none">
+              {action.categories[0] ?? action.type}
             </p>
           </div>
         </div>
