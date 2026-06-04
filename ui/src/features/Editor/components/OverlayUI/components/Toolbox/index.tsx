@@ -9,6 +9,7 @@ import {
   NoteIcon,
   RectangleDashedIcon,
 } from "@phosphor-icons/react";
+import { useReactFlow } from "@xyflow/react";
 import { memo, type DragEvent } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -68,6 +69,7 @@ const Toolbox: React.FC<Props> = ({
   onNodePickerOpen,
 }) => {
   const t = useT();
+  const { screenToFlowPosition } = useReactFlow();
   const { isLocked } = useEditorContext();
   const availableTools: Tool[] = [
     {
@@ -139,17 +141,17 @@ const Toolbox: React.FC<Props> = ({
     },
   ];
 
-  const handleSingleClick = async (
+  const handleDoubleClick = async (
     event: React.MouseEvent<HTMLButtonElement>,
     nodeType: NodeType,
   ) => {
     event.preventDefault();
+    const getCenter = screenToFlowPosition({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    });
     if (actionNodeTypes.includes(nodeType as ActionNodeType)) {
-      onNodePickerOpen?.(
-        { x: 0, y: 0 },
-        nodeType as ActionNodeType,
-        isMainWorkflow,
-      );
+      onNodePickerOpen?.(getCenter, nodeType as ActionNodeType, isMainWorkflow);
     } else {
       const officialName =
         nodeType === "batch"
@@ -159,7 +161,7 @@ const Toolbox: React.FC<Props> = ({
             : nodeType;
 
       const newNode = await buildNewCanvasNode({
-        position: { x: 0, y: 0 },
+        position: getCenter,
         type: nodeType,
         officialName,
       });
@@ -250,7 +252,7 @@ const Toolbox: React.FC<Props> = ({
                 showArrow
                 tooltipText={tool.name}
                 icon={tool.icon}
-                onDoubleClick={(e) => handleSingleClick?.(e, tool.id)}
+                onDoubleClick={(e) => handleDoubleClick?.(e, tool.id)}
                 onDragStart={(event) => onDragStart(event, tool.id)}
                 draggable
                 disabled={tool.disabled}
