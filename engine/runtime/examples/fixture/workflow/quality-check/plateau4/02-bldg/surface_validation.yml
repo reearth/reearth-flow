@@ -26,21 +26,13 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr:
-            type: flowExpr
-            value: attributes["featureType"]
+          valueAttribute: featureType
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: issue
           expr:
             type: flowExpr
@@ -121,21 +113,13 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr:
-            type: flowExpr
-            value: attributes["featureType"]
+          valueAttribute: featureType
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: issue
           expr:
             type: flowExpr
@@ -214,21 +198,13 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr:
-            type: flowExpr
-            value: attributes["featureType"]
+          valueAttribute: featureType
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: issue
           expr:
             type: flowExpr
@@ -332,37 +308,21 @@ nodes:
     with:
       mappers:
         - attribute: filename_a
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename_1"]
+          valueAttribute: gmlFilename_1
         - attribute: filename_b
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename_2"]
+          valueAttribute: gmlFilename_2
         - attribute: feature_type_a
-          expr:
-            type: flowExpr
-            value: attributes["featureType_1"]
+          valueAttribute: featureType_1
         - attribute: feature_type_b
-          expr:
-            type: flowExpr
-            value: attributes["featureType_2"]
+          valueAttribute: featureType_2
         - attribute: lod_a
-          expr:
-            type: flowExpr
-            value: attributes["lod_1"]
+          valueAttribute: lod_1
         - attribute: lod_b
-          expr:
-            type: flowExpr
-            value: attributes["lod_2"]
+          valueAttribute: lod_2
         - attribute: gml_id_a
-          expr:
-            type: flowExpr
-            value: attributes["gmlId_1"]
+          valueAttribute: gmlId_1
         - attribute: gml_id_b
-          expr:
-            type: flowExpr
-            value: attributes["gmlId_2"]
+          valueAttribute: gmlId_2
         - attribute: issue
           expr:
             type: string
@@ -425,37 +385,21 @@ nodes:
     with:
       mappers:
         - attribute: gmlFilename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr:
-            type: flowExpr
-            value: attributes["featureType"]
+          valueAttribute: featureType
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: meshcode
-          expr:
-            type: flowExpr
-            value: attributes["meshcode"]
+          valueAttribute: meshcode
         - attribute: meshcount
-          expr:
-            type: flowExpr
-            value: attributes["_mesh_count"]
+          valueAttribute: _mesh_count
         - attribute: mesh2area
-          expr:
-            type: flowExpr
-            value: attributes["_meshcode_to_area"]
+          valueAttribute: _meshcode_to_area
 
   - id: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeManagerIncorrectMeshCode
@@ -529,21 +473,13 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr:
-            type: flowExpr
-            value: attributes["featureType"]
+          valueAttribute: featureType
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: issue
           expr:
             type: string
@@ -593,21 +529,13 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr:
-            type: flowExpr
-            value: attributes["featureType"]
+          valueAttribute: featureType
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: issue
           expr:
             type: string

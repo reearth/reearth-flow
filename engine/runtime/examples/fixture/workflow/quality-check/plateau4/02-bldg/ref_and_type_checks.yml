@@ -71,9 +71,7 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr:
-            type: flowExpr
-            value: attributes["fileIndex"]
+          valueAttribute: fileIndex
         - attribute: Filename
           expr:
             type: flowExpr
@@ -83,18 +81,14 @@ nodes:
             type: flowExpr
             value: attributes["gmlPath"].split("/")[-1]
         - attribute: "Building gml:id"
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: "Unmatched Xlink Tag"
           expr:
             type: flowExpr
             value: |
               ",".join(attributes.get("unmatchedXlinkTag", []))
         - attribute: Attribute
-          expr:
-            type: flowExpr
-            value: attributes["Attribute"]
+          valueAttribute: Attribute
         - attribute: "Unmatched Xlink ID"
           expr:
             type: flowExpr
@@ -161,25 +155,17 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr:
-            type: flowExpr
-            value: attributes["fileIndex"]
+          valueAttribute: fileIndex
         - attribute: Filename
           expr:
             type: flowExpr
             value: attributes["gmlPath"].split("/")[-1]
         - attribute: "Building gml:id"
-          expr:
-            type: flowExpr
-            value: attributes["bldgGmlId"]
+          valueAttribute: bldgGmlId
         - attribute: "BuildingInstallation gml:id"
-          expr:
-            type: flowExpr
-            value: attributes["instGmlId"]
+          valueAttribute: instGmlId
         - attribute: "GeometryType"
-          expr:
-            type: flowExpr
-            value: attributes["geomTag"]
+          valueAttribute: geomTag
 
   - id: 2bae2659-e981-4eb1-8cbe-ce0352584a10
     name: FileWriterTsvT-bldg-02

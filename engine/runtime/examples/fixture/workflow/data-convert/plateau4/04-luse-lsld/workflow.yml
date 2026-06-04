@@ -231,7 +231,7 @@ graphs:
                 type: flowExpr
                 value: |
                   area_type = attributes.get("urf:areaType_code");
-                  if area_type == null { area_type = attributes.get("urf:areaType") };
+                  if area_type == null { area_type = attributes.get("urf:areaType") }
                   if area_type == "1" or area_type == 1 { 1 }
                   else if area_type == "2" or area_type == 2 { 2 }
                   else if area_type == "3" or area_type == 3 { 3 }

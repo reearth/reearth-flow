@@ -2466,7 +2466,7 @@ graphs:
         expr:
           type: flowExpr
           value: |
-            area = attributes["totalRoofArea"];
+            area = attributes.get("totalRoofArea", 0.0);
             if area > 0.0 { attributes["totalSolarRadiation"] / area } else { 0.0 }
       - attribute: 太陽発電量(kWh)
         valueAttribute: totalSolarPower
@@ -2474,7 +2474,7 @@ graphs:
         expr:
           type: flowExpr
           value: |
-            area = attributes["totalRoofArea"];
+            area = attributes.get("totalRoofArea", 0.0);
             if area > 0.0 { attributes["totalSolarPower"] / area } else { 0.0 }
       - attribute: 受光面積(m2)
         valueAttribute: totalRoofArea
@@ -2500,7 +2500,7 @@ graphs:
         expr:
           type: flowExpr
           value: |
-            area = attributes["totalSurfaceArea"];
+            area = attributes.get("totalSurfaceArea", 0.0);
             if area > 0.0 { attributes["totalSolarRadiation"] / area } else { 0.0 }
       - attribute: 対象面全体の日射量(kWh)
         valueAttribute: totalSolarRadiation
@@ -2575,7 +2575,7 @@ graphs:
         expr:
           type: flowExpr
           value: |
-            area = attributes["areaTotalRoofArea"];
+            area = attributes.get("areaTotalRoofArea", 0.0);
             if area > 0.0 { attributes["areaTotalSolarRadiation"] / area } else { 0.0 }
       - attribute: 太陽発電量推計(kWh)
         valueAttribute: areaTotalSolarPower

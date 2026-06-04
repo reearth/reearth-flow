@@ -414,17 +414,11 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: type
         expr:
           type: flowExpr
@@ -448,17 +442,11 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: line
         expr:
           type: flowExpr
@@ -508,13 +496,9 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
         expr:
           type: flowExpr
@@ -533,33 +517,29 @@ graphs:
               "Over"
             }
       - attribute: XML検証結果
-        expr:
-          type: flowExpr
-          value: attributes["status"]
+        valueAttribute: status
       - attribute: L01エラー
         expr:
           type: flowExpr
-          value: attributes["L01Errors"]
+          value: attributes.get("L01Errors", 0)
       - attribute: L02エラー
         expr:
           type: flowExpr
-          value: attributes["L02Errors"]
+          value: attributes.get("L02Errors", 0)
       - attribute: L03エラー
         expr:
           type: flowExpr
-          value: attributes["invalidFeatureTypesNum"]
+          value: attributes.get("invalidFeatureTypesNum", 0)
       - attribute: L03エラー詳細
-        expr:
-          type: flowExpr
-          value: attributes["invalidFeatureTypesDetail"]
+        valueAttribute: invalidFeatureTypesDetail
       - attribute: L04エラー
         expr:
           type: flowExpr
-          value: attributes["inCorrectCodeValue"]
+          value: attributes.get("inCorrectCodeValue", 0)
       - attribute: 不正なcodeSpace数
         expr:
           type: flowExpr
-          value: attributes["inCorrectCodeSpace"]
+          value: attributes.get("inCorrectCodeSpace", 0)
       - attribute: L05CRS識別子
         expr:
           type: flowExpr
@@ -581,27 +561,25 @@ graphs:
       - attribute: L06エラー
         expr:
           type: flowExpr
-          value: attributes["inCorrectExtents"]
+          value: attributes.get("inCorrectExtents", 0)
       - attribute: T03エラー
         expr:
           type: flowExpr
-          value: attributes["xlinkInvalidObjectType"]
+          value: attributes.get("xlinkInvalidObjectType", 0)
       - attribute: xlink参照先なし
         expr:
           type: flowExpr
-          value: attributes["xlinkHasNoReference"]
+          value: attributes.get("xlinkHasNoReference", 0)
       - attribute: gml:id重複
-        expr:
-          type: flowExpr
-          value: attributes["duplicateGmlIdCount"]
+        valueAttribute: duplicateGmlIdCount
       - attribute: gml:id書式不正
         expr:
           type: flowExpr
-          value: attributes["gmlIdNotWellformed"]
+          value: attributes.get("gmlIdNotWellformed", 0)
       - attribute: L-frn-01エラー
         expr:
           type: flowExpr
-          value: attributes["invalidLodXGeometry"]
+          value: attributes.get("invalidLodXGeometry", 0)
       - attribute: 補足
         expr:
           type: flowExpr
@@ -686,25 +664,15 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: XML Tag
-        expr:
-          type: flowExpr
-          value: attributes["tag"]
+        valueAttribute: tag
       - attribute: gml:id
-        expr:
-          type: flowExpr
-          value: attributes["gmlId"]
+        valueAttribute: gmlId
   - id: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
     name: FeatureWriterGmlIdNotWellFormed
     type: action
@@ -720,25 +688,15 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: XML Tag
-        expr:
-          type: flowExpr
-          value: attributes["tag"]
+        valueAttribute: tag
       - attribute: gml:id
-        expr:
-          type: flowExpr
-          value: attributes["gmlId"]
+        valueAttribute: gmlId
   - id: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
     name: FeatureWriterGmlIdNotUnique
     type: action
@@ -754,69 +712,37 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: gml:id
-        expr:
-          type: flowExpr
-          value: attributes["gmlId"]
+        valueAttribute: gmlId
       - attribute: Min Latitude
-        expr:
-          type: flowExpr
-          value: attributes["minLatitude"]
+        valueAttribute: minLatitude
       - attribute: Min Longitude
-        expr:
-          type: flowExpr
-          value: attributes["minLongitude"]
+        valueAttribute: minLongitude
       - attribute: Min Elevation
-        expr:
-          type: flowExpr
-          value: attributes["minElevation"]
+        valueAttribute: minElevation
       - attribute: Max Latitude
-        expr:
-          type: flowExpr
-          value: attributes["maxLatitude"]
+        valueAttribute: maxLatitude
       - attribute: Max Longitude
-        expr:
-          type: flowExpr
-          value: attributes["maxLongitude"]
+        valueAttribute: maxLongitude
       - attribute: Max Elevation
-        expr:
-          type: flowExpr
-          value: attributes["maxElevation"]
+        valueAttribute: maxElevation
       - attribute: Lower Latitude
-        expr:
-          type: flowExpr
-          value: attributes["lowerLatitude"]
+        valueAttribute: lowerLatitude
       - attribute: Lower Longitude
-        expr:
-          type: flowExpr
-          value: attributes["lowerLongitude"]
+        valueAttribute: lowerLongitude
       - attribute: Lower Elevation
-        expr:
-          type: flowExpr
-          value: attributes["lowerElevation"]
+        valueAttribute: lowerElevation
       - attribute: Upper Latitude
-        expr:
-          type: flowExpr
-          value: attributes["upperLatitude"]
+        valueAttribute: upperLatitude
       - attribute: Upper Longitude
-        expr:
-          type: flowExpr
-          value: attributes["upperLongitude"]
+        valueAttribute: upperLongitude
       - attribute: Upper Elevation
-        expr:
-          type: flowExpr
-          value: attributes["upperElevation"]
+        valueAttribute: upperElevation
   - id: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
     name: FeatureWriterExtentsValidation
     type: action
@@ -832,37 +758,21 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: gml:id
-        expr:
-          type: flowExpr
-          value: attributes["gmlId"]
+        valueAttribute: gmlId
       - attribute: XML Tag
-        expr:
-          type: flowExpr
-          value: attributes["tag"]
+        valueAttribute: tag
       - attribute: XPath
-        expr:
-          type: flowExpr
-          value: attributes["xpath"]
+        valueAttribute: xpath
       - attribute: CodeSpace
-        expr:
-          type: flowExpr
-          value: attributes["codeSpace"]
+        valueAttribute: codeSpace
       - attribute: Code
-        expr:
-          type: flowExpr
-          value: attributes["codeSpaceValue"]
+        valueAttribute: codeSpaceValue
   - id: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
     name: FeatureWriterCodeValidation
     type: action
@@ -878,37 +788,21 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: FeatureType
-        expr:
-          type: flowExpr
-          value: attributes["featureType"]
+        valueAttribute: featureType
       - attribute: XPath
-        expr:
-          type: flowExpr
-          value: attributes["xpath"]
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr:
-          type: flowExpr
-          value: attributes["tag"]
+        valueAttribute: tag
       - attribute: gml:id
-        expr:
-          type: flowExpr
-          value: attributes["gmlId"]
+        valueAttribute: gmlId
       - attribute: CodeSpace
-        expr:
-          type: flowExpr
-          value: attributes["codeSpace"]
+        valueAttribute: codeSpace
   - id: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
     name: FeatureWriterInCorrectCodeSpace
     type: action
@@ -946,29 +840,17 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: XPath
-        expr:
-          type: flowExpr
-          value: attributes["xpath"]
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr:
-          type: flowExpr
-          value: attributes["tag"]
+        valueAttribute: tag
       - attribute: xlink:href
-        expr:
-          type: flowExpr
-          value: attributes["xlinkHref"]
+        valueAttribute: xlinkHref
   - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
     name: FeatureWriterXlinkNoReference
     type: action
@@ -984,41 +866,23 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: XPath
-        expr:
-          type: flowExpr
-          value: attributes["xpath"]
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr:
-          type: flowExpr
-          value: attributes["tag"]
+        valueAttribute: tag
       - attribute: xlink:href
-        expr:
-          type: flowExpr
-          value: attributes["xlinkHref"]
+        valueAttribute: xlinkHref
       - attribute: ref XPath
-        expr:
-          type: flowExpr
-          value: attributes["refGmlXpath"]
+        valueAttribute: refGmlXpath
       - attribute: ref Tag
-        expr:
-          type: flowExpr
-          value: attributes["refGmlTag"]
+        valueAttribute: refGmlTag
       - attribute: ref gml:id
-        expr:
-          type: flowExpr
-          value: attributes["refGmlId"]
+        valueAttribute: refGmlId
   - id: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
     name: FeatureWriterXlinkInvalidObjectType
     type: action
@@ -1034,29 +898,19 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr:
-          type: flowExpr
-          value: attributes["index"]
+        valueAttribute: index
       - attribute: Folder
-        expr:
-          type: flowExpr
-          value: attributes["udxDirs"]
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr:
-          type: flowExpr
-          value: attributes["name"]
+        valueAttribute: name
       - attribute: FeatureType
         expr:
           type: flowExpr
-          value: attributes["parentTag"]
+          value: attributes.get("parentTag", attributes["featureType"])
       - attribute: gml:id
-        expr:
-          type: flowExpr
-          value: attributes["gmlId"]
+        valueAttribute: gmlId
       - attribute: InvalidGeometry
-        expr:
-          type: flowExpr
-          value: attributes["invalidGeometry"]
+        valueAttribute: invalidGeometry
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     name: FeatureWriterInvalidLodXGeometry
     type: action
@@ -2494,15 +2348,15 @@ graphs:
       - attribute: Folder
         expr:
           type: flowExpr
-          value: attributes["udxDirs"]
+          value: attributes.get("udxDirs", "")
       - attribute: Index
         expr:
           type: flowExpr
-          value: attributes["fileIndex"]
+          value: attributes.get("fileIndex", 0)
       - attribute: Filename
         expr:
           type: flowExpr
-          value: attributes["gmlFilename"]
+          value: attributes.get("gmlFilename", "")
       - attribute: FeatureType
         expr:
           type: flowExpr
@@ -2518,11 +2372,11 @@ graphs:
       - attribute: LOD
         expr:
           type: flowExpr
-          value: attributes["lod"]
+          value: attributes.get("lod", "1")
       - attribute: gml:id
         expr:
           type: flowExpr
-          value: attributes["gmlId"]
+          value: attributes.get("gmlId", "")
       - attribute: 無効な空間属性の型
         expr:
           type: flowExpr
@@ -2564,15 +2418,15 @@ graphs:
       - attribute: Folder
         expr:
           type: flowExpr
-          value: attributes["udxDirs"]
+          value: attributes.get("udxDirs", "wtr")
       - attribute: Index
         expr:
           type: flowExpr
-          value: attributes["fileIndex"]
+          value: attributes.get("fileIndex", 1)
       - attribute: Filename
         expr:
           type: flowExpr
-          value: attributes["gmlFilename"]
+          value: attributes.get("gmlFilename", "")
       - attribute: FeatureType
         expr:
           type: flowExpr
@@ -2588,11 +2442,11 @@ graphs:
       - attribute: LOD
         expr:
           type: flowExpr
-          value: attributes["lod"]
+          value: attributes.get("lod", "1")
       - attribute: gml:id
         expr:
           type: flowExpr
-          value: attributes["gmlId"]
+          value: attributes.get("gmlId", "")
       - attribute: エラー数
         expr:
           type: string
@@ -2658,9 +2512,7 @@ graphs:
     with:
       mappers:
       - attribute: filename
-        expr:
-          type: flowExpr
-          value: attributes["gmlFilename"]
+        valueAttribute: gmlFilename
       - attribute: feature_type
         expr:
           type: flowExpr
@@ -2674,13 +2526,9 @@ graphs:
               ft
             }
       - attribute: lod
-        expr:
-          type: flowExpr
-          value: attributes["lod"]
+        valueAttribute: lod
       - attribute: gml_id
-        expr:
-          type: flowExpr
-          value: attributes["gmlId"]
+        valueAttribute: gmlId
       - attribute: issue
         expr:
           type: string
@@ -2717,9 +2565,7 @@ graphs:
     with:
       mappers:
       - attribute: filename
-        expr:
-          type: flowExpr
-          value: attributes["gmlFilename"]
+        valueAttribute: gmlFilename
       - attribute: feature_type
         expr:
           type: flowExpr
@@ -2733,13 +2579,9 @@ graphs:
               ft
             }
       - attribute: lod
-        expr:
-          type: flowExpr
-          value: attributes["lod"]
+        valueAttribute: lod
       - attribute: gml_id
-        expr:
-          type: flowExpr
-          value: attributes["gmlId"]
+        valueAttribute: gmlId
       - attribute: issue
         expr:
           type: string
@@ -2782,15 +2624,15 @@ graphs:
       - attribute: Folder
         expr:
           type: flowExpr
-          value: attributes["udxDirs"]
+          value: attributes.get("udxDirs", "wtr")
       - attribute: Index
         expr:
           type: flowExpr
-          value: attributes["fileIndex"]
+          value: attributes.get("fileIndex", 1)
       - attribute: Filename
         expr:
           type: flowExpr
-          value: attributes["gmlFilename"]
+          value: attributes.get("gmlFilename", "")
       - attribute: FeatureType
         expr:
           type: flowExpr
@@ -2806,11 +2648,11 @@ graphs:
       - attribute: LOD
         expr:
           type: flowExpr
-          value: attributes["lod"]
+          value: attributes.get("lod", "2")
       - attribute: gml:id
         expr:
           type: flowExpr
-          value: attributes["gmlId"]
+          value: attributes.get("gmlId", "")
       - attribute: エラー数
         expr:
           type: string

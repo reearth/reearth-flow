@@ -20,25 +20,15 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr:
-            type: flowExpr
-            value: attributes["fileIndex"]
+          valueAttribute: fileIndex
         - attribute: Filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: Building.gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: BuildingPart.gml_id
-          expr:
-            type: flowExpr
-            value: attributes["featureId"]
+          valueAttribute: featureId
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
 
   - id: 9e8f7a6b-5c4d-3e2f-1a0b-9c8d7e6f5a4b
     name: CsvWriterBuildingPartLod0Or1
@@ -120,37 +110,21 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr:
-            type: flowExpr
-            value: attributes["fileIndex"]
+          valueAttribute: fileIndex
         - attribute: Filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: Building.gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: BuildingPart.gml_id
-          expr:
-            type: flowExpr
-            value: attributes["featureId"]
+          valueAttribute: featureId
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: status
-          expr:
-            type: flowExpr
-            value: attributes["_status"]
+          valueAttribute: _status
         - attribute: connected_id
-          expr:
-            type: flowExpr
-            value: attributes["_connected_id"]
+          valueAttribute: _connected_id
         - attribute: connected_parts
-          expr:
-            type: flowExpr
-            value: attributes["_connected_parts"]
+          valueAttribute: _connected_parts
 
   - id: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     name: CsvWriterLbldg02Errors

@@ -222,25 +222,15 @@ nodes:
     with:
       mappers:
         - attribute: Filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: Index
-          expr:
-            type: flowExpr
-            value: attributes["fileIndex"]
+          valueAttribute: fileIndex
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: Building Usage Attribute Error
-          expr:
-            type: flowExpr
-            value: attributes["errors"]
+          valueAttribute: errors
         - attribute: Feature Type
-          expr:
-            type: flowExpr
-            value: attributes["featureType"]
+          valueAttribute: featureType
 
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
@@ -258,25 +248,15 @@ nodes:
     with:
       mappers:
         - attribute: Filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: Index
-          expr:
-            type: flowExpr
-            value: attributes["fileIndex"]
+          valueAttribute: fileIndex
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: City Code Error
-          expr:
-            type: flowExpr
-            value: attributes["cityCodeError"]
+          valueAttribute: cityCodeError
         - attribute: Feature Type
-          expr:
-            type: flowExpr
-            value: attributes["featureType"]
+          valueAttribute: featureType
 
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
@@ -359,17 +339,11 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr:
-            type: flowExpr
-            value: attributes["fileIndex"]
+          valueAttribute: fileIndex
         - attribute: Filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: FeatureType
-          expr:
-            type: flowExpr
-            value: attributes["gmlName"]
+          valueAttribute: gmlName
         - attribute: "uro:buildingID"
           expr:
             type: flowExpr
@@ -458,17 +432,11 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr:
-            type: flowExpr
-            value: attributes["fileIndex"]
+          valueAttribute: fileIndex
         - attribute: Filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: GmlId
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: UroBuildingId
           expr:
             type: flowExpr

@@ -38,15 +38,15 @@ nodes:
         - attribute: Folder
           expr:
             type: flowExpr
-            value: attributes["udxDirs"]
+            value: attributes.get("udxDirs", "")
         - attribute: Index
           expr:
             type: flowExpr
-            value: attributes["fileIndex"]
+            value: attributes.get("fileIndex", 0)
         - attribute: Filename
           expr:
             type: flowExpr
-            value: attributes["gmlFilename"]
+            value: attributes.get("gmlFilename", "")
         - attribute: FeatureType
           expr:
             type: flowExpr
@@ -62,11 +62,11 @@ nodes:
         - attribute: LOD
           expr:
             type: flowExpr
-            value: attributes["lod"]
+            value: attributes.get("lod", "1")
         - attribute: "gml:id"
           expr:
             type: flowExpr
-            value: attributes["gmlId"]
+            value: attributes.get("gmlId", "")
         - attribute: "無効な空間属性の型"
           expr:
             type: flowExpr
@@ -115,15 +115,15 @@ nodes:
         - attribute: Folder
           expr:
             type: flowExpr
-            value: attributes["udxDirs"]
+            value: attributes.get("udxDirs", "wtr")
         - attribute: Index
           expr:
             type: flowExpr
-            value: attributes["fileIndex"]
+            value: attributes.get("fileIndex", 1)
         - attribute: Filename
           expr:
             type: flowExpr
-            value: attributes["gmlFilename"]
+            value: attributes.get("gmlFilename", "")
         - attribute: FeatureType
           expr:
             type: flowExpr
@@ -139,11 +139,11 @@ nodes:
         - attribute: LOD
           expr:
             type: flowExpr
-            value: attributes["lod"]
+            value: attributes.get("lod", "1")
         - attribute: "gml:id"
           expr:
             type: flowExpr
-            value: attributes["gmlId"]
+            value: attributes.get("gmlId", "")
         - attribute: エラー数
           expr:
             type: string
@@ -217,9 +217,7 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: feature_type
           expr:
             type: flowExpr
@@ -233,13 +231,9 @@ nodes:
                 ft
               }
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: issue
           expr:
             type: string
@@ -281,9 +275,7 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr:
-            type: flowExpr
-            value: attributes["gmlFilename"]
+          valueAttribute: gmlFilename
         - attribute: feature_type
           expr:
             type: flowExpr
@@ -297,13 +289,9 @@ nodes:
                 ft
               }
         - attribute: lod
-          expr:
-            type: flowExpr
-            value: attributes["lod"]
+          valueAttribute: lod
         - attribute: gml_id
-          expr:
-            type: flowExpr
-            value: attributes["gmlId"]
+          valueAttribute: gmlId
         - attribute: issue
           expr:
             type: string
@@ -352,15 +340,15 @@ nodes:
         - attribute: Folder
           expr:
             type: flowExpr
-            value: attributes["udxDirs"]
+            value: attributes.get("udxDirs", "wtr")
         - attribute: Index
           expr:
             type: flowExpr
-            value: attributes["fileIndex"]
+            value: attributes.get("fileIndex", 1)
         - attribute: Filename
           expr:
             type: flowExpr
-            value: attributes["gmlFilename"]
+            value: attributes.get("gmlFilename", "")
         - attribute: FeatureType
           expr:
             type: flowExpr
@@ -376,11 +364,11 @@ nodes:
         - attribute: LOD
           expr:
             type: flowExpr
-            value: attributes["lod"]
+            value: attributes.get("lod", "2")
         - attribute: "gml:id"
           expr:
             type: flowExpr
-            value: attributes["gmlId"]
+            value: attributes.get("gmlId", "")
         - attribute: エラー数
           expr:
             type: string
