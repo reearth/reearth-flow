@@ -78,11 +78,13 @@ pub fn sample_source(
         }
     };
 
-    let result = runtime.block_on(read_features(source, ctx, sample_size));
+    let result = runtime.block_on(sample_into_accumulator(source, ctx, sample_size));
 
     match result {
-        Ok(features) if !features.is_empty() => SampleOutcome {
-            schema: union_features(&features),
+        // At least one feature was observed: finalize the streamed accumulator
+        // into a closed schema.
+        Ok(acc) if acc.total > 0 => SampleOutcome {
+            schema: acc.finalize(),
             note: None,
         },
         Ok(_) => SampleOutcome {
@@ -96,23 +98,84 @@ pub fn sample_source(
     }
 }
 
+/// Incrementally accumulates the unioned attribute schema as features arrive,
+/// so memory stays O(#attributes) instead of O(#features). Each observed feature
+/// is folded in and then dropped; nothing retains the feature stream.
+///
+/// Per attribute key (in first-seen order via [`IndexMap`]) it tracks the
+/// observed [`AttrType`] (`None` once a type conflict is seen → `Unknown`) and
+/// the count of features containing it, plus the total feature count. This is
+/// exactly the logic the old `union_features` performed over a slice, split into
+/// `observe`/`finalize`.
+#[derive(Default)]
+struct SchemaAccumulator {
+    /// First-seen key order preserved. Value: (type-or-None-if-conflicting, count).
+    seen: IndexMap<Attribute, (Option<AttrType>, usize)>,
+    /// Total number of features observed.
+    total: usize,
+}
+
+impl SchemaAccumulator {
+    /// Fold one feature's attributes into the accumulator.
+    fn observe(&mut self, feature: &Feature) {
+        self.total += 1;
+        for (name, value) in feature.attributes.iter() {
+            let ty = attr_type_of(value);
+            let entry = self.seen.entry(name.clone()).or_insert((Some(ty), 0));
+            entry.1 += 1;
+            if let Some(existing) = entry.0 {
+                if existing != ty {
+                    // Differing types across features collapse to Unknown.
+                    entry.0 = None;
+                }
+            }
+        }
+    }
+
+    /// Finalize into a *closed* schema.
+    ///
+    /// - A key with conflicting types becomes `Unknown`.
+    /// - A key present in ALL features is `Always`, otherwise `Maybe`.
+    /// - First-seen key order is preserved.
+    fn finalize(self) -> AttrSchema {
+        let mut schema = AttrSchema::empty();
+        for (name, (ty, count)) in self.seen {
+            let resolved = ty.unwrap_or(AttrType::Unknown);
+            let field = if count == self.total {
+                AttrField::always(resolved)
+            } else {
+                AttrField::maybe(resolved)
+            };
+            schema.insert(name, field);
+        }
+        schema
+    }
+}
+
 /// Spawn the source's `start`, drain features off the channel up to `sample_size`,
-/// then drop the receiver (so a still-running source stops on a closed channel)
-/// and join the task. Errors from the source are surfaced as a `String`.
-async fn read_features(
+/// folding each into a [`SchemaAccumulator`] (then dropping the feature), then
+/// drop the receiver (so a still-running source stops on a closed channel) and
+/// join the task. Errors from the source are surfaced as a `String`.
+///
+/// Memory stays bounded to O(#attributes): no `Vec<Feature>` is retained across
+/// the stream, which matters for `sample_size == 0` (unbounded) on large
+/// datasets.
+async fn sample_into_accumulator(
     mut source: Box<dyn crate::node::Source>,
     ctx: NodeContext,
     sample_size: usize,
-) -> Result<Vec<Feature>, String> {
+) -> Result<SchemaAccumulator, String> {
     let (tx, mut rx) = tokio::sync::mpsc::channel::<(Port, IngestionMessage)>(256);
 
     let handle = tokio::spawn(async move { source.start(ctx, tx).await });
 
-    let mut features: Vec<Feature> = Vec::new();
+    let mut acc = SchemaAccumulator::default();
     while let Some((_port, message)) = rx.recv().await {
         let IngestionMessage::OperationEvent { feature } = message;
-        features.push(feature);
-        if sample_size != 0 && features.len() >= sample_size {
+        acc.observe(&feature);
+        // Drop the feature immediately; only the accumulator survives.
+        drop(feature);
+        if sample_size != 0 && acc.total >= sample_size {
             break;
         }
     }
@@ -121,80 +184,37 @@ async fn read_features(
     drop(rx);
 
     match handle.await {
-        Ok(Ok(())) => Ok(features),
+        Ok(Ok(())) => Ok(acc),
         // A send error after we stopped reading is expected when we hit the
-        // sample cap; only treat it as fatal if we got no features at all.
+        // sample cap; only treat it as fatal if we observed no features at all.
         Ok(Err(e)) => {
-            if features.is_empty() {
+            if acc.total == 0 {
                 Err(e.to_string())
             } else {
-                Ok(features)
+                Ok(acc)
             }
         }
         Err(join_err) => {
-            if features.is_empty() {
+            if acc.total == 0 {
                 Err(join_err.to_string())
             } else {
-                Ok(features)
+                Ok(acc)
             }
         }
     }
 }
 
-/// Union a non-empty slice of features into a *closed* schema.
-///
-/// - A key seen with differing types across features collapses to `Unknown`.
-/// - A key present in ALL features is `Always`, otherwise `Maybe`.
-/// - First-seen key order is preserved.
+/// Test-only thin wrapper preserving the original `union_features` API: build an
+/// accumulator from a slice and finalize. Production code uses
+/// [`SchemaAccumulator`] directly (incremental), so this only exists to keep the
+/// hand-built-`Feature` unit tests below valid without re-pointing them.
+#[cfg(test)]
 pub(crate) fn union_features(features: &[Feature]) -> AttrSchema {
-    struct Acc {
-        ty: AttrType,
-        conflicting: bool,
-        count: usize,
-    }
-
-    let total = features.len();
-    let mut acc: IndexMap<Attribute, Acc> = IndexMap::new();
-
+    let mut acc = SchemaAccumulator::default();
     for feature in features {
-        for (name, value) in feature.attributes.iter() {
-            let ty = attr_type_of(value);
-            match acc.get_mut(name) {
-                Some(existing) => {
-                    if !existing.conflicting && existing.ty != ty {
-                        existing.conflicting = true;
-                    }
-                    existing.count += 1;
-                }
-                None => {
-                    acc.insert(
-                        name.clone(),
-                        Acc {
-                            ty,
-                            conflicting: false,
-                            count: 1,
-                        },
-                    );
-                }
-            }
-        }
+        acc.observe(feature);
     }
-
-    let mut schema = AttrSchema::empty();
-    for (name, a) in acc {
-        let ty = if a.conflicting {
-            AttrType::Unknown
-        } else {
-            a.ty
-        };
-        let field = if a.count == total {
-            AttrField::always(ty)
-        } else {
-            AttrField::maybe(ty)
-        };
-        schema.insert(name, field);
-    }
-    schema
+    acc.finalize()
 }
 
 fn attr_type_of(value: &AttributeValue) -> AttrType {
