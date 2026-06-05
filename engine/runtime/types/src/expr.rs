@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_expr::{
-    bool_cast, compile, eval, str_cast, Error as ExprError, InnerError, InnerResult,
+    bool_cast, compile, eval, expect_arity, str_cast, Error as ExprError, InnerError, InnerResult,
     Value as ExprValue,
 };
 
@@ -152,32 +152,25 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
     fn call_method(&self, method: &str, args: &[ExprValue]) -> InnerResult<ExprValue> {
         match method {
             "__getitem__" => {
-                reearth_flow_expr::unpack_args!(args => key);
-                let ExprValue::String(name) = key else {
+                expect_arity("Attributes.__getitem__", args, 1, 1)?;
+                let ExprValue::String(name) = &args[0] else {
                     return Err(InnerError::new(format!(
                         "attributes index must be a string, got {}",
-                        key.type_name()
+                        args[0].type_name()
                     )));
                 };
                 self.get_value(name)
                     .ok_or_else(|| InnerError::new(format!("attribute '{name}' not found")))
             }
             "get" => {
-                let (key, fallback) = match args {
-                    [key] => (key, None),
-                    [key, fallback] => (key, Some(fallback)),
-                    _ => {
-                        return Err(InnerError::new(
-                            "attributes.get() requires 1 or 2 arguments",
-                        ))
-                    }
-                };
-                let ExprValue::String(name) = key else {
+                expect_arity("Attributes.get", args, 1, 2)?;
+                let ExprValue::String(name) = &args[0] else {
                     return Err(InnerError::new(format!(
-                        "attributes.get() key must be a string, got {}",
-                        key.type_name()
+                        "Attributes.get() key must be a string, got {}",
+                        args[0].type_name()
                     )));
                 };
+                let fallback = args.get(1);
                 Ok(self
                     .get_value(name)
                     .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))
@@ -189,11 +182,11 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
                     .collect(),
             )),
             "__contains__" => {
-                reearth_flow_expr::unpack_args!(args => key);
-                let ExprValue::String(name) = key else {
+                expect_arity("Attributes.__contains__", args, 1, 1)?;
+                let ExprValue::String(name) = &args[0] else {
                     return Err(InnerError::new(format!(
                         "'in attributes' key must be a string, got {}",
-                        key.type_name()
+                        args[0].type_name()
                     )));
                 };
                 Ok(ExprValue::Bool(self.0.contains_key(&Attribute::new(name))))
@@ -220,28 +213,25 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
     fn call_method(&self, method: &str, args: &[ExprValue]) -> InnerResult<ExprValue> {
         match method {
             "__getitem__" => {
-                reearth_flow_expr::unpack_args!(args => key);
-                let ExprValue::String(name) = key else {
+                expect_arity("Env.__getitem__", args, 1, 1)?;
+                let ExprValue::String(name) = &args[0] else {
                     return Err(InnerError::new(format!(
                         "env index must be a string, got {}",
-                        key.type_name()
+                        args[0].type_name()
                     )));
                 };
                 self.get_value(name)
                     .ok_or_else(|| InnerError::new(format!("env var '{name}' not found")))
             }
             "get" => {
-                let (key, fallback) = match args {
-                    [key] => (key, None),
-                    [key, fallback] => (key, Some(fallback)),
-                    _ => return Err(InnerError::new("env.get() requires 1 or 2 arguments")),
-                };
-                let ExprValue::String(name) = key else {
+                expect_arity("Env.get", args, 1, 2)?;
+                let ExprValue::String(name) = &args[0] else {
                     return Err(InnerError::new(format!(
-                        "env.get() key must be a string, got {}",
-                        key.type_name()
+                        "Env.get() key must be a string, got {}",
+                        args[0].type_name()
                     )));
                 };
+                let fallback = args.get(1);
                 Ok(self
                     .get_value(name)
                     .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))

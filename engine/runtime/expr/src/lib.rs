@@ -4,7 +4,7 @@ pub use core::error::{Error, InnerError, InnerResult, Result};
 pub use core::eval::{bool_cast, default_env, str_cast, Env};
 pub use core::value::{ImmutableObject, NativeFn, Value};
 
-pub(crate) fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> InnerResult<()> {
+pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> InnerResult<()> {
     let n = args.len();
     if n >= min && n <= max {
         return Ok(());
