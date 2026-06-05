@@ -358,41 +358,30 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let features = env.get("__features");
-              let sum_incorrect = 0;
-              let sum_not_closed = 0;
-              let sum_wrong_orientation = 0;
-              let sum_degenerate = 0;
-              for f in features {
-                sum_incorrect += f["頂点数が不正な三角形"] ?? 0;
-                sum_not_closed += f["閉じていない三角形"] ?? 0;
-                sum_wrong_orientation += f["向きが不正な三角形"] ?? 0;
-                sum_degenerate += f["線状・点状の三角形"] ?? 0;
-              }
-              // Note: "共有先のない辺" is excluded from JSON summary and totalErrorCount to match FME behavior
-              [
-                #{
-                  name: "頂点数が不正な三角形",
-                  count: sum_incorrect,
-                },
-                #{
-                  name: "閉じていない三角形",
-                  count: sum_not_closed,
-                },
-                #{
-                  name: "向きが不正な三角形",
-                  count: sum_wrong_orientation,
-                },
-                #{
-                  name: "線状・点状の三角形",
-                  count: sum_degenerate,
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                features = attributes["__features"];
+                sum_incorrect = 0;
+                sum_not_closed = 0;
+                sum_wrong_orientation = 0;
+                sum_degenerate = 0;
+                for f in features {
+                  sum_incorrect += f.get("頂点数が不正な三角形", 0);
+                  sum_not_closed += f.get("閉じていない三角形", 0);
+                  sum_wrong_orientation += f.get("向きが不正な三角形", 0);
+                  sum_degenerate += f.get("線状・点状の三角形", 0);
                 }
-              ]
-            }
+                [
+                  {"name": "頂点数が不正な三角形", "count": sum_incorrect},
+                  {"name": "閉じていない三角形", "count": sum_not_closed},
+                  {"name": "向きが不正な三角形", "count": sum_wrong_orientation},
+                  {"name": "線状・点状の三角形", "count": sum_degenerate}
+                ]
+              }
           output: |
             let json_filename = env.get("__value")._json_filename ?? "summary_fld.json";
             json_filename
@@ -432,7 +421,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
+          converter:
+            type: flowExpr
+            value: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
             filename

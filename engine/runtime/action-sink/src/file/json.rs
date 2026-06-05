@@ -2,14 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_eval_expr::utils::dynamic_to_value;
+use indexmap::IndexMap;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Expr, Feature};
-use rhai::Dynamic;
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -56,7 +54,7 @@ impl SinkFactory for JsonWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: JsonWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::JsonWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -69,8 +67,15 @@ impl SinkFactory for JsonWriterFactory {
             )
             .into());
         };
+        let compiled_converter = params
+            .converter
+            .as_ref()
+            .map(|code| code.compile())
+            .transpose()
+            .map_err(|e| SinkError::JsonWriterFactory(format!("{e:?}")))?;
         let sink = JsonWriter {
             params,
+            compiled_converter,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -80,6 +85,7 @@ impl SinkFactory for JsonWriterFactory {
 #[derive(Debug, Clone)]
 pub(super) struct JsonWriter {
     pub(super) params: JsonWriterParam,
+    pub(super) compiled_converter: Option<CompiledCode>,
     pub(super) buffer: HashMap<String, (SinkOutput, Vec<Feature>)>,
 }
 
@@ -92,7 +98,7 @@ pub(super) struct JsonWriterParam {
     /// Output path or expression for the JSON file to create
     pub(super) output: Expr,
     /// Optional converter expression to transform features before writing
-    pub(super) converter: Option<Expr>,
+    pub(super) converter: Option<Code>,
 }
 
 impl Sink for JsonWriter {
@@ -123,8 +129,9 @@ impl Sink for JsonWriter {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        let env_vars = ctx.expr_engine.vars();
         for (out, features) in self.buffer.values() {
-            write_json(out, &self.params, features, &ctx.expr_engine)?;
+            write_json(out, &self.compiled_converter, features, Arc::clone(&env_vars))?;
         }
         Ok(())
     }
@@ -132,31 +139,18 @@ impl Sink for JsonWriter {
 
 fn write_json(
     out: &SinkOutput,
-    params: &JsonWriterParam,
+    converter: &Option<CompiledCode>,
     features: &[Feature],
-    expr_engine: &Arc<Engine>,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<(), crate::errors::SinkError> {
-    let json_value: serde_json::Value = if let Some(converter) = &params.converter {
-        let scope = expr_engine.new_scope();
-        let value: serde_json::Value = serde_json::Value::Array(
-            features
-                .iter()
-                .map(|feature| {
-                    serde_json::Value::Object(
-                        feature
-                            .attributes
-                            .iter()
-                            .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone().into()))
-                            .collect::<serde_json::Map<_, _>>(),
-                    )
-                })
-                .collect::<Vec<_>>(),
-        );
-        scope.set("__features", value);
-        let convert = scope.eval::<Dynamic>(converter.as_ref()).map_err(|e| {
-            crate::errors::SinkError::JsonWriter(format!("Failed to evaluate converter: {e:?}"))
-        })?;
-        dynamic_to_value(&convert)
+    let json_value: serde_json::Value = if let Some(converter) = converter {
+        let synthetic = synthetic_feature(features);
+        converter
+            .eval(&synthetic, env_vars)
+            .map_err(|e| {
+                crate::errors::SinkError::JsonWriter(format!("Failed to evaluate converter: {e:?}"))
+            })?
+            .into()
     } else {
         let attributes = features
             .iter()
@@ -174,4 +168,24 @@ fn write_json(
     out.write(Bytes::from(json_value.to_string()))
         .map_err(|e| crate::errors::SinkError::JsonWriter(format!("{e:?}")))?;
     Ok(())
+}
+
+fn synthetic_feature(features: &[Feature]) -> Feature {
+    let packed = AttributeValue::Array(
+        features
+            .iter()
+            .map(|f| {
+                AttributeValue::Map(
+                    f.attributes
+                        .iter()
+                        .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone()))
+                        .collect(),
+                )
+            })
+            .collect(),
+    );
+    Feature::from(IndexMap::from([(
+        Attribute::new("__features".to_string()),
+        packed,
+    )]))
 }

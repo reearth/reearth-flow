@@ -12,7 +12,7 @@ use crate::expect_arity;
 use super::MethodFn;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> =
-    LazyLock::new(|| HashMap::from([("get", get as MethodFn)]));
+    LazyLock::new(|| HashMap::from([("get", get as MethodFn), ("append", append as MethodFn)]));
 
 pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
     let f = METHODS
@@ -46,6 +46,15 @@ fn get(args: &[Value]) -> InnerResult<Value> {
     let arr = rc.borrow();
     let elem = resolve_index(i, arr.len()).map(|pos| arr[pos].clone());
     Ok(elem.unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
+}
+
+fn append(args: &[Value]) -> InnerResult<Value> {
+    expect_arity("list.append", &args[1..], 1, 1)?;
+    let Value::Array(rc) = &args[0] else {
+        return Err(InnerError::new("expected array receiver"));
+    };
+    rc.borrow_mut().push(args[1].clone());
+    Ok(Value::Null)
 }
 
 pub fn eq_inner(a: &Rc<RefCell<Vec<Value>>>, b: &Rc<RefCell<Vec<Value>>>) -> InnerResult<bool> {

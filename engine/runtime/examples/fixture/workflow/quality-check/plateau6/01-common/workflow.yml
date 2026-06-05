@@ -90,7 +90,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
+          converter:
+            type: flowExpr
+            value: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
             filename

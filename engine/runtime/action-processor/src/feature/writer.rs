@@ -116,13 +116,13 @@ impl ProcessorFactory for FeatureWriterFactory {
                             FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                         })?,
                 };
-                let converter = if let Some(expr) = param.converter {
-                    Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
+                let converter = param
+                    .converter
+                    .map(|code| code.compile())
+                    .transpose()
+                    .map_err(|e| {
                         FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                    })?)
-                } else {
-                    None
-                };
+                    })?;
                 let process = FeatureWriter {
                     global_params: with,
                     params: CompiledFeatureWriterParam::Json {
@@ -307,7 +307,7 @@ impl Processor for FeatureWriter {
                         output,
                         &param.converter,
                         &ctx.storage_resolver,
-                        &ctx.expr_engine,
+                        ctx.expr_engine.vars(),
                         features,
                     )?;
                 }
