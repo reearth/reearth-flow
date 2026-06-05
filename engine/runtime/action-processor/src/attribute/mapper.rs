@@ -166,15 +166,22 @@ impl Processor for AttributeMapper {
             match &mapper.attribute {
                 Some(attribute) => {
                     if let Some(expr) = &mapper.expr {
-                        let new_value = expr
-                            .eval(feature, Arc::clone(&env_vars))
-                            .unwrap_or(AttributeValue::Null);
+                        let new_value = match expr.eval(feature, Arc::clone(&env_vars)) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                tracing::error!(
+                                    "Failed to evaluate expr for attribute `{attribute}`: {e:?}"
+                                );
+                                AttributeValue::Null
+                            }
+                        };
                         attributes.insert(Attribute::new(attribute.clone()), new_value);
                         continue;
                     } else if let Some(value_attribute) = &mapper.value_attribute {
                         if let Some(value) = feature.get(value_attribute) {
                             attributes.insert(Attribute::new(attribute.clone()), value.clone());
                         } else {
+                            tracing::error!("value_attribute `{value_attribute}` not found in feature for attribute `{attribute}`");
                             attributes
                                 .insert(Attribute::new(attribute.clone()), AttributeValue::Null);
                         }
@@ -191,14 +198,22 @@ impl Processor for AttributeMapper {
                 }
                 None => {
                     if let Some(multiple_expr) = &mapper.multiple_expr {
-                        if let Ok(AttributeValue::Map(new_value)) =
-                            multiple_expr.eval(feature, Arc::clone(&env_vars))
-                        {
-                            attributes.extend(
-                                new_value
-                                    .iter()
-                                    .map(|(k, v)| (Attribute::new(k.clone()), v.clone())),
-                            );
+                        match multiple_expr.eval(feature, Arc::clone(&env_vars)) {
+                            Err(e) => {
+                                tracing::error!("Failed to evaluate multiple_expr: {e:?}");
+                            }
+                            Ok(AttributeValue::Map(new_value)) => {
+                                attributes.extend(
+                                    new_value
+                                        .iter()
+                                        .map(|(k, v)| (Attribute::new(k.clone()), v.clone())),
+                                );
+                            }
+                            Ok(other) => {
+                                tracing::error!(
+                                    "multiple_expr did not produce a Map, got: {other:?}"
+                                );
+                            }
                         }
                     }
                 }
