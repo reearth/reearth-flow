@@ -1,4 +1,4 @@
-use crate::core::error::{InnerError, InnerResult};
+use crate::core::error::InnerError;
 use crate::core::value::{Module, NativeFn, Value};
 
 fn unary_float(name: &'static str, f: fn(f64) -> f64) -> Value {
