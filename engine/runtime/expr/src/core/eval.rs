@@ -8,7 +8,7 @@ use super::builtins::{array as array_methods, map as map_methods, str as str_met
 use super::builtins::{builtin_math, builtin_regex, builtin_url};
 use super::error::{Error, InnerError, InnerResult, Result};
 use super::value::{format_float, NativeFn, Value};
-use crate::unpack_args;
+use crate::expect_arity;
 
 #[cfg(debug_assertions)]
 const MAX_EVAL_DEPTH: usize = 64;
@@ -120,7 +120,7 @@ fn resolve_attr(recv: Value, attr: &str) -> InnerResult<Value> {
             .ok_or_else(|| InnerError::new(format!("module has no attribute '{attr}'"))),
         Value::Int(n) => match attr {
             "bit_length" => Ok(Value::Fn(NativeFn::new(move |args| {
-                unpack_args!(args =>);
+                expect_arity("int.bit_length", args, 0, 0)?;
                 if n < 0 {
                     return Err(InnerError::new(
                         "bit_length() not supported for negative integers",
@@ -1148,13 +1148,13 @@ fn builtin_map(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn builtin_type(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => v);
-    Ok(Value::String(v.type_name().to_string()))
+    expect_arity("type", args, 1, 1)?;
+    Ok(Value::String(args[0].type_name().to_string()))
 }
 
 fn builtin_len(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => v);
-    match v {
+    expect_arity("len", args, 1, 1)?;
+    match &args[0] {
         Value::String(s) => Ok(Value::Int(s.chars().count() as i64)),
         Value::Array(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
         Value::Map(rc) => Ok(Value::Int(rc.borrow().len() as i64)),

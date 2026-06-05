@@ -1,6 +1,7 @@
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{ImmutableObject, Value};
-use crate::unpack_args;
+
+use crate::expect_arity;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
@@ -21,12 +22,12 @@ impl ImmutableObject for RegexObject {
     fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
         match method {
             "find" => {
-                unpack_args!(args => s);
-                Ok(regex_find(&self.regex, s.as_str()?))
+                expect_arity("Regex.find", args, 1, 1)?;
+                Ok(regex_find(&self.regex, args[0].as_str()?))
             }
             "find_all" => {
-                unpack_args!(args => s);
-                Ok(Value::array(regex_find_all(&self.regex, s.as_str()?)))
+                expect_arity("Regex.find_all", args, 1, 1)?;
+                Ok(Value::array(regex_find_all(&self.regex, args[0].as_str()?)))
             }
             m => Err(InnerError::new(format!("Regex has no method '{m}'"))),
         }

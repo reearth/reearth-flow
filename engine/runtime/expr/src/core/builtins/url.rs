@@ -1,6 +1,7 @@
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{ImmutableObject, Value};
-use crate::unpack_args;
+
+use crate::expect_arity;
 use url::Url;
 
 fn parse_url(s: &str) -> Result<UrlObject, String> {
@@ -72,8 +73,8 @@ impl ImmutableObject for UrlObject {
     fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
         match method {
             "__eq__" => {
-                unpack_args!(args => rhs);
-                match rhs {
+                expect_arity("Url.__eq__", args, 1, 1)?;
+                match &args[0] {
                     Value::Object(obj) if obj.type_name() == "Url" => {
                         Ok(Value::Bool(self.url.as_str() == obj.display()))
                     }
@@ -81,12 +82,12 @@ impl ImmutableObject for UrlObject {
                 }
             }
             "__str__" => {
-                unpack_args!(args =>);
+                expect_arity("Url.__str__", args, 0, 0)?;
                 Ok(Value::String(self.url.to_string()))
             }
             "__div__" => {
-                unpack_args!(args => rhs);
-                let rhs = rhs.as_str()?;
+                expect_arity("Url.__div__", args, 1, 1)?;
+                let rhs = args[0].as_str()?;
                 let new_path = format!("{}/{rhs}", self.url.path().trim_end_matches('/'));
                 let mut url = self.url.clone();
                 url.set_path(&new_path);

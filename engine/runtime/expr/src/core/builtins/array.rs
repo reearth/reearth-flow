@@ -7,7 +7,9 @@ use crate::core::error::{InnerError, InnerResult};
 use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
 
-use super::{expect_arity, MethodFn};
+use crate::expect_arity;
+
+use super::MethodFn;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> =
     LazyLock::new(|| HashMap::from([("get", get as MethodFn)]));
@@ -35,7 +37,7 @@ pub fn resolve_index(i: i64, len: usize) -> Option<usize> {
 }
 
 fn get(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 2)?;
+    expect_arity("list.get", &args[1..], 1, 2)?;
     let Value::Array(rc) = &args[0] else {
         return Err(InnerError::new("expected array receiver"));
     };

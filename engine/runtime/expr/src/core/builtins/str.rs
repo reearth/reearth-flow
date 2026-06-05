@@ -3,8 +3,9 @@ use std::sync::LazyLock;
 
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{NativeFn, Value};
+use crate::expect_arity;
 
-use super::{expect_arity, MethodFn};
+use super::MethodFn;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
@@ -33,7 +34,7 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
 }
 
 fn trim(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 0, 0)?;
+    expect_arity("str.trim", &args[1..], 0, 0)?;
     Ok(Value::String(args[0].as_str()?.trim().to_string()))
 }
 
@@ -46,7 +47,7 @@ fn split_limit(v: &Value) -> InnerResult<usize> {
 }
 
 fn split(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 2)?;
+    expect_arity("str.split", &args[1..], 1, 2)?;
     let s = args[0].as_str()?;
     let sep = args[1].as_str()?;
     let n = args.get(2).map(split_limit).transpose()?;
@@ -61,7 +62,7 @@ fn split(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn rsplit(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 2)?;
+    expect_arity("str.rsplit", &args[1..], 1, 2)?;
     let s = args[0].as_str()?;
     let sep = args[1].as_str()?;
     let n = args.get(2).map(split_limit).transpose()?;
@@ -79,36 +80,35 @@ fn rsplit(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn starts_with(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 1)?;
+    expect_arity("str.starts_with", &args[1..], 1, 1)?;
     Ok(Value::Bool(
         args[0].as_str()?.starts_with(args[1].as_str()?),
     ))
 }
 
 fn ends_with(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 1)?;
+    expect_arity("str.ends_with", &args[1..], 1, 1)?;
     Ok(Value::Bool(args[0].as_str()?.ends_with(args[1].as_str()?)))
 }
 
 fn remove_prefix(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 1)?;
+    expect_arity("str.remove_prefix", &args[1..], 1, 1)?;
     let s = args[0].as_str()?;
-    let prefix = args[1].as_str()?;
-    Ok(Value::String(
-        s.strip_prefix(prefix).unwrap_or(s).to_string(),
-    ))
+    let p = args[1].as_str()?;
+    Ok(Value::String(s.strip_prefix(p).unwrap_or(s).to_string()))
 }
 
 fn replace(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 2, 2)?;
-    let s = args[0].as_str()?;
-    let from = args[1].as_str()?;
-    let to = args[2].as_str()?;
-    Ok(Value::String(s.replace(from, to)))
+    expect_arity("str.replace", &args[1..], 2, 2)?;
+    Ok(Value::String(
+        args[0]
+            .as_str()?
+            .replace(args[1].as_str()?, args[2].as_str()?),
+    ))
 }
 
 fn join(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 1)?;
+    expect_arity("str.join", &args[1..], 1, 1)?;
     let sep = args[0].as_str()?;
     let Value::Array(list) = &args[1] else {
         return Err(InnerError::new(format!(
@@ -131,12 +131,10 @@ fn join(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 1)?;
+    expect_arity("str.remove_suffix", &args[1..], 1, 1)?;
     let s = args[0].as_str()?;
-    let suffix = args[1].as_str()?;
-    Ok(Value::String(
-        s.strip_suffix(suffix).unwrap_or(s).to_string(),
-    ))
+    let suf = args[1].as_str()?;
+    Ok(Value::String(s.strip_suffix(suf).unwrap_or(s).to_string()))
 }
 
 #[cfg(test)]

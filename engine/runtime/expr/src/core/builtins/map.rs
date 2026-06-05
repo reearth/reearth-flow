@@ -8,8 +8,9 @@ use indexmap::IndexMap;
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
+use crate::expect_arity;
 
-use super::{expect_arity, MethodFn};
+use super::MethodFn;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
@@ -33,7 +34,7 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
 }
 
 fn keys(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 0, 0)?;
+    expect_arity("map.keys", &args[1..], 0, 0)?;
     let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
@@ -46,7 +47,7 @@ fn keys(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn values(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 0, 0)?;
+    expect_arity("map.values", &args[1..], 0, 0)?;
     let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
@@ -54,7 +55,7 @@ fn values(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn items(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 0, 0)?;
+    expect_arity("map.items", &args[1..], 0, 0)?;
     let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
@@ -67,7 +68,7 @@ fn items(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn get(args: &[Value]) -> InnerResult<Value> {
-    expect_arity(args, 1, 2)?;
+    expect_arity("map.get", &args[1..], 1, 2)?;
     let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
