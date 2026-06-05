@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.19 - 2026-06-05
+
+### Web
+
+#### 🧪 Testing
+
+- Add e2e tests for deployment workflow ([#2127](https://github.com/reearth/reearth-flow/pull/2127)) [`9edf05`](https://github.com/reearth/reearth-flow/commit/9edf05)
+
+### Misc
+
+#### Miscellaneous Tasks
+
+- Add Backstage catalog-info.yaml ([#2129](https://github.com/reearth/reearth-flow/pull/2129)) [`f18afa`](https://github.com/reearth/reearth-flow/commit/f18afa)
+
+### engine
+
+#### 🚀 Features
+
+- Implement PLATEAU6 01-01-common quality-check workflow ([#2133](https://github.com/reearth/reearth-flow/pull/2133)) [`e24bec`](https://github.com/reearth/reearth-flow/commit/e24bec)
+- Implement Regex in FlowExpr and migrate FeatureFilter ([#2122](https://github.com/reearth/reearth-flow/pull/2122)) [`f062a1`](https://github.com/reearth/reearth-flow/commit/f062a1)
+
+### ui
+
+#### 🚀 Features
+
+- Add Action Tags into Action Picker Dialog [FLOW-DEV-153] ([#2120](https://github.com/reearth/reearth-flow/pull/2120)) [`86cdcf`](https://github.com/reearth/reearth-flow/commit/86cdcf)
+
+#### 🔧 Bug Fixes
+
+- Add onWorkflowAdd prop to Toolbox and OverlayUI components [FLOW-DEV-169] ([#2141](https://github.com/reearth/reearth-flow/pull/2141)) [`b8751b`](https://github.com/reearth/reearth-flow/commit/b8751b)
+- Correct edge creation logic in paste handling [FLOW-DEV-167] ([#2140](https://github.com/reearth/reearth-flow/pull/2140)) [`4a6306`](https://github.com/reearth/reearth-flow/commit/4a6306)
+- Prevent multiple debug run starts by using a ref to track state [FLOW-DEV-164] ([#2132](https://github.com/reearth/reearth-flow/pull/2132)) [`05f20f`](https://github.com/reearth/reearth-flow/commit/05f20f)
+- Only show green edges for nodes that have intermediate data [FLOW-DEV-143] ([#2125](https://github.com/reearth/reearth-flow/pull/2125)) [`8b31f1`](https://github.com/reearth/reearth-flow/commit/8b31f1)
+- Optimize refs and improve stability in Cesium visualizations [FLOW-DEV-163] ([#2130](https://github.com/reearth/reearth-flow/pull/2130)) [`a3d3d7`](https://github.com/reearth/reearth-flow/commit/a3d3d7)
+
+#### ✨ Refactor
+
+- Minor ui updates ([#2135](https://github.com/reearth/reearth-flow/pull/2135)) [`4cc895`](https://github.com/reearth/reearth-flow/commit/4cc895)
+
+### worker
+
+
+### 
+
+#### Miscellaneous Tasks
+
+- Add Backstage catalog-info.yaml ([#2129](https://github.com/reearth/reearth-flow/pull/2129)) [`f18afa`](https://github.com/reearth/reearth-flow/commit/f18afa)
+
 ## 0.1.0-alpha.18 - 2026-06-02
 
 ### engine
