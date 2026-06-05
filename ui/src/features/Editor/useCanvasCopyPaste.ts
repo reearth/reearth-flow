@@ -415,7 +415,6 @@ export default ({
           mousePosition,
           isCutByShortCut,
         );
-        const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
 
         // Compute the current workflow path for pasted subworkflows
         const currentPath = computeWorkflowPath(
@@ -426,6 +425,12 @@ export default ({
           newNodes,
           pastedWorkflows,
           currentPath,
+        );
+
+        const newEdges = newEdgeCreation(
+          pastedEdges,
+          pastedNodes,
+          processedNewNodes,
         );
 
         // deselect all previously selected nodes
