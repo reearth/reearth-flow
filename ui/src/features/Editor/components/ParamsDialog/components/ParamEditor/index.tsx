@@ -118,6 +118,12 @@ const ParamEditor: React.FC<Props> = ({
     createdAction && !createdAction.parameter ? "customizations" : "params",
   );
 
+  useEffect(() => {
+    if (activeTab === "params" && createdAction && !createdAction.parameter) {
+      setActiveTab("customizations");
+    }
+  }, [activeTab, createdAction]);
+
   const isCurrentTabValid =
     activeTab === "params" ? isParamsValid : isCustomizationsValid;
 
