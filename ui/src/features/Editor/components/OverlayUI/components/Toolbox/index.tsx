@@ -50,6 +50,7 @@ type Props = {
   onUndo: () => void;
   onLayoutChange: () => void;
   onNodesAdd?: (nodes: Node[]) => void;
+  onWorkflowAdd?: (position?: XYPosition) => void;
   onNodePickerOpen?: (
     position: XYPosition,
     nodeType?: ActionNodeType,
@@ -66,6 +67,7 @@ const Toolbox: React.FC<Props> = ({
   onUndo,
   onLayoutChange,
   onNodesAdd,
+  onWorkflowAdd,
   onNodePickerOpen,
 }) => {
   const t = useT();
@@ -150,7 +152,9 @@ const Toolbox: React.FC<Props> = ({
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
     });
-    if (actionNodeTypes.includes(nodeType as ActionNodeType)) {
+    if (nodeType === "subworkflow") {
+      onWorkflowAdd?.(getCenter);
+    } else if (actionNodeTypes.includes(nodeType as ActionNodeType)) {
       onNodePickerOpen?.(getCenter, nodeType as ActionNodeType, isMainWorkflow);
     } else {
       const officialName =
