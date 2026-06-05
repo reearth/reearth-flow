@@ -85,7 +85,7 @@ const ActionPickerDialog: React.FC<Props> = ({
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        size="3xl"
+        size="4xl"
         position="top"
         className="flex max-h-[70vh] min-h-[60vh] flex-col gap-0 overflow-hidden p-0">
         <DialogTitle>{t("Choose Action")}</DialogTitle>
