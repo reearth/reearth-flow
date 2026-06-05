@@ -8,7 +8,6 @@ use indexmap::IndexMap;
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
-use crate::unpack_args;
 
 use super::{expect_arity, MethodFn};
 
@@ -34,8 +33,8 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
 }
 
 fn keys(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => recv);
-    let Value::Map(rc) = recv else {
+    expect_arity(args, 0, 0)?;
+    let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
     Ok(Value::array(
@@ -47,16 +46,16 @@ fn keys(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn values(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => recv);
-    let Value::Map(rc) = recv else {
+    expect_arity(args, 0, 0)?;
+    let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
     Ok(Value::array(rc.borrow().values().cloned().collect()))
 }
 
 fn items(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => recv);
-    let Value::Map(rc) = recv else {
+    expect_arity(args, 0, 0)?;
+    let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
     Ok(Value::array(

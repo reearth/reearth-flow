@@ -3,7 +3,6 @@ use std::sync::LazyLock;
 
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{NativeFn, Value};
-use crate::unpack_args;
 
 use super::{expect_arity, MethodFn};
 
@@ -34,8 +33,8 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
 }
 
 fn trim(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s);
-    Ok(Value::String(s.as_str()?.trim().to_string()))
+    expect_arity(args, 0, 0)?;
+    Ok(Value::String(args[0].as_str()?.trim().to_string()))
 }
 
 fn split_limit(v: &Value) -> InnerResult<usize> {
@@ -80,39 +79,41 @@ fn rsplit(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn starts_with(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, prefix);
-    Ok(Value::Bool(s.as_str()?.starts_with(prefix.as_str()?)))
+    expect_arity(args, 1, 1)?;
+    Ok(Value::Bool(
+        args[0].as_str()?.starts_with(args[1].as_str()?),
+    ))
 }
 
 fn ends_with(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, suffix);
-    Ok(Value::Bool(s.as_str()?.ends_with(suffix.as_str()?)))
+    expect_arity(args, 1, 1)?;
+    Ok(Value::Bool(args[0].as_str()?.ends_with(args[1].as_str()?)))
 }
 
 fn remove_prefix(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, prefix);
-    let s = s.as_str()?;
-    let prefix = prefix.as_str()?;
+    expect_arity(args, 1, 1)?;
+    let s = args[0].as_str()?;
+    let prefix = args[1].as_str()?;
     Ok(Value::String(
         s.strip_prefix(prefix).unwrap_or(s).to_string(),
     ))
 }
 
 fn replace(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, from, to);
-    let s = s.as_str()?;
-    let from = from.as_str()?;
-    let to = to.as_str()?;
+    expect_arity(args, 2, 2)?;
+    let s = args[0].as_str()?;
+    let from = args[1].as_str()?;
+    let to = args[2].as_str()?;
     Ok(Value::String(s.replace(from, to)))
 }
 
 fn join(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => sep, list);
-    let sep = sep.as_str()?;
-    let Value::Array(list) = list else {
+    expect_arity(args, 1, 1)?;
+    let sep = args[0].as_str()?;
+    let Value::Array(list) = &args[1] else {
         return Err(InnerError::new(format!(
             "join() argument must be an array, got {}",
-            list.type_name()
+            args[1].type_name()
         )));
     };
     let parts = list
@@ -130,9 +131,9 @@ fn join(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, suffix);
-    let s = s.as_str()?;
-    let suffix = suffix.as_str()?;
+    expect_arity(args, 1, 1)?;
+    let s = args[0].as_str()?;
+    let suffix = args[1].as_str()?;
     Ok(Value::String(
         s.strip_suffix(suffix).unwrap_or(s).to_string(),
     ))
