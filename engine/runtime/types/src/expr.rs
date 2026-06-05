@@ -127,24 +127,40 @@ impl<const MASK: u32> schemars::JsonSchema for Code<MASK> {
     fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
         use schemars::schema::*;
 
-        let code_types: Vec<serde_json::Value> = CodeType::all_variants()
+        let allowed_types: Vec<serde_json::Value> = CodeType::all_variants()
             .iter()
             .copied()
             .filter(|v| v.as_mask() & MASK != 0)
             .map(|v| serde_json::Value::String(v.serde_name().to_string()))
             .collect();
 
+        let type_property = Schema::Object(SchemaObject {
+            instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
+            enum_values: Some(allowed_types),
+            ..Default::default()
+        });
+
+        let value_property = Schema::Object(SchemaObject {
+            instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
+            ..Default::default()
+        });
+
+        let mut properties = schemars::Map::new();
+        properties.insert("type".to_string(), type_property);
+        properties.insert("value".to_string(), value_property);
+
         let mut extensions = schemars::Map::new();
-        extensions.insert(
-            "type".to_string(),
-            serde_json::Value::String("code".to_string()),
-        );
-        extensions.insert(
-            "codeTypes".to_string(),
-            serde_json::Value::Array(code_types),
-        );
+        extensions.insert("x-flow-code".to_string(), serde_json::Value::Bool(true));
 
         Schema::Object(SchemaObject {
+            instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Object))),
+            object: Some(Box::new(ObjectValidation {
+                required: ["type".to_string(), "value".to_string()]
+                    .into_iter()
+                    .collect(),
+                properties,
+                ..Default::default()
+            })),
             extensions,
             ..Default::default()
         })

@@ -627,18 +627,27 @@ Create, Convert, Rename, and Remove Feature Attributes
         "value": {
           "title": "Value",
           "description": "Value to use for the operation",
-          "anyOf": [
-            {
-              "codeTypes": [
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
                 "flowExpr",
                 "string"
-              ],
-              "type": "code"
+              ]
             },
-            {
-              "type": "null"
+            "value": {
+              "type": "string"
             }
-          ]
+          },
+          "x-flow-code": true
         }
       }
     }
@@ -1346,18 +1355,27 @@ Export Features as Cesium 3D Tiles for Web Visualization
     "compressOutput": {
       "title": "Compressed Output Path",
       "description": "Optional path for compressed archive output",
-      "anyOf": [
-        {
-          "codeTypes": [
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
             "flowExpr",
             "string"
-          ],
-          "type": "code"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      },
+      "x-flow-code": true
     },
     "dracoCompression": {
       "title": "Draco Compression",
@@ -1384,11 +1402,24 @@ Export Features as Cesium 3D Tiles for Web Visualization
     "output": {
       "title": "Output Path",
       "description": "Directory path where the 3D tiles will be written",
-      "codeTypes": [
-        "flowExpr",
-        "string"
+      "type": "object",
+      "required": [
+        "type",
+        "value"
       ],
-      "type": "code"
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "x-flow-code": true
     },
     "schemaKey": {
       "title": "Schema Key",
@@ -3092,10 +3123,23 @@ Filter Features Based on Custom Conditions
       "properties": {
         "expr": {
           "title": "Condition expression",
-          "codeTypes": [
-            "flowExpr"
+          "type": "object",
+          "required": [
+            "type",
+            "value"
           ],
-          "type": "code"
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "x-flow-code": true
         },
         "outputPort": {
           "title": "Output port",
@@ -3961,11 +4005,24 @@ Experimental testbed for the Flow expression engine
           "type": "string"
         },
         "value": {
-          "codeTypes": [
-            "flowExpr",
-            "string"
+          "type": "object",
+          "required": [
+            "type",
+            "value"
           ],
-          "type": "code"
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "x-flow-code": true
         }
       }
     }
@@ -6817,18 +6874,27 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     "compressOutput": {
       "title": "Compress Output",
       "description": "Optional expression to determine whether to compress the output tiles",
-      "anyOf": [
-        {
-          "codeTypes": [
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
             "flowExpr",
             "string"
-          ],
-          "type": "code"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      },
+      "x-flow-code": true
     },
     "extent": {
       "title": "Extent",
@@ -6843,11 +6909,24 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     "layerName": {
       "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
-      "codeTypes": [
-        "flowExpr",
-        "string"
+      "type": "object",
+      "required": [
+        "type",
+        "value"
       ],
-      "type": "code"
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "x-flow-code": true
     },
     "maxZoom": {
       "title": "Maximum Zoom",
@@ -6866,11 +6945,24 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     "output": {
       "title": "Output",
       "description": "Output directory path or expression for the generated MVT tiles",
-      "codeTypes": [
-        "flowExpr",
-        "string"
+      "type": "object",
+      "required": [
+        "type",
+        "value"
       ],
-      "type": "code"
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "x-flow-code": true
     },
     "schemaKey": {
       "title": "Schema Key",
