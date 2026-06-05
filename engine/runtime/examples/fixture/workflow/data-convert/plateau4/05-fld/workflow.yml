@@ -15,7 +15,6 @@ with:
     - htd
     - ifld
     - rfld
-  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
@@ -184,7 +183,7 @@ graphs:
             type: flowExpr
             value: |
               udx_dirs = attributes["udxDirs"].replace("/", "_");
-              Url(env["workerArtifactPath"]) / (udx_dirs + "_no_texture")
+              udx_dirs + "_no_texture"
           compressOutput:
             type: flowExpr
             value: |
@@ -192,7 +191,7 @@ graphs:
               udx_dirs = attributes["udxDirs"].replace("/", "_");
               scale = "";
               if attributes.get("__scale") { scale = "_" + attributes["__scale"] }
-              Url(env["workerArtifactPath"]) / (citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
+              citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip"
 
       # Dictionary.json output branch
       - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
@@ -229,7 +228,7 @@ graphs:
         action: JsonWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+            "dictionary.json"
           converter: |
             let packages = #{};
             for feature in env.get("__features") {

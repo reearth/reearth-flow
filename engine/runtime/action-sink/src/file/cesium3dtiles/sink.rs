@@ -1,14 +1,12 @@
 use std::{
     collections::HashMap,
     io::{BufWriter, Cursor},
-    str::FromStr,
     sync::Arc,
     time, vec,
 };
 
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::event::{Event, EventHub};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
@@ -112,7 +110,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 }
 
-type BufferKey = (Uri, Option<String>, Option<Uri>); // (output, filename, compress_output)
+type BufferKey = (String, Option<String>, Option<String>); // (output_rel_path, filename, compress_output_rel_path)
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
@@ -212,22 +210,20 @@ impl Cesium3DTilesWriter {
             .and_then(|key| ctx.feature.get(key).and_then(|v| v.as_string()));
 
         let env_vars = ctx.expr_engine.vars();
-        let path = self
+        let output = self
             .params
             .output
             .eval_string(&ctx.feature, Arc::clone(&env_vars))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-        // URI parse only; sandbox-validated when SinkOutput::from_path runs at write time (pipeline.rs).
-        let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
         let compress_output = self
             .params
             .compress_output
             .as_ref()
-            .map(|c| -> crate::errors::Result<Uri> {
-                let path = c
+            .map(|c| -> crate::errors::Result<String> {
+                let compress_path = c
                     .eval_string(&ctx.feature, Arc::clone(&env_vars))
                     .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-                Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)
+                Ok(compress_path)
             })
             .transpose()?;
 
@@ -288,7 +284,7 @@ impl Cesium3DTilesWriter {
 
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
         let mut features =
-            HashMap::<(Uri, Option<Uri>), Vec<(Option<String>, Vec<Feature>)>>::new();
+            HashMap::<(String, Option<String>), Vec<(Option<String>, Vec<Feature>)>>::new();
         for ((output, filename, compress_output), buffer) in &self.buffer {
             features
                 .entry((output.clone(), compress_output.clone()))
@@ -306,8 +302,8 @@ impl Cesium3DTilesWriter {
         &self,
         ctx: Context,
         upstream: &[(Option<String>, Vec<Feature>)],
-        output: &Uri,
-        compress_output: &Option<Uri>,
+        output: &str,
+        compress_output: &Option<String>,
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
@@ -321,6 +317,13 @@ impl Cesium3DTilesWriter {
                 }
             }
         }
+        // Resolve the output URI once here; the pipeline uses it as the base directory.
+        let node_ctx = NodeContext::from(ctx.clone());
+        let output_sink =
+            crate::SinkOutput::new(&node_ctx.sandbox_root, output, &node_ctx.storage_resolver)
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+        let output_uri = output_sink.uri().clone();
+
         let grouped_features: Vec<(Option<String>, Vec<Feature>)> = upstream.to_owned();
 
         let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
@@ -328,9 +331,13 @@ impl Cesium3DTilesWriter {
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
 
+        let output_uri_for_log = output_uri.clone();
+        let compress_output = compress_output.clone();
+
         std::thread::scope(|s| {
             {
                 let ctx = ctx.clone();
+                let out_log = output_uri_for_log.clone();
                 s.spawn(move || {
                     let feature_count: usize =
                         grouped_features.iter().map(|(_, fs)| fs.len()).sum();
@@ -358,13 +365,14 @@ impl Cesium3DTilesWriter {
                             "Finish geometry_slicing_stage. feature length = {}, elapsed = {:?}, output = {}",
                             feature_count,
                             now.elapsed(),
-                            output
+                            out_log
                         ),
                     );
                 });
             }
             {
                 let ctx = ctx.clone();
+                let out_log = output_uri_for_log.clone();
                 s.spawn(move || {
                     let now = time::Instant::now();
                     let result =
@@ -383,7 +391,7 @@ impl Cesium3DTilesWriter {
                         format!(
                             "Finish feature_sorting_stage. elapsed = {:?}, output = {}",
                             now.elapsed(),
-                            output
+                            out_log
                         ),
                     );
                 });
@@ -391,6 +399,7 @@ impl Cesium3DTilesWriter {
             {
                 let ctx = ctx.clone();
                 let schema = schema.clone();
+                let output_uri_inner = output_uri.clone();
                 s.spawn(move || {
                     let pool = rayon::ThreadPoolBuilder::new()
                         .use_current_thread()
@@ -400,7 +409,7 @@ impl Cesium3DTilesWriter {
                         let now = time::Instant::now();
                         let result = super::pipeline::tile_writing_stage(
                             ctx.clone(),
-                            output.clone(),
+                            output_uri_inner.clone(),
                             receiver_sorted,
                             tile_id_conv,
                             &schema,
@@ -421,18 +430,16 @@ impl Cesium3DTilesWriter {
                             format!(
                                 "Finish tile_writing_stage. elapsed = {:?}, output = {}",
                                 now.elapsed(),
-                                output
+                                output_uri_inner
                             ),
                         );
 
-                        if let Some(compress_output) = compress_output {
-                            // Sandbox: `compress_output` (zip) runs through
-                            // the same chokepoint as the tiles dir above, so
-                            // both Cesium outputs share one bounded location.
+                        if let Some(ref compress_rel) = compress_output {
                             let compress_node_ctx = NodeContext::from(ctx.clone());
-                            match crate::SinkOutput::from_path(
-                                &compress_node_ctx,
-                                compress_output.as_str(),
+                            match crate::SinkOutput::new(
+                                &compress_node_ctx.sandbox_root,
+                                compress_rel,
+                                &compress_node_ctx.storage_resolver,
                             ) {
                                 Ok(compress_sink_out) => {
                                     let now = time::Instant::now();
@@ -441,7 +448,7 @@ impl Cesium3DTilesWriter {
                                     let writer = BufWriter::new(&mut cursor);
                                     let zip_result = reearth_flow_common::zip::write(
                                         writer,
-                                        output.path().as_path(),
+                                        output_uri_inner.path().as_path(),
                                     )
                                     .map_err(|e| {
                                         crate::errors::SinkError::cesium3dtiles_writer(
@@ -460,7 +467,7 @@ impl Cesium3DTilesWriter {
                                             {
                                                 Ok(_) => {
                                                     match std::fs::remove_dir_all(
-                                                        output.path().as_path(),
+                                                        output_uri_inner.path().as_path(),
                                                     ) {
                                                         Ok(_) => {}
                                                         Err(e) => {
@@ -497,7 +504,7 @@ impl Cesium3DTilesWriter {
                                         format!(
                                             "Finish write zip file. elapsed = {:?}, output = {}",
                                             now.elapsed(),
-                                            output
+                                            output_uri_inner
                                         ),
                                     );
                                 }

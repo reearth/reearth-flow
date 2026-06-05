@@ -10,7 +10,6 @@ with:
   codelists:
   objectListsPath:
   objectLists:
-  workerArtifactPath:
   prcs:
   targetPackages:
     - tran
@@ -179,7 +178,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_xlink参照エラー.csv")
+            "03_交通_xlink参照エラー.csv"
 
       - id: 51431704-ac14-41cd-988b-88141dc6e326
         name: PLATEAU3.LodSplitterWithDM
@@ -301,7 +300,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_面の向き不正.csv")
+            "03_交通_面の向き不正.csv"
 
       # L-TRAN-02: Adjacent surface overlap detection
       # Filter out features with package == "rwy"
@@ -541,7 +540,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_隣接面重複.csv")
+            "03_交通_隣接面重複.csv"
 
       # Write surface validation errors to CSV
       - id: 41bd7fb9-6e5b-4ac6-985f-a9abb40fb1c1
@@ -551,7 +550,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_面のエラー.csv")
+            "03_交通_面のエラー.csv"
 
       # ===== Error Summary Output (Phase 1-10) =====
       # Phase 1: File info extraction
@@ -663,7 +662,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_検査結果一覧.csv")
+            "03_交通_検査結果一覧.csv"
 
       # Phase 6: StatisticsCalculator for JSON aggregation
       - id: 9068494f-dee6-41ca-aef2-3e493441ece2
@@ -710,7 +709,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_tran.json")
+            "summary_tran.json"
 
       # Phase 8: Calculate total errors for no-error check
       - id: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
@@ -744,8 +743,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # Phase 11: ZipFileWriter - Bundle all output files
       - id: 02fb12bf-a5fc-4b0e-a568-178f5f3a3992
@@ -755,8 +753,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       # Data preparation flow

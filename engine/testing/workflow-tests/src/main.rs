@@ -336,8 +336,13 @@ impl TestContext {
         let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
         let ingress_state = Arc::clone(&feature_state);
 
+        // Build sandbox_root from temp_dir so relative sink paths resolve there
+        let sandbox_root_str = format!("file://{}/", self.temp_dir.display());
+        let sandbox_root = reearth_flow_common::uri::Uri::from_str(&sandbox_root_str)
+            .context("failed to build sandbox_root URI")?;
+
         // Run workflow
-        Runner::run(
+        Runner::run_with_sandbox_root(
             job_id,
             workflow,
             action_factories,
@@ -346,6 +351,7 @@ impl TestContext {
             ingress_state,
             feature_state,
             None,
+            sandbox_root,
         )?;
 
         Ok(())

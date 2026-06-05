@@ -9,7 +9,6 @@ with:
   schemas: null
   objectListsPath: null
   objectLists: null
-  workerArtifactPath: null
 graphs:
 - id: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
   name: PLATEAU4.XMLValidator
@@ -428,7 +427,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L01エラー.csv")
+        "01_共通_L01エラー.csv"
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
     type: action
@@ -454,7 +453,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L02エラー.csv")
+        "01_共通_L02エラー.csv"
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
     type: subGraph
@@ -565,7 +564,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通.csv")
+        "01_共通.csv"
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
     type: action
@@ -630,7 +629,7 @@ graphs:
           result
         }
       output: |
-        file::join_path(env.get("workerArtifactPath"), "summary_common.json")
+        "summary_common.json"
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
     type: action
@@ -654,7 +653,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_GML_ID書式不正.csv")
+        "01_共通_GML_ID書式不正.csv"
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
     type: action
@@ -678,7 +677,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_GML_ID重複.csv")
+        "01_共通_GML_ID重複.csv"
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
     type: action
@@ -724,7 +723,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L06エラー.csv")
+        "01_共通_L06エラー.csv"
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
     type: action
@@ -754,7 +753,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L04エラー.csv")
+        "01_共通_L04エラー.csv"
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
     type: action
@@ -784,7 +783,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_不正なcodeSpace.csv")
+        "01_共通_不正なcodeSpace.csv"
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
@@ -824,7 +823,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_xlink参照先なし.csv")
+        "01_共通_xlink参照先なし.csv"
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
     type: action
@@ -856,7 +855,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_T03エラー.csv")
+        "01_共通_T03エラー.csv"
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
     type: action
@@ -883,7 +882,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L-frn-01エラー.csv")
+        "01_共通_L-frn-01エラー.csv"
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
@@ -1287,7 +1286,7 @@ graphs:
           feature["dataFileData"]
         }
       output: |
-        file::join_path(env.get("workerArtifactPath"), "summary_common2-" + env.get("__value")["package"] + ".json")
+        "summary_common2-" + env.get("__value")["package"] + ".json"
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
     type: action
@@ -1316,7 +1315,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
+        "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv"
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
     type: action
@@ -1336,7 +1335,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv")
+        "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv"
   - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
     name: AttributeMapperC07
     type: action
@@ -1365,7 +1364,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv")
+        "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv"
   - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
     name: AttributeMapperC08
     type: action
@@ -1394,7 +1393,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv")
+        "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv"
   - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     name: AttributeManagerTotalErrorCount
     type: action
@@ -1655,8 +1654,7 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath");
-        file::join_path(dirname, filename)
+        filename
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -1684,8 +1682,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath");
-        file::join_path(dirname, filename)
+        filename
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae

@@ -10,7 +10,6 @@ with:
   schemas: null
   targetPackages:
   - gen
-  workerArtifactPath: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -375,7 +374,7 @@ graphs:
     action: JsonWriter
     with:
       output: |
-        file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+        "dictionary.json"
       converter: |
         #{
           gen: env.get("__features").map(|f| #{
@@ -436,10 +435,10 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: Url(env["workerArtifactPath"]) / ("gen_" + attributes["__gml_name_code"] + "_lod" + attributes["__lod"])
+        value: '"gen_" + attributes["__gml_name_code"] + "_lod" + attributes["__lod"]'
       compressOutput:
         type: flowExpr
-        value: Url(env["workerArtifactPath"]) / (Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_gen") + "_gen_" + attributes["__gml_name_code"] + "_mvt_lod" + attributes["__lod"] + ".zip")
+        value: Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_gen") + "_gen_" + attributes["__gml_name_code"] + "_mvt_lod" + attributes["__lod"] + ".zip"
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:

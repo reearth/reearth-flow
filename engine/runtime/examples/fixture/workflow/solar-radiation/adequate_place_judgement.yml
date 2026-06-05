@@ -615,7 +615,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "適地判定結果.csv")
+        "適地判定結果.csv"
 
   # ========================================
   # Section 2h: Land Area Pipeline
@@ -854,7 +854,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "土地適地判定結果.csv")
+        "土地適地判定結果.csv"
 
   # Snow spatial filter for land areas
   - id: 00000006-0000-0000-0000-000000000010

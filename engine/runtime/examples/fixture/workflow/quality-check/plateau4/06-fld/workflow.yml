@@ -9,7 +9,6 @@ with:
   schemas:
   objectListsPath:
   objectLists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["fld", "htd", "ifld", "tnm", "rfld"]
 graphs:
@@ -345,7 +344,6 @@ graphs:
         with:
           format: csv
           output: |
-            let base_path = env.get("workerArtifactPath");
             let folder = env.get("__value").Folder;
             if folder == () || folder == "" {
               return file::join_path(base_path, "06_浸水想定区域_fld.csv");
@@ -356,7 +354,7 @@ graphs:
             let path = folder.sub_string(slash_pos + 1);
             // Create hierarchical path: 06_浸水想定区域_{flood_type}/{path}.csv
             let csv_filepath = "06_浸水想定区域_" + flood_type + "/" + path + ".csv";
-            file::join_path(base_path, csv_filepath)
+            csv_filepath
 
       # JSON Writer for aggregated counts (one file per folder)
       - id: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
@@ -401,9 +399,8 @@ graphs:
               ]
             }
           output: |
-            let base_path = env.get("workerArtifactPath");
             let json_filename = env.get("__value")._json_filename ?? "summary_fld.json";
-            file::join_path(base_path, json_filename)
+            json_filename
 
       # Calculate total error count
       - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
@@ -443,8 +440,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # ZipFileWriter - Bundle all output files
       - id: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
@@ -454,8 +450,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       # Input processing chain

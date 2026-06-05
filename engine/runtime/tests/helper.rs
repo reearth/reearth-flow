@@ -84,41 +84,21 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
     let folder_str = folder_path.to_str().unwrap();
     workflow
         .merge_with(HashMap::from([
-            (
-                "outputFilePath".to_string(),
-                format!(
-                    "file://{}",
-                    folder_path.join("result.json").to_str().unwrap()
-                ),
-            ),
+            ("outputFilePath".to_string(), "result.json".to_string()),
             ("outputDir".to_string(), folder_str.to_string()),
-            (
-                "joinedOutputPath".to_string(),
-                format!(
-                    "file://{}",
-                    folder_path.join("joined.json").to_str().unwrap()
-                ),
-            ),
+            ("joinedOutputPath".to_string(), "joined.json".to_string()),
             (
                 "unjoinedRequestorOutputPath".to_string(),
-                format!(
-                    "file://{}",
-                    folder_path
-                        .join("unjoined_requestor.json")
-                        .to_str()
-                        .unwrap()
-                ),
+                "unjoined_requestor.json".to_string(),
             ),
             (
                 "unjoinedSupplierOutputPath".to_string(),
-                format!(
-                    "file://{}",
-                    folder_path.join("unjoined_supplier.json").to_str().unwrap()
-                ),
+                "unjoined_supplier.json".to_string(),
             ),
         ]))
         .unwrap();
-    Runner::run(
+    let sandbox_root = Uri::for_test(&format!("file://{}/", folder_str));
+    Runner::run_with_sandbox_root(
         uuid::Uuid::new_v4(),
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),
@@ -127,9 +107,83 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         ingress_state,
         feature_state,
         None,
+        sandbox_root,
     )
     .unwrap();
     Ok(binding)
+}
+
+/// Like [`execute`] but expects the workflow to fail. Returns the error string
+/// so callers can assert on its contents. Panics if the workflow succeeds.
+pub(crate) fn execute_expect_err(test_id: &str, fixture_files: Vec<&str>) -> String {
+    init_test_env();
+    let storage_resolver = Arc::new(StorageResolver::new());
+    let storage = storage_resolver
+        .resolve(&Uri::for_test("ram:///fixture/"))
+        .unwrap();
+    for fixture in fixture_files {
+        let file = Fixtures::get(format!("{test_id}/{fixture}").as_str())
+            .unwrap()
+            .data
+            .to_vec();
+        storage
+            .put_sync(
+                PathBuf::from(format!("/fixture/testdata/{test_id}/{fixture}")).as_path(),
+                bytes::Bytes::from(file),
+            )
+            .unwrap();
+    }
+    let workflow_file = WorkflowFiles::get(format!("{test_id}.yaml").as_str()).unwrap();
+    let workflow = std::str::from_utf8(workflow_file.data.as_ref()).unwrap();
+    let binding = tempdir().unwrap();
+    let folder_path = binding.path();
+    std::fs::create_dir_all(folder_path).unwrap();
+    let ingress_state =
+        Arc::new(State::new(&Uri::for_test("ram:///ingress/"), &storage_resolver).unwrap());
+    let feature_state =
+        Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
+    let logger_factory = Arc::new(LoggerFactory::new(
+        reearth_flow_action_log::ActionLogger::root(
+            reearth_flow_action_log::Discard,
+            reearth_flow_action_log::o!(),
+        ),
+        Uri::for_test("ram:///log/").path(),
+    ));
+    let mut workflow = Workflow::try_from(workflow).expect("failed to parse workflow");
+    let folder_str = folder_path.to_str().unwrap();
+    workflow
+        .merge_with(HashMap::from([
+            ("outputFilePath".to_string(), "result.json".to_string()),
+            ("outputDir".to_string(), folder_str.to_string()),
+            ("joinedOutputPath".to_string(), "joined.json".to_string()),
+            (
+                "unjoinedRequestorOutputPath".to_string(),
+                "unjoined_requestor.json".to_string(),
+            ),
+            (
+                "unjoinedSupplierOutputPath".to_string(),
+                "unjoined_supplier.json".to_string(),
+            ),
+        ]))
+        .unwrap();
+    let sandbox_root = Uri::for_test(&format!("file://{}/", folder_str));
+    let result = Runner::run_with_sandbox_root(
+        uuid::Uuid::new_v4(),
+        workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        logger_factory,
+        storage_resolver,
+        ingress_state,
+        feature_state,
+        None,
+        sandbox_root,
+    );
+    match result {
+        Err(e) => e.to_string(),
+        Ok(()) => {
+            panic!("execute_expect_err: workflow '{test_id}' succeeded but was expected to fail")
+        }
+    }
 }
 
 pub(crate) fn execute_with_test_assert(test_id: &str, assert_file: &str) {
