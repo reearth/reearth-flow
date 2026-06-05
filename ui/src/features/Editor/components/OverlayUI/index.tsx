@@ -53,6 +53,7 @@ type OverlayUIProps = {
   refetchWorkflowVariables: () => void;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onWorkflowAdd?: (position?: XYPosition) => Promise<void>;
   onNodePickerOpen?: (
     position: XYPosition,
     nodeType?: ActionNodeType,
@@ -125,6 +126,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   refetchWorkflowVariables,
   onNodesAdd,
   onNodesChange,
+  onWorkflowAdd,
   onNodePickerOpen,
   onNodePickerClose,
   onEdgesAdd,
@@ -186,6 +188,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
                 showLayoutOptions={showDialog === "layout"}
                 onLayoutChange={handleLayoutOptionsToggle}
                 onNodesAdd={onNodesAdd}
+                onWorkflowAdd={onWorkflowAdd}
                 onNodePickerOpen={onNodePickerOpen}
                 onRedo={onWorkflowRedo}
                 onUndo={onWorkflowUndo}
