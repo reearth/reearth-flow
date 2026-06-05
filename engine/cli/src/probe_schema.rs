@@ -19,12 +19,16 @@ use crate::factory::ALL_ACTION_FACTORIES;
 
 const DEFAULT_SAMPLE_SIZE: usize = 10;
 
-pub fn build_schema_command() -> Command {
-    Command::new("schema")
-        .about("Print per-node attribute schemas as JSON.")
+pub fn build_probe_schema_command() -> Command {
+    Command::new("probe-schema")
+        .about("Probe a workflow's data to infer per-node attribute schemas (JSON).")
         .long_about(
-            "Infer and print the attribute schema produced by each node, sampling source \
-             datasets to discover real attribute names and types.",
+            "Infer and print the attribute schema produced by each node. Unlike `schema-action` \
+             and `schema-workflow` (which emit static JSON Schema from action/workflow \
+             definitions), this command PROBES the actual data: it runs the workflow's source \
+             readers against their datasets (sampling the first N features) to discover real \
+             attribute names and types, then propagates transforms through the DAG. Output is \
+             JSON on stdout.",
         )
         .arg(workflow_cli_arg())
         .arg(vars_arg())
@@ -58,13 +62,13 @@ fn sample_size_arg() -> Arg {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct SchemaCliCommand {
+pub struct ProbeSchemaCliCommand {
     workflow_path: String,
     vars: HashMap<String, String>,
     sample_size: usize,
 }
 
-impl SchemaCliCommand {
+impl ProbeSchemaCliCommand {
     pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
         let workflow_path = matches
             .remove_one::<String>("workflow")
@@ -90,7 +94,7 @@ impl SchemaCliCommand {
                 .map_err(|e| crate::errors::Error::init(format!("Invalid sample-size: {e}")))?,
             None => DEFAULT_SAMPLE_SIZE,
         };
-        Ok(SchemaCliCommand {
+        Ok(ProbeSchemaCliCommand {
             workflow_path,
             vars,
             sample_size,
@@ -175,7 +179,7 @@ impl SchemaCliCommand {
     }
 
     pub fn execute(&self) -> crate::Result<()> {
-        debug!(args = ?self, "schema");
+        debug!(args = ?self, "probe-schema");
         let report = self.build_report()?;
         let json = serde_json::to_string_pretty(&report).map_err(crate::errors::Error::run)?;
         println!("{json}");
@@ -284,7 +288,7 @@ graphs:
             .expect("utf8 workflow path")
             .to_string();
 
-        let cmd = SchemaCliCommand {
+        let cmd = ProbeSchemaCliCommand {
             workflow_path,
             vars: HashMap::new(),
             sample_size: 10,
