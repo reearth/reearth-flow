@@ -50,7 +50,7 @@ type Props = {
   onUndo: () => void;
   onLayoutChange: () => void;
   onNodesAdd?: (nodes: Node[]) => void;
-  onWorkflowAdd?: (position?: XYPosition) => void;
+  onWorkflowAdd?: (position?: XYPosition) => Promise<void>;
   onNodePickerOpen?: (
     position: XYPosition,
     nodeType?: ActionNodeType,
@@ -153,7 +153,11 @@ const Toolbox: React.FC<Props> = ({
       y: window.innerHeight / 2,
     });
     if (nodeType === "subworkflow") {
-      onWorkflowAdd?.(getCenter);
+      try {
+        await onWorkflowAdd?.(getCenter);
+      } catch (e) {
+        console.error("Failed to add subworkflow:", e);
+      }
     } else if (actionNodeTypes.includes(nodeType as ActionNodeType)) {
       onNodePickerOpen?.(getCenter, nodeType as ActionNodeType, isMainWorkflow);
     } else {

@@ -53,7 +53,7 @@ type OverlayUIProps = {
   refetchWorkflowVariables: () => void;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
-  onWorkflowAdd?: (position?: XYPosition) => void;
+  onWorkflowAdd?: (position?: XYPosition) => Promise<void>;
   onNodePickerOpen?: (
     position: XYPosition,
     nodeType?: ActionNodeType,
