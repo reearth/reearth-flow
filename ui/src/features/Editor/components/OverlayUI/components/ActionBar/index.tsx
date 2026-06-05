@@ -15,6 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
   Popover,
@@ -169,6 +170,7 @@ const ActionBar: React.FC<Props> = ({
               />
             </div>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             className="flex items-center justify-between"
             onClick={() => onDialogOpen("version")}>

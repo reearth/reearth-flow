@@ -39,11 +39,11 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="m-2 flex h-[calc(100%-1rem)] flex-col">
       <EditorProvider value={editorContext}>
         <div className="flex flex-1 flex-col">
           <div
-            className={`relative flex flex-1 flex-col border ${isMainWorkflow ? "border-transparent" : "border-node-subworkflow"}`}>
+            className={`relative flex flex-1 flex-col rounded-xl border ${isMainWorkflow ? "border-transparent" : "border-node-subworkflow"}`}>
             <div
               id="left-top"
               className="pointer-events-none absolute top-2 left-2 z-50 *:pointer-events-auto">
@@ -57,6 +57,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
             <div className="flex flex-1">
               <div className="relative flex flex-1 flex-col">
                 <Canvas
+                  className="rounded-xl"
                   isMainWorkflow={isMainWorkflow}
                   onWorkflowOpen={handleWorkflowOpen}
                   nodes={nodes}

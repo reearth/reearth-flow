@@ -1,10 +1,8 @@
-import { LockIcon } from "@phosphor-icons/react";
 import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback } from "react";
 import { Doc } from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
-import { useT } from "@flow/lib/i18n";
 import type {
   ActionNodeType,
   Algorithm,
@@ -27,6 +25,7 @@ import {
   Homebar,
   VersionDialog,
   SearchActionBar,
+  LockedBadge,
 } from "./components";
 import useHooks from "./hooks";
 
@@ -54,6 +53,11 @@ type OverlayUIProps = {
   refetchWorkflowVariables: () => void;
   onNodesAdd: (nodes: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onNodePickerOpen?: (
+    position: XYPosition,
+    nodeType?: ActionNodeType,
+    isMainWorkflow?: boolean,
+  ) => void;
   onNodePickerClose: () => void;
   onEdgesAdd?: (edges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
@@ -121,6 +125,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   refetchWorkflowVariables,
   onNodesAdd,
   onNodesChange,
+  onNodePickerOpen,
   onNodePickerClose,
   onEdgesAdd,
   onEdgesChange,
@@ -163,8 +168,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
     }
   }, [showDialog, handleDialogOpen, handleDialogClose]);
 
-  const t = useT();
-
   return (
     <>
       <div
@@ -173,35 +176,36 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <div
           id="top-middle"
-          className="pointer-events-none absolute inset-x-0 top-2 flex shrink-0 justify-center *:pointer-events-auto">
-          <Toolbox
-            canUndo={canUndo}
-            canRedo={canRedo}
-            isMainWorkflow={isMainWorkflow}
-            showLayoutOptions={showDialog === "layout"}
-            onLayoutChange={handleLayoutOptionsToggle}
-            onRedo={onWorkflowRedo}
-            onUndo={onWorkflowUndo}
-          />
-          {showDialog === "layout" && !isLocked && (
-            <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
-              <LayoutSubToolbar
-                Ydoc={yDoc}
-                onLayoutChange={onLayoutChange}
-                onClose={handleDialogClose}
+          className="pointer-events-none absolute inset-x-0 top-2 flex shrink-0 justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <div className="pointer-events-auto">
+              <Toolbox
+                canUndo={canUndo}
+                canRedo={canRedo}
+                isMainWorkflow={isMainWorkflow}
+                showLayoutOptions={showDialog === "layout"}
+                onLayoutChange={handleLayoutOptionsToggle}
+                onNodesAdd={onNodesAdd}
+                onNodePickerOpen={onNodePickerOpen}
+                onRedo={onWorkflowRedo}
+                onUndo={onWorkflowUndo}
               />
             </div>
-          )}
-          {isLocked && (
-            <div className="left-50% absolute top-14 z-10 flex shrink-0 justify-center rounded bg-accent/50">
-              <div className="flex items-center gap-2 rounded p-2 text-xs">
-                <LockIcon weight="thin" size={18} />
-                <p className="font-light text-accent-foreground select-none">
-                  {t("Locked")}
-                </p>
+            {showDialog === "layout" && !isLocked && (
+              <div className="pointer-events-auto z-10">
+                <LayoutSubToolbar
+                  Ydoc={yDoc}
+                  onLayoutChange={onLayoutChange}
+                  onClose={handleDialogClose}
+                />
               </div>
-            </div>
-          )}
+            )}
+            {isLocked && (
+              <div className="pointer-events-auto z-10">
+                <LockedBadge onUnlock={() => onProjectLockChange(false)} />
+              </div>
+            )}
+          </div>
         </div>
         <div
           id="left-top"

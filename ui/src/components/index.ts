@@ -1,3 +1,4 @@
+export * from "./ActionDetails";
 export * from "./ActionItem";
 export * from "./Alert";
 export * from "./Avatar";
