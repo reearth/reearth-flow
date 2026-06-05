@@ -169,7 +169,7 @@ const ParamEditor: React.FC<Props> = ({
             <p>{t("Details")}</p>
           </TabsTrigger>
         </TabsList>
-        <TabsContent className="px-2 pb-2" value="params" asChild>
+        <TabsContent className="px-4 pb-2" value="params" asChild>
           <div className="flex size-full min-h-0 flex-col justify-between gap-4">
             <div className="min-h-0 overflow-scroll rounded px-2">
               {!createdAction?.parameter && (
@@ -204,9 +204,9 @@ const ParamEditor: React.FC<Props> = ({
             </Button>
           </div>
         </TabsContent>
-        <TabsContent className="px-4 py-2" value="customizations" asChild>
+        <TabsContent className="px-4 pb-2" value="customizations" asChild>
           <div className="flex size-full min-h-0 flex-col justify-between gap-4">
-            <div className="min-h-0 overflow-scroll rounded">
+            <div className="min-h-0 overflow-scroll rounded px-2">
               {!createdAction?.customizations && (
                 <BasicBoiler
                   text={t("No Customizations Available")}
@@ -265,7 +265,7 @@ const ParamEditor: React.FC<Props> = ({
             </Button>
           </div>
         </TabsContent>
-        <TabsContent className="w-full px-4 py-2" value="details">
+        <TabsContent className="w-full px-4" value="details">
           <div className="min-h-32 w-full overflow-scroll rounded">
             {!createdAction && (
               <BasicBoiler
@@ -275,7 +275,7 @@ const ParamEditor: React.FC<Props> = ({
               />
             )}
             {createdAction && (
-              <div className="px-4">
+              <div className="pr-6 pl-4">
                 <ActionDetails action={createdAction} />
               </div>
             )}
