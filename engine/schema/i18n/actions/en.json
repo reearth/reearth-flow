@@ -212,10 +212,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Operation": {
           "attribute": {
             "title": "Attribute name"
@@ -545,12 +541,6 @@
         "skipUnexposedAttributes": {
           "title": "Skip unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1103,10 +1093,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Condition": {
           "expr": {
             "title": "Condition expression"
@@ -1311,10 +1297,6 @@
         "mappings": {}
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapping": {
           "attribute": {},
           "value": {}
@@ -2160,12 +2142,6 @@
         "skipUnexposedAttributes": {
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
