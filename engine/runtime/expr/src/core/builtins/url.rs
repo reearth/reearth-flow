@@ -3,6 +3,8 @@ use crate::core::value::{ImmutableObject, Value};
 use crate::unpack_args;
 use url::Url;
 
+use super::expect_str;
+
 fn parse_url(s: &str) -> Result<UrlObject, String> {
     let url = if s.contains("://") {
         Url::parse(s).map_err(|e| format!("not a valid URI: {e}"))?
@@ -86,9 +88,7 @@ impl ImmutableObject for UrlObject {
             }
             "__div__" => {
                 unpack_args!(args => rhs);
-                let Value::String(rhs) = rhs else {
-                    return Err(InnerError::new("Url / requires a string"));
-                };
+                let rhs = expect_str(rhs)?;
                 let new_path = format!("{}/{rhs}", self.url.path().trim_end_matches('/'));
                 let mut url = self.url.clone();
                 url.set_path(&new_path);

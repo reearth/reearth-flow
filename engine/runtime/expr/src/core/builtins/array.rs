@@ -7,7 +7,7 @@ use crate::core::error::{InnerError, InnerResult};
 use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
 
-use super::MethodFn;
+use super::{expect_arity, expect_int, MethodFn};
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> =
     LazyLock::new(|| HashMap::from([("get", get as MethodFn)]));
@@ -35,19 +35,14 @@ pub fn resolve_index(i: i64, len: usize) -> Option<usize> {
 }
 
 fn get(args: &[Value]) -> InnerResult<Value> {
-    let (recv, idx, fallback) = match args {
-        [recv, idx] => (recv, idx, None),
-        [recv, idx, fallback] => (recv, idx, Some(fallback)),
-        _ => return Err(InnerError::new("array.get() requires 1 or 2 arguments")),
-    };
-    let Value::Array(rc) = recv else {
+    expect_arity(args, 1, 2)?;
+    let Value::Array(rc) = &args[0] else {
         return Err(InnerError::new("expected array receiver"));
     };
-    let Value::Int(i) = idx else {
-        return Err(InnerError::new("array.get() index must be an integer"));
-    };
+    let i = expect_int(&args[1])?;
+    let fallback = args.get(2);
     let arr = rc.borrow();
-    let elem = resolve_index(*i, arr.len()).map(|pos| arr[pos].clone());
+    let elem = resolve_index(i, arr.len()).map(|pos| arr[pos].clone());
     Ok(elem.unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
 }
 

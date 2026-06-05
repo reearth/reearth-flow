@@ -279,7 +279,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          citygml = Url(env["cityGmlPath"]).name.split("_op_")[0];
+          citygml = env["cityGmlPath"].split("/")[-1].split("_op_")[0];
           udx_dirs = attributes["udxDirs"].replace("/", "_");
           scale = "";
           if attributes.get("__scale") { scale = "_" + attributes["__scale"] }

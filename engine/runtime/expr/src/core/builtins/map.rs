@@ -10,7 +10,7 @@ use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
 use crate::unpack_args;
 
-use super::MethodFn;
+use super::{expect_arity, expect_str, MethodFn};
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
@@ -68,20 +68,15 @@ fn items(args: &[Value]) -> InnerResult<Value> {
 }
 
 fn get(args: &[Value]) -> InnerResult<Value> {
-    let (recv, key, fallback) = match args {
-        [recv, key] => (recv, key, None),
-        [recv, key, fallback] => (recv, key, Some(fallback)),
-        _ => return Err(InnerError::new("map.get() requires 1 or 2 arguments")),
-    };
-    let Value::Map(rc) = recv else {
+    expect_arity(args, 1, 2)?;
+    let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
-    let Value::String(k) = key else {
-        return Err(InnerError::new("map.get() key must be a string"));
-    };
+    let k = expect_str(&args[1])?;
+    let fallback = args.get(2);
     Ok(rc
         .borrow()
-        .get(k.as_str())
+        .get(k)
         .cloned()
         .unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
 }

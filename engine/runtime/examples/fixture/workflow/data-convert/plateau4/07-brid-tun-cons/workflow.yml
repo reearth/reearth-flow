@@ -165,7 +165,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'Url(attributes["path"]).name.split("_")[0]'
+                value: 'attributes["path"].split("/")[-1].split("_")[0]'
             - attribute: gml_id
               method: create
               value:
@@ -368,7 +368,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
               filename = city_gml + "_" + attributes["__package"] + "_dm_geometric_attributes.zip";
               filename
           skipUnexposedAttributes: true
@@ -434,7 +434,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
               city_gml + "_" + attributes["__package"] + "_3dtiles_lod1.zip"
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
@@ -453,7 +453,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
               city_gml + "_" + attributes["__package"] + "_3dtiles_lod2.zip"
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
@@ -472,7 +472,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
               city_gml + "_" + attributes["__package"] + "_3dtiles_lod3.zip"
 
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
@@ -491,7 +491,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
               city_gml + "_" + attributes["package"] + "_3dtiles_lod4.zip"
 
     edges:

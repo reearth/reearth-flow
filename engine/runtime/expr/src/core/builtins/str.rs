@@ -5,12 +5,13 @@ use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{NativeFn, Value};
 use crate::unpack_args;
 
-use super::MethodFn;
+use super::{expect_arity, expect_int, expect_str, MethodFn};
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
         ("trim", trim as MethodFn),
         ("split", split as MethodFn),
+        ("rsplit", rsplit as MethodFn),
         ("starts_with", starts_with as MethodFn),
         ("ends_with", ends_with as MethodFn),
         ("replace", replace as MethodFn),
@@ -34,92 +35,72 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
 
 fn trim(args: &[Value]) -> InnerResult<Value> {
     unpack_args!(args => s);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    Ok(Value::String(s.trim().to_string()))
+    Ok(Value::String(expect_str(s)?.trim().to_string()))
+}
+
+fn split_limit(v: &Value) -> InnerResult<usize> {
+    let n = expect_int(v)?;
+    if n < 0 {
+        return Err(InnerError::new("limit must be non-negative"));
+    }
+    Ok(n as usize)
 }
 
 fn split(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, sep);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
+    expect_arity(args, 1, 2)?;
+    let s = expect_str(&args[0])?;
+    let sep = expect_str(&args[1])?;
+    let n = args.get(2).map(split_limit).transpose()?;
+    let parts: Vec<Value> = match n {
+        Some(n) => s.splitn(n + 1, sep).map(|p| Value::String(p.to_string())).collect(),
+        None => s.split(sep).map(|p| Value::String(p.to_string())).collect(),
     };
-    let Value::String(sep) = sep else {
-        return Err(InnerError::new(format!(
-            "split() separator must be a string, got {}",
-            sep.type_name()
-        )));
+    Ok(Value::array(parts))
+}
+
+fn rsplit(args: &[Value]) -> InnerResult<Value> {
+    expect_arity(args, 1, 2)?;
+    let s = expect_str(&args[0])?;
+    let sep = expect_str(&args[1])?;
+    let n = args.get(2).map(split_limit).transpose()?;
+    let mut parts: Vec<Value> = match n {
+        Some(n) => s.rsplitn(n + 1, sep).map(|p| Value::String(p.to_string())).collect(),
+        None => s.split(sep).map(|p| Value::String(p.to_string())).collect(),
     };
-    Ok(Value::array(
-        s.split(sep.as_str())
-            .map(|p| Value::String(p.to_string()))
-            .collect(),
-    ))
+    if n.is_some() {
+        parts.reverse();
+    }
+    Ok(Value::array(parts))
 }
 
 fn starts_with(args: &[Value]) -> InnerResult<Value> {
     unpack_args!(args => s, prefix);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(prefix) = prefix else {
-        return Err(InnerError::new(format!(
-            "starts_with() argument must be a string, got {}",
-            prefix.type_name()
-        )));
-    };
-    Ok(Value::Bool(s.starts_with(prefix.as_str())))
+    Ok(Value::Bool(expect_str(s)?.starts_with(expect_str(prefix)?)))
 }
 
 fn ends_with(args: &[Value]) -> InnerResult<Value> {
     unpack_args!(args => s, suffix);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(suffix) = suffix else {
-        return Err(InnerError::new(format!(
-            "ends_with() argument must be a string, got {}",
-            suffix.type_name()
-        )));
-    };
-    Ok(Value::Bool(s.ends_with(suffix.as_str())))
+    Ok(Value::Bool(expect_str(s)?.ends_with(expect_str(suffix)?)))
 }
 
 fn remove_prefix(args: &[Value]) -> InnerResult<Value> {
     unpack_args!(args => s, prefix);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(prefix) = prefix else {
-        return Err(InnerError::new(format!(
-            "remove_prefix() argument must be a string, got {}",
-            prefix.type_name()
-        )));
-    };
-    Ok(Value::String(
-        s.strip_prefix(prefix.as_str()).unwrap_or(s).to_string(),
-    ))
+    let s = expect_str(s)?;
+    let prefix = expect_str(prefix)?;
+    Ok(Value::String(s.strip_prefix(prefix).unwrap_or(s).to_string()))
 }
 
 fn replace(args: &[Value]) -> InnerResult<Value> {
     unpack_args!(args => s, from, to);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let (Value::String(from), Value::String(to)) = (from, to) else {
-        return Err(InnerError::new(
-            "replace() requires two string arguments: replace(from, to)",
-        ));
-    };
-    Ok(Value::String(s.replace(from.as_str(), to.as_str())))
+    let s = expect_str(s)?;
+    let from = expect_str(from)?;
+    let to = expect_str(to)?;
+    Ok(Value::String(s.replace(from, to)))
 }
 
 fn join(args: &[Value]) -> InnerResult<Value> {
     unpack_args!(args => sep, list);
-    let Value::String(sep) = sep else {
-        return Err(InnerError::new("expected string receiver"));
-    };
+    let sep = expect_str(sep)?;
     let Value::Array(list) = list else {
         return Err(InnerError::new(format!(
             "join() argument must be an array, got {}",
@@ -137,23 +118,14 @@ fn join(args: &[Value]) -> InnerResult<Value> {
             ))),
         })
         .collect::<InnerResult<Vec<_>>>()?;
-    Ok(Value::String(parts.join(sep.as_str())))
+    Ok(Value::String(parts.join(sep)))
 }
 
 fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
     unpack_args!(args => s, suffix);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(suffix) = suffix else {
-        return Err(InnerError::new(format!(
-            "remove_suffix() argument must be a string, got {}",
-            suffix.type_name()
-        )));
-    };
-    Ok(Value::String(
-        s.strip_suffix(suffix.as_str()).unwrap_or(s).to_string(),
-    ))
+    let s = expect_str(s)?;
+    let suffix = expect_str(suffix)?;
+    Ok(Value::String(s.strip_suffix(suffix).unwrap_or(s).to_string()))
 }
 
 #[cfg(test)]
@@ -217,6 +189,20 @@ mod tests {
     fn test_split() {
         assert_eval(r#""foo:bar".split(":")[0]"#, &[], Value::from("foo"));
         assert_eval(r#""foo:bar".split(":")[-1]"#, &[], Value::from("bar"));
+        assert_eval(r#""a/b/c".split("/", 1)[0]"#, &[], Value::from("a"));
+        assert_eval(r#""a/b/c".split("/", 1)[1]"#, &[], Value::from("b/c"));
+    }
+
+    #[test]
+    fn test_rsplit() {
+        assert_eval(r#""a/b/c".rsplit("/")[-1]"#, &[], Value::from("c"));
+        assert_eval(r#""a/b/c".rsplit("/", 1)[-1]"#, &[], Value::from("c"));
+        assert_eval(r#""a/b/c".rsplit("/", 1)[0]"#, &[], Value::from("a/b"));
+        assert_eval(
+            r#""path/to/file.txt".rsplit("/", 1)[-1]"#,
+            &[],
+            Value::from("file.txt"),
+        );
     }
 
     #[test]

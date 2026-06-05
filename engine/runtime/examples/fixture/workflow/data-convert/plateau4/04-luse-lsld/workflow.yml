@@ -162,7 +162,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
               city_gml.remove_suffix("_luse") + "_luse_mvt.zip"
 
       # LSLD processing branch
@@ -274,7 +274,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
               city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip"
 
     edges:
