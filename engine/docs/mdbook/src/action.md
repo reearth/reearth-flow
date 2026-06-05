@@ -631,6 +631,7 @@ Create, Convert, Rename, and Remove Feature Attributes
             "object",
             "null"
           ],
+          "format": "code",
           "required": [
             "type",
             "value"
@@ -646,8 +647,7 @@ Create, Convert, Rename, and Remove Feature Attributes
             "value": {
               "type": "string"
             }
-          },
-          "x-flow-code": true
+          }
         }
       }
     }
@@ -1378,6 +1378,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "object",
         "null"
       ],
+      "format": "code",
       "required": [
         "type",
         "value"
@@ -1393,8 +1394,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "value": {
           "type": "string"
         }
-      },
-      "x-flow-code": true
+      }
     },
     "dracoCompression": {
       "title": "Draco Compression",
@@ -1422,6 +1422,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "title": "Output Path",
       "description": "Directory path where the 3D tiles will be written",
       "type": "object",
+      "format": "code",
       "required": [
         "type",
         "value"
@@ -1437,8 +1438,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "value": {
           "type": "string"
         }
-      },
-      "x-flow-code": true
+      }
     },
     "schemaKey": {
       "title": "Schema Key",
@@ -3333,6 +3333,7 @@ Filter Features Based on Custom Conditions
         "expr": {
           "title": "Condition expression",
           "type": "object",
+          "format": "code",
           "required": [
             "type",
             "value"
@@ -3347,8 +3348,7 @@ Filter Features Based on Custom Conditions
             "value": {
               "type": "string"
             }
-          },
-          "x-flow-code": true
+          }
         },
         "outputPort": {
           "title": "Output port",
@@ -4272,6 +4272,7 @@ Experimental testbed for the Flow expression engine
         },
         "value": {
           "type": "object",
+          "format": "code",
           "required": [
             "type",
             "value"
@@ -4287,8 +4288,7 @@ Experimental testbed for the Flow expression engine
             "value": {
               "type": "string"
             }
-          },
-          "x-flow-code": true
+          }
         }
       }
     }
@@ -7296,6 +7296,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         "object",
         "null"
       ],
+      "format": "code",
       "required": [
         "type",
         "value"
@@ -7311,8 +7312,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         "value": {
           "type": "string"
         }
-      },
-      "x-flow-code": true
+      }
     },
     "extent": {
       "title": "Extent",
@@ -7328,6 +7328,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
       "type": "object",
+      "format": "code",
       "required": [
         "type",
         "value"
@@ -7343,8 +7344,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         "value": {
           "type": "string"
         }
-      },
-      "x-flow-code": true
+      }
     },
     "maxZoom": {
       "title": "Maximum Zoom",
@@ -7364,6 +7364,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "title": "Output",
       "description": "Output directory path or expression for the generated MVT tiles",
       "type": "object",
+      "format": "code",
       "required": [
         "type",
         "value"
@@ -7379,8 +7380,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         "value": {
           "type": "string"
         }
-      },
-      "x-flow-code": true
+      }
     },
     "schemaKey": {
       "title": "Schema Key",
