@@ -647,18 +647,27 @@
               "value": {
                 "title": "Value",
                 "description": "Value to use for the operation",
-                "anyOf": [
-                  {
-                    "codeTypes": [
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
                       "flowExpr",
                       "string"
-                    ],
-                    "type": "code"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                },
+                "x-flow-code": true
               }
             }
           }
@@ -1399,18 +1408,27 @@
           "compressOutput": {
             "title": "Compressed Output Path",
             "description": "Optional path for compressed archive output",
-            "anyOf": [
-              {
-                "codeTypes": [
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
                   "flowExpr",
                   "string"
-                ],
-                "type": "code"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            },
+            "x-flow-code": true
           },
           "dracoCompression": {
             "title": "Draco Compression",
@@ -1437,11 +1455,24 @@
           "output": {
             "title": "Output Path",
             "description": "Directory path where the 3D tiles will be written",
-            "codeTypes": [
-              "flowExpr",
-              "string"
+            "type": "object",
+            "required": [
+              "type",
+              "value"
             ],
-            "type": "code"
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "x-flow-code": true
           },
           "schemaKey": {
             "title": "Schema Key",
@@ -3394,10 +3425,23 @@
             "properties": {
               "expr": {
                 "title": "Condition expression",
-                "codeTypes": [
-                  "flowExpr"
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
                 ],
-                "type": "code"
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "x-flow-code": true
               },
               "outputPort": {
                 "title": "Output port",
@@ -4341,11 +4385,24 @@
                 "type": "string"
               },
               "value": {
-                "codeTypes": [
-                  "flowExpr",
-                  "string"
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
                 ],
-                "type": "code"
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "x-flow-code": true
               }
             }
           }
@@ -7418,18 +7475,27 @@
           "compressOutput": {
             "title": "Compress Output",
             "description": "Optional expression to determine whether to compress the output tiles",
-            "anyOf": [
-              {
-                "codeTypes": [
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
                   "flowExpr",
                   "string"
-                ],
-                "type": "code"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            },
+            "x-flow-code": true
           },
           "extent": {
             "title": "Extent",
@@ -7444,11 +7510,24 @@
           "layerName": {
             "title": "Layer Name",
             "description": "Name of the layer within the MVT tiles",
-            "codeTypes": [
-              "flowExpr",
-              "string"
+            "type": "object",
+            "required": [
+              "type",
+              "value"
             ],
-            "type": "code"
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "x-flow-code": true
           },
           "maxZoom": {
             "title": "Maximum Zoom",
@@ -7467,11 +7546,24 @@
           "output": {
             "title": "Output",
             "description": "Output directory path or expression for the generated MVT tiles",
-            "codeTypes": [
-              "flowExpr",
-              "string"
+            "type": "object",
+            "required": [
+              "type",
+              "value"
             ],
-            "type": "code"
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "x-flow-code": true
           },
           "schemaKey": {
             "title": "Schema Key",

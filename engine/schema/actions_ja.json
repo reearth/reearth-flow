@@ -650,18 +650,27 @@
               "value": {
                 "title": "値",
                 "description": "操作に使用する値",
-                "anyOf": [
-                  {
-                    "codeTypes": [
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
                       "flowExpr",
                       "string"
-                    ],
-                    "type": "code"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                },
+                "x-flow-code": true
               }
             }
           }
@@ -1402,18 +1411,27 @@
           "compressOutput": {
             "title": "圧縮出力パス",
             "description": "圧縮アーカイブ出力の出力先パス（任意）",
-            "anyOf": [
-              {
-                "codeTypes": [
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
                   "flowExpr",
                   "string"
-                ],
-                "type": "code"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            },
+            "x-flow-code": true
           },
           "dracoCompression": {
             "title": "Draco 圧縮",
@@ -1440,11 +1458,24 @@
           "output": {
             "title": "出力パス",
             "description": "3D タイルを書き出すディレクトリパス",
-            "codeTypes": [
-              "flowExpr",
-              "string"
+            "type": "object",
+            "required": [
+              "type",
+              "value"
             ],
-            "type": "code"
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "x-flow-code": true
           },
           "schemaKey": {
             "title": "スキーマキー",
@@ -3397,10 +3428,23 @@
             "properties": {
               "expr": {
                 "title": "条件式",
-                "codeTypes": [
-                  "flowExpr"
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
                 ],
-                "type": "code"
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "x-flow-code": true
               },
               "outputPort": {
                 "title": "出力ポート",
@@ -4344,11 +4388,24 @@
                 "type": "string"
               },
               "value": {
-                "codeTypes": [
-                  "flowExpr",
-                  "string"
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
                 ],
-                "type": "code"
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "x-flow-code": true
               }
             }
           }
@@ -7421,18 +7478,27 @@
           "compressOutput": {
             "title": "出力を圧縮",
             "description": "出力タイルを圧縮するかを決定する式（任意）",
-            "anyOf": [
-              {
-                "codeTypes": [
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
                   "flowExpr",
                   "string"
-                ],
-                "type": "code"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            },
+            "x-flow-code": true
           },
           "extent": {
             "title": "エクステント",
@@ -7447,11 +7513,24 @@
           "layerName": {
             "title": "レイヤー名",
             "description": "MVT タイル内のレイヤー名",
-            "codeTypes": [
-              "flowExpr",
-              "string"
+            "type": "object",
+            "required": [
+              "type",
+              "value"
             ],
-            "type": "code"
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "x-flow-code": true
           },
           "maxZoom": {
             "title": "最大ズームレベル",
@@ -7470,11 +7549,24 @@
           "output": {
             "title": "出力先",
             "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
-            "codeTypes": [
-              "flowExpr",
-              "string"
+            "type": "object",
+            "required": [
+              "type",
+              "value"
             ],
-            "type": "code"
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "x-flow-code": true
           },
           "schemaKey": {
             "title": "スキーマキー",
