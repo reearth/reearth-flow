@@ -44,7 +44,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-    size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
+    size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full";
     position?: "center" | "off-center" | "top";
     overlayBgClass?: string;
     hideCloseButton?: boolean;
@@ -85,7 +85,9 @@ const DialogContent = forwardRef<
                       ? "max-w-[900px]"
                       : size === "3xl"
                         ? "max-w-[1000px]"
-                        : undefined,
+                        : size === "4xl"
+                          ? "max-w-[1200px]"
+                          : undefined,
           position === "top"
             ? "top-[15%]"
             : position === "off-center"

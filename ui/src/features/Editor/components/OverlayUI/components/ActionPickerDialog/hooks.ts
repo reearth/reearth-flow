@@ -11,6 +11,9 @@ import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 type CategoryFiltering = string;
+type TagFiltering = string;
+
+const ACTION_TYPE_ORDER: ActionNodeType[] = ["reader", "transformer", "writer"];
 
 export default ({
   openedActionType,
@@ -46,6 +49,7 @@ export default ({
   const [currentCategories, setCurrentCategories] = useState<
     CategoryFiltering[]
   >([]);
+  const [currentTags, setCurrentTags] = useState<TagFiltering[]>([]);
 
   const actionTypes: { value: ActionNodeType; label: string }[] = [
     { value: "reader", label: t("Reader") },
@@ -66,6 +70,48 @@ export default ({
     { value: "Transform", label: t("Transform") },
   ];
 
+  const actionTags: { value: TagFiltering; label: string }[] = [
+    { value: "2d", label: t("2D") },
+    { value: "3d", label: t("3D") },
+    { value: "3d-tiles", label: t("3D Tiles") },
+    { value: "aggregate", label: t("Aggregate") },
+    { value: "area", label: t("Area") },
+    { value: "citygml", label: t("CityGML") },
+    { value: "compression", label: t("Compression") },
+    { value: "csv", label: t("CSV") },
+    { value: "database", label: t("Database") },
+    { value: "decompose", label: t("Decompose") },
+    { value: "file", label: t("File") },
+    { value: "file-system", label: t("File System") },
+    { value: "geojson", label: t("GeoJSON") },
+    { value: "geometry", label: t("Geometry") },
+    { value: "geopackage", label: t("GeoPackage") },
+    { value: "hierarchy", label: t("Hierarchy") },
+    { value: "image", label: t("Image") },
+    { value: "intersection", label: t("Intersection") },
+    { value: "join", label: t("Join") },
+    { value: "json", label: t("JSON") },
+    { value: "list", label: t("List") },
+    { value: "lod", label: t("LOD") },
+    { value: "mapping", label: t("Mapping") },
+    { value: "measurement", label: t("Measurement") },
+    { value: "mvt", label: t("MVT") },
+    { value: "normal", label: t("Normal") },
+    { value: "path", label: t("Path") },
+    { value: "projection", label: t("Projection") },
+    { value: "raster", label: t("Raster") },
+    { value: "ray", label: t("Ray") },
+    { value: "routing", label: t("Routing") },
+    { value: "scripting", label: t("Scripting") },
+    { value: "shapefile", label: t("Shapefile") },
+    { value: "sort", label: t("Sort") },
+    { value: "split", label: t("Split") },
+    { value: "statistics", label: t("Statistics") },
+    { value: "texture", label: t("Texture") },
+    { value: "validate", label: t("Validate") },
+    { value: "xml", label: t("XML") },
+  ];
+
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   // const { handleNodeDropInBatch } = useBatch();
@@ -75,10 +121,19 @@ export default ({
     () => ({
       isMainWorkflow,
       searchTerm,
-      types: currentActionByTypes.length ? currentActionByTypes : undefined,
+      types: currentActionByTypes.length
+        ? currentActionByTypes
+        : ACTION_TYPE_ORDER,
       categories: currentCategories.length ? currentCategories : undefined,
+      tags: currentTags.length ? currentTags : undefined,
     }),
-    [isMainWorkflow, searchTerm, currentActionByTypes, currentCategories],
+    [
+      isMainWorkflow,
+      searchTerm,
+      currentActionByTypes,
+      currentCategories,
+      currentTags,
+    ],
   );
   const { actions: segregatedActions } = useGetActionsSegregated(filterConfig);
 
@@ -114,7 +169,7 @@ export default ({
     }
   }, [selectedIndex]);
 
-  const [handleSingleClick, handleDoubleClick] = useDoubleClick(
+  const [handleSelectAction, handleAddAction] = useDoubleClick(
     (name?: string) => {
       if (!name) return;
       const idx = actionsList.findIndex((a) => a.name === name);
@@ -234,7 +289,7 @@ export default ({
       switch (e.key) {
         case "Enter":
           e.preventDefault();
-          handleDoubleClick(selected);
+          handleAddAction(selected);
           break;
         case "ArrowUp":
           e.preventDefault();
@@ -257,32 +312,48 @@ export default ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [actionsList, selectedIndex, selected, handleDoubleClick]);
+  }, [actionsList, selectedIndex, selected, handleAddAction]);
 
-  const handleActionTypeToggle = useCallback((type: string) => {
-    const nodeType = type as ActionNodeType;
-    setCurrentActionByTypes((prev) =>
-      prev.includes(nodeType)
-        ? prev.filter((t) => t !== nodeType)
-        : [...prev, nodeType],
-    );
+  const handleActionTypeToggle = useCallback((type?: ActionNodeType) => {
+    if (!type) {
+      setCurrentActionByTypes([]);
+    } else {
+      const nodeType = type as ActionNodeType;
+      setCurrentActionByTypes((prev) =>
+        prev.includes(nodeType)
+          ? prev.filter((t) => t !== nodeType)
+          : [...prev, nodeType].sort(
+              (a, b) =>
+                ACTION_TYPE_ORDER.indexOf(a) - ACTION_TYPE_ORDER.indexOf(b),
+            ),
+      );
+    }
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const handleCategoryToggle = useCallback((category: CategoryFiltering) => {
-    setCurrentCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category],
-    );
+  const handleCategoryToggle = useCallback((category?: CategoryFiltering) => {
+    if (!category) {
+      setCurrentCategories([]);
+    } else {
+      setCurrentCategories((prev) =>
+        prev.includes(category)
+          ? prev.filter((c) => c !== category)
+          : [...prev, category],
+      );
+    }
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const handleClearFilters = useCallback(() => {
-    setCurrentActionByTypes([]);
-    setCurrentCategories([]);
+  const handleTagToggle = useCallback((tag?: TagFiltering) => {
+    if (!tag) {
+      setCurrentTags([]);
+    } else {
+      setCurrentTags((prev) =>
+        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+      );
+    }
     setSelectedIndex(-1);
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
@@ -294,13 +365,15 @@ export default ({
     selected,
     currentActionByTypes,
     currentCategories,
+    currentTags,
     actionTypes,
     actionCategories,
+    actionTags,
     handleSearchTerm,
-    handleSingleClick,
-    handleDoubleClick,
+    handleSelectAction,
+    handleAddAction,
     handleActionTypeToggle,
     handleCategoryToggle,
-    handleClearFilters,
+    handleTagToggle,
   };
 };

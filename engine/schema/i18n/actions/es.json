@@ -1115,6 +1115,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Condition": {
           "expr": {
             "title": "Condition expression"
@@ -2795,7 +2799,7 @@
       "parameterI18n": {
         "": {
           "title": "UDXFolderExtractor Parameters",
-          "description": "Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths."
+          "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths."
         },
         "cityGmlPath": {},
         "codelistsPath": {},
@@ -2820,6 +2824,32 @@
         "tolerance": {
           "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge"
         }
+      }
+    },
+    {
+      "name": "PLATEAU6.DomainOfDefinitionValidator",
+      "description": "Valida dominio de definición para PLATEAU6",
+      "parameterI18n": {
+        "": {
+          "title": "DomainOfDefinitionValidator Parameters",
+          "description": "Configuration for validating domain of definition of CityGML features."
+        },
+        "codelistsPath": {
+          "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.UDXFolderExtractor",
+      "description": "Extrae carpetas UDX de datos PLATEAU6",
+      "parameterI18n": {
+        "": {
+          "title": "UDXFolderExtractor Parameters",
+          "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths."
+        },
+        "cityGmlPath": {},
+        "codelistsPath": {},
+        "schemasPath": {}
       }
     },
     {

@@ -3217,6 +3217,28 @@
           }
         },
         "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
           "Condition": {
             "type": "object",
             "required": [
@@ -3228,7 +3250,7 @@
                 "title": "条件式",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               },
@@ -3241,9 +3263,6 @@
                 ]
               }
             }
-          },
-          "Expr": {
-            "type": "string"
           },
           "Port": {
             "type": "string"
@@ -9056,7 +9075,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "UDXFolderExtractor パラメータ",
-        "description": "PLATEAU4 CityGML パスから UDX フォルダー構造情報を抽出する設定",
+        "description": "PLATEAU CityGML パスから UDX フォルダー構造情報を抽出する設定",
         "type": "object",
         "required": [
           "cityGmlPath"
@@ -9167,6 +9186,107 @@
       ],
       "outputPorts": [
         "unshared"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.DomainOfDefinitionValidator",
+      "type": "processor",
+      "description": "PLATEAU6の定義領域を検証する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DomainOfDefinitionValidator パラメータ",
+        "description": "CityGML フィーチャーの定義域を検証する設定",
+        "type": "object",
+        "properties": {
+          "codelistsPath": {
+            "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected",
+        "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.UDXFolderExtractor",
+      "type": "processor",
+      "description": "PLATEAU6データからUDXフォルダを抽出する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UDXFolderExtractor パラメータ",
+        "description": "PLATEAU CityGML パスから UDX フォルダー構造情報を抽出する設定",
+        "type": "object",
+        "required": [
+          "cityGmlPath"
+        ],
+        "properties": {
+          "cityGmlPath": {
+            "$ref": "#/definitions/Expr"
+          },
+          "codelistsPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemasPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"

@@ -1118,6 +1118,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Condition": {
           "expr": {
             "title": "条件式"
@@ -2798,7 +2802,7 @@
       "parameterI18n": {
         "": {
           "title": "UDXFolderExtractor パラメータ",
-          "description": "PLATEAU4 CityGML パスから UDX フォルダー構造情報を抽出する設定"
+          "description": "PLATEAU CityGML パスから UDX フォルダー構造情報を抽出する設定"
         },
         "cityGmlPath": {},
         "codelistsPath": {},
@@ -2823,6 +2827,32 @@
         "tolerance": {
           "description": "エッジ照合の許容誤差（メートル）（デフォルト: 0.1）。この距離内のエッジは同一エッジとみなされる。"
         }
+      }
+    },
+    {
+      "name": "PLATEAU6.DomainOfDefinitionValidator",
+      "description": "PLATEAU6の定義領域を検証する",
+      "parameterI18n": {
+        "": {
+          "title": "DomainOfDefinitionValidator パラメータ",
+          "description": "CityGML フィーチャーの定義域を検証する設定"
+        },
+        "codelistsPath": {
+          "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.UDXFolderExtractor",
+      "description": "PLATEAU6データからUDXフォルダを抽出する",
+      "parameterI18n": {
+        "": {
+          "title": "UDXFolderExtractor パラメータ",
+          "description": "PLATEAU CityGML パスから UDX フォルダー構造情報を抽出する設定"
+        },
+        "cityGmlPath": {},
+        "codelistsPath": {},
+        "schemasPath": {}
       }
     },
     {

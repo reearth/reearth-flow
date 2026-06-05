@@ -33,6 +33,7 @@ import "@xyflow/react/dist/style.css";
 const snapGrid: SnapGrid = [DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE];
 
 type Props = {
+  className?: string;
   nodes: Node[];
   edges: Edge[];
   yDoc?: Doc | null;
@@ -68,6 +69,7 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({
+  className,
   nodes,
   edges,
   users,
@@ -138,6 +140,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
+      className={`reactflow-wrapper ${className ?? ""}`}
       onPointerDown={onPointerDown}
       ref={paneRef}
       // Readonly props START

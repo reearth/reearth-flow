@@ -29,12 +29,12 @@ const SearchActionBar: React.FC<Props> = ({
 }) => {
   const t = useT();
   return (
-    <div className="pointer-events-auto relative rounded-md p-1">
-      <div className="flex rounded-md">
+    <div className="pointer-events-auto relative rounded-xl p-1">
+      <div className="flex rounded-xl">
         <div className="flex flex-1 flex-col justify-end gap-1 align-middle">
           <div className={showSearchPanel ? "invisible" : ""}>
             <IconButton
-              className="rounded-[4px]"
+              className="rounded-xl"
               tooltipText={t("Search Canvas")}
               tooltipOffset={tooltipOffset}
               tooltipPosition="left"

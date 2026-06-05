@@ -18,6 +18,7 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
+  ActionDetails,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useNodeSchemaGenerate } from "@flow/hooks";
@@ -117,6 +118,12 @@ const ParamEditor: React.FC<Props> = ({
     createdAction && !createdAction.parameter ? "customizations" : "params",
   );
 
+  useEffect(() => {
+    if (activeTab === "params" && createdAction && !createdAction.parameter) {
+      setActiveTab("customizations");
+    }
+  }, [activeTab, createdAction]);
+
   const isCurrentTabValid =
     activeTab === "params" ? isParamsValid : isCustomizationsValid;
 
@@ -146,32 +153,31 @@ const ParamEditor: React.FC<Props> = ({
         onValueChange={setActiveTab}
         value={activeTab}
         className="flex h-full">
-        <TabsList className="flex h-full w-[200px] flex-col justify-start gap-2 rounded-none p-2">
+        <TabsList className="mx-2 mb-2 flex h-[calc(100%-0.5rem)] flex-col justify-start gap-2 rounded-xl border border-primary/50 bg-secondary p-2 shadow-md shadow-secondary backdrop-blur-xs">
           {createdAction?.parameter && (
             <TabsTrigger
-              className="h-[30px] w-full justify-start gap-2"
+              className="h-[30px] w-full justify-start gap-2 rounded-xl px-2 py-0.5"
               value="params">
               <PuzzlePieceIcon className="shrink-0" />
               <p>{t("Parameters")}</p>
             </TabsTrigger>
           )}
           <TabsTrigger
-            className="h-[30px] w-full justify-start gap-2"
+            className="h-[30px] w-full justify-start gap-2 rounded-xl px-2 py-0.5"
             value="customizations">
             <NutIcon className="shrink-0" />
             <p>{t("Customizations")}</p>
           </TabsTrigger>
           <TabsTrigger
-            className="h-[30px] w-full justify-start gap-2"
+            className="h-[30px] w-full justify-start gap-2 rounded-xl px-2 py-0.5"
             value="details">
             <InfoIcon className="shrink-0" />
             <p>{t("Details")}</p>
           </TabsTrigger>
         </TabsList>
-        <div className="h-full self-center border-r dark:border-primary" />
-        <TabsContent className="px-6 py-4" value="params" asChild>
+        <TabsContent className="px-4 pb-2" value="params" asChild>
           <div className="flex size-full min-h-0 flex-col justify-between gap-4">
-            <div className="min-h-0 overflow-scroll rounded px-2 pt-1">
+            <div className="min-h-0 overflow-scroll rounded px-2">
               {!createdAction?.parameter && (
                 <BasicBoiler
                   text={t("No Parameters Available")}
@@ -204,9 +210,9 @@ const ParamEditor: React.FC<Props> = ({
             </Button>
           </div>
         </TabsContent>
-        <TabsContent className="px-6 py-4" value="customizations" asChild>
+        <TabsContent className="px-4 pb-2" value="customizations" asChild>
           <div className="flex size-full min-h-0 flex-col justify-between gap-4">
-            <div className="min-h-0 overflow-scroll rounded px-2 pt-4">
+            <div className="min-h-0 overflow-scroll rounded px-2">
               {!createdAction?.customizations && (
                 <BasicBoiler
                   text={t("No Customizations Available")}
@@ -215,8 +221,8 @@ const ParamEditor: React.FC<Props> = ({
                 />
               )}
               {createdAction && (
-                <div className="space-y-4">
-                  <div className="my-1 mb-1 flex items-center justify-between gap-1">
+                <div>
+                  <div className="mb-1 flex items-center gap-1">
                     <p className="text-sm font-bold">
                       {t("Customization Options")}
                     </p>
@@ -228,7 +234,7 @@ const ParamEditor: React.FC<Props> = ({
                       </TooltipTrigger>
                       <TooltipContent
                         side="top"
-                        align="end"
+                        align="start"
                         className="bg-primary">
                         <div className="max-w-75 text-xs text-muted-foreground">
                           {Object.entries(customizationDescriptions).map(
@@ -265,8 +271,8 @@ const ParamEditor: React.FC<Props> = ({
             </Button>
           </div>
         </TabsContent>
-        <TabsContent className="w-full px-6 py-4" value="details">
-          <div className="min-h-32 w-full overflow-scroll rounded border px-2 pt-4">
+        <TabsContent className="w-full px-4" value="details">
+          <div className="min-h-32 w-full overflow-scroll rounded">
             {!createdAction && (
               <BasicBoiler
                 text={t("No Details Available")}
@@ -275,28 +281,8 @@ const ParamEditor: React.FC<Props> = ({
               />
             )}
             {createdAction && (
-              <div className="space-y-4">
-                <div className="rounded-md ">
-                  <h4 className="border-b text-sm font-medium">
-                    {t("Action Details")}
-                  </h4>
-                  <div className="my-4 flex w-full flex-col gap-4">
-                    <div className="flex items-center text-sm">
-                      <p className="mr-2 w-37.5 font-medium">
-                        {t("Action Name")}:
-                      </p>
-                      <p className="text-sm">{nodeMeta.officialName}</p>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <p className="mr-2 w-37.5 font-medium">
-                        {t("Description")}:
-                      </p>
-                      {createdAction?.description && (
-                        <p className="text-sm">{createdAction.description}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              <div className="pr-6 pl-4">
+                <ActionDetails action={createdAction} />
               </div>
             )}
           </div>
