@@ -651,6 +651,7 @@
                   "object",
                   "null"
                 ],
+                "format": "code",
                 "required": [
                   "type",
                   "value"
@@ -666,8 +667,7 @@
                   "value": {
                     "type": "string"
                   }
-                },
-                "x-flow-code": true
+                }
               }
             }
           }
@@ -1393,6 +1393,7 @@
               "object",
               "null"
             ],
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -1408,8 +1409,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "dracoCompression": {
             "title": "Draco Compression",
@@ -1437,6 +1437,7 @@
             "title": "Output Path",
             "description": "Directory path where the 3D tiles will be written",
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -1452,8 +1453,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "schemaKey": {
             "title": "Schema Key",
@@ -3217,6 +3217,7 @@
               "expr": {
                 "title": "Condition expression",
                 "type": "object",
+                "format": "code",
                 "required": [
                   "type",
                   "value"
@@ -3231,8 +3232,7 @@
                   "value": {
                     "type": "string"
                   }
-                },
-                "x-flow-code": true
+                }
               },
               "outputPort": {
                 "title": "Output port",
@@ -4120,6 +4120,7 @@
               },
               "value": {
                 "type": "object",
+                "format": "code",
                 "required": [
                   "type",
                   "value"
@@ -4135,8 +4136,7 @@
                   "value": {
                     "type": "string"
                   }
-                },
-                "x-flow-code": true
+                }
               }
             }
           }
@@ -7061,6 +7061,7 @@
               "object",
               "null"
             ],
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -7076,8 +7077,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "extent": {
             "title": "Extent",
@@ -7093,6 +7093,7 @@
             "title": "Layer Name",
             "description": "Name of the layer within the MVT tiles",
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -7108,8 +7109,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "maxZoom": {
             "title": "Maximum Zoom",
@@ -7129,6 +7129,7 @@
             "title": "Output",
             "description": "Output directory path or expression for the generated MVT tiles",
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -7144,8 +7145,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "schemaKey": {
             "title": "Schema Key",

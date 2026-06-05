@@ -654,6 +654,7 @@
                   "object",
                   "null"
                 ],
+                "format": "code",
                 "required": [
                   "type",
                   "value"
@@ -669,8 +670,7 @@
                   "value": {
                     "type": "string"
                   }
-                },
-                "x-flow-code": true
+                }
               }
             }
           }
@@ -1396,6 +1396,7 @@
               "object",
               "null"
             ],
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -1411,8 +1412,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "dracoCompression": {
             "title": "Draco 圧縮",
@@ -1440,6 +1440,7 @@
             "title": "出力パス",
             "description": "3D タイルを書き出すディレクトリパス",
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -1455,8 +1456,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "schemaKey": {
             "title": "スキーマキー",
@@ -3220,6 +3220,7 @@
               "expr": {
                 "title": "条件式",
                 "type": "object",
+                "format": "code",
                 "required": [
                   "type",
                   "value"
@@ -3234,8 +3235,7 @@
                   "value": {
                     "type": "string"
                   }
-                },
-                "x-flow-code": true
+                }
               },
               "outputPort": {
                 "title": "出力ポート",
@@ -4123,6 +4123,7 @@
               },
               "value": {
                 "type": "object",
+                "format": "code",
                 "required": [
                   "type",
                   "value"
@@ -4138,8 +4139,7 @@
                   "value": {
                     "type": "string"
                   }
-                },
-                "x-flow-code": true
+                }
               }
             }
           }
@@ -7064,6 +7064,7 @@
               "object",
               "null"
             ],
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -7079,8 +7080,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "extent": {
             "title": "エクステント",
@@ -7096,6 +7096,7 @@
             "title": "レイヤー名",
             "description": "MVT タイル内のレイヤー名",
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -7111,8 +7112,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "maxZoom": {
             "title": "最大ズームレベル",
@@ -7132,6 +7132,7 @@
             "title": "出力先",
             "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
@@ -7147,8 +7148,7 @@
               "value": {
                 "type": "string"
               }
-            },
-            "x-flow-code": true
+            }
           },
           "schemaKey": {
             "title": "スキーマキー",

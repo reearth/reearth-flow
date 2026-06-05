@@ -149,11 +149,9 @@ impl<const MASK: u32> schemars::JsonSchema for Code<MASK> {
         properties.insert("type".to_string(), type_property);
         properties.insert("value".to_string(), value_property);
 
-        let mut extensions = schemars::Map::new();
-        extensions.insert("x-flow-code".to_string(), serde_json::Value::Bool(true));
-
         Schema::Object(SchemaObject {
             instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Object))),
+            format: Some("code".to_string()),
             object: Some(Box::new(ObjectValidation {
                 required: ["type".to_string(), "value".to_string()]
                     .into_iter()
@@ -161,7 +159,6 @@ impl<const MASK: u32> schemars::JsonSchema for Code<MASK> {
                 properties,
                 ..Default::default()
             })),
-            extensions,
             ..Default::default()
         })
     }
