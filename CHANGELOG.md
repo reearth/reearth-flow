@@ -2,28 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
-
-### Breaking changes
-
-- **engine/sink**: Sink `output` parameters now require a **relative path**.
-  The engine joins the path against the per-job artifact directory
-  (`sandbox_root`) internally; workflow authors no longer prefix with
-  `Url(env["workerArtifactPath"]) / ...`.
-
-  **Migration**: Replace `output: { type: flowExpr, value: 'Url(env["workerArtifactPath"]) / "x"' }`
-  with `output: { type: string, value: "x" }` (static) or
-  `output: { type: flowExpr, value: '"x_" + attributes["k"]' }` (dynamic).
-  The equivalent `file::join_path(env.get("workerArtifactPath"), "x")` form
-  also migrates to just `"x"`.
-
-  Workflows that still use the old absolute-URI form fail at runtime with
-  an error message that names `workerArtifactPath` — search your logs for
-  that keyword to locate workflows that need migration.
-
-  All built-in plateau example fixtures (87 files) have been migrated as
-  part of this release.
-
 ## 0.1.0-alpha.18 - 2026-06-02
 
 ### engine
