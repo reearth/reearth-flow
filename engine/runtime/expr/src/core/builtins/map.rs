@@ -10,7 +10,7 @@ use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
 use crate::unpack_args;
 
-use super::{expect_arity, expect_str, MethodFn};
+use super::{expect_arity, MethodFn};
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
@@ -72,7 +72,7 @@ fn get(args: &[Value]) -> InnerResult<Value> {
     let Value::Map(rc) = &args[0] else {
         return Err(InnerError::new("expected map receiver"));
     };
-    let k = expect_str(&args[1])?;
+    let k = args[1].as_str()?;
     let fallback = args.get(2);
     Ok(rc
         .borrow()

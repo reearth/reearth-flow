@@ -3,8 +3,6 @@ use crate::core::value::{ImmutableObject, Value};
 use crate::unpack_args;
 use regex::Regex;
 
-use super::expect_str;
-
 #[derive(Debug, Clone)]
 pub struct RegexObject {
     pattern: String,
@@ -24,11 +22,11 @@ impl ImmutableObject for RegexObject {
         match method {
             "find" => {
                 unpack_args!(args => s);
-                Ok(regex_find(&self.regex, expect_str(s)?))
+                Ok(regex_find(&self.regex, s.as_str()?))
             }
             "find_all" => {
                 unpack_args!(args => s);
-                Ok(Value::array(regex_find_all(&self.regex, expect_str(s)?)))
+                Ok(Value::array(regex_find_all(&self.regex, s.as_str()?)))
             }
             m => Err(InnerError::new(format!("Regex has no method '{m}'"))),
         }
@@ -101,7 +99,7 @@ pub fn builtin_regex(args: &[Value]) -> InnerResult<Value> {
             args.len()
         )));
     }
-    let pattern = expect_str(&args[0])?.to_string();
+    let pattern = args[0].as_str()?.to_string();
     // FlowExpr is general-purpose. Do not do implicit caching for Regex patterns here.
     // Compile-time constant folding might be a proper future solution, but currently it is overkill.
     let regex = Regex::new(&pattern).map_err(|e| InnerError::new(format!("invalid regex: {e}")))?;

@@ -1,20 +1,9 @@
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{Module, NativeFn, Value};
 
-fn to_f64(v: &Value) -> InnerResult<f64> {
-    match v {
-        Value::Float(x) => Ok(*x),
-        Value::Int(x) => Ok(*x as f64),
-        other => Err(InnerError::new(format!(
-            "expected float, got {}",
-            other.type_name()
-        ))),
-    }
-}
-
 fn unary_float(name: &'static str, f: fn(f64) -> f64) -> Value {
     Value::Fn(NativeFn::new(move |args| match args {
-        [x] => Ok(Value::Float(f(to_f64(x)?))),
+        [x] => Ok(Value::Float(f(x.as_f64()?))),
         _ => Err(InnerError::new(format!(
             "math.{name}() expected 1 argument, got {}",
             args.len()
@@ -32,8 +21,8 @@ pub fn builtin_math() -> Value {
     m.insert(
         "log".into(),
         Value::Fn(NativeFn::new(|args| match args {
-            [x] => Ok(Value::Float(to_f64(x)?.ln())),
-            [x, base] => Ok(Value::Float(to_f64(x)?.log(to_f64(base)?))),
+            [x] => Ok(Value::Float(x.as_f64()?.ln())),
+            [x, base] => Ok(Value::Float(x.as_f64()?.log(base.as_f64()?))),
             _ => Err(InnerError::new(format!(
                 "math.log() expected 1 or 2 arguments, got {}",
                 args.len()
