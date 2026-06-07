@@ -120,9 +120,7 @@ impl ProcessorFactory for FeatureWriterFactory {
                     .converter
                     .map(|code| code.compile())
                     .transpose()
-                    .map_err(|e| {
-                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                    })?;
+                    .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
                 let process = FeatureWriter {
                     global_params: with,
                     params: CompiledFeatureWriterParam::Json {

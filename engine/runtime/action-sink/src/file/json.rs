@@ -131,7 +131,12 @@ impl Sink for JsonWriter {
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let env_vars = ctx.expr_engine.vars();
         for (out, features) in self.buffer.values() {
-            write_json(out, &self.compiled_converter, features, Arc::clone(&env_vars))?;
+            write_json(
+                out,
+                &self.compiled_converter,
+                features,
+                Arc::clone(&env_vars),
+            )?;
         }
         Ok(())
     }
