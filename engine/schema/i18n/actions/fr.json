@@ -1286,6 +1286,12 @@
           "title": "FeatureWriter Parameters",
           "description": "Configuration for writing features to different file formats."
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -2071,6 +2077,12 @@
         },
         "output": {
           "description": "Output path or expression for the JSON file to create"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

@@ -1289,6 +1289,12 @@
           "title": "FeatureWriter パラメータ",
           "description": "さまざまなファイル形式にフィーチャーを書き出す設定"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -2074,6 +2080,12 @@
         },
         "output": {
           "description": "作成する JSON ファイルの出力パスまたは式"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

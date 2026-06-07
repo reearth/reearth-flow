@@ -3948,7 +3948,7 @@
               "converter": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   },
                   {
                     "type": "null"
@@ -4029,6 +4029,28 @@
           }
         ],
         "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
           "Expr": {
             "type": "string"
           }
@@ -6818,7 +6840,7 @@
             "description": "書き出し前にフィーチャーを変換するコンバーター式（任意）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6835,6 +6857,28 @@
           }
         },
         "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
           "Expr": {
             "type": "string"
           }

@@ -3837,7 +3837,7 @@ Writes features from various formats
         "converter": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             },
             {
               "type": "null"
@@ -3918,6 +3918,28 @@ Writes features from various formats
     }
   ],
   "definitions": {
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
+    },
     "Expr": {
       "type": "string"
     }
@@ -6640,7 +6662,7 @@ Writes features to JSON files.
       "description": "Optional converter expression to transform features before writing",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -6657,6 +6679,28 @@ Writes features to JSON files.
     }
   },
   "definitions": {
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
+    },
     "Expr": {
       "type": "string"
     }

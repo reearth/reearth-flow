@@ -3945,7 +3945,7 @@
               "converter": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   },
                   {
                     "type": "null"
@@ -4026,6 +4026,28 @@
           }
         ],
         "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
           "Expr": {
             "type": "string"
           }
@@ -6815,7 +6837,7 @@
             "description": "Optional converter expression to transform features before writing",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6832,6 +6854,28 @@
           }
         },
         "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
           "Expr": {
             "type": "string"
           }
