@@ -3144,21 +3144,20 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー", "コード化されていないgml_nameあり"];
-          for key in keys {
-            result.push(#{
-              name: key,
-              count: feature[key] ?? 0,
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            result = [];
+            feature = attributes["__features"][0];
+            keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー", "コード化されていないgml_nameあり"];
+            for key in keys {
+              result.append({"name": key, "count": feature.get(key, 0)});
+            }
+            result
           }
-          result
-        }
       output: |
         "summary_gen.json"
   - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9e
@@ -3185,7 +3184,9 @@ graphs:
     type: action
     action: JsonWriter
     with:
-      converter: '[]'
+      converter:
+        type: flowExpr
+        value: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
         filename
