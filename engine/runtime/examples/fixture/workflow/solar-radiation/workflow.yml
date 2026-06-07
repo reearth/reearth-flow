@@ -14,7 +14,6 @@ with:
   prcs:
   startTime:
   endTime:
-  workerArtifactPath:
   outputReflection: false
   considerDEM: false
   dailySunDataPath:
@@ -899,7 +898,7 @@ graphs:
         with:
           imageWidth: 2048
           saveTo: |
-            file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
+            "roof_radiation_texture.png"
           onOverlap:
             max: |
               env.get("__value")["maxZ"]
@@ -966,11 +965,11 @@ graphs:
           attachTexture: true
           dracoCompression: false
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "textured_roof_3dtiles"'
+            type: string
+            value: textured_roof_3dtiles
           compressOutput:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "textured_roof_3dtiles.zip"'
+            type: string
+            value: textured_roof_3dtiles.zip
 
       # ========================================
       # Section 7: Reflection Computation
@@ -1052,7 +1051,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "反射シミュレーション結果.csv")
+            "反射シミュレーション結果.csv"
 
       # ========================================
       # Area Computation Branch (for CSV per-m2 values)
@@ -1176,7 +1175,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "建物ポテンシャル推計結果.csv")
+            "建物ポテンシャル推計結果.csv"
 
       # ========================================
       # CSV 4: Per-Surface Radiation
@@ -1212,7 +1211,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "面別日射量.csv")
+            "面別日射量.csv"
 
       # ========================================
       # CSV 5: Reflection — Map to Japanese column names
@@ -1294,7 +1293,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "集計結果.csv")
+            "集計結果.csv"
 
       # ========================================
       # Per-LOD 3D Tiles Output Pipelines (LOD1, LOD3, LOD4)
@@ -1348,11 +1347,11 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod1"'
+            type: string
+            value: bldg_lod1
           compressOutput:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod1.zip"'
+            type: string
+            value: bldg_lod1.zip
 
       # --- LOD3 Pipeline ---
       - id: 00000001-0000-0000-0000-0000000000a4
@@ -1402,11 +1401,11 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod3"'
+            type: string
+            value: bldg_lod3
           compressOutput:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod3.zip"'
+            type: string
+            value: bldg_lod3.zip
 
       # --- LOD4 Pipeline ---
       - id: 00000001-0000-0000-0000-0000000000a8
@@ -1456,11 +1455,11 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod4"'
+            type: string
+            value: bldg_lod4
           compressOutput:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod4.zip"'
+            type: string
+            value: bldg_lod4.zip
 
       # ========================================
       # CityGML Output Pipeline
@@ -1472,7 +1471,7 @@ graphs:
         action: PLATEAU4.SolarCityGmlAttributeInserter
         with:
           outputDir: |
-            file::join_path(env.get("workerArtifactPath"), "citygml")
+            "citygml"
           pathAttribute: path
           gmlIdAttribute: gmlId
           measurements:
@@ -1483,7 +1482,7 @@ graphs:
               attribute: totalSolarPower
               uom: "kWh"
           textureImagePath: |
-            file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
+            "roof_radiation_texture.png"
           sourceEpsg: |
             env.get("prcs")
 
@@ -1493,7 +1492,7 @@ graphs:
         action: ZipFileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "citygml_bldg.zip")
+            "citygml_bldg.zip"
 
       # ========================================
       # Section 2b: Building Attributes Preservation Branch

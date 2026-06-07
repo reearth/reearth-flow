@@ -9,13 +9,22 @@ import {
   NoteIcon,
   RectangleDashedIcon,
 } from "@phosphor-icons/react";
+import { useReactFlow } from "@xyflow/react";
 import { memo, type DragEvent } from "react";
 import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import type { NodeType } from "@flow/types";
+import { buildNewCanvasNode } from "@flow/lib/reactFlow/buildNewCanvasNode";
+import {
+  actionNodeTypes,
+  Node,
+  type NodeType,
+  type ActionNodeType,
+} from "@flow/types";
+
+import { XYPosition } from "../ActionPickerDialog";
 
 type BreakItem = { id: "break" };
 
@@ -40,6 +49,13 @@ type Props = {
   onRedo: () => void;
   onUndo: () => void;
   onLayoutChange: () => void;
+  onNodesAdd?: (nodes: Node[]) => void;
+  onWorkflowAdd?: (position?: XYPosition) => Promise<void>;
+  onNodePickerOpen?: (
+    position: XYPosition,
+    nodeType?: ActionNodeType,
+    isMainWorkflow?: boolean,
+  ) => void;
 };
 
 const Toolbox: React.FC<Props> = ({
@@ -50,8 +66,12 @@ const Toolbox: React.FC<Props> = ({
   onRedo,
   onUndo,
   onLayoutChange,
+  onNodesAdd,
+  onWorkflowAdd,
+  onNodePickerOpen,
 }) => {
   const t = useT();
+  const { screenToFlowPosition } = useReactFlow();
   const { isLocked } = useEditorContext();
   const availableTools: Tool[] = [
     {
@@ -122,6 +142,43 @@ const Toolbox: React.FC<Props> = ({
       onClick: onRedo,
     },
   ];
+
+  const handleDoubleClick = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    nodeType: NodeType,
+  ) => {
+    event.preventDefault();
+    const getCenter = screenToFlowPosition({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    });
+    if (nodeType === "subworkflow") {
+      try {
+        await onWorkflowAdd?.(getCenter);
+      } catch (e) {
+        console.error("Failed to add subworkflow:", e);
+      }
+    } else if (actionNodeTypes.includes(nodeType as ActionNodeType)) {
+      onNodePickerOpen?.(getCenter, nodeType as ActionNodeType, isMainWorkflow);
+    } else {
+      const officialName =
+        nodeType === "batch"
+          ? t("Batch")
+          : nodeType === "note"
+            ? t("Note")
+            : nodeType;
+
+      const newNode = await buildNewCanvasNode({
+        position: getCenter,
+        type: nodeType,
+        officialName,
+      });
+
+      if (!newNode) return;
+
+      onNodesAdd?.([newNode]);
+    }
+  };
 
   const onDragStart = (
     event: DragEvent<HTMLButtonElement>,
@@ -203,6 +260,7 @@ const Toolbox: React.FC<Props> = ({
                 showArrow
                 tooltipText={tool.name}
                 icon={tool.icon}
+                onDoubleClick={(e) => handleDoubleClick?.(e, tool.id)}
                 onDragStart={(event) => onDragStart(event, tool.id)}
                 draggable
                 disabled={tool.disabled}

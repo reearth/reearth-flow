@@ -7,7 +7,6 @@ with:
   schemas:
   codelistsPath:
   codelists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["wtr"]
   objectListsPath:
@@ -297,7 +296,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "11_水部_検査結果一覧.csv")
+            "11_水部_検査結果一覧.csv"
 
       # JSON summary output
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
@@ -352,7 +351,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_wtr.json")
+            "summary_wtr.json"
 
       # qc_result_ok generation flow
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
@@ -384,8 +383,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # ZipFileWriter - Bundle all output files
       - id: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f50
@@ -395,8 +393,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       # FeatureCreator → DirectoryDecompressor

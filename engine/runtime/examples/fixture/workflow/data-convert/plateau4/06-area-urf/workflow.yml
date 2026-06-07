@@ -12,7 +12,6 @@ with:
   targetPackages:
     - urf
     - area
-  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
@@ -169,7 +168,7 @@ graphs:
         action: JsonWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+            "dictionary.json"
           converter: |
             #{
               urf: env.get("__features").map(|f| #{
@@ -207,7 +206,7 @@ graphs:
             value: |
               ft = attributes["feature_type"].split(":")[1];
               dir = attributes["__package"] + "_" + ft;
-              Url(env["workerArtifactPath"]) / dir
+              dir
           compressOutput:
             type: flowExpr
             value: |
@@ -215,7 +214,7 @@ graphs:
               ft = attributes["feature_type"].split(":")[1];
               stem = city_gml.remove_suffix("_" + ft);
               filename = stem + "_" + ft + "_mvt_lod" + attributes["__lod"] + ".zip";
-              Url(env["workerArtifactPath"]) / filename
+              filename
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

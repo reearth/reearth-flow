@@ -9,7 +9,6 @@ with:
   schemas: null
   objectListsPath: null
   objectLists: null
-  workerArtifactPath: null
   prcs: null
   targetPackages: ["brid", "tun", "ubld"]
 graphs:
@@ -310,7 +309,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_地物インスタンス数.csv")
+        "09_橋梁_地物インスタンス数.csv"
   - id: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
     name: CsvWriterTunnelInstanceCounts
     type: action
@@ -318,7 +317,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_トンネル_地物インスタンス数.csv")
+        "09_トンネル_地物インスタンス数.csv"
   - id: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: CsvWriterUndergroundBuildingInstanceCounts
     type: action
@@ -326,7 +325,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "09_地下街_地物インスタンス数.csv")
+        "09_地下街_地物インスタンス数.csv"
   - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     name: SurfaceValidation
     type: subGraph
@@ -424,7 +423,7 @@ graphs:
       output: |
         let pkg = env.get("__value")["Folder"] ?? "";
         let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        file::join_path(env.get("workerArtifactPath"), name + "_検査結果一覧.csv")
+        name + "_検査結果一覧.csv"
   - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
     name: StatisticsCalculator
     type: action
@@ -512,7 +511,7 @@ graphs:
         }
       output: |
         let pkg = env.get("__value")["Folder"] ?? "";
-        file::join_path(env.get("workerArtifactPath"), "summary_" + pkg + ".json")
+        "summary_" + pkg + ".json"
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -540,8 +539,7 @@ graphs:
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath");
-        file::join_path(dirname, filename)
+        filename
   - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
     name: ZipFileWriter
     type: action
@@ -549,8 +547,7 @@ graphs:
     with:
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath");
-        file::join_path(dirname, filename)
+        filename
   edges:
   - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
     from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a

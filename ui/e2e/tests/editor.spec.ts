@@ -115,6 +115,30 @@ test.describe.serial("Editor canvas", { tag: "@regression" }, () => {
     await expect(editor.nodeByName(name)).toHaveCount(2);
   });
 
+  test("copies connected nodes including a subworkflow node and preserves the edge", async () => {
+    await editor.addActionNode(
+      "transformer",
+      await editor.canvasPoint(0.3, 0.45),
+    );
+    await editor.dragToolToCanvas(
+      "subworkflow",
+      await editor.canvasPoint(0.65, 0.45),
+    );
+    await expect(editor.nodes).toHaveCount(2);
+
+    await editor.connectNodes(editor.nodes.nth(0), editor.nodes.nth(1));
+    await expect(editor.edges).toHaveCount(1);
+
+    await editor.clickPane();
+    await editor.selectAll();
+    await editor.copySelected();
+
+    await editor.pasteAtPane(await editor.canvasPoint(0.5, 0.75));
+
+    await expect(editor.nodes).toHaveCount(4);
+    await expect(editor.edges).toHaveCount(2);
+  });
+
   test("deletes a node and its connected edge", async () => {
     await editor.addActionNode(
       "transformer",

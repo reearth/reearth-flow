@@ -178,6 +178,8 @@ export default function Editor({
             onWorkflowClose={handleWorkflowClose}
             onNodesAdd={handleNodesAdd}
             onNodesChange={handleNodesChange}
+            onWorkflowAdd={handleWorkflowAdd}
+            onNodePickerOpen={handleNodePickerOpen}
             onNodePickerClose={handleNodePickerClose}
             onEdgesAdd={handleEdgesAdd}
             onEdgesChange={handleEdgesChange}

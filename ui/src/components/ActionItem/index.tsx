@@ -1,13 +1,12 @@
 import { forwardRef } from "react";
 
-import { typeColorClass } from "@flow/features/Editor/components/OverlayUI/components/ActionPickerDialog/utils";
 import { cn } from "@flow/lib/utils";
 import { Action } from "@flow/types";
+import { typeColorClass } from "@flow/utils";
 import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
 type Props = {
   itemRefs: React.RefObject<(HTMLDivElement | null)[]>;
-  actionsList: Action[];
   idx: number;
   action: Action;
   isSelected?: boolean;
@@ -16,15 +15,7 @@ type Props = {
 };
 
 const ActionItem = forwardRef<HTMLDivElement, Props>(
-  ({
-    itemRefs,
-    idx,
-    action,
-    isSelected,
-    actionsList,
-    onSingleClick,
-    onDoubleClick,
-  }) => {
+  ({ itemRefs, idx, action, isSelected, onSingleClick, onDoubleClick }) => {
     const Icon = getNodeIcon(action.type);
 
     return (
@@ -34,9 +25,9 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
             itemRefs.current[idx] = el;
           }}
           className={cn(
-            "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5",
+            "flex cursor-pointer items-center gap-2 rounded-xl border border-primary bg-secondary px-2 py-1.5",
             isSelected
-              ? "bg-primary text-accent-foreground"
+              ? "bg-primary/75 text-accent-foreground"
               : "hover:bg-primary hover:text-accent-foreground",
           )}
           onClick={() => onSingleClick?.(action.name)}
@@ -51,17 +42,13 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
           <span className="flex-1 truncate text-sm select-none">
             {action.name}
           </span>
-          <div
-            className={cn(
-              "self-center rounded border p-1 align-middle",
-              typeColorClass(action.type),
-            )}>
-            <p className="self-center text-xs text-zinc-200 capitalize select-none">
-              {action.type}
+          <div className="self-center rounded border bg-secondary/80 px-1 py-0.5 align-middle">
+            <p className="text-xs capitalize select-none">
+              {action.categories[0] ?? action.type}
             </p>
           </div>
         </div>
-        {idx !== actionsList.length - 1 && <div className="mx-1 border-b" />}
+        {/* {idx !== actionsList.length - 1 && <div className="mx-1 border-b" />} */}
       </>
     );
   },
