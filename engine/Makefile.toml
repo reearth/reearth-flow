@@ -57,11 +57,12 @@ script = ['''
 cargo test -p workflow-tests ${@:-}
 ''']
 
-# Same coverage as `test-qc`, executed via cargo-nextest's process-per-test
-# parallelism. workflow-tests gives every test its own TempDir-rooted sandbox,
-# so the tests are already isolated and safe to parallelise. CI uses this task
-# to cut the test-qc step from the bottleneck job (~14m -> ~6-8m). Local devs
-# can keep using `cargo make test-qc` with plain `cargo test`.
+# Same coverage as `test-qc`, executed via cargo-nextest. CI uses this with
+# `--partition count:N/M` to shard the 141 workflow integration tests across
+# multiple runners (see .github/workflows/ci_engine.yml test-qc matrix). The
+# per-test work (~30s/test end-to-end) makes 4-vCPU thread parallelism alone
+# insufficient — sharding is the only way to bring this job under ~10 min.
+# Local devs can keep using `cargo make test-qc` with plain `cargo test`.
 [tasks.test-qc-nextest]
 script = ['''
 #!/usr/bin/env bash -eux

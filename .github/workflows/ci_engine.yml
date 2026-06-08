@@ -111,9 +111,18 @@ jobs:
       - name: test-rs
         run: cargo make test-rs
 
+  # test-qc is the long pole: 141 workflow integration tests, each running a
+  # full end-to-end DAG (~30s/test). On a single 4-vCPU runner the test
+  # execution alone is ~19 min regardless of test framework. We split the
+  # suite across 3 nextest partitions running on independent runners, which
+  # brings the slowest shard down to ~8-10 min wall-clock.
   test-qc:
-    name: test-qc (workflow integration tests, via nextest)
+    name: test-qc shard ${{ matrix.shard }}/3 (nextest)
     runs-on: blacksmith-4vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
@@ -127,8 +136,8 @@ jobs:
         uses: taiki-e/install-action@74e87cbfa15a59692b158178d8905a61bf6fca95 # v2.75.20
         with:
           tool: cargo-nextest
-      - name: test-qc (nextest)
-        run: cargo make test-qc-nextest
+      - name: test-qc (nextest partition ${{ matrix.shard }}/3)
+        run: cargo make test-qc-nextest -- --partition count:${{ matrix.shard }}/3
 
   test-conv:
     name: test-conv (tile output validation)
