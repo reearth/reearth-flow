@@ -79,15 +79,19 @@ nodes:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          {}
-        } else {
-          let feature = env.get("__features")[0];
-          feature["dataFileData"]
-        }
-      output: |
-        "summary_common2-" + env.get("__value")["package"] + ".json"
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            {}
+          } else {
+            feature = attributes["__features"][0];
+            feature["dataFileData"]
+          }
+      output:
+        type: flowExpr
+        value: |
+          "summary_common2-" + attributes["package"] + ".json"
 
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired

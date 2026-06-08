@@ -638,22 +638,22 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          for key in feature.keys() {
-            result.push(#{
-              name: key,
-              count: feature[key],
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            result = [];
+            feature = attributes["__features"][0];
+            for key in feature.keys() {
+              result.append({"name": key, "count": feature[key]});
+            }
+            result
           }
-          result
-        }
-      output: |
-        "summary_common.json"
+      output:
+        type: string
+        value: summary_common.json
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
     type: action
@@ -1311,15 +1311,19 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          {}
-        } else {
-          let feature = env.get("__features")[0];
-          feature["dataFileData"]
-        }
-      output: |
-        "summary_common2-" + env.get("__value")["package"] + ".json"
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            {}
+          } else {
+            feature = attributes["__features"][0];
+            feature["dataFileData"]
+          }
+      output:
+        type: flowExpr
+        value: |
+          "summary_common2-" + attributes["package"] + ".json"
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
     type: action
