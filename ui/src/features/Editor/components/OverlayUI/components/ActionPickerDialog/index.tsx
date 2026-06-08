@@ -1,13 +1,18 @@
 import { EdgeChange } from "@xyflow/react";
 import { memo } from "react";
 
-import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Input,
+  ActionDetails,
+} from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
 import { useT } from "@flow/lib/i18n";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import ActionFilters from "./ActionFilters";
-import ActionPickerDetail from "./ActionPickerDetail";
 import useHooks from "./hooks";
 
 export type XYPosition = {
@@ -80,16 +85,13 @@ const ActionPickerDialog: React.FC<Props> = ({
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        size="3xl"
+        size="4xl"
         position="top"
         className="flex max-h-[70vh] min-h-[60vh] flex-col gap-0 overflow-hidden p-0">
-        <div className="border-b">
-          <DialogTitle>{t("Choose Action")}</DialogTitle>
-        </div>
-
+        <DialogTitle>{t("Choose Action")}</DialogTitle>
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Left panel — filters + list */}
-          <div className="flex w-1/4 min-w-0 flex-col overflow-y-auto border-r">
+          <div className="mx-2 mb-2 flex w-1/4 min-w-0 flex-col overflow-y-auto rounded-xl border bg-secondary px-2 shadow-md shadow-secondary backdrop-blur-xs">
             <div className="flex flex-col gap-2 p-3">
               <Input
                 className="mx-auto focus-visible:ring-0"
@@ -114,7 +116,7 @@ const ActionPickerDialog: React.FC<Props> = ({
           {/* Centre panel — Action List */}
           <div
             ref={containerRef}
-            className="flex-1 overflow-y-auto border-r px-2 pt-1 pb-1">
+            className="mb-2 flex flex-1 flex-col gap-1 overflow-y-auto px-2 pt-1 pb-1">
             {actionsList?.map((action, idx) => {
               const isSelected = selected === action.name;
               return (
@@ -124,7 +126,6 @@ const ActionPickerDialog: React.FC<Props> = ({
                   idx={idx}
                   action={action}
                   isSelected={isSelected}
-                  actionsList={actionsList}
                   onSingleClick={handleSelectAction}
                   onDoubleClick={handleAddAction}
                 />
@@ -137,11 +138,8 @@ const ActionPickerDialog: React.FC<Props> = ({
             )}
           </div>
           {/* Right panel — detail */}
-          <div className="min-w-0 flex-1 overflow-y-auto">
-            <ActionPickerDetail
-              action={selectedAction}
-              onAdd={handleAddAction}
-            />
+          <div className="mb-2 min-w-0 flex-1 overflow-y-auto border-l border-primary/50">
+            <ActionDetails action={selectedAction} onAdd={handleAddAction} />
           </div>
         </div>
       </DialogContent>

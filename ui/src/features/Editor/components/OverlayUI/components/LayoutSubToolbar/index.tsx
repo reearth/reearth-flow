@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Doc, Map as YMap } from "yjs";
 
@@ -40,38 +40,62 @@ const LayoutSubToolbar: React.FC<Props> = ({
     () => metadata?.layoutApplyToAll ?? false,
   );
 
+  const handleDirectionChange = (newDirection: Direction) => {
+    yMetadata?.set("layoutDirection", newDirection);
+    setDirection(newDirection);
+  };
+
+  const handleApplyToAllChange = (newValue: boolean) => {
+    yMetadata?.set("layoutApplyToAll", newValue);
+    setApplyToAll(newValue);
+  };
+
   const handleCleanUp = () => {
-    yMetadata?.set("layoutDirection", direction);
-    yMetadata?.set("layoutApplyToAll", applyToAll);
     onLayoutChange("dagre", direction, applyToAll);
     onClose();
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
   return (
-    <div className="flex items-center gap-4 rounded-md border border-accent bg-primary/50 px-4 py-2 text-popover-foreground shadow-md backdrop-blur">
-      <Button variant="outline" onClick={handleCleanUp}>
-        {t("Clean up")}
-      </Button>
-      <div className="h-5 border-r border-border" />
-      <Select
-        value={direction}
-        onValueChange={(v) => setDirection(v as Direction)}>
+    <div className="flex items-center gap-4 rounded-xl border border-primary bg-primary/50 p-1 text-popover-foreground shadow-md shadow-[black]/10 backdrop-blur dark:shadow-secondary">
+      <Select value={direction} onValueChange={handleDirectionChange}>
         <SelectTrigger className="h-7 w-30 text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="Horizontal">{t("Horizontal")}</SelectItem>
-          <SelectItem value="Vertical">{t("Vertical")}</SelectItem>
+          <SelectItem value="Horizontal">
+            <p className="select-none">{t("Horizontal")}</p>
+          </SelectItem>
+          <SelectItem value="Vertical">
+            <p className="select-none">{t("Vertical")}</p>
+          </SelectItem>
         </SelectContent>
       </Select>
-      <label className="flex cursor-pointer items-center gap-2 text-xs text-accent-foreground select-none">
+      <label className="flex cursor-pointer items-center gap-2 text-xs select-none">
         <Checkbox
           className="bg-accent"
           checked={applyToAll}
-          onCheckedChange={(v) => setApplyToAll(v === true)}
+          onCheckedChange={handleApplyToAllChange}
         />
-        {t("Include subworkflows")}
+        {t("Apply to all workflows")}
       </label>
+      <div className="h-5 border-r border-border" />
+      <Button className="h-8 w-18 select-none" onClick={handleCleanUp}>
+        {t("Clean up")}
+      </Button>
     </div>
   );
 };

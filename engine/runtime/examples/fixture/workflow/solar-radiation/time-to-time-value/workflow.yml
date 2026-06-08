@@ -33,21 +33,29 @@ nodes:
           valueAttribute: 南中
         # Add the extracted time parts directly in the AttributeMapper
         - attribute: 出_H
-          expr: |
-            let time_parts = env.get("__value")["出"].split(":");
-            if time_parts.len() > 0 { time_parts[0] } else { "" }
+          expr:
+            type: flowExpr
+            value: |
+              time_parts = attributes["出"].split(":");
+              if len(time_parts) > 0 { time_parts[0] } else { "" }
         - attribute: 出_M
-          expr: |
-            let time_parts = env.get("__value")["出"].split(":");
-            if time_parts.len() > 1 { time_parts[1] } else { "" }
+          expr:
+            type: flowExpr
+            value: |
+              time_parts = attributes["出"].split(":");
+              if len(time_parts) > 1 { time_parts[1] } else { "" }
         - attribute: 入り_H
-          expr: |
-            let time_parts = env.get("__value")["入り"].split(":");
-            if time_parts.len() > 0 { time_parts[0] } else { "" }
+          expr:
+            type: flowExpr
+            value: |
+              time_parts = attributes["入り"].split(":");
+              if len(time_parts) > 0 { time_parts[0] } else { "" }
         - attribute: 入り_M
-          expr: |
-            let time_parts = env.get("__value")["入り"].split(":");
-            if time_parts.len() > 1 { time_parts[1] } else { "" }
+          expr:
+            type: flowExpr
+            value: |
+              time_parts = attributes["入り"].split(":");
+              if len(time_parts) > 1 { time_parts[1] } else { "" }
 
   - id: 57d8a9b1-8e7b-4c23-9e6d-9f70db10a7e4
     name: ConvertToSeconds

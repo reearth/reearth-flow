@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::f64::consts::FRAC_PI_2;
 use std::io::BufWriter;
-use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use flatgeom::{Polygon2, Polygon3};
@@ -9,7 +8,6 @@ use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_common::uri::Uri;
 use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -84,7 +82,9 @@ impl SinkFactory for GltfWriterSinkFactory {
         let output = scope
             .eval::<String>(params.output.to_string().as_str())
             .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
-        let output = Uri::from_str(output.as_str())?;
+        // Store as String — Uri::from_str at build time would silently join with CWD,
+        // turning a relative path into an absolute URI that SinkOutput::new would reject.
+        // Validation happens at runtime via SinkOutput::new(&ctx.sandbox_root, &output, ...).
         let sink = GltfWriter {
             output,
             attach_texture: params.attach_texture.unwrap_or(true),
@@ -141,7 +141,8 @@ impl TryFrom<&ClassFeatures> for Schema {
 
 #[derive(Debug, Clone)]
 pub struct GltfWriter {
-    output: Uri,
+    /// Relative output path (strict-relative, validated at runtime by SinkOutput::new).
+    output: String,
     classified_features: ClassifiedFeatures,
     attach_texture: bool,
     draco_compression: bool,
@@ -201,8 +202,12 @@ impl Sink for GltfWriter {
         let transform_matrix = compute_transform_matrix(&global_bvol, &ellipsoid);
         let _ = transform_matrix.inverse();
 
-        let base = crate::SinkOutput::from_path(&ctx, self.output.as_ref())
-            .map_err(|e| crate::errors::SinkError::GltfWriter(e.to_string()))?;
+        let base = crate::SinkOutput::new(
+            &ctx.sandbox_root,
+            self.output.as_str(),
+            &ctx.storage_resolver,
+        )
+        .map_err(|e| crate::errors::SinkError::GltfWriter(e.to_string()))?;
 
         let tileset_content_files = Mutex::new(Vec::new());
 
@@ -259,11 +264,13 @@ impl Sink for GltfWriter {
                     Some(f) => {
                         let name = format!("{}.glb", f.replace(':', "_"));
                         tileset_content_files.lock().unwrap().push(name.clone());
-                        base.join(&name).map_err(|e| {
-                            crate::errors::SinkError::GltfWriter(format!(
-                                "Failed to join uri with {e:?}"
-                            ))
-                        })?
+                        let sub_path = format!("{}/{}", self.output, name);
+                        crate::SinkOutput::new(&ctx.sandbox_root, &sub_path, &ctx.storage_resolver)
+                            .map_err(|e| {
+                                crate::errors::SinkError::GltfWriter(format!(
+                                    "Failed to create output for {sub_path}: {e:?}"
+                                ))
+                            })?
                     }
                     None => base.clone(),
                 };

@@ -348,6 +348,14 @@ export class EditorPage {
     await this.page.keyboard.press("ControlOrMeta+Shift+z");
   }
 
+  async selectAll() {
+    await this.page.keyboard.press("ControlOrMeta+a");
+  }
+
+  async copySelected() {
+    await this.page.keyboard.press("ControlOrMeta+c");
+  }
+
   contextMenuItem(label: string): Locator {
     return this.page.getByText(label, { exact: true });
   }

@@ -52,7 +52,6 @@ const ActionFilters = ({
 }: Props) => {
   const t = useT();
   const [tagsOpen, setTagsOpen] = useState(false);
-  console.log("currentActionByTypes", currentActionByTypes);
 
   return (
     <div data-filter-area className="flex flex-col gap-4">

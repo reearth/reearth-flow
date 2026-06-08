@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 
 use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{NativeFn, Value};
-use crate::unpack_args;
+use crate::expect_arity;
 
 use super::MethodFn;
 
@@ -11,11 +11,13 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
         ("trim", trim as MethodFn),
         ("split", split as MethodFn),
+        ("rsplit", rsplit as MethodFn),
         ("starts_with", starts_with as MethodFn),
         ("ends_with", ends_with as MethodFn),
         ("replace", replace as MethodFn),
         ("remove_prefix", remove_prefix as MethodFn),
         ("remove_suffix", remove_suffix as MethodFn),
+        ("join", join as MethodFn),
     ])
 });
 
@@ -32,102 +34,107 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
 }
 
 fn trim(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    Ok(Value::String(s.trim().to_string()))
+    expect_arity("str.trim", &args[1..], 0, 0)?;
+    Ok(Value::String(args[0].as_str()?.trim().to_string()))
+}
+
+fn split_limit(v: &Value) -> InnerResult<usize> {
+    let n = v.as_int()?;
+    if n < 0 {
+        return Err(InnerError::new("limit must be non-negative"));
+    }
+    Ok(n as usize)
 }
 
 fn split(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, sep);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(sep) = sep else {
-        return Err(InnerError::new(format!(
-            "split() separator must be a string, got {}",
-            sep.type_name()
-        )));
-    };
-    Ok(Value::array(
-        s.split(sep.as_str())
+    expect_arity("str.split", &args[1..], 1, 2)?;
+    let s = args[0].as_str()?;
+    let sep = args[1].as_str()?;
+    let n = args.get(2).map(split_limit).transpose()?;
+    let parts: Vec<Value> = match n {
+        Some(n) => s
+            .splitn(n + 1, sep)
             .map(|p| Value::String(p.to_string()))
             .collect(),
-    ))
+        None => s.split(sep).map(|p| Value::String(p.to_string())).collect(),
+    };
+    Ok(Value::array(parts))
+}
+
+fn rsplit(args: &[Value]) -> InnerResult<Value> {
+    expect_arity("str.rsplit", &args[1..], 1, 2)?;
+    let s = args[0].as_str()?;
+    let sep = args[1].as_str()?;
+    let n = args.get(2).map(split_limit).transpose()?;
+    let mut parts: Vec<Value> = match n {
+        Some(n) => s
+            .rsplitn(n + 1, sep)
+            .map(|p| Value::String(p.to_string()))
+            .collect(),
+        None => s.split(sep).map(|p| Value::String(p.to_string())).collect(),
+    };
+    if n.is_some() {
+        parts.reverse();
+    }
+    Ok(Value::array(parts))
 }
 
 fn starts_with(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, prefix);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(prefix) = prefix else {
-        return Err(InnerError::new(format!(
-            "starts_with() argument must be a string, got {}",
-            prefix.type_name()
-        )));
-    };
-    Ok(Value::Bool(s.starts_with(prefix.as_str())))
+    expect_arity("str.starts_with", &args[1..], 1, 1)?;
+    Ok(Value::Bool(
+        args[0].as_str()?.starts_with(args[1].as_str()?),
+    ))
 }
 
 fn ends_with(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, suffix);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(suffix) = suffix else {
-        return Err(InnerError::new(format!(
-            "ends_with() argument must be a string, got {}",
-            suffix.type_name()
-        )));
-    };
-    Ok(Value::Bool(s.ends_with(suffix.as_str())))
+    expect_arity("str.ends_with", &args[1..], 1, 1)?;
+    Ok(Value::Bool(args[0].as_str()?.ends_with(args[1].as_str()?)))
 }
 
 fn remove_prefix(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, prefix);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(prefix) = prefix else {
-        return Err(InnerError::new(format!(
-            "remove_prefix() argument must be a string, got {}",
-            prefix.type_name()
-        )));
-    };
-    Ok(Value::String(
-        s.strip_prefix(prefix.as_str()).unwrap_or(s).to_string(),
-    ))
+    expect_arity("str.remove_prefix", &args[1..], 1, 1)?;
+    let s = args[0].as_str()?;
+    let p = args[1].as_str()?;
+    Ok(Value::String(s.strip_prefix(p).unwrap_or(s).to_string()))
 }
 
 fn replace(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, from, to);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
+    expect_arity("str.replace", &args[1..], 2, 2)?;
+    Ok(Value::String(
+        args[0]
+            .as_str()?
+            .replace(args[1].as_str()?, args[2].as_str()?),
+    ))
+}
+
+fn join(args: &[Value]) -> InnerResult<Value> {
+    expect_arity("str.join", &args[1..], 1, 1)?;
+    let sep = args[0].as_str()?;
+    let Value::Array(list) = &args[1] else {
+        return Err(InnerError::new(format!(
+            "join() argument must be an array, got {}",
+            args[1].type_name()
+        )));
     };
-    let (Value::String(from), Value::String(to)) = (from, to) else {
-        return Err(InnerError::new(
-            "replace() requires two string arguments: replace(from, to)",
-        ));
-    };
-    Ok(Value::String(s.replace(from.as_str(), to.as_str())))
+    let parts = list
+        .borrow()
+        .iter()
+        .map(|v| match v {
+            Value::String(s) => Ok(s.clone()),
+            other => Err(InnerError::new(format!(
+                "join() array elements must be strings, got {}",
+                other.type_name()
+            ))),
+        })
+        .collect::<InnerResult<Vec<_>>>()?;
+    Ok(Value::String(parts.join(sep)))
 }
 
 fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
-    unpack_args!(args => s, suffix);
-    let Value::String(s) = s else {
-        return Err(InnerError::new("expected string receiver"));
-    };
-    let Value::String(suffix) = suffix else {
-        return Err(InnerError::new(format!(
-            "remove_suffix() argument must be a string, got {}",
-            suffix.type_name()
-        )));
-    };
-    Ok(Value::String(
-        s.strip_suffix(suffix.as_str()).unwrap_or(s).to_string(),
-    ))
+    expect_arity("str.remove_suffix", &args[1..], 1, 1)?;
+    let s = args[0].as_str()?;
+    let suf = args[1].as_str()?;
+    Ok(Value::String(s.strip_suffix(suf).unwrap_or(s).to_string()))
 }
 
 #[cfg(test)]
@@ -191,6 +198,20 @@ mod tests {
     fn test_split() {
         assert_eval(r#""foo:bar".split(":")[0]"#, &[], Value::from("foo"));
         assert_eval(r#""foo:bar".split(":")[-1]"#, &[], Value::from("bar"));
+        assert_eval(r#""a/b/c".split("/", 1)[0]"#, &[], Value::from("a"));
+        assert_eval(r#""a/b/c".split("/", 1)[1]"#, &[], Value::from("b/c"));
+    }
+
+    #[test]
+    fn test_rsplit() {
+        assert_eval(r#""a/b/c".rsplit("/")[-1]"#, &[], Value::from("c"));
+        assert_eval(r#""a/b/c".rsplit("/", 1)[-1]"#, &[], Value::from("c"));
+        assert_eval(r#""a/b/c".rsplit("/", 1)[0]"#, &[], Value::from("a/b"));
+        assert_eval(
+            r#""path/to/file.txt".rsplit("/", 1)[-1]"#,
+            &[],
+            Value::from("file.txt"),
+        );
     }
 
     #[test]
@@ -202,6 +223,13 @@ mod tests {
             Value::from("foo/bar/baz"),
         );
         assert_eval(r#""hello".replace("x", "y")"#, &[], Value::from("hello"));
+    }
+
+    #[test]
+    fn test_join() {
+        assert_eval(r#"", ".join(["a", "b", "c"])"#, &[], Value::from("a, b, c"));
+        assert_eval(r#""".join(["x", "y"])"#, &[], Value::from("xy"));
+        assert_eval(r#""-".join([])"#, &[], Value::from(""));
     }
 
     #[test]
