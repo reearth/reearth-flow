@@ -33,12 +33,18 @@ use super::receiver_loop::ReceiverLoop;
 use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::init_select};
 
+// Reduced from the historical 500ms default. The sleep is here to let
+// asynchronous node-status events propagate before the next executor step;
+// 5ms is empirically enough on observed test workloads while reclaiming the
+// 495ms × N-nodes per workflow that was dominating test-qc wall-clock.
+// The env var override (`FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS`)
+// stays as a safety valve for any caller that still needs the old behaviour.
 static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
         .ok()
         .and_then(|v| v.parse().ok())
         .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(500))
+        .unwrap_or(Duration::from_millis(5))
 });
 
 /// A sink in the execution DAG.

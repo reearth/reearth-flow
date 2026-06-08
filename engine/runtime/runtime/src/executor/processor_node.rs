@@ -33,12 +33,13 @@ use super::receiver_loop::init_select;
 use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
+// See sink_node.rs for rationale on the 500ms -> 5ms default change.
 static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
         .ok()
         .and_then(|v| v.parse().ok())
         .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(500))
+        .unwrap_or(Duration::from_millis(5))
 });
 
 static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
