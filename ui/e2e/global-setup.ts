@@ -20,7 +20,23 @@ async function globalSetup(_config: FullConfig) {
   const page = await context.newPage();
 
   try {
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    // The dev environment cold-starts, so the first navigation can exceed the
+    // default 30s timeout; retry once with a generous budget before giving up.
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        await page.goto(baseUrl, {
+          waitUntil: "domcontentloaded",
+          timeout: 90_000,
+        });
+        lastError = undefined;
+        break;
+      } catch (error) {
+        lastError = error;
+        console.warn(`Global setup navigation attempt ${attempt} failed`);
+      }
+    }
+    if (lastError) throw lastError;
 
     const loginPage = new LoginPage(page);
     const homePage = new HomePage(page);
