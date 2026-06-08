@@ -28,7 +28,9 @@ graphs:
         type: action
         action: GeoJsonWriter
         with:
-          output: ./output-coords.geojson
+          output:
+            type: string
+            value: ./output-coords.geojson
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540b

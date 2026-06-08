@@ -20,8 +20,9 @@ graphs:
         type: action
         action: CityGmlWriter
         with:
-          output: |
-            env.get("outputFilePath")
+          output:
+            type: flowExpr
+            value: 'env["outputFilePath"]'
           prettyPrint: true
     edges:
       - id: f4f94483-de11-7f4d-dde8-71f575d541fe

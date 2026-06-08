@@ -21,7 +21,9 @@ graphs:
         type: action
         action: GeoPackageWriter
         with:
-          output: output_test.gpkg
+          output:
+            type: string
+            value: output_test.gpkg
           tableName: test_features
           geometryColumn: geom
           srsId: 4326
