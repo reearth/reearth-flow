@@ -378,8 +378,10 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "02_建築物_検査結果一覧.csv"
+          output:
+            type: flowExpr
+            value: |
+              "02_建築物_検査結果一覧.csv"
 
       # Phase 5: StatisticsCalculator for JSON aggregation
       - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
@@ -517,8 +519,10 @@ graphs:
                 }
                 result
               }
-          output: |
-            "summary_bldg.json"
+          output:
+            type: flowExpr
+            value: |
+              "summary_bldg.json"
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors

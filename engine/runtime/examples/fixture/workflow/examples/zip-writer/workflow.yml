@@ -52,8 +52,10 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("currentPath"), "year-2024.csv")
+          output:
+            type: flowExpr
+            value: |
+              file::join_path(env.get("currentPath"), "year-2024.csv")
 
       - id: 3ec90e43-968e-4bcd-863c-f7c80e37f118
         name: FeatureWriter2025
@@ -61,8 +63,10 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("currentPath"), "year-2025.csv")
+          output:
+            type: flowExpr
+            value: |
+              file::join_path(env.get("currentPath"), "year-2025.csv")
 
       - id: 5aa001b2-94d4-41c0-8552-58adf04ef66a
         name: ZipFileWriter
