@@ -5,6 +5,8 @@ import { useIndexedDB } from "@flow/lib/indexedDB";
 import type { YEdgesMap, YNodesMap, YWorkflow } from "@flow/lib/yjs/types";
 import { GraphSnapshot, JobState, useCurrentProject } from "@flow/stores";
 
+// Yjs Y.Map doesn't guarantee key insertion order, so we sort keys before
+// stringifying to ensure identical param objects always produce the same hash.
 function sortedJsonStringify(obj: unknown): string {
   return JSON.stringify(obj, (_, value) => {
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
@@ -22,6 +24,8 @@ function sortedJsonStringify(obj: unknown): string {
   });
 }
 
+// Records the full graph state at a point in time — node param hashes,
+// topology (node/edge sets), and subworkflow boundary bridges.
 function captureSnapshot(yWorkflows: Y.Map<YWorkflow>): GraphSnapshot {
   const nodeHashes: GraphSnapshot["nodeHashes"] = {};
   const nodeIds: GraphSnapshot["nodeIds"] = {};
@@ -83,6 +87,8 @@ function captureSnapshot(yWorkflows: Y.Map<YWorkflow>): GraphSnapshot {
   return { nodeHashes, nodeIds, edgeSignatures, subworkflowBridges };
 }
 
+// Short-circuits on first difference found — workflow set, node set,
+// edge topology, then individual node param hashes.
 function isSnapshotDifferent(a: GraphSnapshot, b: GraphSnapshot): boolean {
   const aWfIds = Object.keys(a.nodeIds).sort();
   const bWfIds = Object.keys(b.nodeIds).sort();
@@ -105,6 +111,8 @@ function isSnapshotDifferent(a: GraphSnapshot, b: GraphSnapshot): boolean {
   return false;
 }
 
+// Builds adjacency from a stored snapshot — used specifically for deleted nodes,
+// where we need the OLD graph topology to find what was downstream of them.
 function buildAdjacencyFromSnapshot(
   snapshot: GraphSnapshot,
 ): Map<string, Set<string>> {
@@ -133,6 +141,7 @@ function buildAdjacencyFromSnapshot(
   return adj;
 }
 
+// Builds adjacency from live Yjs state — used for the current graph topology.
 function buildAdjacency(
   yWorkflows: Y.Map<YWorkflow>,
 ): Map<string, Set<string>> {
@@ -182,6 +191,8 @@ function buildAdjacency(
   return adj;
 }
 
+// Traverses the graph downstream from startId, following directed edges.
+// The start node itself is included — a changed node is stale along with its descendants.
 function bfsDownstream(
   startId: string,
   adj: Map<string, Set<string>>,
@@ -198,6 +209,9 @@ function bfsDownstream(
   return visited;
 }
 
+// Full snapshot diff used exclusively by the undo/redo handler.
+// Undo/redo doesn't produce granular Yjs events, so we compare the stored
+// run snapshot against the current state to recompute stale nodes from scratch.
 function computeStaleNodesFromDiff(
   snapshot: GraphSnapshot,
   current: GraphSnapshot,
@@ -263,7 +277,8 @@ function computeStaleNodesFromDiff(
   return Array.from(staleIds);
 }
 
-function isRelevantEvent(event: Y.YEvent<any>): boolean {
+// Filters out Yjs events that can't affect staleness — position moves, label renames, etc.
+function isRelevantYjsEvent(event: Y.YEvent<any>): boolean {
   const path = event.path as string[];
   if (path[1] === "edges") return true;
   if (path[1] === "nodes") {
@@ -294,8 +309,12 @@ export default function useGraphStaleness({
   const updateValueRef = useRef(updateValue);
   const projectIdRef = useRef(currentProject?.id);
   const undoManagerRef = useRef(undoManager);
+  // Cached so we don't rebuild the adjacency map on every param-only change event.
+  // Invalidated whenever topology changes (edge/node add or delete) or on undo/redo.
   const adjacencyRef = useRef<Map<string, Set<string>> | null>(null);
 
+  // Sync all mutable values into refs on every render so the Yjs event handlers
+  // always read the latest values without being listed as effect dependencies.
   useEffect(() => {
     const job = debugRunState?.jobs?.find(
       (j) => j.projectId === currentProject?.id,
@@ -337,6 +356,9 @@ export default function useGraphStaleness({
     }));
   }, [debugJob?.jobId, yWorkflows, currentProject?.id]);
 
+  // Main staleness detector — listens to all Yjs graph changes via observeDeep.
+  // On each relevant change, BFS downstream from the affected nodes and
+  // accumulates into staleNodeIds.
   useEffect(() => {
     adjacencyRef.current = null;
 
@@ -345,11 +367,13 @@ export default function useGraphStaleness({
       if (!job?.jobId || !job.graphSnapshot) return;
       if (job.status === "running" || job.status === "queued") return;
 
+      // Skip changes that originated from undo/redo — handled separately below.
       const um = undoManagerRef.current;
       if (um && events.some((e) => e.transaction.origin === um)) return;
 
-      if (!events.some(isRelevantEvent)) return;
+      if (!events.some(isRelevantYjsEvent)) return;
 
+      // If the graph is back to the exact run-time state, clear staleness.
       const currentSnapshot = captureSnapshot(yWorkflows);
       if (!isSnapshotDifferent(job.graphSnapshot, currentSnapshot)) {
         if (job.isRunStale) {
@@ -388,11 +412,7 @@ export default function useGraphStaleness({
               }
             });
           }
-        } else if (
-          path.length >= 2 &&
-          path[1] === "edges" &&
-          path.length === 2
-        ) {
+        } else if (path.length === 2 && path[1] === "edges") {
           const workflowId = path[0];
           const yEdges = yWorkflows.get(workflowId)?.get("edges") as
             | YEdgesMap
@@ -471,6 +491,9 @@ export default function useGraphStaleness({
     };
   }, [yWorkflows]);
 
+  // Undo/redo handler — fires on "stack-item-popped" (both undo and redo).
+  // Unlike normal edits, undo/redo can restore deleted nodes/edges, so we
+  // always do a full snapshot diff and REPLACE staleNodeIds (not accumulate).
   useEffect(() => {
     if (!undoManager) return;
 
