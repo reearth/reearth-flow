@@ -260,7 +260,7 @@ export class EditorPage {
   paramFieldRow(label: string): Locator {
     return this.paramsDialog
       .locator("div.flex.flex-1.items-center.gap-6")
-      .filter({ has: this.page.getByText(label, { exact: true }) });
+      .filter({ has: this.paramsDialog.getByText(label, { exact: true }) });
   }
 
   async setParamText(fieldId: string, value: string) {

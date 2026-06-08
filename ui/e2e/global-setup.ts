@@ -20,7 +20,6 @@ async function globalSetup(_config: FullConfig) {
   const page = await context.newPage();
 
   try {
-
     let lastError: unknown;
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
