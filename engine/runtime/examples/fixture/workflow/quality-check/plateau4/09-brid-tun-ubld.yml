@@ -802,7 +802,7 @@ graphs:
       output:
         type: flowExpr
         value: |
-          pkg = attributes.get("package", attributes.get("udxDirs", ""));
+          pkg = attributes.get("package") or attributes.get("udxDirs");
           if pkg == "brid" {
             "09_橋梁_LOD0面の向きエラー.csv"
           } else if pkg == "tun" {
