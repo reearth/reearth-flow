@@ -33,7 +33,12 @@ use super::receiver_loop::init_select;
 use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
-// See sink_node.rs for rationale on the 500ms -> 5ms default change.
+// Backoff for the busy-wait loop that polls thread_counter waiting for
+// in-flight processor work to drain. NOT a propagation delay — the original
+// post-status sleeps with the same name have been removed; this remaining
+// use is purely a CPU-throttle on the polling loop. 5ms gives 200 polls/sec
+// at negligible CPU cost. The historical env var name is preserved for
+// backward compatibility.
 static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
         .ok()
@@ -310,12 +315,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         status: final_status,
                         feature_id: None,
                     });
-
-                    tracing::info!(
-                        "Waiting for final status to propagate for processor node {}",
-                        self.node_handle.id
-                    );
-                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
                     let terminate_result = self.on_terminate(NodeContext::new(
                         self.expr_engine.clone(),
