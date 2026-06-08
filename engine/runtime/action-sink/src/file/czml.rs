@@ -1319,7 +1319,7 @@ mod tests {
     use reearth_flow_geometry::types::no_value::NoValue;
     use reearth_flow_geometry::types::point::Point3D;
     use reearth_flow_geometry::types::polygon::Polygon;
-    use reearth_flow_types::Geometry;
+    use reearth_flow_types::{CodeType, Geometry};
 
     fn make_feature_3d(lon: f64, lat: f64, height: f64) -> Feature {
         Feature::new_with_attributes_and_geometry(
