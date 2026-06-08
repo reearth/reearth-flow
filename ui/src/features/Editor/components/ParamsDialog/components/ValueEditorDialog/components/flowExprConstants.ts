@@ -133,12 +133,20 @@ export const getFlowExprAutocompleteSuggestions = (
 
   // Built-in global functions
   {
-    label: "attributes",
+    label: "attributes[]",
+    insertText: 'attributes["{{cursor}}"]',
+    type: "function",
+    description: t("Feature attribute map — throws if key is missing"),
+    detail: 'attributes["key"] → any',
+  },
+  {
+    label: "attributes.get",
     insertText: 'attributes.get("{{cursor}}")',
-    type: "variable",
-    description: t("Feature attribute map for the current feature"),
-    detail:
-      'attributes["key"] → any (throws if missing) | attributes.get("key"[, fallback]) → any (returns fallback/null)',
+    type: "function",
+    description: t(
+      "Feature attribute map — returns fallback/null if key is missing",
+    ),
+    detail: 'attributes.get("key"[, fallback]) → any',
   },
   {
     label: "env",
