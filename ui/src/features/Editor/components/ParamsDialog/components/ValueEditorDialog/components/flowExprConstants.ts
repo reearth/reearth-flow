@@ -137,7 +137,7 @@ export const getFlowExprAutocompleteSuggestions = (
     insertText: 'attributes.get("{{cursor}}")',
     type: "variable",
     description: t("Feature attribute map for the current feature"),
-    detail: 'attributes["key"] or attributes.get("key"[, fallback]) → any',
+    detail: 'attributes["key"] → any (throws if missing) | attributes.get("key"[, fallback]) → any (returns fallback/null)',
   },
   {
     label: "env",
