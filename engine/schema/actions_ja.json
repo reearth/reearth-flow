@@ -3907,7 +3907,7 @@
                 "title": "Output path",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               }
@@ -3930,7 +3930,7 @@
                 "title": "Output path",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               }
@@ -3965,7 +3965,7 @@
                 "title": "Output path",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               }
@@ -4013,7 +4013,7 @@
                 "title": "Output path",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               },
@@ -4050,9 +4050,6 @@
               "flowExpr",
               "string"
             ]
-          },
-          "Expr": {
-            "type": "string"
           }
         }
       },

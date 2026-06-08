@@ -3796,7 +3796,7 @@ Writes features from various formats
           "title": "Output path",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         }
@@ -3819,7 +3819,7 @@ Writes features from various formats
           "title": "Output path",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         }
@@ -3854,7 +3854,7 @@ Writes features from various formats
           "title": "Output path",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         }
@@ -3902,7 +3902,7 @@ Writes features from various formats
           "title": "Output path",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         },
@@ -3939,9 +3939,6 @@ Writes features from various formats
         "flowExpr",
         "string"
       ]
-    },
-    "Expr": {
-      "type": "string"
     }
   }
 }
