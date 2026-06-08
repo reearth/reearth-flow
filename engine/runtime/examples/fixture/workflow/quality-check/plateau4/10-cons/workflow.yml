@@ -120,30 +120,21 @@ graphs:
         with:
           mappers:
             - attribute: gmlPath
-              expr: |
-                env.get("__value").path
+              valueAttribute: path
             - attribute: gmlFilename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: fileIndex
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: codelists
-              expr: |
-                env.get("__value").codelists
+              valueAttribute: codelists
             - attribute: schemas
-              expr: |
-                env.get("__value").schemas
+              valueAttribute: schemas
             - attribute: udxDirs
-              expr: |
-                let path = env.get("__value").path;
-                let parts = path.split("/");
-                let len = parts.len();
-                if len >= 2 {
-                  parts[len - 2]
-                } else {
-                  env.get("__value").udxDirs ?? ""
-                }
+              expr:
+                type: flowExpr
+                value: |
+                  parts = attributes["path"].split("/");
+                  if len(parts) >= 2 { parts[-2] } else { attributes.get("udxDirs", "") }
 
       - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f60
         name: FeatureCityGmlReader
@@ -240,26 +231,21 @@ graphs:
         with:
           mappers:
             - attribute: index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: filename
-              expr: |
-                env.get("__value").gmlFilename
+              valueAttribute: gmlFilename
             - attribute: udxDirs
-              expr: |
-                env.get("__value").udxDirs
+              valueAttribute: udxDirs
             - attribute: gmlFilename
-              expr: |
-                env.get("__value").gmlFilename
+              valueAttribute: gmlFilename
             - attribute: featureTypeName
-              expr: |
-                env.get("__value").featureTypeName
+              valueAttribute: featureTypeName
             - attribute: instanceCount
-              expr: |
-                env.get("__value").instanceCount
+              valueAttribute: instanceCount
             - attribute: lod
-              expr: |
-                env.get("__value").lod ?? "0"
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "0")
 
       - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f20
         name: GeometryRemoverForErrorSummary
@@ -289,35 +275,43 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value").udxDirs
+              valueAttribute: udxDirs
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex ?? env.get("__value").index
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", attributes.get("index"))
             - attribute: Filename
-              expr: |
-                env.get("__value").gmlFilename ?? env.get("__value").filename
+              expr:
+                type: flowExpr
+                value: attributes.get("gmlFilename", attributes.get("filename"))
             - attribute: フィーチャータイプ
-              expr: |
-                env.get("__value").featureTypeName ?? "OtherConstruction"
+              expr:
+                type: flowExpr
+                value: attributes.get("featureTypeName", "OtherConstruction")
             - attribute: LOD
-              expr: |
-                env.get("__value").lod ?? "0"
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "0")
             - attribute: インスタンス数
-              expr: |
-                env.get("__value").instanceCount ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("instanceCount", 0)
             - attribute: 面のエラー
-              expr: |
-                env.get("__value")._num_surface_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_surface_errors", 0)
             - attribute: 面の向き不正
-              expr: |
-                env.get("__value")._num_orientation_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_orientation_errors", 0)
             - attribute: 非水密立体
-              expr: |
-                env.get("__value")._num_not_closed_solid ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_not_closed_solid", 0)
             - attribute: 立体のその他のエラー
-              expr: |
-                env.get("__value")._num_other_solid_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_other_solid_errors", 0)
 
       - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e80
         name: CSVSummaryWriter
