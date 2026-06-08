@@ -554,7 +554,7 @@
   "Membership negation (x not in arr)": "成员否定 (x 不在 arr 中)",
   "logical AND": "逻辑与",
   "logical OR": "逻辑或",
-  "Read a feature attribute by name": "按名称读取特征属性",
+  "Feature attribute map for the current feature": "当前特征的特征属性映射",
   "Read an environment variable": "读取环境变量",
   "Construct a URL/path value": "构建URL/路径值",
   "Convert to integer": "转换为整数",

@@ -554,7 +554,7 @@
   "Membership negation (x not in arr)": "Negación de membresía (x no en arr)",
   "logical AND": "AND lógico",
   "logical OR": "OR lógico",
-  "Read a feature attribute by name": "Leer un atributo de característica por nombre",
+  "Feature attribute map for the current feature": "Mapa de atributos de la característica actual",
   "Read an environment variable": "Leer una variable de entorno",
   "Construct a URL/path value": "Construir un valor de URL/ruta",
   "Convert to integer": "Convertir a entero",

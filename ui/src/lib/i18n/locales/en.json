@@ -554,7 +554,7 @@
   "Membership negation (x not in arr)": "",
   "logical AND": "",
   "logical OR": "",
-  "Read a feature attribute by name": "",
+  "Feature attribute map for the current feature": "",
   "Read an environment variable": "",
   "Construct a URL/path value": "",
   "Convert to integer": "",

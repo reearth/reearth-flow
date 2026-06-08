@@ -22,7 +22,7 @@ export const FLOWEXPR_BUILTIN_FUNCTIONS = [
   "list",
   "map",
   "Url",
-  "value",
+  "attributes",
   "env",
   "print",
   "len",
@@ -133,11 +133,11 @@ export const getFlowExprAutocompleteSuggestions = (
 
   // Built-in global functions
   {
-    label: "value",
-    insertText: 'value("{{cursor}}")',
-    type: "function",
-    description: t("Read a feature attribute by name"),
-    detail: 'value("attr_name") → any',
+    label: "attributes",
+    insertText: 'attributes.get("{{cursor}}")',
+    type: "variable",
+    description: t("Feature attribute map for the current feature"),
+    detail: 'attributes["key"] or attributes.get("key"[, fallback]) → any',
   },
   {
     label: "env",
