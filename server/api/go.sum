@@ -332,8 +332,6 @@ github.com/redis/go-redis/v9 v9.14.0 h1:u4tNCjXOyzfgeLN+vAZaW1xUooqWDqVEsZN0U01j
 github.com/redis/go-redis/v9 v9.14.0/go.mod h1:huWgSWd8mW6+m0VPhJjSSQ+d6Nh1VICQ6Q5lHuCH/Iw=
 github.com/reearth/reearth-accounts/server v0.0.0-20260407103352-79eb5b61d841 h1:Aoox7ywjuYCyuwDbTCo2gBuHWggJdxtnBzia+JUWEW0=
 github.com/reearth/reearth-accounts/server v0.0.0-20260407103352-79eb5b61d841/go.mod h1:SQX77AQKJWrQENu2DEnN1cKlqb+9ZLeqV1eJ2FDDYEQ=
-github.com/reearth/reearthx v0.0.0-20251202081949-5abca579aec6 h1:Aoy/50A1vlpm3H8mWGee8QBPjntfy4It5G49TB5o3mQ=
-github.com/reearth/reearthx v0.0.0-20251202081949-5abca579aec6/go.mod h1:z4JjOCy4MZZglLSrJx+btJ1ZLltESDZfSWJCnONwRS4=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/rs/cors v1.11.1 h1:eU3gRzXLRK57F5rKMGMZURNdIG4EoAmX8k94r9wXWHA=
