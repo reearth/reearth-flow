@@ -40,6 +40,18 @@ jobs:
         image: mongo:7-jammy
         ports:
           - 27017:27017
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: reearth
+          POSTGRES_PASSWORD: reearth
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U reearth"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
@@ -63,9 +75,34 @@ jobs:
         env:
           REEARTH_FLOW_DB: mongodb://localhost
           LD_LIBRARY_PATH: ${{ github.workspace }}/server/target/release
+          REEARTH_FLOW_DB_PG: postgres://reearth:reearth@localhost:5432/postgres?sslmode=disable
         working-directory: server/api
       - name: Send coverage report
         uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b # v2.1.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: api
+
+  ci-api-codegen-drift:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'v')
+    steps:
+      - name: checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: "server/api/go.mod"
+          check-latest: true
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+      - name: Install Atlas
+        run: curl -sSf https://atlasgo.sh | sh -s -- --community
+      - name: sqlc generate (no drift)
+        working-directory: server/api/internal/infrastructure/postgres
+        run: |
+          sqlc generate
+          git diff --exit-code gen/ || (echo "sqlc drift: run 'make sqlc' and commit gen/"; exit 1)
+      - name: atlas migrate validate
+        working-directory: server/api/internal/infrastructure/postgres/db
+        run: atlas migrate validate --env local
