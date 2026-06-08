@@ -17,7 +17,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{Context, ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -75,8 +75,11 @@ impl SinkFactory for CzmlWriterFactory {
             .into());
         };
         params.sanitize();
-
+        let output = params.output.compile().map_err(|e| {
+            SinkError::CzmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let sink = CzmlWriter {
+            output,
             params,
             buffer: Default::default(),
         };
@@ -86,6 +89,7 @@ impl SinkFactory for CzmlWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(crate) struct CzmlWriter {
+    output: CompiledCode,
     pub(super) params: CzmlWriterParam,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
@@ -129,7 +133,7 @@ pub(crate) struct CzmlWriter {
 pub(crate) struct CzmlWriterParam {
     /// # Output File Path
     /// Path where the CZML file will be written
-    pub(super) output: Expr,
+    pub(super) output: Code,
     /// # Group By Attributes
     /// Attributes used to group features into separate CZML files
     pub(super) group_by: Option<Vec<Attribute>>,
@@ -302,10 +306,10 @@ impl Sink for CzmlWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let path = self
+            .output
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(crate::errors::SinkError::czml_writer)?;
         for (key, features) in self.buffer.iter() {
             let out_path = if *key == AttributeValue::Null {
                 path.clone()
@@ -1331,7 +1335,10 @@ mod tests {
 
     fn make_timeseries_params() -> CzmlWriterParam {
         CzmlWriterParam {
-            output: Expr::new("/tmp/test.czml".to_string()),
+            output: Code {
+                ty: CodeType::String,
+                value: "/tmp/test.czml".to_string(),
+            },
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: Some("2024-01-01T00:00:00Z".into()),
@@ -1452,7 +1459,10 @@ mod tests {
 
     fn make_default_params() -> CzmlWriterParam {
         CzmlWriterParam {
-            output: Expr::new("/tmp/test.czml".to_string()),
+            output: Code {
+                ty: CodeType::String,
+                value: "/tmp/test.czml".to_string(),
+            },
             group_by: None,
             time_field: None,
             epoch: None,
@@ -1517,7 +1527,10 @@ mod tests {
         let features = vec![f1, f2];
 
         let params = CzmlWriterParam {
-            output: Expr::new("/tmp/test.czml".to_string()),
+            output: Code {
+                ty: CodeType::String,
+                value: "/tmp/test.czml".to_string(),
+            },
             group_by: None,
             time_field: None,
             epoch: None,
@@ -1549,7 +1562,10 @@ mod tests {
     fn test_build_entity_packet_numeric_times() {
         // Test with numeric time values and no explicit epoch
         let params = CzmlWriterParam {
-            output: Expr::new("/tmp/test.czml".to_string()),
+            output: Code {
+                ty: CodeType::String,
+                value: "/tmp/test.czml".to_string(),
+            },
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: None, // No explicit epoch - should auto-generate

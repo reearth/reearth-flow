@@ -604,6 +604,12 @@
         "prettyPrint": {
           "description": "インデント付きでフォーマット出力するか（デフォルト: true）"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -721,6 +727,12 @@
           "description": "作成する CSV/TSV ファイルの出力パスまたは式"
         }
       },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
+      },
       "enumI18n": {
         "CsvFormat": {
           "csv": {
@@ -824,6 +836,12 @@
         "timeField": {
           "title": "時刻フィールド",
           "description": "各フィーチャーのタイムスタンプを含む属性。2 種類の形式をサポート: - **ISO 8601 文字列**: 例: \"2024-01-01T00:00:00Z\" - **数値**: エポックからのオフセット秒数（例: \"0\"、\"60\"、\"120.5\"）\n\n`groupTimeseriesBy` と組み合わせると、同じグループキーを持つフィーチャーが Cesium アニメーション用の時刻タグ付き位置サンプルを持つ単一の CZML エンティティに統合される。"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       },
       "enumI18n": {
@@ -990,6 +1008,12 @@
         },
         "sheetName": {
           "description": "シート名（デフォルト: \"Sheet1\"）"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -1384,6 +1408,12 @@
         "output": {
           "description": "作成する GeoJSON ファイルの出力パスまたは式"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1439,6 +1469,12 @@
         },
         "tableName": {
           "description": "作成するテーブル名（デフォルト: \"features\"）"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -1612,6 +1648,12 @@
         },
         "schemaKey": {
           "description": "フィーチャーはこの属性でグループ化され、別々のファイルに書き出される。このキーは出力属性から除外される。"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -2412,6 +2454,12 @@
           "title": "テクスチャ座標を書き出す",
           "description": "出力にテクスチャ座標（UV）データを含める（現在未対応 - ジオメトリタイプに UV データが含まれていない）"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -3069,6 +3117,12 @@
         "output": {
           "description": "作成する Shapefile の出力パスまたは式"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -3359,6 +3413,12 @@
         "output": {
           "description": "作成する XML ファイルの出力パスまたは式"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -3371,6 +3431,12 @@
         },
         "output": {
           "description": "出力パス"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     }

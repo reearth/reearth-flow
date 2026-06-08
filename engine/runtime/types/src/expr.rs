@@ -105,6 +105,19 @@ impl CompiledCode {
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
     }
+
+    /// Evaluate as string with only `env` in scope (no `attributes`).
+    /// Use this in finish-time contexts where no current feature exists.
+    pub fn eval_string_env_only(
+        &self,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> reearth_flow_expr::Result<String> {
+        match self {
+            CompiledCode::Expr(e) => eval(e, &mut env_from_vars_only(env_vars))
+                .and_then(|v| str_cast(v).map_err(|e| ExprError::EvalString { msg: e.msg })),
+            CompiledCode::Literal(s) => Ok(s.clone()),
+        }
+    }
 }
 
 pub fn json_to_value(v: serde_json::Value) -> ExprValue {
@@ -250,6 +263,14 @@ fn env_from_feature(
         "attributes".into(),
         ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
     );
+    env.insert("env".into(), ExprValue::object(EnvObject(env_vars)));
+    env
+}
+
+fn env_from_vars_only(
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+) -> reearth_flow_expr::Env {
+    let mut env = reearth_flow_expr::default_env();
     env.insert("env".into(), ExprValue::object(EnvObject(env_vars)));
     env
 }

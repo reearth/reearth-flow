@@ -8,7 +8,7 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_sql::SqlAdapter;
-use reearth_flow_types::{AttributeValue, Expr, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{AttributeValue, Code, CompiledCode, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -54,7 +54,7 @@ impl SinkFactory for GeoPackageWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: GeoPackageWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::GeoPackageWriterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -71,8 +71,11 @@ impl SinkFactory for GeoPackageWriterFactory {
             )
             .into());
         };
-
+        let output = params.output.compile().map_err(|e| {
+            SinkError::GeoPackageWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let sink = GeoPackageWriter {
+            output,
             params,
             buffer: Default::default(),
             schema: Default::default(),
@@ -83,6 +86,7 @@ impl SinkFactory for GeoPackageWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct GeoPackageWriter {
+    output: CompiledCode,
     pub(super) params: GeoPackageWriterParam,
     pub(super) buffer: Vec<Feature>,
     pub(super) schema: IndexMap<String, AttributeType>,
@@ -95,7 +99,7 @@ pub(super) struct GeoPackageWriter {
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoPackageWriterParam {
     /// Output path for the GeoPackage file to create
-    pub(super) output: Expr,
+    pub(super) output: Code,
     /// Table name to create (default: "features")
     #[serde(default = "default_table_name")]
     pub(super) table_name: String,
@@ -206,10 +210,10 @@ impl Sink for GeoPackageWriter {
             return Ok(());
         }
 
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let path = self
+            .output
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(|e| crate::errors::SinkError::GeoPackageWriter(format!("{e:?}")))?;
         let out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
             .map_err(|e| crate::errors::SinkError::GeoPackageWriter(e.to_string()))?;
 

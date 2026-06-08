@@ -7,7 +7,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -67,6 +67,9 @@ impl SinkFactory for JsonWriterFactory {
             )
             .into());
         };
+        let output = params.output.compile().map_err(|e| {
+            SinkError::JsonWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let compiled_converter = params
             .converter
             .as_ref()
@@ -74,7 +77,7 @@ impl SinkFactory for JsonWriterFactory {
             .transpose()
             .map_err(|e| SinkError::JsonWriterFactory(format!("{e:?}")))?;
         let sink = JsonWriter {
-            params,
+            output,
             compiled_converter,
             buffer: Default::default(),
         };
@@ -84,7 +87,7 @@ impl SinkFactory for JsonWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct JsonWriter {
-    pub(super) params: JsonWriterParam,
+    output: CompiledCode,
     pub(super) compiled_converter: Option<CompiledCode>,
     pub(super) buffer: HashMap<String, (SinkOutput, Vec<Feature>)>,
 }
@@ -96,7 +99,7 @@ pub(super) struct JsonWriter {
 #[serde(rename_all = "camelCase")]
 pub(super) struct JsonWriterParam {
     /// Output path or expression for the JSON file to create
-    pub(super) output: Expr,
+    pub(super) output: Code,
     /// Optional converter expression to transform features before writing
     pub(super) converter: Option<Code>,
 }
@@ -107,12 +110,12 @@ impl Sink for JsonWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let node_ctx: NodeContext = ctx.clone().into();
-        let scope = node_ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let path = self
+            .output
+            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .map_err(|e| SinkError::JsonWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
+        let node_ctx: NodeContext = ctx.into();
         use std::collections::hash_map::Entry;
         match self.buffer.entry(path.clone()) {
             Entry::Occupied(mut e) => {

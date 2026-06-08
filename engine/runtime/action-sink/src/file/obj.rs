@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
@@ -8,11 +5,11 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, Expr, Feature, GeometryValue};
-use rhai::AST;
+use reearth_flow_types::{Attribute, Code, CompiledCode, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 use crate::errors::SinkError;
 
@@ -46,12 +43,12 @@ impl SinkFactory for ObjWriterFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: ObjWriterParam = if let Some(with) = with.clone() {
+        let params: ObjWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -64,14 +61,12 @@ impl SinkFactory for ObjWriterFactory {
             );
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = expr_engine
-            .compile(params.output.as_ref())
-            .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
-
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?;
         let sink = ObjWriter {
             output,
-            global_params: with,
             buffer: Vec::new(),
             write_materials: params.write_materials.unwrap_or(true),
             write_normals: params.write_normals.unwrap_or(true),
@@ -88,7 +83,7 @@ impl SinkFactory for ObjWriterFactory {
 pub struct ObjWriterParam {
     /// # Output Path
     /// Expression for the output file path where the OBJ file will be written
-    output: Expr,
+    output: Code,
     /// # Write Materials
     /// Enable writing of material (MTL) file alongside the OBJ file
     #[serde(default)]
@@ -105,8 +100,7 @@ pub struct ObjWriterParam {
 
 #[derive(Debug, Clone)]
 pub struct ObjWriter {
-    output: AST,
-    global_params: Option<HashMap<String, Value>>,
+    output: CompiledCode,
     buffer: Vec<Feature>,
     write_materials: bool,
     write_normals: bool,
@@ -124,17 +118,9 @@ impl Sink for ObjWriter {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-
-        let scope = expr_engine.new_scope();
-        if let Some(ref params) = self.global_params {
-            for (k, v) in params {
-                scope.set(k.as_str(), v.clone());
-            }
-        }
-
-        let path = scope
-            .eval_ast::<String>(&self.output)
+        let path = self
+            .output
+            .eval_string_env_only(ctx.expr_engine.vars())
             .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
 
         let (obj_content, mtl_content) = features_to_obj(&self.buffer, self, &path)?;
@@ -622,12 +608,12 @@ mod tests {
 
         features.push(feature);
 
-        let expr_engine = reearth_flow_eval_expr::engine::Engine::new();
-        let output_ast = expr_engine.compile("\"/tmp/test.obj\"").unwrap();
+        let output = Code { ty: reearth_flow_types::CodeType::String, value: "/tmp/test.obj".to_string() }
+            .compile()
+            .unwrap();
 
         let writer = ObjWriter {
-            output: output_ast,
-            global_params: None,
+            output,
             buffer: Vec::new(),
             write_materials: true,
             write_normals: true,
