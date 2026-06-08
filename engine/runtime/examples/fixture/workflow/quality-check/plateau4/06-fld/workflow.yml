@@ -33,7 +33,6 @@ graphs:
                 codelists: env.get("codelistsPath") ?? env.get("codelists"),
                 schemas: env.get("schemasPath") ?? env.get("schemas"),
                 objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                workerArtifactPath: env.get("workerArtifactPath"),
               },
             ]
 
@@ -346,7 +345,7 @@ graphs:
           output: |
             let folder = env.get("__value").Folder;
             if folder == () || folder == "" {
-              return file::join_path(base_path, "06_浸水想定区域_fld.csv");
+              return "06_浸水想定区域_fld.csv";
             }
             // Extract flood type from first path segment (e.g., "htd/12_1" -> "htd", "12_1")
             let slash_pos = folder.index_of("/");

@@ -53,7 +53,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("currentPath"), "year-2024.csv")
+            "year-2024.csv"
 
       - id: 3ec90e43-968e-4bcd-863c-f7c80e37f118
         name: FeatureWriter2025
@@ -62,7 +62,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("currentPath"), "year-2025.csv")
+            "year-2025.csv"
 
       - id: 5aa001b2-94d4-41c0-8552-58adf04ef66a
         name: ZipFileWriter
@@ -70,7 +70,7 @@ graphs:
         action: ZipFileWriter
         with:
           output: |
-            file::join_path(env.get("currentPath"), "result.zip")
+            "result.zip"
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
