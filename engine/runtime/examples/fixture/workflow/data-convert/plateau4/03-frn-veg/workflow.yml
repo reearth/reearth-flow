@@ -135,7 +135,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'Url(attributes["path"]).name.split("_")[0]'
+                value: 'attributes["path"].split("/")[-1].split("_")[0]'
             - attribute: gml_id
               method: create
               value:
@@ -273,7 +273,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_frn");
+              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
               lod = attributes["lod"];
               stem + "_frn_3dtiles_lod" + lod + ".zip"
 
@@ -408,7 +408,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_frn");
+              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
               stem + "_frn_dm_geometric_attributes.zip"
           colonToUnderscore: true
 
@@ -531,7 +531,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_veg");
+              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
               lod = attributes["lod"];
               stem + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip"
 
@@ -684,7 +684,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_veg");
+              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
               stem + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip"
           colonToUnderscore: true
 
@@ -777,7 +777,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_veg");
+              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
               lod = attributes["lod"];
               stem + "_veg_PlantCover_3dtiles_lod" + lod + ".zip"
 
@@ -922,7 +922,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_veg");
+              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
               stem + "_veg_PlantCover_dm_geometric_attributes.zip"
           colonToUnderscore: true
 
