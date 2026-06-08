@@ -35,9 +35,9 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          output: |
-            "expected_output.json"
-
+          output:
+            type: string
+            value: expected_output.json
     edges:
       - id: 550e8400-e29b-41d4-a716-446655440305
         from: 550e8400-e29b-41d4-a716-446655440302

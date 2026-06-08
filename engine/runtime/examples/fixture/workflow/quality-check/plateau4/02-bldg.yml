@@ -2378,8 +2378,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_LOD0-1のBuildingPart.csv"
+      output:
+        type: string
+        value: 02_建築物_LOD0-1のBuildingPart.csv
   - id: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
     name: Lod0Or1BuildingPartCounter
     type: action
@@ -2457,8 +2458,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_L-bldg-02エラー.csv"
+      output:
+        type: string
+        value: 02_建築物_L-bldg-02エラー.csv
   - id: e2f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
     name: ErrorCount-Lbldg02
     type: action
@@ -2739,8 +2741,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_地物インスタンス数.csv"
+      output:
+        type: string
+        value: 02_建築物_地物インスタンス数.csv
   - id: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
     name: FeatureFilterBuildingAndBuildingPart
     type: action
@@ -2780,8 +2783,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_L-bldg-04,05エラー.csv"
+      output:
+        type: string
+        value: 02_建築物_L-bldg-04,05エラー.csv
   - id: 5d8e7f4a-3b2c-4f1e-9a8d-6c5b4e3f2a1b
     name: AttributeMapper-city-code-error-transform
     type: action
@@ -2804,8 +2808,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_市区町村コードエラー.csv"
+      output:
+        type: string
+        value: 02_建築物_市区町村コードエラー.csv
   - id: 33c1a2b3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: CityCodeErrorCounter
     type: action
@@ -2903,8 +2908,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_建物ID書式不正.csv"
+      output:
+        type: string
+        value: 02_建築物_建物ID書式不正.csv
   - id: 0b291ad6-cdfa-4371-bcbb-3422b2cd53cf
     name: AttributeAggregator-c-bldg-01
     type: action
@@ -2993,8 +2999,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_C-bldg-01エラー.csv"
+      output:
+        type: string
+        value: 02_建築物_C-bldg-01エラー.csv
   - id: 124b1896-04c2-41d9-9e76-0ce32b04089f
     name: C-BLDG-01ErrorCounter
     type: action
@@ -3330,8 +3337,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_L-bldg-06エラー.csv"
+      output:
+        type: string
+        value: 02_建築物_L-bldg-06エラー.csv
   - id: 77a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lbldg06ErrorCounter
     type: action
@@ -3386,8 +3394,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_T-bldg-02エラー.csv"
+      output:
+        type: string
+        value: 02_建築物_T-bldg-02エラー.csv
   - id: 35e0e6d2-44f4-4e75-abce-5280c2b80a5d
     name: StatisticsCalculatorT-bldg-02
     type: action
@@ -3591,8 +3600,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_LOD0面の向きエラー.csv"
+      output:
+        type: string
+        value: 02_建築物_LOD0面の向きエラー.csv
   - id: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lod0IncorrectOrientationCounter
     type: action
@@ -3615,8 +3625,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_LOD0面のエラー.csv"
+      output:
+        type: string
+        value: 02_建築物_LOD0面のエラー.csv
   - id: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: Lod0InvalidSurfaceCounter
     type: action
@@ -3669,8 +3680,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_LOD1境界面のエラー.csv"
+      output:
+        type: string
+        value: 02_建築物_LOD1境界面のエラー.csv
   - id: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     name: Lod1InvalidSurfaceCounter
     type: action
@@ -3746,8 +3758,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_LOD2以上境界面のエラー.csv"
+      output:
+        type: string
+        value: 02_建築物_LOD2以上境界面のエラー.csv
   - id: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     name: ErrorCount-Lod2InvalidSurface
     type: action
@@ -3843,8 +3856,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_LOD0面の交差.csv"
+      output:
+        type: string
+        value: 02_建築物_LOD0面の交差.csv
   - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: Lod0SurfaceIntersectionCounter
     type: action
@@ -3917,8 +3931,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_図郭不正.csv"
+      output:
+        type: string
+        value: 02_建築物_図郭不正.csv
   - id: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
     name: IncorrectMeshCodeCounter
     type: action
@@ -3982,8 +3997,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_非水密体.csv"
+      output:
+        type: string
+        value: 02_建築物_非水密体.csv
   - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: Lod1-4NotClosedSolidCounter
     type: action
@@ -4034,8 +4050,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_立体のエラー.csv"
+      output:
+        type: string
+        value: 02_建築物_立体のエラー.csv
   - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     name: Lod1-4SolidIssuesCounter
     type: action
@@ -4271,8 +4288,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_立体交差.csv"
+      output:
+        type: string
+        value: 02_建築物_立体交差.csv
   - id: 11d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
     name: SolidIntersectionCounter
     type: action

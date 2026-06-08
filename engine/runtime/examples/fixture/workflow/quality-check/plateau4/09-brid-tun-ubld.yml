@@ -799,10 +799,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_LOD0面の向きエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("package", attributes.get("udxDirs", ""));
+          if pkg == "brid" {
+            "09_橋梁_LOD0面の向きエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD0面の向きエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD0面の向きエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD0面の向きエラー.csv"
+          }
   - id: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lod0IncorrectOrientationCounter
     type: action
@@ -825,10 +834,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_LOD0面のエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_LOD0面のエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD0面のエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD0面のエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD0面のエラー.csv"
+          }
   - id: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: Lod0InvalidSurfaceCounter
     type: action
@@ -947,10 +965,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_LOD1境界面のエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_LOD1境界面のエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD1境界面のエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD1境界面のエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD1境界面のエラー.csv"
+          }
   - id: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     name: Lod1InvalidSurfaceCounter
     type: action
@@ -1090,10 +1117,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_LOD2以上境界面のエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_LOD2以上境界面のエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD2以上境界面のエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD2以上境界面のエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD2以上境界面のエラー.csv"
+          }
   - id: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     name: ErrorCount-Lod2InvalidSurface
     type: action
@@ -1271,10 +1307,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_非水密体.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_非水密体.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_非水密体.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_非水密体.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_非水密体.csv"
+          }
   - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: Lod1-4NotClosedSolidCounter
     type: action
@@ -1382,10 +1427,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_立体のエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_立体のエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_立体のエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_立体のエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_立体のエラー.csv"
+          }
   - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     name: Lod1-4SolidIssuesCounter
     type: action
