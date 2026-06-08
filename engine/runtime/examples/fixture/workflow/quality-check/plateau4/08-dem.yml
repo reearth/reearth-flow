@@ -1987,8 +1987,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "08_地形_検査結果一覧.csv"
+      output:
+        type: string
+        value: 08_地形_検査結果一覧.csv
   - id: 9fad8d36-c64d-47c2-9221-43e86524c8e5
     name: StatisticsCalculatorJSON
     type: action
@@ -2034,8 +2035,9 @@ graphs:
             }
             result
           }
-      output: |
-        "summary_dem.json"
+      output:
+        type: string
+        value: summary_dem.json
   - id: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
     name: StatisticsCalculatorTotalErrors
     type: action

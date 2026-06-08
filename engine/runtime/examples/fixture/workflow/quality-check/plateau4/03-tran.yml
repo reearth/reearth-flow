@@ -2466,8 +2466,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "03_交通_xlink参照エラー.csv"
+      output:
+        type: string
+        value: 03_交通_xlink参照エラー.csv
   - id: 51431704-ac14-41cd-988b-88141dc6e326
     name: PLATEAU3.LodSplitterWithDM
     type: subGraph
@@ -2586,8 +2587,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "03_交通_面の向き不正.csv"
+      output:
+        type: string
+        value: 03_交通_面の向き不正.csv
   - id: ce7f18e8-c2cb-42e9-9b2e-9dd72f5ad964
     name: FeatureFilterExcludeRwy
     type: action
@@ -2791,16 +2793,18 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "03_交通_隣接面重複.csv"
+      output:
+        type: string
+        value: 03_交通_隣接面重複.csv
   - id: 41bd7fb9-6e5b-4ac6-985f-a9abb40fb1c1
     name: SurfaceValidationCsvWriter
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "03_交通_面のエラー.csv"
+      output:
+        type: string
+        value: 03_交通_面のエラー.csv
   - id: eac6a0cc-0785-4a12-852c-50cdd6f94f13
     name: FileInfoExtractor
     type: action
@@ -2892,8 +2896,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "03_交通_検査結果一覧.csv"
+      output:
+        type: string
+        value: 03_交通_検査結果一覧.csv
   - id: 9068494f-dee6-41ca-aef2-3e493441ece2
     name: StatisticsCalculator
     type: action
@@ -2933,8 +2938,9 @@ graphs:
             }
             result
           }
-      output: |
-        "summary_tran.json"
+      output:
+        type: string
+        value: summary_tran.json
   - id: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
     name: StatisticsCalculatorTotalErrors
     type: action

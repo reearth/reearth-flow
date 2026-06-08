@@ -187,8 +187,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "07_土砂災害警戒区域_地物インスタンス数.csv"
+          output:
+            type: string
+            value: 07_土砂災害警戒区域_地物インスタンス数.csv
 
       # Surface inspection flow
       - id: 7ccbb722-d0cc-4843-a42e-179576530340
@@ -239,8 +240,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "07_土砂災害警戒区域_面の向き不正.csv"
+          output:
+            type: string
+            value: 07_土砂災害警戒区域_面の向き不正.csv
 
       - id: 26751290-4ac7-4884-908a-7c231b5f820a
         name: SurfaceOrientationErrorCounter
@@ -284,8 +286,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "07_土砂災害警戒区域_面のエラー.csv"
+          output:
+            type: string
+            value: 07_土砂災害警戒区域_面のエラー.csv
 
       - id: 667c37eb-2b19-4a86-8aa4-70679f7787b5
         name: SurfaceErrorCounter
@@ -337,8 +340,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "07_土砂災害警戒区域_検査結果一覧.csv"
+          output:
+            type: string
+            value: 07_土砂災害警戒区域_検査結果一覧.csv
 
       # StatisticsCalculator for JSON aggregation
       - id: 521b2dea-51af-460f-9eb5-672917768692
@@ -382,8 +386,9 @@ graphs:
                 }
                 result
               }
-          output: |
-            "summary_lsld.json"
+          output:
+            type: string
+            value: summary_lsld.json
 
       # Calculate total errors for no-error check
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3

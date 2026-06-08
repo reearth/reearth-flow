@@ -3362,8 +3362,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_検査結果一覧.csv"
+      output:
+        type: string
+        value: 12_地下埋設物_検査結果一覧.csv
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7c
     name: StatisticsCalculator
     type: action
@@ -3416,8 +3417,9 @@ graphs:
             }
             result
           }
-      output: |
-        "summary_unf.json"
+      output:
+        type: string
+        value: summary_unf.json
   - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9f
     name: StatisticsCalculatorTotalErrors
     type: action

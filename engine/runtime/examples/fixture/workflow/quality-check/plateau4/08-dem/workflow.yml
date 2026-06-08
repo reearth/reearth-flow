@@ -398,8 +398,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "08_地形_検査結果一覧.csv"
+          output:
+            type: string
+            value: 08_地形_検査結果一覧.csv
 
       # StatisticsCalculator for JSON aggregation
       # Note: "不正な穴" is excluded from JSON summary and totalErrorCount to match FME behavior
@@ -451,8 +452,9 @@ graphs:
                 }
                 result
               }
-          output: |
-            "summary_dem.json"
+          output:
+            type: string
+            value: summary_dem.json
 
       # Calculate total errors for no-error check
       - id: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b

@@ -338,18 +338,15 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            let folder = env.get("__value").Folder;
-            if folder == () || folder == "" {
-              return file::join_path(base_path, "06_浸水想定区域_fld.csv");
-            }
-            // Extract flood type from first path segment (e.g., "htd/12_1" -> "htd", "12_1")
-            let slash_pos = folder.index_of("/");
-            let flood_type = folder.sub_string(0, slash_pos);
-            let path = folder.sub_string(slash_pos + 1);
-            // Create hierarchical path: 06_浸水想定区域_{flood_type}/{path}.csv
-            let csv_filepath = "06_浸水想定区域_" + flood_type + "/" + path + ".csv";
-            csv_filepath
+          output:
+            type: flowExpr
+            value: |
+              folder = attributes.get("Folder", "");
+              if folder == "" {
+                return "06_浸水想定区域_fld.csv"
+              }
+              parts = folder.split("/", 1);
+              "06_浸水想定区域_" + parts[0] + "/" + parts[1] + ".csv"
 
       # JSON Writer for aggregated counts (one file per folder)
       - id: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
@@ -382,9 +379,10 @@ graphs:
                   {"name": "線状・点状の三角形", "count": sum_degenerate}
                 ]
               }
-          output: |
-            let json_filename = env.get("__value")._json_filename ?? "summary_fld.json";
-            json_filename
+          output:
+            type: flowExpr
+            value: |
+              attributes.get("_json_filename", "summary_fld.json")
 
       # Calculate total error count
       - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b

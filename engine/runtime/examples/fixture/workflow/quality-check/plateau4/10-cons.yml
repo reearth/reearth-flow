@@ -3088,8 +3088,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "10_その他の構造物_検査結果一覧.csv"
+      output:
+        type: string
+        value: 10_その他の構造物_検査結果一覧.csv
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f80
     name: StatisticsCalculator
     type: action
@@ -3136,8 +3137,9 @@ graphs:
             }
             result
           }
-      output: |
-        "summary_cons.json"
+      output:
+        type: string
+        value: summary_cons.json
   - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba0
     name: StatisticsCalculatorTotalErrors
     type: action

@@ -308,24 +308,27 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "09_橋梁_地物インスタンス数.csv"
+      output:
+        type: string
+        value: 09_橋梁_地物インスタンス数.csv
   - id: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
     name: CsvWriterTunnelInstanceCounts
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "09_トンネル_地物インスタンス数.csv"
+      output:
+        type: string
+        value: 09_トンネル_地物インスタンス数.csv
   - id: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: CsvWriterUndergroundBuildingInstanceCounts
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "09_地下街_地物インスタンス数.csv"
+      output:
+        type: string
+        value: 09_地下街_地物インスタンス数.csv
   - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     name: SurfaceValidation
     type: subGraph
@@ -429,10 +432,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_検査結果一覧.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          if pkg == "brid" {
+            "09_橋梁_検査結果一覧.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_検査結果一覧.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_検査結果一覧.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_検査結果一覧.csv"
+          }
   - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
     name: StatisticsCalculator
     type: action
@@ -517,9 +529,11 @@ graphs:
             }
             result
           }
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        "summary_" + pkg + ".json"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          "summary_" + pkg + ".json"
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     name: StatisticsCalculatorTotalErrors
     type: action

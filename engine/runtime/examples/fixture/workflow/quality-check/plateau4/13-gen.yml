@@ -3107,8 +3107,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "13_汎用都市オブジェクト_検査結果一覧.csv"
+      output:
+        type: string
+        value: 13_汎用都市オブジェクト_検査結果一覧.csv
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     name: StatisticsCalculator
     type: action
@@ -3158,8 +3159,9 @@ graphs:
             }
             result
           }
-      output: |
-        "summary_gen.json"
+      output:
+        type: string
+        value: summary_gen.json
   - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9e
     name: StatisticsCalculatorTotalErrors
     type: action

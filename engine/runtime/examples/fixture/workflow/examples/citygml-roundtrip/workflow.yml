@@ -64,9 +64,8 @@ graphs:
         with:
           format: citygml
           output:
-            type: flowExpr
-            value: |
-              "citygml-roundtrip-output.gml"
+            type: string
+            value: citygml-roundtrip-output.gml
           prettyPrint: true
 
       - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e

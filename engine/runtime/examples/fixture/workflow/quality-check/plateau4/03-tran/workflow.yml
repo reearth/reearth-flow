@@ -185,9 +185,8 @@ graphs:
         with:
           format: csv
           output:
-            type: flowExpr
-            value: |
-              "03_交通_xlink参照エラー.csv"
+            type: string
+            value: 03_交通_xlink参照エラー.csv
 
       - id: 51431704-ac14-41cd-988b-88141dc6e326
         name: PLATEAU3.LodSplitterWithDM
@@ -326,9 +325,8 @@ graphs:
         with:
           format: csv
           output:
-            type: flowExpr
-            value: |
-              "03_交通_面の向き不正.csv"
+            type: string
+            value: 03_交通_面の向き不正.csv
 
       # L-TRAN-02: Adjacent surface overlap detection
       # Filter out features with package == "rwy"
@@ -575,9 +573,8 @@ graphs:
         with:
           format: csv
           output:
-            type: flowExpr
-            value: |
-              "03_交通_隣接面重複.csv"
+            type: string
+            value: 03_交通_隣接面重複.csv
 
       # Write surface validation errors to CSV
       - id: 41bd7fb9-6e5b-4ac6-985f-a9abb40fb1c1
@@ -587,9 +584,8 @@ graphs:
         with:
           format: csv
           output:
-            type: flowExpr
-            value: |
-              "03_交通_面のエラー.csv"
+            type: string
+            value: 03_交通_面のエラー.csv
 
       # ===== Error Summary Output (Phase 1-10) =====
       # Phase 1: File info extraction
@@ -701,9 +697,8 @@ graphs:
         with:
           format: csv
           output:
-            type: flowExpr
-            value: |
-              "03_交通_検査結果一覧.csv"
+            type: string
+            value: 03_交通_検査結果一覧.csv
 
       # Phase 6: StatisticsCalculator for JSON aggregation
       - id: 9068494f-dee6-41ca-aef2-3e493441ece2
@@ -749,9 +744,8 @@ graphs:
                 result
               }
           output:
-            type: flowExpr
-            value: |
-              "summary_tran.json"
+            type: string
+            value: summary_tran.json
 
       # Phase 8: Calculate total errors for no-error check
       - id: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
