@@ -75,7 +75,7 @@ jobs:
       - name: rustfmt
         run: cargo make format -- --check
       - name: taplo
-        run: cargo make format-taplo --check
+        run: cargo make format-taplo -- --check
 
   validate-generated:
     name: validate generated files (schema + cms workflows)
