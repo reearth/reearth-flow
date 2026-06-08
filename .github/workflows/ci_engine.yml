@@ -137,7 +137,11 @@ jobs:
         with:
           tool: cargo-nextest
       - name: test-qc (nextest partition ${{ matrix.shard }}/3)
-        run: cargo make test-qc-nextest -- --partition count:${{ matrix.shard }}/3
+        # NOTE: no `--` before `--partition` — cargo-make would forward the
+        # literal `--` to the task script, which would then land between
+        # `cargo nextest run` and `--partition`, and nextest would treat it
+        # as a test-binary arg separator and reject `--partition`.
+        run: cargo make test-qc-nextest --partition count:${{ matrix.shard }}/3
 
   test-conv:
     name: test-conv (tile output validation)
