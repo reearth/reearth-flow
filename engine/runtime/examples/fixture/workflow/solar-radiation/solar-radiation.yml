@@ -2380,8 +2380,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "反射シミュレーション結果.csv"
+      output:
+        type: string
+        value: 反射シミュレーション結果.csv
   - id: 00000001-0000-0000-0000-0000000000d0
     name: RoofAreaCalculator
     type: action
@@ -2484,8 +2485,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "建物ポテンシャル推計結果.csv"
+      output:
+        type: string
+        value: 建物ポテンシャル推計結果.csv
   - id: 00000001-0000-0000-0000-0000000000c6
     name: SurfaceRadiationMapper
     type: action
@@ -2514,8 +2516,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "面別日射量.csv"
+      output:
+        type: string
+        value: 面別日射量.csv
   - id: 00000001-0000-0000-0000-0000000000c7
     name: ReflectionMapper
     type: action
@@ -2585,8 +2588,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "集計結果.csv"
+      output:
+        type: string
+        value: 集計結果.csv
   - id: 00000001-0000-0000-0000-0000000000a0
     name: BoundsExtractorByLod1
     type: action
@@ -2759,8 +2763,9 @@ graphs:
     type: action
     action: ZipFileWriter
     with:
-      output: |
-        "citygml_bldg.zip"
+      output:
+        type: string
+        value: citygml_bldg.zip
   - id: 00000005-0000-0000-0000-000000000001
     name: BuildingFeatureFilter
     type: action

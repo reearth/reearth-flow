@@ -2964,17 +2964,17 @@ graphs:
       converter:
         type: flowExpr
         value: '[]'
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        filename
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"
   - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
     name: ZipFileWriter
     type: action
     action: ZipFileWriter
     with:
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        filename
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"
   edges:
   - id: 235074db-bbc0-484e-bd7e-3af7d707f2fc
     from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873

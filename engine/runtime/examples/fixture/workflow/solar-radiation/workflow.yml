@@ -1054,8 +1054,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            "反射シミュレーション結果.csv"
+          output:
+            type: string
+            value: 反射シミュレーション結果.csv
 
       # ========================================
       # Area Computation Branch (for CSV per-m2 values)
@@ -1182,8 +1183,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            "建物ポテンシャル推計結果.csv"
+          output:
+            type: string
+            value: 建物ポテンシャル推計結果.csv
 
       # ========================================
       # CSV 4: Per-Surface Radiation
@@ -1220,8 +1222,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            "面別日射量.csv"
+          output:
+            type: string
+            value: 面別日射量.csv
 
       # ========================================
       # CSV 5: Reflection — Map to Japanese column names
@@ -1306,8 +1309,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            "集計結果.csv"
+          output:
+            type: string
+            value: 集計結果.csv
 
       # ========================================
       # Per-LOD 3D Tiles Output Pipelines (LOD1, LOD3, LOD4)
@@ -1505,8 +1509,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            "citygml_bldg.zip"
+          output:
+            type: string
+            value: citygml_bldg.zip
 
       # ========================================
       # Section 2b: Building Attributes Preservation Branch

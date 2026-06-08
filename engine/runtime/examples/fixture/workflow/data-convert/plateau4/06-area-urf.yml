@@ -359,8 +359,9 @@ graphs:
     type: action
     action: JsonWriter
     with:
-      output: |
-        "dictionary.json"
+      output:
+        type: string
+        value: dictionary.json
       converter:
         type: flowExpr
         value: |

@@ -2017,17 +2017,17 @@ graphs:
       converter:
         type: flowExpr
         value: '[]'
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        filename
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"
   - id: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
     name: ZipFileWriter
     type: action
     action: ZipFileWriter
     with:
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        filename
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"
   edges:
   - id: b54bb6e9-9bee-407c-a11d-58436552a745
     from: 04f359e7-3c19-4b3a-9859-3cd7de61eec9

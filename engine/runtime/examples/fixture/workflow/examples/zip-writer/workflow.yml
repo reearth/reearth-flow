@@ -71,8 +71,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            "result.zip"
+          output:
+            type: string
+            value: result.zip
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
