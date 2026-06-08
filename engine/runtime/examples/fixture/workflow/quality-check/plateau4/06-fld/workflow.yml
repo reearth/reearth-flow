@@ -33,7 +33,6 @@ graphs:
                 codelists: env.get("codelistsPath") ?? env.get("codelists"),
                 schemas: env.get("schemasPath") ?? env.get("schemas"),
                 objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                workerArtifactPath: env.get("workerArtifactPath"),
               },
             ]
 

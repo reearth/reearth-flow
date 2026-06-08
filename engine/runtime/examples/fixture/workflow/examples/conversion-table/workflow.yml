@@ -43,7 +43,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("currentPath"), "example-conversion-table.csv")
+            "example-conversion-table.csv"
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

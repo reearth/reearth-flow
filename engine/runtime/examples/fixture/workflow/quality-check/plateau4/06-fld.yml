@@ -1674,7 +1674,6 @@ graphs:
             codelists: env.get("codelistsPath") ?? env.get("codelists"),
             schemas: env.get("schemasPath") ?? env.get("schemas"),
             objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-            workerArtifactPath: env.get("workerArtifactPath"),
           },
         ]
   - id: 0aeb935e-bc3e-4867-96f3-122d504fcde6
