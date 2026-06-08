@@ -20,3 +20,14 @@ services:
       - 27017:27017
     volumes:
       - ./mongo:/data/db
+
+  reearth-flow-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: reearth
+      POSTGRES_PASSWORD: reearth
+      POSTGRES_DB: reearth-flow
+    ports:
+      - 5432:5432
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
