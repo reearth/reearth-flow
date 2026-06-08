@@ -608,9 +608,12 @@ mod tests {
 
         features.push(feature);
 
-        let output = Code { ty: reearth_flow_types::CodeType::String, value: "/tmp/test.obj".to_string() }
-            .compile()
-            .unwrap();
+        let output = Code {
+            ty: reearth_flow_types::CodeType::String,
+            value: "/tmp/test.obj".to_string(),
+        }
+        .compile()
+        .unwrap();
 
         let writer = ObjWriter {
             output,
