@@ -57,6 +57,17 @@ script = ['''
 cargo test -p workflow-tests ${@:-}
 ''']
 
+# Same coverage as `test-qc`, executed via cargo-nextest's process-per-test
+# parallelism. workflow-tests gives every test its own TempDir-rooted sandbox,
+# so the tests are already isolated and safe to parallelise. CI uses this task
+# to cut the test-qc step from the bottleneck job (~14m -> ~6-8m). Local devs
+# can keep using `cargo make test-qc` with plain `cargo test`.
+[tasks.test-qc-nextest]
+script = ['''
+#!/usr/bin/env bash -eux
+cargo nextest run -p workflow-tests ${@:-}
+''']
+
 [tasks.test-conv]
 script = ['''
 #!/usr/bin/env bash -eux

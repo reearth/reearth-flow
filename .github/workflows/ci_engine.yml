@@ -112,7 +112,7 @@ jobs:
         run: cargo make test-rs
 
   test-qc:
-    name: test-qc (workflow integration tests)
+    name: test-qc (workflow integration tests, via nextest)
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - name: Harden Runner
@@ -123,8 +123,12 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-engine-ci
-      - name: test-qc
-        run: cargo make test-qc
+      - name: install cargo-nextest
+        uses: taiki-e/install-action@74e87cbfa15a59692b158178d8905a61bf6fca95 # v2.75.20
+        with:
+          tool: cargo-nextest
+      - name: test-qc (nextest)
+        run: cargo make test-qc-nextest
 
   test-conv:
     name: test-conv (tile output validation)
