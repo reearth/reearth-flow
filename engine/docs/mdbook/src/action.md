@@ -695,8 +695,27 @@ Transform Feature Attributes Using Expressions and Mappings
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     },
     "Mapper": {
       "type": "object",
@@ -719,7 +738,7 @@ Transform Feature Attributes Using Expressions and Mappings
           "title": "Expression to evaluate",
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             },
             {
               "type": "null"
@@ -730,7 +749,7 @@ Transform Feature Attributes Using Expressions and Mappings
           "title": "Expression to evaluate multiple attributes",
           "anyOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             },
             {
               "type": "null"

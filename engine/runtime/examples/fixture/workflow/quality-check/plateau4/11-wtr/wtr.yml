@@ -36,31 +36,41 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value").udxDirs ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "")
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", 0)
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", "")
         - attribute: FeatureType
-          expr: |
-            let ft = env.get("__value").featureType ?? "WaterBody";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "WaterBody"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: LOD
-          expr: |
-            env.get("__value").lod ?? "1"
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "1")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value").gmlId ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", "")
         - attribute: "無効な空間属性の型"
-          expr: |
-            env.get("__value").geometryName ?? "Unknown"
+          expr:
+            type: flowExpr
+            value: attributes.get("geometryName", "Unknown")
 
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
     name: FeatureWriterInvalidSpatialAttr
@@ -103,41 +113,53 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value").udxDirs ?? "wtr"
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "wtr")
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex ?? 1
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", 1)
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", "")
         - attribute: FeatureType
-          expr: |
-            let ft = env.get("__value").featureType ?? "WaterBody";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "WaterBody"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: LOD
-          expr: |
-            env.get("__value").lod ?? "1"
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "1")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value").gmlId ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", "")
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   - id: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c3
     name: FeatureWriterLod1SurfaceErrors
@@ -195,25 +217,27 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            let ft = env.get("__value").featureType ?? "WaterBody";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "WaterBody"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: issue
-          expr: |
-            "Surface Not Closed"
+          expr:
+            type: string
+            value: Surface Not Closed
 
   - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
     name: FeatureWriterNotClosed
@@ -251,25 +275,27 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            let ft = env.get("__value").featureType ?? "WaterBody";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "WaterBody"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: issue
-          expr: |
-            "Invalid Solid Boundaries"
+          expr:
+            type: string
+            value: Invalid Solid Boundaries
 
   - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1a
     name: FeatureWriterOtherSolidErrors
@@ -312,41 +338,53 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value").udxDirs ?? "wtr"
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "wtr")
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex ?? 1
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", 1)
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", "")
         - attribute: FeatureType
-          expr: |
-            let ft = env.get("__value").featureType ?? "WaterBody";
-            if ft.contains(":") {
-              ft.split(":")[1]
-            } else {
-              ft
-            }
+          expr:
+            type: flowExpr
+            value: |
+              ft = attributes.get("featureType");
+              if ft == null {
+                "WaterBody"
+              } else if ":" in ft {
+                ft.split(":")[1]
+              } else {
+                ft
+              }
         - attribute: LOD
-          expr: |
-            env.get("__value").lod ?? "2"
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "2")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value").gmlId ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", "")
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   - id: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c3
     name: FeatureWriterBoundarySurfaceErrors

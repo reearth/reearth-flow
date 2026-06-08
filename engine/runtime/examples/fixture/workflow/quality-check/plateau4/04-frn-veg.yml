@@ -1084,15 +1084,19 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: type
-        expr: env.get("__value").xmlError[0].errorType
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["errorType"]
       - attribute: desc
-        expr: env.get("__value").xmlError[0].message
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["message"]
   - id: d9e8f7a6-5b4c-4a3d-9e2f-1c8b7a6e5d4c
     name: FeatureWriterNotWellFormedXmlCsv
     type: action
@@ -1108,17 +1112,23 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: line
-        expr: env.get("__value").xmlError[0].line
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["line"]
       - attribute: type
-        expr: env.get("__value").xmlError[0].errorType
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["errorType"]
       - attribute: desc
-        expr: env.get("__value").xmlError[0].message
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["message"]
   - id: f8e2a1b4-7c3d-4e9f-a2b5-8f6c9d3e1a7b
     name: FeatureWriterInvalidXmlCsv
     type: action
@@ -1156,80 +1166,94 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: |
-          env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: |
-          env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: |
-          file::extract_filename(env.get("__value").path)
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1]
       - attribute: サイズ[KB]
-        expr: |
-          env.get("__value").fileSize / 1024
+        expr:
+          type: flowExpr
+          value: attributes["fileSize"] // 1024
       - attribute: 1GB以下
-        expr: |
-          if env.get("__value").fileSize / 1024 / 1024 / 1024 <= 1 {
-            "OK"
-          } else {
-            "Over"
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes["fileSize"] // 1024 // 1024 // 1024 <= 1 {
+              "OK"
+            } else {
+              "Over"
+            }
       - attribute: XML検証結果
-        expr: |
-          env.get("__value").status
+        valueAttribute: status
       - attribute: L01エラー
-        expr: |
-          env.get("__value").L01Errors ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L01Errors", 0)
       - attribute: L02エラー
-        expr: |
-          env.get("__value").L02Errors ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L02Errors", 0)
       - attribute: L03エラー
-        expr: |
-          env.get("__value").invalidFeatureTypesNum ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("invalidFeatureTypesNum", 0)
       - attribute: L03エラー詳細
-        expr: |
-          env.get("__value").invalidFeatureTypesDetail
+        valueAttribute: invalidFeatureTypesDetail
       - attribute: L04エラー
-        expr: |
-          env.get("__value").inCorrectCodeValue ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("inCorrectCodeValue", 0)
       - attribute: 不正なcodeSpace数
-        expr: |
-          env.get("__value").inCorrectCodeSpace ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("inCorrectCodeSpace", 0)
       - attribute: L05CRS識別子
-        expr: |
-          if env.get("__value").isCorrectSrsName {
-            "OK"
-          } else {
-            "Wrong"
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes["isCorrectSrsName"] {
+              "OK"
+            } else {
+              "Wrong"
+            }
       - attribute: 不正なCRS識別子
-        expr: |
-          if env.get("__value").isCorrectSrsName {
-            ""
-          } else {
-            env.get("__value").srsName
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes["isCorrectSrsName"] {
+              ""
+            } else {
+              attributes["srsName"]
+            }
       - attribute: L06エラー
-        expr: |
-          env.get("__value").inCorrectExtents ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("inCorrectExtents", 0)
       - attribute: T03エラー
-        expr: |
-          env.get("__value").xlinkInvalidObjectType ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("xlinkInvalidObjectType", 0)
       - attribute: xlink参照先なし
-        expr: |
-          env.get("__value").xlinkHasNoReference ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("xlinkHasNoReference", 0)
       - attribute: gml:id重複
-        expr: |
-          env.get("__value").duplicateGmlIdCount
+        valueAttribute: duplicateGmlIdCount
       - attribute: gml:id書式不正
-        expr: |
-          env.get("__value").gmlIdNotWellformed ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("gmlIdNotWellformed", 0)
       - attribute: L-frn-01エラー
-        expr: |
-          env.get("__value").invalidLodXGeometry ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("invalidLodXGeometry", 0)
       - attribute: 補足
-        expr: |
-          env.get("__value").miscellaneous ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("miscellaneous", "")
   - id: 0e9fd0ce-4607-44be-8cdd-b4b2cc2ae04b
     name: FeatureWriterCsv
     type: action
@@ -1310,15 +1334,15 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
   - id: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
     name: FeatureWriterGmlIdNotWellFormed
     type: action
@@ -1334,15 +1358,15 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
   - id: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
     name: FeatureWriterGmlIdNotUnique
     type: action
@@ -1358,37 +1382,37 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: Min Latitude
-        expr: env.get("__value").minLatitude
+        valueAttribute: minLatitude
       - attribute: Min Longitude
-        expr: env.get("__value").minLongitude
+        valueAttribute: minLongitude
       - attribute: Min Elevation
-        expr: env.get("__value").minElevation
+        valueAttribute: minElevation
       - attribute: Max Latitude
-        expr: env.get("__value").maxLatitude
+        valueAttribute: maxLatitude
       - attribute: Max Longitude
-        expr: env.get("__value").maxLongitude
+        valueAttribute: maxLongitude
       - attribute: Max Elevation
-        expr: env.get("__value").maxElevation
+        valueAttribute: maxElevation
       - attribute: Lower Latitude
-        expr: env.get("__value").lowerLatitude
+        valueAttribute: lowerLatitude
       - attribute: Lower Longitude
-        expr: env.get("__value").lowerLongitude
+        valueAttribute: lowerLongitude
       - attribute: Lower Elevation
-        expr: env.get("__value").lowerElevation
+        valueAttribute: lowerElevation
       - attribute: Upper Latitude
-        expr: env.get("__value").upperLatitude
+        valueAttribute: upperLatitude
       - attribute: Upper Longitude
-        expr: env.get("__value").upperLongitude
+        valueAttribute: upperLongitude
       - attribute: Upper Elevation
-        expr: env.get("__value").upperElevation
+        valueAttribute: upperElevation
   - id: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
     name: FeatureWriterExtentsValidation
     type: action
@@ -1404,21 +1428,21 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: XPath
-        expr: env.get("__value").xpath
+        valueAttribute: xpath
       - attribute: CodeSpace
-        expr: env.get("__value").codeSpace
+        valueAttribute: codeSpace
       - attribute: Code
-        expr: env.get("__value").codeSpaceValue
+        valueAttribute: codeSpaceValue
   - id: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
     name: FeatureWriterCodeValidation
     type: action
@@ -1434,21 +1458,21 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: FeatureType
-        expr: env.get("__value").featureType
+        valueAttribute: featureType
       - attribute: XPath
-        expr: env.get("__value").xpath
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: CodeSpace
-        expr: env.get("__value").codeSpace
+        valueAttribute: codeSpace
   - id: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
     name: FeatureWriterInCorrectCodeSpace
     type: action
@@ -1464,13 +1488,21 @@ graphs:
     with:
       mappers:
       - attribute: flag
-        expr: env.get("__value").flag
+        expr:
+          type: flowExpr
+          value: attributes.get("flag")
       - attribute: filename
-        expr: env.get("__value").filename ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("filename", "")
       - attribute: fileCount
-        expr: env.get("__value").fileCount ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("fileCount", 0)
       - attribute: duplicateGmlIdCount
-        expr: env.get("__value").duplicateGmlIdCount ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("duplicateGmlIdCount", 0)
   - id: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
     name: AttributeMapperXlinkNoReference
     type: action
@@ -1478,17 +1510,17 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: XPath
-        expr: env.get("__value").xpath
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: xlink:href
-        expr: env.get("__value").xlinkHref
+        valueAttribute: xlinkHref
   - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
     name: FeatureWriterXlinkNoReference
     type: action
@@ -1504,23 +1536,23 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: XPath
-        expr: env.get("__value").xpath
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: xlink:href
-        expr: env.get("__value").xlinkHref
+        valueAttribute: xlinkHref
       - attribute: ref XPath
-        expr: env.get("__value").refGmlXpath
+        valueAttribute: refGmlXpath
       - attribute: ref Tag
-        expr: env.get("__value").refGmlTag
+        valueAttribute: refGmlTag
       - attribute: ref gml:id
-        expr: env.get("__value").refGmlId
+        valueAttribute: refGmlId
   - id: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
     name: FeatureWriterXlinkInvalidObjectType
     type: action
@@ -1536,18 +1568,19 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: FeatureType
-        expr: |
-          env.get("__value").parentTag ?? env.get("__value").featureType
+        expr:
+          type: flowExpr
+          value: attributes.get("parentTag") or attributes.get("featureType")
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: InvalidGeometry
-        expr: env.get("__value").invalidGeometry
+        valueAttribute: invalidGeometry
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     name: FeatureWriterInvalidLodXGeometry
     type: action
@@ -1971,8 +2004,9 @@ graphs:
       - attribute: dirs
         valueAttribute: udxDirs
       - attribute: filename
-        expr: |
-          file::extract_filename(env.get("__value")["path"])
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1]
       - attribute: gml_id
         valueAttribute: gmlId
       - attribute: severity
@@ -2020,8 +2054,9 @@ graphs:
       - attribute: dirs
         valueAttribute: udxDirs
       - attribute: filename
-        expr: |
-          file::extract_filename(env.get("__value")["path"])
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1]
       - attribute: gml_id
         valueAttribute: gmlId
       - attribute: feature_type
@@ -2049,8 +2084,9 @@ graphs:
       - attribute: dirs
         valueAttribute: udxDirs
       - attribute: filename
-        expr: |
-          file::extract_filename(env.get("__value")["path"])
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1]
       - attribute: gml_id
         valueAttribute: gmlId
       - attribute: feature_type
@@ -2445,20 +2481,25 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value")["udxDirs"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("udxDirs", "")
       - attribute: Filename
-        expr: |
-          env.get("__value")["name"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("name", "")
       - attribute: フィーチャータイプ
-        expr: |
-          env.get("__value")["featureType"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureType", "")
       - attribute: インスタンス数
-        expr: |
-          env.get("__value")["_num_instances"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_instances", 0)
       - attribute: Index
-        expr: |
-          env.get("__value")["fileIndex"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("fileIndex", "")
   - id: a453192e-603c-417e-9f65-f57b8e15f7d3
     name: CsvWriterInstanceCount
     type: action
@@ -2480,30 +2521,37 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value")["package"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("package", "")
       - attribute: Index
-        expr: |
-          env.get("__value")["fileIndex"] ?? -1
+        expr:
+          type: flowExpr
+          value: attributes.get("fileIndex", -1)
       - attribute: Filename
-        expr: |
-          env.get("__value")["name"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("name", "")
       - attribute: FeatureType
-        expr: |
-          env.get("__value").featureType ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureType", "")
       - attribute: gml_id
-        expr: |
-          env.get("__value").gmlId ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("gmlId", "")
       - attribute: issue
-        expr: |
-          let value = env.get("__value");
-          if value.validationResult?.details != () {
-            return value.validationResult.details[0][0];
-          }
-          if "issue" in value {
-            return value.issue;
-          }
-          "UnknownError"
+        expr:
+          type: flowExpr
+          value: |
+            vr = attributes.get("validationResult");
+            if vr != null and "details" in vr {
+              vr["details"][0][0]
+            } else if "issue" in attributes {
+              attributes["issue"]
+            } else {
+              "UnknownError"
+            }
   - id: 51bdd4e8-1f3d-4745-9e96-9cb53ee92a53
     name: CsvWriterSurfaceValidationErrors
     type: action
@@ -2549,26 +2597,33 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value")["package"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("package", "")
       - attribute: Index
-        expr: |
-          env.get("__value")["fileIndex"] ?? -1
+        expr:
+          type: flowExpr
+          value: attributes.get("fileIndex", -1)
       - attribute: Filename
-        expr: |
-          env.get("__value")["name"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("name", "")
       - attribute: FeatureType
-        expr: |
-          env.get("__value").featureType ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureType", "")
       - attribute: gml_id
-        expr: |
-          env.get("__value").gmlId ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("gmlId", "")
       - attribute: エラー内容
-        expr: |
-          "Surface Not Closed"
+        expr:
+          type: string
+          value: Surface Not Closed
       - attribute: エラー数
-        expr: |
-          env.get("__value").solid_boundary_issues.issue_count
+        expr:
+          type: flowExpr
+          value: attributes["solid_boundary_issues"]["issue_count"]
   - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
     name: FeatureWriterL14-BoundaryNotClosed
     type: action
@@ -2603,26 +2658,33 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value")["package"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("package", "")
       - attribute: Index
-        expr: |
-          env.get("__value")["fileIndex"] ?? -1
+        expr:
+          type: flowExpr
+          value: attributes.get("fileIndex", -1)
       - attribute: Filename
-        expr: |
-          env.get("__value")["name"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("name", "")
       - attribute: FeatureType
-        expr: |
-          env.get("__value").featureType ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureType", "")
       - attribute: gml_id
-        expr: |
-          env.get("__value").gmlId ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("gmlId", "")
       - attribute: エラー内容
-        expr: |
-          "InvalidSolidBoundaries"
+        expr:
+          type: string
+          value: InvalidSolidBoundaries
       - attribute: エラー数
-        expr: |
-          env.get("__value").solid_boundary_issues.issue_count
+        expr:
+          type: flowExpr
+          value: attributes["solid_boundary_issues"]["issue_count"]
   - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
     name: FeatureWriterL14-BoundaryOtherIssues
     type: action
@@ -2651,26 +2713,33 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value")["package"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("package", "")
       - attribute: Index
-        expr: |
-          env.get("__value")["fileIndex"] ?? -1
+        expr:
+          type: flowExpr
+          value: attributes.get("fileIndex", -1)
       - attribute: Filename
-        expr: |
-          env.get("__value")["name"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("name", "")
       - attribute: FeatureType
-        expr: |
-          env.get("__value").featureType ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureType", "")
       - attribute: lod
-        expr: |
-          env.get("__value").lod ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("lod", "")
       - attribute: gml_id
-        expr: |
-          env.get("__value").gmlId ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("gmlId", "")
       - attribute: ジオメトリ型
-        expr: |
-          env.get("__value").geometryName ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("geometryName", "")
   - id: 1087cae8-2937-4e33-a9ac-d20c9052f80e
     name: CsvWriterGeometryTypeError
     type: action
@@ -2699,14 +2768,11 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: |
-          env.get("__value").fileIndex
+        valueAttribute: fileIndex
       - attribute: Filename
-        expr: |
-          env.get("__value").name
+        valueAttribute: name
       - attribute: Folder
-        expr: |
-          env.get("__value")["package"]
+        valueAttribute: package
   - id: 92119eb6-9343-49b7-b6c2-e2142374c52c
     name: ErrorSummaryMerger
     type: action
@@ -2723,26 +2789,27 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value").Folder
+        valueAttribute: Folder
       - attribute: Index
-        expr: |
-          env.get("__value").Index
+        valueAttribute: Index
       - attribute: Filename
-        expr: |
-          env.get("__value").Filename
+        valueAttribute: Filename
       - attribute: 面のエラー
-        expr: |
-          env.get("__value")._num_surface_validation_errors ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_surface_validation_errors", 0)
       - attribute: 非水密体
-        expr: |
-          env.get("__value")._num_not_closed_boundary ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_not_closed_boundary", 0)
       - attribute: 立体のエラー
-        expr: |
-          env.get("__value")._num_other_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_other_solid_issues", 0)
       - attribute: 不正なジオメトリ型
-        expr: |
-          env.get("__value")._num_geometry_type_errors ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_geometry_type_errors", 0)
   - id: f38c754b-98cd-48e1-bfa7-adbf7c390899
     name: CSVSummaryWriter
     type: action

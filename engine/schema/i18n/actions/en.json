@@ -243,6 +243,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "Mapper": {
           "attribute": {
             "title": "Attribute name"

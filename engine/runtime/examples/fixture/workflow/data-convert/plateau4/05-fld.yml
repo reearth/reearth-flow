@@ -235,11 +235,15 @@ graphs:
       - attribute: uro:rank
         valueAttribute: uro:rank
       - attribute: uro:rank_code
-        expr: '0'
+        expr:
+          type: flowExpr
+          value: '0'
       - attribute: uro:rankOrg
         valueAttribute: uro:rankOrg
       - attribute: uro:rankOrg_code
-        expr: '0'
+        expr:
+          type: flowExpr
+          value: '0'
       - attribute: uro:adminType
         valueAttribute: uro:adminType
       - attribute: uro:scale
@@ -275,7 +279,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          citygml = Url(env["cityGmlPath"]).name.split("_op_")[0];
+          citygml = env["cityGmlPath"].split("/")[-1].split("_op_")[0];
           udx_dirs = attributes["udxDirs"].replace("/", "_");
           scale = "";
           if attributes.get("__scale") { scale = "_" + attributes["__scale"] }

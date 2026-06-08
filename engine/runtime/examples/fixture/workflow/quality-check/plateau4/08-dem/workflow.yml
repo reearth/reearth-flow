@@ -125,14 +125,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: 27619dc0-ace9-490a-a63d-57b2ecb4f326
         name: ShapefileWriterIncorrectNumVertices
@@ -163,14 +160,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: 090638b2-4923-4bd8-8b9c-4e1869612694
         name: ShapefileWriterNotClosed
@@ -201,14 +195,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: f364a079-e834-47f8-a53f-530a0fee07d4
         name: ShapefileWriterWrongOrientation
@@ -248,14 +239,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: 961aadd4-8178-4c26-8c15-b326b0d39573
         name: ShapefileWriterCorruptGeometry
@@ -331,14 +319,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: b4f15900-e2e3-4df0-a3a4-6cbf2d3eefaf
         name: ShapefileWriterInvalidBoundaries
@@ -380,29 +365,31 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
             - attribute: "不正な頂点の数"
-              expr: |
-                env.get("__value")._num_incorrect_num_vertices ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_num_vertices", 0)
             - attribute: "閉じていない三角形"
-              expr: |
-                env.get("__value")._num_not_closed ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_not_closed", 0)
             - attribute: "三角形の向き不正"
-              expr: |
-                env.get("__value")._num_wrong_orientation ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_wrong_orientation", 0)
             - attribute: "潰れた三角形"
-              expr: |
-                env.get("__value")._num_corrupt_geometry ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_corrupt_geometry", 0)
             - attribute: "不正な穴"
-              expr: |
-                env.get("__value")._num_invalid_boundaries ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_invalid_boundaries", 0)
 
       # CSV output
       - id: 12bbb254-4ff2-4b51-92bb-60d0a9d2d48d
