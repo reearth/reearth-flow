@@ -1,8 +1,8 @@
 import { chromium, FullConfig } from "@playwright/test";
 
-import { STORAGE_STATE } from "./playwright.config";
 import { HomePage } from "./pages/homePage";
 import { LoginPage } from "./pages/loginPage";
+import { STORAGE_STATE } from "./playwright.config";
 
 async function globalSetup(_config: FullConfig) {
   const email = process.env.FLOW_DASHBOARD_E2E_USER_EMAIL;
@@ -20,8 +20,7 @@ async function globalSetup(_config: FullConfig) {
   const page = await context.newPage();
 
   try {
-    // The dev environment cold-starts, so the first navigation can exceed the
-    // default 30s timeout; retry once with a generous budget before giving up.
+
     let lastError: unknown;
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {

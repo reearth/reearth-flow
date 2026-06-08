@@ -68,8 +68,6 @@ export class EditorPage {
       exact: true,
     });
     this.debugBar = page.locator("#right-top > div > div").first();
-    // Appears inside the play button once a debug job exists; its colour class
-    // tracks the job status (bg-success / bg-destructive / bg-warning).
     this.debugStatusDot = this.debugBar.locator(".size-3.rounded-full");
     this.debugPanel = page.locator("#middle-bottom-debug-panel");
     this.debugOutputDataButton = this.debugPanel.getByRole("button", {
@@ -171,7 +169,6 @@ export class EditorPage {
     await this.dragToolToCanvas(tool, target);
     await expect(this.actionPicker).toBeVisible();
 
-    // Placeholder is "Search" on deployed builds, "Search Actions" in newer code.
     await this.actionPicker.getByPlaceholder(/^Search/).fill(actionName);
 
     const action = this.actionPicker
@@ -221,8 +218,6 @@ export class EditorPage {
     await expect(this.paramsDialog).toBeVisible();
   }
 
-  // The Parameters tab renders only after the action schema fetch resolves,
-  // so opening the dialog is not enough before editing parameter fields.
   async openNodeParamsForm(node: Locator) {
     await this.openNodeParams(node);
     const paramsTab = this.paramsDialog.getByRole("tab", {
@@ -262,14 +257,12 @@ export class EditorPage {
     await expect(this.paramsDialog).toBeHidden();
   }
 
-  // RJSF renders every labelled field as a row: label <p> + widget container.
   paramFieldRow(label: string): Locator {
     return this.paramsDialog
       .locator("div.flex.flex-1.items-center.gap-6")
       .filter({ has: this.page.getByText(label, { exact: true }) });
   }
 
-  // RJSF input ids are deterministic: root_<field>, root_<array>_<index>_<field>.
   async setParamText(fieldId: string, value: string) {
     const input = this.paramsDialog.locator(`#${fieldId}`);
     await input.waitFor({ state: "visible" });
@@ -283,9 +276,6 @@ export class EditorPage {
       .click();
   }
 
-  // The pencil button is the first button in a FlowExpr field row; it opens the
-  // FlowExpr editor whose Expression tab stores {type: "flowExpr"} values that
-  // the engine evaluates (the inline input would store a literal string).
   async setParamFlowExpr(label: string, expression: string) {
     await this.paramFieldRow(label).getByRole("button").first().click();
     await expect(this.flowExprDialog).toBeVisible();
@@ -301,9 +291,6 @@ export class EditorPage {
     await this.paramsDialog.getByRole("button", { name: "Add item" }).click();
   }
 
-  // Opens a string/Expr field's Rhai value editor (the pencil button) and
-  // submits a raw value through its textarea. Needed for multi-line inline file
-  // content, which the single-line field input would strip newlines from.
   async setParamViaValueEditor(fieldLabel: string, value: string) {
     await this.paramFieldRow(fieldLabel).getByRole("button").first().click();
     const dialog = this.page
@@ -316,9 +303,6 @@ export class EditorPage {
     await expect(dialog).toBeHidden();
   }
 
-  // A CsvReader `geometry` is an object-level oneOf (WKT Column | Coordinate
-  // Columns) rendered by RJSF as a variant picker; the x/y/epsg inputs only
-  // exist after the "Coordinate Columns" variant is selected.
   async setCsvCoordinateGeometry(
     xColumn: string,
     yColumn: string,
