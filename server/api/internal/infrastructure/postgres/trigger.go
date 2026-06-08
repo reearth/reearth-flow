@@ -23,6 +23,8 @@ type Trigger struct {
 	f    repo.WorkspaceFilter
 }
 
+var _ repo.Trigger = (*Trigger)(nil)
+
 func NewTrigger(pool pgxx.DBTX) *Trigger {
 	return &Trigger{pool: pool}
 }
@@ -194,6 +196,10 @@ func (r *Trigger) queryTriggers(ctx context.Context, exec pgxx.DBTX, query strin
 	}
 	defer rows.Close()
 
+	// RowToStructByPos maps columns to gen.Trigger fields positionally, which is
+	// valid only because SELECT * returns columns in table-definition order and
+	// sqlc generates gen.Trigger's fields in that same order. If a future
+	// migration reorders columns, switch to an explicit column list here.
 	genRows, err := pgx.CollectRows(rows, pgx.RowToStructByPos[gen.Trigger])
 	if err != nil {
 		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
