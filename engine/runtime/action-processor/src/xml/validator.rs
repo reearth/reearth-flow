@@ -8,7 +8,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use fastxml::schema::fetcher::{DefaultFetcher, FileCachingFetcher, SchemaFetcher};
+use fastxml::schema::fetcher::{DefaultFetcher, FetchResult, SchemaFetcher};
 use fastxml::schema::types::CompiledSchema;
 use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver};
 use once_cell::sync::Lazy;
@@ -28,6 +28,70 @@ use super::types::{ValidationResult, ValidationType, XmlInputType, XmlValidatorP
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
+
+/// Persistent on-disk cache directory for fetched XSD schemas.
+///
+/// Remote GML/CityGML base schemas (e.g. `http://schemas.opengis.net/...`) are
+/// referenced by absolute URL and are not shipped in the local schema bundle, so
+/// without a persistent cache every validation run re-downloads them. Pointing the
+/// `FileCachingFetcher` at a stable directory makes those downloads happen once and
+/// be reused across documents, workflow runs, and processes.
+///
+/// Override the location with `FLOW_RUNTIME_XML_SCHEMA_CACHE_DIR`.
+static SCHEMA_CACHE_DIR: Lazy<PathBuf> = Lazy::new(|| {
+    let dir = std::env::var("FLOW_RUNTIME_XML_SCHEMA_CACHE_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir().join("reearth-flow-xml-schema-cache"));
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        tracing::warn!(dir = ?dir, error = ?e, "Failed to create XML schema cache directory");
+    }
+    dir
+});
+
+/// Persistent, cross-process disk cache for fetched XSD schemas.
+///
+/// `fastxml`'s own `FileCachingFetcher` only consults its in-memory index, which
+/// starts empty on every process, so its on-disk files are never re-read across
+/// runs. This wrapper keys directly off a deterministic filename: a fresh process
+/// finds the existing file on disk and skips the network entirely.
+struct DiskCachingFetcher {
+    inner: DefaultFetcher,
+    dir: PathBuf,
+}
+
+impl DiskCachingFetcher {
+    fn cache_path(&self, url: &str) -> PathBuf {
+        use std::hash::{Hash, Hasher};
+        // DefaultHasher uses fixed keys (not randomized), so the filename is
+        // stable across processes and machines.
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        url.hash(&mut hasher);
+        self.dir.join(format!("{:016x}.xsd", hasher.finish()))
+    }
+}
+
+impl SchemaFetcher for DiskCachingFetcher {
+    fn fetch(&self, url: &str) -> fastxml::error::Result<FetchResult> {
+        let path = self.cache_path(url);
+        if let Ok(content) = std::fs::read(&path) {
+            return Ok(FetchResult {
+                content,
+                final_url: url.to_string(),
+                redirected: false,
+            });
+        }
+
+        let result = self.inner.fetch(url)?;
+
+        // Only cache direct (non-redirected) responses so a cached entry's
+        // `final_url` stays correct for relative-import resolution.
+        if !result.redirected && result.final_url == url {
+            let _ = std::fs::write(&path, &result.content);
+        }
+
+        Ok(result)
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct XmlValidatorFactory;
@@ -456,9 +520,12 @@ impl XmlValidator {
                 Some(dir) => DefaultFetcher::with_base_dir(dir),
                 None => DefaultFetcher::new(),
             };
-            let fetcher = FileCachingFetcher::new(inner).map_err(|e| {
-                XmlProcessorError::Validator(format!("Failed to create caching fetcher: {e:?}"))
-            })?;
+            // Persistent on-disk cache: fetched remote schemas are reused across
+            // documents/runs/processes instead of being re-downloaded each time.
+            let fetcher = DiskCachingFetcher {
+                inner,
+                dir: SCHEMA_CACHE_DIR.clone(),
+            };
 
             let mut resolver = SchemaResolver::new(&fetcher);
             for (_namespace, location) in &schema_locations {
