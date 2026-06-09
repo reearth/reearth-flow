@@ -1,11 +1,28 @@
 use std::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
 
 use indexmap::IndexMap;
 
 pub type Module = IndexMap<String, Value>;
 
+use super::ast::Expr;
+use super::env::Env;
 use crate::core::error::{InnerError, InnerResult};
+
+/// A user-defined closure: parameter names, body AST, and the lexical env captured at definition.
+#[derive(Clone)]
+pub struct ClosureValue {
+    pub params: Vec<String>,
+    pub body: Rc<Expr>,
+    pub captured: Env,
+}
+
+impl fmt::Debug for ClosureValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<fn({})>", self.params.join(", "))
+    }
+}
 
 /// Trait for typed objects that can respond to method calls.
 ///
@@ -72,6 +89,8 @@ pub enum Value {
     Map(Rc<RefCell<IndexMap<String, Value>>>),
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
+    /// A user-defined closure capturing a lexical env frame.
+    Closure(ClosureValue),
     /// A typed object that can respond to method calls via [`ImmutableObject`].
     Object(Rc<dyn ImmutableObject>),
     Module(Rc<Module>),
@@ -102,7 +121,7 @@ impl Value {
             Value::String(_) => "string",
             Value::Array(_) => "list",
             Value::Map(_) => "map",
-            Value::Fn(_) => "function",
+            Value::Fn(_) | Value::Closure(_) => "function",
             Value::Object(rc) => rc.type_name(),
             Value::Module(_) => "module",
         }
@@ -202,6 +221,7 @@ impl std::fmt::Display for Value {
                 write!(f, "}}")
             }
             Value::Fn(_) => write!(f, "<fn>"),
+            Value::Closure(c) => write!(f, "<fn({})>", c.params.join(", ")),
             Value::Object(rc) => write!(f, "{}", rc.display()),
             Value::Module(_) => write!(f, "<module>"),
         }

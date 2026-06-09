@@ -249,14 +249,11 @@ graphs:
                     item["admin"] = feature["uro:adminType"];
                   }
                   scale = feature.get("uro:scale", "");
-                  if len(scale) >= 2 {
-                    if scale[1] == "1" {
-                      item["scale"] = "計画規模";
-                    } else {
-                      if scale[1] == "2" {
-                        item["scale"] = "想定最大規模";
-                      }
-                    }
+                  if len(scale) < 2 {
+                  } else if scale[1] == "1" {
+                    item["scale"] = "計画規模";
+                  } else if scale[1] == "2" {
+                    item["scale"] = "想定最大規模";
                   }
                   packages[pkg].append(item);
                 }

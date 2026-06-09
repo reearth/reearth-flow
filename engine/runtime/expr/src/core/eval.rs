@@ -1,13 +1,14 @@
 use std::cell::Cell;
-use std::collections::HashMap;
+use std::rc::Rc;
 
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
 use super::builtins::{builtin_math, builtin_regex, builtin_url};
+use super::env::{new_frame, Env};
 use super::error::{Error, InnerError, InnerResult, Result};
-use super::value::{format_float, NativeFn, Value};
+use super::value::{format_float, ClosureValue, NativeFn, Value};
 use crate::expect_arity;
 
 #[cfg(debug_assertions)]
@@ -55,26 +56,68 @@ impl<T> ToEvalError<T> for InnerResult<T> {
     }
 }
 
-pub type Env = HashMap<String, Value>;
+/// Walk the frame chain and return a clone of the first binding found, or None.
+pub(crate) fn env_get(env: &Env, name: &str) -> Option<Value> {
+    let frame = env.borrow();
+    if let Some(v) = frame.bindings.get(name) {
+        return Some(v.clone());
+    }
+    let parent = frame.parent.clone();
+    drop(frame);
+    parent.as_ref().and_then(|p| env_get(p, name))
+}
+
+/// Walk the frame chain and update the first frame that owns `name`.
+/// If not found anywhere, create the binding in the innermost frame.
+fn env_set_upward(env: &Env, name: String, val: Value) {
+    let mut cursor = Rc::clone(env);
+    loop {
+        let parent = {
+            let frame = cursor.borrow();
+            if frame.bindings.contains_key(&name) {
+                drop(frame);
+                cursor.borrow_mut().bindings.insert(name, val);
+                return;
+            }
+            frame.parent.clone()
+        };
+        match parent {
+            Some(p) => cursor = p,
+            None => break,
+        }
+    }
+    env.borrow_mut().bindings.insert(name, val);
+}
+
+/// Always create/overwrite the binding in the innermost frame (`let` semantics).
+fn env_set_local(env: &Env, name: String, val: Value) {
+    env.borrow_mut().bindings.insert(name, val);
+}
+
+/// Insert a value into the innermost frame. Intended for seeding an env from
+/// Rust (e.g. `default_env`, test helpers, external callers).
+pub fn env_bind(env: &Env, name: impl Into<String>, val: Value) {
+    env.borrow_mut().bindings.insert(name.into(), val);
+}
 
 pub fn default_env() -> Env {
-    let mut env = Env::new();
-    env.insert("str".into(), Value::Fn(NativeFn::new(builtin_str)));
-    env.insert("int".into(), Value::Fn(NativeFn::new(builtin_int)));
-    env.insert("float".into(), Value::Fn(NativeFn::new(builtin_float)));
-    env.insert("bool".into(), Value::Fn(NativeFn::new(builtin_bool)));
-    env.insert("list".into(), Value::Fn(NativeFn::new(builtin_list)));
-    env.insert("map".into(), Value::Fn(NativeFn::new(builtin_map)));
-    env.insert("Url".into(), Value::Fn(NativeFn::new(builtin_url)));
-    env.insert("Regex".into(), Value::Fn(NativeFn::new(builtin_regex)));
-    env.insert("math".into(), builtin_math());
-    env.insert("print".into(), Value::Fn(NativeFn::new(builtin_print)));
-    env.insert("type".into(), Value::Fn(NativeFn::new(builtin_type)));
-    env.insert("len".into(), Value::Fn(NativeFn::new(builtin_len)));
+    let env = new_frame(None);
+    env_bind(&env, "str", Value::Fn(NativeFn::new(builtin_str)));
+    env_bind(&env, "int", Value::Fn(NativeFn::new(builtin_int)));
+    env_bind(&env, "float", Value::Fn(NativeFn::new(builtin_float)));
+    env_bind(&env, "bool", Value::Fn(NativeFn::new(builtin_bool)));
+    env_bind(&env, "list", Value::Fn(NativeFn::new(builtin_list)));
+    env_bind(&env, "map", Value::Fn(NativeFn::new(builtin_map)));
+    env_bind(&env, "Url", Value::Fn(NativeFn::new(builtin_url)));
+    env_bind(&env, "Regex", Value::Fn(NativeFn::new(builtin_regex)));
+    env_bind(&env, "math", builtin_math());
+    env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
+    env_bind(&env, "type", Value::Fn(NativeFn::new(builtin_type)));
+    env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
     env
 }
 
-pub fn eval(expr: &Expr, env: &mut Env) -> Result<Value> {
+pub fn eval(expr: &Expr, env: &Env) -> Result<Value> {
     match eval_inner(expr, env) {
         Err(Error::Return(v)) => Ok(v),
         other => other,
@@ -498,7 +541,7 @@ fn bitwise_args(a: &Value, b: &Value) -> InnerResult<(i64, i64)> {
 }
 
 // Recursion entrypoint for AST expression evaluation.
-fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
+fn eval_inner(expr: &Expr, env: &Env) -> Result<Value> {
     let pos = expr.span.start;
     let _depth = DepthGuard::enter().to_eval_error(pos)?;
     match &expr.kind {
@@ -531,7 +574,7 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             }
             Ok(Value::map(map))
         }
-        ExprKind::Var(name) => env.get(name.as_str()).cloned().ok_or_else(|| Error::Eval {
+        ExprKind::Var(name) => env_get(env, name.as_str()).ok_or_else(|| Error::Eval {
             pos,
             msg: format!("unknown variable '{name}'"),
         }),
@@ -566,6 +609,7 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             let evaled: Result<Vec<_>> = args.iter().map(|a| eval_inner(a, env)).collect();
             match f {
                 Value::Fn(native_fn) => call_func(&native_fn, &evaled?, pos),
+                Value::Closure(cl) => call_closure(cl, evaled?, pos),
                 _ => Err(Error::Eval {
                     pos,
                     msg: format!("value of type {} is not callable", f.type_name()),
@@ -597,7 +641,12 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
         }
         ExprKind::Assign { lvalue, value } => {
             let v = eval_inner(value, env)?;
-            eval_assign_lvalue(lvalue, v.clone(), env)?;
+            eval_assign_lvalue(lvalue, v.clone(), env, false)?;
+            Ok(v)
+        }
+        ExprKind::Let { lvalue, value } => {
+            let v = eval_inner(value, env)?;
+            eval_assign_lvalue(lvalue, v.clone(), env, true)?;
             Ok(v)
         }
         ExprKind::CompoundAssign { lvalue, op, rhs } => {
@@ -638,7 +687,7 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             let iter_val = eval_inner(iterable, env)?;
             let items = collect_iterable(iter_val, pos)?;
             for item in items {
-                eval_assign_lvalue(var, item, env)?;
+                eval_assign_lvalue(var, item, env, false)?;
                 eval_inner(body, env)?;
             }
             Ok(Value::Null)
@@ -650,6 +699,33 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             };
             Err(Error::Return(val))
         }
+        ExprKind::Fn { params, body } => Ok(Value::Closure(ClosureValue {
+            params: params.clone(),
+            body: Rc::new(*body.clone()),
+            captured: Rc::clone(env),
+        })),
+    }
+}
+
+/// Invoke a user-defined closure: create a child frame, bind params, eval body.
+fn call_closure(cl: ClosureValue, args: Vec<Value>, pos: usize) -> Result<Value> {
+    if args.len() != cl.params.len() {
+        return Err(Error::Eval {
+            pos,
+            msg: format!(
+                "closure expects {} argument(s), got {}",
+                cl.params.len(),
+                args.len()
+            ),
+        });
+    }
+    let call_env = new_frame(Some(Rc::clone(&cl.captured)));
+    for (param, arg) in cl.params.iter().zip(args) {
+        env_set_local(&call_env, param.clone(), arg);
+    }
+    match eval_inner(&cl.body, &call_env) {
+        Err(Error::Return(v)) => Ok(v),
+        other => other,
     }
 }
 
@@ -676,11 +752,18 @@ fn collect_iterable(value: Value, pos: usize) -> Result<Vec<Value>> {
     }
 }
 
-fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> {
+/// Assign `value` to `lvalue`.
+/// `local = true` uses `let` semantics (always bind in innermost frame).
+/// `local = false` uses walk-upward semantics (find existing binding or create local).
+fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &Env, local: bool) -> Result<()> {
     let pos = lvalue.span.start;
     match &lvalue.kind {
         ExprKind::Var(name) => {
-            env.insert(name.clone(), value);
+            if local {
+                env_set_local(env, name.clone(), value);
+            } else {
+                env_set_upward(env, name.clone(), value);
+            }
             Ok(())
         }
         ExprKind::Index(target, key) => {
@@ -724,7 +807,7 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
                 });
             }
             for (target, item) in targets.iter().zip(items) {
-                eval_assign_lvalue(target, item, env)?;
+                eval_assign_lvalue(target, item, env, local)?;
             }
             Ok(())
         }
@@ -739,19 +822,19 @@ fn eval_compound_assign(
     lvalue: &Expr,
     op: &BinOp,
     rhs: &Expr,
-    env: &mut Env,
+    env: &Env,
     pos: usize,
 ) -> Result<Value> {
     let rhs_val = eval_inner(rhs, env)?;
     let f = resolve_op(op);
     match &lvalue.kind {
         ExprKind::Var(name) => {
-            let current = env.get(name).cloned().ok_or_else(|| Error::Eval {
+            let current = env_get(env, name).ok_or_else(|| Error::Eval {
                 pos,
                 msg: format!("undefined variable '{name}'"),
             })?;
             let new_val = call_func(&f, &[current, rhs_val], pos)?;
-            env.insert(name.clone(), new_val.clone());
+            env_set_upward(env, name.clone(), new_val.clone());
             Ok(new_val)
         }
         ExprKind::Index(target, key) => {
@@ -993,7 +1076,7 @@ fn is_truthy(v: &Value) -> bool {
         Value::String(s) => !s.is_empty(),
         Value::Array(a) => !a.borrow().is_empty(),
         Value::Map(o) => !o.borrow().is_empty(),
-        Value::Fn(_) | Value::Object(_) | Value::Module(_) => true,
+        Value::Fn(_) | Value::Closure(_) | Value::Object(_) | Value::Module(_) => true,
     }
 }
 
@@ -1588,14 +1671,14 @@ mod tests {
             }
         }
 
-        let mut env = default_env();
-        env.insert("c".to_string(), Value::object(Counter(10)));
-        let result = eval_inner(&parse("c + 5").unwrap(), &mut env).unwrap();
+        let env = default_env();
+        env_bind(&env, "c", Value::object(Counter(10)));
+        let result = eval_inner(&parse("c + 5").unwrap(), &env).unwrap();
         assert!(matches!(result, Value::Object(_)));
         assert_eq!(result.to_string(), "15");
-        env.insert("d".to_string(), Value::object(Counter(10)));
+        env_bind(&env, "d", Value::object(Counter(10)));
         {
-            let result = eval_inner(&parse("c == d").unwrap(), &mut env).unwrap();
+            let result = eval_inner(&parse("c == d").unwrap(), &env).unwrap();
             let expected = Value::Bool(true);
             assert!(
                 values_equal(&result, &expected).expect("values_equal failed"),
@@ -1637,44 +1720,50 @@ mod tests {
             }
         }
 
-        let mut env = default_env();
-        env.insert(
-            "bag".into(),
+        let env = default_env();
+        env_bind(
+            &env,
+            "bag",
             Value::object(Bag(vec![("x".into(), 10), ("y".into(), 20)])),
         );
 
         // __getitem__
         assert_eval(
             r#"bag["x"]"#,
-            &[("bag", env["bag"].clone())],
+            &[("bag", env.borrow().bindings["bag"].clone())],
             Value::from(10i64),
         );
         assert_eval(
             r#"bag["y"]"#,
-            &[("bag", env["bag"].clone())],
+            &[("bag", env.borrow().bindings["bag"].clone())],
             Value::from(20i64),
         );
-        assert!(try_run(r#"bag["z"]"#, &[("bag", env["bag"].clone())]).is_err());
+        assert!(try_run(
+            r#"bag["z"]"#,
+            &[("bag", env.borrow().bindings["bag"].clone())]
+        )
+        .is_err());
 
         // __iter__ via for-in
         assert_eval(
             "keys = []; for k in bag { keys = keys + [k] } keys",
-            &[("bag", env["bag"].clone())],
+            &[("bag", env.borrow().bindings["bag"].clone())],
             Value::from(vec!["x", "y"]),
         );
     }
 
     #[test]
     fn test_var() {
-        let mut env = default_env();
-        assert!(eval(&parse("missing").unwrap(), &mut env).is_err());
+        let env = default_env();
+        assert!(eval(&parse("missing").unwrap(), &env).is_err());
     }
 
     #[test]
     fn test_native_func() {
-        let mut env = default_env();
-        env.insert(
-            "join_path".into(),
+        let env = default_env();
+        env_bind(
+            &env,
+            "join_path",
             Value::Fn(NativeFn::new(|args: &[Value]| {
                 let parts: Vec<&str> = args
                     .iter()
@@ -1690,11 +1779,7 @@ mod tests {
             })),
         );
         {
-            let result = eval(
-                &parse(r#"join_path("base", "file.json")"#).unwrap(),
-                &mut env,
-            )
-            .unwrap();
+            let result = eval(&parse(r#"join_path("base", "file.json")"#).unwrap(), &env).unwrap();
             let expected = Value::from("base/file.json");
             assert!(
                 values_equal(&result, &expected).expect("values_equal failed"),
@@ -1749,7 +1834,7 @@ mod tests {
         let n = MAX_EVAL_DEPTH - 1;
         let expr = format!("1{}", "+1".repeat(n));
         {
-            let result = eval(&parse(&expr).unwrap(), &mut default_env()).unwrap();
+            let result = eval(&parse(&expr).unwrap(), &default_env()).unwrap();
             let expected = Value::Int(n as i64 + 1);
             assert!(
                 values_equal(&result, &expected).expect("values_equal failed"),
@@ -1998,5 +2083,85 @@ mod tests {
             &[("m", m)],
             Value::from(30i64),
         );
+    }
+
+    // ----- closure tests -----
+
+    #[test]
+    fn test_closure_basic() {
+        assert_eval("f = fn(x) { x * 2 }; f(5)", &[], Value::from(10i64));
+        assert_eval("fn(x) { x + 1 }(3)", &[], Value::from(4i64));
+    }
+
+    #[test]
+    fn test_closure_capture() {
+        // closure captures n from outer scope
+        assert_eval("n = 10; f = fn(x) { x + n }; f(5)", &[], Value::from(15i64));
+    }
+
+    #[test]
+    fn test_closure_mutates_outer() {
+        // assignment inside closure seeks upward and mutates outer binding
+        assert_eval(
+            "x = 1; f = fn() { x = 99 }; f(); x",
+            &[],
+            Value::from(99i64),
+        );
+    }
+
+    #[test]
+    fn test_let_shadows_outer() {
+        // let creates a new local; outer x is unchanged
+        assert_eval(
+            "x = 1; f = fn() { let x = 99; x }; f(); x",
+            &[],
+            Value::from(1i64),
+        );
+    }
+
+    #[test]
+    fn test_let_destructuring() {
+        assert_eval("let [a, b] = [3, 4]; a + b", &[], Value::from(7i64));
+        assert_eval(
+            "let [a, [b, c]] = [1, [2, 3]]; a + b + c",
+            &[],
+            Value::from(6i64),
+        );
+    }
+
+    #[test]
+    fn test_closure_higher_order() {
+        // adder returns a closure that closes over n
+        assert_eval(
+            "adder = fn(n) { fn(x) { x + n } }; add5 = adder(5); add5(3)",
+            &[],
+            Value::from(8i64),
+        );
+    }
+
+    #[test]
+    fn test_closure_recursion() {
+        // recursive closure via name in outer scope
+        assert_eval(
+            "fact = fn(n) { if n <= 1 { 1 } else { n * fact(n - 1) } }; fact(5)",
+            &[],
+            Value::from(120i64),
+        );
+    }
+
+    #[test]
+    fn test_closure_return() {
+        // return exits the closure, not the whole script
+        assert_eval(
+            "f = fn(x) { return x * 2; 999 }; f(4)",
+            &[],
+            Value::from(8i64),
+        );
+    }
+
+    #[test]
+    fn test_closure_arity_error() {
+        assert!(try_run("fn(x, y) { x + y }(1)", &[]).is_err());
+        assert!(try_run("fn() { 1 }(42)", &[]).is_err());
     }
 }

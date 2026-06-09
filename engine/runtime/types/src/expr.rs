@@ -75,7 +75,7 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<AttributeValue> {
         let v = match self {
-            CompiledCode::Expr(e) => eval(e, &mut env_from_feature(feature, env_vars))?,
+            CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars))?,
             CompiledCode::Literal(s) => ExprValue::String(s.clone()),
         };
         attribute_value_from_eval(v)
@@ -87,9 +87,7 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<bool> {
         match self {
-            CompiledCode::Expr(e) => {
-                eval(e, &mut env_from_feature(feature, env_vars)).map(bool_cast)
-            }
+            CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars)).map(bool_cast),
             CompiledCode::Literal(s) => Ok(!s.is_empty()),
         }
     }
@@ -100,7 +98,7 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval(e, &mut env_from_feature(feature, env_vars))
+            CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars))
                 .and_then(|v| str_cast(v).map_err(|e| ExprError::EvalString { msg: e.msg })),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
@@ -113,7 +111,7 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval(e, &mut env_from_vars_only(env_vars))
+            CompiledCode::Expr(e) => eval(e, &env_from_vars_only(env_vars))
                 .and_then(|v| str_cast(v).map_err(|e| ExprError::EvalString { msg: e.msg })),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
@@ -258,20 +256,21 @@ fn env_from_feature(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> reearth_flow_expr::Env {
-    let mut env = reearth_flow_expr::default_env();
-    env.insert(
-        "attributes".into(),
+    let env = reearth_flow_expr::default_env();
+    reearth_flow_expr::env_bind(
+        &env,
+        "attributes",
         ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
     );
-    env.insert("env".into(), ExprValue::object(EnvObject(env_vars)));
+    reearth_flow_expr::env_bind(&env, "env", ExprValue::object(EnvObject(env_vars)));
     env
 }
 
 fn env_from_vars_only(
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> reearth_flow_expr::Env {
-    let mut env = reearth_flow_expr::default_env();
-    env.insert("env".into(), ExprValue::object(EnvObject(env_vars)));
+    let env = reearth_flow_expr::default_env();
+    reearth_flow_expr::env_bind(&env, "env", ExprValue::object(EnvObject(env_vars)));
     env
 }
 
