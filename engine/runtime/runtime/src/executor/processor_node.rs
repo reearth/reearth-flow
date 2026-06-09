@@ -33,11 +33,6 @@ use super::receiver_loop::init_select;
 use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
-// CPU-throttle for the busy-wait loop that polls `thread_counter` waiting
-// for in-flight processor work to drain. 5ms gives ~200 polls/sec at
-// negligible CPU cost. Not related to node-status propagation.
-const POLL_BACKOFF: Duration = Duration::from_millis(5);
-
 static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_SLOW_ACTION_THRESHOLD")
         .ok()
@@ -327,7 +322,10 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
                     return terminate_result;
                 }
-                std::thread::sleep(POLL_BACKOFF);
+                // Polling-backoff for the busy-wait that drains `thread_counter`
+                // after all inputs have terminated. `yield_now` gives the scheduler
+                // a chance to run other threads without a fixed sleep window.
+                std::thread::yield_now();
                 continue;
             }
             let index = sel.ready();
