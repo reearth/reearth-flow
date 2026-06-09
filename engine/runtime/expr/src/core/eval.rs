@@ -2090,10 +2090,22 @@ mod tests {
         assert_eval("f = fn(x) { x * 2 }; f(5)", &[], Value::from(10i64));
         assert_eval("fn(x) { x + 1 }(3)", &[], Value::from(4i64));
         assert_eval("n = 10; f = fn(x) { x + n }; f(5)", &[], Value::from(15i64));
-        assert_eval("x = 1; f = fn() { x = 99 }; f(); x", &[], Value::from(99i64));
-        assert_eval("x = 1; f = fn() { let x = 99; x }; f(); x", &[], Value::from(1i64));
+        assert_eval(
+            "x = 1; f = fn() { x = 99 }; f(); x",
+            &[],
+            Value::from(99i64),
+        );
+        assert_eval(
+            "x = 1; f = fn() { let x = 99; x }; f(); x",
+            &[],
+            Value::from(1i64),
+        );
         assert_eval("let [a, b] = [3, 4]; a + b", &[], Value::from(7i64));
-        assert_eval("let [a, [b, c]] = [1, [2, 3]]; a + b + c", &[], Value::from(6i64));
+        assert_eval(
+            "let [a, [b, c]] = [1, [2, 3]]; a + b + c",
+            &[],
+            Value::from(6i64),
+        );
         assert_eval(
             "adder = fn(n) { fn(x) { x + n } }; add5 = adder(5); add5(3)",
             &[],
@@ -2104,7 +2116,11 @@ mod tests {
             &[],
             Value::from(120i64),
         );
-        assert_eval("f = fn(x) { return x * 2; 999 }; f(4)", &[], Value::from(8i64));
+        assert_eval(
+            "f = fn(x) { return x * 2; 999 }; f(4)",
+            &[],
+            Value::from(8i64),
+        );
         assert!(try_run("fn(x, y) { x + y }(1)", &[]).is_err());
         assert!(try_run("fn() { 1 }(42)", &[]).is_err());
     }

@@ -17,7 +17,7 @@ fn main() {
         };
         let line = line.trim();
         if !line.is_empty() {
-            match compile(line).and_then(|e| eval(&e, &mut env)) {
+            match compile(line).and_then(|e| eval(&e, &env)) {
                 Ok(v) => println!("{v}"),
                 Err(e) => println!("error: {e}"),
             }
