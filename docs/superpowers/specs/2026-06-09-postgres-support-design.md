@@ -42,7 +42,8 @@ consumes it.
 |---|----------|--------|
 | A | Coexistence & transaction model | **A1 — global driver switch, pilot validated by tests.** `DB_DRIVER` selects the whole backend at boot. Code migrates entity-by-entity, each proven by integration tests vs Mongo parity. Prod stays Mongo until the full set (incl. reearthx account repos) is ported, then a single cutover. |
 | B | Migration tooling | **Atlas**, declarative `schema.hcl` as single source of truth → `atlas migrate diff` generates versioned SQL → same migrations feed sqlc. CI runs `atlas migrate lint`. |
-| C | Query codegen + driver | **sqlc** with **pgx/v5**. Transaction wiring via executor-from-context (Thibaut Rousseau pattern) reconciled with the existing `usecasex.Transaction` interface — no interface change. |
+| C | Query codegen + driver | **sqlc** with **pgx/v5**. Transaction wiring via executor-from-context (Thibaut Rousseau pattern). **Superseded — see Decision F.** |
+| F | Transaction abstraction (revised 2026-06-09) | Adopt the blog's **`Transactor.WithinTransaction(ctx, fn)` callback** as the canonical abstraction, **not** `usecasex.Transaction` (Begin/Commit/End). New `usecasex.Transactor` interface; Mongo reuses its existing `usecasex.Transaction` via a `NewTransactor` bridge (DoTransaction-backed); `pgxx` implements `Transactor` natively; **all** flow interactors + `repo.Container.Transaction` migrate to it (full adoption). The account package keeps `usecasex.Transaction` via a compat bridge. |
 | D | Where reusable code lives | **reearthx-first.** Generic SQL/tx package built and released in reearthx (Phase 0), then consumed by flow. |
 | E | Pilot entity | **`Trigger`** — exercises pagination, workspace filtering, find-by-FK, CRUD, and transactional writes. |
 
@@ -190,12 +191,34 @@ error to prevent accidental partial production use.
 
 This recipe — plus the reearthx `pgxx` package — is what other projects copy.
 
-## 7. Transaction Model
+## 7. Transaction Model (revised 2026-06-09 — Decision F)
 
-`usecasex.Transaction` is unchanged. The Postgres implementation (reearthx)
-begins a `pgx.Tx`, carries it in the context, and `Executor(ctx)` resolves it in
-repos. Serialization failures map to `usecasex.ErrTransaction` and are retried by
-the existing `DoTransaction` loop. **No interactor or use-case code changes.**
+The canonical abstraction is the Thibaut Rousseau **`Transactor.WithinTransaction(ctx, fn)`
+callback**, NOT `usecasex.Transaction` (Begin/Commit/End):
+
+```go
+// reearthx/usecasex
+type Transactor interface {
+    WithinTransaction(ctx context.Context, fn func(ctx context.Context) error) error
+}
+```
+
+- **Mongo (and Nop):** reuse the existing `usecasex.Transaction` via a bridge
+  `usecasex.NewTransactor(t Transaction, retry int)` whose `WithinTransaction`
+  delegates to `usecasex.DoTransaction` — so no hand-written Mongo impl and the
+  existing retry-on-`ErrTransaction` behavior is preserved.
+- **Postgres:** `pgxx` implements `Transactor` natively — begins a `pgx.Tx`,
+  carries it in the context (`Executor(ctx, pool)` / DBGetter resolves it in
+  repos), runs `fn`, commits on success / rolls back on error, retrying on
+  serialization failure (`WrapError`). `pgxx` no longer implements
+  `usecasex.Transaction`.
+- **Flow (full adoption):** `repo.Container.Transaction` becomes
+  `usecasex.Transactor`; `usecase.go`'s `Run3` and all 26 manual
+  `Begin/Commit/End` call-sites across 8 interactors become
+  `transaction.WithinTransaction(ctx, func(ctx) error { … })` closures
+  (semantics preserved: commit on nil return, rollback on error/panic).
+- **Account package:** continues to consume `usecasex.Transaction`; flow keeps a
+  `usecasex.Transaction` reference for the `AccountRepos()` compat bridge.
 
 ## 8. Error Handling
 
