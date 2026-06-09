@@ -94,7 +94,7 @@ pub enum ExprKind {
         cond: Box<Expr>,
         body: Box<Expr>,
     },
-    /// `for var in iterable { body }` — list/map/string iteration, evaluates to Null
+    /// `for <lvalue> in iterable { body }` — lvalue may be a variable or destructuring pattern (e.g. `[a, b]`)
     ForIn {
         var: Box<Expr>,
         iterable: Box<Expr>,
