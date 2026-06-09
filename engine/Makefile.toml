@@ -54,11 +54,13 @@ cargo test --workspace --all-targets --all-features --exclude plateau-gis-qualit
 [tasks.test-qc]
 script = ['''
 #!/usr/bin/env bash -eux
-# `--test-threads=8` because workflow-tests is I/O-bound at 4 threads on
-# the CI runner. Doubling threads on a 4-vCPU runner cut test-qc wall-
-# clock from 12m26s to 6m22s with no shard complexity. Override locally
+# Oversubscribe the 4-vCPU CI runner with `--test-threads=16` because the
+# workflow-tests suite has historically been I/O-bound on schema fetches
+# and process-startup. Once the XSD schema disk cache (added in this PR)
+# warms within a run, the bottleneck shifts toward CPU; oversubscription
+# still helps absorb residual I/O wait without thrashing. Override locally
 # (e.g. via `cargo make test-qc -- --test-threads=N`) if needed.
-cargo test -p workflow-tests -- --test-threads=8 ${@:-}
+cargo test -p workflow-tests -- --test-threads=16 ${@:-}
 ''']
 
 [tasks.test-conv]
