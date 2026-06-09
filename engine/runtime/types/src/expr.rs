@@ -5,8 +5,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_expr::{
-    bool_cast, compile, eval, expect_arity, str_cast, Error as ExprError, InnerError, InnerResult,
-    Value as ExprValue,
+    bool_cast, compile, eval, expect_arity, str_cast, Env as ExprEnv, Error as ExprError,
+    InnerError, InnerResult, Value as ExprValue,
 };
 
 use crate::attribute::{Attribute, AttributeValue};
@@ -255,7 +255,7 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
 fn env_from_feature(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
-) -> reearth_flow_expr::Env {
+) -> ExprEnv {
     let env = reearth_flow_expr::default_env();
     reearth_flow_expr::env_bind(
         &env,
@@ -266,9 +266,7 @@ fn env_from_feature(
     env
 }
 
-fn env_from_vars_only(
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
-) -> reearth_flow_expr::Env {
+fn env_from_vars_only(env_vars: Arc<serde_json::Map<String, serde_json::Value>>) -> ExprEnv {
     let env = reearth_flow_expr::default_env();
     reearth_flow_expr::env_bind(&env, "env", ExprValue::object(EnvObject(env_vars)));
     env
@@ -301,7 +299,7 @@ fn attribute_value_from_eval(v: ExprValue) -> reearth_flow_expr::Result<Attribut
                 .map(|(k, v)| attribute_value_from_eval(v.clone()).map(|v| (k.clone(), v)))
                 .collect::<reearth_flow_expr::Result<_>>()?,
         )),
-        ExprValue::Fn(_) => Err(eval_err(
+        ExprValue::Fn(_) | ExprValue::Closure(_) => Err(eval_err(
             "function value cannot be stored as an attribute".into(),
         )),
         ExprValue::Module(_) => Err(eval_err(
