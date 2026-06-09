@@ -122,25 +122,6 @@ impl EventHub {
         });
     }
 
-    pub async fn simple_flush(&self, delay_ms: u64) {
-        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
-    }
-
-    pub async fn enhanced_flush(&self, max_wait_ms: u64) {
-        let start = std::time::Instant::now();
-        let max_duration = tokio::time::Duration::from_millis(max_wait_ms);
-
-        while start.elapsed() < max_duration {
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-            if self.sender.receiver_count() == 0 {
-                break;
-            }
-        }
-
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-    }
-
     pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {
         self.send(Event::Log {
             level: Level::WARN,
@@ -231,6 +212,13 @@ pub async fn subscribe_event(
     loop {
         tokio::select! {
             _ = notify.notified() => {
+                // Drain any events still buffered in the channel before shutting
+                // down, so none are lost to the notify/recv race in this select.
+                while let Ok(ev) = receiver.try_recv() {
+                    for handler in event_handlers.iter() {
+                        handler.on_event(&ev).await;
+                    }
+                }
                 let shutdown_futures = event_handlers.iter()
                     .map(|handler| handler.on_shutdown());
                 match tokio::time::timeout(

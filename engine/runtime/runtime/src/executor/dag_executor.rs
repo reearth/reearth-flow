@@ -42,6 +42,7 @@ pub struct DagExecutorJoinHandle {
     event_hub: EventHub,
     join_handles: Vec<JoinHandle<Result<(), ExecutionError>>>,
     notify: Arc<Notify>,
+    subscriber_handle: Option<tokio::task::JoinHandle<()>>,
     executor_id: uuid::Uuid,
 }
 
@@ -131,7 +132,7 @@ impl DagExecutor {
         let notify = Arc::new(Notify::new());
         let notify_publish = Arc::clone(&notify);
         let notify_subscribe = Arc::clone(&notify);
-        runtime.spawn(async move {
+        let subscriber_handle = runtime.spawn(async move {
             subscribe_event(&mut receiver, notify_subscribe.clone(), &event_handlers).await;
         });
 
@@ -252,6 +253,7 @@ impl DagExecutor {
             event_hub,
             join_handles,
             notify: notify_publish.clone(),
+            subscriber_handle: Some(subscriber_handle),
             executor_id,
         })
     }
@@ -282,11 +284,19 @@ impl DagExecutorJoinHandle {
             handle.join().unwrap()?;
 
             if self.join_handles.is_empty() {
-                // All threads have completed, add a delay before returning
-                tracing::info!("Workflow complete, waiting for final events to be published...");
-
-                // Enhanced delay approach - use improved flush with dynamic waiting
-                runtime.block_on(self.event_hub.enhanced_flush(5000));
+                // All node threads have completed and no more events will be
+                // published. Signal the subscriber to drain the remaining
+                // buffered events + run on_shutdown, then wait for it to
+                // actually finish. `notify_one` stores a permit if the
+                // subscriber is mid-event (avoids the lost-wakeup that the old
+                // fixed sleeps were papering over). The await is deterministic;
+                // the 5s timeout is only a safety net against a stuck handler.
+                tracing::info!("Workflow complete, draining final events...");
+                self.notify.notify_one();
+                if let Some(handle) = self.subscriber_handle.take() {
+                    let _ = runtime
+                        .block_on(async { tokio::time::timeout(Duration::from_secs(5), handle).await });
+                }
 
                 // Cleanup executor cache directory (includes channel buffers and processor temp files)
                 cleanup_executor_cache(self.executor_id);
@@ -299,7 +309,7 @@ impl DagExecutorJoinHandle {
     }
 
     pub fn notify(&self) {
-        self.notify.notify_waiters();
+        self.notify.notify_one();
     }
 }
 

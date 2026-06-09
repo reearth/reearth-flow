@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
 use reearth_flow_common::future::SharedFuture;
 use reearth_flow_eval_expr::engine::Engine;
@@ -78,7 +78,9 @@ pub fn run_dag_executor(
     let result = join_handle
         .join((*runtime).clone())
         .map_err(Error::ExecutionError);
-    std::thread::sleep(Duration::from_millis(1000));
+    // `join()` already signalled the event subscriber and waited for it to
+    // drain + shut down deterministically, so no fixed propagation sleep is
+    // needed here. The notify is a harmless no-op safety signal.
     join_handle.notify();
     result
 }
