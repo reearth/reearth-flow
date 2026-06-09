@@ -33,19 +33,10 @@ use super::receiver_loop::init_select;
 use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
-// Backoff for the busy-wait loop that polls thread_counter waiting for
-// in-flight processor work to drain. NOT a propagation delay — the original
-// post-status sleeps with the same name have been removed; this remaining
-// use is purely a CPU-throttle on the polling loop. 5ms gives 200 polls/sec
-// at negligible CPU cost. The historical env var name is preserved for
-// backward compatibility.
-static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(5))
-});
+// CPU-throttle for the busy-wait loop that polls `thread_counter` waiting
+// for in-flight processor work to drain. 5ms gives ~200 polls/sec at
+// negligible CPU cost. Not related to node-status propagation.
+const POLL_BACKOFF: Duration = Duration::from_millis(5);
 
 static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_SLOW_ACTION_THRESHOLD")
@@ -336,7 +327,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
                     return terminate_result;
                 }
-                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+                std::thread::sleep(POLL_BACKOFF);
                 continue;
             }
             let index = sel.ready();
