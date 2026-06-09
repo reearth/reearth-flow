@@ -54,12 +54,10 @@ cargo test --workspace --all-targets --all-features --exclude plateau-gis-qualit
 [tasks.test-qc]
 script = ['''
 #!/usr/bin/env bash -eux
-# EXPERIMENT: --test-threads=8 to probe whether workflow-tests is CPU-bound
-# at the default of N_CPUS (=4 on the CI runner) or whether spare CPU
-# capacity exists. If wall-clock drops materially with 8 threads on a
-# 4-vCPU runner, tests are I/O-bound and per-runner thread count is the
-# cheaper lever than sharding. If wall-clock is unchanged or worse, tests
-# are CPU-bound at 4 threads and sharding has a real case.
+# `--test-threads=8` because workflow-tests is I/O-bound at 4 threads on
+# the CI runner. Doubling threads on a 4-vCPU runner cut test-qc wall-
+# clock from 12m26s to 6m22s with no shard complexity. Override locally
+# (e.g. via `cargo make test-qc -- --test-threads=N`) if needed.
 cargo test -p workflow-tests -- --test-threads=8 ${@:-}
 ''']
 
