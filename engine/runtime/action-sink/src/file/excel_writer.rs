@@ -103,7 +103,7 @@ impl Sink for ExcelWriter {
         let path = self
             .output
             .eval_string(&ctx.feature, ctx.expr_engine.vars())
-            .map_err(|e| SinkError::ExcelWriterFactory(format!("{e:?}")))?;
+            .map_err(|e| SinkError::ExcelWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
         let node_ctx: NodeContext = ctx.into();
         use std::collections::hash_map::Entry;
@@ -117,7 +117,7 @@ impl Sink for ExcelWriter {
                     &path,
                     &node_ctx.storage_resolver,
                 )
-                .map_err(|e| SinkError::ExcelWriterFactory(e.to_string()))?;
+                .map_err(|e| SinkError::ExcelWriter(e.to_string()))?;
                 e.insert((out, vec![feature]));
             }
         }

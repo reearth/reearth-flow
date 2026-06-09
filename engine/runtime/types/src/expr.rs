@@ -344,6 +344,52 @@ mod tests {
     }
 
     #[test]
+    fn test_eval_string_env_only() {
+        let mut env_vars = serde_json::Map::new();
+        env_vars.insert(
+            "key".to_string(),
+            serde_json::Value::String("val".to_string()),
+        );
+        let env_vars = Arc::new(env_vars);
+
+        let literal = Code {
+            ty: CodeType::String,
+            value: "hello".to_string(),
+        };
+        assert_eq!(
+            literal
+                .compile()
+                .unwrap()
+                .eval_string_env_only(Arc::clone(&env_vars))
+                .unwrap(),
+            "hello"
+        );
+
+        let expr = Code {
+            ty: CodeType::FlowExpr,
+            value: r#"env["key"]"#.to_string(),
+        };
+        assert_eq!(
+            expr.compile()
+                .unwrap()
+                .eval_string_env_only(Arc::clone(&env_vars))
+                .unwrap(),
+            "val"
+        );
+
+        // attributes are not in scope
+        let no_attr = Code {
+            ty: CodeType::FlowExpr,
+            value: "attributes".to_string(),
+        };
+        assert!(no_attr
+            .compile()
+            .unwrap()
+            .eval_string_env_only(Arc::clone(&env_vars))
+            .is_err());
+    }
+
+    #[test]
     fn test_attributes_in_operator() {
         let feature = Feature::from(indexmap! {
             "foo".to_string() => AttributeValue::String("bar".to_string()),

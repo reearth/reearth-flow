@@ -80,6 +80,16 @@ mod tests {
     use crate::core::value::Value;
 
     #[test]
+    fn test_append() {
+        let arr = Value::from(vec![1i64, 2i64]);
+        assert_eval(
+            "arr.append(3); arr",
+            &[("arr", arr)],
+            Value::from(vec![1i64, 2i64, 3i64]),
+        );
+    }
+
+    #[test]
     fn test_len() {
         let arr = Value::from(vec![1i64, 2i64, 3i64]);
         assert_eval("len(arr)", &[("arr", arr)], Value::from(3i64));
