@@ -10,7 +10,6 @@ with:
   schemas:
   targetPackages:
     - bldg
-  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
@@ -144,7 +143,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'Url(attributes["path"]).name.split("_")[0]'
+                value: 'attributes["path"].split("/")[-1].split("_")[0]'
             - attribute: feature_type
               method: create
               value:
@@ -510,18 +509,18 @@ graphs:
             type: flowExpr
             value: |
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / "bldg_lod1"
+                "bldg_lod1"
               } else {
-                Url(env["workerArtifactPath"]) / ("bldg_lod1_" + attributes["city_code"])
+                "bldg_lod1_" + attributes["city_code"]
               }
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_lod1.zip")
+                city_gml + "_bldg_3dtiles_lod1.zip"
               } else {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod1.zip")
+                city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod1.zip"
               }
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
@@ -537,18 +536,18 @@ graphs:
             type: flowExpr
             value: |
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / "bldg_lod2"
+                "bldg_lod2"
               } else {
-                Url(env["workerArtifactPath"]) / ("bldg_lod2_" + attributes["city_code"])
+                "bldg_lod2_" + attributes["city_code"]
               }
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_lod2.zip")
+                city_gml + "_bldg_3dtiles_lod2.zip"
               } else {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod2.zip")
+                city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod2.zip"
               }
 
       - id: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
@@ -564,18 +563,18 @@ graphs:
             type: flowExpr
             value: |
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / "bldg_lod2_no_texture"
+                "bldg_lod2_no_texture"
               } else {
-                Url(env["workerArtifactPath"]) / ("bldg_lod2_no_texture_" + attributes["city_code"])
+                "bldg_lod2_no_texture_" + attributes["city_code"]
               }
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_lod2_no_texture.zip")
+                city_gml + "_bldg_3dtiles_lod2_no_texture.zip"
               } else {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod2_no_texture.zip")
+                city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod2_no_texture.zip"
               }
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
@@ -591,18 +590,18 @@ graphs:
             type: flowExpr
             value: |
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / "bldg_lod3"
+                "bldg_lod3"
               } else {
-                Url(env["workerArtifactPath"]) / ("bldg_lod3_" + attributes["city_code"])
+                "bldg_lod3_" + attributes["city_code"]
               }
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_lod3.zip")
+                city_gml + "_bldg_3dtiles_lod3.zip"
               } else {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod3.zip")
+                city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod3.zip"
               }
 
       - id: 990ff798-168a-496e-a20a-b428de6a9ec0
@@ -618,18 +617,18 @@ graphs:
             type: flowExpr
             value: |
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / "bldg_lod3_no_texture"
+                "bldg_lod3_no_texture"
               } else {
-                Url(env["workerArtifactPath"]) / ("bldg_lod3_no_texture_" + attributes["city_code"])
+                "bldg_lod3_no_texture_" + attributes["city_code"]
               }
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_lod3_no_texture.zip")
+                city_gml + "_bldg_3dtiles_lod3_no_texture.zip"
               } else {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod3_no_texture.zip")
+                city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod3_no_texture.zip"
               }
 
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
@@ -645,18 +644,18 @@ graphs:
             type: flowExpr
             value: |
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / "bldg_lod4"
+                "bldg_lod4"
               } else {
-                Url(env["workerArtifactPath"]) / ("bldg_lod4_" + attributes["city_code"])
+                "bldg_lod4_" + attributes["city_code"]
               }
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_lod4.zip")
+                city_gml + "_bldg_3dtiles_lod4.zip"
               } else {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod4.zip")
+                city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod4.zip"
               }
 
       - id: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
@@ -672,18 +671,18 @@ graphs:
             type: flowExpr
             value: |
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / "bldg_lod4_no_texture"
+                "bldg_lod4_no_texture"
               } else {
-                Url(env["workerArtifactPath"]) / ("bldg_lod4_no_texture_" + attributes["city_code"])
+                "bldg_lod4_no_texture_" + attributes["city_code"]
               }
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               if attributes["baseCityCode"] == attributes["city_code"] {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_lod4_no_texture.zip")
+                city_gml + "_bldg_3dtiles_lod4_no_texture.zip"
               } else {
-                Url(env["workerArtifactPath"]) / (city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod4_no_texture.zip")
+                city_gml + "_bldg_3dtiles_" + attributes["city_code"] + "_" + attributes["cityNameEn"] + "_lod4_no_texture.zip"
               }
 
     edges:

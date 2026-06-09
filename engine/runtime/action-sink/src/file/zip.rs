@@ -119,7 +119,7 @@ impl Sink for ZipFileWriter {
         let path = scope
             .eval::<String>(self.output.as_ref())
             .unwrap_or_else(|_| self.output.as_ref().to_string());
-        let out = crate::SinkOutput::from_path(&ctx, &path)
+        let out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
             .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
         dir::move_files_with_structure(&temp_dir_path, &self.buffer)?;

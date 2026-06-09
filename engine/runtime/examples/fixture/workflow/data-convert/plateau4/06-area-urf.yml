@@ -11,7 +11,6 @@ with:
   targetPackages:
   - urf
   - area
-  workerArtifactPath: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -166,7 +165,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: Url(attributes["path"]).name.split("_")[0]
+          value: attributes["path"].split("/")[-1].split("_")[0]
       - attribute: gml_id
         method: create
         value:
@@ -361,7 +360,7 @@ graphs:
     action: JsonWriter
     with:
       output: |
-        file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+        "dictionary.json"
       converter: |
         #{
           urf: env.get("__features").map(|f| #{
@@ -397,15 +396,15 @@ graphs:
         value: |
           ft = attributes["feature_type"].split(":")[1];
           dir = attributes["__package"] + "_" + ft;
-          Url(env["workerArtifactPath"]) / dir
+          dir
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip");
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
           ft = attributes["feature_type"].split(":")[1];
           stem = city_gml.remove_suffix("_" + ft);
           filename = stem + "_" + ft + "_mvt_lod" + attributes["__lod"] + ".zip";
-          Url(env["workerArtifactPath"]) / filename
+          filename
   edges:
   - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
     from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae

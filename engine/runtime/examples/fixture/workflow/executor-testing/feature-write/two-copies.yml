@@ -2,7 +2,6 @@ id: 30000000-0000-0000-0000-000000000001
 name: "feature-write-two-copies"
 entryGraphId: 30000000-0000-0000-0000-000000000010
 with:
-  workerArtifactPath:
 
 graphs:
   - id: 30000000-0000-0000-0000-000000000020
@@ -92,7 +91,7 @@ graphs:
         action: CsvWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "output.csv")
+            "output.csv"
           format: csv
 
     edges:

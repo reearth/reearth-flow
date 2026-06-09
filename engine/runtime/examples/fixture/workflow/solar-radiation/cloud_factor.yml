@@ -38,34 +38,41 @@ nodes:
       mappers:
         # Parse year from 年月日 (format "YYYY/MM/DD")
         - attribute: year
-          expr: |
-            env.get("__value")["年月日"].split("/")[0]
+          expr:
+            type: flowExpr
+            value: attributes["年月日"].split("/")[0]
         # Parse month from 年月日
         - attribute: month
-          expr: |
-            let month = env.get("__value")["年月日"].split("/")[1];
-            if month[0] == "0" { month[1..] } else { month }
+          expr:
+            type: flowExpr
+            value: |
+              month = attributes["年月日"].split("/")[1];
+              if month[0] == "0" { month[1:] } else { month }
         # Parse day from 年月日
         - attribute: day
-          expr: |
-            let day = env.get("__value")["年月日"].split("/")[2];
-            if day[0] == "0" { day[1..] } else { day }
+          expr:
+            type: flowExpr
+            value: |
+              day = attributes["年月日"].split("/")[2];
+              if day[0] == "0" { day[1:] } else { day }
         # Calculate dayTime (sunset - sunrise in hours)
         # 出 (sunrise) format: "HH:MM"
         # 入り (sunset) format: "HH:MM"
         - attribute: dayTime
-          expr: |
-            let sunrise_str = env.get("__value")["出"];
-            let sunset_str = env.get("__value")["入り"];
-            let sunrise_parts = sunrise_str.split(":");
-            let sunset_parts = sunset_str.split(":");
-            let sunrise_hour = if sunrise_parts.len() > 0 { parse_float(sunrise_parts[0]) } else { 0.0 };
-            let sunrise_min = if sunrise_parts.len() > 1 { parse_float(sunrise_parts[1]) } else { 0.0 };
-            let sunset_hour = if sunset_parts.len() > 0 { parse_float(sunset_parts[0]) } else { 0.0 };
-            let sunset_min = if sunset_parts.len() > 1 { parse_float(sunset_parts[1]) } else { 0.0 };
-            let sunrise_hours = sunrise_hour + sunrise_min / 60.0;
-            let sunset_hours = sunset_hour + sunset_min / 60.0;
-            sunset_hours - sunrise_hours
+          expr:
+            type: flowExpr
+            value: |
+              sunrise_str = attributes["出"];
+              sunset_str = attributes["入り"];
+              sunrise_parts = sunrise_str.split(":");
+              sunset_parts = sunset_str.split(":");
+              sunrise_hour = if len(sunrise_parts) > 0 { float(sunrise_parts[0]) } else { 0.0 };
+              sunrise_min = if len(sunrise_parts) > 1 { float(sunrise_parts[1]) } else { 0.0 };
+              sunset_hour = if len(sunset_parts) > 0 { float(sunset_parts[0]) } else { 0.0 };
+              sunset_min = if len(sunset_parts) > 1 { float(sunset_parts[1]) } else { 0.0 };
+              sunrise_hours = sunrise_hour + sunrise_min / 60.0;
+              sunset_hours = sunset_hour + sunset_min / 60.0;
+              sunset_hours - sunrise_hours
 
   # ========================================
   # Node 3: Aggregate DayTime by Year/Month
@@ -109,16 +116,13 @@ nodes:
       mappers:
         # Copy 年 to year for merge compatibility
         - attribute: year
-          expr: |
-            env.get("__value")["年"]
+          valueAttribute: 年
         # Copy 月 to month for merge compatibility
         - attribute: month
-          expr: |
-            env.get("__value")["月"]
+          valueAttribute: 月
         # Extract 日照時間(時間) - actual sunshine hours
         - attribute: 日照時間(時間)
-          expr: |
-            env.get("__value")["日照時間(時間)"]
+          valueAttribute: 日照時間(時間)
 
   # ========================================
   # Node 6: Merge Daily Aggregates with Monthly Weather

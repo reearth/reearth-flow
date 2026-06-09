@@ -14,7 +14,6 @@ with:
   prcs:
   startTime:
   endTime:
-  workerArtifactPath:
   outputReflection: false
   considerDEM: false
   dailySunDataPath:
@@ -209,9 +208,9 @@ graphs:
         with:
           mappers:
           - attribute: featureType
-            expr: env.get("__value").featureType
+            valueAttribute: featureType
           - attribute: gmlId
-            expr: env.get("__value").gmlId
+            valueAttribute: gmlId
 
       - id: 00000001-0000-0000-0000-000000000004
         name: GeometryPartExtractor
@@ -398,59 +397,59 @@ graphs:
         with:
           mappers:
             - attribute: gmlId
-              expr: env.get("__value").gmlId
+              valueAttribute: gmlId
             - attribute: surfaceId
-              expr: env.get("__value").surfaceId
+              valueAttribute: surfaceId
             - attribute: cellId
-              expr: env.get("__value").cellId
+              valueAttribute: cellId
             - attribute: year
-              expr: env.get("__value").year
+              valueAttribute: year
             - attribute: month
-              expr: env.get("__value").month
+              valueAttribute: month
             - attribute: slope
-              expr: env.get("__value").slope
+              valueAttribute: slope
             - attribute: solarAltitude
-              expr: env.get("__value").solarAltitude
+              valueAttribute: solarAltitude
             - attribute: solarTime
-              expr: env.get("__value").solarTime
+              valueAttribute: solarTime
             - attribute: cellArea
-              expr: env.get("__value").cellArea
+              valueAttribute: cellArea
             - attribute: cosTheta
-              expr: env.get("__value").cosTheta
+              valueAttribute: cosTheta
             - attribute: groundReflectivity
-              expr: env.get("__value").groundReflectivity
+              valueAttribute: groundReflectivity
             - attribute: rayOriginX
-              expr: env.get("__value").rayOriginX
+              valueAttribute: rayOriginX
             - attribute: rayOriginY
-              expr: env.get("__value").rayOriginY
+              valueAttribute: rayOriginY
             - attribute: rayOriginZ
-              expr: env.get("__value").rayOriginZ
+              valueAttribute: rayOriginZ
             - attribute: solarDirectionX
-              expr: env.get("__value").solarDirectionX
+              valueAttribute: solarDirectionX
             - attribute: solarDirectionY
-              expr: env.get("__value").solarDirectionY
+              valueAttribute: solarDirectionY
             - attribute: solarDirectionZ
-              expr: env.get("__value").solarDirectionZ
+              valueAttribute: solarDirectionZ
             - attribute: normalX
-              expr: env.get("__value").normalX
+              valueAttribute: normalX
             - attribute: normalY
-              expr: env.get("__value").normalY
+              valueAttribute: normalY
             - attribute: normalZ
-              expr: env.get("__value").normalZ
+              valueAttribute: normalZ
             - attribute: featureType
-              expr: env.get("__value").featureType
+              valueAttribute: featureType
             - attribute: azimuth
-              expr: env.get("__value").azimuth
+              valueAttribute: azimuth
             - attribute: dirMatch1
-              expr: env.get("__value").dirMatch1
+              valueAttribute: dirMatch1
             - attribute: dirMatch2
-              expr: env.get("__value").dirMatch2
+              valueAttribute: dirMatch2
             - attribute: dirMatch3
-              expr: env.get("__value").dirMatch3
+              valueAttribute: dirMatch3
             - attribute: _grid_col
-              expr: env.get("__value")._grid_col
+              valueAttribute: _grid_col
             - attribute: _grid_row
-              expr: env.get("__value")._grid_row
+              valueAttribute: _grid_row
 
       # ========================================
       # Section 5: Shadow Detection
@@ -510,14 +509,18 @@ graphs:
         with:
           mappers:
             - attribute: month
-              expr: |
-                parse_int(env.get("__value")["column2"])
+              expr:
+                type: flowExpr
+                value: int(attributes["column2"])
             - attribute: date
-              expr: |
-                parse_int(env.get("__value")["column3"])
+              expr:
+                type: flowExpr
+                value: int(attributes["column3"])
             - attribute: groundReflectivity
-              expr: |
-                if parse_float(env.get("__value")["column29"]) < 10.0 { 0.1 } else { 0.7 }
+              expr:
+                type: flowExpr
+                value: |
+                  if float(attributes["column29"]) < 10.0 { 0.1 } else { 0.7 }
 
       - id: 00000003-0000-0000-0000-000000000004
         name: SnowFactorMerger
@@ -899,7 +902,7 @@ graphs:
         with:
           imageWidth: 2048
           saveTo: |
-            file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
+            "roof_radiation_texture.png"
           onOverlap:
             max: |
               env.get("__value")["maxZ"]
@@ -966,11 +969,11 @@ graphs:
           attachTexture: true
           dracoCompression: false
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "textured_roof_3dtiles"'
+            type: string
+            value: textured_roof_3dtiles
           compressOutput:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "textured_roof_3dtiles.zip"'
+            type: string
+            value: textured_roof_3dtiles.zip
 
       # ========================================
       # Section 7: Reflection Computation
@@ -1052,7 +1055,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "反射シミュレーション結果.csv")
+            "反射シミュレーション結果.csv"
 
       # ========================================
       # Area Computation Branch (for CSV per-m2 values)
@@ -1152,21 +1155,25 @@ graphs:
         with:
           mappers:
             - attribute: 建物ID
-              expr: env.get("__value")["gmlId"]
+              valueAttribute: gmlId
             - attribute: 太陽日射量(kWh)
-              expr: env.get("__value")["totalSolarRadiation"]
+              valueAttribute: totalSolarRadiation
             - attribute: 太陽日射量(kWh/m2)
-              expr: |
-                let area = env.get("__value")["totalRoofArea"] ?? 0.0;
-                if area > 0.0 { env.get("__value")["totalSolarRadiation"] / area } else { 0.0 }
+              expr:
+                type: flowExpr
+                value: |
+                  area = attributes.get("totalRoofArea", 0.0);
+                  if area > 0.0 { attributes["totalSolarRadiation"] / area } else { 0.0 }
             - attribute: 太陽発電量(kWh)
-              expr: env.get("__value")["totalSolarPower"]
+              valueAttribute: totalSolarPower
             - attribute: 太陽発電量(kWh/m2)
-              expr: |
-                let area = env.get("__value")["totalRoofArea"] ?? 0.0;
-                if area > 0.0 { env.get("__value")["totalSolarPower"] / area } else { 0.0 }
+              expr:
+                type: flowExpr
+                value: |
+                  area = attributes.get("totalRoofArea", 0.0);
+                  if area > 0.0 { attributes["totalSolarPower"] / area } else { 0.0 }
             - attribute: 受光面積(m2)
-              expr: env.get("__value")["totalRoofArea"] ?? 0.0
+              valueAttribute: totalRoofArea
 
       # Write building potential CSV
       - id: 00000001-0000-0000-0000-0000000000c1
@@ -1176,7 +1183,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "建物ポテンシャル推計結果.csv")
+            "建物ポテンシャル推計結果.csv"
 
       # ========================================
       # CSV 4: Per-Surface Radiation
@@ -1190,19 +1197,21 @@ graphs:
         with:
           mappers:
             - attribute: 建物ID
-              expr: env.get("__value")["gmlId"]
+              valueAttribute: gmlId
             - attribute: 屋根ID
-              expr: env.get("__value")["surfaceId"]
+              valueAttribute: surfaceId
             - attribute: 単位面積あたりの日射量(kWh/m2)
-              expr: |
-                let area = env.get("__value")["totalSurfaceArea"] ?? 0.0;
-                if area > 0.0 { env.get("__value")["totalSolarRadiation"] / area } else { 0.0 }
+              expr:
+                type: flowExpr
+                value: |
+                  area = attributes.get("totalSurfaceArea", 0.0);
+                  if area > 0.0 { attributes["totalSolarRadiation"] / area } else { 0.0 }
             - attribute: 対象面全体の日射量(kWh)
-              expr: env.get("__value")["totalSolarRadiation"]
+              valueAttribute: totalSolarRadiation
             - attribute: 太陽発電量(kWh)
-              expr: env.get("__value")["totalSolarPower"]
+              valueAttribute: totalSolarPower
             - attribute: 受光面積(m2)
-              expr: env.get("__value")["totalSurfaceArea"] ?? 0.0
+              valueAttribute: totalSurfaceArea
 
       # Write surface radiation CSV
       - id: 00000001-0000-0000-0000-0000000000c2
@@ -1212,7 +1221,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "面別日射量.csv")
+            "面別日射量.csv"
 
       # ========================================
       # CSV 5: Reflection — Map to Japanese column names
@@ -1225,25 +1234,27 @@ graphs:
         with:
           mappers:
             - attribute: 建物/土地ID
-              expr: env.get("__value")["gmlId"] ?? ""
+              valueAttribute: gmlId
             - attribute: 屋根ID
-              expr: env.get("__value")["surfaceId"] ?? ""
+              valueAttribute: surfaceId
             - attribute: 日時
-              expr: env.get("__value")["solarTime"] ?? ""
+              valueAttribute: solarTime
             - attribute: 反射元_座標.X(m)
-              expr: env.get("__value")["rayOriginX"]
+              valueAttribute: rayOriginX
             - attribute: 反射元_座標.Y(m)
-              expr: env.get("__value")["rayOriginY"]
+              valueAttribute: rayOriginY
             - attribute: 反射元_座標.Z(m)
-              expr: env.get("__value")["rayOriginZ"]
+              valueAttribute: rayOriginZ
             - attribute: 反射先_座標.X(m)
-              expr: env.get("__value")["reflectHitX"]
+              valueAttribute: reflectHitX
             - attribute: 反射先_座標.Y(m)
-              expr: env.get("__value")["reflectHitY"]
+              valueAttribute: reflectHitY
             - attribute: 反射先_座標.Z(m)
-              expr: env.get("__value")["reflectHitZ"]
+              valueAttribute: reflectHitZ
             - attribute: 反射先
-              expr: env.get("__value")["geomId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("geomId", "")
 
       # ========================================
       # CSV 6: Area Aggregation Results
@@ -1278,13 +1289,15 @@ graphs:
         with:
           mappers:
             - attribute: 対象範囲内建物数
-              expr: env.get("__value")["buildingCount"]
+              valueAttribute: buildingCount
             - attribute: 太陽放射量推計(kWh/m2)
-              expr: |
-                let area = env.get("__value")["areaTotalRoofArea"] ?? 0.0;
-                if area > 0.0 { env.get("__value")["areaTotalSolarRadiation"] / area } else { 0.0 }
+              expr:
+                type: flowExpr
+                value: |
+                  area = attributes.get("areaTotalRoofArea", 0.0);
+                  if area > 0.0 { attributes["areaTotalSolarRadiation"] / area } else { 0.0 }
             - attribute: 太陽発電量推計(kWh)
-              expr: env.get("__value")["areaTotalSolarPower"]
+              valueAttribute: areaTotalSolarPower
 
       # Write area aggregation CSV
       - id: 00000001-0000-0000-0000-0000000000c4
@@ -1294,7 +1307,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "集計結果.csv")
+            "集計結果.csv"
 
       # ========================================
       # Per-LOD 3D Tiles Output Pipelines (LOD1, LOD3, LOD4)
@@ -1348,11 +1361,11 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod1"'
+            type: string
+            value: bldg_lod1
           compressOutput:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod1.zip"'
+            type: string
+            value: bldg_lod1.zip
 
       # --- LOD3 Pipeline ---
       - id: 00000001-0000-0000-0000-0000000000a4
@@ -1402,11 +1415,11 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod3"'
+            type: string
+            value: bldg_lod3
           compressOutput:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod3.zip"'
+            type: string
+            value: bldg_lod3.zip
 
       # --- LOD4 Pipeline ---
       - id: 00000001-0000-0000-0000-0000000000a8
@@ -1456,11 +1469,11 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod4"'
+            type: string
+            value: bldg_lod4
           compressOutput:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "bldg_lod4.zip"'
+            type: string
+            value: bldg_lod4.zip
 
       # ========================================
       # CityGML Output Pipeline
@@ -1472,7 +1485,7 @@ graphs:
         action: PLATEAU4.SolarCityGmlAttributeInserter
         with:
           outputDir: |
-            file::join_path(env.get("workerArtifactPath"), "citygml")
+            "citygml"
           pathAttribute: path
           gmlIdAttribute: gmlId
           measurements:
@@ -1483,7 +1496,7 @@ graphs:
               attribute: totalSolarPower
               uom: "kWh"
           textureImagePath: |
-            file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
+            "roof_radiation_texture.png"
           sourceEpsg: |
             env.get("prcs")
 
@@ -1493,7 +1506,7 @@ graphs:
         action: ZipFileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "citygml_bldg.zip")
+            "citygml_bldg.zip"
 
       # ========================================
       # Section 2b: Building Attributes Preservation Branch
@@ -1519,40 +1532,55 @@ graphs:
         with:
           mappers:
             - attribute: gmlId
-              expr: env.get("__value")["gmlId"]
+              valueAttribute: gmlId
             - attribute: bldgHeight
-              expr: |
-                let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-                cga["bldg:measuredHeight"] ?? -1.0
+              expr:
+                type: flowExpr
+                value: |
+                  cga = attributes.get("cityGmlAttributes", {});
+                  cga.get("bldg:measuredHeight", -1.0)
             - attribute: structureType
-              expr: |
-                let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-                let detail = cga["uro:BuildingDetailAttribute"] ?? [];
-                if detail.len() > 0 { detail[0]["uro:buildingStructureType_code"] ?? -1 } else { -1 }
+              expr:
+                type: flowExpr
+                value: |
+                  cga = attributes.get("cityGmlAttributes", {});
+                  detail = cga.get("uro:BuildingDetailAttribute", []);
+                  if len(detail) > 0 { detail[0].get("uro:buildingStructureType_code", -1) } else { -1 }
             - attribute: floodDepth
-              expr: |
-                let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-                let max_d = 0.0;
-                for list in [cga["uro:RiverFloodingRiskAttribute"] ?? [], cga["uro:InlandFloodingRiskAttribute"] ?? [], cga["uro:HighTideRiskAttribute"] ?? []] {
-                  for item in list { let d = item["uro:depth"] ?? 0.0; if d > max_d { max_d = d; } }
-                }
-                max_d
+              expr:
+                type: flowExpr
+                value: |
+                  cga = attributes.get("cityGmlAttributes", {});
+                  max_d = 0.0;
+                  for item in cga.get("uro:RiverFloodingRiskAttribute", []) + cga.get("uro:InlandFloodingRiskAttribute", []) + cga.get("uro:HighTideRiskAttribute", []) {
+                    d = item.get("uro:depth", 0.0);
+                    if d > max_d { max_d = d }
+                  }
+                  max_d
             - attribute: tsunamiHeight
-              expr: |
-                let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-                let list = cga["uro:TsunamiRiskAttribute"] ?? [];
-                let max_d = 0.0;
-                for item in list { let d = item["uro:depth"] ?? 0.0; if d > max_d { max_d = d; } }
-                max_d
+              expr:
+                type: flowExpr
+                value: |
+                  cga = attributes.get("cityGmlAttributes", {});
+                  list = cga.get("uro:TsunamiRiskAttribute", []);
+                  max_d = 0.0;
+                  for item in list {
+                    d = item.get("uro:depth", 0.0);
+                    if d > max_d { max_d = d }
+                  }
+                  max_d
             - attribute: landslideFlag
-              expr: |
-                let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-                let v = cga["uro:LandSlideRiskAttribute"] ?? ();
-                v != ()
+              expr:
+                type: flowExpr
+                value: |
+                  cga = attributes.get("cityGmlAttributes", {});
+                  "uro:LandSlideRiskAttribute" in cga
             - attribute: floorCount
-              expr: |
-                let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-                cga["bldg:storeysAboveGround"] ?? -1
+              expr:
+                type: flowExpr
+                value: |
+                  cga = attributes.get("cityGmlAttributes", {});
+                  cga.get("bldg:storeysAboveGround", -1)
 
       # ========================================
       # Section 2c: DEM Triangle Pipeline

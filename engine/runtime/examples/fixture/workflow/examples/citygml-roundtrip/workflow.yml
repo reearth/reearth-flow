@@ -9,7 +9,6 @@ with:
   schemasPath:
   codelists:
   schemas:
-  workerArtifactPath:
 graphs:
   - !include ../../../graphs/plateau4/folder_and_file_path_reader.yml
 
@@ -65,7 +64,7 @@ graphs:
         with:
           format: citygml
           output: |
-            "file://" + env.get("workerArtifactPath") + "/citygml-roundtrip-output.gml"
+            "citygml-roundtrip-output.gml"
           prettyPrint: true
 
       - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
@@ -106,8 +105,8 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "citygml-roundtrip-3dtiles"'
+            type: string
+            value: citygml-roundtrip-3dtiles
 
       - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
         name: VerticalReprojectorOriginal
@@ -125,8 +124,8 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output:
-            type: flowExpr
-            value: 'Url(env["workerArtifactPath"]) / "citygml-original-3dtiles"'
+            type: string
+            value: citygml-original-3dtiles
 
     edges:
       - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e

@@ -59,28 +59,6 @@ Each action defines input/output ports, JSON schema for validation, and paramete
 
 Use the `add-action` skill for a full step-by-step guide including i18n workflow.
 
-### Sandbox & sink writes
-
-Every executor context carries a `sandbox_root: Uri` field that bounds where
-sink actions are allowed to write. The chokepoint is
-`reearth_flow_action_sink::SinkOutput::from_path`, which validates the
-destination URI against `ctx.sandbox_root` via `sandbox::ensure_under` before
-acquiring a storage handle.
-
-**All sink-side writes MUST go through `SinkOutput`.** Calling
-`Storage::put_sync` (or any other raw I/O like `std::fs::write`) from a sink
-or sink-adjacent code path skips the check and reintroduces unbounded
-writes. If a new sink format or sidecar write is needed, route it through
-`SinkOutput::from_path` / `SinkOutput::join` / `SinkOutput::write`. Reviewers
-should flag any direct `put_sync` / `std::fs` calls in sink code as
-regressions.
-
-Production entrypoints (`Runner::run_with_sandbox_root`,
-`AsyncRunner::run_with_sandbox_root`) reject the `file:///` sentinel so a
-misconfigured `workerArtifactPath` cannot silently disable the sandbox.
-`Runner::run` (legacy / tests) intentionally uses that sentinel and bypasses
-the guard.
-
 ## Key Constraints
 
 - Workflow variables use `FLOW_VAR_*` prefix for environment injection

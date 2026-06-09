@@ -716,8 +716,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           },
           "Mapper": {
             "type": "object",
@@ -740,7 +759,7 @@
                 "title": "Expression to evaluate",
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   },
                   {
                     "type": "null"
@@ -751,7 +770,7 @@
                 "title": "Expression to evaluate multiple attributes",
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   },
                   {
                     "type": "null"
@@ -9072,7 +9091,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "UDXFolderExtractor Parameters",
-        "description": "Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.",
+        "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
         "type": "object",
         "required": [
           "cityGmlPath"
@@ -9183,6 +9202,107 @@
       ],
       "outputPorts": [
         "unshared"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.DomainOfDefinitionValidator",
+      "type": "processor",
+      "description": "Validates domain of definition of CityGML features",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DomainOfDefinitionValidator Parameters",
+        "description": "Configuration for validating domain of definition of CityGML features.",
+        "type": "object",
+        "properties": {
+          "codelistsPath": {
+            "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected",
+        "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.UDXFolderExtractor",
+      "type": "processor",
+      "description": "Extracts UDX folders from cityGML path",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UDXFolderExtractor Parameters",
+        "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
+        "type": "object",
+        "required": [
+          "cityGmlPath"
+        ],
+        "properties": {
+          "cityGmlPath": {
+            "$ref": "#/definitions/Expr"
+          },
+          "codelistsPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemasPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"
