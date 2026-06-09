@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
-use super::builtins::{builtin_math, builtin_regex, builtin_url};
+use super::builtins::{builtin_itertools, builtin_math, builtin_regex, builtin_url};
 use super::env::{new_frame, Env};
 use super::error::{eval_error, Error, Result, POS_UNSET};
 use super::value::{format_float, ClosureValue, NativeFn, Value};
@@ -59,12 +59,13 @@ pub(crate) fn env_get(env: &Env, name: &str) -> Option<Value> {
 
 /// Walk the frame chain and update the first frame that owns `name`.
 /// If not found anywhere, create the binding in the innermost frame.
+/// Root frames (no parent) are the immutable builtin frame and are never written to.
 fn env_set_upward(env: &Env, name: String, val: Value) {
     let mut cursor = Rc::clone(env);
     loop {
         let parent = {
             let frame = cursor.borrow();
-            if frame.bindings.contains_key(&name) {
+            if frame.parent.is_some() && frame.bindings.contains_key(&name) {
                 drop(frame);
                 cursor.borrow_mut().bindings.insert(name, val);
                 return;
@@ -90,22 +91,28 @@ pub fn env_bind(env: &Env, name: impl Into<String>, val: Value) {
     env.borrow_mut().bindings.insert(name.into(), val);
 }
 
+thread_local! {
+    static BUILTIN_ENV: Env = {
+        let env = new_frame(None);
+        env_bind(&env, "str", Value::Fn(NativeFn::new(builtin_str)));
+        env_bind(&env, "int", Value::Fn(NativeFn::new(builtin_int)));
+        env_bind(&env, "float", Value::Fn(NativeFn::new(builtin_float)));
+        env_bind(&env, "bool", Value::Fn(NativeFn::new(builtin_bool)));
+        env_bind(&env, "list", Value::Fn(NativeFn::new(builtin_list)));
+        env_bind(&env, "map", Value::Fn(NativeFn::new(builtin_map)));
+        env_bind(&env, "Url", Value::Fn(NativeFn::new(builtin_url)));
+        env_bind(&env, "Regex", Value::Fn(NativeFn::new(builtin_regex)));
+        env_bind(&env, "math", builtin_math());
+        env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
+        env_bind(&env, "type", Value::Fn(NativeFn::new(builtin_type)));
+        env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
+        env_bind(&env, "itertools", builtin_itertools());
+        env
+    };
+}
+
 pub fn default_env() -> Env {
-    let env = new_frame(None);
-    env_bind(&env, "str", Value::Fn(NativeFn::new(builtin_str)));
-    env_bind(&env, "int", Value::Fn(NativeFn::new(builtin_int)));
-    env_bind(&env, "float", Value::Fn(NativeFn::new(builtin_float)));
-    env_bind(&env, "bool", Value::Fn(NativeFn::new(builtin_bool)));
-    env_bind(&env, "list", Value::Fn(NativeFn::new(builtin_list)));
-    env_bind(&env, "map", Value::Fn(NativeFn::new(builtin_map)));
-    env_bind(&env, "Url", Value::Fn(NativeFn::new(builtin_url)));
-    env_bind(&env, "Regex", Value::Fn(NativeFn::new(builtin_regex)));
-    env_bind(&env, "math", builtin_math());
-    env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
-    env_bind(&env, "type", Value::Fn(NativeFn::new(builtin_type)));
-    env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
-    env_bind(&env, "sorted", Value::Fn(NativeFn::new(builtin_sorted)));
-    env
+    BUILTIN_ENV.with(|base| new_frame(Some(Rc::clone(base))))
 }
 
 pub fn eval(expr: &Expr, env: &Env) -> Result<Value> {
@@ -973,12 +980,12 @@ fn eval_slice(
     }
 }
 
-enum Numeric {
+pub(crate) enum Numeric {
     Int(i64),
     Float(f64),
 }
 
-fn coerce_numeric(a: &Value, b: &Value) -> Result<(Numeric, Numeric)> {
+pub(crate) fn coerce_numeric(a: &Value, b: &Value) -> Result<(Numeric, Numeric)> {
     match (a, b) {
         (Value::Int(a), Value::Int(b)) => Ok((Numeric::Int(*a), Numeric::Int(*b))),
         (Value::Int(a), Value::Float(b)) => Ok((Numeric::Float(*a as f64), Numeric::Float(*b))),
@@ -1248,91 +1255,6 @@ fn builtin_len(args: &[Value]) -> Result<Value> {
             "len() not supported for {}",
             other.type_name()
         ))),
-    }
-}
-
-fn value_cmp(a: &Value, b: &Value) -> Result<std::cmp::Ordering> {
-    match coerce_numeric(a, b) {
-        Ok((Numeric::Int(x), Numeric::Int(y))) => Ok(x.cmp(&y)),
-        Ok((Numeric::Float(x), Numeric::Float(y))) => {
-            Ok(x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal))
-        }
-        Ok(_) => unreachable!(),
-        Err(_) => match (a, b) {
-            (Value::String(x), Value::String(y)) => Ok(x.as_str().cmp(y.as_str())),
-            _ => Err(eval_error(format!(
-                "cannot compare {} and {}",
-                a.type_name(),
-                b.type_name()
-            ))),
-        },
-    }
-}
-
-fn builtin_sorted(args: &[Value]) -> Result<Value> {
-    let (arr, key_fn) = match args {
-        [arr] => (arr, None),
-        [arr, key_fn] => (arr, Some(key_fn)),
-        _ => {
-            return Err(eval_error(format!(
-                "sorted() expected 1 or 2 arguments, got {}",
-                args.len()
-            )))
-        }
-    };
-    let items = match arr {
-        Value::Array(rc) => rc.borrow().clone(),
-        other => {
-            return Err(eval_error(format!(
-                "sorted() first argument must be a list, got {}",
-                other.type_name()
-            )))
-        }
-    };
-    match key_fn {
-        None => {
-            let mut out = items;
-            let mut sort_err: Option<Error> = None;
-            out.sort_by(|a, b| match value_cmp(a, b) {
-                Ok(ord) => ord,
-                Err(e) => {
-                    if sort_err.is_none() {
-                        sort_err = Some(e);
-                    }
-                    std::cmp::Ordering::Equal
-                }
-            });
-            if let Some(e) = sort_err {
-                return Err(e);
-            }
-            Ok(Value::array(out))
-        }
-        Some(key_fn) => {
-            let keyed = items
-                .into_iter()
-                .map(|item| {
-                    let key = call_value(key_fn.clone(), vec![item.clone()])?;
-                    Ok((item, key))
-                })
-                .collect::<Result<Vec<_>>>()?;
-            let mut keyed = keyed;
-            let mut sort_err: Option<Error> = None;
-            keyed.sort_by(|(_, ka), (_, kb)| match value_cmp(ka, kb) {
-                Ok(ord) => ord,
-                Err(e) => {
-                    if sort_err.is_none() {
-                        sort_err = Some(e);
-                    }
-                    std::cmp::Ordering::Equal
-                }
-            });
-            if let Some(e) = sort_err {
-                return Err(e);
-            }
-            Ok(Value::array(
-                keyed.into_iter().map(|(item, _)| item).collect(),
-            ))
-        }
     }
 }
 
@@ -2194,35 +2116,5 @@ mod tests {
         );
         assert!(try_run("fn(x, y) { x + y }(1)", &[]).is_err());
         assert!(try_run("fn() { 1 }(42)", &[]).is_err());
-    }
-
-    #[test]
-    fn test_sorted() {
-        assert_eval(
-            "sorted([3, 1, 2])",
-            &[],
-            Value::from(vec![1i64, 2i64, 3i64]),
-        );
-        assert_eval(
-            r#"sorted(["banana", "apple", "cherry"])"#,
-            &[],
-            Value::from(vec!["apple", "banana", "cherry"]),
-        );
-        assert_eval(
-            "sorted([3, 1, 2], fn(x) { -x })",
-            &[],
-            Value::from(vec![3i64, 2i64, 1i64]),
-        );
-        assert_eval(
-            r#"sorted([{"k": 3}, {"k": 1}, {"k": 2}], fn(x) { x["k"] })"#,
-            &[],
-            Value::from(vec![
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(1i64) }),
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(2i64) }),
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(3i64) }),
-            ]),
-        );
-        assert_eval("sorted([])", &[], Value::from(vec![] as Vec<i64>));
-        assert!(try_run("sorted([1, \"a\"])", &[]).is_err());
     }
 }
