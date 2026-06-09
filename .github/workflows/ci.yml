@@ -4,6 +4,14 @@ on:
     branches: [main, release/*, release]
   pull_request:
 
+# Cancel a previous in-progress run when a new commit is pushed to the same
+# pull request, so rapid pushes don't queue up duplicate runs. Pushes to
+# main/release branches are NOT cancelled — every released commit must be
+# fully validated.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
   id-token: write
