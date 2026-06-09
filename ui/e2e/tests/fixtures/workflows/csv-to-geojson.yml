@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#   CsvReader ──> AttributeManager ──> GeoJsonWriter
+#
+id: 90676d36-d8c4-43ad-993d-ae17ece1b7e6
+name: "CSV to GeoJSON"
+entryGraphId: c1b7e77b-05b3-420b-8013-a9272f8c7576
+with:
+  # Injected by the worker at runtime; points at the job's artifact sandbox.
+  workerArtifactPath: null
+  stations: |
+    name,line,daily_riders,lon,lat
+    Shinjuku,JR Yamanote,775000,139.7006,35.6896
+    Shibuya,JR Yamanote,366000,139.7016,35.6580
+    Tokyo,JR Yamanote,462000,139.7671,35.6812
+    Ikebukuro,JR Yamanote,558000,139.7109,35.7295
+    Shinagawa,JR Yamanote,377000,139.7387,35.6285
+graphs:
+  - id: c1b7e77b-05b3-420b-8013-a9272f8c7576
+    name: main
+    nodes:
+      - id: aae4eebe-21ab-48b9-a5fc-c141c0ead1a1
+        name: Read Stations CSV
+        type: action
+        action: CsvReader
+        with:
+          format: csv
+          inline: |
+            env.get("stations")
+          # lon/lat columns become Point geometry and are dropped from attributes.
+          geometry:
+            xColumn: lon
+            yColumn: lat
+            epsg: 4326
+
+      - id: a78a9422-2de7-4635-8a72-c256788055b2
+        name: Derive Attributes
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: dailyRiders
+              method: create
+              value:
+                type: flowExpr
+                value: int(attributes["daily_riders"])
+            - attribute: label
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["name"] + " Station (" + attributes["line"] + ")"
+            - attribute: daily_riders
+              method: remove
+
+      - id: ce50d0c1-1997-4238-a07c-4f221056f5e3
+        name: Write Stations GeoJSON
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "stations.geojson")
+
+    edges:
+      - id: 0b12ab32-6f2a-427c-8459-f31fcf7f0f92
+        from: aae4eebe-21ab-48b9-a5fc-c141c0ead1a1
+        to: a78a9422-2de7-4635-8a72-c256788055b2
+        fromPort: default
+        toPort: default
+      - id: 20c6bea5-89ce-40e4-93f5-8e20d65e8d0e
+        from: a78a9422-2de7-4635-8a72-c256788055b2
+        to: ce50d0c1-1997-4238-a07c-4f221056f5e3
+        fromPort: default
+        toPort: default
