@@ -26,7 +26,7 @@ type Deployment struct {
 	jobRepo           repo.Job
 	workerConfigRepo  repo.WorkerConfig
 	triggerRepo       repo.Trigger
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	batch             gateway.Batch
 	file              gateway.File
 	job               interfaces.Job
@@ -111,146 +111,133 @@ func incrementVersion(version string) string {
 	return "v1"
 }
 
-func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam) (result *deployment.Deployment, err error) {
+func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam) (*deployment.Deployment, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	if dp.Project != nil {
-		_, err = i.projectRepo.FindByID(ctx, *dp.Project)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	url, err := i.file.UploadWorkflow(ctx, dp.Workflow)
-	if err != nil {
-		return nil, err
-	}
-
-	d := deployment.New().
-		NewID().
-		Description(dp.Description).
-		Workspace(dp.Workspace).
-		WorkflowURL(url.String())
-
-	if dp.Project != nil {
-		d = d.Project(dp.Project)
-
-		head, _ := i.deploymentRepo.FindHead(ctx, dp.Workspace, dp.Project)
-
-		d = d.IsHead(true)
-		if head != nil {
-			currentHeadID := head.ID()
-			d = d.HeadID(&currentHeadID)
-			d = d.Version(incrementVersion(head.Version()))
-
-			head.SetIsHead(false)
-			if err := i.deploymentRepo.Save(ctx, head); err != nil {
-				return nil, err
-			}
-		} else {
-			d = d.Version("v1")
-		}
-	} else {
-		d = d.Version("v0")
-		d = d.IsHead(false)
-	}
-
-	dep, err := d.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := i.deploymentRepo.Save(ctx, dep); err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
-	return dep, nil
-}
-
-func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentParam) (_ *deployment.Deployment, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	d, err := i.deploymentRepo.FindByID(ctx, dp.ID)
-	if err != nil {
-		return nil, err
-	}
-	if d == nil {
-		return nil, fmt.Errorf("deployment not found: %s", dp.ID)
-	}
-
-	if dp.Workflow != nil {
-		if url, _ := url.Parse(d.WorkflowURL()); url != nil {
-			if err := i.file.RemoveWorkflow(ctx, url); err != nil {
-				return nil, err
+	var result *deployment.Deployment
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		if dp.Project != nil {
+			if _, err := i.projectRepo.FindByID(ctx, *dp.Project); err != nil {
+				return err
 			}
 		}
 
 		url, err := i.file.UploadWorkflow(ctx, dp.Workflow)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		d.SetWorkflowURL(url.String())
 
-		if d.Project() != nil {
-			currentHead, err := i.deploymentRepo.FindHead(ctx, d.Workspace(), d.Project())
-			if err != nil {
-				return nil, err
-			}
+		d := deployment.New().
+			NewID().
+			Description(dp.Description).
+			Workspace(dp.Workspace).
+			WorkflowURL(url.String())
 
-			d.SetVersion(incrementVersion(currentHead.Version()))
-			d.SetIsHead(true)
-			if currentHead != nil && currentHead.ID() != d.ID() {
-				d.SetHeadID(currentHead.ID())
-				currentHead.SetIsHead(false)
-				if err := i.deploymentRepo.Save(ctx, currentHead); err != nil {
-					return nil, err
+		if dp.Project != nil {
+			d = d.Project(dp.Project)
+
+			head, _ := i.deploymentRepo.FindHead(ctx, dp.Workspace, dp.Project)
+
+			d = d.IsHead(true)
+			if head != nil {
+				currentHeadID := head.ID()
+				d = d.HeadID(&currentHeadID)
+				d = d.Version(incrementVersion(head.Version()))
+
+				head.SetIsHead(false)
+				if err := i.deploymentRepo.Save(ctx, head); err != nil {
+					return err
 				}
+			} else {
+				d = d.Version("v1")
 			}
+		} else {
+			d = d.Version("v0")
+			d = d.IsHead(false)
 		}
-	}
 
-	if dp.Description != nil {
-		d.SetDescription(*dp.Description)
-	}
+		dep, err := d.Build()
+		if err != nil {
+			return err
+		}
 
-	if err := i.deploymentRepo.Save(ctx, d); err != nil {
+		if err := i.deploymentRepo.Save(ctx, dep); err != nil {
+			return err
+		}
+
+		result = dep
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentParam) (*deployment.Deployment, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
-	tx.Commit()
-	return d, nil
+	var result *deployment.Deployment
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		d, err := i.deploymentRepo.FindByID(ctx, dp.ID)
+		if err != nil {
+			return err
+		}
+		if d == nil {
+			return fmt.Errorf("deployment not found: %s", dp.ID)
+		}
+
+		if dp.Workflow != nil {
+			if u, _ := url.Parse(d.WorkflowURL()); u != nil {
+				if err := i.file.RemoveWorkflow(ctx, u); err != nil {
+					return err
+				}
+			}
+
+			u, err := i.file.UploadWorkflow(ctx, dp.Workflow)
+			if err != nil {
+				return err
+			}
+			d.SetWorkflowURL(u.String())
+
+			if d.Project() != nil {
+				currentHead, err := i.deploymentRepo.FindHead(ctx, d.Workspace(), d.Project())
+				if err != nil {
+					return err
+				}
+
+				d.SetVersion(incrementVersion(currentHead.Version()))
+				d.SetIsHead(true)
+				if currentHead != nil && currentHead.ID() != d.ID() {
+					d.SetHeadID(currentHead.ID())
+					currentHead.SetIsHead(false)
+					if err := i.deploymentRepo.Save(ctx, currentHead); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		if dp.Description != nil {
+			d.SetDescription(*dp.Description)
+		}
+
+		if err := i.deploymentRepo.Save(ctx, d); err != nil {
+			return err
+		}
+
+		result = d
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (err error) {
+func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) error {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return err
 	}
@@ -263,127 +250,105 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 		return interfaces.ErrDeploymentHasTriggers
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	dep, err := i.deploymentRepo.FindByID(ctx, deploymentID)
-	if err != nil {
-		return err
-	}
-	if dep == nil {
-		return fmt.Errorf("deployment not found: %s", deploymentID)
-	}
-
-	if dep.Project() != nil {
-		versions, err := i.deploymentRepo.FindVersions(ctx, dep.Workspace(), dep.Project())
+	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		dep, err := i.deploymentRepo.FindByID(ctx, deploymentID)
 		if err != nil {
 			return err
 		}
+		if dep == nil {
+			return fmt.Errorf("deployment not found: %s", deploymentID)
+		}
 
-		for _, version := range versions {
-			if url, _ := url.Parse(version.WorkflowURL()); url != nil {
-				if err := i.file.RemoveWorkflow(ctx, url); err != nil {
+		if dep.Project() != nil {
+			versions, err := i.deploymentRepo.FindVersions(ctx, dep.Workspace(), dep.Project())
+			if err != nil {
+				return err
+			}
+
+			for _, version := range versions {
+				if u, _ := url.Parse(version.WorkflowURL()); u != nil {
+					if err := i.file.RemoveWorkflow(ctx, u); err != nil {
+						return err
+					}
+				}
+
+				if err := i.deploymentRepo.Remove(ctx, version.ID()); err != nil {
+					return err
+				}
+			}
+		} else {
+			if u, _ := url.Parse(dep.WorkflowURL()); u != nil {
+				if err := i.file.RemoveWorkflow(ctx, u); err != nil {
 					return err
 				}
 			}
 
-			if err := i.deploymentRepo.Remove(ctx, version.ID()); err != nil {
-				return err
-			}
-		}
-	} else {
-		if url, _ := url.Parse(dep.WorkflowURL()); url != nil {
-			if err := i.file.RemoveWorkflow(ctx, url); err != nil {
+			if err := i.deploymentRepo.Remove(ctx, deploymentID); err != nil {
 				return err
 			}
 		}
 
-		if err := i.deploymentRepo.Remove(ctx, deploymentID); err != nil {
-			return err
-		}
-	}
-
-	tx.Commit()
-	return nil
+		return nil
+	})
 }
 
-func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeploymentParam) (_ *job.Job, err error) {
+func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeploymentParam) (*job.Job, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	var j *job.Job
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		d, err := i.deploymentRepo.FindByID(ctx, p.DeploymentID)
+		if err != nil {
+			return err
 		}
-	}()
+		if d == nil {
+			return fmt.Errorf("deployment not found: %s", p.DeploymentID)
+		}
 
-	d, err := i.deploymentRepo.FindByID(ctx, p.DeploymentID)
-	if err != nil {
+		debug := false
+		did := d.ID()
+
+		j, err = job.New().
+			NewID().
+			Debug(&debug).
+			Deployment(&did).
+			Workspace(d.Workspace()).
+			Status(job.StatusPending).
+			StartedAt(time.Now()).
+			Build()
+		if err != nil {
+			return err
+		}
+
+		metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{}) // TODO: add assets
+		if err != nil {
+			return fmt.Errorf("failed to upload metadata: %v", err)
+		}
+		if metadataURL != nil {
+			j.SetMetadataURL(metadataURL.String())
+		}
+
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return err
+		}
+
+		var projectID id.ProjectID
+		if d.Project() != nil {
+			projectID = *d.Project()
+		}
+
+		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace(), nil, nil)
+		if err != nil {
+			return interfaces.ErrJobCreationFailed
+		}
+		j.SetGCPJobID(gcpJobID)
+
+		return i.jobRepo.Save(ctx, j)
+	}); err != nil {
 		return nil, err
 	}
-	if d == nil {
-		return nil, fmt.Errorf("deployment not found: %s", p.DeploymentID)
-	}
-
-	debug := false
-	did := d.ID()
-
-	j, err := job.New().
-		NewID().
-		Debug(&debug).
-		Deployment(&did).
-		Workspace(d.Workspace()).
-		Status(job.StatusPending).
-		StartedAt(time.Now()).
-		Build()
-	if err != nil {
-		return nil, err
-	}
-
-	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{}) // TODO: add assets
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload metadata: %v", err)
-	}
-	if metadataURL != nil {
-		j.SetMetadataURL(metadataURL.String())
-	}
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return nil, err
-	}
-
-	var projectID id.ProjectID
-	if d.Project() != nil {
-		projectID = *d.Project()
-	}
-
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace(), nil, nil)
-	if err != nil {
-		return nil, interfaces.ErrJobCreationFailed
-	}
-	j.SetGCPJobID(gcpJobID)
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
 
 	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		return nil, fmt.Errorf("failed to start job monitoring: %v", err)

@@ -27,7 +27,7 @@ type Container struct {
 	Project       Project
 	ProjectAccess ProjectAccess
 	Role          accountrepo.Role // TODO: Delete this once the permission check migration is complete.
-	Transaction   usecasex.Transaction
+	Transaction   usecasex.Transactor
 	Trigger       Trigger
 	User          accountrepo.User // TODO: Remove this once the replace user management is complete.
 	Workflow      Workflow
@@ -36,10 +36,10 @@ type Container struct {
 
 // TODO: Remove this once the replace user management is complete.
 func (c *Container) AccountRepos() *accountrepo.Container {
+	// Transaction omitted: the live account container is built in app/repo.go; this compat shim is unused.
 	return &accountrepo.Container{
 		Workspace:   c.Workspace,
 		User:        c.User,
-		Transaction: c.Transaction,
 		Role:        c.Role,
 		Permittable: c.Permittable,
 	}

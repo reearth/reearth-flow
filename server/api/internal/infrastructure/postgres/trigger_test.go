@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -192,14 +193,14 @@ func TestTrigger_Save_RollsBackInTransaction(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
 	r := postgres.NewTrigger(pool)
-	tr := pgxx.NewTransaction(pool)
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	tid := id.NewTriggerID()
-	tx, err := tr.Begin(ctx)
-	require.NoError(t, err)
-	require.NoError(t, r.Save(tx.Context(), newTrig(wid, did, tid)))
-	require.NoError(t, tx.End(tx.Context())) // no Commit -> rollback
+	// Return a non-nil error to trigger rollback.
+	_ = pgxx.NewTransactor(pool, 0).WithinTransaction(ctx, func(ctx context.Context) error {
+		require.NoError(t, r.Save(ctx, newTrig(wid, did, tid)))
+		return errors.New("rollback")
+	})
 	got, err := r.FindByID(ctx, tid)
 	assert.Error(t, err)
 	assert.Nil(t, got)
@@ -209,15 +210,12 @@ func TestTrigger_Save_CommitsInTransaction(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
 	r := postgres.NewTrigger(pool)
-	tr := pgxx.NewTransaction(pool)
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	tid := id.NewTriggerID()
-	tx, err := tr.Begin(ctx)
-	require.NoError(t, err)
-	require.NoError(t, r.Save(tx.Context(), newTrig(wid, did, tid)))
-	tx.Commit()
-	require.NoError(t, tx.End(tx.Context()))
+	require.NoError(t, pgxx.NewTransactor(pool, 0).WithinTransaction(ctx, func(ctx context.Context) error {
+		return r.Save(ctx, newTrig(wid, did, tid))
+	}))
 	got, err := r.FindByID(ctx, tid)
 	require.NoError(t, err)
 	assert.Equal(t, tid, got.ID())

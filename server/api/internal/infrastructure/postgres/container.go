@@ -19,7 +19,7 @@ import (
 func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container) (*repo.Container, error) {
 	c := &repo.Container{
 		Trigger:     NewTrigger(pool),
-		Transaction: pgxx.NewTransaction(pool),
+		Transaction: pgxx.NewTransactor(pool, 2),
 		Workspace:   account.Workspace,
 		User:        account.User,
 		Role:        account.Role,

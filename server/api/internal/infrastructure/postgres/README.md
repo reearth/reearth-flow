@@ -10,7 +10,7 @@ in `github.com/reearth/reearthx/pgxx`.
 3. Add queries to `query/<entity>.sql` with sqlc annotations.
 4. Regenerate: `make sqlc`.
 5. Implement the repo adapter in `<entity>.go`, obtaining the executor via
-   `pgxx.Executor(ctx, pool)` so writes join any active `usecasex.Transaction`.
+   `pgxx.Executor(ctx, pool)` so writes join any active transaction.
 6. Add parity integration tests in `<entity>_test.go` using `pgtest.Connect`.
    Run locally: `make run-db-pg` then
    `REEARTH_FLOW_DB_PG=postgres://reearth:reearth@localhost:5432/postgres?sslmode=disable make test`.
@@ -19,8 +19,11 @@ in `github.com/reearth/reearthx/pgxx`.
 
 ## Transactions
 
-`pgxx.NewTransaction(pool)` implements `usecasex.Transaction`. `repo.Container.Transaction`
-is set to it in `container.go`. No use-case changes are required.
+`pgxx.NewTransactor(pool, n)` implements `usecasex.Transactor`. `repo.Container.Transaction`
+is set to it in `container.go`. Repos obtain the active transaction via `pgxx.Executor(ctx, pool)`
+so writes automatically join any transaction started by `WithinTransaction`. Use-case code
+calls `i.transaction.WithinTransaction(ctx, func(ctx context.Context) error { ... })` —
+returning nil commits; returning an error rolls back.
 
 ## Tooling notes
 
