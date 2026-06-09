@@ -76,12 +76,21 @@ const GeoJsonData: React.FC<Props> = ({
   showSelectedFeatureOnly,
 }) => {
   const { viewer } = useCesium();
+  const latestViewerRef = useRef(viewer);
+  latestViewerRef.current = viewer;
+
   const [dataSourceKey, setDataSourceKey] = useState(0);
   const dataSourceRef = useRef<GeoJsonDataSource | null>(null);
   const prevSelectedRef = useRef<string | null>(null);
   const featureMapRef = useRef<Map<string, EntityRecord[]>>(new Map());
   const hasEverLoadedRef = useRef(false);
-
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   // Keep prop values in refs so callbacks that use them don't need them in deps,
   // preventing handleLoad from being recreated (and re-called by Resium) on every selection.
   const selectedFeatureIdRef = useRef(selectedFeatureId ?? null);
@@ -172,7 +181,7 @@ const GeoJsonData: React.FC<Props> = ({
 
   const flyTo = useCallback(async () => {
     const ds = dataSourceRef.current;
-    if (!ds || !viewer || viewer.isDestroyed()) return;
+    if (!ds || !viewer || viewer.isDestroyed() || !isMountedRef.current) return;
 
     try {
       const selectedId = selectedFeatureIdRef.current;
@@ -183,15 +192,15 @@ const GeoJsonData: React.FC<Props> = ({
 
       if (entity) {
         await viewer.flyTo(entity, { duration: 0 });
-      } else if (!hasEverLoadedRef.current || selectedId) {
+      } else if (!hasEverLoadedRef.current) {
         await viewer.zoomTo(ds);
       }
-
-      if (!viewer.isDestroyed()) {
+    } catch {
+      console.log("FlyTo failed, likely due to invalid entity state");
+    } finally {
+      if (!viewer.isDestroyed() && isMountedRef.current) {
         viewer.scene.requestRender();
       }
-    } catch {
-      // viewer was destroyed during async camera operation
     }
   }, [viewer]);
 
@@ -220,7 +229,22 @@ const GeoJsonData: React.FC<Props> = ({
 
       updateVisibility();
       await flyTo();
+
+      // Bail if unmounted during flyTo (e.g. switched to 3D data mid-flight).
+      if (!isMountedRef.current) return;
+
       hasEverLoadedRef.current = true;
+
+      // Two renders: DataSourceDisplay may not commit entities until the frame after requestRender().
+      const v = latestViewerRef.current;
+      if (v && !v.isDestroyed()) {
+        v.scene.requestRender();
+        const renderAgain = () => {
+          v.scene.postRender.removeEventListener(renderAgain);
+          if (!v.isDestroyed() && isMountedRef.current) v.scene.requestRender();
+        };
+        v.scene.postRender.addEventListener(renderAgain);
+      }
     },
     [updateVisibility, flyTo],
   );
@@ -242,6 +266,11 @@ const GeoJsonData: React.FC<Props> = ({
     handleHighlightSelectedFeature,
     handleDeselectFeature,
   ]);
+
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.scene.requestRender();
+  }, [dataSourceKey, viewer]);
 
   // Re-run visibility whenever the filtering props change (updateVisibility itself is stable)
   useEffect(() => {
