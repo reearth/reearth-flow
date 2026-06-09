@@ -344,8 +344,8 @@ graphs:
               if folder == "" {
                 return "06_浸水想定区域_fld.csv"
               }
-              parts = folder.split("/", 1);
-              "06_浸水想定区域_" + parts[0] + "/" + parts[1] + ".csv"
+              [flood_type, path] = folder.split("/", 1);
+              "06_浸水想定区域_" + flood_type + "/" + path + ".csv"
 
       # JSON Writer for aggregated counts (one file per folder)
       - id: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d

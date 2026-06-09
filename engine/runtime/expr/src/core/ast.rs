@@ -96,7 +96,7 @@ pub enum ExprKind {
     },
     /// `for var in iterable { body }` — list/map/string iteration, evaluates to Null
     ForIn {
-        var: String,
+        var: Box<Expr>,
         iterable: Box<Expr>,
         body: Box<Expr>,
     },

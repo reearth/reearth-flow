@@ -636,32 +636,9 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             body,
         } => {
             let iter_val = eval_inner(iterable, env)?;
-            let items: Vec<Value> = match iter_val {
-                Value::Array(rc) => rc.borrow().clone(),
-                Value::Map(rc) => rc
-                    .borrow()
-                    .keys()
-                    .map(|k| Value::String(k.clone()))
-                    .collect(),
-                Value::String(s) => s.chars().map(|c| Value::String(c.to_string())).collect(),
-                Value::Object(rc) => match rc.call_method("__iter__", &[]).to_eval_error(pos)? {
-                    Value::Array(arr) => arr.borrow().clone(),
-                    v => {
-                        return Err(Error::Eval {
-                            pos,
-                            msg: format!("__iter__ must return a list, got {}", v.type_name()),
-                        })
-                    }
-                },
-                v => {
-                    return Err(Error::Eval {
-                        pos,
-                        msg: format!("{} is not iterable", v.type_name()),
-                    })
-                }
-            };
+            let items = collect_iterable(iter_val, pos)?;
             for item in items {
-                env.insert(var.clone(), item);
+                eval_assign_lvalue(var, item, env)?;
                 eval_inner(body, env)?;
             }
             Ok(Value::Null)
@@ -673,6 +650,29 @@ fn eval_inner(expr: &Expr, env: &mut Env) -> Result<Value> {
             };
             Err(Error::Return(val))
         }
+    }
+}
+
+fn collect_iterable(value: Value, pos: usize) -> Result<Vec<Value>> {
+    match value {
+        Value::Array(rc) => Ok(rc.borrow().clone()),
+        Value::String(s) => Ok(s.chars().map(|c| Value::String(c.to_string())).collect()),
+        Value::Map(rc) => Ok(rc
+            .borrow()
+            .keys()
+            .map(|k| Value::String(k.clone()))
+            .collect()),
+        Value::Object(rc) => match rc.call_method("__iter__", &[]).to_eval_error(pos)? {
+            Value::Array(arr) => Ok(arr.borrow().clone()),
+            v => Err(Error::Eval {
+                pos,
+                msg: format!("__iter__ must return a list, got {}", v.type_name()),
+            }),
+        },
+        v => Err(Error::Eval {
+            pos,
+            msg: format!("{} is not iterable", v.type_name()),
+        }),
     }
 }
 
@@ -708,6 +708,23 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &mut Env) -> Result<()> 
                         ),
                     })
                 }
+            }
+            Ok(())
+        }
+        ExprKind::Array(targets) => {
+            let items = collect_iterable(value, pos)?;
+            if items.len() != targets.len() {
+                return Err(Error::Eval {
+                    pos,
+                    msg: format!(
+                        "unpack mismatch (expected {}, got {})",
+                        targets.len(),
+                        items.len()
+                    ),
+                });
+            }
+            for (target, item) in targets.iter().zip(items) {
+                eval_assign_lvalue(target, item, env)?;
             }
             Ok(())
         }
@@ -1375,6 +1392,20 @@ mod tests {
     }
 
     #[test]
+    fn test_unpack() {
+        assert_eval("[a, b] = [1, 2]; a + b", &[], Value::from(3i64));
+        assert_eval(r#"[a, b] = "xy"; a"#, &[], Value::from("x"));
+        assert_eval(
+            "[a, [b, c]] = [1, [2, 3]]; a + b + c",
+            &[],
+            Value::from(6i64),
+        );
+        assert!(try_run("[a, b] = [1, 2, 3]", &[]).is_err());
+        assert!(try_run("[a, b, c] = [1, 2]", &[]).is_err());
+        assert!(try_run("[a, b] = 42", &[]).is_err());
+    }
+
+    #[test]
     fn test_block() {
         assert_eval("1; 2; 3", &[], Value::from(3i64));
         assert_eval("42;", &[], Value::Null);
@@ -1875,6 +1906,16 @@ mod tests {
             &[],
             Value::from(3i64),
         );
+    }
+
+    #[test]
+    fn test_for_in_unpack() {
+        assert_eval(
+            "s = 0; for [a, b] in [[1, 2], [3, 4]] { s = s + a + b } s",
+            &[],
+            Value::from(10i64),
+        );
+        assert!(try_run("for [a, b] in [[1, 2, 3]] { a }", &[]).is_err());
     }
 
     #[test]

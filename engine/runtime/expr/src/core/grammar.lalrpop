@@ -267,8 +267,15 @@ WhileExpr: Expr = {
 };
 
 ForInExpr: Expr = {
-    <l:@L> "for" <var:"ident"> "in" <iter:Or> <body:BlockExpr> <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::ForIn { var, iterable: Box::new(iter), body: Box::new(body) }),
+    <l:@L> "for" <var:ForVar> "in" <iter:Or> <body:BlockExpr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::ForIn { var: Box::new(var), iterable: Box::new(iter), body: Box::new(body) }),
+};
+
+ForVar: Expr = {
+    <l:@L> <name:"ident"> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Var(name)),
+    <l:@L> "[" <items:Comma<ForVar>> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Array(items)),
 };
 
 ElseBranch: Expr = {
