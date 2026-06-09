@@ -7,7 +7,6 @@ with:
   schemas:
   codelistsPath:
   codelists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["wtr"]
   objectListsPath:
@@ -121,32 +120,21 @@ graphs:
         with:
           mappers:
             - attribute: gmlPath
-              expr: |
-                env.get("__value").path
+              valueAttribute: path
             - attribute: gmlFilename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: fileIndex
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: codelists
-              expr: |
-                env.get("__value").codelists
+              valueAttribute: codelists
             - attribute: schemas
-              expr: |
-                env.get("__value").schemas
+              valueAttribute: schemas
             - attribute: udxDirs
-              expr: |
-                // Extract folder from path (e.g., "file://path/wtr/file.gml" -> "wtr")
-                // The folder is the second-to-last segment of the path
-                let path = env.get("__value").path;
-                let parts = path.split("/");
-                let len = parts.len();
-                if len >= 2 {
-                  parts[len - 2]
-                } else {
-                  env.get("__value").udxDirs ?? ""
-                }
+              expr:
+                type: flowExpr
+                value: |
+                  parts = attributes["path"].split("/");
+                  if len(parts) >= 2 { parts[-2] } else { attributes.get("udxDirs", "") }
 
       - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
         name: FeatureCityGmlReader
@@ -196,23 +184,19 @@ graphs:
         with:
           mappers:
             - attribute: index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: filename
-              expr: |
-                env.get("__value").gmlFilename
+              valueAttribute: gmlFilename
             - attribute: udxDirs
-              expr: |
-                env.get("__value").udxDirs
+              valueAttribute: udxDirs
             - attribute: gmlFilename
-              expr: |
-                env.get("__value").gmlFilename
+              valueAttribute: gmlFilename
             - attribute: WaterBody
-              expr: |
-                env.get("__value").WaterBody
+              valueAttribute: WaterBody
             - attribute: lod
-              expr: |
-                env.get("__value").lod ?? "1"
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "1")
 
       - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1a
         name: GeometryRemoverForErrorSummary
@@ -257,38 +241,47 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex ?? env.get("__value").index
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", attributes.get("index"))
             - attribute: Folder
-              expr: |
-                env.get("__value").udxDirs
+              valueAttribute: udxDirs
             - attribute: Filename
-              expr: |
-                env.get("__value").gmlFilename ?? env.get("__value").filename
+              expr:
+                type: flowExpr
+                value: attributes.get("gmlFilename", attributes.get("filename"))
             - attribute: フィーチャータイプ
-              expr: |
-                "WaterBody"
+              expr:
+                type: string
+                value: WaterBody
             - attribute: LOD
-              expr: |
-                env.get("__value").lod ?? "1"
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "1")
             - attribute: インスタンス数
-              expr: |
-                env.get("__value").WaterBody ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("WaterBody", 0)
             - attribute: 無効な空間属性の型
-              expr: |
-                env.get("__value")._num_invalid_spatial_attr ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_invalid_spatial_attr", 0)
             - attribute: 非水密立体
-              expr: |
-                env.get("__value")._num_not_closed_solid ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_not_closed_solid", 0)
             - attribute: 立体のその他のエラー
-              expr: |
-                env.get("__value")._num_other_solid_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_other_solid_errors", 0)
             - attribute: 立体の境界面のエラー
-              expr: |
-                env.get("__value")._num_boundary_surface_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_boundary_surface_errors", 0)
             - attribute: 面のエラー
-              expr: |
-                env.get("__value")._num_lod1_surface_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod1_surface_errors", 0)
 
       - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f
         name: CSVSummaryWriter
@@ -297,7 +290,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "11_水部_検査結果一覧.csv")
+            "11_水部_検査結果一覧.csv"
 
       # JSON summary output
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
@@ -352,7 +345,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_wtr.json")
+            "summary_wtr.json"
 
       # qc_result_ok generation flow
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
@@ -384,8 +377,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # ZipFileWriter - Bundle all output files
       - id: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f50
@@ -395,8 +387,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       # FeatureCreator → DirectoryDecompressor

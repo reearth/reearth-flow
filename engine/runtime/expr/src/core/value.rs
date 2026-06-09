@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 
 pub type Module = IndexMap<String, Value>;
 
-use crate::core::error::InnerResult;
+use crate::core::error::{InnerError, InnerResult};
 
 /// Trait for typed objects that can respond to method calls.
 ///
@@ -110,6 +110,37 @@ impl Value {
 
     pub fn module(m: Module) -> Self {
         Value::Module(Rc::new(m))
+    }
+
+    pub fn as_str(&self) -> InnerResult<&str> {
+        match self {
+            Value::String(s) => Ok(s.as_str()),
+            other => Err(InnerError::new(format!(
+                "expected string, got {}",
+                other.type_name()
+            ))),
+        }
+    }
+
+    pub fn as_int(&self) -> InnerResult<i64> {
+        match self {
+            Value::Int(n) => Ok(*n),
+            other => Err(InnerError::new(format!(
+                "expected int, got {}",
+                other.type_name()
+            ))),
+        }
+    }
+
+    pub fn as_f64(&self) -> InnerResult<f64> {
+        match self {
+            Value::Float(x) => Ok(*x),
+            Value::Int(x) => Ok(*x as f64),
+            other => Err(InnerError::new(format!(
+                "expected number, got {}",
+                other.type_name()
+            ))),
+        }
     }
 }
 

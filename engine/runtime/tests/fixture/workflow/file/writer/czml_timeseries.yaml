@@ -23,7 +23,7 @@ graphs:
         type: "action"
         action: "CzmlWriter"
         with:
-          output: "env.get(\"workerArtifactPath\") + \"/\" + env.get(\"outputFilePath\")"
+          output: "env.get(\"outputFilePath\")"
 
     edges:
       - id: "b0b0b0b0-0001-4000-8000-000000001000"

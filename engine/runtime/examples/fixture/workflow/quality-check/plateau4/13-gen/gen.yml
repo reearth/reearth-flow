@@ -52,36 +52,45 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value")["udxDirs"] ?? "gen"
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "gen")
         - attribute: Index
-          expr: |
-            env.get("__value")["fileIndex"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
         - attribute: Filename
-          expr: |
-            env.get("__value")["gmlFilename"] ?? env.get("__value")["name"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", attributes.get("name", ""))
         - attribute: FeatureType
-          expr: |
-            "GenericCityObject"
+          expr:
+            type: string
+            value: GenericCityObject
         - attribute: LOD
-          expr: |
-            env.get("__value")["lod"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value")["gmlId"] ?? env.get("__value")["featureId"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", attributes.get("featureId", ""))
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   # ===== CSV Writer for surface errors =====
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6a
@@ -91,7 +100,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "13_汎用都市オブジェクト_面のエラー.csv")
+        "13_汎用都市オブジェクト_面のエラー.csv"
 
   # ===== Surface error counter =====
   - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6a
@@ -142,29 +151,37 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value")["udxDirs"] ?? "gen"
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "gen")
         - attribute: Index
-          expr: |
-            env.get("__value")["fileIndex"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
         - attribute: Filename
-          expr: |
-            env.get("__value")["gmlFilename"] ?? env.get("__value")["name"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", attributes.get("name", ""))
         - attribute: FeatureType
-          expr: |
-            "GenericCityObject"
+          expr:
+            type: string
+            value: GenericCityObject
         - attribute: LOD
-          expr: |
-            env.get("__value")["lod"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value")["gmlId"] ?? env.get("__value")["featureId"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", attributes.get("featureId", ""))
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            "SurfaceNotClosed"
+          expr:
+            type: string
+            value: SurfaceNotClosed
 
   # CSV Writer for NotClosed errors
   - id: a104d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
@@ -174,7 +191,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "13_汎用都市オブジェクト_非水密立体.csv")
+        "13_汎用都市オブジェクト_非水密立体.csv"
 
   # Error counter for NotClosed
   - id: a105e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
@@ -204,29 +221,37 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value")["udxDirs"] ?? "gen"
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "gen")
         - attribute: Index
-          expr: |
-            env.get("__value")["fileIndex"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
         - attribute: Filename
-          expr: |
-            env.get("__value")["gmlFilename"] ?? env.get("__value")["name"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", attributes.get("name", ""))
         - attribute: FeatureType
-          expr: |
-            "GenericCityObject"
+          expr:
+            type: string
+            value: GenericCityObject
         - attribute: LOD
-          expr: |
-            env.get("__value")["lod"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value")["gmlId"] ?? env.get("__value")["featureId"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", attributes.get("featureId", ""))
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            "InvalidSolidBoundaries"
+          expr:
+            type: string
+            value: InvalidSolidBoundaries
 
   # CSV Writer for Solid Issues (立体のエラー)
   - id: a120e2f3-a4b5-c6d7-e8f9-f0a1b2c3d4e5
@@ -236,7 +261,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "13_汎用都市オブジェクト_立体のエラー.csv")
+        "13_汎用都市オブジェクト_立体のエラー.csv"
 
   # Error counter for Solid Issues
   - id: a121f3a4-b5c6-d7e8-f9a0-a1b2c3d4e5f6
@@ -258,29 +283,37 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value")["udxDirs"] ?? "gen"
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "gen")
         - attribute: Index
-          expr: |
-            env.get("__value")["fileIndex"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
         - attribute: Filename
-          expr: |
-            env.get("__value")["gmlFilename"] ?? env.get("__value")["name"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", attributes.get("name", ""))
         - attribute: FeatureType
-          expr: |
-            "GenericCityObject"
+          expr:
+            type: string
+            value: GenericCityObject
         - attribute: LOD
-          expr: |
-            env.get("__value")["lod"] ?? "0"
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "0")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value")["gmlId"] ?? env.get("__value")["featureId"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", attributes.get("featureId", ""))
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            "IncorrectOrientation"
+          expr:
+            type: string
+            value: IncorrectOrientation
 
   - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
     name: CsvWriterOrientationErrors
@@ -289,7 +322,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "13_汎用都市オブジェクト_面の向き不正.csv")
+        "13_汎用都市オブジェクト_面の向き不正.csv"
 
   - id: 15a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c7
     name: OrientationErrorCounter
@@ -342,7 +375,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath"), "13_汎用都市オブジェクト_gml_nameエラー.csv")
+        "13_汎用都市オブジェクト_gml_nameエラー.csv"
 
   # Statistics calculator for uncoded gml:name counts
   - id: 22a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d4

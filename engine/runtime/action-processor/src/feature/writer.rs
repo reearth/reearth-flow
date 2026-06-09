@@ -2,10 +2,10 @@ mod citygml;
 mod csv;
 mod json;
 
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use indexmap::IndexMap;
-use reearth_flow_common::{csv::Delimiter, uri::Uri};
+use reearth_flow_common::csv::Delimiter;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -165,7 +165,7 @@ impl ProcessorFactory for FeatureWriterFactory {
 struct FeatureWriter {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureWriterParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
+    pub(super) buffer: HashMap<String, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -255,8 +255,9 @@ impl Processor for FeatureWriter {
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
-        let output = Uri::from_str(path.as_str())?;
-        let buffer = self.buffer.entry(output).or_default();
+        // Validation happens at flush time via SinkOutput::new; nothing to
+        // pre-check here. The buffer is keyed by the raw relative-path string.
+        let buffer = self.buffer.entry(path).or_default();
         buffer.push(ctx.feature);
         Ok(())
     }
@@ -266,7 +267,20 @@ impl Processor for FeatureWriter {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for (output, features) in &self.buffer {
+        for (rel_path, features) in &self.buffer {
+            // SinkOutput::new validates the path and acquires the storage backend,
+            // providing the sandbox gate at flush time.
+            let sink_output = reearth_flow_action_sink::SinkOutput::new(
+                &ctx.sandbox_root,
+                rel_path,
+                &ctx.storage_resolver,
+            )
+            .map_err(|e| {
+                FeatureProcessorError::FeatureWriter(format!(
+                    "sink output {rel_path:?} rejected by sandbox: {e}"
+                ))
+            })?;
+            let output = sink_output.uri();
             let feature: Feature = IndexMap::<Attribute, AttributeValue>::from([
                 (
                     Attribute::new("filePath".to_string()),
@@ -278,14 +292,6 @@ impl Processor for FeatureWriter {
                 ),
             ])
             .into();
-            // Enforce sandbox: CSV/TSV/JSON/CityGML all write directly to
-            // `output`; without this check `FeatureWriter` would be an
-            // out-of-sandbox escape hatch alongside the sink writers.
-            reearth_flow_action_sink::ensure_under(&ctx.sandbox_root, output).map_err(|e| {
-                FeatureProcessorError::FeatureWriter(format!(
-                    "output {output} rejected by sandbox: {e}"
-                ))
-            })?;
             match self.params {
                 CompiledFeatureWriterParam::Csv { .. } => {
                     csv::write_csv(output, Delimiter::Comma, &ctx.storage_resolver, features)?;
