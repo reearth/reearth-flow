@@ -173,10 +173,9 @@ graphs:
           converter:
             type: flowExpr
             value: |
-              result = [];
-              for f in attributes["__features"] {
-                result.append({"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]});
-              }
+              result = itertools.map(attributes["__features"], fn(f) {
+                {"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]}
+              });
               {"urf": result}
 
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c

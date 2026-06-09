@@ -379,10 +379,9 @@ graphs:
       converter:
         type: flowExpr
         value: |
-          result = [];
-          for f in attributes["__features"] {
-            result.append({"code": f["code"], "description": f["description"]});
-          }
+          result = itertools.map(attributes["__features"], fn(f) {
+            {"code": f["code"], "description": f["description"]}
+          });
           {"gen": result}
   - id: 75faa932-e0a9-482c-a3f9-267817ed311c
     name: LodSplitter

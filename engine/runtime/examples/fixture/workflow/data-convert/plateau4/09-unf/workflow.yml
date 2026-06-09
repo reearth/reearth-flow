@@ -118,10 +118,9 @@ graphs:
           converter:
             type: flowExpr
             value: |
-              result = [];
-              for f in attributes["__features"] {
-                result.append({"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]});
-              }
+              result = itertools.map(attributes["__features"], fn(f) {
+                {"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]}
+              });
               {"unf": result}
 
       # Main processing branch

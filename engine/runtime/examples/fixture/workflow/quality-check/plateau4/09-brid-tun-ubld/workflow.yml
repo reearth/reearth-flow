@@ -522,12 +522,10 @@ graphs:
           if len(attributes["__features"]) == 0 {
             []
           } else {
-            result = [];
             feature = attributes["__features"][0];
-            for key in feature.keys() {
-              result.append({"name": key, "count": feature[key]});
-            }
-            result
+            itertools.map(feature.keys(), fn(key) {
+              {"name": key, "count": feature[key]}
+            })
           }
       output:
         type: flowExpr
