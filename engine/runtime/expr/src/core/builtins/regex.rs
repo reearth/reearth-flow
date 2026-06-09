@@ -1,4 +1,4 @@
-use crate::core::error::{InnerError, InnerResult};
+use crate::core::error::{eval_error, Result};
 use crate::core::value::{ImmutableObject, Value};
 
 use crate::expect_arity;
@@ -15,11 +15,7 @@ impl ImmutableObject for RegexObject {
         "Regex"
     }
 
-    fn get_property(&self, _name: &str) -> Option<InnerResult<Value>> {
-        None
-    }
-
-    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
+    fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
         match method {
             "find" => {
                 expect_arity("Regex.find", args, 1, 1)?;
@@ -29,7 +25,7 @@ impl ImmutableObject for RegexObject {
                 expect_arity("Regex.find_all", args, 1, 1)?;
                 Ok(Value::array(regex_find_all(&self.regex, args[0].as_str()?)))
             }
-            m => Err(InnerError::new(format!("Regex has no method '{m}'"))),
+            m => Err(eval_error(format!("Regex has no method '{m}'"))),
         }
     }
 
@@ -92,9 +88,9 @@ fn regex_find_all(regex: &Regex, s: &str) -> Vec<Value> {
     }
 }
 
-pub fn builtin_regex(args: &[Value]) -> InnerResult<Value> {
+pub fn builtin_regex(args: &[Value]) -> Result<Value> {
     if args.len() != 1 {
-        return Err(InnerError::new(format!(
+        return Err(eval_error(format!(
             "Regex() expected 1 argument, got {}",
             args.len()
         )));
@@ -102,7 +98,7 @@ pub fn builtin_regex(args: &[Value]) -> InnerResult<Value> {
     let pattern = args[0].as_str()?.to_string();
     // FlowExpr is general-purpose. Do not do implicit caching for Regex patterns here.
     // Compile-time constant folding might be a proper future solution, but currently it is overkill.
-    let regex = Regex::new(&pattern).map_err(|e| InnerError::new(format!("invalid regex: {e}")))?;
+    let regex = Regex::new(&pattern).map_err(|e| eval_error(format!("invalid regex: {e}")))?;
     Ok(Value::object(RegexObject { pattern, regex }))
 }
 

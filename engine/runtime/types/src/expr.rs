@@ -5,8 +5,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_expr::{
-    bool_cast, compile, eval, expect_arity, str_cast, Env as ExprEnv, Error as ExprError,
-    InnerError, InnerResult, Value as ExprValue,
+    bool_cast, compile, eval, eval_error, expect_arity, str_cast, Env as ExprEnv,
+    Error as ExprError, Result as ExprResult, Value as ExprValue,
 };
 
 use crate::attribute::{Attribute, AttributeValue};
@@ -101,7 +101,7 @@ impl CompiledCode {
             CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars)).and_then(|v| {
                 str_cast(v).map_err(|e| ExprError::Eval {
                     pos: 0,
-                    msg: format!("converting result to string failed: {}", e.msg),
+                    msg: format!("converting result to string failed: {e}"),
                 })
             }),
             CompiledCode::Literal(s) => Ok(s.clone()),
@@ -118,7 +118,7 @@ impl CompiledCode {
             CompiledCode::Expr(e) => eval(e, &env_from_vars_only(env_vars)).and_then(|v| {
                 str_cast(v).map_err(|e| ExprError::Eval {
                     pos: 0,
-                    msg: format!("converting result to string failed: {}", e.msg),
+                    msg: format!("converting result to string failed: {e}"),
                 })
             }),
             CompiledCode::Literal(s) => Ok(s.clone()),
@@ -168,23 +168,23 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
         "Attributes"
     }
 
-    fn call_method(&self, method: &str, args: &[ExprValue]) -> InnerResult<ExprValue> {
+    fn call_method(&self, method: &str, args: &[ExprValue]) -> ExprResult<ExprValue> {
         match method {
             "__getitem__" => {
                 expect_arity("Attributes.__getitem__", args, 1, 1)?;
                 let ExprValue::String(name) = &args[0] else {
-                    return Err(InnerError::new(format!(
+                    return Err(eval_error(format!(
                         "attributes index must be a string, got {}",
                         args[0].type_name()
                     )));
                 };
                 self.get_value(name)
-                    .ok_or_else(|| InnerError::new(format!("attribute '{name}' not found")))
+                    .ok_or_else(|| eval_error(format!("attribute '{name}' not found")))
             }
             "get" => {
                 expect_arity("Attributes.get", args, 1, 2)?;
                 let ExprValue::String(name) = &args[0] else {
-                    return Err(InnerError::new(format!(
+                    return Err(eval_error(format!(
                         "Attributes.get() key must be a string, got {}",
                         args[0].type_name()
                     )));
@@ -203,14 +203,14 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
             "__contains__" => {
                 expect_arity("Attributes.__contains__", args, 1, 1)?;
                 let ExprValue::String(name) = &args[0] else {
-                    return Err(InnerError::new(format!(
+                    return Err(eval_error(format!(
                         "'in attributes' key must be a string, got {}",
                         args[0].type_name()
                     )));
                 };
                 Ok(ExprValue::Bool(self.0.contains_key(&Attribute::new(name))))
             }
-            m => Err(InnerError::new(format!("Attributes has no method '{m}'"))),
+            m => Err(eval_error(format!("Attributes has no method '{m}'"))),
         }
     }
 }
@@ -229,23 +229,23 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
         "Env"
     }
 
-    fn call_method(&self, method: &str, args: &[ExprValue]) -> InnerResult<ExprValue> {
+    fn call_method(&self, method: &str, args: &[ExprValue]) -> ExprResult<ExprValue> {
         match method {
             "__getitem__" => {
                 expect_arity("Env.__getitem__", args, 1, 1)?;
                 let ExprValue::String(name) = &args[0] else {
-                    return Err(InnerError::new(format!(
+                    return Err(eval_error(format!(
                         "env index must be a string, got {}",
                         args[0].type_name()
                     )));
                 };
                 self.get_value(name)
-                    .ok_or_else(|| InnerError::new(format!("env var '{name}' not found")))
+                    .ok_or_else(|| eval_error(format!("env var '{name}' not found")))
             }
             "get" => {
                 expect_arity("Env.get", args, 1, 2)?;
                 let ExprValue::String(name) = &args[0] else {
-                    return Err(InnerError::new(format!(
+                    return Err(eval_error(format!(
                         "Env.get() key must be a string, got {}",
                         args[0].type_name()
                     )));
@@ -255,7 +255,7 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
                     .get_value(name)
                     .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))
             }
-            m => Err(InnerError::new(format!("Env has no method '{m}'"))),
+            m => Err(eval_error(format!("Env has no method '{m}'"))),
         }
     }
 }

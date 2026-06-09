@@ -3,7 +3,7 @@ use std::io::{self, BufRead, Write};
 use reearth_flow_expr::{compile, default_env, eval};
 
 fn main() {
-    let mut env = default_env();
+    let env = default_env();
     let stdin = io::stdin();
     print!("> ");
     io::stdout().flush().unwrap();

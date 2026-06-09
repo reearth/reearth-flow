@@ -8,7 +8,7 @@ pub type Module = IndexMap<String, Value>;
 
 use super::ast::Expr;
 use super::env::Env;
-use crate::core::error::{InnerError, InnerResult};
+use crate::core::error::{eval_error, Result};
 
 /// A user-defined closure: parameter names, body AST, and the lexical env captured at definition.
 #[derive(Clone)]
@@ -31,8 +31,8 @@ impl fmt::Debug for ClosureValue {
 /// their own `RefCell` internally.
 pub trait ImmutableObject: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
-    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value>;
-    fn get_property(&self, _name: &str) -> Option<InnerResult<Value>> {
+    fn call_method(&self, method: &str, args: &[Value]) -> Result<Value>;
+    fn get_property(&self, _name: &str) -> Option<Result<Value>> {
         None
     }
     fn display(&self) -> String {
@@ -43,18 +43,18 @@ pub trait ImmutableObject: std::fmt::Debug {
     }
 }
 
-type NativeFnInner = Rc<dyn Fn(&[Value]) -> InnerResult<Value>>;
+type NativeFnInner = Rc<dyn Fn(&[Value]) -> Result<Value>>;
 
 /// A native (Rust) function callable from the expression language.
 #[derive(Clone)]
 pub struct NativeFn(NativeFnInner);
 
 impl NativeFn {
-    pub fn new(f: impl Fn(&[Value]) -> InnerResult<Value> + 'static) -> Self {
+    pub fn new(f: impl Fn(&[Value]) -> Result<Value> + 'static) -> Self {
         Self(Rc::new(f))
     }
 
-    pub fn call(&self, args: &[Value]) -> InnerResult<Value> {
+    pub fn call(&self, args: &[Value]) -> Result<Value> {
         (self.0)(args)
     }
 
@@ -131,31 +131,31 @@ impl Value {
         Value::Module(Rc::new(m))
     }
 
-    pub fn as_str(&self) -> InnerResult<&str> {
+    pub fn as_str(&self) -> Result<&str> {
         match self {
             Value::String(s) => Ok(s.as_str()),
-            other => Err(InnerError::new(format!(
+            other => Err(eval_error(format!(
                 "expected string, got {}",
                 other.type_name()
             ))),
         }
     }
 
-    pub fn as_int(&self) -> InnerResult<i64> {
+    pub fn as_int(&self) -> Result<i64> {
         match self {
             Value::Int(n) => Ok(*n),
-            other => Err(InnerError::new(format!(
+            other => Err(eval_error(format!(
                 "expected int, got {}",
                 other.type_name()
             ))),
         }
     }
 
-    pub fn as_f64(&self) -> InnerResult<f64> {
+    pub fn as_f64(&self) -> Result<f64> {
         match self {
             Value::Float(x) => Ok(*x),
             Value::Int(x) => Ok(*x as f64),
-            other => Err(InnerError::new(format!(
+            other => Err(eval_error(format!(
                 "expected number, got {}",
                 other.type_name()
             ))),
