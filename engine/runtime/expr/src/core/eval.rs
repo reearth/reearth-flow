@@ -2085,82 +2085,26 @@ mod tests {
         );
     }
 
-    // ----- closure tests -----
-
     #[test]
-    fn test_closure_basic() {
+    fn test_closures() {
         assert_eval("f = fn(x) { x * 2 }; f(5)", &[], Value::from(10i64));
         assert_eval("fn(x) { x + 1 }(3)", &[], Value::from(4i64));
-    }
-
-    #[test]
-    fn test_closure_capture() {
-        // closure captures n from outer scope
         assert_eval("n = 10; f = fn(x) { x + n }; f(5)", &[], Value::from(15i64));
-    }
-
-    #[test]
-    fn test_closure_mutates_outer() {
-        // assignment inside closure seeks upward and mutates outer binding
-        assert_eval(
-            "x = 1; f = fn() { x = 99 }; f(); x",
-            &[],
-            Value::from(99i64),
-        );
-    }
-
-    #[test]
-    fn test_let_shadows_outer() {
-        // let creates a new local; outer x is unchanged
-        assert_eval(
-            "x = 1; f = fn() { let x = 99; x }; f(); x",
-            &[],
-            Value::from(1i64),
-        );
-    }
-
-    #[test]
-    fn test_let_destructuring() {
+        assert_eval("x = 1; f = fn() { x = 99 }; f(); x", &[], Value::from(99i64));
+        assert_eval("x = 1; f = fn() { let x = 99; x }; f(); x", &[], Value::from(1i64));
         assert_eval("let [a, b] = [3, 4]; a + b", &[], Value::from(7i64));
-        assert_eval(
-            "let [a, [b, c]] = [1, [2, 3]]; a + b + c",
-            &[],
-            Value::from(6i64),
-        );
-    }
-
-    #[test]
-    fn test_closure_higher_order() {
-        // adder returns a closure that closes over n
+        assert_eval("let [a, [b, c]] = [1, [2, 3]]; a + b + c", &[], Value::from(6i64));
         assert_eval(
             "adder = fn(n) { fn(x) { x + n } }; add5 = adder(5); add5(3)",
             &[],
             Value::from(8i64),
         );
-    }
-
-    #[test]
-    fn test_closure_recursion() {
-        // recursive closure via name in outer scope
         assert_eval(
             "fact = fn(n) { if n <= 1 { 1 } else { n * fact(n - 1) } }; fact(5)",
             &[],
             Value::from(120i64),
         );
-    }
-
-    #[test]
-    fn test_closure_return() {
-        // return exits the closure, not the whole script
-        assert_eval(
-            "f = fn(x) { return x * 2; 999 }; f(4)",
-            &[],
-            Value::from(8i64),
-        );
-    }
-
-    #[test]
-    fn test_closure_arity_error() {
+        assert_eval("f = fn(x) { return x * 2; 999 }; f(4)", &[], Value::from(8i64));
         assert!(try_run("fn(x, y) { x + y }(1)", &[]).is_err());
         assert!(try_run("fn() { 1 }(42)", &[]).is_err());
     }
