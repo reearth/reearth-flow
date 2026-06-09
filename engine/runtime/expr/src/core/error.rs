@@ -27,9 +27,6 @@ pub enum Error {
     #[error("eval error at position {pos}: {msg}")]
     Eval { pos: usize, msg: String },
 
-    #[error("eval_string error: {msg}")]
-    EvalString { msg: String },
-
     /// Control flow: `return <value>` — not a real error.
     #[error("return")]
     Return(Value),

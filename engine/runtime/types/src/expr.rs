@@ -98,8 +98,12 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars))
-                .and_then(|v| str_cast(v).map_err(|e| ExprError::EvalString { msg: e.msg })),
+            CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars)).and_then(|v| {
+                str_cast(v).map_err(|e| ExprError::Eval {
+                    pos: 0,
+                    msg: format!("converting result to string failed: {}", e.msg),
+                })
+            }),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
     }
@@ -111,8 +115,12 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> reearth_flow_expr::Result<String> {
         match self {
-            CompiledCode::Expr(e) => eval(e, &env_from_vars_only(env_vars))
-                .and_then(|v| str_cast(v).map_err(|e| ExprError::EvalString { msg: e.msg })),
+            CompiledCode::Expr(e) => eval(e, &env_from_vars_only(env_vars)).and_then(|v| {
+                str_cast(v).map_err(|e| ExprError::Eval {
+                    pos: 0,
+                    msg: format!("converting result to string failed: {}", e.msg),
+                })
+            }),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
     }
