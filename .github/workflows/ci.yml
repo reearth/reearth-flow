@@ -1,31 +1,26 @@
-name: ci
+name: ci-bench-conv-concurrency
+
 on:
   push:
-    branches: [main, release/*, release]
   pull_request:
 
-# Cancel a previous in-progress run when a new commit is pushed to the same
-# pull request, so rapid pushes don't queue up duplicate runs. Pushes to
-# main/release branches are NOT cancelled — every released commit must be
-# fully validated.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+  RUST_BACKTRACE: short
+  FLOW_RUNTIME_ACTION_LOG_DISABLE: true
 
-permissions:
-  contents: read
-  id-token: write
+defaults:
+  run:
+    working-directory: engine
 
 jobs:
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      api: ${{ steps.api.outputs.any_changed }}
-      engine: ${{ steps.engine.outputs.any_changed }}
-      policies: ${{ steps.policies.outputs.any_changed }}
-      subscriber: ${{ steps.subscriber.outputs.any_changed }}
-      ui: ${{ steps.ui.outputs.any_changed }}
-      websocket: ${{ steps.websocket.outputs.any_changed }}
+  test-conv-concurrency-1:
+    name: test-conv (concurrency=1)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      PLATEAU_TILES_TEST_CONCURRENCY: 1
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
@@ -34,299 +29,55 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
-      - name: changed files for api
-        id: api
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
+      - uses: ./.github/actions/setup-engine-ci
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          files: |
-            server/api/**
-            engine/schema/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_api.yml
-            .github/workflows/build_deploy_api.yml
-      - name: changed files for engine
-        id: engine
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
-        with:
-          files: |
-            engine/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_engine.yml
-            .github/workflows/build_docker_push_worker.yml
-
-      - name: changed files for policies
-        id: policies
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
-        with:
-          files: |
-            server/api/internal/rbac/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_policies.yml
-            .github/workflows/update_policies_and_deploy_cerbos.yml
-      - name: changed files for subscriber
-        id: subscriber
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
-        with:
-          files: |
-            server/subscriber/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_subscriber.yml
-            .github/workflows/build_deploy_subscriber.yml
-      - name: changed files for ui
-        id: ui
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
-        with:
-          files: |
-            ui/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_ui.yml
-            .github/workflows/build_deploy_ui.yml
-      - name: changed files for websocket
-        id: websocket
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
-        with:
-          files: |
-            server/websocket/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_websocket.yml
-            .github/workflows/build_deploy_websocket.yml
-
-  ci-api:
-    needs: prepare
-    if: needs.prepare.outputs.api == 'true'
-    uses: ./.github/workflows/ci_api.yml
-  ci-engine:
-    needs: prepare
-    if: needs.prepare.outputs.engine == 'true'
-    uses: ./.github/workflows/ci_engine.yml
-  ci-policies:
-    needs: prepare
-    if: needs.prepare.outputs.policies == 'true'
-    uses: ./.github/workflows/ci_policies.yml
-  ci-subscriber:
-    needs: prepare
-    if: needs.prepare.outputs.subscriber == 'true'
-    uses: ./.github/workflows/ci_subscriber.yml
-  ci-ui:
-    needs: prepare
-    if: needs.prepare.outputs.ui == 'true'
-    uses: ./.github/workflows/ci_ui.yml
-  ci-websocket:
-    needs: prepare
-    if: needs.prepare.outputs.websocket == 'true'
-    uses: ./.github/workflows/ci_websocket.yml
-
-  ci:
-    runs-on: ubuntu-latest
-    needs:
-      - ci-api
-      - ci-engine
-      - ci-policies
-      - ci-subscriber
-      - ci-ui
-      - ci-websocket
-    if: "!failure()"
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: audit
-      - run: echo OK
-
-  ci-collect-info:
-    name: Collect information
-    needs: ci
-    if: "!failure()"
-    runs-on: ubuntu-latest
-    outputs:
-      name: ${{ steps.info.outputs.name || 'blank' }}
-      new_tag: ${{ steps.info.outputs.new_tag || 'blank' }}
-      new_tag_short: ${{ steps.info.outputs.new_tag_short || 'blank' }}
-      sha_short: ${{ steps.info.outputs.sha_short || 'blank' }}
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: audit
-      - name: checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - name: Fetch tags
-        run: git fetch --prune --unshallow --tags
-      - name: Get info
-        id: info
-        env:
-          BRANCH: ${{github.ref_name}}
+          node-version: '20'
+      - name: Install glb-decompress
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "BRANCH=$BRANCH"
-          if [[ "$BRANCH" = "release" || "$BRANCH" = "release/"* ]]; then
-            TAG=$(git tag --points-at HEAD)
-            if [[ ! -z "$TAG" ]]; then
-              echo "new_tag=$TAG" >> $GITHUB_OUTPUT
-              echo "new_tag_short=${TAG#v}" >> $GITHUB_OUTPUT
-            else
-              echo "name=rc" >> $GITHUB_OUTPUT
+          for attempt in 1 2 3; do
+            if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
+              echo "glb-decompress install succeeded on attempt $attempt"
+              exit 0
             fi
-          else
-            echo "name=nightly" >> $GITHUB_OUTPUT
-          fi
-      - name: Show info
-        env:
-          SHA_SHORT: ${{ steps.info.outputs.sha_short }}
-          NEW_TAG: ${{ steps.info.outputs.new_tag }}
-          NEW_TAG_SHORT: ${{ steps.info.outputs.new_tag_short }}
-          NAME: ${{ steps.info.outputs.name }}
-        run: echo "sha_short=$SHA_SHORT, new_tag=$NEW_TAG, new_tag_short=$NEW_TAG_SHORT, name=$NAME"
+            echo "Attempt $attempt failed; sleeping 15s before retry..."
+            sleep 15
+          done
+          echo "glb-decompress install failed after 3 attempts" >&2
+          exit 1
+      - name: test-conv
+        run: cargo make test-conv
 
-  build-and-deploy-api:
-    needs:
-      - ci
-      - ci-api
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_api.yml
-    if: ${{ !failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      name: ${{ needs.ci-collect-info.outputs.name }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      sha: ${{ github.sha }}
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit
-  build-and-deploy-subscriber:
-    needs:
-      - ci
-      - ci-subscriber
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_subscriber.yml
-    if: ${{ !failure() && needs.ci-subscriber.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      name: ${{ needs.ci-collect-info.outputs.name }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      sha: ${{ github.sha }}
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit
-  build-and-deploy-ui:
-    needs:
-      - ci
-      - ci-ui
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_ui.yml
-    if: ${{ !failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      name: ${{ needs.ci-collect-info.outputs.name }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      sha: ${{ github.sha }}
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit
-  build-and-deploy-websocket:
-    needs:
-      - ci
-      - ci-websocket
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_websocket.yml
-    if: ${{ !failure() && needs.ci-websocket.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      name: ${{ needs.ci-collect-info.outputs.name }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      sha: ${{ github.sha }}
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit 
-  build-docker-push-worker:
-    needs:
-      - ci
-      - ci-engine
-      - ci-collect-info
-    uses: ./.github/workflows/build_docker_push_worker.yml
-    if: ${{ !failure() && needs.ci-engine.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      name: ${{ needs.ci-collect-info.outputs.name }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      sha: ${{ github.sha }}
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit
-  update-policies-and-deploy-cerbos:
-    needs:
-      - ci
-      - ci-policies
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_policies_cerbos.yml
-    if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
-    secrets: inherit
-
-  prepare-info-pr:
-    runs-on: ubuntu-latest
-    if: ${{ needs.prepare.outputs.ui == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main' && (github.event.action == 'opened' || github.event.action == 'synchronize') }}
-    needs:
-      - prepare
-    outputs:
-      build: ${{ steps.prepare.outputs.build }}
-      sha_short: ${{ steps.prepare.outputs.sha_short }}
-      new_tag: ${{ steps.prepare.outputs.new_tag }}
-      new_tag_short: ${{ steps.prepare.outputs.new_tag_short }}
-      name: ${{ steps.prepare.outputs.name }}
+  test-conv-concurrency-2:
+    name: test-conv (concurrency=2)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      PLATEAU_TILES_TEST_CONCURRENCY: 2
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
-      - uses: reearth/actions/prepare-build@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
-        id: prepare
-
-  build-ui-pr:
-    needs:
-      - prepare-info-pr
-    permissions:
-      contents: read
-      packages: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          egress-policy: audit
-      - uses: reearth/actions/build-docker-image@f9ec7fd6b26255566358e46c0764b367a6d063fb
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          image: ghcr.io/reearth/reearth-flow/reearth-flow-web
-          context: ui
-          use_dockerhub: false
-          name: ${{ needs.prepare-info-pr.outputs.sha_short }}
-          sha_short: ${{ needs.prepare-info-pr.outputs.sha_short }}
-
-  deploy-ui-pr:
-    needs:
-      - prepare-info-pr
-      - build-ui-pr
-    runs-on: ubuntu-latest
-    outputs:
-      preview_url: ${{ steps.deploy.outputs.url }}
-    permissions:
-      contents: read
-      id-token: write
-      issues: write
-      packages: write
-      pull-requests: write
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
-        with:
-          egress-policy: audit
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: reearth/actions/deploy-cloud-run-with-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5 # main
-        id: deploy
-        with:
-          image: ghcr.io/reearth/reearth-flow/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}
-          image_internal: "${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}"
-          region: ${{ secrets.GC_REGION }}
-          service: reearth-flow-web
-          service_account: ${{ secrets.GC_SA_EMAIL }}
-          tag: pr-${{ github.event.pull_request.number }}
-          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+          node-version: '20'
+      - name: Install glb-decompress
+        run: |
+          for attempt in 1 2 3; do
+            if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
+              echo "glb-decompress install succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Attempt $attempt failed; sleeping 15s before retry..."
+            sleep 15
+          done
+          echo "glb-decompress install failed after 3 attempts" >&2
+          exit 1
+      - name: test-conv
+        run: cargo make test-conv
