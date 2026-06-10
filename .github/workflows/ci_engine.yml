@@ -124,7 +124,12 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-engine-ci
       - name: test-qc
-        run: cargo make test-qc
+        # `--test-threads=16` is a CI-specific override (4× oversubscription
+        # on the 4-vCPU runner; safe now that the executor's polling-backoff
+        # uses sleep(100µs) instead of yield_now and the XSD cache shifts
+        # tests toward CPU-bound). Kept on the caller side so `cargo make
+        # test-qc` defaults to N_CPUs for local development.
+        run: cargo make test-qc -- --test-threads=16
 
   test-conv:
     name: test-conv (tile output validation)

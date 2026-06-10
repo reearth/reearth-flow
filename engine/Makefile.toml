@@ -54,15 +54,10 @@ cargo test --workspace --all-targets --all-features --exclude plateau-gis-qualit
 [tasks.test-qc]
 script = ['''
 #!/usr/bin/env bash -eux
-# `--test-threads=16` (4× oversubscription on the 4-vCPU CI runner).
-# An earlier attempt at 16 threads crashed the Blacksmith runner because
-# the executor's polling-backoff used `yield_now()` which spun at 100%
-# CPU, competing with the runner agent itself. That has since been
-# replaced with `thread::sleep(Duration::from_micros(100))`, so the
-# polling loop no longer hogs a core. With the spin gone + the XSD
-# schema disk cache shifting tests from I/O-bound toward CPU-bound, 16
-# threads should run cleanly. Override locally if needed.
-cargo test -p workflow-tests -- --test-threads=16 ${@:-}
+# Defaults to cargo's normal thread count (= N_CPUs). CI overrides via
+# `cargo make test-qc -- --test-threads=16` so local development is not
+# forced to a CI-specific value.
+cargo test -p workflow-tests ${@:-}
 ''']
 
 [tasks.test-conv]
