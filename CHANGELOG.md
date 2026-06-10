@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.21 - 2026-06-10
+
+### Web
+
+#### 🧪 Testing
+
+- Added e2e tests for CSV-to-GeoJSON, and UI-built workflows ([#2146](https://github.com/reearth/reearth-flow/pull/2146)) [`e288fb`](https://github.com/reearth/reearth-flow/commit/e288fb)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Update WysiwygWidget and NoteNode styles for better responsiveness [FLOW-DEV-188] ([#2150](https://github.com/reearth/reearth-flow/pull/2150)) [`072dbc`](https://github.com/reearth/reearth-flow/commit/072dbc)
+- Various UI bug fixes and updates ([#2149](https://github.com/reearth/reearth-flow/pull/2149)) [`c1ddcd`](https://github.com/reearth/reearth-flow/commit/c1ddcd)
+
 ## 0.1.0-alpha.20 - 2026-06-09
 
 ### engine
