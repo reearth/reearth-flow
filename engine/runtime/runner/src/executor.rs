@@ -75,9 +75,7 @@ pub fn run_dag_executor(
         event_handlers,
         executor_id,
     ))?;
-    let result = join_handle
-        .join((*runtime).clone())
-        .map_err(Error::ExecutionError);
+    let result = join_handle.join().map_err(Error::ExecutionError);
     // Settle delay between join completion and notify. The historical 1000ms
     // was a defensive value (likely waiting for in-flight async tasks / output
     // flushes to drain). 100ms is enough headroom in practice and turns the
