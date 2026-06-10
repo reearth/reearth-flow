@@ -3,11 +3,9 @@ import {
   type ProjectFragment,
   type JobFragment,
   type JobStatus as GraphqlJobStatus,
-  type NodeStatus as GraphqlNodeStatus,
   type ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
   type TriggerFragment,
   type ProjectDocumentFragment,
-  type NodeExecutionFragment,
   type ProjectSnapshotMetadataFragment,
   type ParameterFragment,
   type AssetFragment,
@@ -32,8 +30,6 @@ import type {
   Role,
   Trigger,
   ProjectDocument,
-  NodeExecution,
-  NodeStatus,
   ProjectSnapshotMeta,
   VarType,
   AnyWorkflowVariable,
@@ -115,17 +111,6 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
     ...v,
     type: toUserParamVarType(v.type),
   })),
-});
-
-export const toNodeExecution = (
-  node: NodeExecutionFragment,
-): NodeExecution => ({
-  id: node.id,
-  jobId: node.jobId,
-  nodeId: node.nodeId,
-  status: toNodeStatus(node.status),
-  startedAt: node.startedAt,
-  completedAt: node.completedAt,
 });
 
 export const toJob = (job: JobFragment): Job => ({
@@ -296,25 +281,6 @@ export const toUserFacingLogLevel = (
       return UserFacingLogLevel.Success;
     default:
       return UserFacingLogLevel.Info;
-  }
-};
-
-export const toNodeStatus = (
-  status: GraphqlNodeStatus,
-): NodeStatus | undefined => {
-  switch (status) {
-    case "STARTING":
-      return "starting";
-    case "PENDING":
-      return "pending";
-    case "PROCESSING":
-      return "processing";
-    case "COMPLETED":
-      return "completed";
-    case "FAILED":
-      return "failed";
-    default:
-      return undefined;
   }
 };
 

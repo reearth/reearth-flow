@@ -23,7 +23,7 @@ graphs:
         type: "action"
         action: "FeatureWriter"
         with:
-          output: "env.get(\"workerArtifactPath\") + \"/\" + env.get(\"outputFilePath\")"
+          output: "env.get(\"outputFilePath\")"
           format: "json"
 
     edges:

@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::PlateauProcessorError;
+use super::PlateauProfile;
 
 const PKG_FOLDERS: &[&str] = &[
     "area", "bldg", "brid", "cons", "dem", "fld", "frn", "gen", "htd", "ifld", "lsld", "luse",
@@ -56,12 +57,22 @@ impl From<Schema> for IndexMap<Attribute, AttributeValue> {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub(super) struct UDXFolderExtractorFactory;
+#[derive(Debug, Clone)]
+pub(crate) struct UDXFolderExtractorFactory {
+    name: String,
+}
+
+impl UDXFolderExtractorFactory {
+    pub(crate) fn new(profile: &PlateauProfile) -> Self {
+        Self {
+            name: profile.action_name("UDXFolderExtractor"),
+        }
+    }
+}
 
 impl ProcessorFactory for UDXFolderExtractorFactory {
     fn name(&self) -> &str {
-        "PLATEAU4.UDXFolderExtractor"
+        &self.name
     }
 
     fn description(&self) -> &str {
@@ -138,7 +149,7 @@ pub struct UDXFolderExtractor {
 
 /// # UDXFolderExtractor Parameters
 ///
-/// Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.
+/// Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UDXFolderExtractorParam {

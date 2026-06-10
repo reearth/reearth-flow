@@ -155,3 +155,36 @@ jobs:
           docker pull $IMAGE_NAME:${{ inputs.name }}
           docker tag $IMAGE_NAME:${{ inputs.name }} $IMAGE_GCP:${{ inputs.name }}
           docker push $IMAGE_GCP:${{ inputs.name }}
+
+  deploy-worker-debug-to-cloud-run:
+    name: Deploy Worker Debug to Cloud Run (Nightly)
+    needs: build-docker-image
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      IMAGE: ${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-worker:nightly
+      CLOUD_RUN_SERVICE: reearth-flow-worker-debug
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services update ${{ env.CLOUD_RUN_SERVICE }} \
+            --image ${{ env.IMAGE }} \
+            --region ${{ secrets.GC_REGION }} \
+            --quiet

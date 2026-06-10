@@ -31,8 +31,6 @@ export default () => {
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
   );
-  const [convertedSelectedFeature, setConvertedSelectedFeature] =
-    useState(null);
   const cesiumViewerRef = useRef<any>(null);
 
   const [currentProject] = useCurrentProject();
@@ -152,6 +150,7 @@ export default () => {
 
       if (cesiumViewerRef.current) {
         const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
+        if (!cesiumViewer || cesiumViewer.isDestroyed()) return;
         if (is3D) {
           try {
             const featureId = selectedFeature.id;
@@ -163,21 +162,20 @@ export default () => {
               zoomToBoundingSphere(geometry, cesiumViewerRef, 1.5);
             } else {
               // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
-              const matchingEntities =
-                cesiumViewerRef.current?.cesiumElement.entities.values.filter(
-                  (entity: any) => {
-                    const props = entity.properties?.getValue?.();
-                    return (
-                      props?._originalId === featureId ||
-                      entity.id === featureId
-                    );
-                  },
+              const entityValues = cesiumViewer?.entities?.values ?? [];
+              const matchingEntities = entityValues.filter((entity: any) => {
+                const props = entity.properties?.getValue?.();
+                return (
+                  props?._originalId === featureId || entity.id === featureId
                 );
+              });
               if (matchingEntities.length > 0) {
-                cesiumViewerRef.current?.cesiumElement.zoomTo(matchingEntities);
+                cesiumViewer.zoomTo(matchingEntities);
               } else {
                 // Search in data sources as fallback
-                for (const dataSource of cesiumViewer.dataSources) {
+                const dsCount = cesiumViewer.dataSources?.length ?? 0;
+                for (let i = 0; i < dsCount; i++) {
+                  const dataSource = cesiumViewer.dataSources.get(i);
                   const matching = dataSource.entities.values.filter(
                     (entity: any) => {
                       const props = entity.properties?.getValue?.();
@@ -280,13 +278,18 @@ export default () => {
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
-      // setEnableClustering(false);
       const normalizedId = JSON.parse(value?.id);
       handleFeatureSelect(normalizedId ?? null);
-      handleFlyToSelectedFeature(convertedSelectedFeature);
+      const feature =
+        normalizedId != null
+          ? (selectedOutputData?.features?.find(
+              (f: any) => f.id === normalizedId,
+            ) ?? null)
+          : null;
+      handleFlyToSelectedFeature(feature);
       setDetailsOverlayOpen(true);
     },
-    [convertedSelectedFeature, handleFlyToSelectedFeature, handleFeatureSelect],
+    [selectedOutputData, handleFlyToSelectedFeature, handleFeatureSelect],
   );
 
   const handleShowFeatureDetailsOverlay = useCallback((value: boolean) => {
@@ -382,7 +385,6 @@ export default () => {
     detailsFeature,
     formattedData,
     handleFeatureSelect,
-    setConvertedSelectedFeature,
     // setEnableClustering,
     handleFullscreenExpand,
     handleExpand,

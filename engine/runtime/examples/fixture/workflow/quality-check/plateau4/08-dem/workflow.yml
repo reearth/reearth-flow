@@ -9,7 +9,6 @@ with:
   codelists:
   objectListsPath:
   objectLists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["dem"]
 graphs:
@@ -126,14 +125,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: 27619dc0-ace9-490a-a63d-57b2ecb4f326
         name: ShapefileWriterIncorrectNumVertices
@@ -141,7 +137,7 @@ graphs:
         action: ShapefileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "08_地形_不正な頂点の数.shp")
+            "08_地形_不正な頂点の数.shp"
 
       - id: 02c49104-bf18-40de-9ffe-4fbaef2165f9
         name: StatisticsCalculatorForIncorrectNumVertices
@@ -164,14 +160,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: 090638b2-4923-4bd8-8b9c-4e1869612694
         name: ShapefileWriterNotClosed
@@ -179,7 +172,7 @@ graphs:
         action: ShapefileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "08_地形_閉じていない三角形.shp")
+            "08_地形_閉じていない三角形.shp"
       
       - id: 06bb5316-b980-497c-8ba1-d83953b6f6b8
         name: StatisticsCalculatorForNotClosedErrors
@@ -202,14 +195,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: f364a079-e834-47f8-a53f-530a0fee07d4
         name: ShapefileWriterWrongOrientation
@@ -217,7 +207,7 @@ graphs:
         action: ShapefileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "08_地形_三角形の向き不正.shp")
+            "08_地形_三角形の向き不正.shp"
 
       - id: 21bf6d61-9924-4f74-8eca-224ad4207c3c
         name: StatisticsCalculatorForWrongOrientation
@@ -249,14 +239,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: 961aadd4-8178-4c26-8c15-b326b0d39573
         name: ShapefileWriterCorruptGeometry
@@ -264,7 +251,7 @@ graphs:
         action: ShapefileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "08_地形_潰れた三角形.shp")
+            "08_地形_潰れた三角形.shp"
 
       - id: ab08b17d-d8a8-4185-a9f0-454432765edd
         name: StatisticsCalculatorForCorruptGeometry
@@ -332,14 +319,11 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
 
       - id: b4f15900-e2e3-4df0-a3a4-6cbf2d3eefaf
         name: ShapefileWriterInvalidBoundaries
@@ -347,7 +331,7 @@ graphs:
         action: ShapefileWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), "08_地形_不正な穴.shp")
+            "08_地形_不正な穴.shp"
 
       - id: e0ebe5cc-8666-4a24-8516-91454d781892
         name: StatisticsCalculatorForInvalidBoundaries
@@ -381,29 +365,31 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "Relief Index"
-              expr: |
-                env.get("__value")._relief_index ?? ""
+              valueAttribute: _relief_index
             - attribute: "不正な頂点の数"
-              expr: |
-                env.get("__value")._num_incorrect_num_vertices ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_num_vertices", 0)
             - attribute: "閉じていない三角形"
-              expr: |
-                env.get("__value")._num_not_closed ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_not_closed", 0)
             - attribute: "三角形の向き不正"
-              expr: |
-                env.get("__value")._num_wrong_orientation ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_wrong_orientation", 0)
             - attribute: "潰れた三角形"
-              expr: |
-                env.get("__value")._num_corrupt_geometry ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_corrupt_geometry", 0)
             - attribute: "不正な穴"
-              expr: |
-                env.get("__value")._num_invalid_boundaries ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_invalid_boundaries", 0)
 
       # CSV output
       - id: 12bbb254-4ff2-4b51-92bb-60d0a9d2d48d
@@ -413,7 +399,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "08_地形_検査結果一覧.csv")
+            "08_地形_検査結果一覧.csv"
 
       # StatisticsCalculator for JSON aggregation
       # Note: "不正な穴" is excluded from JSON summary and totalErrorCount to match FME behavior
@@ -467,7 +453,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_dem.json")
+            "summary_dem.json"
 
       # Calculate total errors for no-error check
       - id: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
@@ -501,8 +487,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # ZipFileWriter - Bundle all output files
       - id: b65d1e91-37a8-489a-87e3-fed91e5de294
@@ -512,8 +497,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       - id: 99b6e8cc-1cba-489a-bc83-9966d3e5fabc

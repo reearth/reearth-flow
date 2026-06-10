@@ -9,7 +9,6 @@ with:
   schemas:
   objectListsPath:
   objectLists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["fld", "htd", "ifld", "tnm", "rfld"]
 graphs:
@@ -288,29 +287,25 @@ graphs:
         with:
           mappers:
             - attribute: "Folder"
-              expr: |
-                env.get("__value").udxDirs
+              valueAttribute: udxDirs
             - attribute: "Index"
-              expr: |
-                env.get("__value")._file_index
+              valueAttribute: _file_index
             - attribute: "Filename"
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: "頂点数が不正な三角形"
-              expr: |
-                env.get("__value")._num_incorrect_num_vertices
+              valueAttribute: _num_incorrect_num_vertices
             - attribute: "向きが不正な三角形"
-              expr: |
-                env.get("__value")._num_wrong_orientation
+              valueAttribute: _num_wrong_orientation
             - attribute: "閉じていない三角形"
-              expr: |
-                env.get("__value")._num_not_closed
+              valueAttribute: _num_not_closed
             - attribute: "線状・点状の三角形"
-              expr: |
-                env.get("__value")._num_degenerate_triangles ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_degenerate_triangles", 0)
             - attribute: "共有先のない辺"
-              expr: |
-                env.get("__value")._num_unshared_edges ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_unshared_edges", 0)
 
       # JSON Output Preparation
       # Maps attributes needed for JSON output, including _json_filename
@@ -321,20 +316,19 @@ graphs:
         with:
           mappers:
             - attribute: "頂点数が不正な三角形"
-              expr: |
-                env.get("__value")._num_incorrect_num_vertices
+              valueAttribute: _num_incorrect_num_vertices
             - attribute: "閉じていない三角形"
-              expr: |
-                env.get("__value")._num_not_closed
+              valueAttribute: _num_not_closed
             - attribute: "向きが不正な三角形"
-              expr: |
-                env.get("__value")._num_wrong_orientation
+              valueAttribute: _num_wrong_orientation
             - attribute: "線状・点状の三角形"
-              expr: |
-                env.get("__value")._num_degenerate_triangles ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_degenerate_triangles", 0)
             - attribute: "_json_filename"
-              expr: |
-                env.get("__value")._json_filename
+              expr:
+                type: flowExpr
+                value: attributes.get("_json_filename")
 
       # File Output Writers
       # CSV Writer for detailed error summary (one row per file)
@@ -345,7 +339,6 @@ graphs:
         with:
           format: csv
           output: |
-            let base_path = env.get("workerArtifactPath");
             let folder = env.get("__value").Folder;
             if folder == () || folder == "" {
               return file::join_path(base_path, "06_浸水想定区域_fld.csv");
@@ -356,7 +349,7 @@ graphs:
             let path = folder.sub_string(slash_pos + 1);
             // Create hierarchical path: 06_浸水想定区域_{flood_type}/{path}.csv
             let csv_filepath = "06_浸水想定区域_" + flood_type + "/" + path + ".csv";
-            file::join_path(base_path, csv_filepath)
+            csv_filepath
 
       # JSON Writer for aggregated counts (one file per folder)
       - id: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
@@ -401,9 +394,8 @@ graphs:
               ]
             }
           output: |
-            let base_path = env.get("workerArtifactPath");
             let json_filename = env.get("__value")._json_filename ?? "summary_fld.json";
-            file::join_path(base_path, json_filename)
+            json_filename
 
       # Calculate total error count
       - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
@@ -443,8 +435,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # ZipFileWriter - Bundle all output files
       - id: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
@@ -454,8 +445,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       # Input processing chain

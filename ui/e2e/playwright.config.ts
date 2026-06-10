@@ -30,11 +30,17 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     viewport: { width: 1920, height: 1080 },
+    locale: "en-US",
   },
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          slowMo: process.env.CI ? 0 : 10,
+        },
+      },
     },
   ],
 });

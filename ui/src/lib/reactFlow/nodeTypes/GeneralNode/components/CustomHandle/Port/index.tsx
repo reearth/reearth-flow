@@ -1,4 +1,4 @@
-import { TableIcon, XCircleIcon } from "@phosphor-icons/react";
+import { TableIcon } from "@phosphor-icons/react";
 import { Position } from "@xyflow/react";
 import { memo } from "react";
 
@@ -62,8 +62,6 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
               aria-label={`View intermediate data for ${portName}`}
               icon={<TableIcon />}
             />
-          ) : jobStatus === "failed" ? (
-            <XCircleIcon className="hover:text-error/60 z-11 h-3 w-3 shrink-0 text-destructive" />
           ) : (
             <div className="size-1.5 shrink-0 rounded-full bg-zinc-400 dark:bg-gray-300" />
           )}

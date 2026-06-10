@@ -1,9 +1,7 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_eval_expr::utils::dynamic_to_value;
 use reearth_flow_runtime::errors::BoxedError;
@@ -82,7 +80,7 @@ impl SinkFactory for JsonWriterFactory {
 #[derive(Debug, Clone)]
 pub(super) struct JsonWriter {
     pub(super) params: JsonWriterParam,
-    pub(super) buffer: HashMap<Uri, (SinkOutput, Vec<Feature>)>,
+    pub(super) buffer: HashMap<String, (SinkOutput, Vec<Feature>)>,
 }
 
 /// # JsonWriter Parameters
@@ -108,17 +106,16 @@ impl Sink for JsonWriter {
         let path = scope
             .eval::<String>(self.params.output.as_ref())
             .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let uri = Uri::from_str(&path)
-            .map_err(|e| SinkError::JsonWriter(format!("invalid path {:?}: {e}", path)))?;
         let feature = ctx.feature.clone();
         use std::collections::hash_map::Entry;
-        match self.buffer.entry(uri) {
+        match self.buffer.entry(path.clone()) {
             Entry::Occupied(mut e) => {
                 e.get_mut().1.push(feature);
             }
             Entry::Vacant(e) => {
-                let out = SinkOutput::from_path(&node_ctx, &path)
-                    .map_err(|e| SinkError::JsonWriter(e.to_string()))?;
+                let out =
+                    SinkOutput::new(&node_ctx.sandbox_root, &path, &node_ctx.storage_resolver)
+                        .map_err(|e| SinkError::JsonWriter(e.to_string()))?;
                 e.insert((out, vec![feature]));
             }
         }

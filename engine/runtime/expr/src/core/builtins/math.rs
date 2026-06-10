@@ -1,24 +1,11 @@
-use crate::core::error::{InnerError, InnerResult};
 use crate::core::value::{Module, NativeFn, Value};
-
-fn to_f64(v: &Value) -> InnerResult<f64> {
-    match v {
-        Value::Float(x) => Ok(*x),
-        Value::Int(x) => Ok(*x as f64),
-        other => Err(InnerError::new(format!(
-            "expected float, got {}",
-            other.type_name()
-        ))),
-    }
-}
+use crate::expect_arity;
 
 fn unary_float(name: &'static str, f: fn(f64) -> f64) -> Value {
-    Value::Fn(NativeFn::new(move |args| match args {
-        [x] => Ok(Value::Float(f(to_f64(x)?))),
-        _ => Err(InnerError::new(format!(
-            "math.{name}() expected 1 argument, got {}",
-            args.len()
-        ))),
+    let full_name = format!("math.{name}");
+    Value::Fn(NativeFn::new(move |args| {
+        expect_arity(&full_name, args, 1, 1)?;
+        Ok(Value::Float(f(args[0].as_f64()?)))
     }))
 }
 
@@ -31,13 +18,14 @@ pub fn builtin_math() -> Value {
     m.insert("round".into(), unary_float("round", f64::round));
     m.insert(
         "log".into(),
-        Value::Fn(NativeFn::new(|args| match args {
-            [x] => Ok(Value::Float(to_f64(x)?.ln())),
-            [x, base] => Ok(Value::Float(to_f64(x)?.log(to_f64(base)?))),
-            _ => Err(InnerError::new(format!(
-                "math.log() expected 1 or 2 arguments, got {}",
-                args.len()
-            ))),
+        Value::Fn(NativeFn::new(|args| {
+            expect_arity("math.log", args, 1, 2)?;
+            let x = args[0].as_f64()?;
+            if args.len() == 1 {
+                Ok(Value::Float(x.ln()))
+            } else {
+                Ok(Value::Float(x.log(args[1].as_f64()?)))
+            }
         })),
     );
     m.insert("log2".into(), unary_float("log2", f64::log2));

@@ -139,7 +139,7 @@ impl Sink for ObjWriter {
 
         let (obj_content, mtl_content) = features_to_obj(&self.buffer, self, &path)?;
 
-        let obj_out = crate::SinkOutput::from_path(&ctx, &path)
+        let obj_out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
             .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
         obj_out
             .write(Bytes::from(obj_content))
@@ -147,8 +147,9 @@ impl Sink for ObjWriter {
 
         if self.write_materials && !mtl_content.is_empty() {
             let mtl_path = path.replace(".obj", ".mtl");
-            let mtl_out = crate::SinkOutput::from_path(&ctx, &mtl_path)
-                .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
+            let mtl_out =
+                crate::SinkOutput::new(&ctx.sandbox_root, &mtl_path, &ctx.storage_resolver)
+                    .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
             mtl_out
                 .write(Bytes::from(mtl_content))
                 .map_err(|e| SinkError::ObjWriter(e.to_string()))?;

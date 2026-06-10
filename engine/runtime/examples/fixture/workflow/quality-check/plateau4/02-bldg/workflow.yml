@@ -10,7 +10,6 @@ with:
   schemas:
   objectListsPath:
   objectLists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["bldg"]
 graphs:
@@ -138,20 +137,15 @@ graphs:
         with:
           mappers:
             - attribute: gmlPath
-              expr: |
-                env.get("__value").path
+              valueAttribute: path
             - attribute: gmlFilename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: fileIndex
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: codelists
-              expr: |
-                env.get("__value").dirCodelists
+              valueAttribute: dirCodelists
             - attribute: schemas
-              expr: |
-                env.get("__value").dirSchemas
+              valueAttribute: dirSchemas
 
       - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         name: FeatureSorter
@@ -233,11 +227,9 @@ graphs:
         with:
           mappers:
             - attribute: index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: filename
-              expr: |
-                env.get("__value").gmlFilename
+              valueAttribute: gmlFilename
 
       # Phase 2: FeatureMerger for aggregating error counts
       - id: 4712539b-5103-41ee-9359-0333eefb82ef
@@ -263,95 +255,121 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").index
+              valueAttribute: index
             - attribute: Filename
-              expr: |
-                env.get("__value").filename
+              valueAttribute: filename
             - attribute: "市区町村コードエラー"
-              expr: |
-                env.get("__value")._num_incorrect_city_code ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_city_code", 0)
             - attribute: "C-bldg-01 エラー"
-              expr: |
-                env.get("__value")._num_duplicate_building_id ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_duplicate_building_id", 0)
             - attribute: "不正な建物ID"
-              expr: |
-                env.get("__value")._num_missing_building_id ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_missing_building_id", 0)
             - attribute: "L-bldg-02 エラー"
-              expr: |
-                env.get("__value")._num_lbldg02_error ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lbldg02_error", 0)
             - attribute: "L-bldg-04,05 エラー"
-              expr: |
-                env.get("__value")._num_incorrect_usage_attribute ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_usage_attribute", 0)
             - attribute: "L-bldg-06 エラー"
-              expr: |
-                env.get("__value")._num_lbldg06_error ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lbldg06_error", 0)
             - attribute: "T-bldg-02エラー"
-              expr: |
-                env.get("__value")._num_invalid_bldginst_geom_type ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_invalid_bldginst_geom_type", 0)
             - attribute: "LOD0 面のエラー"
-              expr: |
-                env.get("__value")._num_lod0_invalid_surface ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod0_invalid_surface", 0)
             - attribute: "LOD0 面の向きエラー"
-              expr: |
-                env.get("__value")._num_lod0_incorrect_orientation ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod0_incorrect_orientation", 0)
             - attribute: "LOD0 面の交差"
-              expr: |
-                env.get("__value")._num_lod0_surface_intersection ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod0_surface_intersection", 0)
             - attribute: "LOD1 境界面のエラー"
-              expr: |
-                env.get("__value")._num_lod1_invalid_surface ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod1_invalid_surface", 0)
             - attribute: "LOD1 非水密立体"
-              expr: |
-                env.get("__value")._num_lod1_not_closed_solid ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod1_not_closed_solid", 0)
             - attribute: "LOD1 立体のエラー"
-              expr: |
-                env.get("__value")._num_lod1_solid_issues ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod1_solid_issues", 0)
             - attribute: "LOD2 境界面のエラー"
-              expr: |
-                env.get("__value")._num_lod2_invalid_surface ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod2_invalid_surface", 0)
             - attribute: "LOD3 境界面のエラー"
-              expr: |
-                env.get("__value")._num_lod3_invalid_surface ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod3_invalid_surface", 0)
             - attribute: "LOD4 境界面のエラー"
-              expr: |
-                env.get("__value")._num_lod4_invalid_surface ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod4_invalid_surface", 0)
             - attribute: "LOD2 非水密立体"
-              expr: |
-                env.get("__value")._num_lod2_not_closed_solid ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod2_not_closed_solid", 0)
             - attribute: "LOD3 非水密立体"
-              expr: |
-                env.get("__value")._num_lod3_not_closed_solid ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod3_not_closed_solid", 0)
             - attribute: "LOD4 非水密立体"
-              expr: |
-                env.get("__value")._num_lod4_not_closed_solid ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod4_not_closed_solid", 0)
             - attribute: "LOD2 立体のエラー"
-              expr: |
-                env.get("__value")._num_lod2_solid_issues ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod2_solid_issues", 0)
             - attribute: "LOD3 立体のエラー"
-              expr: |
-                env.get("__value")._num_lod3_solid_issues ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod3_solid_issues", 0)
             - attribute: "LOD4 立体のエラー"
-              expr: |
-                env.get("__value")._num_lod4_solid_issues ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod4_solid_issues", 0)
             - attribute: "図郭不正"
-              expr: |
-                env.get("__value")._num_incorrect_meshcode ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_meshcode", 0)
             - attribute: "LOD0-1のBuildingPart"
-              expr: |
-                env.get("__value")._num_lod0_1_buildingpart ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod0_1_buildingpart", 0)
             - attribute: "LOD1 立体の交差"
-              expr: |
-                env.get("__value")._num_lod1_solid_intersection ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod1_solid_intersection", 0)
             - attribute: "LOD2 立体の交差"
-              expr: |
-                env.get("__value")._num_lod2_solid_intersection ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod2_solid_intersection", 0)
             - attribute: "LOD3 立体の交差"
-              expr: |
-                env.get("__value")._num_lod3_solid_intersection ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod3_solid_intersection", 0)
             - attribute: "LOD4 立体の交差"
-              expr: |
-                env.get("__value")._num_lod4_solid_intersection ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_lod4_solid_intersection", 0)
 
       # Phase 4: CSV output
       - id: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
@@ -361,7 +379,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("workerArtifactPath"), "02_建築物_検査結果一覧.csv")
+            "02_建築物_検査結果一覧.csv"
 
       # Phase 5: StatisticsCalculator for JSON aggregation
       - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
@@ -501,7 +519,7 @@ graphs:
               result
             }
           output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_bldg.json")
+            "summary_bldg.json"
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
@@ -532,8 +550,7 @@ graphs:
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
       # ZipFileWriter - Bundle all output files
       - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
@@ -543,8 +560,7 @@ graphs:
         with:
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+            filename
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f

@@ -126,16 +126,14 @@ impl Sink for GeoJsonWriter {
         let path = scope
             .eval::<String>(self.params.output.as_ref())
             .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let base = crate::SinkOutput::from_path(&ctx, &path)
-            .map_err(crate::errors::SinkError::geojson_writer)?;
-
         for (key, features) in self.buffer.iter() {
-            let out = if *key == AttributeValue::Null {
-                base.clone()
+            let out_path = if *key == AttributeValue::Null {
+                path.clone()
             } else {
-                base.join(&format!("{}.geojson", to_hash(key.to_string().as_str())))
-                    .map_err(crate::errors::SinkError::geojson_writer)?
+                format!("{}/{}.geojson", path, to_hash(key.to_string().as_str()))
             };
+            let out = crate::SinkOutput::new(&ctx.sandbox_root, &out_path, &ctx.storage_resolver)
+                .map_err(crate::errors::SinkError::geojson_writer)?;
 
             let mut buffer = Vec::from(b"{\"type\":\"FeatureCollection\",\"features\":[");
 
