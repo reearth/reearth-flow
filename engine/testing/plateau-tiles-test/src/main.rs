@@ -490,6 +490,7 @@ fn main() {
         let concurrency = env::var("PLATEAU_TILES_TEST_CONCURRENCY")
             .ok()
             .and_then(|v| v.parse::<usize>().ok())
+            .map(|n| n.max(1)) // 0 would panic rayon::ThreadPoolBuilder::num_threads
             .unwrap_or_else(|| (num_cpus::get() / 2).clamp(1, 4));
 
         eprintln!(
