@@ -65,12 +65,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
-# `--profile release-test` gives near-release runtime perf (notably for the
-# Draco mesh-compression kernels) without the full release profile's LTO +
-# codegen-units=1 compile-time cost. See engine/Cargo.toml for the profile
-# definition. The profile preserves `panic = "unwind"` which the parallel
-# testcase loop's `panic::catch_unwind` requires.
-cargo run --profile release-test -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
+cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 ''']
 
 [tasks.doc]
