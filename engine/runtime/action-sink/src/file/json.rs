@@ -74,7 +74,9 @@ impl SinkFactory for JsonWriterFactory {
             .as_ref()
             .map(|code| code.compile())
             .transpose()
-            .map_err(|e| SinkError::JsonWriterFactory(format!("{e:?}")))?;
+            .map_err(|e| {
+                SinkError::JsonWriterFactory(format!("Failed to compile `converter`: {e:?}"))
+            })?;
         let sink = JsonWriter {
             output,
             compiled_converter,

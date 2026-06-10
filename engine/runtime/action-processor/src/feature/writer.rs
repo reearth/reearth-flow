@@ -238,7 +238,7 @@ impl Processor for FeatureWriter {
             .params
             .output()
             .eval_string(feature, ctx.expr_engine.vars())
-            .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
+            .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
         // Validation happens at flush time via SinkOutput::new; nothing to
         // pre-check here. The buffer is keyed by the raw relative-path string.
         let buffer = self.buffer.entry(path).or_default();
