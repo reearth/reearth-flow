@@ -90,6 +90,16 @@ mod tests {
     }
 
     #[test]
+    fn test_append_alias() {
+        // Both names share the same backing Rc<RefCell<Vec>>; mutating one is visible via the other.
+        assert_eval(
+            "let b = a; a.append(3); b",
+            &[("a", Value::from(vec![1i64, 2i64]))],
+            Value::from(vec![1i64, 2i64, 3i64]),
+        );
+    }
+
+    #[test]
     fn test_len() {
         let arr = Value::from(vec![1i64, 2i64, 3i64]);
         assert_eval("len(arr)", &[("arr", arr)], Value::from(3i64));
