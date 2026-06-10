@@ -16,7 +16,7 @@ defaults:
 
 jobs:
   build:
-    name: build plateau-tiles-test
+    name: build plateau-tiles-test (release-test)
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - name: Harden Runner
@@ -30,7 +30,85 @@ jobs:
         with:
           shared-key: bench-conv-concurrency
       - name: build
-        run: cargo build -p plateau-tiles-test
+        run: cargo build --profile release-test -p plateau-tiles-test
+
+  test-conv-concurrency-1:
+    name: test-conv (concurrency=1)
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      PLATEAU_TILES_TEST_CONCURRENCY: 1
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+        with:
+          shared-key: bench-conv-concurrency
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Install glb-decompress
+        run: |
+          for attempt in 1 2 3; do
+            if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
+              echo "glb-decompress install succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Attempt $attempt failed; sleeping 15s before retry..."
+            sleep 15
+          done
+          echo "glb-decompress install failed after 3 attempts" >&2
+          exit 1
+      - name: test-conv
+        env:
+          RUST_LOG: "warn,plateau_tiles_test=info"
+          PLATEAU_TILES_TEST_CLEANUP: "1"
+        run: cargo run --profile release-test -p plateau-tiles-test --bin plateau-tiles-test
+
+  test-conv-concurrency-2:
+    name: test-conv (concurrency=2)
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      PLATEAU_TILES_TEST_CONCURRENCY: 2
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+        with:
+          shared-key: bench-conv-concurrency
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Install glb-decompress
+        run: |
+          for attempt in 1 2 3; do
+            if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
+              echo "glb-decompress install succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Attempt $attempt failed; sleeping 15s before retry..."
+            sleep 15
+          done
+          echo "glb-decompress install failed after 3 attempts" >&2
+          exit 1
+      - name: test-conv
+        env:
+          RUST_LOG: "warn,plateau_tiles_test=info"
+          PLATEAU_TILES_TEST_CLEANUP: "1"
+        run: cargo run --profile release-test -p plateau-tiles-test --bin plateau-tiles-test
 
   test-conv-concurrency-3:
     name: test-conv (concurrency=3)
@@ -69,7 +147,7 @@ jobs:
         env:
           RUST_LOG: "warn,plateau_tiles_test=info"
           PLATEAU_TILES_TEST_CLEANUP: "1"
-        run: cargo run -p plateau-tiles-test --bin plateau-tiles-test
+        run: cargo run --profile release-test -p plateau-tiles-test --bin plateau-tiles-test
 
   test-conv-concurrency-4:
     name: test-conv (concurrency=4)
@@ -108,4 +186,4 @@ jobs:
         env:
           RUST_LOG: "warn,plateau_tiles_test=info"
           PLATEAU_TILES_TEST_CLEANUP: "1"
-        run: cargo run -p plateau-tiles-test --bin plateau-tiles-test
+        run: cargo run --profile release-test -p plateau-tiles-test --bin plateau-tiles-test
