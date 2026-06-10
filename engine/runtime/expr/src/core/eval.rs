@@ -18,22 +18,22 @@ struct DepthCounter {
 }
 
 thread_local! {
-    static AST_DEPTH: DepthCounter = DepthCounter {
+    static AST_DEPTH: DepthCounter = const { DepthCounter {
         depth: Cell::new(0),
         #[cfg(debug_assertions)]
         limit: 64,
         #[cfg(not(debug_assertions))]
         limit: 1024,
         label: "AST",
-    };
-    static CALL_DEPTH: DepthCounter = DepthCounter {
+    } };
+    static CALL_DEPTH: DepthCounter = const { DepthCounter {
         depth: Cell::new(0),
         #[cfg(debug_assertions)]
         limit: 32,
         #[cfg(not(debug_assertions))]
         limit: 512,
         label: "call",
-    };
+    } };
 }
 
 struct DepthGuard {
