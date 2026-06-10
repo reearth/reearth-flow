@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.392"
+version = "0.0.393"
 
 [profile.dev]
 opt-level = 0
@@ -46,6 +46,26 @@ strip = true
 codegen-units = 8
 inherits = "release"
 lto = "fat"
+
+# `release-test` — runtime perf close to release, compile time close to dev.
+# Used by `cargo make test-conv` so the Draco / mesh-compression code in
+# `plateau-tiles-test` runs at near-release speed without paying the full
+# release profile's LTO + codegen-units=1 cost in CI.
+#
+# Overrides vs release:
+#   - codegen-units = 16     (vs release's 1) → parallel codegen, much faster compile
+#   - lto = false            (vs release's "fat") → skips multi-minute whole-program LTO
+#   - debug = true           (vs release's stripped) → keeps stack traces on panic
+#   - panic = "unwind"       (vs release's "abort") → required by the
+#     `panic::catch_unwind` in plateau-tiles-test's parallel testcase loop
+#   - strip = "none"
+[profile.release-test]
+inherits = "release"
+codegen-units = 16
+lto = false
+debug = true
+panic = "unwind"
+strip = "none"
 
 [workspace.dependencies]
 reearth-flow-action-log = { path = "runtime/action-log" }

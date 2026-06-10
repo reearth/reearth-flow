@@ -78,7 +78,14 @@ pub fn run_dag_executor(
     let result = join_handle
         .join((*runtime).clone())
         .map_err(Error::ExecutionError);
-    std::thread::sleep(Duration::from_millis(1000));
+    // Settle delay between join completion and notify. The historical 1000ms
+    // was a defensive value (likely waiting for in-flight async tasks / output
+    // flushes to drain). 100ms is enough headroom in practice and turns the
+    // 1s × N-tests overhead into a much smaller cost. A proper fix would
+    // replace this with explicit async-drain logic before notify, but that's
+    // a bigger refactor; this is the minimal change that recovers most of the
+    // wall-clock cost without exposing the underlying race.
+    std::thread::sleep(Duration::from_millis(100));
     join_handle.notify();
     result
 }
