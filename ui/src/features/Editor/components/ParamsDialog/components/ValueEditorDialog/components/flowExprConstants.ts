@@ -150,10 +150,10 @@ export const getFlowExprAutocompleteSuggestions = (
   },
   {
     label: "env",
-    insertText: 'env("{{cursor}}")',
+    insertText: 'env["{{cursor}}"]',
     type: "function",
     description: t("Read an environment variable"),
-    detail: 'env("VAR_NAME") → string',
+    detail: 'env["VAR_NAME"] → string',
   },
   {
     label: "Url",
