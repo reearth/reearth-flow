@@ -31,7 +31,7 @@ jobs:
         with:
           shared-key: bench-conv-concurrency
       - name: build
-        run: cargo build --profile release-test -p plateau-tiles-test
+        run: cargo build -p plateau-tiles-test
 
   test-conv-concurrency-1:
     name: test-conv (concurrency=1)
@@ -70,7 +70,7 @@ jobs:
         env:
           RUST_LOG: "warn,plateau_tiles_test=info"
           PLATEAU_TILES_TEST_CLEANUP: "1"
-        run: cargo run --profile release-test -p plateau-tiles-test --bin plateau-tiles-test
+        run: cargo run -p plateau-tiles-test --bin plateau-tiles-test
 
   test-conv-concurrency-2:
     name: test-conv (concurrency=2)
@@ -109,4 +109,4 @@ jobs:
         env:
           RUST_LOG: "warn,plateau_tiles_test=info"
           PLATEAU_TILES_TEST_CLEANUP: "1"
-        run: cargo run --profile release-test -p plateau-tiles-test --bin plateau-tiles-test
+        run: cargo run -p plateau-tiles-test --bin plateau-tiles-test
