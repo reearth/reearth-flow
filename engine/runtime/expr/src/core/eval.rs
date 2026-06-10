@@ -745,6 +745,8 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
         ExprKind::Fn { params, body } => Ok(Value::Closure(ClosureValue {
             params: params.clone(),
             body: Rc::new(*body.clone()),
+            // TODO: currently capture whole parent frame weakly,
+            // should do escape analysis for per-variable capturing and support optional strong capturing
             captured: Rc::downgrade(env),
         })),
     }
