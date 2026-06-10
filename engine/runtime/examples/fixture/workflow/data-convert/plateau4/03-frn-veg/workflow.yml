@@ -115,15 +115,16 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "dictionary.json"
-          converter: |
-            #{
-              veg: env.get("__features").map(|f| #{
-                name: f.feature_type_without_prefix,
-                description: f.feature_type_ja
-              })
-            }
+          output:
+            type: string
+            value: dictionary.json
+          converter:
+            type: flowExpr
+            value: |
+              result = itertools.map(attributes["__features"], fn(f) {
+                {"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]}
+              });
+              {"veg": result}
 
       - id: 0f670054-828b-48d8-9672-dbc34247f2b3
         name: AttributeManagerPreFlattener

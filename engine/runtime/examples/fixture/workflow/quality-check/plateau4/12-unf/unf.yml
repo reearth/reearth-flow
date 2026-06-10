@@ -130,9 +130,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_無効な空間属性の型.csv"
-
+      output:
+        type: string
+        value: 12_地下埋設物_無効な空間属性の型.csv
   - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1d
     name: StatisticsCalculatorInvalidSpatialAttr
     type: action
@@ -209,9 +209,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_LOD1-2非水密立体.csv"
-
+      output:
+        type: string
+        value: 12_地下埋設物_LOD1-2非水密立体.csv
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8e
     name: StatisticsCalculatorNotClosed
     type: action
@@ -268,9 +268,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_LOD1-2立体のエラー.csv"
-
+      output:
+        type: string
+        value: 12_地下埋設物_LOD1-2立体のエラー.csv
   - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2c
     name: StatisticsCalculatorOtherSolidErrors
     type: action
@@ -358,9 +358,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_LOD1-2境界面のエラー.csv"
-
+      output:
+        type: string
+        value: 12_地下埋設物_LOD1-2境界面のエラー.csv
   - id: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
     name: StatisticsCalculatorBoundarySurfaceErrors
     type: action
@@ -448,9 +448,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_LOD3-4面のエラー.csv"
-
+      output:
+        type: string
+        value: 12_地下埋設物_LOD3-4面のエラー.csv
   - id: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
     name: StatisticsCalculatorLod34SurfaceErrors
     type: action
@@ -526,9 +526,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_不連続なCompositeSurface.csv"
-
+      output:
+        type: string
+        value: 12_地下埋設物_不連続なCompositeSurface.csv
   - id: 23a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
     name: StatisticsCalculatorDiscontinuousCS
     type: action

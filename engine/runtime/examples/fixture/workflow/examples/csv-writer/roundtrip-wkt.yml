@@ -27,7 +27,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: ./output-roundtrip-wkt.csv
+          output:
+            type: string
+            value: ./output-roundtrip-wkt.csv
           geometry:
             geometryMode: wkt
             column: geometry

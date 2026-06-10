@@ -121,15 +121,16 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "dictionary.json"
-          converter: |
-            #{
-              gen: env.get("__features").map(|f| #{
-                code: f.code,
-                description: f.description
-              })
-            }
+          output:
+            type: string
+            value: dictionary.json
+          converter:
+            type: flowExpr
+            value: |
+              result = itertools.map(attributes["__features"], fn(f) {
+                {"code": f["code"], "description": f["description"]}
+              });
+              {"gen": result}
 
       - id: 75faa932-e0a9-482c-a3f9-267817ed311c
         name: LodSplitter

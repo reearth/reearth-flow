@@ -19,8 +19,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "result.json"
+          output:
+            type: string
+            value: result.json
 
       # Orphaned sink: no incoming edges, no ancestor source — must be silently skipped
       - id: c2f90a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -28,8 +29,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "orphaned.json"
+          output:
+            type: string
+            value: orphaned.json
     edges:
       - id: e1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         from: a1f90a3e-61d3-48e2-a328-e7226c2ad1ae

@@ -18,6 +18,7 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "result.json"
+          output:
+            type: string
+            value: result.json
     # edges field is completely missing to trigger workflow definition error

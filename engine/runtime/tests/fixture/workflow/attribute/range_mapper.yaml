@@ -55,8 +55,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            env.get("outputFilePath")
+          output:
+            type: flowExpr
+            value: 'env["outputFilePath"]'
 
     edges:
       - id: 3379a497-9e4e-40fb-8361-d2eeeb491773

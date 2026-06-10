@@ -799,10 +799,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["package"] ?? env.get("__value")["udxDirs"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_LOD0面の向きエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("package") or attributes.get("udxDirs");
+          if pkg == "brid" {
+            "09_橋梁_LOD0面の向きエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD0面の向きエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD0面の向きエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD0面の向きエラー.csv"
+          }
   - id: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lod0IncorrectOrientationCounter
     type: action
@@ -825,10 +834,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_LOD0面のエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_LOD0面のエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD0面のエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD0面のエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD0面のエラー.csv"
+          }
   - id: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: Lod0InvalidSurfaceCounter
     type: action
@@ -947,10 +965,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_LOD1境界面のエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_LOD1境界面のエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD1境界面のエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD1境界面のエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD1境界面のエラー.csv"
+          }
   - id: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     name: Lod1InvalidSurfaceCounter
     type: action
@@ -1090,10 +1117,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_LOD2以上境界面のエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_LOD2以上境界面のエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD2以上境界面のエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD2以上境界面のエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD2以上境界面のエラー.csv"
+          }
   - id: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     name: ErrorCount-Lod2InvalidSurface
     type: action
@@ -1271,10 +1307,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_非水密体.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_非水密体.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_非水密体.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_非水密体.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_非水密体.csv"
+          }
   - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: Lod1-4NotClosedSolidCounter
     type: action
@@ -1382,10 +1427,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_立体のエラー.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder", "");
+          if pkg == "brid" {
+            "09_橋梁_立体のエラー.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_立体のエラー.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_立体のエラー.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_立体のエラー.csv"
+          }
   - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     name: Lod1-4SolidIssuesCounter
     type: action
@@ -2200,8 +2254,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L01エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L01エラー.csv
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
     type: action
@@ -2232,8 +2287,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L02エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L02エラー.csv
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
     type: subGraph
@@ -2357,8 +2413,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通.csv"
+      output:
+        type: string
+        value: 01_共通.csv
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
     type: action
@@ -2408,22 +2465,22 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          for key in feature.keys() {
-            result.push(#{
-              name: key,
-              count: feature[key],
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            result = [];
+            feature = attributes["__features"][0];
+            for key in feature.keys() {
+              result.append({"name": key, "count": feature[key]});
+            }
+            result
           }
-          result
-        }
-      output: |
-        "summary_common.json"
+      output:
+        type: string
+        value: summary_common.json
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
     type: action
@@ -2446,8 +2503,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_GML_ID書式不正.csv"
+      output:
+        type: string
+        value: 01_共通_GML_ID書式不正.csv
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
     type: action
@@ -2470,8 +2528,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_GML_ID重複.csv"
+      output:
+        type: string
+        value: 01_共通_GML_ID重複.csv
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
     type: action
@@ -2516,8 +2575,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L06エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L06エラー.csv
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
     type: action
@@ -2546,8 +2606,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L04エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L04エラー.csv
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
     type: action
@@ -2576,8 +2637,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_不正なcodeSpace.csv"
+      output:
+        type: string
+        value: 01_共通_不正なcodeSpace.csv
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
@@ -2624,8 +2686,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_xlink参照先なし.csv"
+      output:
+        type: string
+        value: 01_共通_xlink参照先なし.csv
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
     type: action
@@ -2656,8 +2719,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_T03エラー.csv"
+      output:
+        type: string
+        value: 01_共通_T03エラー.csv
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
     type: action
@@ -2684,8 +2748,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L-frn-01エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L-frn-01エラー.csv
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
@@ -3081,15 +3146,19 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          {}
-        } else {
-          let feature = env.get("__features")[0];
-          feature["dataFileData"]
-        }
-      output: |
-        "summary_common2-" + env.get("__value")["package"] + ".json"
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            {}
+          } else {
+            feature = attributes["__features"][0];
+            feature["dataFileData"]
+          }
+      output:
+        type: flowExpr
+        value: |
+          "summary_common2-" + attributes["package"] + ".json"
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
     type: action
@@ -3118,8 +3187,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C05必須属性等の欠落_" + attributes["package"] + ".csv"
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
     type: action
@@ -3138,8 +3209,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C06現われない属性等_" + attributes["package"] + ".csv"
   - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
     name: AttributeMapperC07
     type: action
@@ -3168,8 +3241,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C07品質属性_" + attributes["package"] + ".csv"
   - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
     name: AttributeMapperC08
     type: action
@@ -3198,8 +3273,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C08公共測量品質属性_" + attributes["package"] + ".csv"
   - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     name: AttributeManagerTotalErrorCount
     type: action
@@ -3706,24 +3783,27 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "09_橋梁_地物インスタンス数.csv"
+      output:
+        type: string
+        value: 09_橋梁_地物インスタンス数.csv
   - id: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
     name: CsvWriterTunnelInstanceCounts
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "09_トンネル_地物インスタンス数.csv"
+      output:
+        type: string
+        value: 09_トンネル_地物インスタンス数.csv
   - id: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: CsvWriterUndergroundBuildingInstanceCounts
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "09_地下街_地物インスタンス数.csv"
+      output:
+        type: string
+        value: 09_地下街_地物インスタンス数.csv
   - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     name: SurfaceValidation
     type: subGraph
@@ -3827,10 +3907,19 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        name + "_検査結果一覧.csv"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          if pkg == "brid" {
+            "09_橋梁_検査結果一覧.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_検査結果一覧.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_検査結果一覧.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_検査結果一覧.csv"
+          }
   - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
     name: StatisticsCalculator
     type: action
@@ -3902,23 +3991,22 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          for key in feature.keys() {
-            result.push(#{
-              name: key,
-              count: feature[key],
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            feature = attributes["__features"][0];
+            itertools.map(feature.keys(), fn(key) {
+              {"name": key, "count": feature[key]}
+            })
           }
-          result
-        }
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        "summary_" + pkg + ".json"
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          "summary_" + pkg + ".json"
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -3943,18 +4031,20 @@ graphs:
     type: action
     action: JsonWriter
     with:
-      converter: '[]'
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        filename
+      converter:
+        type: flowExpr
+        value: '[]'
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"
   - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
     name: ZipFileWriter
     type: action
     action: ZipFileWriter
     with:
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        filename
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"
   edges:
   - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
     from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a

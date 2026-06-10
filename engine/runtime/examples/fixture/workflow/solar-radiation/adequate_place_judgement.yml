@@ -614,8 +614,9 @@ nodes:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "適地判定結果.csv"
+      output:
+        type: string
+        value: 適地判定結果.csv
 
   # ========================================
   # Section 2h: Land Area Pipeline
@@ -853,8 +854,9 @@ nodes:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "土地適地判定結果.csv"
+      output:
+        type: string
+        value: 土地適地判定結果.csv
 
   # Snow spatial filter for land areas
   - id: 00000006-0000-0000-0000-000000000010
