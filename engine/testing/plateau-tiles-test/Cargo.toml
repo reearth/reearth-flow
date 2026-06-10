@@ -1,6 +1,6 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.2.43"
+version = "0.2.44"
 edition = "2021"
 
 [dependencies]
@@ -34,6 +34,8 @@ tinymvt.workspace = true
 prost.workspace = true
 indexmap.workspace = true
 image.workspace = true
+rayon.workspace = true
+num_cpus.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
