@@ -124,7 +124,6 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Value> {
 
 /// Unified callable dispatch: invokes a NativeFn or Closure by value.
 pub(crate) fn call_value(f: Value, args: Vec<Value>) -> Result<Value> {
-    let _guard = DepthGuard::enter()?;
     match f {
         Value::Fn(native) => native.call(&args),
         Value::Closure(cl) => {
