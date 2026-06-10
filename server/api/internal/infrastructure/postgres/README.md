@@ -19,10 +19,11 @@ in `github.com/reearth/reearthx/pgxx`.
 
 ## Transactions
 
-`pgxx.NewTransactor(pool, n)` implements `usecasex.Transactor`. `repo.Container.Transaction`
-is set to it in `container.go`. Repos obtain the active transaction via `pgxx.Executor(ctx, pool)`
-so writes automatically join any transaction started by `WithinTransaction`. Use-case code
-calls `i.transaction.WithinTransaction(ctx, func(ctx context.Context) error { ... })` —
+Repos hold a `*pgxx.Client`. `pgxx.NewClient(pool)` backs `repo.Container.Transaction`
+and provides `WithinTransaction`. Repos obtain the active executor via `client.DB(ctx)`,
+which returns the ambient transaction if one is active, or the pool otherwise — so writes
+automatically join any transaction started by `WithinTransaction`. Use-case code calls
+`i.transaction.WithinTransaction(ctx, func(ctx context.Context) error { ... })` —
 returning nil commits; returning an error rolls back.
 
 ## Tooling notes

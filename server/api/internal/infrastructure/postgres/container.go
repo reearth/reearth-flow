@@ -17,9 +17,10 @@ import (
 // Account-owned repos (User/Workspace/Role/Permittable) continue to come from
 // the account container until they are ported in a separate stream.
 func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container) (*repo.Container, error) {
+	client := pgxx.NewClient(pool)
 	c := &repo.Container{
-		Trigger:     NewTrigger(pool),
-		Transaction: pgxx.NewTransactor(pool, 2),
+		Trigger:     NewTrigger(client),
+		Transaction: client,
 		Workspace:   account.Workspace,
 		User:        account.User,
 		Role:        account.Role,

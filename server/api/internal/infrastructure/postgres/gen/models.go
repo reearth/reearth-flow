@@ -5,7 +5,7 @@
 package gen
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 type Trigger struct {
@@ -14,11 +14,11 @@ type Trigger struct {
 	DeploymentID  string
 	Description   string
 	EventSource   string
-	TimeInterval  pgtype.Text
-	AuthToken     pgtype.Text
+	TimeInterval  *string
+	AuthToken     *string
 	Enabled       bool
-	LastTriggered pgtype.Timestamptz
+	LastTriggered *time.Time
 	Variables     []byte
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }

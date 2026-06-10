@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/gen"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -19,22 +18,22 @@ import (
 )
 
 type Trigger struct {
-	pool pgxx.DBTX
-	f    repo.WorkspaceFilter
+	c *pgxx.Client
+	f repo.WorkspaceFilter
 }
 
 var _ repo.Trigger = (*Trigger)(nil)
 
-func NewTrigger(pool pgxx.DBTX) *Trigger {
-	return &Trigger{pool: pool}
+func NewTrigger(c *pgxx.Client) *Trigger {
+	return &Trigger{c: c}
 }
 
 func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
-	return &Trigger{pool: r.pool, f: r.f.Merge(f)}
+	return &Trigger{c: r.c, f: r.f.Merge(f)}
 }
 
 func (r *Trigger) q(ctx context.Context) *gen.Queries {
-	return gen.New(pgxx.Executor(ctx, r.pool))
+	return gen.New(r.c.DB(ctx))
 }
 
 func (r *Trigger) FindByID(ctx context.Context, tid id.TriggerID) (*trigger.Trigger, error) {
@@ -119,7 +118,7 @@ func (r *Trigger) FindByWorkspace(
 		where = append(where, fmt.Sprintf("(description ILIKE $%d OR id ILIKE $%d)", len(args), len(args)))
 	}
 	whereSQL := "WHERE " + strings.Join(where, " AND ")
-	exec := pgxx.Executor(ctx, r.pool)
+	exec := r.c.DB(ctx)
 
 	if pagination != nil && pagination.Page != nil {
 		p := pagination.Page
@@ -173,7 +172,7 @@ func (r *Trigger) Save(ctx context.Context, t *trigger.Trigger) error {
 }
 
 func (r *Trigger) Remove(ctx context.Context, tid id.TriggerID) error {
-	exec := pgxx.Executor(ctx, r.pool)
+	exec := r.c.DB(ctx)
 	if r.f.Writable == nil {
 		if _, err := exec.Exec(ctx, `DELETE FROM triggers WHERE id = $1`, tid.String()); err != nil {
 			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
@@ -228,17 +227,18 @@ func triggerToParams(t *trigger.Trigger) (gen.UpsertTriggerParams, error) {
 		EventSource:  string(t.EventSource()),
 		Enabled:      t.Enabled(),
 		Variables:    vars,
-		CreatedAt:    pgtype.Timestamptz{Time: t.CreatedAt(), Valid: true},
-		UpdatedAt:    pgtype.Timestamptz{Time: t.UpdatedAt(), Valid: true},
+		CreatedAt:    t.CreatedAt(),
+		UpdatedAt:    t.UpdatedAt(),
 	}
 	if ti := t.TimeInterval(); ti != nil {
-		p.TimeInterval = pgtype.Text{String: string(*ti), Valid: true}
+		s := string(*ti)
+		p.TimeInterval = &s
 	}
 	if at := t.AuthToken(); at != nil {
-		p.AuthToken = pgtype.Text{String: *at, Valid: true}
+		p.AuthToken = at
 	}
 	if lt := t.LastTriggered(); lt != nil {
-		p.LastTriggered = pgtype.Timestamptz{Time: *lt, Valid: true}
+		p.LastTriggered = lt
 	}
 	return p, nil
 }
@@ -264,17 +264,17 @@ func triggerFromRow(row gen.Trigger) (*trigger.Trigger, error) {
 		Description(row.Description).
 		EventSource(trigger.EventSourceType(row.EventSource)).
 		Enabled(row.Enabled).
-		CreatedAt(row.CreatedAt.Time).
-		UpdatedAt(row.UpdatedAt.Time)
+		CreatedAt(row.CreatedAt).
+		UpdatedAt(row.UpdatedAt)
 
-	if row.TimeInterval.Valid {
-		b = b.TimeInterval(trigger.TimeInterval(row.TimeInterval.String))
+	if row.TimeInterval != nil {
+		b = b.TimeInterval(trigger.TimeInterval(*row.TimeInterval))
 	}
-	if row.AuthToken.Valid {
-		b = b.AuthToken(row.AuthToken.String)
+	if row.AuthToken != nil {
+		b = b.AuthToken(*row.AuthToken)
 	}
-	if row.LastTriggered.Valid {
-		b = b.LastTriggered(row.LastTriggered.Time)
+	if row.LastTriggered != nil {
+		b = b.LastTriggered(*row.LastTriggered)
 	}
 
 	vars, err := variablesFromJSON(row.Variables)

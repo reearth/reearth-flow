@@ -34,7 +34,7 @@ func TestTrigger_Save_FindByID(t *testing.T) {
 		Description("desc").EventSource(trigger.EventSourceTypeTimeDriven).
 		TimeInterval(trigger.TimeIntervalEveryDay).Enabled(true).
 		CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
-	r := postgres.NewTrigger(pool)
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
 	require.NoError(t, r.Save(ctx, tr))
 	got, err := r.FindByID(ctx, tid)
 	require.NoError(t, err)
@@ -48,7 +48,7 @@ func TestTrigger_Save_FindByID(t *testing.T) {
 
 func TestTrigger_FindByID_NotFound(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
-	got, err := postgres.NewTrigger(pool).FindByID(context.Background(), id.NewTriggerID())
+	got, err := postgres.NewTrigger(pgxx.NewClient(pool)).FindByID(context.Background(), id.NewTriggerID())
 	assert.Error(t, err)
 	assert.Nil(t, got)
 }
@@ -56,7 +56,7 @@ func TestTrigger_FindByID_NotFound(t *testing.T) {
 func TestTrigger_FindByIDs_Order(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	r := postgres.NewTrigger(pool)
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	tid1 := id.NewTriggerID()
@@ -76,7 +76,7 @@ func TestTrigger_FindByIDs_Order(t *testing.T) {
 func TestTrigger_FindByDeployment(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	r := postgres.NewTrigger(pool)
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	other := id.NewDeploymentID()
@@ -91,7 +91,7 @@ func TestTrigger_FindByDeployment(t *testing.T) {
 func TestTrigger_Remove(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	r := postgres.NewTrigger(pool)
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	tid := id.NewTriggerID()
@@ -105,7 +105,7 @@ func TestTrigger_Remove(t *testing.T) {
 func TestTrigger_Remove_WithWorkspaceFilter(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	base := postgres.NewTrigger(pool)
+	base := postgres.NewTrigger(pgxx.NewClient(pool))
 	wid1 := accountsid.NewWorkspaceID()
 	wid2 := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
@@ -127,7 +127,7 @@ func TestTrigger_Remove_WithWorkspaceFilter(t *testing.T) {
 func TestTrigger_FindByWorkspace_NoPagination(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	r := postgres.NewTrigger(pool)
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
 	wid := accountsid.NewWorkspaceID()
 	wid2 := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
@@ -143,7 +143,7 @@ func TestTrigger_FindByWorkspace_NoPagination(t *testing.T) {
 func TestTrigger_FindByWorkspace_Paginated(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	r := postgres.NewTrigger(pool)
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	for i := 0; i < 5; i++ {
@@ -161,7 +161,7 @@ func TestTrigger_FindByWorkspace_Paginated(t *testing.T) {
 func TestTrigger_FindByWorkspace_Keyword(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	r := postgres.NewTrigger(pool)
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	hay := trigger.New().ID(id.NewTriggerID()).Workspace(wid).Deployment(did).
@@ -180,7 +180,7 @@ func TestTrigger_FindByWorkspace_NotReadable(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
 	wid := accountsid.NewWorkspaceID()
-	r := postgres.NewTrigger(pool).Filtered(repo.WorkspaceFilter{
+	r := postgres.NewTrigger(pgxx.NewClient(pool)).Filtered(repo.WorkspaceFilter{
 		Readable: accountsid.WorkspaceIDList{accountsid.NewWorkspaceID()},
 	})
 	got, info, err := r.FindByWorkspace(ctx, wid, nil, nil)
@@ -192,12 +192,13 @@ func TestTrigger_FindByWorkspace_NotReadable(t *testing.T) {
 func TestTrigger_Save_RollsBackInTransaction(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	r := postgres.NewTrigger(pool)
+	c := pgxx.NewClient(pool)
+	r := postgres.NewTrigger(c)
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	tid := id.NewTriggerID()
 	// Return a non-nil error to trigger rollback.
-	_ = pgxx.NewTransactor(pool, 0).WithinTransaction(ctx, func(ctx context.Context) error {
+	_ = c.WithinTransaction(ctx, func(ctx context.Context) error {
 		require.NoError(t, r.Save(ctx, newTrig(wid, did, tid)))
 		return errors.New("rollback")
 	})
@@ -209,11 +210,12 @@ func TestTrigger_Save_RollsBackInTransaction(t *testing.T) {
 func TestTrigger_Save_CommitsInTransaction(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()
-	r := postgres.NewTrigger(pool)
+	c := pgxx.NewClient(pool)
+	r := postgres.NewTrigger(c)
 	wid := accountsid.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	tid := id.NewTriggerID()
-	require.NoError(t, pgxx.NewTransactor(pool, 0).WithinTransaction(ctx, func(ctx context.Context) error {
+	require.NoError(t, c.WithinTransaction(ctx, func(ctx context.Context) error {
 		return r.Save(ctx, newTrig(wid, did, tid))
 	}))
 	got, err := r.FindByID(ctx, tid)

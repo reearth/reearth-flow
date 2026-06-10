@@ -7,8 +7,7 @@ package gen
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 const deleteTrigger = `-- name: DeleteTrigger :exec
@@ -144,13 +143,13 @@ type UpsertTriggerParams struct {
 	DeploymentID  string
 	Description   string
 	EventSource   string
-	TimeInterval  pgtype.Text
-	AuthToken     pgtype.Text
+	TimeInterval  *string
+	AuthToken     *string
 	Enabled       bool
-	LastTriggered pgtype.Timestamptz
+	LastTriggered *time.Time
 	Variables     []byte
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func (q *Queries) UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) error {
