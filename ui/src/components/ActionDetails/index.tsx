@@ -42,18 +42,20 @@ const ActionDetails = ({ action, onAdd }: Props) => {
           </div>
           <h2 className="text-lg font-semibold">{action.name}</h2>
         </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              variant="outline"
-              icon={
-                <PlusIcon size={20} weight="thin" className="text-white " />
-              }
-              onClick={() => onAdd?.(action.name)}
-            />
-          </TooltipTrigger>
-          <TooltipContent>{t("Add to canvas")}</TooltipContent>
-        </Tooltip>
+        {onAdd && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="outline"
+                icon={
+                  <PlusIcon size={20} weight="thin" className="text-white " />
+                }
+                onClick={() => onAdd?.(action.name)}
+              />
+            </TooltipTrigger>
+            <TooltipContent>{t("Add to canvas")}</TooltipContent>
+          </Tooltip>
+        )}
       </div>
       <div className="flex flex-col flex-wrap gap-1.5">
         <p className="items-center text-xs font-semibold tracking-wide text-muted-foreground">
