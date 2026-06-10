@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.20 - 2026-06-09
+
+### engine
+
+#### ✨ Refactor
+
+- Migrate &#x60;AttributeMapper&#x60; to FlowExpr ([#2131](https://github.com/reearth/reearth-flow/pull/2131)) [`dd95bb`](https://github.com/reearth/reearth-flow/commit/dd95bb)
+
+### engine&#x2F;sink
+
+#### 🚀 Features
+
+- Require relative paths in sink output ([#2123](https://github.com/reearth/reearth-flow/pull/2123)) [`eda62a`](https://github.com/reearth/reearth-flow/commit/eda62a)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Add attributes to flowExpr system ([#2144](https://github.com/reearth/reearth-flow/pull/2144)) [`ee1deb`](https://github.com/reearth/reearth-flow/commit/ee1deb)
+
 ## 0.1.0-alpha.19 - 2026-06-05
 
 ### Web

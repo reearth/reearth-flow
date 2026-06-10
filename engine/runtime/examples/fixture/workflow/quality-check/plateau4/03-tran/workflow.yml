@@ -149,26 +149,33 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("package", "")
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", "")
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("name", "")
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureType", "")
             - attribute: LOD
-              expr: |
-                env.get("__value")["lod"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "")
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["gmlId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("gmlId", "")
             - attribute: "未参照"
-              expr: |
-                env.get("__value")["unreferenced"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("unreferenced", "")
 
       # Write XLink CSV output
       - id: 737996be-8410-4447-9986-bba01fe9ce0c
@@ -205,33 +212,41 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("package", "")
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", "")
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("name", "")
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureType", "")
             - attribute: LOD
-              expr: |
-                env.get("__value")["lod"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "")
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["featureId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureId", "")
             - attribute: issue
-              expr: |
-                let value = env.get("__value");
-                if value.validationResult?.details != () {
-                  return value.validationResult.details[0][0];
-                }
-                if "issue" in value {
-                  return value.issue;
-                }
-                "UnknownError"
+              expr:
+                type: flowExpr
+                value: |
+                  vr = attributes.get("validationResult");
+                  if vr != null and "details" in vr {
+                    vr["details"][0][0]
+                  } else if "issue" in attributes {
+                    attributes["issue"]
+                  } else {
+                    "UnknownError"
+                  }
 
       # Extract surface orientation
       - id: d60f93c1-c55e-49ee-9332-657f4408ba05
@@ -261,36 +276,45 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("package", "")
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", "")
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("name", "")
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureType", "")
             - attribute: LOD
-              expr: |
-                env.get("__value")["lod"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "")
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["featureId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureId", "")
 
             # The error count is always 1
             - attribute: "エラー数"
-              expr: |
-                1
+              expr:
+                type: flowExpr
+                value: "1"
 
             # We hardcode the following two attributes since coming here means the orientation is incorrect
             - attribute: "エラー内容"
-              expr: |
-                "Incorrect Orientation"
+              expr:
+                type: string
+                value: Incorrect Orientation
             - attribute: "面の向き"
-              expr: |
-                "right_hand_rule"
+              expr:
+                type: string
+                value: right_hand_rule
 
       # Write CSV output
       - id: 2b0d83b3-2c7a-4314-b609-e4f7db379902
@@ -511,26 +535,33 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("package", "")
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", "")
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("name", "")
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureType", "")
             - attribute: LOD
-              expr: |
-                env.get("__value")["lod"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "")
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["gmlId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("gmlId", "")
             - attribute: 隣接ID
-              expr: |
-                env.get("__value")["areaOverlapIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("areaOverlapIndex", "")
 
       # Feature Writer
       - id: e1eb4eb2-b045-4cdb-aa43-922dd5e03a79
@@ -561,11 +592,9 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
 
       # Phase 2: Error counters - Count errors by filename for each error type
       # XLink error counter
@@ -635,24 +664,26 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").Index
+              valueAttribute: Index
             - attribute: Filename
-              expr: |
-                env.get("__value").Filename
+              valueAttribute: Filename
             # Domain-specific error columns
             - attribute: "L-TRAN-03 xlink参照エラー"
-              expr: |
-                env.get("__value")._num_unreferenced_surface ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_unreferenced_surface", 0)
             - attribute: "面の向き不正"
-              expr: |
-                env.get("__value")._num_incorrect_orientation ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_orientation", 0)
             - attribute: "L-TRAN-02 隣接面重複"
-              expr: |
-                env.get("__value")._num_overlaps ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_overlaps", 0)
             - attribute: "面のエラー"
-              expr: |
-                env.get("__value")._surface_issues ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_surface_issues", 0)
 
       # Phase 5: CSV output
       - id: be20e492-76d2-4afc-a985-e040f43d55fb

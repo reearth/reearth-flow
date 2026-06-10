@@ -8,8 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr};
-use rhai::Dynamic;
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,12 +49,12 @@ impl ProcessorFactory for AttributeMapperFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeMapperParam = if let Some(with) = with.clone() {
+        let params: AttributeMapperParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::MapperFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -72,13 +71,11 @@ impl ProcessorFactory for AttributeMapperFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut mappers = Vec::<CompiledMapper>::new();
         for mapper in &params.mappers {
             let expr = if let Some(expr) = &mapper.expr {
                 Some(
-                    expr_engine
-                        .compile(expr.as_ref())
+                    expr.compile()
                         .map_err(|e| AttributeProcessorError::MapperFactory(format!("{e:?}")))?,
                 )
             } else {
@@ -86,8 +83,8 @@ impl ProcessorFactory for AttributeMapperFactory {
             };
             let multiple_expr = if let Some(multiple_expr) = &mapper.multiple_expr {
                 Some(
-                    expr_engine
-                        .compile(multiple_expr.as_ref())
+                    multiple_expr
+                        .compile()
                         .map_err(|e| AttributeProcessorError::MapperFactory(format!("{e:?}")))?,
                 )
             } else {
@@ -104,7 +101,6 @@ impl ProcessorFactory for AttributeMapperFactory {
         }
 
         let processor = AttributeMapper {
-            global_params: with,
             mapper: CompiledAttributeMapperParam { mappers },
         };
         Ok(Box::new(processor))
@@ -126,7 +122,7 @@ struct Mapper {
     /// # Attribute name
     attribute: Option<String>,
     /// # Expression to evaluate
-    expr: Option<Expr>,
+    expr: Option<Code>,
     /// # Attribute name to get value from
     value_attribute: Option<String>,
     /// # Parent attribute name
@@ -134,7 +130,7 @@ struct Mapper {
     /// # Child attribute name
     child_attribute: Option<String>,
     /// # Expression to evaluate multiple attributes
-    multiple_expr: Option<Expr>,
+    multiple_expr: Option<Code>,
 }
 
 #[derive(Debug, Clone)]
@@ -145,16 +141,15 @@ struct CompiledAttributeMapperParam {
 #[derive(Debug, Clone)]
 struct CompiledMapper {
     attribute: Option<String>,
-    expr: Option<rhai::AST>,
+    expr: Option<CompiledCode>,
     value_attribute: Option<String>,
     parent_attribute: Option<String>,
     child_attribute: Option<String>,
-    multiple_expr: Option<rhai::AST>,
+    multiple_expr: Option<CompiledCode>,
 }
 
 #[derive(Debug, Clone)]
 pub struct AttributeMapper {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     mapper: CompiledAttributeMapperParam,
 }
 
@@ -165,32 +160,28 @@ impl Processor for AttributeMapper {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let env_vars = ctx.expr_engine.vars();
         let mut attributes = IndexMap::<Attribute, AttributeValue>::new();
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         for mapper in &self.mapper.mappers {
             match &mapper.attribute {
                 Some(attribute) => {
                     if let Some(expr) = &mapper.expr {
-                        let new_value = scope.eval_ast::<Dynamic>(expr);
-                        if let Ok(new_value) = new_value {
-                            if let Ok(new_value) = new_value.try_into() {
-                                attributes.insert(Attribute::new(attribute.clone()), new_value);
-                            } else {
-                                attributes.insert(
-                                    Attribute::new(attribute.clone()),
-                                    AttributeValue::Null,
+                        let new_value = match expr.eval(feature, Arc::clone(&env_vars)) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                tracing::error!(
+                                    "Failed to evaluate expr for attribute `{attribute}`: {e:?}"
                                 );
+                                AttributeValue::Null
                             }
-                        } else {
-                            attributes
-                                .insert(Attribute::new(attribute.clone()), AttributeValue::Null);
-                        }
+                        };
+                        attributes.insert(Attribute::new(attribute.clone()), new_value);
                         continue;
                     } else if let Some(value_attribute) = &mapper.value_attribute {
                         if let Some(value) = feature.get(value_attribute) {
                             attributes.insert(Attribute::new(attribute.clone()), value.clone());
                         } else {
+                            tracing::error!("value_attribute `{value_attribute}` not found in feature for attribute `{attribute}`");
                             attributes
                                 .insert(Attribute::new(attribute.clone()), AttributeValue::Null);
                         }
@@ -207,16 +198,21 @@ impl Processor for AttributeMapper {
                 }
                 None => {
                     if let Some(multiple_expr) = &mapper.multiple_expr {
-                        let new_value = scope.eval_ast::<Dynamic>(multiple_expr);
-                        if let Ok(new_value) = new_value {
-                            if new_value.is::<rhai::Map>() {
-                                if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                                    attributes.extend(
-                                        new_value
-                                            .iter()
-                                            .map(|(k, v)| (Attribute::new(k.clone()), v.clone())),
-                                    );
-                                }
+                        match multiple_expr.eval(feature, Arc::clone(&env_vars)) {
+                            Err(e) => {
+                                tracing::error!("Failed to evaluate multiple_expr: {e:?}");
+                            }
+                            Ok(AttributeValue::Map(new_value)) => {
+                                attributes.extend(
+                                    new_value
+                                        .iter()
+                                        .map(|(k, v)| (Attribute::new(k.clone()), v.clone())),
+                                );
+                            }
+                            Ok(other) => {
+                                tracing::error!(
+                                    "multiple_expr did not produce a Map, got: {other:?}"
+                                );
                             }
                         }
                     }

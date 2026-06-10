@@ -74,36 +74,45 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value")["udxDirs"] ?? "cons"
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "cons")
         - attribute: Index
-          expr: |
-            env.get("__value")["fileIndex"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
         - attribute: Filename
-          expr: |
-            env.get("__value")["gmlFilename"] ?? env.get("__value")["name"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", attributes.get("name", ""))
         - attribute: FeatureType
-          expr: |
-            env.get("__value").featureTypeName ?? "OtherConstruction"
+          expr:
+            type: flowExpr
+            value: attributes.get("featureTypeName", "OtherConstruction")
         - attribute: LOD
-          expr: |
-            env.get("__value")["lod"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value")["featureId"] ?? env.get("__value")["gmlId"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("featureId", attributes.get("gmlId", ""))
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   # ===== CSV Writer for surface errors =====
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6a
@@ -166,20 +175,19 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            env.get("__value").featureTypeName ?? "OtherConstruction"
+          expr:
+            type: flowExpr
+            value: attributes.get("featureTypeName", "OtherConstruction")
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: issue
-          expr: |
-            "Surface Not Closed"
+          expr:
+            type: string
+            value: Surface Not Closed
 
   # CSV Writer for NotClosed errors
   - id: a104d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
@@ -221,20 +229,19 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            env.get("__value").featureTypeName ?? "OtherConstruction"
+          expr:
+            type: flowExpr
+            value: attributes.get("featureTypeName", "OtherConstruction")
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: issue
-          expr: |
-            "InvalidSolidBoundaries"
+          expr:
+            type: string
+            value: InvalidSolidBoundaries
 
   # CSV Writer for Solid Issues (立体のその他のエラー)
   - id: a120e2f3-a4b5-c6d7-e8f9-f0a1b2c3d4e5
@@ -268,32 +275,41 @@ nodes:
     with:
       mappers:
         - attribute: Folder
-          expr: |
-            env.get("__value")["udxDirs"] ?? "cons"
+          expr:
+            type: flowExpr
+            value: attributes.get("udxDirs", "cons")
         - attribute: Index
-          expr: |
-            env.get("__value")["fileIndex"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
         - attribute: Filename
-          expr: |
-            env.get("__value")["gmlFilename"] ?? env.get("__value")["name"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlFilename", attributes.get("name", ""))
         - attribute: FeatureType
-          expr: |
-            env.get("__value").featureTypeName ?? "OtherConstruction"
+          expr:
+            type: flowExpr
+            value: attributes.get("featureTypeName", "OtherConstruction")
         - attribute: LOD
-          expr: |
-            env.get("__value")["lod"] ?? "0"
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "0")
         - attribute: "gml:id"
-          expr: |
-            env.get("__value")["gmlId"] ?? env.get("__value")["featureId"] ?? ""
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", attributes.get("featureId", ""))
         - attribute: エラー数
-          expr: |
-            1
+          expr:
+            type: string
+            value: "1"
         - attribute: エラー内容
-          expr: |
-            "Incorrect Orientation"
+          expr:
+            type: string
+            value: Incorrect Orientation
         - attribute: 面の向き
-          expr: |
-            "right_hand_rule"
+          expr:
+            type: string
+            value: right_hand_rule
 
   - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
     name: CsvWriterOrientationErrors

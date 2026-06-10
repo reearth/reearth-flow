@@ -439,7 +439,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: Url(attributes["path"]).name.split("_")[0]
+          value: attributes["path"].split("/")[-1].split("_")[0]
       - attribute: feature_type
         method: create
         value:
@@ -785,7 +785,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
           if attributes["baseCityCode"] == attributes["city_code"] {
             city_gml + "_bldg_3dtiles_lod1.zip"
           } else {
@@ -811,7 +811,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
           if attributes["baseCityCode"] == attributes["city_code"] {
             city_gml + "_bldg_3dtiles_lod2.zip"
           } else {
@@ -837,7 +837,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
           if attributes["baseCityCode"] == attributes["city_code"] {
             city_gml + "_bldg_3dtiles_lod2_no_texture.zip"
           } else {
@@ -863,7 +863,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
           if attributes["baseCityCode"] == attributes["city_code"] {
             city_gml + "_bldg_3dtiles_lod3.zip"
           } else {
@@ -889,7 +889,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
           if attributes["baseCityCode"] == attributes["city_code"] {
             city_gml + "_bldg_3dtiles_lod3_no_texture.zip"
           } else {
@@ -915,7 +915,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
           if attributes["baseCityCode"] == attributes["city_code"] {
             city_gml + "_bldg_3dtiles_lod4.zip"
           } else {
@@ -941,7 +941,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_bldg");
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
           if attributes["baseCityCode"] == attributes["city_code"] {
             city_gml + "_bldg_3dtiles_lod4_no_texture.zip"
           } else {
