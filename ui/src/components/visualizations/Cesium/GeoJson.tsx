@@ -192,7 +192,7 @@ const GeoJsonData: React.FC<Props> = ({
 
       if (entity) {
         await viewer.flyTo(entity, { duration: 0 });
-      } else if (!hasEverLoadedRef.current) {
+      } else if (!hasEverLoadedRef.current || selectedId) {
         await viewer.zoomTo(ds);
       }
     } catch {
