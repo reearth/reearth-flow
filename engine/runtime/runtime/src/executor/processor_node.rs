@@ -323,9 +323,13 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     return terminate_result;
                 }
                 // Polling-backoff for the busy-wait that drains `thread_counter`
-                // after all inputs have terminated. `yield_now` gives the scheduler
-                // a chance to run other threads without a fixed sleep window.
-                std::thread::yield_now();
+                // after all inputs have terminated. A 100µs sleep keeps CPU usage
+                // negligible (~10,000 polls/sec at most) while still being fast
+                // enough that detection latency for the counter reaching 0 is
+                // imperceptible. `yield_now()` would spin at ~100% CPU on cores
+                // with no other runnable threads, which can stretch into seconds
+                // for large processors.
+                std::thread::sleep(Duration::from_micros(100));
                 continue;
             }
             let index = sel.ready();

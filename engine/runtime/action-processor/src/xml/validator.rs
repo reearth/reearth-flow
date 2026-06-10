@@ -73,20 +73,42 @@ impl DiskCachingFetcher {
 impl SchemaFetcher for DiskCachingFetcher {
     fn fetch(&self, url: &str) -> fastxml::error::Result<FetchResult> {
         let path = self.cache_path(url);
-        if let Ok(content) = std::fs::read(&path) {
-            return Ok(FetchResult {
-                content,
-                final_url: url.to_string(),
-                redirected: false,
-            });
+
+        // Only read the cache file if it exists and is a regular file. The
+        // cache directory lives under a shared temp dir, so guard against
+        // a symlink at the cache path being followed to read or write
+        // arbitrary content elsewhere on the filesystem.
+        if let Ok(meta) = std::fs::symlink_metadata(&path) {
+            if meta.file_type().is_file() {
+                if let Ok(content) = std::fs::read(&path) {
+                    return Ok(FetchResult {
+                        content,
+                        final_url: url.to_string(),
+                        redirected: false,
+                    });
+                }
+            }
         }
 
         let result = self.inner.fetch(url)?;
 
         // Only cache direct (non-redirected) responses so a cached entry's
-        // `final_url` stays correct for relative-import resolution.
+        // `final_url` stays correct for relative-import resolution. Write via
+        // a sibling temp file + atomic rename so that:
+        //   * A pre-existing symlink at the destination is not followed.
+        //   * Concurrent readers either see the old content or the new
+        //     content, never a partial write.
         if !result.redirected && result.final_url == url {
-            let _ = std::fs::write(&path, &result.content);
+            if let Some(parent) = path.parent() {
+                let tmp = parent.join(format!(
+                    ".{}.{}.tmp",
+                    path.file_name().and_then(|n| n.to_str()).unwrap_or("cache"),
+                    std::process::id()
+                ));
+                if std::fs::write(&tmp, &result.content).is_ok() {
+                    let _ = std::fs::rename(&tmp, &path);
+                }
+            }
         }
 
         Ok(result)
