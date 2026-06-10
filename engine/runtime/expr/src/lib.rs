@@ -2,7 +2,7 @@ mod core;
 
 pub use core::env::Env;
 pub use core::error::{eval_error, Error, Result};
-pub use core::eval::{bool_cast, default_env, env_bind, str_cast};
+pub use core::eval::{default_env, env_bind};
 pub use core::value::{ClosureValue, ImmutableObject, NativeFn, Value};
 
 pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> Result<()> {

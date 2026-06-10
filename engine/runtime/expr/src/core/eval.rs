@@ -1077,17 +1077,6 @@ fn is_truthy(v: &Value) -> bool {
     }
 }
 
-pub fn bool_cast(v: Value) -> bool {
-    is_truthy(&v)
-}
-
-pub fn str_cast(v: Value) -> Result<String> {
-    match builtin_str(std::slice::from_ref(&v))? {
-        Value::String(s) => Ok(s),
-        _ => unreachable!(),
-    }
-}
-
 fn builtin_str(args: &[Value]) -> Result<Value> {
     if args.len() > 1 {
         return Err(eval_error(format!(
