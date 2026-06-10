@@ -1,7 +1,7 @@
 use crate::object_list::ObjectListMap;
 
 use super::errors::PlateauProcessorError;
-use fastxml::transform::StreamTransformer;
+use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -677,7 +677,7 @@ fn collect_all_info(raw_xml: &str) -> Result<CollectedInfo, PlateauProcessorErro
 
     let collected: RefCell<CollectedInfo> = RefCell::new(CollectedInfo::default());
 
-    let transformer = StreamTransformer::new(raw_xml)
+    let transformer = Transformer::from(raw_xml)
         .with_root_namespaces()
         .map_err(|e| {
             PlateauProcessorError::MissingAttributeDetector(format!(

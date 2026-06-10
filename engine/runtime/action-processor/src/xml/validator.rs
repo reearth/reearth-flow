@@ -564,7 +564,7 @@ impl XmlValidator {
         feature: &Feature,
         xml_bytes: &[u8],
     ) -> Result<Vec<ValidationResult>> {
-        use fastxml::schema::validator::StreamValidator;
+        use fastxml::schema::Validator;
 
         // Determine base directory for relative schema resolution
         let base_dir = self.get_xml_base_url(feature).and_then(|uri| {
@@ -662,10 +662,13 @@ impl XmlValidator {
 
         // --- Step 3: Streaming validation ---
         let reader = std::io::BufReader::new(std::io::Cursor::new(xml_bytes));
-        let validator = StreamValidator::new(Arc::clone(&compiled));
-        let errors = validator.validate(reader).map_err(|e| {
-            XmlProcessorError::Validator(format!("Streaming validation failed: {e:?}"))
-        })?;
+        let errors = Validator::from_reader(reader)
+            .schema(Arc::clone(&compiled))
+            .run()
+            .map_err(|e| {
+                XmlProcessorError::Validator(format!("Streaming validation failed: {e:?}"))
+            })?
+            .into_entries();
 
         // Convert errors to ValidationResult and deduplicate
         let validation_results: HashSet<_> = errors
