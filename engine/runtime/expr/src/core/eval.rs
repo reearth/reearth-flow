@@ -11,38 +11,56 @@ use super::error::{eval_error, Error, Result, POS_UNSET};
 use super::value::{format_float, ClosureValue, NativeFn, Value};
 use crate::expect_arity;
 
-#[cfg(debug_assertions)]
-const MAX_EVAL_DEPTH: usize = 64;
-#[cfg(not(debug_assertions))]
-const MAX_EVAL_DEPTH: usize = 1024;
-
-thread_local! {
-    static EVAL_DEPTH: Cell<usize> = const { Cell::new(0) };
+struct DepthCounter {
+    depth: Cell<usize>,
+    limit: usize,
+    label: &'static str,
 }
 
-struct DepthGuard;
+thread_local! {
+    static AST_DEPTH: DepthCounter = DepthCounter {
+        depth: Cell::new(0),
+        #[cfg(debug_assertions)]
+        limit: 64,
+        #[cfg(not(debug_assertions))]
+        limit: 1024,
+        label: "AST",
+    };
+    static CALL_DEPTH: DepthCounter = DepthCounter {
+        depth: Cell::new(0),
+        #[cfg(debug_assertions)]
+        limit: 32,
+        #[cfg(not(debug_assertions))]
+        limit: 512,
+        label: "call",
+    };
+}
+
+struct DepthGuard {
+    counter: &'static std::thread::LocalKey<DepthCounter>,
+}
 
 impl DepthGuard {
-    fn enter() -> Result<Self> {
-        let depth = EVAL_DEPTH.with(|d| {
-            let v = d.get() + 1;
-            d.set(v);
-            v
+    fn enter(counter: &'static std::thread::LocalKey<DepthCounter>) -> Result<Self> {
+        let (depth, limit, label) = counter.with(|c| {
+            let v = c.depth.get() + 1;
+            c.depth.set(v);
+            (v, c.limit, c.label)
         });
-        if depth > MAX_EVAL_DEPTH {
-            EVAL_DEPTH.with(|d| d.set(d.get() - 1));
+        if depth > limit {
+            counter.with(|c| c.depth.set(c.depth.get() - 1));
             Err(eval_error(format!(
-                "expression exceeds maximum evaluation depth ({MAX_EVAL_DEPTH})"
+                "expression exceeds maximum {label} depth ({limit})"
             )))
         } else {
-            Ok(DepthGuard)
+            Ok(DepthGuard { counter })
         }
     }
 }
 
 impl Drop for DepthGuard {
     fn drop(&mut self) {
-        EVAL_DEPTH.with(|d| d.set(d.get() - 1));
+        self.counter.with(|c| c.depth.set(c.depth.get() - 1));
     }
 }
 
@@ -124,6 +142,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Value> {
 
 /// Unified callable dispatch: invokes a NativeFn or Closure by value.
 pub(crate) fn call_value(f: Value, args: Vec<Value>) -> Result<Value> {
+    let _guard = DepthGuard::enter(&CALL_DEPTH)?;
     match f {
         Value::Fn(native) => native.call(&args),
         Value::Closure(cl) => {
@@ -557,7 +576,7 @@ fn bitwise_args(a: &Value, b: &Value) -> Result<(i64, i64)> {
 // Recursion entrypoint for AST expression evaluation.
 fn eval_inner(expr: &Expr, env: &Env) -> Result<Value> {
     let pos = expr.span.start;
-    let _depth = DepthGuard::enter()?;
+    let _depth = DepthGuard::enter(&AST_DEPTH)?;
     eval_node(expr, env).map_err(|mut e| {
         if let Error::Eval { pos: ref mut p, .. } = e {
             if *p == POS_UNSET {
@@ -1812,7 +1831,7 @@ mod tests {
 
     #[test]
     fn test_depth_limit_ok() {
-        let n = MAX_EVAL_DEPTH - 1;
+        let n = AST_DEPTH.with(|c| c.limit) - 1;
         let expr = format!("1{}", "+1".repeat(n));
         {
             let result = eval(&parse(&expr).unwrap(), &default_env()).unwrap();
@@ -1831,7 +1850,7 @@ mod tests {
     fn test_deep_list_eq_depth_limit() {
         let mut a = Value::array(vec![Value::Int(1)]);
         let mut b = Value::array(vec![Value::Int(1)]);
-        for _ in 0..MAX_EVAL_DEPTH {
+        for _ in 0..CALL_DEPTH.with(|c| c.limit) {
             a = Value::array(vec![a]);
             b = Value::array(vec![b]);
         }
