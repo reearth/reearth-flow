@@ -228,6 +228,12 @@ const GeoJsonData: React.FC<Props> = ({
       });
 
       updateVisibility();
+
+      if (selectedFeatureIdRef.current) {
+        handleHighlightSelectedFeature(selectedFeatureIdRef.current);
+        prevSelectedRef.current = selectedFeatureIdRef.current;
+      }
+
       await flyTo();
 
       // Bail if unmounted during flyTo (e.g. switched to 3D data mid-flight).
@@ -246,7 +252,7 @@ const GeoJsonData: React.FC<Props> = ({
         v.scene.postRender.addEventListener(renderAgain);
       }
     },
-    [updateVisibility, flyTo],
+    [updateVisibility, flyTo, handleHighlightSelectedFeature],
   );
 
   useEffect(() => {
