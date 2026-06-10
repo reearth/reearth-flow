@@ -122,7 +122,6 @@ impl EventHub {
         });
     }
 
-
     pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {
         self.send(Event::Log {
             level: Level::WARN,
