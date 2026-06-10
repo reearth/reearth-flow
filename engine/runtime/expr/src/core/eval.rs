@@ -153,7 +153,11 @@ pub(crate) fn call_value(f: Value, args: Vec<Value>) -> Result<Value> {
                     args.len()
                 )));
             }
-            let call_env = new_frame(Some(Rc::clone(&cl.captured)));
+            let captured = cl
+                .captured
+                .upgrade()
+                .ok_or_else(|| eval_error("closure called after its defining scope was dropped"))?;
+            let call_env = new_frame(Some(captured));
             for (param, arg) in cl.params.iter().zip(args) {
                 env_set_local(&call_env, param.clone(), arg);
             }
@@ -741,9 +745,7 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
         ExprKind::Fn { params, body } => Ok(Value::Closure(ClosureValue {
             params: params.clone(),
             body: Rc::new(*body.clone()),
-            // TODO: implement free-variable capture; for now closures are context-free
-            // (parameters + builtins only) to avoid Rc cycles with the enclosing frame.
-            captured: default_env(),
+            captured: Rc::downgrade(env),
         })),
     }
 }
@@ -2091,6 +2093,22 @@ mod tests {
     fn test_closures() {
         assert_eval("f = fn(x) { x * 2 }; f(5)", &[], Value::from(10i64));
         assert_eval("fn(x) { x + 1 }(3)", &[], Value::from(4i64));
+        assert_eval("n = 10; f = fn(x) { x + n }; f(5)", &[], Value::from(15i64));
+        assert_eval(
+            "x = 1; f = fn() { x = 99 }; f(); x",
+            &[],
+            Value::from(99i64),
+        );
+        assert_eval(
+            "x = 1; f = fn() { let x = 99; x }; f(); x",
+            &[],
+            Value::from(1i64),
+        );
+        assert_eval(
+            "fact = fn(n) { if n <= 1 { 1 } else { n * fact(n - 1) } }; fact(5)",
+            &[],
+            Value::from(120i64),
+        );
         assert_eval(
             "f = fn(x) { return x * 2; 999 }; f(4)",
             &[],

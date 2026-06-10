@@ -1,13 +1,13 @@
 use std::cell::RefCell;
 use std::fmt;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use indexmap::IndexMap;
 
 pub type Module = IndexMap<String, Value>;
 
 use super::ast::Expr;
-use super::env::Env;
+use super::env::Frame;
 use crate::core::error::{eval_error, Result};
 
 /// A user-defined closure: parameter names, body AST, and the lexical env captured at definition.
@@ -15,7 +15,7 @@ use crate::core::error::{eval_error, Result};
 pub struct ClosureValue {
     pub params: Vec<String>,
     pub body: Rc<Expr>,
-    pub captured: Env,
+    pub captured: Weak<RefCell<Frame>>,
 }
 
 impl fmt::Debug for ClosureValue {
