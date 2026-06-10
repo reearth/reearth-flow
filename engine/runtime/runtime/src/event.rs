@@ -130,15 +130,22 @@ impl EventHub {
         let start = std::time::Instant::now();
         let max_duration = tokio::time::Duration::from_millis(max_wait_ms);
 
+        // Poll the broadcast sender at 10ms intervals (was 100ms) so we
+        // detect receivers draining without imposing a fixed-latency floor
+        // on every flush call.
         while start.elapsed() < max_duration {
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
             if self.sender.receiver_count() == 0 {
                 break;
             }
         }
 
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+        // Trailing settle delay — receiver_count() == 0 doesn't guarantee that
+        // every in-flight broadcast task has finished processing. 20ms (was
+        // 200ms) is enough headroom in practice without making the flush
+        // itself a wall-clock bottleneck.
+        tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
     }
 
     pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {

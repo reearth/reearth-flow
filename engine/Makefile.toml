@@ -54,15 +54,15 @@ cargo test --workspace --all-targets --all-features --exclude plateau-gis-qualit
 [tasks.test-qc]
 script = ['''
 #!/usr/bin/env bash -eux
-# `--test-threads=8` is the highest oversubscription the 4-vCPU CI runner
-# can sustain. 16 threads previously caused the runner agent to lose
-# heartbeat with GitHub (CPU starvation from 4× context switching on
-# only 4 cores). 8 threads (2× oversubscription) absorbed I/O slack
-# without thrashing. Combined with the XSD schema disk cache (added in
-# this PR) this is enough to keep workflow-tests well under previous
-# baselines. Override locally (e.g. `cargo make test-qc -- --test-threads=N`)
-# if you have more cores available.
-cargo test -p workflow-tests -- --test-threads=8 ${@:-}
+# `--test-threads=16` (4× oversubscription on the 4-vCPU CI runner).
+# An earlier attempt at 16 threads crashed the Blacksmith runner because
+# the executor's polling-backoff used `yield_now()` which spun at 100%
+# CPU, competing with the runner agent itself. That has since been
+# replaced with `thread::sleep(Duration::from_micros(100))`, so the
+# polling loop no longer hogs a core. With the spin gone + the XSD
+# schema disk cache shifting tests from I/O-bound toward CPU-bound, 16
+# threads should run cleanly. Override locally if needed.
+cargo test -p workflow-tests -- --test-threads=16 ${@:-}
 ''']
 
 [tasks.test-conv]
@@ -70,7 +70,12 @@ script = ['''
 #!/usr/bin/env bash -eux
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
-cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
+# `--profile release-test` gives near-release runtime perf (notably for the
+# Draco mesh-compression kernels) without the full release profile's LTO +
+# codegen-units=1 compile-time cost. See engine/Cargo.toml for the profile
+# definition. The profile preserves `panic = "unwind"` which the parallel
+# testcase loop's `panic::catch_unwind` requires.
+cargo run --profile release-test -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 ''']
 
 [tasks.doc]
