@@ -1,0 +1,27 @@
+1. `eval_inner` + `call_value` each call `DepthGuard::enter()`, so a single recursive closure call
+   consumes 3 guards (Call node eval, call_value dispatch, body eval_inner). Practical recursion
+   depth is ~1/3 of MAX_EVAL_DEPTH instead of ~1/2. The depth limit may hit sooner than intended
+   for deeply recursive workflows.
+
+2. `list.append` mutates the backing `Rc<RefCell<Vec>>` in place — any alias of the same array
+   sees the mutation. No test covers the aliased case.
+
+3. `BindingPattern` reuses `ExprKind::Array` for destructuring. Invalid lvalue patterns like
+   `[1, 2] = x` parse successfully but fail only at runtime with "invalid assignment target".
+   Could confuse users expecting parse-time errors.
+
+4. No new frame is created per `for` loop iteration body, so `let` bindings inside a loop
+   accumulate in the same frame across iterations. This won't cause a bug today but is
+   semantically surprising (no loop-scoped variable isolation).
+
+5. `CompiledCode::eval_string` uses `pos: 0` for the str_cast conversion error, inconsistent
+   with `POS_UNSET` used everywhere else (produces a misleading "error at position 0" message).
+
+6. `synthetic_feature` is duplicated verbatim in
+   `action-processor/src/feature/writer/json.rs` and `action-sink/src/file/json.rs`.
+
+7. `CityGmlWriterSink`, `CzmlWriter`, and `GeoPackageWriter` store both `params` (containing
+   the original `Code`) and a compiled `output` field, keeping the raw `Code` alive
+   unnecessarily. The established pattern (`Cesium3DTilesWriterCompiledParam`) is to introduce
+   a separate `XxxWriterCompiledParam` struct with `Code` replaced by `CompiledCode`, and have
+   the sink store only that.

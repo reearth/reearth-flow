@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use indexmap::IndexMap;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{create_batch_feature, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -152,7 +151,7 @@ fn write_json(
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<(), crate::errors::SinkError> {
     let json_value: serde_json::Value = if let Some(converter) = converter {
-        let synthetic = synthetic_feature(features);
+        let synthetic = create_batch_feature(features);
         converter
             .eval(&synthetic, env_vars)
             .map_err(|e| {
@@ -176,24 +175,4 @@ fn write_json(
     out.write(Bytes::from(json_value.to_string()))
         .map_err(|e| crate::errors::SinkError::JsonWriter(format!("{e:?}")))?;
     Ok(())
-}
-
-fn synthetic_feature(features: &[Feature]) -> Feature {
-    let packed = AttributeValue::Array(
-        features
-            .iter()
-            .map(|f| {
-                AttributeValue::Map(
-                    f.attributes
-                        .iter()
-                        .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone()))
-                        .collect(),
-                )
-            })
-            .collect(),
-    );
-    Feature::from(IndexMap::from([(
-        Attribute::new("__features".to_string()),
-        packed,
-    )]))
 }

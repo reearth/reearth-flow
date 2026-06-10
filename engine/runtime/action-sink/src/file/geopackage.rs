@@ -75,8 +75,15 @@ impl SinkFactory for GeoPackageWriterFactory {
             SinkError::GeoPackageWriterFactory(format!("Failed to compile `output`: {e:?}"))
         })?;
         let sink = GeoPackageWriter {
-            output,
-            params,
+            params: GeoPackageWriterCompiledParam {
+                output,
+                table_name: params.table_name,
+                geometry_column: params.geometry_column,
+                srs_id: params.srs_id,
+                geometry_type: params.geometry_type,
+                create_spatial_index: params.create_spatial_index,
+                overwrite: params.overwrite,
+            },
             buffer: Default::default(),
             schema: Default::default(),
         };
@@ -85,9 +92,19 @@ impl SinkFactory for GeoPackageWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct GeoPackageWriterCompiledParam {
+    pub(super) output: CompiledCode,
+    pub(super) table_name: String,
+    pub(super) geometry_column: String,
+    pub(super) srs_id: i32,
+    pub(super) geometry_type: String,
+    pub(super) create_spatial_index: bool,
+    pub(super) overwrite: bool,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct GeoPackageWriter {
-    output: CompiledCode,
-    pub(super) params: GeoPackageWriterParam,
+    pub(super) params: GeoPackageWriterCompiledParam,
     pub(super) buffer: Vec<Feature>,
     pub(super) schema: IndexMap<String, AttributeType>,
 }
@@ -211,6 +228,7 @@ impl Sink for GeoPackageWriter {
         }
 
         let path = self
+            .params
             .output
             .eval_string_env_only(ctx.expr_engine.vars())
             .map_err(|e| crate::errors::SinkError::GeoPackageWriter(format!("{e:?}")))?;

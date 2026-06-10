@@ -288,8 +288,11 @@ impl SinkFactory for CityGmlWriterFactory {
             SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
         })?;
         Ok(Box::new(CityGmlWriterSink {
-            output,
-            params,
+            params: CityGmlWriterCompiledParam {
+                output,
+                epsg_code: params.epsg_code,
+                pretty_print: params.pretty_print,
+            },
             lod_mask,
             buffer: Vec::new(),
             envelope: None,
@@ -331,9 +334,15 @@ fn default_pretty_print() -> Option<bool> {
 }
 
 #[derive(Debug, Clone)]
-struct CityGmlWriterSink {
+struct CityGmlWriterCompiledParam {
     output: CompiledCode,
-    params: CityGmlWriterParam,
+    epsg_code: Option<u32>,
+    pretty_print: Option<bool>,
+}
+
+#[derive(Debug, Clone)]
+struct CityGmlWriterSink {
+    params: CityGmlWriterCompiledParam,
     lod_mask: LodMask,
     buffer: Vec<Feature>,
     envelope: Option<BoundingEnvelope>,
@@ -362,6 +371,7 @@ impl Sink for CityGmlWriterSink {
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self
+            .params
             .output
             .eval_string_env_only(ctx.expr_engine.vars())
             .map_err(|e| SinkError::CityGmlWriter(format!("{e:?}")))?;

@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
-use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{create_batch_feature, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +31,7 @@ pub(super) fn write_json(
     features: &[Feature],
 ) -> Result<(), FeatureProcessorError> {
     let json_value: serde_json::Value = if let Some(converter) = converter {
-        let synthetic = synthetic_feature(features);
+        let synthetic = create_batch_feature(features);
         converter
             .eval(&synthetic, env_vars)
             .map_err(|e| {
@@ -60,24 +59,4 @@ pub(super) fn write_json(
         .put_sync(output.path().as_path(), Bytes::from(json_value.to_string()))
         .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
     Ok(())
-}
-
-fn synthetic_feature(features: &[Feature]) -> Feature {
-    let packed = AttributeValue::Array(
-        features
-            .iter()
-            .map(|f| {
-                AttributeValue::Map(
-                    f.attributes
-                        .iter()
-                        .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone()))
-                        .collect(),
-                )
-            })
-            .collect(),
-    );
-    Feature::from(IndexMap::from([(
-        Attribute::new("__features".to_string()),
-        packed,
-    )]))
 }

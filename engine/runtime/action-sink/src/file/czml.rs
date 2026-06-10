@@ -79,8 +79,18 @@ impl SinkFactory for CzmlWriterFactory {
             SinkError::CzmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
         })?;
         let sink = CzmlWriter {
-            output,
-            params,
+            params: CzmlWriterCompiledParam {
+                output,
+                group_by: params.group_by,
+                time_field: params.time_field,
+                epoch: params.epoch,
+                interpolation_algorithm: params.interpolation_algorithm,
+                interpolation_degree: params.interpolation_degree,
+                group_timeseries_by: params.group_timeseries_by,
+                color_attribute: params.color_attribute,
+                opacity: params.opacity,
+                height_attribute: params.height_attribute,
+            },
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -88,9 +98,22 @@ impl SinkFactory for CzmlWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct CzmlWriterCompiledParam {
+    pub(super) output: CompiledCode,
+    pub(super) group_by: Option<Vec<Attribute>>,
+    pub(super) time_field: Option<Attribute>,
+    pub(super) epoch: Option<String>,
+    pub(super) interpolation_algorithm: InterpolationAlgorithm,
+    pub(super) interpolation_degree: u32,
+    pub(super) group_timeseries_by: Option<Attribute>,
+    pub(super) color_attribute: Option<Attribute>,
+    pub(super) opacity: u8,
+    pub(super) height_attribute: Option<Attribute>,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct CzmlWriter {
-    output: CompiledCode,
-    pub(super) params: CzmlWriterParam,
+    pub(super) params: CzmlWriterCompiledParam,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
@@ -307,6 +330,7 @@ impl Sink for CzmlWriter {
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self
+            .params
             .output
             .eval_string_env_only(ctx.expr_engine.vars())
             .map_err(crate::errors::SinkError::czml_writer)?;
@@ -395,7 +419,7 @@ impl Sink for CzmlWriter {
 /// (produced by the reader's `PreserveRaw` strategy).
 fn build_embedded_czml(
     features: &[Feature],
-    params: &CzmlWriterParam,
+    params: &CzmlWriterCompiledParam,
 ) -> Result<Vec<u8>, BoxedError> {
     let per_entity_mode = params.time_field.is_some() && params.group_timeseries_by.is_none();
 
@@ -515,7 +539,7 @@ fn build_embedded_czml(
 /// `effective_epoch` is the epoch to use for numeric time conversion (may be auto-detected).
 fn build_embedded_packet(
     feature: &Feature,
-    params: &CzmlWriterParam,
+    params: &CzmlWriterCompiledParam,
     global_end: Option<&str>,
     effective_epoch: Option<&str>,
 ) -> Result<Value, BoxedError> {
@@ -692,7 +716,7 @@ fn build_embedded_packet(
 /// Build a CZML document with time-dynamic entities grouped by attribute.
 fn build_timeseries_czml(
     features: &[Feature],
-    params: &CzmlWriterParam,
+    params: &CzmlWriterCompiledParam,
     _ctx: &NodeContext,
 ) -> Result<Vec<u8>, BoxedError> {
     let time_field = params
@@ -789,7 +813,7 @@ fn build_timeseries_czml(
 fn build_entity_packet(
     entity_id: &str,
     features: &[&Feature],
-    params: &CzmlWriterParam,
+    params: &CzmlWriterCompiledParam,
 ) -> Result<Value, BoxedError> {
     let time_field = params.time_field.as_ref().unwrap();
 
@@ -1119,7 +1143,10 @@ fn hex_to_rgba(hex: &str, alpha: u8) -> Option<[u8; 4]> {
 }
 
 /// Convert a Feature's polygon geometry to a styled CZML polygon JSON value.
-fn feature_geometry_to_polygon_json(feature: &Feature, params: &CzmlWriterParam) -> Option<Value> {
+fn feature_geometry_to_polygon_json(
+    feature: &Feature,
+    params: &CzmlWriterCompiledParam,
+) -> Option<Value> {
     let czml_polygon = match &feature.geometry.value {
         GeometryValue::FlowGeometry3D(Geometry3D::Polygon(poly)) => polygon_to_czml_polygon(poly),
         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)) => {
@@ -1333,12 +1360,14 @@ mod tests {
         )
     }
 
-    fn make_timeseries_params() -> CzmlWriterParam {
-        CzmlWriterParam {
+    fn make_timeseries_params() -> CzmlWriterCompiledParam {
+        CzmlWriterCompiledParam {
             output: Code {
                 ty: CodeType::String,
                 value: "/tmp/test.czml".to_string(),
-            },
+            }
+            .compile()
+            .unwrap(),
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: Some("2024-01-01T00:00:00Z".into()),
@@ -1457,12 +1486,14 @@ mod tests {
         f
     }
 
-    fn make_default_params() -> CzmlWriterParam {
-        CzmlWriterParam {
+    fn make_default_params() -> CzmlWriterCompiledParam {
+        CzmlWriterCompiledParam {
             output: Code {
                 ty: CodeType::String,
                 value: "/tmp/test.czml".to_string(),
-            },
+            }
+            .compile()
+            .unwrap(),
             group_by: None,
             time_field: None,
             epoch: None,
@@ -1526,21 +1557,7 @@ mod tests {
         let f2 = make_embedded_static_feature();
         let features = vec![f1, f2];
 
-        let params = CzmlWriterParam {
-            output: Code {
-                ty: CodeType::String,
-                value: "/tmp/test.czml".to_string(),
-            },
-            group_by: None,
-            time_field: None,
-            epoch: None,
-            interpolation_algorithm: InterpolationAlgorithm::default(),
-            interpolation_degree: 1,
-            group_timeseries_by: None,
-            color_attribute: None,
-            opacity: default_opacity(),
-            height_attribute: None,
-        };
+        let params = make_default_params();
 
         let buffer = build_embedded_czml(&features, &params).unwrap();
         let czml: Vec<Value> = serde_json::from_slice(&buffer).unwrap();
@@ -1561,11 +1578,13 @@ mod tests {
     #[test]
     fn test_build_entity_packet_numeric_times() {
         // Test with numeric time values and no explicit epoch
-        let params = CzmlWriterParam {
+        let params = CzmlWriterCompiledParam {
             output: Code {
                 ty: CodeType::String,
                 value: "/tmp/test.czml".to_string(),
-            },
+            }
+            .compile()
+            .unwrap(),
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: None, // No explicit epoch - should auto-generate
@@ -1689,7 +1708,7 @@ mod tests {
             AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap()),
         );
 
-        let params = CzmlWriterParam {
+        let params = CzmlWriterCompiledParam {
             color_attribute: Some(Attribute::new("fill_color")),
             opacity: 180,
             height_attribute: Some(Attribute::new("depth")),
@@ -1726,7 +1745,7 @@ mod tests {
             AttributeValue::String("7200".into()), // 2 hour offset
         );
 
-        let params = CzmlWriterParam {
+        let params = CzmlWriterCompiledParam {
             time_field: Some(Attribute::new("start_time")),
             epoch: Some("2024-01-01T00:00:00Z".into()),
             ..make_default_params()
