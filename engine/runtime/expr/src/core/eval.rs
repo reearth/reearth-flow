@@ -1302,16 +1302,16 @@ fn builtin_range(args: &[Value]) -> Result<Value> {
             if step > 0 {
                 while i < end {
                     result.push(Value::Int(i));
-                    i = i.checked_add(step).ok_or_else(|| {
-                        eval_error("range() step caused integer overflow")
-                    })?;
+                    i = i
+                        .checked_add(step)
+                        .ok_or_else(|| eval_error("range() step caused integer overflow"))?;
                 }
             } else {
                 while i > end {
                     result.push(Value::Int(i));
-                    i = i.checked_add(step).ok_or_else(|| {
-                        eval_error("range() step caused integer overflow")
-                    })?;
+                    i = i
+                        .checked_add(step)
+                        .ok_or_else(|| eval_error("range() step caused integer overflow"))?;
                 }
             }
             Ok(Value::array(result))
@@ -2186,15 +2186,23 @@ mod tests {
         assert_eval("range(5, 0, -2)", &[], Value::from(vec![5i64, 3, 1]));
         assert_eval("range(3, 3)", &[], Value::from(Vec::<Value>::new()));
         assert!(try_run("range(1, 10, 0)", &[]).is_err());
-        assert!(try_run("range(start, end, step)", &[
-            ("start", Value::Int(1)),
-            ("end", Value::Int(i64::MAX)),
-            ("step", Value::Int(i64::MAX)),
-        ]).is_err());
-        assert!(try_run("range(start, end, step)", &[
-            ("start", Value::Int(-1)),
-            ("end", Value::Int(i64::MIN)),
-            ("step", Value::Int(i64::MIN)),
-        ]).is_err());
+        assert!(try_run(
+            "range(start, end, step)",
+            &[
+                ("start", Value::Int(1)),
+                ("end", Value::Int(i64::MAX)),
+                ("step", Value::Int(i64::MAX)),
+            ]
+        )
+        .is_err());
+        assert!(try_run(
+            "range(start, end, step)",
+            &[
+                ("start", Value::Int(-1)),
+                ("end", Value::Int(i64::MIN)),
+                ("step", Value::Int(i64::MIN)),
+            ]
+        )
+        .is_err());
     }
 }

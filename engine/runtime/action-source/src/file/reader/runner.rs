@@ -56,7 +56,7 @@ pub(crate) fn get_input_path(
     }
     Uri::from_str(path.as_str())
         .map(Some)
-        .map_err(|_| "Invalid path".to_string())
+        .map_err(|e| format!("Invalid path {path:?}: {e}"))
 }
 
 fn get_inline_content(

@@ -266,8 +266,8 @@ impl Source for FilePathExtractorSource {
                     "Failed to evaluate source_dataset: {e:?}"
                 ))
             })?;
-        let source_dataset = Uri::from_str(path.as_str()).map_err(|_| {
-            crate::errors::SourceError::FilePathExtractor("Invalid path".to_string())
+        let source_dataset = Uri::from_str(path.as_str()).map_err(|e| {
+            crate::errors::SourceError::FilePathExtractor(format!("Invalid path {path:?}: {e}"))
         })?;
         if self.is_extractable_archive(&source_dataset) {
             let root_output_path =
