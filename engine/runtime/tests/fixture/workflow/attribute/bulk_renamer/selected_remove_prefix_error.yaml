@@ -13,17 +13,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                testAttribute1: "test01",
-                testAttribute2: "test02"
-              },
-              #{
-                testAttribute1: "test03",
-                testAttribute2: "test04"
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "testAttribute1": "test01",
+                  "testAttribute2": "test02"
+                },
+                {
+                  "testAttribute1": "test03",
+                  "testAttribute2": "test04"
+                },
+              ]
 
       - id: d2b4977d-e218-4628-96f2-d26407aeea14
         name: BulkRenamer

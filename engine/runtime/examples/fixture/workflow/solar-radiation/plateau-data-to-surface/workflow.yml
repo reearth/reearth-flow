@@ -6,12 +6,14 @@ nodes:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("cityGmlPath"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env.get("cityGmlPath"),
+            },
+          ]
 
   - id: 7a9f9400-d598-11f0-ad24-7c70db10a7e3
     name: FeatureCityGmlReader

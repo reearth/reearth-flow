@@ -1563,16 +1563,18 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("bldgCityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env.get("bldgCityGmlPath"),
+              "cityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+              "baseCityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: 00000001-0000-0000-0000-000000000111
     name: FolderAndFilePathReader
     type: subGraph
@@ -1582,16 +1584,18 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("demCityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env.get("demCityGmlPath"),
+              "cityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+              "baseCityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: 00000002-0000-0000-0000-000000000002
     name: DEMDirectoryDecompressor
     type: action
