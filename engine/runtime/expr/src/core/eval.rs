@@ -1302,12 +1302,16 @@ fn builtin_range(args: &[Value]) -> Result<Value> {
             if step > 0 {
                 while i < end {
                     result.push(Value::Int(i));
-                    i += step;
+                    i = i.checked_add(step).ok_or_else(|| {
+                        eval_error("range() step caused integer overflow")
+                    })?;
                 }
             } else {
                 while i > end {
                     result.push(Value::Int(i));
-                    i += step;
+                    i = i.checked_add(step).ok_or_else(|| {
+                        eval_error("range() step caused integer overflow")
+                    })?;
                 }
             }
             Ok(Value::array(result))
@@ -2171,5 +2175,26 @@ mod tests {
         );
         assert!(try_run("fn(x, y) { x + y }(1)", &[]).is_err());
         assert!(try_run("fn() { 1 }(42)", &[]).is_err());
+    }
+
+    #[test]
+    fn test_range() {
+        assert_eval("range(5)", &[], Value::from(vec![0i64, 1, 2, 3, 4]));
+        assert_eval("range(0)", &[], Value::from(Vec::<Value>::new()));
+        assert_eval("range(2, 5)", &[], Value::from(vec![2i64, 3, 4]));
+        assert_eval("range(1, 8, 3)", &[], Value::from(vec![1i64, 4, 7]));
+        assert_eval("range(5, 0, -2)", &[], Value::from(vec![5i64, 3, 1]));
+        assert_eval("range(3, 3)", &[], Value::from(Vec::<Value>::new()));
+        assert!(try_run("range(1, 10, 0)", &[]).is_err());
+        assert!(try_run("range(start, end, step)", &[
+            ("start", Value::Int(1)),
+            ("end", Value::Int(i64::MAX)),
+            ("step", Value::Int(i64::MAX)),
+        ]).is_err());
+        assert!(try_run("range(start, end, step)", &[
+            ("start", Value::Int(-1)),
+            ("end", Value::Int(i64::MIN)),
+            ("step", Value::Int(i64::MIN)),
+        ]).is_err());
     }
 }
