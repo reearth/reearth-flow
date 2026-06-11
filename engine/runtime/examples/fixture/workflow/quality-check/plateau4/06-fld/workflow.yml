@@ -33,7 +33,6 @@ graphs:
                 codelists: env.get("codelistsPath") ?? env.get("codelists"),
                 schemas: env.get("schemasPath") ?? env.get("schemas"),
                 objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                workerArtifactPath: env.get("workerArtifactPath"),
               },
             ]
 
@@ -338,18 +337,15 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            let folder = env.get("__value").Folder;
-            if folder == () || folder == "" {
-              return file::join_path(base_path, "06_浸水想定区域_fld.csv");
-            }
-            // Extract flood type from first path segment (e.g., "htd/12_1" -> "htd", "12_1")
-            let slash_pos = folder.index_of("/");
-            let flood_type = folder.sub_string(0, slash_pos);
-            let path = folder.sub_string(slash_pos + 1);
-            // Create hierarchical path: 06_浸水想定区域_{flood_type}/{path}.csv
-            let csv_filepath = "06_浸水想定区域_" + flood_type + "/" + path + ".csv";
-            csv_filepath
+          output:
+            type: flowExpr
+            value: |
+              folder = attributes.get("Folder", "");
+              if folder == "" {
+                return "06_浸水想定区域_fld.csv"
+              }
+              [flood_type, path] = folder.split("/", 1);
+              "06_浸水想定区域_" + flood_type + "/" + path + ".csv"
 
       # JSON Writer for aggregated counts (one file per folder)
       - id: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
@@ -358,44 +354,34 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let features = env.get("__features");
-              let sum_incorrect = 0;
-              let sum_not_closed = 0;
-              let sum_wrong_orientation = 0;
-              let sum_degenerate = 0;
-              for f in features {
-                sum_incorrect += f["頂点数が不正な三角形"] ?? 0;
-                sum_not_closed += f["閉じていない三角形"] ?? 0;
-                sum_wrong_orientation += f["向きが不正な三角形"] ?? 0;
-                sum_degenerate += f["線状・点状の三角形"] ?? 0;
-              }
-              // Note: "共有先のない辺" is excluded from JSON summary and totalErrorCount to match FME behavior
-              [
-                #{
-                  name: "頂点数が不正な三角形",
-                  count: sum_incorrect,
-                },
-                #{
-                  name: "閉じていない三角形",
-                  count: sum_not_closed,
-                },
-                #{
-                  name: "向きが不正な三角形",
-                  count: sum_wrong_orientation,
-                },
-                #{
-                  name: "線状・点状の三角形",
-                  count: sum_degenerate,
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                features = attributes["__features"];
+                sum_incorrect = 0;
+                sum_not_closed = 0;
+                sum_wrong_orientation = 0;
+                sum_degenerate = 0;
+                for f in features {
+                  sum_incorrect += f.get("頂点数が不正な三角形", 0);
+                  sum_not_closed += f.get("閉じていない三角形", 0);
+                  sum_wrong_orientation += f.get("向きが不正な三角形", 0);
+                  sum_degenerate += f.get("線状・点状の三角形", 0);
                 }
-              ]
-            }
-          output: |
-            let json_filename = env.get("__value")._json_filename ?? "summary_fld.json";
-            json_filename
+                [
+                  {"name": "頂点数が不正な三角形", "count": sum_incorrect},
+                  {"name": "閉じていない三角形", "count": sum_not_closed},
+                  {"name": "向きが不正な三角形", "count": sum_wrong_orientation},
+                  {"name": "線状・点状の三角形", "count": sum_degenerate}
+                ]
+              }
+          output:
+            type: flowExpr
+            value: |
+              attributes.get("_json_filename", "summary_fld.json")
 
       # Calculate total error count
       - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
@@ -432,10 +418,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
@@ -443,9 +431,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       # Input processing chain

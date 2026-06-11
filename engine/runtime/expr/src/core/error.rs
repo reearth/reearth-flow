@@ -2,19 +2,15 @@ use thiserror::Error;
 
 use super::value::Value;
 
-/// Internal error produced by eval helpers; converted to `Error::Eval` with pos by `eval_inner`.
-#[derive(Debug)]
-pub struct InnerError {
-    pub msg: String,
-}
+/// Sentinel: pos not yet assigned by an AST node.
+pub(crate) const POS_UNSET: usize = usize::MAX;
 
-impl InnerError {
-    pub fn new(msg: impl Into<String>) -> Self {
-        Self { msg: msg.into() }
+pub fn eval_error(msg: impl Into<String>) -> Error {
+    Error::Eval {
+        pos: POS_UNSET,
+        msg: msg.into(),
     }
 }
-
-pub type InnerResult<T> = std::result::Result<T, InnerError>;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -26,9 +22,6 @@ pub enum Error {
 
     #[error("eval error at position {pos}: {msg}")]
     Eval { pos: usize, msg: String },
-
-    #[error("eval_string error: {msg}")]
-    EvalString { msg: String },
 
     /// Control flow: `return <value>` — not a real error.
     #[error("return")]

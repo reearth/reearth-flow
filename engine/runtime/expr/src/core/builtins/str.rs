@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use crate::core::error::{InnerError, InnerResult};
+use crate::core::error::{eval_error, Result};
 use crate::core::value::{NativeFn, Value};
 use crate::expect_arity;
 
@@ -21,11 +21,11 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     ])
 });
 
-pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
+pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
     let f = METHODS
         .get(method)
         .copied()
-        .ok_or_else(|| InnerError::new(format!("String has no method '{method}'")))?;
+        .ok_or_else(|| eval_error(format!("String has no method '{method}'")))?;
     Ok(NativeFn::new(move |args| {
         let mut a = vec![recv.clone()];
         a.extend_from_slice(args);
@@ -33,20 +33,20 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
     }))
 }
 
-fn trim(args: &[Value]) -> InnerResult<Value> {
+fn trim(args: &[Value]) -> Result<Value> {
     expect_arity("str.trim", &args[1..], 0, 0)?;
     Ok(Value::String(args[0].as_str()?.trim().to_string()))
 }
 
-fn split_limit(v: &Value) -> InnerResult<usize> {
+fn split_limit(v: &Value) -> Result<usize> {
     let n = v.as_int()?;
     if n < 0 {
-        return Err(InnerError::new("limit must be non-negative"));
+        return Err(eval_error("limit must be non-negative"));
     }
     Ok(n as usize)
 }
 
-fn split(args: &[Value]) -> InnerResult<Value> {
+fn split(args: &[Value]) -> Result<Value> {
     expect_arity("str.split", &args[1..], 1, 2)?;
     let s = args[0].as_str()?;
     let sep = args[1].as_str()?;
@@ -61,7 +61,7 @@ fn split(args: &[Value]) -> InnerResult<Value> {
     Ok(Value::array(parts))
 }
 
-fn rsplit(args: &[Value]) -> InnerResult<Value> {
+fn rsplit(args: &[Value]) -> Result<Value> {
     expect_arity("str.rsplit", &args[1..], 1, 2)?;
     let s = args[0].as_str()?;
     let sep = args[1].as_str()?;
@@ -79,26 +79,26 @@ fn rsplit(args: &[Value]) -> InnerResult<Value> {
     Ok(Value::array(parts))
 }
 
-fn starts_with(args: &[Value]) -> InnerResult<Value> {
+fn starts_with(args: &[Value]) -> Result<Value> {
     expect_arity("str.starts_with", &args[1..], 1, 1)?;
     Ok(Value::Bool(
         args[0].as_str()?.starts_with(args[1].as_str()?),
     ))
 }
 
-fn ends_with(args: &[Value]) -> InnerResult<Value> {
+fn ends_with(args: &[Value]) -> Result<Value> {
     expect_arity("str.ends_with", &args[1..], 1, 1)?;
     Ok(Value::Bool(args[0].as_str()?.ends_with(args[1].as_str()?)))
 }
 
-fn remove_prefix(args: &[Value]) -> InnerResult<Value> {
+fn remove_prefix(args: &[Value]) -> Result<Value> {
     expect_arity("str.remove_prefix", &args[1..], 1, 1)?;
     let s = args[0].as_str()?;
     let p = args[1].as_str()?;
     Ok(Value::String(s.strip_prefix(p).unwrap_or(s).to_string()))
 }
 
-fn replace(args: &[Value]) -> InnerResult<Value> {
+fn replace(args: &[Value]) -> Result<Value> {
     expect_arity("str.replace", &args[1..], 2, 2)?;
     Ok(Value::String(
         args[0]
@@ -107,11 +107,11 @@ fn replace(args: &[Value]) -> InnerResult<Value> {
     ))
 }
 
-fn join(args: &[Value]) -> InnerResult<Value> {
+fn join(args: &[Value]) -> Result<Value> {
     expect_arity("str.join", &args[1..], 1, 1)?;
     let sep = args[0].as_str()?;
     let Value::Array(list) = &args[1] else {
-        return Err(InnerError::new(format!(
+        return Err(eval_error(format!(
             "join() argument must be an array, got {}",
             args[1].type_name()
         )));
@@ -121,16 +121,16 @@ fn join(args: &[Value]) -> InnerResult<Value> {
         .iter()
         .map(|v| match v {
             Value::String(s) => Ok(s.clone()),
-            other => Err(InnerError::new(format!(
+            other => Err(eval_error(format!(
                 "join() array elements must be strings, got {}",
                 other.type_name()
             ))),
         })
-        .collect::<InnerResult<Vec<_>>>()?;
+        .collect::<Result<Vec<_>>>()?;
     Ok(Value::String(parts.join(sep)))
 }
 
-fn remove_suffix(args: &[Value]) -> InnerResult<Value> {
+fn remove_suffix(args: &[Value]) -> Result<Value> {
     expect_arity("str.remove_suffix", &args[1..], 1, 1)?;
     let s = args[0].as_str()?;
     let suf = args[1].as_str()?;

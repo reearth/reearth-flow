@@ -136,8 +136,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_不正な頂点の数.shp"
+          output:
+            type: string
+            value: 08_地形_不正な頂点の数.shp
 
       - id: 02c49104-bf18-40de-9ffe-4fbaef2165f9
         name: StatisticsCalculatorForIncorrectNumVertices
@@ -171,8 +172,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_閉じていない三角形.shp"
+          output:
+            type: string
+            value: 08_地形_閉じていない三角形.shp
       
       - id: 06bb5316-b980-497c-8ba1-d83953b6f6b8
         name: StatisticsCalculatorForNotClosedErrors
@@ -206,8 +208,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_三角形の向き不正.shp"
+          output:
+            type: string
+            value: 08_地形_三角形の向き不正.shp
 
       - id: 21bf6d61-9924-4f74-8eca-224ad4207c3c
         name: StatisticsCalculatorForWrongOrientation
@@ -250,8 +253,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_潰れた三角形.shp"
+          output:
+            type: string
+            value: 08_地形_潰れた三角形.shp
 
       - id: ab08b17d-d8a8-4185-a9f0-454432765edd
         name: StatisticsCalculatorForCorruptGeometry
@@ -330,8 +334,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_不正な穴.shp"
+          output:
+            type: string
+            value: 08_地形_不正な穴.shp
 
       - id: e0ebe5cc-8666-4a24-8516-91454d781892
         name: StatisticsCalculatorForInvalidBoundaries
@@ -398,8 +403,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "08_地形_検査結果一覧.csv"
+          output:
+            type: string
+            value: 08_地形_検査結果一覧.csv
 
       # StatisticsCalculator for JSON aggregation
       # Note: "不正な穴" is excluded from JSON summary and totalErrorCount to match FME behavior
@@ -438,22 +444,20 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              for key in feature.keys() {
-                result.push(#{
-                  name: key,
-                  count: feature[key],
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                feature = attributes["__features"][0];
+                itertools.map(feature.keys(), fn(key) {
+                  {"name": key, "count": feature[key]}
+                })
               }
-              result
-            }
-          output: |
-            "summary_dem.json"
+          output:
+            type: string
+            value: summary_dem.json
 
       # Calculate total errors for no-error check
       - id: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
@@ -484,10 +488,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: b65d1e91-37a8-489a-87e3-fed91e5de294
@@ -495,9 +501,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       - id: 99b6e8cc-1cba-489a-bc83-9966d3e5fabc

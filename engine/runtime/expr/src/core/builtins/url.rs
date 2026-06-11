@@ -1,16 +1,17 @@
-use crate::core::error::{InnerError, InnerResult};
+use crate::core::error::{eval_error, Result};
 use crate::core::value::{ImmutableObject, Value};
 
 use crate::expect_arity;
 use url::Url;
 
-fn parse_url(s: &str) -> Result<UrlObject, String> {
+fn parse_url(s: &str) -> Result<UrlObject> {
     let url = if s.contains("://") {
-        Url::parse(s).map_err(|e| format!("not a valid URI: {e}"))?
+        Url::parse(s).map_err(|e| eval_error(format!("not a valid URI: {e}")))?
     } else if s.starts_with('/') {
-        Url::parse(&format!("file://{s}")).map_err(|e| format!("not a valid URI: {e}"))?
+        Url::parse(&format!("file://{s}"))
+            .map_err(|e| eval_error(format!("not a valid URI: {e}")))?
     } else {
-        return Err(format!("not a valid URI: {s}"));
+        return Err(eval_error(format!("not a valid URI: {s}")));
     };
     Ok(UrlObject { url })
 }
@@ -55,7 +56,7 @@ impl ImmutableObject for UrlObject {
         "Url"
     }
 
-    fn get_property(&self, name: &str) -> Option<crate::core::error::InnerResult<Value>> {
+    fn get_property(&self, name: &str) -> Option<Result<Value>> {
         match name {
             "parent" => Some(Ok(Value::object(self.parent()))),
             "name" => Some(Ok(Value::String(self.name().to_string()))),
@@ -70,7 +71,7 @@ impl ImmutableObject for UrlObject {
         }
     }
 
-    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
+    fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
         match method {
             "__eq__" => {
                 expect_arity("Url.__eq__", args, 1, 1)?;
@@ -93,7 +94,7 @@ impl ImmutableObject for UrlObject {
                 url.set_path(&new_path);
                 Ok(Value::object(Self { url }))
             }
-            m => Err(InnerError::new(format!("Url has no method '{m}'"))),
+            m => Err(eval_error(format!("Url has no method '{m}'"))),
         }
     }
 
@@ -106,25 +107,25 @@ impl ImmutableObject for UrlObject {
     }
 }
 
-pub fn builtin_url(args: &[Value]) -> InnerResult<Value> {
+pub fn builtin_url(args: &[Value]) -> Result<Value> {
     if args.len() > 1 {
-        return Err(InnerError::new(format!(
+        return Err(eval_error(format!(
             "Url() expected at most 1 argument, got {}",
             args.len()
         )));
     }
     let s = match args.first() {
-        None => return Err(InnerError::new("Url() requires a string argument")),
+        None => return Err(eval_error("Url() requires a string argument")),
         Some(Value::String(s)) => s.clone(),
         Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
         Some(v) => {
-            return Err(InnerError::new(format!(
+            return Err(eval_error(format!(
                 "Url() expects a string, got {}",
                 v.type_name()
             )))
         }
     };
-    parse_url(&s).map(Value::object).map_err(InnerError::new)
+    parse_url(&s).map(Value::object)
 }
 
 #[cfg(test)]

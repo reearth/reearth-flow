@@ -21,7 +21,9 @@ graphs:
         type: action
         action: GeoPackageWriter
         with:
-          output: 'file:///tmp/workerArtifactPath/should_fail.gpkg'
+          output:
+            type: string
+            value: 'file:///tmp/workerArtifactPath/should_fail.gpkg'
           tableName: test_features
           geometryColumn: geom
           srsId: 4326

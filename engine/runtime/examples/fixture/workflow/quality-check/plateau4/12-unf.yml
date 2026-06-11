@@ -431,8 +431,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L01エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L01エラー.csv
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
     type: action
@@ -463,8 +464,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L02エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L02エラー.csv
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
     type: subGraph
@@ -588,8 +590,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通.csv"
+      output:
+        type: string
+        value: 01_共通.csv
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
     type: action
@@ -639,22 +642,22 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          for key in feature.keys() {
-            result.push(#{
-              name: key,
-              count: feature[key],
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            result = [];
+            feature = attributes["__features"][0];
+            for key in feature.keys() {
+              result.append({"name": key, "count": feature[key]});
+            }
+            result
           }
-          result
-        }
-      output: |
-        "summary_common.json"
+      output:
+        type: string
+        value: summary_common.json
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
     type: action
@@ -677,8 +680,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_GML_ID書式不正.csv"
+      output:
+        type: string
+        value: 01_共通_GML_ID書式不正.csv
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
     type: action
@@ -701,8 +705,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_GML_ID重複.csv"
+      output:
+        type: string
+        value: 01_共通_GML_ID重複.csv
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
     type: action
@@ -747,8 +752,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L06エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L06エラー.csv
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
     type: action
@@ -777,8 +783,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L04エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L04エラー.csv
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
     type: action
@@ -807,8 +814,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_不正なcodeSpace.csv"
+      output:
+        type: string
+        value: 01_共通_不正なcodeSpace.csv
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
@@ -855,8 +863,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_xlink参照先なし.csv"
+      output:
+        type: string
+        value: 01_共通_xlink参照先なし.csv
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
     type: action
@@ -887,8 +896,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_T03エラー.csv"
+      output:
+        type: string
+        value: 01_共通_T03エラー.csv
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
     type: action
@@ -915,8 +925,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L-frn-01エラー.csv"
+      output:
+        type: string
+        value: 01_共通_L-frn-01エラー.csv
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
@@ -1312,15 +1323,19 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          {}
-        } else {
-          let feature = env.get("__features")[0];
-          feature["dataFileData"]
-        }
-      output: |
-        "summary_common2-" + env.get("__value")["package"] + ".json"
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            {}
+          } else {
+            feature = attributes["__features"][0];
+            feature["dataFileData"]
+          }
+      output:
+        type: flowExpr
+        value: |
+          "summary_common2-" + attributes["package"] + ".json"
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
     type: action
@@ -1349,8 +1364,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C05必須属性等の欠落_" + attributes["package"] + ".csv"
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
     type: action
@@ -1369,8 +1386,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C06現われない属性等_" + attributes["package"] + ".csv"
   - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
     name: AttributeMapperC07
     type: action
@@ -1399,8 +1418,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C07品質属性_" + attributes["package"] + ".csv"
   - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
     name: AttributeMapperC08
     type: action
@@ -1429,8 +1450,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C08公共測量品質属性_" + attributes["package"] + ".csv"
   - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     name: AttributeManagerTotalErrorCount
     type: action
@@ -2433,8 +2456,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_無効な空間属性の型.csv"
+      output:
+        type: string
+        value: 12_地下埋設物_無効な空間属性の型.csv
   - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1d
     name: StatisticsCalculatorInvalidSpatialAttr
     type: action
@@ -2504,8 +2528,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_LOD1-2非水密立体.csv"
+      output:
+        type: string
+        value: 12_地下埋設物_LOD1-2非水密立体.csv
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8e
     name: StatisticsCalculatorNotClosed
     type: action
@@ -2558,8 +2583,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_LOD1-2立体のエラー.csv"
+      output:
+        type: string
+        value: 12_地下埋設物_LOD1-2立体のエラー.csv
   - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2c
     name: StatisticsCalculatorOtherSolidErrors
     type: action
@@ -2642,8 +2668,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_LOD1-2境界面のエラー.csv"
+      output:
+        type: string
+        value: 12_地下埋設物_LOD1-2境界面のエラー.csv
   - id: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
     name: StatisticsCalculatorBoundarySurfaceErrors
     type: action
@@ -2726,8 +2753,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_LOD3-4面のエラー.csv"
+      output:
+        type: string
+        value: 12_地下埋設物_LOD3-4面のエラー.csv
   - id: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
     name: StatisticsCalculatorLod34SurfaceErrors
     type: action
@@ -2798,8 +2826,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_不連続なCompositeSurface.csv"
+      output:
+        type: string
+        value: 12_地下埋設物_不連続なCompositeSurface.csv
   - id: 23a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c5
     name: StatisticsCalculatorDiscontinuousCS
     type: action
@@ -3362,8 +3391,9 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "12_地下埋設物_検査結果一覧.csv"
+      output:
+        type: string
+        value: 12_地下埋設物_検査結果一覧.csv
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7c
     name: StatisticsCalculator
     type: action
@@ -3402,23 +3432,23 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          let keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
-          for key in keys {
-            result.push(#{
-              name: key,
-              count: feature[key] ?? 0,
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            result = [];
+            feature = attributes["__features"][0];
+            keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
+            for key in keys {
+              result.append({"name": key, "count": feature.get(key, 0)});
+            }
+            result
           }
-          result
-        }
-      output: |
-        "summary_unf.json"
+      output:
+        type: string
+        value: summary_unf.json
   - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9f
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -3443,18 +3473,20 @@ graphs:
     type: action
     action: JsonWriter
     with:
-      converter: '[]'
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        filename
+      converter:
+        type: flowExpr
+        value: '[]'
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"
   - id: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f52
     name: ZipFileWriter
     type: action
     action: ZipFileWriter
     with:
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        filename
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"
   edges:
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6e
     from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91

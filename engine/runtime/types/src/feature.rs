@@ -463,6 +463,26 @@ impl Feature {
     }
 }
 
+pub fn create_batch_feature(features: &[Feature]) -> Feature {
+    let packed = AttributeValue::Array(
+        features
+            .iter()
+            .map(|f| {
+                AttributeValue::Map(
+                    f.attributes
+                        .iter()
+                        .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone()))
+                        .collect(),
+                )
+            })
+            .collect(),
+    );
+    Feature::from(IndexMap::from([(
+        Attribute::new("__features".to_string()),
+        packed,
+    )]))
+}
+
 // avoid using it outside citygml or PLATEAU specific processors
 pub trait CitygmlFeatureExt {
     fn feature_id(&self) -> Option<String>;

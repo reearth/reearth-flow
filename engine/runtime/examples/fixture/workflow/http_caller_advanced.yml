@@ -123,8 +123,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "{{ env.outputFilePath }}"
+          output:
+            type: flowExpr
+            value: 'env["outputFilePath"]'
 
       # Write failed requests to separate file for debugging
       - id: 550e8400-e29b-41d4-a716-446655440050
@@ -132,8 +133,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "{{ env.errorFilePath }}"
+          output:
+            type: flowExpr
+            value: 'env["errorFilePath"]'
 
     edges:
       # Feature creator to HTTP caller

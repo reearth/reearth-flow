@@ -9,7 +9,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{AttributeValue, Expr};
+use reearth_flow_types::{AttributeValue, Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -72,9 +72,11 @@ impl SinkFactory for ZipFileWriterFactory {
             )
             .into());
         };
-
+        let output = params.output.compile().map_err(|e| {
+            SinkError::ZipFileWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let sink = ZipFileWriter {
-            output: params.output,
+            output,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -83,7 +85,7 @@ impl SinkFactory for ZipFileWriterFactory {
 
 #[derive(Debug, Clone)]
 struct ZipFileWriter {
-    output: Expr,
+    output: CompiledCode,
     buffer: Vec<Uri>,
 }
 
@@ -94,7 +96,7 @@ struct ZipFileWriter {
 #[serde(rename_all = "camelCase")]
 struct ZipFileWriterParam {
     /// Output path
-    output: Expr,
+    output: Code,
 }
 
 impl Sink for ZipFileWriter {
@@ -115,10 +117,10 @@ impl Sink for ZipFileWriter {
         if self.buffer.is_empty() {
             return Ok(());
         }
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.output.as_ref())
-            .unwrap_or_else(|_| self.output.as_ref().to_string());
+        let path = self
+            .output
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(|e| crate::errors::SinkError::ZipFileWriter(format!("{e:?}")))?;
         let out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
             .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
