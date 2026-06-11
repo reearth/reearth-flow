@@ -2856,17 +2856,19 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("cityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env["cityGmlPath"],
+              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+            },
+          ]
   - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8fa0
     name: DirectoryDecompressor
     type: action

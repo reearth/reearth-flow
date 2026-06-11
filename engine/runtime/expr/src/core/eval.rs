@@ -125,6 +125,7 @@ thread_local! {
         env_bind(&env, "type", Value::Fn(NativeFn::new(builtin_type)));
         env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
         env_bind(&env, "itertools", builtin_itertools());
+        env_bind(&env, "range", Value::Fn(NativeFn::new(builtin_range)));
         env
     };
 }
@@ -1267,6 +1268,52 @@ fn builtin_len(args: &[Value]) -> Result<Value> {
         other => Err(eval_error(format!(
             "len() not supported for {}",
             other.type_name()
+        ))),
+    }
+}
+
+fn builtin_range(args: &[Value]) -> Result<Value> {
+    let to_int = |v: &Value, what: &str| match v {
+        Value::Int(n) => Ok(*n),
+        other => Err(eval_error(format!(
+            "range() {what} must be an integer, got {}",
+            other.type_name()
+        ))),
+    };
+    match args.len() {
+        1 => {
+            let end = to_int(&args[0], "end")?;
+            Ok(Value::array((0..end).map(Value::Int).collect()))
+        }
+        2 => {
+            let start = to_int(&args[0], "start")?;
+            let end = to_int(&args[1], "end")?;
+            Ok(Value::array((start..end).map(Value::Int).collect()))
+        }
+        3 => {
+            let start = to_int(&args[0], "start")?;
+            let end = to_int(&args[1], "end")?;
+            let step = to_int(&args[2], "step")?;
+            if step == 0 {
+                return Err(eval_error("range() step cannot be zero"));
+            }
+            let mut result = Vec::new();
+            let mut i = start;
+            if step > 0 {
+                while i < end {
+                    result.push(Value::Int(i));
+                    i += step;
+                }
+            } else {
+                while i > end {
+                    result.push(Value::Int(i));
+                    i += step;
+                }
+            }
+            Ok(Value::array(result))
+        }
+        n => Err(eval_error(format!(
+            "range() expects 1-3 arguments, got {n}"
         ))),
     }
 }

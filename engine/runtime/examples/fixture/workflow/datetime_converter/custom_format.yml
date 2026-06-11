@@ -11,11 +11,13 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ date: "15/06/2021 14:30" },
-              #{ date: "01/01/2021 00:00" },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"date": "15/06/2021 14:30"},
+                {"date": "01/01/2021 00:00"},
+              ]
 
       - id: 550e8400-e29b-41d4-a716-446655440303
         name: "DateTimeConverter"

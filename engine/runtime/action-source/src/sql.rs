@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
 use reearth_flow_sql::SqlAdapter;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -66,7 +66,15 @@ impl SourceFactory for SqlReaderFactory {
             .into());
         };
 
-        Ok(Box::new(SqlReader { param }))
+        let compiled = SqlReaderCompiledParam {
+            sql: param.sql.compile().map_err(|e| {
+                SourceError::SqlReaderFactory(format!("Failed to compile sql: {e:?}"))
+            })?,
+            database_url: param.database_url.compile().map_err(|e| {
+                SourceError::SqlReaderFactory(format!("Failed to compile database_url: {e:?}"))
+            })?,
+        };
+        Ok(Box::new(SqlReader { param: compiled }))
     }
 }
 
@@ -77,15 +85,21 @@ impl SourceFactory for SqlReaderFactory {
 pub struct SqlReaderParam {
     /// # SQL Query
     /// SQL query expression to execute for retrieving data
-    pub(super) sql: Expr,
+    pub(super) sql: Code,
     /// # Database URL
     /// Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)
-    pub(super) database_url: Expr,
+    pub(super) database_url: Code,
+}
+
+#[derive(Debug, Clone)]
+struct SqlReaderCompiledParam {
+    sql: CompiledCode,
+    database_url: CompiledCode,
 }
 
 #[derive(Debug, Clone)]
 pub struct SqlReader {
-    param: SqlReaderParam,
+    param: SqlReaderCompiledParam,
 }
 
 #[async_trait::async_trait]
@@ -105,15 +119,17 @@ impl Source for SqlReader {
         ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let database_url = scope
-            .eval::<String>(self.param.database_url.to_string().as_str())
+        let database_url = self
+            .param
+            .database_url
+            .eval_string_env_only(ctx.expr_engine.vars())
             .map_err(|e| {
                 crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
             })?;
-        let sql = scope
-            .eval::<String>(self.param.sql.to_string().as_str())
+        let sql = self
+            .param
+            .sql
+            .eval_string_env_only(ctx.expr_engine.vars())
             .map_err(|e| {
                 crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
             })?;

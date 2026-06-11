@@ -15,14 +15,16 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                codelists: env.get("codelistsPath"),
-                schemas: env.get("schemasPath"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "codelists": env["codelistsPath"],
+                  "schemas": env["schemasPath"],
+                },
+              ]
 
       - id: b2a1c3d4-e5f6-7890-abcd-ef0123456789
         name: DirectoryDecompressor

@@ -580,6 +580,12 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -685,6 +691,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "GeometryConfig": {
           "epsg": {
             "title": "EPSG Code",
@@ -770,6 +780,12 @@
         "timeSampling": {
           "title": "Time Sampling Strategy",
           "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter."
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       },
       "enumI18n": {
@@ -1101,6 +1117,12 @@
           "title": "Script Expression",
           "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1334,6 +1356,12 @@
           "title": "Source Dataset",
           "description": "Path or expression pointing to the source directory or archive file"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1389,6 +1417,12 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1436,6 +1470,12 @@
         "readMode": {},
         "spatialFilter": {},
         "tileFormat": {}
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1623,6 +1663,12 @@
         "triangulate": {
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -2104,6 +2150,12 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -2424,6 +2476,12 @@
         "triangulate": {
           "title": "Triangulate",
           "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -3098,6 +3156,12 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -3212,6 +3276,12 @@
         "sql": {
           "title": "SQL Query",
           "description": "SQL query expression to execute for retrieving data"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

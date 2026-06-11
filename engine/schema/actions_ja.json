@@ -1531,7 +1531,7 @@
             "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -1549,7 +1549,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -1558,8 +1558,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -1897,7 +1916,7 @@
             "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -1948,7 +1967,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -1967,6 +1986,28 @@
           }
         },
         "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
           "CsvFormat": {
             "oneOf": [
               {
@@ -1986,9 +2027,6 @@
                 ]
               }
             ]
-          },
-          "Expr": {
-            "type": "string"
           },
           "GeometryConfig": {
             "title": "Geometry Configuration",
@@ -2233,7 +2271,7 @@
             "description": "入力ファイルのパスを返す式（例: \"data.czml\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -2251,7 +2289,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -2276,8 +2314,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           },
           "TimeSamplingStrategy": {
             "description": "Strategy for handling time-dynamic CZML properties.",
@@ -3192,14 +3249,33 @@
             "description": "マップ（単一フィーチャー）またはマップの配列（複数フィーチャー）を返すスクリプト式を記述する。各マップはフィーチャー属性をキーと値のペアで表す。",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -4165,14 +4241,33 @@
             "description": "ソースディレクトリまたはアーカイブファイルへのパスまたは式",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -4329,7 +4424,7 @@
             "description": "入力ファイルのパスを返す式（例: \"data.geojson\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -4341,7 +4436,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -4350,8 +4445,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -4469,7 +4583,7 @@
             "description": "入力ファイルのパスを返す式（例: \"data.gpkg\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -4489,7 +4603,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -4527,8 +4641,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           },
           "GeoPackageReadMode": {
             "type": "string",
@@ -5113,7 +5246,7 @@
             "description": "入力ファイルのパスを返す式（例: \"model.glb\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -5131,7 +5264,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -5152,8 +5285,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -6915,7 +7067,7 @@
             "description": "入力ファイルのパスを返す式（例: \"data.json\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6927,7 +7079,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6936,8 +7088,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -7729,7 +7900,7 @@
             "description": "入力ファイルのパスを返す式（例: \"model.obj\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -7753,7 +7924,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -7766,7 +7937,7 @@
             "default": null,
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -7793,8 +7964,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -10120,7 +10310,7 @@
             "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -10146,7 +10336,7 @@
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -10155,8 +10345,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -10449,7 +10658,7 @@
             "description": "データベース接続 URL（例: `sqlite:///tests/sqlite/sqlite.db`、`mysql://user:password@localhost:3306/db`、`postgresql://user:password@localhost:5432/db`）",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -10458,14 +10667,33 @@
             "description": "データ取得のために実行する SQL クエリ式",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },

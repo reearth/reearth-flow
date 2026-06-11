@@ -86,7 +86,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             .map(|p| expr_engine.compile(p.as_ref()))
             .transpose()
             .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?;
-        let compiled_params = CompiledFeatureCityGmlReaderParam {
+        let compiled_params = FeatureCityGmlReaderCompiledParam {
             dataset: expr_engine
                 .compile(params.dataset.as_ref())
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
@@ -109,7 +109,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
 
 pub struct FeatureCityGmlReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
-    params: CompiledFeatureCityGmlReaderParam,
+    params: FeatureCityGmlReaderCompiledParam,
     /// Pass 1 registry: polygon URL → owning GeometryStore (needed for cross-file ref resolution)
     geom_registry: HashMap<Url, Arc<RwLock<GeometryStore>>>,
     /// Pass 1 registry: polygon URL → owning AppearanceStore
@@ -171,7 +171,7 @@ pub struct FeatureCityGmlReaderParam {
 }
 
 #[derive(Debug, Clone)]
-struct CompiledFeatureCityGmlReaderParam {
+struct FeatureCityGmlReaderCompiledParam {
     dataset: rhai::AST,
     original_dataset: Expr,
     flatten: Option<bool>,

@@ -75,7 +75,7 @@ impl ProcessorFactory for FeatureWriterFactory {
 
         match params {
             FeatureWriterParam::Csv { common_param } => {
-                let common_param = CompiledCommonWriterParam {
+                let common_param = CommonWriterCompiledParam {
                     output: common_param.output.compile().map_err(|e| {
                         FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                     })?,
@@ -87,7 +87,7 @@ impl ProcessorFactory for FeatureWriterFactory {
                 Ok(Box::new(process))
             }
             FeatureWriterParam::Tsv { common_param } => {
-                let common_param = CompiledCommonWriterParam {
+                let common_param = CommonWriterCompiledParam {
                     output: common_param.output.compile().map_err(|e| {
                         FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                     })?,
@@ -102,7 +102,7 @@ impl ProcessorFactory for FeatureWriterFactory {
                 common_param,
                 param,
             } => {
-                let common_param = CompiledCommonWriterParam {
+                let common_param = CommonWriterCompiledParam {
                     output: common_param.output.compile().map_err(|e| {
                         FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                     })?,
@@ -125,7 +125,7 @@ impl ProcessorFactory for FeatureWriterFactory {
                 common_param,
                 param,
             } => {
-                let common_param = CompiledCommonWriterParam {
+                let common_param = CommonWriterCompiledParam {
                     output: common_param.output.compile().map_err(|e| {
                         FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                     })?,
@@ -194,17 +194,17 @@ enum FeatureWriterParam {
 #[derive(Debug, Clone)]
 enum CompiledFeatureWriterParam {
     Csv {
-        common_param: CompiledCommonWriterParam,
+        common_param: CommonWriterCompiledParam,
     },
     Tsv {
-        common_param: CompiledCommonWriterParam,
+        common_param: CommonWriterCompiledParam,
     },
     Json {
-        common_param: CompiledCommonWriterParam,
+        common_param: CommonWriterCompiledParam,
         param: json::CompiledJsonWriterParam,
     },
     CityGml {
-        common_param: CompiledCommonWriterParam,
+        common_param: CommonWriterCompiledParam,
         lod_mask: LodMask,
         epsg_code: Option<u32>,
         pretty_print: bool,
@@ -212,7 +212,7 @@ enum CompiledFeatureWriterParam {
 }
 
 #[derive(Debug, Clone)]
-struct CompiledCommonWriterParam {
+struct CommonWriterCompiledParam {
     output: CompiledCode,
 }
 

@@ -11,15 +11,17 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [#{"node": "first", "value": 1}]
+          creator:
+            type: flowExpr
+            value: '[{"node": "first", "value": 1}]'
       - id: a2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         name: ProcessNode
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [#{"node": "second", "value": 2}]
+          creator:
+            type: flowExpr
+            value: '[{"node": "second", "value": 2}]'
       - id: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         name: ProcessNode
         type: action

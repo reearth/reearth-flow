@@ -1491,7 +1491,7 @@ Reads 3D city models from CityGML files.
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -1509,7 +1509,7 @@ Reads 3D city models from CityGML files.
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -1518,8 +1518,27 @@ Reads 3D city models from CityGML files.
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -1841,7 +1860,7 @@ Read Features from CSV or TSV File
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -1892,7 +1911,7 @@ Read Features from CSV or TSV File
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -1911,6 +1930,28 @@ Read Features from CSV or TSV File
     }
   },
   "definitions": {
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
+    },
     "CsvFormat": {
       "oneOf": [
         {
@@ -1930,9 +1971,6 @@ Read Features from CSV or TSV File
           ]
         }
       ]
-    },
-    "Expr": {
-      "type": "string"
     },
     "GeometryConfig": {
       "title": "Geometry Configuration",
@@ -2173,7 +2211,7 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -2191,7 +2229,7 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -2216,8 +2254,27 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     },
     "TimeSamplingStrategy": {
       "description": "Strategy for handling time-dynamic CZML properties.",
@@ -3103,14 +3160,33 @@ Generate Custom Features Using Scripts
       "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -4053,14 +4129,33 @@ Extracts file paths from directories or archives, creating features for each dis
       "description": "Path or expression pointing to the source directory or archive file",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -4205,7 +4300,7 @@ Reads geographic features from GeoJSON files, supporting both single features an
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -4217,7 +4312,7 @@ Reads geographic features from GeoJSON files, supporting both single features an
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -4226,8 +4321,27 @@ Reads geographic features from GeoJSON files, supporting both single features an
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -4341,7 +4455,7 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -4361,7 +4475,7 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -4399,8 +4513,27 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     },
     "GeoPackageReadMode": {
       "type": "string",
@@ -4960,7 +5093,7 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -4978,7 +5111,7 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -4999,8 +5132,27 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -6739,7 +6891,7 @@ Reads features from JSON files, supporting both single objects and arrays of obj
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -6751,7 +6903,7 @@ Reads features from JSON files, supporting both single objects and arrays of obj
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -6760,8 +6912,27 @@ Reads features from JSON files, supporting both single objects and arrays of obj
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -7532,7 +7703,7 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -7556,7 +7727,7 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -7569,7 +7740,7 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
       "default": null,
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -7596,8 +7767,27 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -9841,7 +10031,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
       "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -9867,7 +10057,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
       "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -9876,8 +10066,27 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -10164,7 +10373,7 @@ Read Features from SQL Database
       "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -10173,14 +10382,33 @@ Read Features from SQL Database
       "description": "SQL query expression to execute for retrieving data",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }

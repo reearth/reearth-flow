@@ -583,6 +583,12 @@
           "title": "インラインコンテンツ",
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -688,6 +694,10 @@
         }
       },
       "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        },
         "GeometryConfig": {
           "epsg": {
             "title": "EPSG コード",
@@ -773,6 +783,12 @@
         "timeSampling": {
           "title": "時系列サンプリング戦略",
           "description": "CZML パケット内の時間動的プロパティの処理方法。CzmlWriter との無損失ラウンドトリップのためデフォルトは \"preserveRaw\"。"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       },
       "enumI18n": {
@@ -1104,6 +1120,12 @@
           "title": "スクリプト式",
           "description": "マップ（単一フィーチャー）またはマップの配列（複数フィーチャー）を返すスクリプト式を記述する。各マップはフィーチャー属性をキーと値のペアで表す。"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1337,6 +1359,12 @@
           "title": "ソースデータセット",
           "description": "ソースディレクトリまたはアーカイブファイルへのパスまたは式"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1392,6 +1420,12 @@
           "title": "インラインコンテンツ",
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1439,6 +1473,12 @@
         "readMode": {},
         "spatialFilter": {},
         "tileFormat": {}
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1626,6 +1666,12 @@
         "triangulate": {
           "title": "三角形分割",
           "description": "true の場合、すべてのプリミティブを三角形に変換する（将来の使用のために予約済み。現在はすべてのプリミティブが三角形として処理される）"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -2107,6 +2153,12 @@
           "title": "インラインコンテンツ",
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -2427,6 +2479,12 @@
         "triangulate": {
           "title": "三角形分割",
           "description": "3 頂点を超えるポリゴンをファン三角形分割で三角形に変換する"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -3101,6 +3159,12 @@
           "title": "インラインコンテンツ",
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -3215,6 +3279,12 @@
         "sql": {
           "title": "SQL クエリ",
           "description": "データ取得のために実行する SQL クエリ式"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

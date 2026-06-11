@@ -118,6 +118,19 @@ impl CompiledCode {
         }
     }
 
+    /// Evaluate with only `env` in scope (no `attributes`), returning an AttributeValue.
+    pub fn eval_env_only(
+        &self,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> TypesResult<AttributeValue> {
+        match self {
+            CompiledCode::Expr(e) => eval(e, &env_from_vars_only(env_vars))
+                .map_err(|e| TypesError::InternalRuntime(e.to_string()))
+                .and_then(attribute_value_from_eval),
+            CompiledCode::Literal(s) => Ok(AttributeValue::String(s.clone())),
+        }
+    }
+
     /// Evaluate as string with only `env` in scope (no `attributes`).
     /// Use this in finish-time contexts where no current feature exists.
     pub fn eval_string_env_only(
