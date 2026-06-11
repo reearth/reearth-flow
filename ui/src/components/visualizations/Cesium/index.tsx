@@ -31,7 +31,6 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   requestRenderMode: true,
   maximumRenderTimeChange: Infinity,
   navigationHelpButton: false,
-  creditContainer: document.createElement("none"),
 };
 
 type Props = {
