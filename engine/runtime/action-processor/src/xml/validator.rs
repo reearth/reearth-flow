@@ -369,6 +369,11 @@ impl XmlValidator {
                 if result.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
                 } else {
+                    eprintln!(
+                        "[DEBUG xml_validator] INVALID path={:?} errors={:?}",
+                        feature.attributes.get(&self.params.attribute),
+                        result
+                    );
                     let mut feature = feature.clone();
                     feature.insert(
                         "xmlError",
@@ -383,6 +388,10 @@ impl XmlValidator {
                 }
             }
             Err(e) => {
+                eprintln!(
+                    "[DEBUG xml_validator] ERR path={:?} error={e}",
+                    feature.attributes.get(&self.params.attribute)
+                );
                 let mut feature = feature.clone();
                 feature.insert(
                     "xmlError",
@@ -573,6 +582,11 @@ impl XmlValidator {
                 .map(PathBuf::from)
                 .filter(|p| p.exists())
         });
+        eprintln!(
+            "[DEBUG xml_validator] base_dir={:?} path_attr={:?}",
+            base_dir,
+            feature.attributes.get(&self.params.attribute)
+        );
 
         // --- Step 1: Extract schema locations (streaming, no DOM) ---
         let schema_locations =
