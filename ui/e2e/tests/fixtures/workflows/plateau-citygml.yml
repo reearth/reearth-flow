@@ -80,8 +80,9 @@ graphs:
         with:
           # Sink outputs must be relative paths; the engine resolves them
           # against the job's artifact sandbox and rejects absolute URIs.
-          output: |
-            "toshima-buildings.geojson"
+          output:
+            type: string
+            value: toshima-buildings.geojson
 
     edges:
       - id: a16b6de3-4262-4270-828e-5396dc58ada2

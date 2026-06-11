@@ -53,8 +53,9 @@ graphs:
         with:
           # Sink outputs must be relative paths; the engine resolves them
           # against the job's artifact sandbox and rejects absolute URIs.
-          output: |
-            "stations.geojson"
+          output:
+            type: string
+            value: stations.geojson
 
     edges:
       - id: 0b12ab32-6f2a-427c-8459-f31fcf7f0f92

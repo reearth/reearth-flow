@@ -24,13 +24,12 @@ test.describe("PLATEAU CityGML pipeline", { tag: "@pipeline" }, () => {
 
   test.afterEach(async () => {
     await deployments.goto();
-    await deployments.deleteDeploymentIfExists(description).catch(() => { });
+    await deployments.deleteDeploymentIfExists(description).catch(() => {});
   });
 
   test("deploys, processes the Toshima-mura city model, and produces the buildings artifact", async ({
     page,
   }) => {
-
     test.setTimeout(1_500_000);
 
     await deployments.createFromFile(WORKFLOW, description);
@@ -52,9 +51,17 @@ test.describe("PLATEAU CityGML pipeline", { tag: "@pipeline" }, () => {
 
     const outputUrl = page.getByText(/toshima-buildings\.geojson/).first();
     await expect(outputUrl).toBeVisible({ timeout: 90_000 });
+    const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
     test.info().annotations.push({
       type: "output-url",
-      description: (await outputUrl.textContent())?.trim() ?? "",
+      description: artifactUrl,
     });
+
+    const response = await page.request.get(artifactUrl);
+    expect(response.ok()).toBeTruthy();
+    const geojson = await response.json();
+    expect(geojson.type).toBe("FeatureCollection");
+    expect(geojson.features.length).toBeGreaterThan(0);
+    expect(geojson.features[0].properties.featureType).toBe("bldg:Building");
   });
 });
