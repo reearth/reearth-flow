@@ -626,7 +626,7 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
         }
         ExprKind::Var(name) => env_get(env, name.as_str()).ok_or_else(|| Error::Eval {
             pos,
-            msg: format!("unknown variable '{name}'"),
+            msg: format!("'{name}' is not defined"),
         }),
         ExprKind::Index(target, key) => {
             let target = eval_inner(target, env)?;
