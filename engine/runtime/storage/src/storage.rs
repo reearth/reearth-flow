@@ -47,7 +47,10 @@ impl Storage {
         })?;
         let _ = self
             .inner
-            .write(p, bytes)
+            .write_with(p, bytes)
+            // Chunk to keep each part under the per-call timeout (operator.rs);
+            // e.g. 6GiB takes longer than 30s.
+            .chunk(512 * 1024 * 1024)
             .await
             .map_err(|err| format_object_store_error(err, p))?;
         Ok(())
