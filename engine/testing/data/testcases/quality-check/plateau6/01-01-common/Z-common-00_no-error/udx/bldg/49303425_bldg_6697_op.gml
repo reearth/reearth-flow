@@ -10,7 +10,8 @@
 http://www.opengis.net/citygml/building/3.0 http://schemas.opengis.net/citygml/building/3.0/building.xsd
 http://www.opengis.net/citygml/construction/3.0 http://schemas.opengis.net/citygml/construction/3.0/construction.xsd
 https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
-https://www.geospatial.jp/iur/urc/4.0 https://www.geospatial.jp/iur/schemas/urc/4.0/urbanCore.xsd">
+https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd
+urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 	<gml:boundedBy>
 		<gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
 			<gml:lowerCorner>36.647 137.052 0</gml:lowerCorner>
@@ -20,7 +21,7 @@ https://www.geospatial.jp/iur/urc/4.0 https://www.geospatial.jp/iur/schemas/urc/
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_f036798c-4381-4af2-97fc-e78d8fe34001">
 			<gml:name>16211-bldg-78</gml:name>
-			<core:creationDate>2025-03-21</core:creationDate>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
 			<bldg:class>3003</bldg:class>
 			<bldg:usage>411</bldg:usage>
 			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
@@ -37,7 +38,11 @@ https://www.geospatial.jp/iur/urc/4.0 https://www.geospatial.jp/iur/schemas/urc/
 			<bldg:address>
 				<core:Address>
 					<core:xalAddress>
-						<xal:Address xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:3.0">富山県射水市</xal:Address>
+						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
+							<xAL:FreeTextAddress>
+								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
+							</xAL:FreeTextAddress>
+						</xAL:Address>
 					</core:xalAddress>
 				</core:Address>
 			</bldg:address>
@@ -117,49 +122,43 @@ https://www.geospatial.jp/iur/urc/4.0 https://www.geospatial.jp/iur/schemas/urc/
 				</gml:Solid>
 			</core:lod1Solid>
 			<bldg:adeOfAbstractBuilding>
-				<uro:buildingIDAttribute>
-					<uro:BuildingIDAttribute>
-						<uro:buildingID>16211-bldg-78</uro:buildingID>
-						<uro:prefecture>16</uro:prefecture>
-						<uro:city>16211</uro:city>
-					</uro:BuildingIDAttribute>
-				</uro:buildingIDAttribute>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-78</uro:buildingID>
+					<uro:prefecture>16</uro:prefecture>
+					<uro:city>16211</uro:city>
+				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 			<bldg:adeOfAbstractBuilding>
-				<uro:buildingDetailAttribute>
-					<uro:BuildingDetailAttribute>
-						<uro:totalFloorArea uom="m2">76.2</uro:totalFloorArea>
-						<uro:buildingFootprintArea uom="m2">76.2</uro:buildingFootprintArea>
-						<uro:buildingRoofEdgeArea uom="m2">58.7</uro:buildingRoofEdgeArea>
-						<uro:buildingStructureType>611</uro:buildingStructureType>
-						<uro:fireproofStructureType>1011</uro:fireproofStructureType>
-						<uro:landUseType>211</uro:landUseType>
-						<uro:detailedUsage>4111</uro:detailedUsage>
-						<uro:buildingHeight uom="m">8.6</uro:buildingHeight>
-						<uro:surveyYear>2020-01-01</uro:surveyYear>
-					</uro:BuildingDetailAttribute>
-				</uro:buildingDetailAttribute>
+				<uro:BuildingDetailAttribute>
+					<uro:totalFloorArea uom="m2">76.2</uro:totalFloorArea>
+					<uro:buildingFootprintArea uom="m2">76.2</uro:buildingFootprintArea>
+					<uro:buildingRoofEdgeArea uom="m2">58.7</uro:buildingRoofEdgeArea>
+					<uro:buildingStructureType>611</uro:buildingStructureType>
+					<uro:fireproofStructureType>1011</uro:fireproofStructureType>
+					<uro:landUseType>211</uro:landUseType>
+					<uro:detailedUsage>4111</uro:detailedUsage>
+					<uro:buildingHeight uom="m">8.6</uro:buildingHeight>
+					<uro:surveyYear>2020-01-01</uro:surveyYear>
+				</uro:BuildingDetailAttribute>
 			</bldg:adeOfAbstractBuilding>
 			<core:adeOfAbstractCityObject>
-				<urc:bldgDataQualityAttribute>
-					<urc:DataQualityAttribute>
-						<urc:geometrySrcDescLod0>000</urc:geometrySrcDescLod0>
-						<urc:geometrySrcDescLod1>000</urc:geometrySrcDescLod1>
-						<urc:thematicSrcDesc>100</urc:thematicSrcDesc>
-						<urc:thematicSrcDesc>201</urc:thematicSrcDesc>
-						<urc:thematicSrcDesc>000</urc:thematicSrcDesc>
-						<urc:lod1HeightType>2</urc:lod1HeightType>
-						<urc:publicSurveyDataQualityAttribute>
-							<urc:PublicSurveyDataQualityAttribute>
-								<urc:srcScaleLod0>1</urc:srcScaleLod0>
-								<urc:srcScaleLod1>1</urc:srcScaleLod1>
-								<urc:publicSurveySrcDescLod0>023</urc:publicSurveySrcDescLod0>
-								<urc:publicSurveySrcDescLod1>023</urc:publicSurveySrcDescLod1>
-								<urc:publicSurveySrcDescLod1>003</urc:publicSurveySrcDescLod1>
-							</urc:PublicSurveyDataQualityAttribute>
-						</urc:publicSurveyDataQualityAttribute>
-					</urc:DataQualityAttribute>
-				</urc:bldgDataQualityAttribute>
+				<urc:DataQualityAttribute>
+					<urc:geometrySrcDescLod0>000</urc:geometrySrcDescLod0>
+					<urc:geometrySrcDescLod1>000</urc:geometrySrcDescLod1>
+					<urc:thematicSrcDesc>100</urc:thematicSrcDesc>
+					<urc:thematicSrcDesc>201</urc:thematicSrcDesc>
+					<urc:thematicSrcDesc>000</urc:thematicSrcDesc>
+					<urc:lod1HeightType>2</urc:lod1HeightType>
+					<urc:publicSurveyDataQualityAttribute>
+						<urc:PublicSurveyDataQualityAttribute>
+							<urc:srcScaleLod0>1</urc:srcScaleLod0>
+							<urc:srcScaleLod1>1</urc:srcScaleLod1>
+							<urc:publicSurveySrcDescLod0>023</urc:publicSurveySrcDescLod0>
+							<urc:publicSurveySrcDescLod1>023</urc:publicSurveySrcDescLod1>
+							<urc:publicSurveySrcDescLod1>003</urc:publicSurveySrcDescLod1>
+						</urc:PublicSurveyDataQualityAttribute>
+					</urc:publicSurveyDataQualityAttribute>
+				</urc:DataQualityAttribute>
 			</core:adeOfAbstractCityObject>
 		</bldg:Building>
 	</core:cityObjectMember>

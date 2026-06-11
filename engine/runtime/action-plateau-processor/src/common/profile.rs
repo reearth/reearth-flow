@@ -32,4 +32,17 @@ impl PlateauProfile {
     pub fn is_known_namespace_prefix(&self, prefix: &str) -> bool {
         self.citygml.namespace(prefix).is_some() || prefix == "uro" || prefix == "urf"
     }
+
+    /// i-UR namespace prefix used for DataQuality attributes (C07/C08 labels).
+    ///
+    /// i-UR 4.0 (shipped with CityGML 3.0) relocated the DataQuality package from
+    /// the `uro` namespace to the new `urc` namespace, so the generation built on
+    /// CityGML 3.0 reports DataQuality error paths with the `urc` prefix.
+    pub fn dataquality_prefix(&self) -> &'static str {
+        if std::ptr::eq(self.citygml, &crate::citygml::CITYGML3) {
+            "urc"
+        } else {
+            "uro"
+        }
+    }
 }
