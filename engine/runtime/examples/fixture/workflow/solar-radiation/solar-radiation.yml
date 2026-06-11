@@ -177,8 +177,9 @@ graphs:
     action: CsvReader
     with:
       format: tsv
-      dataset: |
-        env.get("dailySunDataPath")
+      dataset:
+        type: flowExpr
+        value: env["dailySunDataPath"]
   - id: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
     name: ParseDateAndCalcDayTime
     type: action
@@ -237,8 +238,9 @@ graphs:
       encoding: Shift-JIS
       offset: 3
       headerRows: 2
-      dataset: |
-        env.get("monthlyWeatherDataPath")
+      dataset:
+        type: flowExpr
+        value: env["monthlyWeatherDataPath"]
   - id: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
     name: PrepareWeatherDataForMerge
     type: action
@@ -418,8 +420,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath1")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath1")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000002
     name: RestrictZone1Reprojector
@@ -470,8 +473,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath2")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath2")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000012
     name: RestrictZone2Reprojector
@@ -522,8 +526,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath3")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath3")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000022
     name: RestrictZone3Reprojector
@@ -574,8 +579,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("snowDepthShapefilePath")
+      dataset:
+        type: flowExpr
+        value: env.get("snowDepthShapefilePath")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000031
     name: SnowShapefileReprojector
@@ -1694,8 +1700,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("roofFilterShapefilePath")
+      dataset:
+        type: flowExpr
+        value: env.get("roofFilterShapefilePath")
       force2D: true
       allowEmptyPath: true
   - id: 00000004-0000-0000-0000-000000000002
@@ -1898,8 +1905,9 @@ graphs:
     action: CsvReader
     with:
       format: csv
-      dataset: |
-        env.get("snowDepthDataPath")
+      dataset:
+        type: flowExpr
+        value: env["snowDepthDataPath"]
       offset: 1
       headerRows: 0
   - id: 00000003-0000-0000-0000-000000000002

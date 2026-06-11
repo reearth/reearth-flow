@@ -243,8 +243,9 @@ graphs:
         type: action
         action: ShapefileReader
         with:
-          dataset: |
-            env.get("roofFilterShapefilePath")
+          dataset:
+            type: flowExpr
+            value: env.get("roofFilterShapefilePath")
           force2D: true
           allowEmptyPath: true
 
@@ -486,8 +487,9 @@ graphs:
         action: CsvReader
         with:
           format: csv
-          dataset: |
-            env.get("snowDepthDataPath")
+          dataset:
+            type: flowExpr
+            value: env["snowDepthDataPath"]
           offset: 1
           headerRows: 0
 

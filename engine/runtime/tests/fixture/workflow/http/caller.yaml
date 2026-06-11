@@ -10,8 +10,9 @@ graphs:
         type: action
         action: JsonReader
         with:
-          dataset: |
-            "ram:///fixture/testdata/http/caller/test_data.json"
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/http/caller/test_data.json
 
       - id: b1a91180-ab88-4c1a-aab5-48c242a218db
         name: HTTP-Caller
