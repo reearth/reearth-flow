@@ -123,6 +123,21 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-engine-ci
+      - name: Cache XSD schema downloads
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          # The XML validator persists remote XSDs (the CityGML/GML base
+          # schemas fetched from schemas.opengis.net) under this directory. A
+          # warm run restores it and skips the downloads entirely; the first
+          # cold run repopulates it, and the in-process single-flight fetcher
+          # keeps that cold run from stampeding the remote server. The run_id
+          # in the key means each run saves a fresh entry while restore-keys
+          # falls back to the most recent prior cache, so newly seen schemas
+          # are persisted instead of frozen at v1.
+          path: /tmp/reearth-flow-xml-schema-cache
+          key: xsd-schemas-v1-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            xsd-schemas-v1-${{ runner.os }}-
       - name: test-qc
         # `--test-threads=16` is a CI-specific override (4× oversubscription
         # on the 4-vCPU runner; safe now that the executor's polling-backoff
