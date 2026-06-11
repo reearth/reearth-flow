@@ -1,14 +1,12 @@
 use std::{
     collections::HashSet,
-    env,
     fmt::Debug,
     future::Future,
     pin::pin,
     sync::{atomic::AtomicU64, Arc},
-    time::{self, Duration},
+    time,
 };
 
-use once_cell::sync::Lazy;
 use petgraph::visit::IntoNodeIdentifiers;
 
 use async_stream::stream;
@@ -34,14 +32,6 @@ use crate::{
 
 use super::execution_dag::ExecutionDag;
 use super::node::Node;
-
-static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(500))
-});
 
 /// The source operation collector.
 #[derive(Debug)]
@@ -144,9 +134,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         status: NodeStatus::Completed,
                         feature_id: None,
                     });
-
-                    tracing::info!("Waiting for final status to propagate for all source nodes");
-                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
                 } else if let Err(ref e) = result {
                     event_hub.error_log_with_node_info(
                         Some(node_span.clone()),
@@ -193,9 +180,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         });
                     }
 
-                    tracing::info!("Waiting for final status to propagate for all source nodes");
-                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
-
                     send_to_all_nodes(&self.sources, ctx)?;
                     self.event_hub.send(Event::SourceFlushed);
                     return Ok(());
@@ -229,9 +213,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         });
                                     }
 
-                                    tracing::info!("Waiting for final status to propagate for all source nodes");
-                                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
-
                                     send_to_all_nodes(&self.sources, ctx)?;
                                     self.event_hub.send(Event::SourceFlushed);
                                     return Ok(());
@@ -247,12 +228,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                     status: NodeStatus::Failed,
                                     feature_id: None,
                                 });
-
-                                tracing::info!(
-                                    "Waiting for failed status to propagate for source node {}",
-                                    self.sources[index].channel_manager.owner().id
-                                );
-                                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
                                 return Err(ExecutionError::Source(e));
                             }

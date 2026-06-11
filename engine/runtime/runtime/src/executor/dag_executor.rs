@@ -39,7 +39,6 @@ pub struct DagExecutor {
 }
 
 pub struct DagExecutorJoinHandle {
-    event_hub: EventHub,
     join_handles: Vec<JoinHandle<Result<(), ExecutionError>>>,
     notify: Arc<Notify>,
     executor_id: uuid::Uuid,
@@ -110,8 +109,6 @@ impl DagExecutor {
                 .collect()
         };
         let node_indexes = execution_dag.graph().node_indices().collect::<Vec<_>>();
-
-        let event_hub = execution_dag.event_hub().clone();
 
         let ctx = NodeContext::new(
             Arc::clone(&expr_engine),
@@ -249,7 +246,6 @@ impl DagExecutor {
         }
 
         Ok(DagExecutorJoinHandle {
-            event_hub,
             join_handles,
             notify: notify_publish.clone(),
             executor_id,
@@ -266,7 +262,7 @@ async fn subscribe_event(
 }
 
 impl DagExecutorJoinHandle {
-    pub fn join(&mut self, runtime: Handle) -> Result<(), ExecutionError> {
+    pub fn join(&mut self) -> Result<(), ExecutionError> {
         loop {
             let Some(finished) = self
                 .join_handles
@@ -282,17 +278,16 @@ impl DagExecutorJoinHandle {
             handle.join().unwrap()?;
 
             if self.join_handles.is_empty() {
-                // All threads have completed, add a delay before returning
-                tracing::info!("Workflow complete, waiting for final events to be published...");
-
-                // Enhanced delay approach - use improved flush with dynamic waiting
-                runtime.block_on(self.event_hub.enhanced_flush(5000));
-
-                // Cleanup executor cache directory (includes channel buffers and processor temp files)
+                // `enhanced_flush(5000)` used to live here. Its early-break
+                // condition (`sender.receiver_count() == 0`) never fired in
+                // practice because broadcast subscribers stay attached for
+                // the lifetime of the workflow, so the call effectively
+                // waited the full 5 seconds on every workflow execution
+                // (~11+ minutes across the 141 workflow-tests). The runner-
+                // level shutdown sleep + the trailing settle in any caller
+                // that needs one provides enough of a drain window without
+                // this 5s tax.
                 cleanup_executor_cache(self.executor_id);
-
-                tracing::info!("Proceeding with workflow termination");
-
                 return Ok(());
             }
         }
