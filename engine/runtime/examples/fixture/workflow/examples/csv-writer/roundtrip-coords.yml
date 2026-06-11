@@ -29,7 +29,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: ./output-roundtrip-coords.csv
+          output:
+            type: string
+            value: ./output-roundtrip-coords.csv
           geometry:
             geometryMode: coordinates
             xColumn: longitude

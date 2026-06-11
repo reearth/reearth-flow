@@ -1612,7 +1612,7 @@
             "description": "Output file path expression",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -1626,8 +1626,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -2083,12 +2102,34 @@
             "description": "Output path or expression for the CSV/TSV file to create",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
         },
         "definitions": {
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
+          },
           "CsvFormat": {
             "oneOf": [
               {
@@ -2108,9 +2149,6 @@
                 ]
               }
             ]
-          },
-          "Expr": {
-            "type": "string"
           },
           "GeometryExportConfig": {
             "title": "Geometry Export Configuration",
@@ -2375,7 +2413,7 @@
             "description": "Path where the CZML file will be written",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -2396,8 +2434,27 @@
           "Attribute": {
             "type": "string"
           },
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           },
           "InterpolationAlgorithm": {
             "description": "Interpolation algorithm for Cesium time-dynamic properties.",
@@ -2855,7 +2912,7 @@
             "description": "Output path or expression for the Excel file to create",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -2868,8 +2925,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -3904,7 +3980,7 @@
                 "title": "Output path",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               }
@@ -3927,7 +4003,7 @@
                 "title": "Output path",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               }
@@ -3945,7 +4021,7 @@
               "converter": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   },
                   {
                     "type": "null"
@@ -3962,7 +4038,7 @@
                 "title": "Output path",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               }
@@ -4010,7 +4086,7 @@
                 "title": "Output path",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/Expr"
+                    "$ref": "#/definitions/Code"
                   }
                 ]
               },
@@ -4026,8 +4102,27 @@
           }
         ],
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -4296,7 +4391,7 @@
             "description": "Output path or expression for the GeoJSON file to create",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
@@ -4305,8 +4400,27 @@
           "Attribute": {
             "type": "string"
           },
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -4476,7 +4590,7 @@
             "description": "Output path for the GeoPackage file to create",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -4498,8 +4612,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -5063,7 +5196,7 @@
             "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -5076,8 +5209,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -6815,7 +6967,7 @@
             "description": "Optional converter expression to transform features before writing",
             "anyOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               },
               {
                 "type": "null"
@@ -6826,14 +6978,33 @@
             "description": "Output path or expression for the JSON file to create",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -7653,7 +7824,7 @@
             "description": "Expression for the output file path where the OBJ file will be written",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           },
@@ -7686,8 +7857,27 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -10006,7 +10196,7 @@
             "description": "Output path or expression for the Shapefile to create",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
@@ -10015,8 +10205,27 @@
           "Attribute": {
             "type": "string"
           },
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -10886,14 +11095,33 @@
             "description": "Output path or expression for the XML file to create",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },
@@ -10926,14 +11154,33 @@
             "description": "Output path",
             "allOf": [
               {
-                "$ref": "#/definitions/Expr"
+                "$ref": "#/definitions/Code"
               }
             ]
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
+          "Code": {
+            "type": "object",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/definitions/CodeType"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "CodeType": {
+            "type": "string",
+            "enum": [
+              "flowExpr",
+              "string"
+            ]
           }
         }
       },

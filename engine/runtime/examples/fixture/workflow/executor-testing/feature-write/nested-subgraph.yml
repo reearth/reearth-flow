@@ -131,8 +131,9 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          output: |
-            "output.csv"
+          output:
+            type: string
+            value: output.csv
           format: csv
 
     edges:

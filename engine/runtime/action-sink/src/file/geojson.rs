@@ -7,7 +7,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -53,7 +53,7 @@ impl SinkFactory for GeoJsonWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: GeoJsonWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::GeoJsonWriterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -71,8 +71,12 @@ impl SinkFactory for GeoJsonWriterFactory {
             .into());
         };
 
+        let output = params.output.compile().map_err(|e| {
+            SinkError::GeoJsonWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let sink = GeoJsonWriter {
-            params,
+            output,
+            group_by: params.group_by,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -81,7 +85,8 @@ impl SinkFactory for GeoJsonWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct GeoJsonWriter {
-    pub(super) params: GeoJsonWriterParam,
+    output: CompiledCode,
+    group_by: Option<Vec<Attribute>>,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
@@ -92,7 +97,7 @@ pub(super) struct GeoJsonWriter {
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoJsonWriterParam {
     /// Output path or expression for the GeoJSON file to create
-    pub(super) output: Expr,
+    pub(super) output: Code,
     /// Optional attributes to group features by, creating separate files for each group
     pub(super) group_by: Option<Vec<Attribute>>,
 }
@@ -105,7 +110,7 @@ impl Sink for GeoJsonWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
-        let key = if let Some(group_by) = &self.params.group_by {
+        let key = if let Some(group_by) = &self.group_by {
             if group_by.is_empty() {
                 AttributeValue::Null
             } else {
@@ -122,10 +127,10 @@ impl Sink for GeoJsonWriter {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let path = self
+            .output
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(crate::errors::SinkError::geojson_writer)?;
         for (key, features) in self.buffer.iter() {
             let out_path = if *key == AttributeValue::Null {
                 path.clone()

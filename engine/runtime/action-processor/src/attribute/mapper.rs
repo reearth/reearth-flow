@@ -181,7 +181,7 @@ impl Processor for AttributeMapper {
                         if let Some(value) = feature.get(value_attribute) {
                             attributes.insert(Attribute::new(attribute.clone()), value.clone());
                         } else {
-                            tracing::error!("value_attribute `{value_attribute}` not found in feature for attribute `{attribute}`");
+                            // Missing attribute is defined behavior. Do not log an error here.
                             attributes
                                 .insert(Attribute::new(attribute.clone()), AttributeValue::Null);
                         }

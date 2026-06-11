@@ -32,18 +32,18 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          output: |
-            "expected_output.json"
-
+          output:
+            type: string
+            value: expected_output.json
       - id: 550e8400-e29b-41d4-a716-446655440205
         name: "FailedOutput"
         type: action
         action: FeatureWriter
         with:
           format: json
-          output: |
-            "expected_failed.json"
-
+          output:
+            type: string
+            value: expected_failed.json
     edges:
       - id: 550e8400-e29b-41d4-a716-446655440206
         from: 550e8400-e29b-41d4-a716-446655440202

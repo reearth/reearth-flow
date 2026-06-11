@@ -7,7 +7,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -54,7 +54,7 @@ impl SinkFactory for XmlWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: XmlWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::XmlWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -67,8 +67,11 @@ impl SinkFactory for XmlWriterFactory {
             )
             .into());
         };
+        let output = params.output.compile().map_err(|e| {
+            SinkError::XmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let sink = XmlWriter {
-            params,
+            output,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -77,7 +80,7 @@ impl SinkFactory for XmlWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct XmlWriter {
-    pub(super) params: XmlWriterParam,
+    output: CompiledCode,
     pub(super) buffer: HashMap<String, (SinkOutput, Vec<Feature>)>,
 }
 
@@ -88,7 +91,7 @@ pub(super) struct XmlWriter {
 #[serde(rename_all = "camelCase")]
 pub(super) struct XmlWriterParam {
     /// Output path or expression for the XML file to create
-    pub(super) output: Expr,
+    pub(super) output: Code,
 }
 
 impl Sink for XmlWriter {
@@ -97,12 +100,12 @@ impl Sink for XmlWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let node_ctx: NodeContext = ctx.clone().into();
-        let scope = node_ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let path = self
+            .output
+            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .map_err(|e| SinkError::XmlWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
+        let node_ctx: NodeContext = ctx.into();
         use std::collections::hash_map::Entry;
         match self.buffer.entry(path.clone()) {
             Entry::Occupied(mut e) => {

@@ -78,8 +78,8 @@ nodes:
           value:
             type: flowExpr
             value: |
-              parts = attributes["南中"].split(":");
-              int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+              [h, m, s] = attributes["南中"].split(":");
+              int(h) * 3600 + int(m) * 60 + int(s)
         - attribute: 出_H
           method: remove
         - attribute: 出_M

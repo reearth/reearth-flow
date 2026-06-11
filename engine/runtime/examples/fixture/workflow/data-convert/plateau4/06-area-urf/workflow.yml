@@ -167,15 +167,16 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "dictionary.json"
-          converter: |
-            #{
-              urf: env.get("__features").map(|f| #{
-                name: f.feature_type_without_prefix,
-                description: f.feature_type_ja
-              })
-            }
+          output:
+            type: string
+            value: dictionary.json
+          converter:
+            type: flowExpr
+            value: |
+              result = itertools.map(attributes["__features"], fn(f) {
+                {"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]}
+              });
+              {"urf": result}
 
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter

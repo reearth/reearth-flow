@@ -40,8 +40,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "result.json"
+          output:
+            type: string
+            value: result.json
     edges:
       - id: e1fc0a3e-61d3-48e2-a328-e7226c2ad1aa
         from: a1fc0a3e-61d3-48e2-a328-e7226c2ad1aa

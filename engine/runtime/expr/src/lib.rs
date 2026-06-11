@@ -1,10 +1,11 @@
 mod core;
 
-pub use core::error::{Error, InnerError, InnerResult, Result};
-pub use core::eval::{bool_cast, default_env, str_cast, Env};
-pub use core::value::{ImmutableObject, NativeFn, Value};
+pub use core::env::Env;
+pub use core::error::{eval_error, Error, Result};
+pub use core::eval::{default_env, env_bind};
+pub use core::value::{ClosureValue, ImmutableObject, NativeFn, Value};
 
-pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> InnerResult<()> {
+pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> Result<()> {
     let n = args.len();
     if n >= min && n <= max {
         return Ok(());
@@ -14,7 +15,7 @@ pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> Inner
     } else {
         format!("{name}() expected {min} to {max} argument(s), got {n}")
     };
-    Err(InnerError::new(msg))
+    Err(core::error::eval_error(msg))
 }
 
 /// Compile an expression string into an opaque [`CompiledExpr`].
@@ -23,7 +24,7 @@ pub fn compile(input: &str) -> Result<CompiledExpr> {
 }
 
 /// Evaluate a compiled expression against an [`Env`].
-pub fn eval(expr: &CompiledExpr, env: &mut Env) -> Result<Value> {
+pub fn eval(expr: &CompiledExpr, env: &Env) -> Result<Value> {
     core::eval::eval(&expr.0, env)
 }
 
