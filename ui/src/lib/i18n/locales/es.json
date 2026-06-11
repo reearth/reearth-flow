@@ -231,6 +231,7 @@
   "Required": "Requerido",
   "Starting...": "Iniciando...",
   "Clear debug run and results": "Borrar ejecución de depuración y resultados",
+  "Debug Cache is Stale": "La caché de depuración está obsoleta",
   "Start debug run of workflow": "Iniciar ejecución de depuración del flujo de trabajo",
   "Stop debug run of workflow": "Detener ejecución de depuración del flujo de trabajo",
   "Additional Debug Actions": "Acciones adicionales de depuración",

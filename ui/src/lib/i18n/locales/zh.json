@@ -231,6 +231,7 @@
   "Required": "必填",
   "Starting...": "启动中...",
   "Clear debug run and results": "清除调试运行和结果",
+  "Debug Cache is Stale": "调试缓存已过期",
   "Start debug run of workflow": "开始工作流的调试运行",
   "Stop debug run of workflow": "停止工作流的调试运行",
   "Additional Debug Actions": "附加调试操作",

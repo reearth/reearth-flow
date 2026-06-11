@@ -17,6 +17,7 @@ import {
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
 import {
+  useGraphStaleness,
   useProjectExport,
   useProjectLock,
   useProjectSave,
@@ -240,6 +241,8 @@ export default ({
     rawWorkflows,
     yAwareness,
   });
+
+  const { staleNodeIds } = useGraphStaleness({ yWorkflows, undoManager });
 
   const handleBeforeDeleteNodes = useCallback(
     ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
@@ -501,6 +504,7 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    staleNodeIds,
     handleProjectLockChange,
     isLocked,
     handleSpotlightUserSelect,

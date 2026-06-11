@@ -231,6 +231,7 @@
   "Required": "必須",
   "Starting...": "開始中...",
   "Clear debug run and results": "デバッグ実行と結果をクリア",
+  "Debug Cache is Stale": "デバッグキャッシュが古くなっています",
   "Start debug run of workflow": "ワークフローのデバッグ実行を開始",
   "Stop debug run of workflow": "ワークフローのデバッグ実行を停止",
   "Additional Debug Actions": "追加のデバッグアクション",
