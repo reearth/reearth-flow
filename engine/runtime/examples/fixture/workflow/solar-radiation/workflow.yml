@@ -171,11 +171,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       # Filter by LOD level: LOD2 → default (solar pipeline), LOD1/3/4 → separate 3DTiles writers, LOD0 → dropped
       - id: 00000001-0000-0000-0000-00000000003a
         name: LodFilter

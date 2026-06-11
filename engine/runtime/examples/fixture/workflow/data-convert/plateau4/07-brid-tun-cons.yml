@@ -306,10 +306,13 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: false
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 00708c16-ad56-4276-bba6-fee42f412d27
     name: TargetPackagesFilter
     type: action
@@ -404,11 +407,14 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       format: citygml
       flatten: true
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6f
     name: AttributeManagerPreFlattenerForDm
     type: action

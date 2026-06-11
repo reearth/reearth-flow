@@ -19,9 +19,9 @@ nodes:
     action: FeatureCityGmlReader
     with:
       format: citygml
-      dataset: |
-        env.get("__value")["cityGmlPath"]
-
+      dataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
   - id: 8b0a0511-e6a9-11f0-bd35-8d81ec21b8f4
     name: FeatureFilterByRoofSurface
     type: action

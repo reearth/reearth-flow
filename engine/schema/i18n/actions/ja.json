@@ -1062,6 +1062,12 @@
           "title": "タグの抽出",
           "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1083,6 +1089,12 @@
         "flatten": {
           "title": "フラット化",
           "description": "CityGML データの階層構造をフラット化するか"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -1275,6 +1287,12 @@
       "parameterI18n": {
         "": {
           "title": "FeatureReader パラメータ"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

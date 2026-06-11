@@ -143,9 +143,12 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
-      dataset: |
-        env.get("__value")["path"]
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
     name: TargetPackagesFilter
     type: action

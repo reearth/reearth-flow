@@ -71,8 +71,9 @@ graphs:
         type: action
         action: FeatureCityGml3Reader
         with:
-          dataset: |
-            env.get("__value")["path"]
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
           extractTags:
             - bldg:Building
             - con:FloorSurface

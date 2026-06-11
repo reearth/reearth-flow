@@ -42,11 +42,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: false
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       - id: aa11bb22-cc33-dd44-ee55-ff6677889900
         name: AttributeManagerAfterReader
         type: action
@@ -75,11 +77,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: false
-          dataset: |
-            env.get("__value")["filePath"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["filePath"]
       - id: bb22cc33-dd44-ee55-ff66-778899001122
         name: AttributeManagerAfterReadback
         type: action

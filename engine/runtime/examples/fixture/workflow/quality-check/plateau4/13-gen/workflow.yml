@@ -143,11 +143,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["gmlPath"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["gmlPath"]
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
         name: HorizontalReprojector
         type: action

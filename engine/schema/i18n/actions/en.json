@@ -1047,6 +1047,12 @@
           "title": "Extract Tags",
           "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
         }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
+        }
       }
     },
     {
@@ -1068,6 +1074,12 @@
         "flatten": {
           "title": "Flatten",
           "description": "Whether to flatten the hierarchical structure of the CityGML data"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },
@@ -1259,6 +1271,12 @@
       "parameterI18n": {
         "": {
           "title": "FeatureReaderParam"
+        }
+      },
+      "definitionI18n": {
+        "Code": {
+          "type": {},
+          "value": {}
         }
       }
     },

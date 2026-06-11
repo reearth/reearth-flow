@@ -2996,7 +2996,7 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
       "description": "Path expression resolving to the CityGML 3.0 file to read.",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -3011,8 +3011,27 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -3045,7 +3064,7 @@ Reads and processes features from CityGML files with optional flattening
       "description": "Optional path to the codelists directory for resolving codelist values",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         },
         {
           "type": "null"
@@ -3057,7 +3076,7 @@ Reads and processes features from CityGML files with optional flattening
       "description": "Path or expression to the CityGML dataset file to be read",
       "allOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/Code"
         }
       ]
     },
@@ -3071,8 +3090,27 @@ Reads and processes features from CityGML files with optional flattening
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
@@ -3644,7 +3682,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         },
@@ -3697,7 +3735,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         },
@@ -3750,7 +3788,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/Code"
             }
           ]
         },
@@ -3764,8 +3802,27 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
     }
   ],
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "Code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/CodeType"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CodeType": {
+      "type": "string",
+      "enum": [
+        "flowExpr",
+        "string"
+      ]
     }
   }
 }
