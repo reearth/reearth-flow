@@ -587,7 +587,26 @@ impl XmlValidator {
         }
 
         // --- Step 2: Fetch + resolve + compile schemas (with cache) ---
-        let cache_key = schema_cache_key(&schema_locations);
+
+        // Pre-resolve all xsi:schemaLocation entries to absolute URIs so that:
+        // (a) the in-memory cache key is stable across different base directories, and
+        // (b) the disk cache key (URL hash) is never a raw relative path.
+        let base_file_uri = base_dir
+            .as_ref()
+            .and_then(|dir| url::Url::from_directory_path(dir).ok())
+            .map(|u| u.to_string());
+        let resolved_locations: Vec<(String, String)> = schema_locations
+            .iter()
+            .map(|(ns, loc)| {
+                let resolved = base_file_uri
+                    .as_deref()
+                    .and_then(|base| resolve_uri(base, loc).ok())
+                    .unwrap_or_else(|| loc.clone());
+                (ns.clone(), resolved)
+            })
+            .collect();
+
+        let cache_key = schema_cache_key(&resolved_locations);
 
         // Check cache first
         let cached = {
@@ -599,32 +618,20 @@ impl XmlValidator {
             compiled
         } else {
             // Cache miss - compile from scratch.
-            // DefaultFetcher::new() handles both http(s):// and file:// URLs;
-            // relative paths are pre-resolved below so base_dir is not baked in.
+            // DefaultFetcher::new() handles both http(s):// and file:// URLs.
             let fetcher = DiskCachingFetcher {
                 inner: DefaultFetcher::new(),
                 dir: SCHEMA_CACHE_DIR.clone(),
             };
 
-            // Resolve relative xsi:schemaLocation paths to absolute file:// URLs
-            // so the disk cache key is always absolute and unique per base directory.
-            let base_file_uri = base_dir.as_ref().map(|dir| {
-                let s = dir.to_string_lossy();
-                format!("file://{}/", s.trim_end_matches('/'))
-            });
-
             let mut resolver = SchemaResolver::new(&fetcher);
-            for (_namespace, location) in &schema_locations {
+            for (_namespace, resolved_location) in &resolved_locations {
                 // Per W3C spec, xsi:schemaLocation URLs are hints.
                 // Remote schemas that are unreachable (404, DNS failure, etc.)
                 // are skipped. This may cause false positives if the skipped
                 // schema defines types used elsewhere.
-                let is_remote = location.starts_with("http://") || location.starts_with("https://");
-
-                let resolved_location = base_file_uri
-                    .as_deref()
-                    .and_then(|base| resolve_uri(base, location).ok())
-                    .unwrap_or_else(|| location.clone());
+                let is_remote = resolved_location.starts_with("http://")
+                    || resolved_location.starts_with("https://");
 
                 let fetch_result = match fetcher.fetch(&resolved_location) {
                     Ok(r) => r,
