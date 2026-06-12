@@ -508,9 +508,21 @@ mod tests {
 
     #[test]
     fn test_format() {
-        assert_eval(r#""Hello, {}!".format("world")"#, &[], Value::from("Hello, world!"));
-        assert_eval(r#""{0} and {1}".format("a", "b")"#, &[], Value::from("a and b"));
-        assert_eval(r#""{1} then {0}".format("b", "a")"#, &[], Value::from("a then b"));
+        assert_eval(
+            r#""Hello, {}!".format("world")"#,
+            &[],
+            Value::from("Hello, world!"),
+        );
+        assert_eval(
+            r#""{0} and {1}".format("a", "b")"#,
+            &[],
+            Value::from("a and b"),
+        );
+        assert_eval(
+            r#""{1} then {0}".format("b", "a")"#,
+            &[],
+            Value::from("a then b"),
+        );
         assert_eval(r#""{} {}".format(1, 2)"#, &[], Value::from("1 2"));
         assert_eval(r#""{{}}".format()"#, &[], Value::from("{}"));
 
@@ -529,7 +541,11 @@ mod tests {
         assert_eval(r#""{:5}".format(7)"#, &[], Value::from("    7"));
 
         let p = Value::Object(Rc::new(Point { x: 1.0, y: 2.0 }));
-        assert_eval(r#""{:compact}".format(p)"#, &[("p", p.clone())], Value::from("1,2"));
+        assert_eval(
+            r#""{:compact}".format(p)"#,
+            &[("p", p.clone())],
+            Value::from("1,2"),
+        );
         assert_eval(r#""{}".format(p)"#, &[("p", p)], Value::from("(1, 2)"));
         let o = Value::Object(Rc::new(Opaque));
         assert_eval(r#""{}".format(o)"#, &[("o", o)], Value::from("opaque"));
