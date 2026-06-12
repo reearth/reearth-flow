@@ -155,7 +155,7 @@ fn parse_spec(s: &str) -> Result<FormatSpec> {
     let mut i = 0;
     let mut zero_pad = false;
 
-    if b.first() == Some(&b'0') && b.get(1).map(|c| c.is_ascii_digit()).unwrap_or(false) {
+    if b.first() == Some(&b'0') {
         zero_pad = true;
         i += 1;
     }
@@ -226,13 +226,22 @@ fn zero_pad(s: &str, width: usize) -> String {
     }
 }
 
-fn space_pad(s: &str, width: usize) -> String {
+fn right_pad(s: &str, width: usize) -> String {
     if s.len() >= width {
         return s.to_string();
     }
     let n = width - s.len();
     let padding: String = std::iter::repeat_n(' ', n).collect();
     format!("{padding}{s}")
+}
+
+fn left_pad(s: &str, width: usize) -> String {
+    if s.len() >= width {
+        return s.to_string();
+    }
+    let n = width - s.len();
+    let padding: String = std::iter::repeat_n(' ', n).collect();
+    format!("{s}{padding}")
 }
 
 fn apply_spec(val: &Value, spec: &FormatSpec) -> Result<String> {
@@ -243,7 +252,7 @@ fn apply_spec(val: &Value, spec: &FormatSpec) -> Result<String> {
             let s = format!("{x:.prec$}");
             Ok(match spec.width {
                 Some(w) if spec.zero_pad => zero_pad(&s, w),
-                Some(w) => space_pad(&s, w),
+                Some(w) => right_pad(&s, w),
                 None => s,
             })
         }
@@ -252,18 +261,26 @@ fn apply_spec(val: &Value, spec: &FormatSpec) -> Result<String> {
             let s = format!("{n}");
             Ok(match spec.width {
                 Some(w) if spec.zero_pad => zero_pad(&s, w),
-                Some(w) => space_pad(&s, w),
+                Some(w) => right_pad(&s, w),
                 None => s,
             })
         }
-        None => Ok(match val {
-            Value::String(s) => s.clone(),
-            Value::Null => "null".to_string(),
-            Value::Bool(b) => b.to_string(),
-            Value::Int(n) => n.to_string(),
-            Value::Float(n) => format_float(*n),
-            other => return Err(eval_error(format!("cannot format {}", other.type_name()))),
-        }),
+        None => {
+            let (s, is_str) = match val {
+                Value::String(s) => (s.clone(), true),
+                Value::Null => ("null".to_string(), false),
+                Value::Bool(b) => (b.to_string(), false),
+                Value::Int(n) => (n.to_string(), false),
+                Value::Float(n) => (format_float(*n), false),
+                other => return Err(eval_error(format!("cannot format {}", other.type_name()))),
+            };
+            Ok(match spec.width {
+                Some(w) if is_str => left_pad(&s, w),
+                Some(w) if spec.zero_pad => zero_pad(&s, w),
+                Some(w) => right_pad(&s, w),
+                None => s,
+            })
+        }
     }
 }
 
@@ -491,38 +508,29 @@ mod tests {
 
     #[test]
     fn test_format() {
-        assert_eval(
-            r#""Hello, {}!".format("world")"#,
-            &[],
-            Value::from("Hello, world!"),
-        );
-        assert_eval(
-            r#""{0} and {1}".format("a", "b")"#,
-            &[],
-            Value::from("a and b"),
-        );
-        assert_eval(
-            r#""{1} then {0}".format("b", "a")"#,
-            &[],
-            Value::from("a then b"),
-        );
-        assert_eval(r#""{:.2f}".format(3.14159)"#, &[], Value::from("3.14"));
+        assert_eval(r#""Hello, {}!".format("world")"#, &[], Value::from("Hello, world!"));
+        assert_eval(r#""{0} and {1}".format("a", "b")"#, &[], Value::from("a and b"));
+        assert_eval(r#""{1} then {0}".format("b", "a")"#, &[], Value::from("a then b"));
+        assert_eval(r#""{} {}".format(1, 2)"#, &[], Value::from("1 2"));
+        assert_eval(r#""{{}}".format()"#, &[], Value::from("{}"));
+
         assert_eval(r#""{:04d}".format(7)"#, &[], Value::from("0007"));
         assert_eval(r#""{:04d}".format(-7)"#, &[], Value::from("-007"));
-        assert_eval(r#""{:08.2f}".format(-3.14)"#, &[], Value::from("-0003.14"));
         assert_eval(r#""{:5d}".format(7)"#, &[], Value::from("    7"));
         assert_eval(r#""{:5d}".format(-7)"#, &[], Value::from("   -7"));
-        assert_eval(r#""{{}}".format()"#, &[], Value::from("{}"));
-        assert_eval(r#""{} {}".format(1, 2)"#, &[], Value::from("1 2"));
+        assert_eval(r#""{:0d}".format(7)"#, &[], Value::from("7")); // no width → flag is no-op
+
+        assert_eval(r#""{:.2f}".format(3.14159)"#, &[], Value::from("3.14"));
+        assert_eval(r#""{:08.2f}".format(-3.14)"#, &[], Value::from("-0003.14"));
+        assert_eval(r#""{:0f}".format(3.14)"#, &[], Value::from("3.140000")); // no width → flag is no-op
+        assert_eval(r#""{:0.2f}".format(3.14)"#, &[], Value::from("3.14")); // no width → flag is no-op
+
+        assert_eval(r#""{:5}".format("hi")"#, &[], Value::from("hi   "));
+        assert_eval(r#""{:5}".format(7)"#, &[], Value::from("    7"));
 
         let p = Value::Object(Rc::new(Point { x: 1.0, y: 2.0 }));
-        assert_eval(
-            r#""{:compact}".format(p)"#,
-            &[("p", p.clone())],
-            Value::from("1,2"),
-        );
+        assert_eval(r#""{:compact}".format(p)"#, &[("p", p.clone())], Value::from("1,2"));
         assert_eval(r#""{}".format(p)"#, &[("p", p)], Value::from("(1, 2)"));
-
         let o = Value::Object(Rc::new(Opaque));
         assert_eval(r#""{}".format(o)"#, &[("o", o)], Value::from("opaque"));
     }
