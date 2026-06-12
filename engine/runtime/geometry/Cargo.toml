@@ -21,6 +21,7 @@ bvh.workspace = true
 bytes.workspace = true
 clipper-sys.workspace = true
 earcut.workspace = true
+enum_dispatch.workspace = true
 float_next_after.workspace = true
 geo-buffer.workspace = true
 geo-types.workspace = true
