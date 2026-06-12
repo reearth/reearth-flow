@@ -213,13 +213,25 @@ fn parse_spec(s: &str) -> Result<FormatSpec> {
     })
 }
 
-fn pad(s: &str, width: usize, zero_pad: bool) -> String {
+fn zero_pad(s: &str, width: usize) -> String {
     if s.len() >= width {
         return s.to_string();
     }
     let n = width - s.len();
-    let fill = if zero_pad { '0' } else { ' ' };
-    let padding: String = std::iter::repeat_n(fill, n).collect();
+    let padding: String = std::iter::repeat_n('0', n).collect();
+    if let Some(rest) = s.strip_prefix('-') {
+        format!("-{padding}{rest}")
+    } else {
+        format!("{padding}{s}")
+    }
+}
+
+fn space_pad(s: &str, width: usize) -> String {
+    if s.len() >= width {
+        return s.to_string();
+    }
+    let n = width - s.len();
+    let padding: String = std::iter::repeat_n(' ', n).collect();
     format!("{padding}{s}")
 }
 
@@ -230,7 +242,8 @@ fn apply_spec(val: &Value, spec: &FormatSpec) -> Result<String> {
             let prec = spec.precision.unwrap_or(6);
             let s = format!("{x:.prec$}");
             Ok(match spec.width {
-                Some(w) => pad(&s, w, spec.zero_pad),
+                Some(w) if spec.zero_pad => zero_pad(&s, w),
+                Some(w) => space_pad(&s, w),
                 None => s,
             })
         }
@@ -238,7 +251,8 @@ fn apply_spec(val: &Value, spec: &FormatSpec) -> Result<String> {
             let n = val.as_int()?;
             let s = format!("{n}");
             Ok(match spec.width {
-                Some(w) => pad(&s, w, spec.zero_pad),
+                Some(w) if spec.zero_pad => zero_pad(&s, w),
+                Some(w) => space_pad(&s, w),
                 None => s,
             })
         }
@@ -494,6 +508,10 @@ mod tests {
         );
         assert_eval(r#""{:.2f}".format(3.14159)"#, &[], Value::from("3.14"));
         assert_eval(r#""{:04d}".format(7)"#, &[], Value::from("0007"));
+        assert_eval(r#""{:04d}".format(-7)"#, &[], Value::from("-007"));
+        assert_eval(r#""{:08.2f}".format(-3.14)"#, &[], Value::from("-0003.14"));
+        assert_eval(r#""{:5d}".format(7)"#, &[], Value::from("    7"));
+        assert_eval(r#""{:5d}".format(-7)"#, &[], Value::from("   -7"));
         assert_eval(r#""{{}}".format()"#, &[], Value::from("{}"));
         assert_eval(r#""{} {}".format(1, 2)"#, &[], Value::from("1 2"));
 
