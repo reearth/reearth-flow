@@ -165,7 +165,11 @@ fn parse_spec(s: &str) -> Result<FormatSpec> {
         i += 1;
     }
     let width = if i > start {
-        Some(s[start..i].parse::<usize>().unwrap())
+        Some(
+            s[start..i]
+                .parse::<usize>()
+                .map_err(|_| eval_error(format!("invalid width in format spec '{s}'")))?,
+        )
     } else {
         None
     };
@@ -176,7 +180,11 @@ fn parse_spec(s: &str) -> Result<FormatSpec> {
         while i < b.len() && b[i].is_ascii_digit() {
             i += 1;
         }
-        Some(s[start..i].parse::<usize>().unwrap_or(0))
+        Some(
+            s[start..i]
+                .parse::<usize>()
+                .map_err(|_| eval_error(format!("invalid precision in format spec '{s}'")))?,
+        )
     } else {
         None
     };
