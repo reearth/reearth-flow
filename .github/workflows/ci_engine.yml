@@ -11,6 +11,7 @@ env:
   # from transient network timeouts or other issues.
   CARGO_NET_RETRY: 10
   RUSTUP_MAX_RETRIES: 10
+  RUST_LOG: warn
   # Don't emit giant backtraces in the CI logs.
   RUST_BACKTRACE: short
   FLOW_RUNTIME_ACTION_LOG_DISABLE: true
