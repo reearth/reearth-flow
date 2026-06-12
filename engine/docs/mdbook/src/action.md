@@ -8814,13 +8814,13 @@ Extracts maxLod
 ### Type
 * processor
 ### Description
-Detect missing attributes in PLATEAU4 features
+Detect missing attributes in PLATEAU features
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MissingAttributeDetector Parameters",
-  "description": "Configuration for detecting missing attributes in PLATEAU4 features.",
+  "description": "Configuration for detecting missing attributes in PLATEAU features.",
   "type": "object",
   "required": [
     "packageAttribute"
@@ -8858,7 +8858,7 @@ Extract object list
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ObjectListExtractor Parameters",
-  "description": "Configuration for extracting object lists from PLATEAU4 data.",
+  "description": "Configuration for extracting object lists from PLATEAU data.",
   "type": "object",
   "required": [
     "objectListPathAttribute"
@@ -9428,6 +9428,78 @@ Validates domain of definition of CityGML features
 * default
 * rejected
 * duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU6.MissingAttributeDetector
+### Type
+* processor
+### Description
+Detect missing attributes in PLATEAU features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MissingAttributeDetector Parameters",
+  "description": "Configuration for detecting missing attributes in PLATEAU features.",
+  "type": "object",
+  "required": [
+    "packageAttribute"
+  ],
+  "properties": {
+    "packageAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* summary
+* required
+* target
+* dataQualityC07
+* dataQualityC08
+### Category
+* PLATEAU
+
+## PLATEAU6.ObjectListExtractor
+### Type
+* processor
+### Description
+Extract object list
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ObjectListExtractor Parameters",
+  "description": "Configuration for extracting object lists from PLATEAU data.",
+  "type": "object",
+  "required": [
+    "objectListPathAttribute"
+  ],
+  "properties": {
+    "objectListPathAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * PLATEAU
 

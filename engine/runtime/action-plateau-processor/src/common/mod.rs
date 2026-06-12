@@ -1,5 +1,7 @@
 pub(crate) mod domain_of_definition_validator;
 pub(crate) mod errors;
+pub(crate) mod missing_attribute_detector;
+pub(crate) mod object_list_extractor;
 mod profile;
 pub(crate) mod udx_folder_extractor;
 pub(crate) use profile::PlateauProfile;

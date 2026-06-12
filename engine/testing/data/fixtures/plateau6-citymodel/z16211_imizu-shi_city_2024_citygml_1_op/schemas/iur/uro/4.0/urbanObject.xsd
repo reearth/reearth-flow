@@ -1,416 +1,2854 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-================================================================================
-  応用スキーマ（試作案）: PLATEAU 3D都市モデル 建築物モデル拡張（i-UR 相当）
-  CityGML 3.0 対応応用スキーマ案 の建築物モデル（本文 1.2 節）を対象に、
-  i-UR 由来の拡張属性（Urban Object）を GML による符号化（ADE パターン）で表現したもの。
-
-  出典
-    国土交通省 都市局「PLATEAU標準製品仕様書案（CityGML 3.0 対応応用スキーマ案）」
-    第1.0版 2026-03-26  plateau_tech_doc_0142_ver01.pdf
-    - 1.2.2.2 Urban Object（i-UR）クラス図
-    - 1.2.3.2 Urban Object（i-UR）応用スキーマ文書
-    - 1.2.4.2 Urban Object（i-UR）コードリストと列挙型
-    - 附属書A 妥当な建築物オブジェクト
-
-  このスキーマでカバーするもの
-    - 建築物モデルに付与する PLATEAU 拡張属性（11 DataType）
-    - それぞれを CityGML 3.0 ADE 拡張ポイント（bldg:ADEOfAbstractBuilding 等）
-      に substitutionGroup で接続する
-
-  このスキーマでカバーしないもの
-    - CityGML 3.0 本体（core/bldg/con/gen/app/dem など）の XSD
-      → OGC 21-006r2 が定める公式 XSD を import する前提
-    - 施設管理属性（1.2.3.4）／災害リスク属性（1.2.3.5）／データ品質属性（1.2.3.6）
-      ／数値地形図のための拡張属性（1.2.3.7）
-      → 各応用スキーマ文書側で定義されるため、本ファイルでは未含有
-
-  注意（暫定仕様）
-    - 本 PDF は GML による符号化を前提とするが、XSD の具体的な符号化規則
-      （要素名の大文字小文字、プロパティ型の命名、コードリスト参照のメカニズム等）
-      は明記されていない。本ファイルは PLATEAU 2.0 および CityGML 3.0
-      GML Encoding (OGC 21-006r2) の慣習に従って推定した暫定実装である。
-    - 名前空間 URI はコードリストの所在（1.2.4 に示される
-      https://www.geospatial.jp/iur/codelists/4.0/...）に合わせて "4.0" を採用。
-      公式公開時には変更される可能性がある。
-    - ADE 拡張要素の親要素（bldg:adeOfAbstractBuilding 等）の具体的な XML 要素名・型名
-      は OGC 21-006r2 の正式 GML 符号化規則に従うことを想定。ここでは
-      bldg 名前空間に ADEOfAbstractBuilding 等の要素名で抽象宣言があると仮定している。
-    - コードリスト型は gml:CodeType（xlink + 属性）を前提としている。
-
-  Target Namespace: https://www.geospatial.jp/iur/uro/4.0/  (prefix: uro)
-================================================================================
--->
-<xs:schema
-  xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  xmlns:gml="http://www.opengis.net/gml/3.2"
-  xmlns:core="http://www.opengis.net/citygml/3.0"
-  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
-  xmlns:con="http://www.opengis.net/citygml/construction/3.0"
-  xmlns:uro="https://www.geospatial.jp/iur/uro/4.0"
-  targetNamespace="https://www.geospatial.jp/iur/uro/4.0"
-  elementFormDefault="qualified"
-  attributeFormDefault="unqualified"
-  version="0.1.0">
-
-  <!-- 外部参照: CityGML 3.0 本体及び GML 3.2.1 -->
-  <xs:import namespace="http://www.opengis.net/gml/3.2"
-             schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
-  <xs:import namespace="http://www.opengis.net/citygml/3.0"
-             schemaLocation="http://schemas.opengis.net/citygml/3.0/core.xsd"/>
-  <xs:import namespace="http://www.opengis.net/citygml/building/3.0"
-             schemaLocation="http://schemas.opengis.net/citygml/building/3.0/building.xsd"/>
-  <xs:import namespace="http://www.opengis.net/citygml/construction/3.0"
-             schemaLocation="http://schemas.opengis.net/citygml/construction/3.0/construction.xsd"/>
-
-  <!-- ============================================================
-       1) BuildingIDAttribute  [表 1-49]
-       建築物を識別するための情報。上位型: ADEOfAbstractBuilding
-       ============================================================ -->
-  <xs:element name="BuildingIDAttribute"
-              type="uro:BuildingIDAttributeType"
-              substitutionGroup="bldg:ADEOfAbstractBuilding"/>
-  <xs:complexType name="BuildingIDAttributeType">
-    <xs:annotation>
-      <xs:documentation>
-        建築物を識別するための情報。
-        buildingID は [市区町村コード]-[接頭辞 bldg]-[オブジェクト連番] とする。
-      </xs:documentation>
-    </xs:annotation>
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfAbstractBuildingType">
-        <xs:sequence>
-          <xs:element name="buildingID" type="xs:string"/>
-          <xs:element name="branchID" type="xs:integer" minOccurs="0"/>
-          <xs:element name="partID" type="xs:integer" minOccurs="0"/>
-          <xs:element name="prefecture" type="gml:CodeType" minOccurs="0">
-            <xs:annotation>
-              <xs:documentation>
-                コードリスト: Common_localPublicAuthorities.xml
-              </xs:documentation>
-            </xs:annotation>
-          </xs:element>
-          <xs:element name="city" type="gml:CodeType">
-            <xs:annotation>
-              <xs:documentation>
-                コードリスト: Common_localPublicAuthorities.xml
-                標準製品仕様書では必須とする（i-UR本来の多重度は 0..1）。
-              </xs:documentation>
-            </xs:annotation>
-          </xs:element>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       2) BuildingDetailAttribute  [表 1-50]
-       都市計画基礎調査で収集された建築物に関する基礎的な情報。
-       ============================================================ -->
-  <xs:element name="BuildingDetailAttribute"
-              type="uro:BuildingDetailAttributeType"
-              substitutionGroup="bldg:ADEOfAbstractBuilding"/>
-  <xs:complexType name="BuildingDetailAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfAbstractBuildingType">
-        <xs:sequence>
-          <xs:element name="serialNumberOfBuildingCertification" type="xs:string" minOccurs="0"/>
-          <xs:element name="siteArea" type="gml:MeasureType" minOccurs="0"/>
-          <xs:element name="totalFloorArea" type="gml:MeasureType" minOccurs="0"/>
-          <xs:element name="buildingFootprintArea" type="gml:MeasureType" minOccurs="0"/>
-          <xs:element name="buildingRoofEdgeArea" type="gml:MeasureType" minOccurs="0"/>
-          <xs:element name="developmentArea" type="gml:MeasureType" minOccurs="0"/>
-          <xs:element name="buildingStructureType" type="gml:CodeType" minOccurs="0">
-            <xs:annotation>
-              <xs:documentation>コードリスト: BuildingDetailAttribute_buildingStructureType.xml</xs:documentation>
-            </xs:annotation>
-          </xs:element>
-          <xs:element name="buildingStructureOrgType" type="gml:CodeType" minOccurs="0">
-            <xs:annotation>
-              <xs:documentation>コードリスト: BuildingDetailAttribute_buildingStructureOrgType.xml（都市独自）</xs:documentation>
-            </xs:annotation>
-          </xs:element>
-          <xs:element name="fireproofStructureType" type="gml:CodeType" minOccurs="0">
-            <xs:annotation>
-              <xs:documentation>コードリスト: BuildingDetailAttribute_fireproofStructureType.xml</xs:documentation>
-            </xs:annotation>
-          </xs:element>
-          <xs:element name="implementingBody" type="xs:string" minOccurs="0"/>
-          <xs:element name="urbanPlanType" type="gml:CodeType" minOccurs="0">
-            <xs:annotation><xs:documentation>コードリスト: Common_urbanPlanType.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="areaClassificationType" type="gml:CodeType" minOccurs="0">
-            <xs:annotation><xs:documentation>コードリスト: Common_areaClassificationType.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="districtsAndZonesType" type="gml:CodeType" minOccurs="0" maxOccurs="unbounded">
-            <xs:annotation><xs:documentation>コードリスト: Common_districtsAndZonesType.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="landUseType" type="gml:CodeType" minOccurs="0">
-            <xs:annotation><xs:documentation>コードリスト: Common_landUseType.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="reference" type="xs:string" minOccurs="0"/>
-          <xs:element name="majorUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="majorUsage2" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="orgUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="orgUsage2" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="detailedUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="detailedUsage2" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="detailedUsage3" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="groundFloorUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="secondFloorUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="thirdFloorUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="basementUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="basementFirstUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="basementSecondUsage" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="vacancy" type="gml:CodeType" minOccurs="0">
-            <xs:annotation><xs:documentation>コードリスト: BuildingDetailAttribute_vacancy.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="buildingCoverageRate" type="xs:double" minOccurs="0">
-            <xs:annotation><xs:documentation>建蔽率。百分率。単位は％。</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="floorAreaRate" type="xs:double" minOccurs="0">
-            <xs:annotation><xs:documentation>容積率。百分率。単位は％。</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="specifiedBuildingCoverageRate" type="xs:double" minOccurs="0"/>
-          <xs:element name="specifiedFloorAreaRate" type="xs:double" minOccurs="0"/>
-          <xs:element name="standardFloorAreaRate" type="xs:double" minOccurs="0"/>
-          <xs:element name="buildingHeight" type="gml:LengthType" minOccurs="0">
-            <xs:annotation><xs:documentation>建築基準法施行令第2条に定義される地盤面からの建築物の高さ。uom="m"。</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="eaveHeight" type="gml:LengthType" minOccurs="0">
-            <xs:annotation><xs:documentation>軒高。uom="m"。</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="note" type="xs:string" minOccurs="0"/>
-          <xs:element name="surveyYear" type="xs:date">
-            <xs:annotation><xs:documentation>建物利用現況調査の実施年（西暦）。必須。</xs:documentation></xs:annotation>
-          </xs:element>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       3) LargeCustomerFacilityAttribute  [表 1-51]
-       大規模小売店舗／大規模集客施設に関する基礎的な情報。
-       ============================================================ -->
-  <xs:element name="LargeCustomerFacilityAttribute"
-              type="uro:LargeCustomerFacilityAttributeType"
-              substitutionGroup="bldg:ADEOfAbstractBuilding"/>
-  <xs:complexType name="LargeCustomerFacilityAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfAbstractBuildingType">
-        <xs:sequence>
-          <xs:element name="class" type="gml:CodeType" minOccurs="0">
-            <xs:annotation><xs:documentation>コードリスト: LargeCustomerFacilityAttribute_class.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="name" type="xs:string" minOccurs="0"/>
-          <xs:element name="capacity" type="xs:integer" minOccurs="0"/>
-          <xs:element name="owner" type="xs:string" minOccurs="0"/>
-          <xs:element name="totalFloorArea" type="gml:MeasureType" minOccurs="0"/>
-          <xs:element name="totalStoreFloorArea" type="gml:MeasureType" minOccurs="0"/>
-          <xs:element name="inauguralDate" type="xs:date" minOccurs="0"/>
-          <xs:element name="yearOpened" type="xs:date" minOccurs="0"/>
-          <xs:element name="yearClosed" type="xs:date" minOccurs="0"/>
-          <xs:element name="keyTenants" type="xs:string" minOccurs="0"/>
-          <xs:element name="availability" type="xs:boolean" minOccurs="0"/>
-          <xs:element name="urbanPlanType" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="areaClassificationType" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="districtsAndZonesType" type="gml:CodeType" minOccurs="0" maxOccurs="unbounded"/>
-          <xs:element name="landUseType" type="gml:CodeType" minOccurs="0"/>
-          <xs:element name="reference" type="xs:string" minOccurs="0"/>
-          <xs:element name="note" type="xs:string" minOccurs="0"/>
-          <xs:element name="surveyYear" type="xs:date"/>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       4) RealEstateIDAttribute  [表 1-52]
-       建築物及び土地に紐づく不動産ID（不動産IDルールガイドライン）。
-       ============================================================ -->
-  <xs:element name="RealEstateIDAttribute"
-              type="uro:RealEstateIDAttributeType"
-              substitutionGroup="bldg:ADEOfAbstractBuilding"/>
-  <xs:complexType name="RealEstateIDAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfAbstractBuildingType">
-        <xs:sequence>
-          <xs:element name="realEstateIDOfBuilding" type="xs:string">
-            <xs:annotation><xs:documentation>「不動産番号13桁+ハイフン+4桁」。必須。</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="numberOfBuildingUnitOwnership" type="xs:integer" minOccurs="0"/>
-          <xs:element name="realEstateIDOfBuildingUnitOwnership" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
-          <xs:element name="numberOfRealEstateIDOfLand" type="xs:integer" minOccurs="0"/>
-          <xs:element name="realEstateIDOfLand" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
-          <xs:element name="matchingScore" type="xs:integer">
-            <xs:annotation>
-              <xs:documentation>
-                建築物と登記簿データの一致度（0-100）。
-                dt23-03 3D都市モデル・不動産IDマッチングシステム使用時必須。
-              </xs:documentation>
-            </xs:annotation>
-          </xs:element>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       5) IndoorFacilityAttribute  [表 1-53]
-       施設に追加するナビゲーション用の属性。上位型: ADEOfBuilding
-       ============================================================ -->
-  <xs:element name="IndoorFacilityAttribute"
-              type="uro:IndoorFacilityAttributeType"
-              substitutionGroup="bldg:ADEOfBuilding"/>
-  <xs:complexType name="IndoorFacilityAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfBuildingType">
-        <xs:sequence>
-          <xs:element name="source" type="gml:CodeType">
-            <xs:annotation><xs:documentation>コードリスト: Common_indoorSource.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="weekdayHours" type="xs:string" minOccurs="0"/>
-          <xs:element name="weekendHours" type="xs:string" minOccurs="0"/>
-          <xs:element name="phone" type="xs:string" minOccurs="0"/>
-          <xs:element name="website" type="xs:anyURI" minOccurs="0"/>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       6) IndoorFurnishingAttribute  [表 1-54]
-       設備に追加するナビゲーション用の属性。上位型: ADEOfBuildingFurniture
-       ============================================================ -->
-  <xs:element name="IndoorFurnishingAttribute"
-              type="uro:IndoorFurnishingAttributeType"
-              substitutionGroup="bldg:ADEOfBuildingFurniture"/>
-  <xs:complexType name="IndoorFurnishingAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfBuildingFurnitureType">
-        <xs:sequence>
-          <xs:element name="source" type="gml:CodeType"/>
-          <xs:element name="floorId" type="xs:string" minOccurs="0"/>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       7) IndoorPublicTagAttribute  [表 1-55]
-       パブリックタグに追加するナビゲーション用の属性。
-       上位型: ADEOfBuildingConstructiveElement
-       ============================================================ -->
-  <xs:element name="IndoorPublicTagAttribute"
-              type="uro:IndoorPublicTagAttributeType"
-              substitutionGroup="bldg:ADEOfBuildingConstructiveElement"/>
-  <xs:complexType name="IndoorPublicTagAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfBuildingConstructiveElementType">
-        <xs:sequence>
-          <xs:element name="source" type="gml:CodeType"/>
-          <xs:element name="ucode" type="xs:string" minOccurs="0"/>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       8) IndoorSpaceAttribute  [表 1-56]
-       物理的な空間に追加するナビゲーション用の属性。
-       上位型: ADEOfBuildingRoom
-       ============================================================ -->
-  <xs:element name="IndoorSpaceAttribute"
-              type="uro:IndoorSpaceAttributeType"
-              substitutionGroup="bldg:ADEOfBuildingRoom"/>
-  <xs:complexType name="IndoorSpaceAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfBuildingRoomType">
-        <xs:sequence>
-          <xs:element name="source" type="gml:CodeType"/>
-          <xs:element name="floorId" type="xs:string" minOccurs="0"/>
-          <xs:element name="isRestricted" type="xs:boolean" minOccurs="0">
-            <xs:annotation><xs:documentation>1:進入制限あり ／ 0:進入制限なし</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="suite" type="xs:string" minOccurs="0"/>
-          <xs:element name="isPublic" type="xs:boolean" minOccurs="0">
-            <xs:annotation><xs:documentation>1:公開可 ／ 0:公開不可</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="tollType" type="gml:CodeType" minOccurs="0">
-            <xs:annotation><xs:documentation>コードリスト: IndoorSpaceAttribute_tollType.xml</xs:documentation></xs:annotation>
-          </xs:element>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       9) IndoorStoreyAttribute  [表 1-57]
-       階層に追加するナビゲーション用の属性。上位型: ADEOfStorey
-       ============================================================ -->
-  <xs:element name="IndoorStoreyAttribute"
-              type="uro:IndoorStoreyAttributeType"
-              substitutionGroup="bldg:ADEOfStorey"/>
-  <xs:complexType name="IndoorStoreyAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfStoreyType">
-        <xs:sequence>
-          <xs:element name="source" type="gml:CodeType"/>
-          <xs:element name="category" type="xs:boolean" minOccurs="0">
-            <xs:annotation><xs:documentation>1:屋内 ／ 0:屋外</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="ordinal" type="xs:double" minOccurs="0"/>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       10) IndoorTactileTileAttribute  [表 1-58]
-       視覚障碍者用誘導ブロックに追加するナビゲーション用の属性。
-       上位型: ADEOfBuildingInstallation
-       ============================================================ -->
-  <xs:element name="IndoorTactileTileAttribute"
-              type="uro:IndoorTactileTileAttributeType"
-              substitutionGroup="bldg:ADEOfBuildingInstallation"/>
-  <xs:complexType name="IndoorTactileTileAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfBuildingInstallationType">
-        <xs:sequence>
-          <xs:element name="source" type="gml:CodeType"/>
-          <xs:element name="startNode" type="xs:string" minOccurs="0"/>
-          <xs:element name="endNode" type="xs:string" minOccurs="0"/>
-          <xs:element name="category" type="gml:CodeType" minOccurs="0">
-            <xs:annotation><xs:documentation>コードリスト: IndoorTactileTileAttribute_category.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="roof" type="gml:CodeType" minOccurs="0">
-            <xs:annotation><xs:documentation>コードリスト: IndoorTactileTileAttribute_roof.xml</xs:documentation></xs:annotation>
-          </xs:element>
-          <xs:element name="floorId" type="xs:string" minOccurs="0"/>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <!-- ============================================================
-       11) IndoorZoneAttribute  [表 1-59]
-       任意の空間に追加するナビゲーション用の属性。
-       上位型: ADEOfBuildingUnit
-       用途: InteriorWallSurface、CeilingSurface、FloorSurface
-       ============================================================ -->
-  <xs:element name="IndoorZoneAttribute"
-              type="uro:IndoorZoneAttributeType"
-              substitutionGroup="bldg:ADEOfBuildingUnit"/>
-  <xs:complexType name="IndoorZoneAttributeType">
-    <xs:complexContent>
-      <xs:extension base="bldg:ADEOfBuildingUnitType">
-        <xs:sequence>
-          <xs:element name="source" type="gml:CodeType"/>
-          <xs:element name="floorId" type="xs:string" minOccurs="0"/>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-</xs:schema>
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:bldg="http://www.opengis.net/citygml/building/3.0" xmlns:brid="http://www.opengis.net/citygml/bridge/3.0" xmlns:con="http://www.opengis.net/citygml/construction/3.0" xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/3.0" xmlns:gen="http://www.opengis.net/citygml/generics/3.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:luse="http://www.opengis.net/citygml/landuse/3.0" xmlns:pcl="http://www.opengis.net/citygml/pointcloud/3.0" xmlns:tran="http://www.opengis.net/citygml/transportation/3.0" xmlns:tun="http://www.opengis.net/citygml/tunnel/3.0" xmlns:urc="https://www.geospatial.jp/iur/urc/4.0" xmlns:uro="https://www.geospatial.jp/iur/uro/4.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/3.0" xmlns:veg="http://www.opengis.net/citygml/vegetation/3.0" xmlns:dem="http://www.opengis.net/citygml/relief/3.0" elementFormDefault="qualified" targetNamespace="https://www.geospatial.jp/iur/uro/4.0" version="4.0.0">
+  <import namespace="http://www.opengis.net/citygml/3.0" schemaLocation="http://schemas.opengis.net/citygml/3.0/core.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/bridge/3.0" schemaLocation="http://schemas.opengis.net/citygml/bridge/3.0/bridge.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/building/3.0" schemaLocation="http://schemas.opengis.net/citygml/building/3.0/building.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/cityfurniture/3.0" schemaLocation="http://schemas.opengis.net/citygml/cityfurniture/3.0/cityFurniture.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/construction/3.0" schemaLocation="http://schemas.opengis.net/citygml/construction/3.0/construction.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/generics/3.0" schemaLocation="http://schemas.opengis.net/citygml/generics/3.0/generics.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/landuse/3.0" schemaLocation="http://schemas.opengis.net/citygml/landuse/3.0/landUse.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/pointcloud/3.0" schemaLocation="http://schemas.opengis.net/citygml/pointcloud/3.0/pointCloud.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/transportation/3.0" schemaLocation="http://schemas.opengis.net/citygml/transportation/3.0/transportation.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/tunnel/3.0" schemaLocation="http://schemas.opengis.net/citygml/tunnel/3.0/tunnel.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/waterbody/3.0" schemaLocation="http://schemas.opengis.net/citygml/waterbody/3.0/waterBody.xsd"/>
+  <import namespace="http://www.opengis.net/gml/3.2" schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
+  <import namespace="https://www.geospatial.jp/iur/urc/4.0" schemaLocation="../../urc/4.0/urbanCore.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/vegetation/3.0" schemaLocation="http://schemas.opengis.net/citygml/vegetation/3.0/vegetation.xsd"/>
+  <import namespace="http://www.opengis.net/citygml/relief/3.0" schemaLocation="http://schemas.opengis.net/citygml/relief/3.0/relief.xsd"/>
+  <!--XML Schema document created by ShapeChange - http://shapechange.net/-->
+  <element name="Appurtenance" substitutionGroup="uro:UtilityNode" type="uro:AppurtenanceType"/>
+  <complexType name="AppurtenanceType">
+    <complexContent>
+      <extension base="uro:UtilityNodeType">
+        <sequence>
+          <element name="appurtenanceType" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="AppurtenancePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:Appurtenance"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="BridgeFunctionalAttribute" substitutionGroup="brid:ADEOfAbstractBridge" type="uro:BridgeFunctionalAttributeType"/>
+  <complexType name="BridgeFunctionalAttributeType">
+    <complexContent>
+      <extension base="brid:ADEOfAbstractBridgeType">
+        <sequence>
+          <element name="directionType" minOccurs="0" type="gml:CodeType"/>
+          <element name="userType" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="BridgeFunctionalAttributePropertyType">
+    <sequence>
+      <element ref="uro:BridgeFunctionalAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="BridgeStructureAttribute" substitutionGroup="brid:ADEOfAbstractBridge" type="uro:BridgeStructureAttributeType"/>
+  <complexType name="BridgeStructureAttributeType">
+    <complexContent>
+      <extension base="brid:ADEOfAbstractBridgeType">
+        <sequence>
+          <element name="material" minOccurs="0" type="gml:CodeType"/>
+          <element name="bridgeType" minOccurs="0" type="gml:CodeType"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="weightRestriction" minOccurs="0" type="gml:MeasureType"/>
+          <element name="heightRestriction" minOccurs="0" type="gml:LengthType"/>
+          <element name="widthRestriction" minOccurs="0" type="gml:LengthType"/>
+          <element name="underGirderHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="slopeType" minOccurs="0" type="gml:CodeType"/>
+          <element name="escalator" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="BridgeStructureAttributePropertyType">
+    <sequence>
+      <element ref="uro:BridgeStructureAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="BuildingDetailAttribute" substitutionGroup="bldg:ADEOfAbstractBuilding" type="uro:BuildingDetailAttributeType"/>
+  <complexType name="BuildingDetailAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfAbstractBuildingType">
+        <sequence>
+          <element name="serialNumberOfBuildingCertification" minOccurs="0" type="string"/>
+          <element name="siteArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="totalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="buildingFootprintArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="buildingRoofEdgeArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="developmentArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="buildingStructureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="buildingStructureOrgType" minOccurs="0" type="gml:CodeType"/>
+          <element name="fireproofStructureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="implementingBody" minOccurs="0" type="string"/>
+          <element name="urbanPlanType" minOccurs="0" type="gml:CodeType"/>
+          <element name="areaClassificationType" minOccurs="0" type="gml:CodeType"/>
+          <element name="districtsAndZonesType" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="landUseType" minOccurs="0" type="gml:CodeType"/>
+          <element name="reference" minOccurs="0" type="string"/>
+          <element name="majorUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="majorUsage2" minOccurs="0" type="gml:CodeType"/>
+          <element name="orgUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="orgUsage2" minOccurs="0" type="gml:CodeType"/>
+          <element name="detailedUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="detailedUsage2" minOccurs="0" type="gml:CodeType"/>
+          <element name="detailedUsage3" minOccurs="0" type="gml:CodeType"/>
+          <element name="groundFloorUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="secondFloorUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="thirdFloorUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="basementUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="basementFirstUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="basementSecondUsage" minOccurs="0" type="gml:CodeType"/>
+          <element name="vacancy" minOccurs="0" type="gml:CodeType"/>
+          <element name="buildingCoverageRate" minOccurs="0" type="double"/>
+          <element name="floorAreaRate" minOccurs="0" type="double"/>
+          <element name="specifiedBuildingCoverageRate" minOccurs="0" type="double"/>
+          <element name="specifiedFloorAreaRate" minOccurs="0" type="double"/>
+          <element name="standardFloorAreaRate" minOccurs="0" type="double"/>
+          <element name="buildingHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="eaveHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="note" minOccurs="0" type="string"/>
+          <element name="surveyYear" type="date"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="BuildingDetailAttributePropertyType">
+    <sequence>
+      <element ref="uro:BuildingDetailAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="BuildingIDAttribute" substitutionGroup="bldg:ADEOfAbstractBuilding" type="uro:BuildingIDAttributeType"/>
+  <complexType name="BuildingIDAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfAbstractBuildingType">
+        <sequence>
+          <element name="buildingID" type="string"/>
+          <element name="branchID" minOccurs="0" type="integer"/>
+          <element name="partID" minOccurs="0" type="integer"/>
+          <element name="prefecture" minOccurs="0" type="gml:CodeType"/>
+          <element name="city" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="BuildingIDAttributePropertyType">
+    <sequence>
+      <element ref="uro:BuildingIDAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="BuildingUsecaseAttribute" substitutionGroup="bldg:ADEOfAbstractBuilding" type="uro:BuildingUsecaseAttributeType"/>
+  <complexType name="BuildingUsecaseAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfAbstractBuildingType">
+        <sequence>
+          <element name="isTemporal" minOccurs="0" type="gml:CodeType"/>
+          <element name="floorHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="isGroundFloorOpen" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="BuildingUsecaseAttributePropertyType">
+    <sequence>
+      <element ref="uro:BuildingUsecaseAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="Cable" substitutionGroup="uro:UtilityLink" type="uro:CableType"/>
+  <complexType name="CableType">
+    <complexContent>
+      <extension base="uro:UtilityLinkType">
+        <sequence>
+          <element name="columns" minOccurs="0" type="integer"/>
+          <element name="rows" minOccurs="0" type="integer"/>
+          <element name="cables" minOccurs="0" type="integer"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="CablePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:Cable"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="CargoHandlingFacility" substitutionGroup="uro:PortAttribute" type="uro:CargoHandlingFacilityType"/>
+  <complexType name="CargoHandlingFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="mainCargo" minOccurs="0" type="gml:CodeType"/>
+          <element name="mooringFacility" minOccurs="0" type="string"/>
+          <element name="liftableLoad" minOccurs="0" type="gml:MeasureType"/>
+          <element name="ability" minOccurs="0" type="integer"/>
+          <element name="packingName" minOccurs="0" type="gml:CodeType"/>
+          <element name="acquisitionYear" minOccurs="0" type="date"/>
+          <element name="innerTotalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="innerOfSiteArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="outerOfTotalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="outerSiteArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="CargoHandlingFacilityPropertyType">
+    <sequence>
+      <element ref="uro:CargoHandlingFacility"/>
+    </sequence>
+  </complexType>
+  <element name="CircularCurveType" substitutionGroup="gml:AbstractObject" type="uro:CircularCurveTypeType"/>
+  <complexType name="CircularCurveTypeType">
+    <sequence>
+      <element name="radius" type="gml:LengthType"/>
+      <element name="intersection" type="double"/>
+      <element name="cutLength" type="gml:LengthType"/>
+      <element name="curveLength" type="gml:LengthType"/>
+    </sequence>
+  </complexType>
+  <complexType name="CircularCurveTypePropertyType">
+    <sequence>
+      <element ref="uro:CircularCurveType"/>
+    </sequence>
+  </complexType>
+  <element name="CityFurnitureDetailAttribute" substitutionGroup="frn:ADEOfCityFurniture" type="uro:CityFurnitureDetailAttributeType"/>
+  <complexType name="CityFurnitureDetailAttributeType">
+    <complexContent>
+      <extension base="frn:ADEOfCityFurnitureType">
+        <sequence>
+          <element name="facilityType" minOccurs="0" type="gml:CodeType"/>
+          <element name="description" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="CityFurnitureDetailAttributePropertyType">
+    <sequence>
+      <element ref="uro:CityFurnitureDetailAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="CityFurnitureExtendedGeometry" substitutionGroup="frn:ADEOfCityFurniture" type="uro:CityFurnitureExtendedGeometryType"/>
+  <complexType name="CityFurnitureExtendedGeometryType">
+    <complexContent>
+      <extension base="frn:ADEOfCityFurnitureType">
+        <sequence>
+          <element name="interiorSpace" minOccurs="0">
+            <complexType>
+              <complexContent>
+                <extension base="gml:AbstractMemberType">
+                  <sequence minOccurs="0">
+                    <element ref="gen:GenericUnoccupiedSpace"/>
+                  </sequence>
+                  <attributeGroup ref="gml:AssociationAttributeGroup"/>
+                </extension>
+              </complexContent>
+            </complexType>
+          </element>
+          <element name="lod1MultiSurface" maxOccurs="unbounded" minOccurs="0" type="gml:MultiSurfacePropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="CityFurnitureExtendedGeometryPropertyType">
+    <sequence>
+      <element ref="uro:CityFurnitureExtendedGeometry"/>
+    </sequence>
+  </complexType>
+  <element name="ConstructionBaseAttribute" substitutionGroup="con:ADEOfAbstractConstruction" type="uro:ConstructionBaseAttributeType"/>
+  <complexType name="ConstructionBaseAttributeType">
+    <complexContent>
+      <extension base="con:ADEOfAbstractConstructionType">
+        <sequence>
+          <element name="adminType" minOccurs="0" type="gml:CodeType"/>
+          <element name="administrator" minOccurs="0" type="string"/>
+          <element name="adminOffice" minOccurs="0" type="string"/>
+          <element name="operatorType" minOccurs="0" type="gml:CodeType"/>
+          <element name="installerType" minOccurs="0" type="gml:CodeType"/>
+          <element name="installer" minOccurs="0" type="string"/>
+          <element name="structureOrdinance" minOccurs="0" type="string"/>
+          <element name="specification" minOccurs="0" type="string"/>
+          <element name="kana" minOccurs="0" type="string"/>
+          <element name="constructionStartYear" minOccurs="0" type="date"/>
+          <element name="completionYear" minOccurs="0" type="date"/>
+          <element name="facilityAge" minOccurs="0" type="integer"/>
+          <element name="update" minOccurs="0" type="date"/>
+          <element name="purpose" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ConstructionBaseAttributePropertyType">
+    <sequence>
+      <element ref="uro:ConstructionBaseAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="ConstructionRiskAssessmentAttribute" substitutionGroup="con:ADEOfAbstractConstruction" type="uro:ConstructionRiskAssessmentAttributeType"/>
+  <complexType name="ConstructionRiskAssessmentAttributeType">
+    <complexContent>
+      <extension base="con:ADEOfAbstractConstructionType">
+        <sequence>
+          <element name="surveyYear" minOccurs="0" type="date"/>
+          <element name="riskType" type="gml:CodeType"/>
+          <element name="status" minOccurs="0" type="gml:CodeType"/>
+          <element name="referenceDate" type="date"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ConstructionRiskAssessmentAttributePropertyType">
+    <sequence>
+      <element ref="uro:ConstructionRiskAssessmentAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="ConstructionStructureAttribute" substitutionGroup="con:ADEOfOtherConstruction" type="uro:ConstructionStructureAttributeType"/>
+  <complexType name="ConstructionStructureAttributeType">
+    <complexContent>
+      <extension base="con:ADEOfOtherConstructionType">
+        <sequence>
+          <element name="structureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+          <element name="depth" minOccurs="0" type="gml:LengthType"/>
+          <element name="volume" minOccurs="0" type="gml:MeasureType"/>
+          <element name="otherConstructionInstallation" maxOccurs="unbounded" minOccurs="0">
+            <complexType>
+              <complexContent>
+                <extension base="gml:AbstractFeatureMemberType">
+                  <sequence minOccurs="0">
+                    <element ref="uro:OtherConstructionInstallation"/>
+                  </sequence>
+                  <attributeGroup ref="gml:AssociationAttributeGroup"/>
+                </extension>
+              </complexContent>
+            </complexType>
+          </element>
+          <element name="otherConstructiveElement" maxOccurs="unbounded" minOccurs="0">
+            <complexType>
+              <complexContent>
+                <extension base="gml:AbstractFeatureMemberType">
+                  <sequence>
+                    <element ref="uro:OtherConstructiveElement"/>
+                  </sequence>
+                </extension>
+              </complexContent>
+            </complexType>
+          </element>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ConstructionStructureAttributePropertyType">
+    <sequence>
+      <element ref="uro:ConstructionStructureAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="ControlPoint" substitutionGroup="gml:AbstractObject" type="uro:ControlPointType"/>
+  <complexType name="ControlPointType">
+    <sequence>
+      <element name="startPost" minOccurs="0" type="string"/>
+      <element name="endPost" minOccurs="0" type="string"/>
+      <element name="function" type="gml:CodeType"/>
+      <element name="parameter" type="uro:ControlPointTypePropertyType"/>
+      <element name="startPoint" minOccurs="0" type="gml:PointPropertyType"/>
+      <element name="endPoint" minOccurs="0" type="gml:PointPropertyType"/>
+    </sequence>
+  </complexType>
+  <complexType name="ControlPointPropertyType">
+    <sequence>
+      <element ref="uro:ControlPoint"/>
+    </sequence>
+  </complexType>
+  <element name="ControlPointType" substitutionGroup="gml:AbstractObject" type="uro:ControlPointTypeType"/>
+  <complexType name="ControlPointTypeType">
+    <choice>
+      <element name="circularCurve" type="uro:CircularCurveTypePropertyType"/>
+      <element name="transitionCurve" type="uro:TransitionCurveTypePropertyType"/>
+      <element name="slopeType" type="uro:SlopeTypePropertyType"/>
+      <element name="verticalCurve" type="uro:VerticalCurveTypePropertyType"/>
+    </choice>
+  </complexType>
+  <complexType name="ControlPointTypePropertyType">
+    <sequence>
+      <element ref="uro:ControlPointType"/>
+    </sequence>
+  </complexType>
+  <element name="CountermeasuresCost" substitutionGroup="gml:AbstractObject" type="uro:CountermeasuresCostType"/>
+  <complexType name="CountermeasuresCostType">
+    <sequence>
+      <element name="cost" minOccurs="0" type="integer"/>
+      <element name="costUnit" type="string"/>
+    </sequence>
+  </complexType>
+  <complexType name="CountermeasuresCostPropertyType">
+    <sequence>
+      <element ref="uro:CountermeasuresCost"/>
+    </sequence>
+  </complexType>
+  <element name="CyberportMarinaAndPBS" substitutionGroup="uro:PortAttribute" type="uro:CyberportMarinaAndPBSType"/>
+  <complexType name="CyberportMarinaAndPBSType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="geologicalType" minOccurs="0" type="gml:CodeType"/>
+          <element name="obstructingStructures" minOccurs="0" type="string"/>
+          <element name="mainPartLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="totalLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="waveDissipatorLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="facilityWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="apronWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="restrictionStructure" minOccurs="0" type="string"/>
+          <element name="plannedDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="currentDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="innerTotalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="innerOfSiteArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="outerOfTotalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="outerSiteArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="ceilingHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="gravityResistant" minOccurs="0" type="gml:MeasureType"/>
+          <element name="form" minOccurs="0" type="gml:CodeType"/>
+          <element name="areaType" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainVessels" minOccurs="0" type="gml:CodeType"/>
+          <element name="isDredged" minOccurs="0" type="boolean"/>
+          <element name="mooringPostWeight" minOccurs="0" type="gml:MeasureType"/>
+          <element name="numberOfMooringPosts" minOccurs="0" type="integer"/>
+          <element name="resistantMaterial" minOccurs="0" type="integer"/>
+          <element name="lighting" minOccurs="0" type="integer"/>
+          <element name="stairs" minOccurs="0" type="integer"/>
+          <element name="lifesaving" minOccurs="0" type="string"/>
+          <element name="lifesavingNumber" minOccurs="0" type="integer"/>
+          <element name="bumper" minOccurs="0" type="gml:LengthType"/>
+          <element name="numberOfVehicleBoardings" minOccurs="0" type="integer"/>
+          <element name="vehicleBoardingWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="shipType" minOccurs="0" type="string"/>
+          <element name="numberOfSeats" minOccurs="0" type="integer"/>
+          <element name="mainCargo" minOccurs="0" type="gml:CodeType"/>
+          <element name="storageCapacity" minOccurs="0" type="integer"/>
+          <element name="storageCapacityUnit" minOccurs="0" type="gml:CodeType"/>
+          <element name="structureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="CyberportMarinaAndPBSPropertyType">
+    <sequence>
+      <element ref="uro:CyberportMarinaAndPBS"/>
+    </sequence>
+  </complexType>
+  <element name="DamAttribute" substitutionGroup="uro:ConstructionStructureAttribute" type="uro:DamAttributeType"/>
+  <complexType name="DamAttributeType">
+    <complexContent>
+      <extension base="uro:ConstructionStructureAttributeType">
+        <sequence>
+          <element name="damCode" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalWaterStorage" minOccurs="0" type="gml:MeasureType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="DamAttributePropertyType">
+    <sequence>
+      <element ref="uro:DamAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="Duct" substitutionGroup="uro:UtilityLink" type="uro:DuctType"/>
+  <complexType name="DuctType">
+    <complexContent>
+      <extension base="uro:UtilityLinkType">
+        <sequence>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="DuctPropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:Duct"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="ElectricityCable" substitutionGroup="uro:Cable" type="uro:ElectricityCableType"/>
+  <complexType name="ElectricityCableType">
+    <complexContent>
+      <extension base="uro:CableType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ElectricityCablePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:ElectricityCable"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="EmbankmentAttribute" substitutionGroup="uro:ConstructionStructureAttribute" type="uro:EmbankmentAttributeType"/>
+  <complexType name="EmbankmentAttributeType">
+    <complexContent>
+      <extension base="uro:ConstructionStructureAttributeType">
+        <sequence>
+          <element name="mainPartLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="ceilingHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="waveDissipatorLength" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="EmbankmentAttributePropertyType">
+    <sequence>
+      <element ref="uro:EmbankmentAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="FacilityAttribute" abstract="true" substitutionGroup="core:ADEOfAbstractCityObject" type="uro:FacilityAttributeType"/>
+  <complexType name="FacilityAttributeType" abstract="true">
+    <complexContent>
+      <extension base="core:ADEOfAbstractCityObjectType">
+        <sequence>
+          <element name="facilityId" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="FacilityAttributePropertyType">
+    <sequence>
+      <element ref="uro:FacilityAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="FacilityIdAttribute" substitutionGroup="core:ADEOfAbstractCityObject" type="uro:FacilityIdAttributeType"/>
+  <complexType name="FacilityIdAttributeType">
+    <complexContent>
+      <extension base="core:ADEOfAbstractCityObjectType">
+        <sequence>
+          <element name="id" minOccurs="0" type="string"/>
+          <element name="partId" minOccurs="0" type="string"/>
+          <element name="branchId" minOccurs="0" type="string"/>
+          <element name="prefecture" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="city" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="route" minOccurs="0" type="string"/>
+          <element name="startPost" minOccurs="0" type="string"/>
+          <element name="endPost" minOccurs="0" type="string"/>
+          <element name="startLat" minOccurs="0" type="double"/>
+          <element name="startLong" minOccurs="0" type="double"/>
+          <element name="alternativeName" maxOccurs="unbounded" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="FacilityIdAttributePropertyType">
+    <sequence>
+      <element ref="uro:FacilityIdAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="FacilityTypeAttribute" substitutionGroup="core:ADEOfAbstractCityObject" type="uro:FacilityTypeAttributeType"/>
+  <complexType name="FacilityTypeAttributeType">
+    <complexContent>
+      <extension base="core:ADEOfAbstractCityObjectType">
+        <sequence>
+          <element name="class" minOccurs="0" type="gml:CodeType"/>
+          <element name="function" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="FacilityTypeAttributePropertyType">
+    <sequence>
+      <element ref="uro:FacilityTypeAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="FishingPortAttribute" abstract="true" substitutionGroup="uro:FacilityAttribute" type="uro:FishingPortAttributeType"/>
+  <complexType name="FishingPortAttributeType" abstract="true">
+    <complexContent>
+      <extension base="uro:FacilityAttributeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="FishingPortAttributePropertyType">
+    <sequence>
+      <element ref="uro:FishingPortAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="FishingPortCapacity" substitutionGroup="uro:FishingPortAttribute" type="uro:FishingPortCapacityType"/>
+  <complexType name="FishingPortCapacityType">
+    <complexContent>
+      <extension base="uro:FishingPortAttributeType">
+        <sequence>
+          <element name="capacity" minOccurs="0" type="string"/>
+          <element name="weightCapacity" minOccurs="0" type="gml:MeasureType"/>
+          <element name="hullForm" minOccurs="0" type="integer"/>
+          <element name="shipNumber" minOccurs="0" type="integer"/>
+          <element name="waterDepth-2m" minOccurs="0" type="gml:MeasureType"/>
+          <element name="waterDepth2-3m" minOccurs="0" type="gml:MeasureType"/>
+          <element name="waterDepth3-6m" minOccurs="0" type="gml:MeasureType"/>
+          <element name="waterDepth6-m" minOccurs="0" type="gml:MeasureType"/>
+          <element name="heightAboveAWL" minOccurs="0" type="gml:LengthType"/>
+          <element name="heightOnFoundations" minOccurs="0" type="gml:LengthType"/>
+          <element name="luminousRange" minOccurs="0" type="gml:LengthType"/>
+          <element name="luminousColor" minOccurs="0" type="string"/>
+          <element name="candlePower" minOccurs="0" type="integer"/>
+          <element name="lightType" minOccurs="0" type="string"/>
+          <element name="period" minOccurs="0" type="string"/>
+          <element name="maximumGroundingWeight" minOccurs="0" type="integer"/>
+          <element name="handleablePower" minOccurs="0" type="integer"/>
+          <element name="maximumWaterSupply" minOccurs="0" type="integer"/>
+          <element name="maximumRefueling" minOccurs="0" type="string"/>
+          <element name="people" minOccurs="0" type="integer"/>
+          <element name="other" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="FishingPortCapacityPropertyType">
+    <sequence>
+      <element ref="uro:FishingPortCapacity"/>
+    </sequence>
+  </complexType>
+  <element name="FishingPortFacility" substitutionGroup="uro:FishingPortAttribute" type="uro:FishingPortFacilityType"/>
+  <complexType name="FishingPortFacilityType">
+    <complexContent>
+      <extension base="uro:FishingPortAttributeType">
+        <sequence>
+          <element name="facilityDetailsType" type="gml:CodeType"/>
+          <element name="portName" type="string"/>
+          <element name="portType" type="gml:CodeType"/>
+          <element name="address" type="string"/>
+          <element name="designatedArea" type="string"/>
+          <element name="designation" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="designatedAdministrator" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="referenceNumber" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="grantType" minOccurs="0" type="gml:CodeType"/>
+          <element name="administrator" minOccurs="0" type="string"/>
+          <element name="facilityManager" minOccurs="0" type="string"/>
+          <element name="structureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="otherStructure" minOccurs="0" type="string"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+          <element name="ceilingHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="depth" minOccurs="0" type="gml:LengthType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="otherSizeDescription" minOccurs="0" type="string"/>
+          <element name="dateOfConstructionOrAcquisition" minOccurs="0" type="date"/>
+          <element name="cost" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="FishingPortFacilityPropertyType">
+    <sequence>
+      <element ref="uro:FishingPortFacility"/>
+    </sequence>
+  </complexType>
+  <element name="Handhole" substitutionGroup="uro:UtilityNodeContainer" type="uro:HandholeType"/>
+  <complexType name="HandholeType">
+    <complexContent>
+      <extension base="uro:UtilityNodeContainerType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="HandholePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:Handhole"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="HarborFacility" substitutionGroup="uro:PortAttribute" type="uro:HarborFacilityType"/>
+  <complexType name="HarborFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="geologicalType" minOccurs="0" type="gml:CodeType"/>
+          <element name="obstructingStructures" minOccurs="0" type="string"/>
+          <element name="structuralLimitations" minOccurs="0" type="gml:LengthType"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="minimumWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="maximumWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="plannedDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="currentDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="isDredged" minOccurs="0" type="boolean"/>
+          <element name="areaType" minOccurs="0" type="gml:CodeType"/>
+          <element name="innerArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="outerArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" maxOccurs="unbounded" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="HarborFacilityPropertyType">
+    <sequence>
+      <element ref="uro:HarborFacility"/>
+    </sequence>
+  </complexType>
+  <simpleType name="HightStatusValue">
+    <restriction base="string">
+      <enumeration value="estimated"/>
+      <enumeration value="measured"/>
+    </restriction>
+  </simpleType>
+  <simpleType name="IFCStateEnum">
+    <restriction base="string">
+      <enumeration value="READWRITE"/>
+      <enumeration value="READONLY"/>
+      <enumeration value="LOCKED"/>
+      <enumeration value="READWHITELOCKED"/>
+      <enumeration value="READONLYLOCKED"/>
+    </restriction>
+  </simpleType>
+  <element name="IfcAttribute" abstract="true" substitutionGroup="core:ADEOfAbstractCityObject" type="uro:IfcAttributeType"/>
+  <complexType name="IfcAttributeType" abstract="true">
+    <complexContent>
+      <extension base="core:ADEOfAbstractCityObjectType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcAttributePropertyType">
+    <sequence>
+      <element ref="uro:IfcAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="IfcAxis2Placement3D" substitutionGroup="gml:AbstractObject" type="uro:IfcAxis2Placement3DType"/>
+  <complexType name="IfcAxis2Placement3DType">
+    <sequence>
+      <element name="location" minOccurs="0" type="gml:PointPropertyType"/>
+      <element name="axis" minOccurs="0" type="gml:doubleList"/>
+      <element name="refDirection" minOccurs="0" type="gml:doubleList"/>
+    </sequence>
+  </complexType>
+  <complexType name="IfcAxis2Placement3DPropertyType">
+    <sequence>
+      <element ref="uro:IfcAxis2Placement3D"/>
+    </sequence>
+  </complexType>
+  <element name="IfcBuilding" substitutionGroup="uro:IfcSpatialStructureElement" type="uro:IfcBuildingType"/>
+  <complexType name="IfcBuildingType">
+    <complexContent>
+      <extension base="uro:IfcSpatialStructureElementType">
+        <sequence>
+          <element name="elevationOfRefHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="elevationOfTerrain" minOccurs="0" type="gml:LengthType"/>
+          <element name="buildingAddress" minOccurs="0">
+            <complexType>
+              <complexContent>
+                <extension base="gml:AbstractFeatureMemberType">
+                  <sequence minOccurs="0">
+                    <element ref="core:Address"/>
+                  </sequence>
+                  <attributeGroup ref="gml:AssociationAttributeGroup"/>
+                </extension>
+              </complexContent>
+            </complexType>
+          </element>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcBuildingPropertyType">
+    <sequence>
+      <element ref="uro:IfcBuilding"/>
+    </sequence>
+  </complexType>
+  <element name="IfcBuildingElement" substitutionGroup="uro:IfcElement" type="uro:IfcBuildingElementType"/>
+  <complexType name="IfcBuildingElementType">
+    <complexContent>
+      <extension base="uro:IfcElementType">
+        <sequence>
+          <element name="elementType" minOccurs="0" type="gml:CodeType"/>
+          <element name="predefinedType" minOccurs="0" type="gml:CodeType"/>
+          <element name="shapeType" minOccurs="0" type="gml:CodeType"/>
+          <element name="numberOfRiser" minOccurs="0" type="integer"/>
+          <element name="numberOfTreads" minOccurs="0" type="integer"/>
+          <element name="riserHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="treadLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="operationType" minOccurs="0" type="uro:IfcTransportElementTypeEnum"/>
+          <element name="capacityByWeight" minOccurs="0" type="gml:MeasureType"/>
+          <element name="capacityByNumber" minOccurs="0" type="integer"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcBuildingElementPropertyType">
+    <sequence>
+      <element ref="uro:IfcBuildingElement"/>
+    </sequence>
+  </complexType>
+  <element name="IfcBuildingStorey" substitutionGroup="uro:IfcSpatialStructureElement" type="uro:IfcBuildingStoreyType"/>
+  <complexType name="IfcBuildingStoreyType">
+    <complexContent>
+      <extension base="uro:IfcSpatialStructureElementType">
+        <sequence>
+          <element name="elevation" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcBuildingStoreyPropertyType">
+    <sequence>
+      <element ref="uro:IfcBuildingStorey"/>
+    </sequence>
+  </complexType>
+  <element name="IfcClassification" substitutionGroup="gml:AbstractObject" type="uro:IfcClassificationType"/>
+  <complexType name="IfcClassificationType">
+    <sequence>
+      <element name="source" minOccurs="0" type="string"/>
+      <element name="edition" minOccurs="0" type="string"/>
+      <element name="editionDate" minOccurs="0" type="date"/>
+      <element name="name" minOccurs="0" type="string"/>
+    </sequence>
+  </complexType>
+  <complexType name="IfcClassificationPropertyType">
+    <sequence>
+      <element ref="uro:IfcClassification"/>
+    </sequence>
+  </complexType>
+  <element name="IfcClassificationReference" substitutionGroup="uro:IfcAttribute" type="uro:IfcClassificationReferenceType"/>
+  <complexType name="IfcClassificationReferenceType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="location" minOccurs="0" type="anyURI"/>
+          <element name="itemReference" minOccurs="0" type="gml:CodeType"/>
+          <element name="name" minOccurs="0" type="string"/>
+          <element name="referencedSource" minOccurs="0" type="uro:IfcClassificationPropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcClassificationReferencePropertyType">
+    <sequence>
+      <element ref="uro:IfcClassificationReference"/>
+    </sequence>
+  </complexType>
+  <element name="IfcCoordinateReferenceSystem" substitutionGroup="uro:IfcAttribute" type="uro:IfcCoordinateReferenceSystemType"/>
+  <complexType name="IfcCoordinateReferenceSystemType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="name" minOccurs="0" type="string"/>
+          <element name="description" minOccurs="0" type="string"/>
+          <element name="geodeticDatum" minOccurs="0" type="string"/>
+          <element name="verticalDatum" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcCoordinateReferenceSystemPropertyType">
+    <sequence>
+      <element ref="uro:IfcCoordinateReferenceSystem"/>
+    </sequence>
+  </complexType>
+  <element name="IfcCoordinateReferenceSystemSelect" substitutionGroup="gml:AbstractObject" type="uro:IfcCoordinateReferenceSystemSelectType"/>
+  <complexType name="IfcCoordinateReferenceSystemSelectType">
+    <choice>
+      <element name="crs" type="uro:IfcCoordinateReferenceSystemPropertyType"/>
+      <element name="context" type="uro:IfcGeometricRepresentationContextPropertyType"/>
+    </choice>
+  </complexType>
+  <element name="IfcCurtainWall" substitutionGroup="uro:IfcBuildingElement" type="uro:IfcCurtainWallType"/>
+  <complexType name="IfcCurtainWallType">
+    <complexContent>
+      <extension base="uro:IfcBuildingElementType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcCurtainWallPropertyType">
+    <sequence>
+      <element ref="uro:IfcCurtainWall"/>
+    </sequence>
+  </complexType>
+  <element name="IfcDoor" substitutionGroup="uro:IfcBuildingElement" type="uro:IfcDoorType"/>
+  <complexType name="IfcDoorType">
+    <complexContent>
+      <extension base="uro:IfcBuildingElementType">
+        <sequence>
+          <element name="overallHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="overallWidth" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcDoorPropertyType">
+    <sequence>
+      <element ref="uro:IfcDoor"/>
+    </sequence>
+  </complexType>
+  <element name="IfcElement" abstract="true" substitutionGroup="uro:IfcProduct" type="uro:IfcElementType"/>
+  <complexType name="IfcElementType" abstract="true">
+    <complexContent>
+      <extension base="uro:IfcProductType">
+        <sequence>
+          <element name="tag" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcElementPropertyType">
+    <sequence>
+      <element ref="uro:IfcElement"/>
+    </sequence>
+  </complexType>
+  <simpleType name="IfcElementCompositionEnum">
+    <restriction base="string">
+      <enumeration value="COMPLEX"/>
+      <enumeration value="ELEMENT"/>
+      <enumeration value="PARTIAL"/>
+    </restriction>
+  </simpleType>
+  <element name="IfcFurnishingElement" substitutionGroup="uro:IfcElement" type="uro:IfcFurnishingElementType"/>
+  <complexType name="IfcFurnishingElementType">
+    <complexContent>
+      <extension base="uro:IfcElementType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcFurnishingElementPropertyType">
+    <sequence>
+      <element ref="uro:IfcFurnishingElement"/>
+    </sequence>
+  </complexType>
+  <element name="IfcGeometricRepresentationContext" substitutionGroup="gml:AbstractObject" type="uro:IfcGeometricRepresentationContextType"/>
+  <complexType name="IfcGeometricRepresentationContextType">
+    <sequence>
+      <element name="contextIdentifier" minOccurs="0" type="string"/>
+      <element name="contextType" minOccurs="0" type="string"/>
+      <element name="coordinateSpaceDimension" minOccurs="0" type="integer"/>
+      <element name="precision" minOccurs="0" type="double"/>
+      <element name="worldCoordinateSystem" type="uro:IfcAxis2Placement3DPropertyType"/>
+      <element name="trueNorth" minOccurs="0" type="gml:doubleList"/>
+    </sequence>
+  </complexType>
+  <complexType name="IfcGeometricRepresentationContextPropertyType">
+    <sequence>
+      <element ref="uro:IfcGeometricRepresentationContext"/>
+    </sequence>
+  </complexType>
+  <element name="IfcGroup" substitutionGroup="uro:IfcObject" type="uro:IfcGroupType"/>
+  <complexType name="IfcGroupType">
+    <complexContent>
+      <extension base="uro:IfcObjectType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcGroupPropertyType">
+    <sequence>
+      <element ref="uro:IfcGroup"/>
+    </sequence>
+  </complexType>
+  <element name="IfcMapConversion" substitutionGroup="uro:IfcAttribute" type="uro:IfcMapConversionType"/>
+  <complexType name="IfcMapConversionType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="sourceCRS" minOccurs="0" type="uro:IfcCoordinateReferenceSystemSelectType"/>
+          <element name="targetCRS" minOccurs="0" type="uro:IfcCoordinateReferenceSystemPropertyType"/>
+          <element name="eastings" minOccurs="0" type="gml:LengthType"/>
+          <element name="northings" minOccurs="0" type="gml:LengthType"/>
+          <element name="orthogonalHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="xAxisAbscissa" minOccurs="0" type="double"/>
+          <element name="xAxisOrdinate" minOccurs="0" type="double"/>
+          <element name="scale" minOccurs="0" type="double"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcMapConversionPropertyType">
+    <sequence>
+      <element ref="uro:IfcMapConversion"/>
+    </sequence>
+  </complexType>
+  <element name="IfcObject" abstract="true" substitutionGroup="uro:IfcObjectDefinition" type="uro:IfcObjectType"/>
+  <complexType name="IfcObjectType" abstract="true">
+    <complexContent>
+      <extension base="uro:IfcObjectDefinitionType">
+        <sequence>
+          <element name="objectType" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcObjectPropertyType">
+    <sequence>
+      <element ref="uro:IfcObject"/>
+    </sequence>
+  </complexType>
+  <element name="IfcObjectDefinition" abstract="true" substitutionGroup="uro:IfcRoot" type="uro:IfcObjectDefinitionType"/>
+  <complexType name="IfcObjectDefinitionType" abstract="true">
+    <complexContent>
+      <extension base="uro:IfcRootType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcObjectDefinitionPropertyType">
+    <sequence>
+      <element ref="uro:IfcObjectDefinition"/>
+    </sequence>
+  </complexType>
+  <element name="IfcOpeningElement" substitutionGroup="uro:IfcElement" type="uro:IfcOpeningElementType"/>
+  <complexType name="IfcOpeningElementType">
+    <complexContent>
+      <extension base="uro:IfcElementType">
+        <sequence>
+          <element name="nominalArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="nominalVolume" minOccurs="0" type="gml:MeasureType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcOpeningElementPropertyType">
+    <sequence>
+      <element ref="uro:IfcOpeningElement"/>
+    </sequence>
+  </complexType>
+  <element name="IfcProduct" abstract="true" substitutionGroup="uro:IfcObject" type="uro:IfcProductType"/>
+  <complexType name="IfcProductType" abstract="true">
+    <complexContent>
+      <extension base="uro:IfcObjectType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcProductPropertyType">
+    <sequence>
+      <element ref="uro:IfcProduct"/>
+    </sequence>
+  </complexType>
+  <element name="IfcProject" substitutionGroup="uro:IfcObject" type="uro:IfcProjectType"/>
+  <complexType name="IfcProjectType">
+    <complexContent>
+      <extension base="uro:IfcObjectType">
+        <sequence>
+          <element name="longName" minOccurs="0" type="string"/>
+          <element name="phase" minOccurs="0" type="string"/>
+          <element name="representationContexts" minOccurs="0" type="uro:IfcGeometricRepresentationContextPropertyType"/>
+          <element name="unitsInContext" maxOccurs="unbounded" minOccurs="0" type="uro:IfcUnitPropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcProjectPropertyType">
+    <sequence>
+      <element ref="uro:IfcProject"/>
+    </sequence>
+  </complexType>
+  <element name="IfcProjectedCRS" substitutionGroup="uro:IfcCoordinateReferenceSystem" type="uro:IfcProjectedCRSType"/>
+  <complexType name="IfcProjectedCRSType">
+    <complexContent>
+      <extension base="uro:IfcCoordinateReferenceSystemType">
+        <sequence>
+          <element name="mapUnit" minOccurs="0" type="string"/>
+          <element name="mapProjection" minOccurs="0" type="string"/>
+          <element name="mapZone" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcProjectedCRSPropertyType">
+    <sequence>
+      <element ref="uro:IfcProjectedCRS"/>
+    </sequence>
+  </complexType>
+  <element name="IfcPsetBuildingCommon" substitutionGroup="uro:IfcAttribute" type="uro:IfcPsetBuildingCommonType"/>
+  <complexType name="IfcPsetBuildingCommonType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="buildingId" minOccurs="0" type="string"/>
+          <element name="isPermanentId" minOccurs="0" type="boolean"/>
+          <element name="mainFireUse" minOccurs="0" type="string"/>
+          <element name="ancillaryFireUse" minOccurs="0" type="string"/>
+          <element name="sprinklerProtection" minOccurs="0" type="boolean"/>
+          <element name="sprinklerProtectionAutomatic" minOccurs="0" type="boolean"/>
+          <element name="occupancyType" minOccurs="0" type="gml:CodeType"/>
+          <element name="grossPlannedArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="numberOfStoreys" minOccurs="0" type="integer"/>
+          <element name="yearOfConstruction" minOccurs="0" type="date"/>
+          <element name="isLandmarked" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcPsetBuildingCommonPropertyType">
+    <sequence>
+      <element ref="uro:IfcPsetBuildingCommon"/>
+    </sequence>
+  </complexType>
+  <element name="IfcPsetDoorCommon" substitutionGroup="uro:IfcAttribute" type="uro:IfcPsetDoorCommonType"/>
+  <complexType name="IfcPsetDoorCommonType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="reference" minOccurs="0" type="string"/>
+          <element name="acousticRating" minOccurs="0" type="string"/>
+          <element name="firerating" minOccurs="0" type="string"/>
+          <element name="securityRating" minOccurs="0" type="string"/>
+          <element name="isExternal" minOccurs="0" type="boolean"/>
+          <element name="infiltration" minOccurs="0" type="double"/>
+          <element name="thermalTransmittance" minOccurs="0" type="double"/>
+          <element name="glazingAreaFraction" minOccurs="0" type="double"/>
+          <element name="handicapAccessible" minOccurs="0" type="boolean"/>
+          <element name="fireExit" minOccurs="0" type="boolean"/>
+          <element name="selfClosing" minOccurs="0" type="boolean"/>
+          <element name="smokeStop" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcPsetDoorCommonPropertyType">
+    <sequence>
+      <element ref="uro:IfcPsetDoorCommon"/>
+    </sequence>
+  </complexType>
+  <element name="IfcPsetOpeningElementCommon" substitutionGroup="uro:IfcAttribute" type="uro:IfcPsetOpeningElementCommonType"/>
+  <complexType name="IfcPsetOpeningElementCommonType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="reference" minOccurs="0" type="string"/>
+          <element name="purpose" minOccurs="0" type="string"/>
+          <element name="fireExit" minOccurs="0" type="boolean"/>
+          <element name="protectedOpening" minOccurs="0" type="boolean"/>
+          <element name="parallelJambs" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcPsetOpeningElementCommonPropertyType">
+    <sequence>
+      <element ref="uro:IfcPsetOpeningElementCommon"/>
+    </sequence>
+  </complexType>
+  <element name="IfcPsetSiteCommon" substitutionGroup="uro:IfcAttribute" type="uro:IfcPsetSiteCommonType"/>
+  <complexType name="IfcPsetSiteCommonType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="buildableArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="totalArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="buildingHeightLimit" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcPsetSiteCommonPropertyType">
+    <sequence>
+      <element ref="uro:IfcPsetSiteCommon"/>
+    </sequence>
+  </complexType>
+  <element name="IfcPsetSpaceCommon" substitutionGroup="uro:IfcAttribute" type="uro:IfcPsetSpaceCommonType"/>
+  <complexType name="IfcPsetSpaceCommonType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="reference" minOccurs="0" type="string"/>
+          <element name="category" minOccurs="0" type="string"/>
+          <element name="floorCovering" minOccurs="0" type="string"/>
+          <element name="wallCovering" minOccurs="0" type="string"/>
+          <element name="ceilingCovering" minOccurs="0" type="string"/>
+          <element name="skirtingBoard" minOccurs="0" type="string"/>
+          <element name="grossPlannedArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netPlannedArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="publiclyAccessible" minOccurs="0" type="boolean"/>
+          <element name="handicapAccessible" minOccurs="0" type="boolean"/>
+          <element name="concealedFlooring" minOccurs="0" type="boolean"/>
+          <element name="concealedCeiling" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcPsetSpaceCommonPropertyType">
+    <sequence>
+      <element ref="uro:IfcPsetSpaceCommon"/>
+    </sequence>
+  </complexType>
+  <element name="IfcPsetWindowCommon" substitutionGroup="uro:IfcAttribute" type="uro:IfcPsetWindowCommonType"/>
+  <complexType name="IfcPsetWindowCommonType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="reference" minOccurs="0" type="string"/>
+          <element name="acousticRating" minOccurs="0" type="string"/>
+          <element name="fireRating" minOccurs="0" type="string"/>
+          <element name="securityRating" minOccurs="0" type="string"/>
+          <element name="isExternal" minOccurs="0" type="boolean"/>
+          <element name="infiltration" minOccurs="0" type="double"/>
+          <element name="thermalTransmittance" minOccurs="0" type="double"/>
+          <element name="glazingAreaFraction" minOccurs="0" type="double"/>
+          <element name="smokeStop" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcPsetWindowCommonPropertyType">
+    <sequence>
+      <element ref="uro:IfcPsetWindowCommon"/>
+    </sequence>
+  </complexType>
+  <element name="IfcRoof" substitutionGroup="uro:IfcBuildingElement" type="uro:IfcRoofType"/>
+  <complexType name="IfcRoofType">
+    <complexContent>
+      <extension base="uro:IfcBuildingElementType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcRoofPropertyType">
+    <sequence>
+      <element ref="uro:IfcRoof"/>
+    </sequence>
+  </complexType>
+  <element name="IfcRoot" abstract="true" substitutionGroup="uro:IfcAttribute" type="uro:IfcRootType"/>
+  <complexType name="IfcRootType" abstract="true">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="globalId" minOccurs="0" type="string"/>
+          <element name="name" minOccurs="0" type="string"/>
+          <element name="description" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcRootPropertyType">
+    <sequence>
+      <element ref="uro:IfcRoot"/>
+    </sequence>
+  </complexType>
+  <simpleType name="IfcSIPrefix">
+    <restriction base="string">
+      <enumeration value="EXA"/>
+      <enumeration value="PETA"/>
+      <enumeration value="TERA"/>
+      <enumeration value="GIGA"/>
+      <enumeration value="MEGA"/>
+      <enumeration value="KILO"/>
+      <enumeration value="HECTO"/>
+      <enumeration value="DECA"/>
+      <enumeration value="DECI"/>
+      <enumeration value="CENTI"/>
+      <enumeration value="MILLI"/>
+      <enumeration value="MICRO"/>
+      <enumeration value="NANO"/>
+      <enumeration value="PICO"/>
+      <enumeration value="FEMTO"/>
+      <enumeration value="ATTO"/>
+    </restriction>
+  </simpleType>
+  <element name="IfcSite" substitutionGroup="uro:IfcSpatialStructureElement" type="uro:IfcSiteType"/>
+  <complexType name="IfcSiteType">
+    <complexContent>
+      <extension base="uro:IfcSpatialStructureElementType">
+        <sequence>
+          <element name="refLongitude" minOccurs="0" type="double"/>
+          <element name="refLatitude" minOccurs="0" type="double"/>
+          <element name="refElevation" minOccurs="0" type="gml:LengthType"/>
+          <element name="landTitleNumber" minOccurs="0" type="string"/>
+          <element name="siteAddress" minOccurs="0">
+            <complexType>
+              <complexContent>
+                <extension base="gml:AbstractFeatureMemberType">
+                  <sequence minOccurs="0">
+                    <element ref="core:Address"/>
+                  </sequence>
+                  <attributeGroup ref="gml:AssociationAttributeGroup"/>
+                </extension>
+              </complexContent>
+            </complexType>
+          </element>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcSitePropertyType">
+    <sequence>
+      <element ref="uro:IfcSite"/>
+    </sequence>
+  </complexType>
+  <element name="IfcSpace" substitutionGroup="uro:IfcSpatialStructureElement" type="uro:IfcSpaceType"/>
+  <complexType name="IfcSpaceType">
+    <complexContent>
+      <extension base="uro:IfcSpatialStructureElementType">
+        <sequence>
+          <element name="interiorOrExteriorSpace" minOccurs="0" type="uro:ifcInternalOrExternalEnum"/>
+          <element name="elevationWithFlooring" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcSpacePropertyType">
+    <sequence>
+      <element ref="uro:IfcSpace"/>
+    </sequence>
+  </complexType>
+  <element name="IfcSpaceBaseQuantity" substitutionGroup="uro:IfcAttribute" type="uro:IfcSpaceBaseQuantityType"/>
+  <complexType name="IfcSpaceBaseQuantityType">
+    <complexContent>
+      <extension base="uro:IfcAttributeType">
+        <sequence>
+          <element name="nominalHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="clearHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="finishCeilingHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="grossPerimeter" minOccurs="0" type="gml:LengthType"/>
+          <element name="netPerimeter" minOccurs="0" type="gml:LengthType"/>
+          <element name="grossCeilingArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="grossFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netCeilingArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="grossWallArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netWallArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="grossVolume" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netVolume" minOccurs="0" type="gml:MeasureType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcSpaceBaseQuantityPropertyType">
+    <sequence>
+      <element ref="uro:IfcSpaceBaseQuantity"/>
+    </sequence>
+  </complexType>
+  <element name="IfcSpatialStructureElement" abstract="true" substitutionGroup="uro:IfcProduct" type="uro:IfcSpatialStructureElementType"/>
+  <complexType name="IfcSpatialStructureElementType" abstract="true">
+    <complexContent>
+      <extension base="uro:IfcProductType">
+        <sequence>
+          <element name="longName" minOccurs="0" type="string"/>
+          <element name="compositionType" minOccurs="0" type="uro:IfcElementCompositionEnum"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcSpatialStructureElementPropertyType">
+    <sequence>
+      <element ref="uro:IfcSpatialStructureElement"/>
+    </sequence>
+  </complexType>
+  <simpleType name="IfcTransportElementTypeEnum">
+    <restriction base="string">
+      <enumeration value="ELEVATOR"/>
+      <enumeration value="ESCALATOR"/>
+      <enumeration value="NOTDEFINED"/>
+      <enumeration value="USERDEFINED"/>
+    </restriction>
+  </simpleType>
+  <element name="IfcUnit" substitutionGroup="gml:AbstractObject" type="uro:IfcUnitType"/>
+  <complexType name="IfcUnitType">
+    <sequence>
+      <element name="dimensions" minOccurs="0" type="integer"/>
+      <element name="unitType" minOccurs="0" type="uro:IfcUnitEnum"/>
+      <element name="prefix" minOccurs="0" type="string"/>
+      <element name="name" minOccurs="0" type="string"/>
+    </sequence>
+  </complexType>
+  <complexType name="IfcUnitPropertyType">
+    <sequence>
+      <element ref="uro:IfcUnit"/>
+    </sequence>
+  </complexType>
+  <simpleType name="IfcUnitEnum">
+    <restriction base="string">
+      <enumeration value="ABSORBEDDOSEUNIT"/>
+      <enumeration value="AMOUNTOFSUBSTANCEUNIT"/>
+      <enumeration value="AREAUNIT"/>
+      <enumeration value="DOSEEQUIVALENTUNIT"/>
+      <enumeration value="ELECTRICCAPACITANCEUNIT"/>
+      <enumeration value="ELECTRICCHARGEUNIT"/>
+      <enumeration value="ELECTRICCONDUCTANCEUNIT"/>
+      <enumeration value="ELECTRICCURRENTUNIT"/>
+      <enumeration value="ELECTRICRESISTANCEUNIT"/>
+      <enumeration value="ELECTRICVOLTAGEUNIT"/>
+      <enumeration value="ENERGYUNIT"/>
+      <enumeration value="FORCEUNIT"/>
+      <enumeration value="FREQUENCYUNIT"/>
+      <enumeration value="ILLUMINANCEUNIT"/>
+      <enumeration value="INDUCTANCEUNIT"/>
+      <enumeration value="LENGTHUNIT"/>
+      <enumeration value="LUMINOUSFLUXUNIT"/>
+      <enumeration value="LUMINOUSINTENSITYUNIT"/>
+      <enumeration value="MAGNETICFLUXDENSITYUNIT"/>
+      <enumeration value="MAGNETICFLUXUNIT"/>
+      <enumeration value="MASSUNIT"/>
+      <enumeration value="PLANEANGLEUNIT"/>
+      <enumeration value="POWERUNIT"/>
+      <enumeration value="PRESSUREUNIT"/>
+      <enumeration value="RADIOACTIVITYUNIT"/>
+      <enumeration value="SOLIDANGLEUNIT"/>
+      <enumeration value="THERMODYNAMICTEMPERATUREUNIT"/>
+      <enumeration value="TIMEUNIT"/>
+      <enumeration value="VOLUMEUNIT"/>
+      <enumeration value="USERDEFINED"/>
+    </restriction>
+  </simpleType>
+  <element name="IfcWall" substitutionGroup="uro:IfcBuildingElement" type="uro:IfcWallType"/>
+  <complexType name="IfcWallType">
+    <complexContent>
+      <extension base="uro:IfcBuildingElementType">
+        <sequence>
+          <element name="nominalLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="nominalWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="nominalHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="grossFootPrintArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netFootPrintArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="grossSideArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netSideArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="grossSideAreaLeft" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netSideAreaLeft" minOccurs="0" type="gml:MeasureType"/>
+          <element name="grossSideAreaRight" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netSideAreaRight" minOccurs="0" type="gml:MeasureType"/>
+          <element name="grossVolume" minOccurs="0" type="gml:MeasureType"/>
+          <element name="netVolume" minOccurs="0" type="gml:MeasureType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcWallPropertyType">
+    <sequence>
+      <element ref="uro:IfcWall"/>
+    </sequence>
+  </complexType>
+  <element name="IfcWallStandardCase" substitutionGroup="uro:IfcWall" type="uro:IfcWallStandardCaseType"/>
+  <complexType name="IfcWallStandardCaseType">
+    <complexContent>
+      <extension base="uro:IfcWallType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcWallStandardCasePropertyType">
+    <sequence>
+      <element ref="uro:IfcWallStandardCase"/>
+    </sequence>
+  </complexType>
+  <element name="IfcWindow" substitutionGroup="uro:IfcBuildingElement" type="uro:IfcWindowType"/>
+  <complexType name="IfcWindowType">
+    <complexContent>
+      <extension base="uro:IfcBuildingElementType">
+        <sequence>
+          <element name="overallHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="overallWidth" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcWindowPropertyType">
+    <sequence>
+      <element ref="uro:IfcWindow"/>
+    </sequence>
+  </complexType>
+  <element name="IfcZone" substitutionGroup="uro:IfcGroup" type="uro:IfcZoneType"/>
+  <complexType name="IfcZoneType">
+    <complexContent>
+      <extension base="uro:IfcGroupType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IfcZonePropertyType">
+    <sequence>
+      <element ref="uro:IfcZone"/>
+    </sequence>
+  </complexType>
+  <element name="IndoorFacilityAttribute" substitutionGroup="bldg:ADEOfBuilding" type="uro:IndoorFacilityAttributeType"/>
+  <complexType name="IndoorFacilityAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfBuildingType">
+        <sequence>
+          <element name="source" type="gml:CodeType"/>
+          <element name="weekdayHours" minOccurs="0" type="string"/>
+          <element name="weekendHours" minOccurs="0" type="string"/>
+          <element name="phone" minOccurs="0" type="string"/>
+          <element name="website" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IndoorFacilityAttributePropertyType">
+    <sequence>
+      <element ref="uro:IndoorFacilityAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="IndoorFurnishingAttribute" substitutionGroup="bldg:ADEOfBuildingFurniture" type="uro:IndoorFurnishingAttributeType"/>
+  <complexType name="IndoorFurnishingAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfBuildingFurnitureType">
+        <sequence>
+          <element name="source" type="gml:CodeType"/>
+          <element name="floorId" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IndoorFurnishingAttributePropertyType">
+    <sequence>
+      <element ref="uro:IndoorFurnishingAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="IndoorPublicTagAttribute" substitutionGroup="bldg:ADEOfBuildingConstructiveElement" type="uro:IndoorPublicTagAttributeType"/>
+  <complexType name="IndoorPublicTagAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfBuildingConstructiveElementType">
+        <sequence>
+          <element name="source" type="gml:CodeType"/>
+          <element name="ucode" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IndoorPublicTagAttributePropertyType">
+    <sequence>
+      <element ref="uro:IndoorPublicTagAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="IndoorSpaceAttribute" substitutionGroup="bldg:ADEOfBuildingRoom" type="uro:IndoorSpaceAttributeType"/>
+  <complexType name="IndoorSpaceAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfBuildingRoomType">
+        <sequence>
+          <element name="source" type="gml:CodeType"/>
+          <element name="floorId" minOccurs="0" type="string"/>
+          <element name="isRestricted" minOccurs="0" type="boolean"/>
+          <element name="suite" minOccurs="0" type="string"/>
+          <element name="isPublic" minOccurs="0" type="boolean"/>
+          <element name="tollType" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IndoorSpaceAttributePropertyType">
+    <sequence>
+      <element ref="uro:IndoorSpaceAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="IndoorStoreyAttribute" substitutionGroup="bldg:ADEOfStorey" type="uro:IndoorStoreyAttributeType"/>
+  <complexType name="IndoorStoreyAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfStoreyType">
+        <sequence>
+          <element name="source" type="gml:CodeType"/>
+          <element name="category" minOccurs="0" type="boolean"/>
+          <element name="ordinal" minOccurs="0" type="double"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IndoorStoreyAttributePropertyType">
+    <sequence>
+      <element ref="uro:IndoorStoreyAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="IndoorTactileTileAttribute" substitutionGroup="bldg:ADEOfBuildingInstallation" type="uro:IndoorTactileTileAttributeType"/>
+  <complexType name="IndoorTactileTileAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfBuildingInstallationType">
+        <sequence>
+          <element name="source" type="gml:CodeType"/>
+          <element name="startNode" minOccurs="0" type="string"/>
+          <element name="endNode" minOccurs="0" type="string"/>
+          <element name="category" minOccurs="0" type="gml:CodeType"/>
+          <element name="roof" minOccurs="0" type="gml:CodeType"/>
+          <element name="floorId" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IndoorTactileTileAttributePropertyType">
+    <sequence>
+      <element ref="uro:IndoorTactileTileAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="IndoorZoneAttribute" substitutionGroup="bldg:ADEOfBuildingUnit" type="uro:IndoorZoneAttributeType"/>
+  <complexType name="IndoorZoneAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfBuildingUnitType">
+        <sequence>
+          <element name="source" type="gml:CodeType"/>
+          <element name="floorId" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="IndoorZoneAttributePropertyType">
+    <sequence>
+      <element ref="uro:IndoorZoneAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="LandUseDetailAttribute" substitutionGroup="luse:ADEOfLandUse" type="uro:LandUseDetailAttributeType"/>
+  <complexType name="LandUseDetailAttributeType">
+    <complexContent>
+      <extension base="luse:ADEOfLandUseType">
+        <sequence>
+          <element name="id" minOccurs="0" type="string"/>
+          <element name="orgLandUse" minOccurs="0" type="gml:CodeType"/>
+          <element name="nominalArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="ownerType" minOccurs="0" type="gml:CodeType"/>
+          <element name="owner" minOccurs="0" type="string"/>
+          <element name="areaInSquareMeter" minOccurs="0" type="gml:MeasureType"/>
+          <element name="areaInHa" minOccurs="0" type="gml:MeasureType"/>
+          <element name="buildingCoverageRate" minOccurs="0" type="double"/>
+          <element name="floorAreaRate" minOccurs="0" type="double"/>
+          <element name="specifiedBuildingCoverageRate" minOccurs="0" type="double"/>
+          <element name="specifiedFloorAreaRate" minOccurs="0" type="double"/>
+          <element name="standardFloorAreaRate" minOccurs="0" type="double"/>
+          <element name="urbanPlanType" minOccurs="0" type="gml:CodeType"/>
+          <element name="areaClassificationType" minOccurs="0" type="gml:CodeType"/>
+          <element name="districtsAndZonesType" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="prefecture" minOccurs="0" type="gml:CodeType"/>
+          <element name="city" minOccurs="0" type="gml:CodeType"/>
+          <element name="reference" minOccurs="0" type="string"/>
+          <element name="note" minOccurs="0" type="string"/>
+          <element name="surveyYear" minOccurs="0" type="date"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="LandUseDetailAttributePropertyType">
+    <sequence>
+      <element ref="uro:LandUseDetailAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="LargeCustomerFacilityAttribute" substitutionGroup="bldg:ADEOfAbstractBuilding" type="uro:LargeCustomerFacilityAttributeType"/>
+  <complexType name="LargeCustomerFacilityAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfAbstractBuildingType">
+        <sequence>
+          <element name="class" minOccurs="0" type="gml:CodeType"/>
+          <element name="name" minOccurs="0" type="string"/>
+          <element name="capacity" minOccurs="0" type="integer"/>
+          <element name="owner" minOccurs="0" type="string"/>
+          <element name="totalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="totalStoreFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="inauguralDate" minOccurs="0" type="date"/>
+          <element name="yearOpened" minOccurs="0" type="date"/>
+          <element name="yearClosed" minOccurs="0" type="date"/>
+          <element name="keyTenants" minOccurs="0" type="string"/>
+          <element name="availability" minOccurs="0" type="boolean"/>
+          <element name="urbanPlanType" minOccurs="0" type="gml:CodeType"/>
+          <element name="areaClassificationType" minOccurs="0" type="gml:CodeType"/>
+          <element name="districtsAndZonesType" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="landUseType" minOccurs="0" type="gml:CodeType"/>
+          <element name="reference" minOccurs="0" type="string"/>
+          <element name="note" minOccurs="0" type="string"/>
+          <element name="surveyYear" type="date"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="LargeCustomerFacilityAttributePropertyType">
+    <sequence>
+      <element ref="uro:LargeCustomerFacilityAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="LengthAttribute" substitutionGroup="gml:AbstractObject" type="uro:LengthAttributeType"/>
+  <complexType name="LengthAttributeType">
+    <sequence>
+      <element name="length" minOccurs="0" type="gml:LengthType"/>
+      <element name="measureType" minOccurs="0" type="gml:CodeType"/>
+      <element name="phaseType" minOccurs="0" type="gml:CodeType"/>
+    </sequence>
+  </complexType>
+  <complexType name="LengthAttributePropertyType">
+    <sequence>
+      <element ref="uro:LengthAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="LongevityMeasures" substitutionGroup="gml:AbstractObject" type="uro:LongevityMeasuresType"/>
+  <complexType name="LongevityMeasuresType">
+    <sequence>
+      <element name="fiscalYearForCountermeasures" type="date"/>
+      <element name="countermeasuresCost" minOccurs="0" type="uro:CountermeasuresCostPropertyType"/>
+      <element name="description" minOccurs="0" type="string"/>
+    </sequence>
+  </complexType>
+  <complexType name="LongevityMeasuresPropertyType">
+    <sequence>
+      <element ref="uro:LongevityMeasures"/>
+    </sequence>
+  </complexType>
+  <element name="MaintenanceHistoryAttribute" substitutionGroup="uro:FacilityAttribute" type="uro:MaintenanceHistoryAttributeType"/>
+  <complexType name="MaintenanceHistoryAttributeType">
+    <complexContent>
+      <extension base="uro:FacilityAttributeType">
+        <sequence>
+          <element name="maintenanceType" type="gml:CodeType"/>
+          <element name="maintenanceFiscalYear" minOccurs="0" type="date"/>
+          <element name="maintenanceYear" minOccurs="0" type="date"/>
+          <element name="maintenanceDate" minOccurs="0" type="date"/>
+          <element name="status" minOccurs="0" type="string"/>
+          <element name="description" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="MaintenanceHistoryAttributePropertyType">
+    <sequence>
+      <element ref="uro:MaintenanceHistoryAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="Manhole" substitutionGroup="uro:UtilityNodeContainer" type="uro:ManholeType"/>
+  <complexType name="ManholeType">
+    <complexContent>
+      <extension base="uro:UtilityNodeContainerType">
+        <sequence>
+          <element name="elevation" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ManholePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:Manhole"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="MooringFacility" substitutionGroup="uro:PortAttribute" type="uro:MooringFacilityType"/>
+  <complexType name="MooringFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="mainPartLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="totalLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="facilityWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="apronWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="plannedDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="currentDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="ceilingHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="gravityResistant" minOccurs="0" type="gml:MeasureType"/>
+          <element name="form" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainVessels" minOccurs="0" type="gml:CodeType"/>
+          <element name="mooringPostWeight" minOccurs="0" type="gml:MeasureType"/>
+          <element name="numberOfMooringPosts" minOccurs="0" type="integer"/>
+          <element name="resistantMaterial" minOccurs="0" type="integer"/>
+          <element name="lighting" minOccurs="0" type="integer"/>
+          <element name="stairs" minOccurs="0" type="integer"/>
+          <element name="lifesavingAppliances" minOccurs="0" type="string"/>
+          <element name="numberOfLifesavingAppliances" minOccurs="0" type="integer"/>
+          <element name="bumper" minOccurs="0" type="gml:LengthType"/>
+          <element name="numberOfVehicleBoardings" minOccurs="0" type="integer"/>
+          <element name="vehicleBoardingWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="shipType" minOccurs="0" type="string"/>
+          <element name="numberOfSeats" minOccurs="0" type="integer"/>
+          <element name="mainCargo" minOccurs="0" type="gml:CodeType"/>
+          <element name="structureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="MooringFacilityPropertyType">
+    <sequence>
+      <element ref="uro:MooringFacility"/>
+    </sequence>
+  </complexType>
+  <element name="NavigationAssistanceFacility" substitutionGroup="uro:PortAttribute" type="uro:NavigationAssistanceFacilityType"/>
+  <complexType name="NavigationAssistanceFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="string"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="NavigationAssistanceFacilityPropertyType">
+    <sequence>
+      <element ref="uro:NavigationAssistanceFacility"/>
+    </sequence>
+  </complexType>
+  <element name="NumberOfFacilities" substitutionGroup="gml:AbstractObject" type="uro:NumberOfFacilitiesType"/>
+  <complexType name="NumberOfFacilitiesType">
+    <sequence>
+      <element name="quantity" type="integer"/>
+      <element name="quantityUnit" type="gml:CodeType"/>
+    </sequence>
+  </complexType>
+  <complexType name="NumberOfFacilitiesPropertyType">
+    <sequence>
+      <element ref="uro:NumberOfFacilities"/>
+    </sequence>
+  </complexType>
+  <element name="OffsetDepth" substitutionGroup="gml:AbstractObject" type="uro:OffsetDepthType"/>
+  <complexType name="OffsetDepthType">
+    <sequence>
+      <element name="pos" minOccurs="0" type="gml:DirectPositionType"/>
+      <element name="offset" minOccurs="0" type="gml:LengthType"/>
+      <element name="depth" minOccurs="0" type="gml:LengthType"/>
+      <element name="minDepth" minOccurs="0" type="gml:LengthType"/>
+      <element name="maxDepth" minOccurs="0" type="gml:LengthType"/>
+    </sequence>
+  </complexType>
+  <complexType name="OffsetDepthPropertyType">
+    <sequence>
+      <element ref="uro:OffsetDepth"/>
+    </sequence>
+  </complexType>
+  <element name="OilGasChemicalsPipe" substitutionGroup="uro:Pipe" type="uro:OilGasChemicalsPipeType"/>
+  <complexType name="OilGasChemicalsPipeType">
+    <complexContent>
+      <extension base="uro:PipeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="OilGasChemicalsPipePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:OilGasChemicalsPipe"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="OtherConstructionInstallation" substitutionGroup="con:AbstractInstallation" type="uro:OtherConstructionInstallationType"/>
+  <complexType name="OtherConstructionInstallationType">
+    <complexContent>
+      <extension base="con:AbstractInstallationType">
+        <sequence>
+          <element name="class" minOccurs="0" type="gml:CodeType"/>
+          <element name="function" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="usage" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="OtherConstructionInstallationPropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:OtherConstructionInstallation"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="OtherConstructiveElement" substitutionGroup="con:AbstractConstructiveElement" type="uro:OtherConstructiveElementType"/>
+  <complexType name="OtherConstructiveElementType">
+    <complexContent>
+      <extension base="con:AbstractConstructiveElementType">
+        <sequence>
+          <element name="class" type="gml:CodeType"/>
+          <element name="function" type="gml:CodeType"/>
+          <element name="usage" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="OtherConstructiveElementPropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:OtherConstructiveElement"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="ParkFacilityLongevityPlanAttribute" substitutionGroup="uro:FacilityAttribute" type="uro:ParkFacilityLongevityPlanAttributeType"/>
+  <complexType name="ParkFacilityLongevityPlanAttributeType">
+    <complexContent>
+      <extension base="uro:FacilityAttributeType">
+        <sequence>
+          <element name="parkCode" type="gml:CodeType"/>
+          <element name="parkName" type="gml:CodeType"/>
+          <element name="parkType" type="gml:CodeType"/>
+          <element name="facilityName" minOccurs="0" type="gml:CodeType"/>
+          <element name="facilityNameOptional" minOccurs="0" type="string"/>
+          <element name="specificFacilityName" type="string"/>
+          <element name="numberOfFacilities" minOccurs="0" type="uro:NumberOfFacilitiesPropertyType"/>
+          <element name="size" minOccurs="0" type="string"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainMaterialOptional" minOccurs="0" type="string"/>
+          <element name="installationYear" type="date"/>
+          <element name="disposalLimitPeriod" minOccurs="0" type="integer"/>
+          <element name="expectedUsagePeriod" minOccurs="0" type="integer"/>
+          <element name="repairsBeforeParkHealthAssessment" minOccurs="0" type="uro:RepairsBeforeParkHealthAssessmentPropertyType"/>
+          <element name="parkHealthAssessment" maxOccurs="unbounded" minOccurs="0" type="uro:ParkHealthAssessmentPropertyType"/>
+          <element name="managementType" minOccurs="0" type="gml:CodeType"/>
+          <element name="expectedRenewalYearWithMeasures" minOccurs="0" type="date"/>
+          <element name="longevityMeasures" maxOccurs="unbounded" minOccurs="0" type="uro:LongevityMeasuresPropertyType"/>
+          <element name="noteForLongevity" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ParkFacilityLongevityPlanAttributePropertyType">
+    <sequence>
+      <element ref="uro:ParkFacilityLongevityPlanAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="ParkHealthAssessment" substitutionGroup="gml:AbstractObject" type="uro:ParkHealthAssessmentType"/>
+  <complexType name="ParkHealthAssessmentType">
+    <sequence>
+      <element name="assessmentFiscalYear" type="date"/>
+      <element name="deteriorationStatus" minOccurs="0" type="string"/>
+      <element name="condition" minOccurs="0" type="gml:CodeType"/>
+      <element name="urgency" minOccurs="0" type="gml:CodeType"/>
+    </sequence>
+  </complexType>
+  <complexType name="ParkHealthAssessmentPropertyType">
+    <sequence>
+      <element ref="uro:ParkHealthAssessment"/>
+    </sequence>
+  </complexType>
+  <element name="Pipe" substitutionGroup="uro:UtilityLink" type="uro:PipeType"/>
+  <complexType name="PipeType">
+    <complexContent>
+      <extension base="uro:UtilityLinkType">
+        <sequence>
+          <element name="innerDiameter" minOccurs="0" type="gml:LengthType"/>
+          <element name="outerDiameter" minOccurs="0" type="gml:LengthType"/>
+          <element name="sleeveType" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PipePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:Pipe"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="PointCloudSpecAttribute" substitutionGroup="pcl:ADEOfPointCloud" type="uro:PointCloudSpecAttributeType"/>
+  <complexType name="PointCloudSpecAttributeType">
+    <complexContent>
+      <extension base="pcl:ADEOfPointCloudType">
+        <sequence>
+          <element name="class" type="gml:CodeType"/>
+          <element name="function" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="srcScale" minOccurs="0" type="gml:CodeType"/>
+          <element name="srcRequiredHorizontalAccuracy" minOccurs="0" type="gml:LengthType"/>
+          <element name="srcRequiredVerticalAccuracy" minOccurs="0" type="gml:LengthType"/>
+          <element name="srcRequiredPointDensity" minOccurs="0" type="gml:MeasureType"/>
+          <element name="srcFilteringCriteria" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="srcGridInterval" minOccurs="0" type="gml:MeasureType"/>
+          <element name="isIntensity" minOccurs="0" type="boolean"/>
+          <element name="spectralBandSet" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="isReturnInfo" minOccurs="0" type="boolean"/>
+          <element name="isStandardClassification" minOccurs="0" type="boolean"/>
+          <element name="customClassificationType" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="pointCloudAssociationMethod" type="gml:CodeType"/>
+          <element name="pointSubsamplingInfo" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PointCloudSpecAttributePropertyType">
+    <sequence>
+      <element ref="uro:PointCloudSpecAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="PortAttribute" abstract="true" substitutionGroup="uro:FacilityAttribute" type="uro:PortAttributeType"/>
+  <complexType name="PortAttributeType" abstract="true">
+    <complexContent>
+      <extension base="uro:FacilityAttributeType">
+        <sequence>
+          <element name="portFacilityDetailsType" type="gml:CodeType"/>
+          <element name="portName" type="string"/>
+          <element name="portStatus" minOccurs="0" type="gml:CodeType"/>
+          <element name="district" minOccurs="0" type="string"/>
+          <element name="grantType" minOccurs="0" type="gml:CodeType"/>
+          <element name="isDesignated" minOccurs="0" type="boolean"/>
+          <element name="degradationLevel" minOccurs="0" type="integer"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortAttributePropertyType">
+    <sequence>
+      <element ref="uro:PortAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="PortEnvironmentalImprovementFacility" substitutionGroup="uro:PortAttribute" type="uro:PortEnvironmentalImprovementFacilityType"/>
+  <complexType name="PortEnvironmentalImprovementFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="usage" minOccurs="0" type="string"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="totalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortEnvironmentalImprovementFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortEnvironmentalImprovementFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PortManagementFacility" substitutionGroup="uro:PortAttribute" type="uro:PortManagementFacilityType"/>
+  <complexType name="PortManagementFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="totalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="numberOfShipTypes" minOccurs="0" type="integer"/>
+          <element name="unitOfShipType" minOccurs="0" type="gml:CodeType"/>
+          <element name="loadingCapacity" minOccurs="0" type="integer"/>
+          <element name="acquisitionYear" minOccurs="0" type="date"/>
+          <element name="usage" minOccurs="0" type="string"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortManagementFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortManagementFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PortPassengerFacility" substitutionGroup="uro:PortAttribute" type="uro:PortPassengerFacilityType"/>
+  <complexType name="PortPassengerFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="acquisitionYear" minOccurs="0" type="date"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortPassengerFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortPassengerFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PortPollutionControlFacility" substitutionGroup="uro:PortAttribute" type="uro:PortPollutionControlFacilityType"/>
+  <complexType name="PortPollutionControlFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+          <element name="crossSectionalArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="height" minOccurs="0" type="gml:LengthType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortPollutionControlFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortPollutionControlFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PortProtectiveFacility" substitutionGroup="uro:PortAttribute" type="uro:PortProtectiveFacilityType"/>
+  <complexType name="PortProtectiveFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="structureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" maxOccurs="unbounded" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortProtectiveFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortProtectiveFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PortStorageFacility" substitutionGroup="uro:PortAttribute" type="uro:PortStorageFacilityType"/>
+  <complexType name="PortStorageFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="innerTotalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="innerOfSiteArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="outerOfTotalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="outerSiteArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="mainCargo" minOccurs="0" type="gml:CodeType"/>
+          <element name="storageCapacity" minOccurs="0" type="integer"/>
+          <element name="storageCapacityUnit" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortStorageFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortStorageFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PortTransportationFacility" substitutionGroup="uro:PortAttribute" type="uro:PortTransportationFacilityType"/>
+  <complexType name="PortTransportationFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="structureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="startingPoint" minOccurs="0" type="string"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="beddingWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="numberOfLanes" minOccurs="0" type="integer"/>
+          <element name="parkingLotCapacityOfBus" minOccurs="0" type="integer"/>
+          <element name="parkingLotCapacityOfCars" minOccurs="0" type="integer"/>
+          <element name="routeType" minOccurs="0" type="gml:CodeType"/>
+          <element name="heightToDigit" minOccurs="0" type="gml:LengthType"/>
+          <element name="heightLimit" minOccurs="0" type="gml:LengthType"/>
+          <element name="minimumWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="minimumDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="numberOfAircraftParkingSpaces" minOccurs="0" type="integer"/>
+          <element name="pavementType" minOccurs="0" type="gml:CodeType"/>
+          <element name="mainCargo" minOccurs="0" type="gml:CodeType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortTransportationFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortTransportationFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PortWasteTreatmentFacility" substitutionGroup="uro:PortAttribute" type="uro:PortWasteTreatmentFacilityType"/>
+  <complexType name="PortWasteTreatmentFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="structureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="perimeter" minOccurs="0" type="gml:LengthType"/>
+          <element name="mainPartLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="innerShoreLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="ceilingHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="waveDissipatorLength" minOccurs="0" type="gml:LengthType"/>
+          <element name="mainMaterial" minOccurs="0" type="gml:CodeType"/>
+          <element name="wasteType" minOccurs="0" type="gml:CodeType"/>
+          <element name="plannedDisposalArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="plannedDisposalAmount" minOccurs="0" type="integer"/>
+          <element name="receivingCapacity" minOccurs="0" type="integer"/>
+          <element name="shipType" minOccurs="0" type="string"/>
+          <element name="unitOfReceivingCapacity" minOccurs="0" type="gml:CodeType"/>
+          <element name="acquisitionYear" minOccurs="0" type="date"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="subsidy" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortWasteTreatmentFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortWasteTreatmentFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PortWelfareFacility" substitutionGroup="uro:PortAttribute" type="uro:PortWelfareFacilityType"/>
+  <complexType name="PortWelfareFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="totalFloorArea" minOccurs="0" type="gml:MeasureType"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PortWelfareFacilityPropertyType">
+    <sequence>
+      <element ref="uro:PortWelfareFacility"/>
+    </sequence>
+  </complexType>
+  <element name="PublicLand" substitutionGroup="luse:LandUse" type="uro:PublicLandType"/>
+  <complexType name="PublicLandType">
+    <complexContent>
+      <extension base="luse:LandUseType">
+        <sequence>
+          <element name="id" type="string"/>
+          <element name="ownerName" minOccurs="0" type="string"/>
+          <element name="ownerType" minOccurs="0" type="gml:CodeType"/>
+          <element name="landCategory" minOccurs="0" type="string"/>
+          <element name="status" minOccurs="0" type="string"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="PublicLandPropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:PublicLand"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="RailwayRouteAttribute" substitutionGroup="tran:ADEOfRailway" type="uro:RailwayRouteAttributeType"/>
+  <complexType name="RailwayRouteAttributeType">
+    <complexContent>
+      <extension base="tran:ADEOfRailwayType">
+        <sequence>
+          <element name="operatorType" type="gml:CodeType"/>
+          <element name="operator" type="string"/>
+          <element name="alternativeName" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="railwayType" type="gml:CodeType"/>
+          <element name="startStation" type="string"/>
+          <element name="endStation" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="RailwayRouteAttributePropertyType">
+    <sequence>
+      <element ref="uro:RailwayRouteAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="RailwayTrackAttribute" substitutionGroup="tran:ADEOfTrafficArea" type="uro:RailwayTrackAttributeType"/>
+  <complexType name="RailwayTrackAttributeType">
+    <complexContent>
+      <extension base="tran:ADEOfTrafficAreaType">
+        <sequence>
+          <element name="routeName" minOccurs="0" type="string"/>
+          <element name="trackType" minOccurs="0" type="gml:CodeType"/>
+          <element name="startPost" minOccurs="0" type="string"/>
+          <element name="endPost" minOccurs="0" type="string"/>
+          <element name="alignmentType" minOccurs="0" type="gml:CodeType"/>
+          <element name="controlPoint" maxOccurs="unbounded" minOccurs="0" type="uro:ControlPointPropertyType"/>
+          <element name="lod2Network" minOccurs="0" type="gml:GeometricComplexPropertyType"/>
+          <element name="lod3Network" minOccurs="0" type="gml:GeometricComplexPropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="RailwayTrackAttributePropertyType">
+    <sequence>
+      <element ref="uro:RailwayTrackAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="RealEstateIDAttribute" substitutionGroup="bldg:ADEOfAbstractBuilding" type="uro:RealEstateIDAttributeType"/>
+  <complexType name="RealEstateIDAttributeType">
+    <complexContent>
+      <extension base="bldg:ADEOfAbstractBuildingType">
+        <sequence>
+          <element name="realEstateIDOfBuilding" type="string"/>
+          <element name="numberOfBuildingUnitOwnership" minOccurs="0" type="integer"/>
+          <element name="realEstateIDOfBuildingUnitOwnership" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="numberOfRealEstateIDOfLand" minOccurs="0" type="integer"/>
+          <element name="realEstateIDOfLand" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="matchingScore" type="integer"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="RealEstateIDAttributePropertyType">
+    <sequence>
+      <element ref="uro:RealEstateIDAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="RepairsBeforeParkHealthAssessment" substitutionGroup="gml:AbstractObject" type="uro:RepairsBeforeParkHealthAssessmentType"/>
+  <complexType name="RepairsBeforeParkHealthAssessmentType">
+    <sequence>
+      <element name="repair" type="gml:CodeType"/>
+      <element name="repairFiscalYear" minOccurs="0" type="date"/>
+    </sequence>
+  </complexType>
+  <complexType name="RepairsBeforeParkHealthAssessmentPropertyType">
+    <sequence>
+      <element ref="uro:RepairsBeforeParkHealthAssessment"/>
+    </sequence>
+  </complexType>
+  <element name="RiverFacilityIdAttribute" substitutionGroup="uro:FacilityIdAttribute" type="uro:RiverFacilityIdAttributeType"/>
+  <complexType name="RiverFacilityIdAttributeType">
+    <complexContent>
+      <extension base="uro:FacilityIdAttributeType">
+        <sequence>
+          <element name="riverCode" type="gml:CodeType"/>
+          <element name="riverName" minOccurs="0" type="string"/>
+          <element name="sideType" type="gml:CodeType"/>
+          <element name="leftPost" minOccurs="0" type="gml:LengthType"/>
+          <element name="leftDistance" minOccurs="0" type="gml:LengthType"/>
+          <element name="rightPost" minOccurs="0" type="gml:LengthType"/>
+          <element name="rightDistance" minOccurs="0" type="gml:LengthType"/>
+          <element name="leftStartPost" minOccurs="0" type="gml:LengthType"/>
+          <element name="leftStartDistance" minOccurs="0" type="gml:LengthType"/>
+          <element name="leftEndPost" minOccurs="0" type="gml:LengthType"/>
+          <element name="leftEndDistance" minOccurs="0" type="gml:LengthType"/>
+          <element name="rightStartPost" minOccurs="0" type="gml:LengthType"/>
+          <element name="rightStartDistance" minOccurs="0" type="gml:LengthType"/>
+          <element name="rightEndPost" minOccurs="0" type="gml:LengthType"/>
+          <element name="rightEndDistance" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="RiverFacilityIdAttributePropertyType">
+    <sequence>
+      <element ref="uro:RiverFacilityIdAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="RoadStructureAttribute" substitutionGroup="tran:ADEOfRoad" type="uro:RoadStructureAttributeType"/>
+  <complexType name="RoadStructureAttributeType">
+    <complexContent>
+      <extension base="tran:ADEOfRoadType">
+        <sequence>
+          <element name="widthType" minOccurs="0" type="gml:CodeType"/>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+          <element name="numberOfLanes" minOccurs="0" type="integer"/>
+          <element name="sectionType" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="RoadStructureAttributePropertyType">
+    <sequence>
+      <element ref="uro:RoadStructureAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="RoadType" substitutionGroup="tran:ADEOfRoad" type="uro:RoadTypeType"/>
+  <complexType name="RoadTypeType">
+    <complexContent>
+      <extension base="tran:ADEOfRoadType">
+        <sequence>
+          <element name="id" minOccurs="0" type="string"/>
+          <element name="creationDate" minOccurs="0" type="date"/>
+          <element name="isTemporary" minOccurs="0" type="boolean"/>
+          <element name="roadType" minOccurs="0" type="gml:CodeType"/>
+          <element name="widthType" minOccurs="0" type="gml:CodeType"/>
+          <element name="isTollRoad" minOccurs="0" type="boolean"/>
+          <element name="separator" minOccurs="0" type="gml:LengthType"/>
+          <element name="isHighWay" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="RoadTypePropertyType">
+    <sequence>
+      <element ref="uro:RoadType"/>
+    </sequence>
+  </complexType>
+  <element name="RoomAttribute" abstract="true" substitutionGroup="gml:AbstractObject" type="uro:RoomAttributeType"/>
+  <complexType name="RoomAttributeType" abstract="true">
+    <sequence/>
+  </complexType>
+  <complexType name="RoomAttributePropertyType">
+    <sequence>
+      <element ref="uro:RoomAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="SewerPipe" substitutionGroup="uro:Pipe" type="uro:SewerPipeType"/>
+  <complexType name="SewerPipeType">
+    <complexContent>
+      <extension base="uro:PipeType">
+        <sequence>
+          <element name="slope" minOccurs="0" type="gml:MeasureType"/>
+          <element name="invertElevationUpstream" minOccurs="0" type="gml:LengthType"/>
+          <element name="invertElevationDownstream" minOccurs="0" type="gml:LengthType"/>
+          <element name="flowDirection" minOccurs="0" type="boolean"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="SewerPipePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:SewerPipe"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="ShipServiceFacility" substitutionGroup="uro:PortAttribute" type="uro:ShipServiceFacilityType"/>
+  <complexType name="ShipServiceFacilityType">
+    <complexContent>
+      <extension base="uro:PortAttributeType">
+        <sequence>
+          <element name="shipType" minOccurs="0" type="string"/>
+          <element name="supplyAbility" minOccurs="0" type="integer"/>
+          <element name="supplyAbilityUnit" minOccurs="0" type="gml:CodeType"/>
+          <element name="mooringPlace" minOccurs="0" type="string"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="acquisitionYear" minOccurs="0" type="date"/>
+          <element name="totalCost" minOccurs="0" type="integer"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ShipServiceFacilityPropertyType">
+    <sequence>
+      <element ref="uro:ShipServiceFacility"/>
+    </sequence>
+  </complexType>
+  <element name="SlopeType" substitutionGroup="gml:AbstractObject" type="uro:SlopeTypeType"/>
+  <complexType name="SlopeTypeType">
+    <sequence>
+      <element name="angle" type="double"/>
+      <element name="elevation" type="gml:LengthType"/>
+    </sequence>
+  </complexType>
+  <complexType name="SlopeTypePropertyType">
+    <sequence>
+      <element ref="uro:SlopeType"/>
+    </sequence>
+  </complexType>
+  <element name="SquareUrbanPlanAttribute" substitutionGroup="tran:ADEOfSquare" type="uro:SquareUrbanPlanAttributeType"/>
+  <complexType name="SquareUrbanPlanAttributeType">
+    <complexContent>
+      <extension base="tran:ADEOfSquareType">
+        <sequence>
+          <element name="prefecture" minOccurs="0" type="gml:CodeType"/>
+          <element name="city" minOccurs="0" type="gml:CodeType"/>
+          <element name="urbanPlanningAreaName" minOccurs="0" type="string"/>
+          <element name="enforcer" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="dateOfDecision" minOccurs="0" type="date"/>
+          <element name="dateOfRevision" maxOccurs="unbounded" minOccurs="0" type="date"/>
+          <element name="areaPlanned" minOccurs="0" type="gml:MeasureType"/>
+          <element name="areaInService" minOccurs="0" type="gml:MeasureType"/>
+          <element name="remarks" minOccurs="0" type="string"/>
+          <element name="status" minOccurs="0" type="gml:CodeType"/>
+          <element name="areaImproved" minOccurs="0" type="gml:MeasureType"/>
+          <element name="areaCompleted" minOccurs="0" type="gml:MeasureType"/>
+          <element name="projectStartDate" minOccurs="0" type="date"/>
+          <element name="projectEndDate" minOccurs="0" type="date"/>
+          <element name="isCompleted" minOccurs="0" type="boolean"/>
+          <element name="isAuthorized" minOccurs="0" type="boolean"/>
+          <element name="purpose" minOccurs="0" type="string"/>
+          <element name="note" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="SquareUrbanPlanAttributePropertyType">
+    <sequence>
+      <element ref="uro:SquareUrbanPlanAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="StationSquareAttribute" substitutionGroup="uro:SquareUrbanPlanAttribute" type="uro:StationSquareAttributeType"/>
+  <complexType name="StationSquareAttributeType">
+    <complexContent>
+      <extension base="uro:SquareUrbanPlanAttributeType">
+        <sequence>
+          <element name="station" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="route" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="railwayType" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="StationSquareAttributePropertyType">
+    <sequence>
+      <element ref="uro:StationSquareAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="TelecommunicationsCable" substitutionGroup="uro:Cable" type="uro:TelecommunicationsCableType"/>
+  <complexType name="TelecommunicationsCableType">
+    <complexContent>
+      <extension base="uro:CableType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="TelecommunicationsCablePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:TelecommunicationsCable"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="TerminalAttribute" substitutionGroup="uro:SquareUrbanPlanAttribute" type="uro:TerminalAttributeType"/>
+  <complexType name="TerminalAttributeType">
+    <complexContent>
+      <extension base="uro:SquareUrbanPlanAttributeType">
+        <sequence>
+          <element name="terminalType" minOccurs="0" type="gml:CodeType"/>
+          <element name="structure" minOccurs="0" type="string"/>
+          <element name="numberOfBerthsPlanned" minOccurs="0" type="integer"/>
+          <element name="numberOfBerthsInService" minOccurs="0" type="integer"/>
+          <element name="userType" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="TerminalAttributePropertyType">
+    <sequence>
+      <element ref="uro:TerminalAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="ThematicShape" substitutionGroup="gml:AbstractObject" type="uro:ThematicShapeType"/>
+  <complexType name="ThematicShapeType">
+    <sequence>
+      <element name="horizontalType" minOccurs="0" type="gml:CodeType"/>
+      <element name="heightType" minOccurs="0" type="gml:CodeType"/>
+      <element name="shape" type="gml:GeometryPropertyType"/>
+    </sequence>
+  </complexType>
+  <complexType name="ThematicShapePropertyType">
+    <sequence>
+      <element ref="uro:ThematicShape"/>
+    </sequence>
+  </complexType>
+  <element name="ThermalPipe" substitutionGroup="uro:Pipe" type="uro:ThermalPipeType"/>
+  <complexType name="ThermalPipeType">
+    <complexContent>
+      <extension base="uro:PipeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ThermalPipePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:ThermalPipe"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="TrackAttribute" substitutionGroup="tran:ADEOfTrack" type="uro:TrackAttributeType"/>
+  <complexType name="TrackAttributeType">
+    <complexContent>
+      <extension base="tran:ADEOfTrackType">
+        <sequence>
+          <element name="alternativeName" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="adminType" minOccurs="0" type="gml:CodeType"/>
+          <element name="relativeLevel" minOccurs="0" type="integer"/>
+          <element name="widthType" minOccurs="0" type="gml:CodeType"/>
+          <element name="structureType" minOccurs="0" type="gml:CodeType"/>
+          <element name="isTollRoad" minOccurs="0" type="boolean"/>
+          <element name="separator" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="TrackAttributePropertyType">
+    <sequence>
+      <element ref="uro:TrackAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="TrafficAreaStructureAttribute" substitutionGroup="tran:ADEOfTrafficArea" type="uro:TrafficAreaStructureAttributeType"/>
+  <complexType name="TrafficAreaStructureAttributeType">
+    <complexContent>
+      <extension base="tran:ADEOfTrafficAreaType">
+        <sequence>
+          <element name="numberOfLanes" minOccurs="0" type="integer"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="TrafficAreaStructureAttributePropertyType">
+    <sequence>
+      <element ref="uro:TrafficAreaStructureAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="TrafficObjectUsecaseAttribute" substitutionGroup="gml:AbstractObject" type="uro:TrafficObjectUsecaseAttributeType"/>
+  <complexType name="TrafficObjectUsecaseAttributeType">
+    <sequence>
+      <element name="minWidth" minOccurs="0" type="gml:LengthType"/>
+      <element name="maxWidth" minOccurs="0" type="gml:LengthType"/>
+    </sequence>
+  </complexType>
+  <complexType name="TrafficObjectUsecaseAttributePropertyType">
+    <sequence>
+      <element ref="uro:TrafficObjectUsecaseAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="TrafficVolumeAttribute" substitutionGroup="tran:ADEOfRoad" type="uro:TrafficVolumeAttributeType"/>
+  <complexType name="TrafficVolumeAttributeType">
+    <complexContent>
+      <extension base="tran:ADEOfRoadType">
+        <sequence>
+          <element name="sectionID" minOccurs="0" type="string"/>
+          <element name="routeName" minOccurs="0" type="string"/>
+          <element name="weekday12hourTrafficVolume" minOccurs="0" type="integer"/>
+          <element name="weekday24hourTrafficVolume" minOccurs="0" type="integer"/>
+          <element name="largeVehicleRate" minOccurs="0" type="double"/>
+          <element name="congestionRate" minOccurs="0" type="double"/>
+          <element name="averageTravelSpeedInCongestion" minOccurs="0" type="double"/>
+          <element name="averageInboundTravelSpeedInCongestion" minOccurs="0" type="double"/>
+          <element name="averageOutboundTravelSpeedInCongestion" minOccurs="0" type="double"/>
+          <element name="averageInboundTravelSpeedNotCongestion" minOccurs="0" type="double"/>
+          <element name="averageOutboundTravelSpeedNotCongestion" minOccurs="0" type="double"/>
+          <element name="observationPointName" minOccurs="0" type="string"/>
+          <element name="reference" minOccurs="0" type="string"/>
+          <element name="surveyYear" minOccurs="0" type="date"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="TrafficVolumeAttributePropertyType">
+    <sequence>
+      <element ref="uro:TrafficVolumeAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="TransitionCurveType" substitutionGroup="gml:AbstractObject" type="uro:TransitionCurveTypeType"/>
+  <complexType name="TransitionCurveTypeType">
+    <sequence>
+      <element name="intersection" type="gml:MeasureType"/>
+      <element name="distance" type="gml:LengthType"/>
+      <element name="curveLength" type="gml:LengthType"/>
+    </sequence>
+  </complexType>
+  <complexType name="TransitionCurveTypePropertyType">
+    <sequence>
+      <element ref="uro:TransitionCurveType"/>
+    </sequence>
+  </complexType>
+  <element name="TunnelFunctionalAttribute" substitutionGroup="tun:ADEOfAbstractTunnel" type="uro:TunnelFunctionalAttributeType"/>
+  <complexType name="TunnelFunctionalAttributeType">
+    <complexContent>
+      <extension base="tun:ADEOfAbstractTunnelType">
+        <sequence>
+          <element name="directionType" minOccurs="0" type="gml:CodeType"/>
+          <element name="userType" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="TunnelFunctionalAttributePropertyType">
+    <sequence>
+      <element ref="uro:TunnelFunctionalAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="TunnelStructureAttribute" substitutionGroup="tun:ADEOfAbstractTunnel" type="uro:TunnelStructureAttributeType"/>
+  <complexType name="TunnelStructureAttributeType">
+    <complexContent>
+      <extension base="tun:ADEOfAbstractTunnelType">
+        <sequence>
+          <element name="tunnelType" minOccurs="0" type="gml:CodeType"/>
+          <element name="tunnelSubtype" minOccurs="0" type="gml:CodeType"/>
+          <element name="mouthType" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="width" minOccurs="0" type="gml:LengthType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="innerHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="effectiveHeight" minOccurs="0" type="gml:LengthType"/>
+          <element name="slopeType" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="TunnelStructureAttributePropertyType">
+    <sequence>
+      <element ref="uro:TunnelStructureAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="UndergroundBuilding" substitutionGroup="bldg:AbstractBuilding" type="uro:UndergroundBuildingType"/>
+  <complexType name="UndergroundBuildingType">
+    <complexContent>
+      <extension base="bldg:AbstractBuildingType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="UndergroundBuildingPropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:UndergroundBuilding"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="UtilityLink" abstract="true" substitutionGroup="uro:UtilityNetworkElement" type="uro:UtilityLinkType"/>
+  <complexType name="UtilityLinkType" abstract="true">
+    <complexContent>
+      <extension base="uro:UtilityNetworkElementType">
+        <sequence>
+          <element name="routeStartNode" minOccurs="0" type="string"/>
+          <element name="startNode" minOccurs="0" type="string"/>
+          <element name="routeEndNode" minOccurs="0" type="string"/>
+          <element name="endNode" minOccurs="0" type="string"/>
+          <element name="depth" minOccurs="0" type="gml:LengthType"/>
+          <element name="minDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="maxDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="maxWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="offset" minOccurs="0" type="gml:LengthType"/>
+          <element name="material" minOccurs="0" type="gml:CodeType"/>
+          <element name="lengthAttribute" maxOccurs="unbounded" minOccurs="0" type="uro:LengthAttributePropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="UtilityLinkPropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:UtilityLink"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="UtilityNetworkElement" abstract="true" substitutionGroup="frn:CityFurniture" type="uro:UtilityNetworkElementType"/>
+  <complexType name="UtilityNetworkElementType" abstract="true">
+    <complexContent>
+      <extension base="frn:CityFurnitureType">
+        <sequence>
+          <element name="occupierType" minOccurs="0" type="gml:CodeType"/>
+          <element name="occupierName" minOccurs="0" type="gml:CodeType"/>
+          <element name="year" minOccurs="0" type="date"/>
+          <element name="yearType" minOccurs="0" type="gml:CodeType"/>
+          <element name="administrator" minOccurs="0" type="gml:CodeType"/>
+          <element name="offsetDepth" maxOccurs="unbounded" minOccurs="0" type="uro:OffsetDepthPropertyType"/>
+          <element name="thematicShape" maxOccurs="unbounded" minOccurs="0" type="uro:ThematicShapePropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="UtilityNetworkElementPropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:UtilityNetworkElement"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="UtilityNode" abstract="true" substitutionGroup="uro:UtilityNetworkElement" type="uro:UtilityNodeType"/>
+  <complexType name="UtilityNodeType" abstract="true">
+    <complexContent>
+      <extension base="uro:UtilityNetworkElementType">
+        <sequence>
+          <element name="previousLink" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="nextLink" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="rotationAngle" minOccurs="0" type="double"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="UtilityNodePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:UtilityNode"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="UtilityNodeContainer" abstract="true" substitutionGroup="uro:UtilityNetworkElement" type="uro:UtilityNodeContainerType"/>
+  <complexType name="UtilityNodeContainerType" abstract="true">
+    <complexContent>
+      <extension base="uro:UtilityNetworkElementType">
+        <sequence>
+          <element name="containerType" minOccurs="0" type="gml:CodeType"/>
+          <element name="innerDiameterLong" minOccurs="0" type="gml:LengthType"/>
+          <element name="outerDiameterLong" minOccurs="0" type="gml:LengthType"/>
+          <element name="innerDiameterShort" minOccurs="0" type="gml:LengthType"/>
+          <element name="outerDiameterShort" minOccurs="0" type="gml:LengthType"/>
+          <element name="depth" minOccurs="0" type="gml:LengthType"/>
+          <element name="appurtenance" maxOccurs="unbounded" minOccurs="0" type="string"/>
+          <element name="rotationAngle" minOccurs="0" type="double"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="UtilityNodeContainerPropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:UtilityNodeContainer"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="VerticalCurveType" substitutionGroup="gml:AbstractObject" type="uro:VerticalCurveTypeType"/>
+  <complexType name="VerticalCurveTypeType">
+    <sequence>
+      <element name="length" type="gml:LengthType"/>
+      <element name="verticalDistance" type="gml:LengthType"/>
+    </sequence>
+  </complexType>
+  <complexType name="VerticalCurveTypePropertyType">
+    <sequence>
+      <element ref="uro:VerticalCurveType"/>
+    </sequence>
+  </complexType>
+  <element name="WaterBodyDetailAttribute" substitutionGroup="wtr:ADEOfWaterBody" type="uro:WaterBodyDetailAttributeType"/>
+  <complexType name="WaterBodyDetailAttributeType">
+    <complexContent>
+      <extension base="wtr:ADEOfWaterBodyType">
+        <sequence>
+          <element name="kana" minOccurs="0" type="string"/>
+          <element name="waterSystemCode" minOccurs="0" type="gml:CodeType"/>
+          <element name="riverCode" minOccurs="0" type="gml:CodeType"/>
+          <element name="adminType" minOccurs="0" type="gml:CodeType"/>
+          <element name="flowDirection" minOccurs="0" type="boolean"/>
+          <element name="maximumDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="waterSurfaceElevation" minOccurs="0" type="gml:LengthType"/>
+          <element name="area" minOccurs="0" type="gml:MeasureType"/>
+          <element name="measurementYearMonth" minOccurs="0" type="date"/>
+          <element name="prefecture" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="city" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="WaterBodyDetailAttributePropertyType">
+    <sequence>
+      <element ref="uro:WaterBodyDetailAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="WaterPipe" substitutionGroup="uro:Pipe" type="uro:WaterPipeType"/>
+  <complexType name="WaterPipeType">
+    <complexContent>
+      <extension base="uro:PipeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="WaterPipePropertyType">
+    <sequence minOccurs="0">
+      <element ref="uro:WaterPipe"/>
+    </sequence>
+    <attributeGroup ref="gml:AssociationAttributeGroup"/>
+    <attributeGroup ref="gml:OwnershipAttributeGroup"/>
+  </complexType>
+  <element name="WaterwayDetailAttribute" substitutionGroup="tran:ADEOfWaterway" type="uro:WaterwayDetailAttributeType"/>
+  <complexType name="WaterwayDetailAttributeType">
+    <complexContent>
+      <extension base="tran:ADEOfWaterwayType">
+        <sequence>
+          <element name="routeId" type="string"/>
+          <element name="routeDirection" minOccurs="0" type="gml:CodeType"/>
+          <element name="minimumWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="maximumWidth" minOccurs="0" type="gml:LengthType"/>
+          <element name="length" minOccurs="0" type="gml:LengthType"/>
+          <element name="navigation" minOccurs="0" type="string"/>
+          <element name="plannedDepth" minOccurs="0" type="gml:LengthType"/>
+          <element name="speedLimit" minOccurs="0" type="gml:MeasureType"/>
+          <element name="targetShipType" maxOccurs="unbounded" minOccurs="0" type="string"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="WaterwayDetailAttributePropertyType">
+    <sequence>
+      <element ref="uro:WaterwayDetailAttribute"/>
+    </sequence>
+  </complexType>
+  <simpleType name="ifcInternalOrExternalEnum">
+    <restriction base="string">
+      <enumeration value="INTERNAL"/>
+      <enumeration value="EXTERNAL"/>
+      <enumeration value="NOTDEFINED"/>
+    </restriction>
+  </simpleType>
+</schema>

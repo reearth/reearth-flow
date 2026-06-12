@@ -509,29 +509,31 @@ impl XmlValidator {
         reader.config_mut().trim_text(false);
 
         let mut buf = Vec::new();
-        let mut root_prefixes: HashSet<String> = HashSet::new();
+        let mut declared_prefixes: HashSet<String> = HashSet::new();
         let mut has_default_ns = false;
-        let mut is_root = true;
         let mut errors: Vec<ValidationResult> = Vec::new();
 
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
-                    if is_root {
-                        for attr in e.attributes().flatten() {
-                            let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
-                            if let Some(prefix) = key.strip_prefix("xmlns:") {
-                                root_prefixes.insert(prefix.to_string());
-                            } else if key == "xmlns" {
-                                has_default_ns = true;
-                            }
+                    // Collect namespace declarations on this element before checking
+                    // its own prefix. A prefix may be declared and used on the same
+                    // element (e.g. `<xal:Address xmlns:xal="...">`), and a
+                    // declaration on any ancestor stays in scope for its descendants,
+                    // so accumulate prefixes across the whole document rather than
+                    // honoring only the root element's declarations.
+                    for attr in e.attributes().flatten() {
+                        let key = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+                        if let Some(prefix) = key.strip_prefix("xmlns:") {
+                            declared_prefixes.insert(prefix.to_string());
+                        } else if key == "xmlns" {
+                            has_default_ns = true;
                         }
-                        is_root = false;
                     }
                     let name_bytes = e.name();
                     let name = std::str::from_utf8(name_bytes.as_ref()).unwrap_or("");
                     if let Some((prefix, _)) = name.split_once(':') {
-                        if !root_prefixes.contains(prefix) {
+                        if !declared_prefixes.contains(prefix) {
                             errors.push(ValidationResult::new(
                                 "NamespaceError",
                                 &format!("No namespace declaration for {prefix}"),
@@ -564,7 +566,7 @@ impl XmlValidator {
         feature: &Feature,
         xml_bytes: &[u8],
     ) -> Result<Vec<ValidationResult>> {
-        use fastxml::schema::validator::StreamValidator;
+        use fastxml::schema::Validator;
 
         // Determine base directory for relative schema resolution
         let base_dir = self.get_xml_base_url(feature).and_then(|uri| {
@@ -662,10 +664,13 @@ impl XmlValidator {
 
         // --- Step 3: Streaming validation ---
         let reader = std::io::BufReader::new(std::io::Cursor::new(xml_bytes));
-        let validator = StreamValidator::new(Arc::clone(&compiled));
-        let errors = validator.validate(reader).map_err(|e| {
-            XmlProcessorError::Validator(format!("Streaming validation failed: {e:?}"))
-        })?;
+        let errors = Validator::from_reader(reader)
+            .schema(Arc::clone(&compiled))
+            .run()
+            .map_err(|e| {
+                XmlProcessorError::Validator(format!("Streaming validation failed: {e:?}"))
+            })?
+            .into_entries();
 
         // Convert errors to ValidationResult and deduplicate
         let validation_results: HashSet<_> = errors

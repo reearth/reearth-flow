@@ -12,8 +12,6 @@ pub(crate) mod flooding_area_surface_generator;
 pub(crate) mod gml_name_code_space_validator;
 pub(crate) mod mapping;
 pub(crate) mod max_lod_extractor;
-pub(crate) mod missing_attribute_detector;
-pub(crate) mod object_list_extractor;
 mod profile;
 pub(crate) mod solid_intersection_test_pair_creator;
 pub(crate) mod tran_xlink_detector;
