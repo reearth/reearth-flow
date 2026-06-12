@@ -608,9 +608,10 @@ impl XmlValidator {
 
             // Resolve relative xsi:schemaLocation paths to absolute file:// URLs
             // so the disk cache key is always absolute and unique per base directory.
-            let base_file_uri = base_dir
-                .as_ref()
-                .map(|dir| format!("file://{}/", dir.display()));
+            let base_file_uri = base_dir.as_ref().map(|dir| {
+                let s = dir.to_string_lossy();
+                format!("file://{}/", s.trim_end_matches('/'))
+            });
 
             let mut resolver = SchemaResolver::new(&fetcher);
             for (_namespace, location) in &schema_locations {
