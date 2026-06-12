@@ -29,8 +29,14 @@ impl PlateauProfile {
     }
 
     /// Returns whether the prefix belongs to a known CityGML / i-UR namespace.
+    ///
+    /// `urc` is the i-UR 4.0 DataQuality namespace introduced with CityGML 3.0
+    /// (see [`dataquality_prefix`]).
     pub fn is_known_namespace_prefix(&self, prefix: &str) -> bool {
-        self.citygml.namespace(prefix).is_some() || prefix == "uro" || prefix == "urf"
+        self.citygml.namespace(prefix).is_some()
+            || prefix == "uro"
+            || prefix == "urf"
+            || prefix == "urc"
     }
 
     /// i-UR namespace prefix used for DataQuality attributes (C07/C08 labels).
