@@ -633,7 +633,7 @@ impl XmlValidator {
                 let is_remote = resolved_location.starts_with("http://")
                     || resolved_location.starts_with("https://");
 
-                let fetch_result = match fetcher.fetch(&resolved_location) {
+                let fetch_result = match fetcher.fetch(resolved_location) {
                     Ok(r) => r,
                     Err(e) if is_remote => {
                         tracing::warn!(url = %resolved_location, error = ?e, "Skipping unreachable remote schema");
