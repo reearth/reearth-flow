@@ -10,7 +10,7 @@ use std::{
 use bytes::Bytes;
 use fastxml::schema::fetcher::{DefaultFetcher, FetchResult, SchemaFetcher};
 use fastxml::schema::types::CompiledSchema;
-use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver};
+use fastxml::schema::xsd::{compile_schemas, register_builtin_types, resolve_uri, SchemaResolver};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
 use reearth_flow_runtime::{
@@ -587,7 +587,26 @@ impl XmlValidator {
         }
 
         // --- Step 2: Fetch + resolve + compile schemas (with cache) ---
-        let cache_key = schema_cache_key(&schema_locations);
+
+        // Pre-resolve all xsi:schemaLocation entries to absolute URIs so that:
+        // (a) the in-memory cache key is stable across different base directories, and
+        // (b) the disk cache key (URL hash) is never a raw relative path.
+        let base_file_uri = base_dir
+            .as_ref()
+            .and_then(|dir| url::Url::from_directory_path(dir).ok())
+            .map(|u| u.to_string());
+        let resolved_locations: Vec<(String, String)> = schema_locations
+            .iter()
+            .map(|(ns, loc)| {
+                let resolved = base_file_uri
+                    .as_deref()
+                    .and_then(|base| resolve_uri(base, loc).ok())
+                    .unwrap_or_else(|| loc.clone());
+                (ns.clone(), resolved)
+            })
+            .collect();
+
+        let cache_key = schema_cache_key(&resolved_locations);
 
         // Check cache first
         let cached = {
@@ -598,35 +617,31 @@ impl XmlValidator {
         let compiled = if let Some(compiled) = cached {
             compiled
         } else {
-            // Cache miss - compile from scratch
-            let inner = match &base_dir {
-                Some(dir) => DefaultFetcher::with_base_dir(dir),
-                None => DefaultFetcher::new(),
-            };
-            // Persistent on-disk cache: fetched remote schemas are reused across
-            // documents/runs/processes instead of being re-downloaded each time.
+            // Cache miss - compile from scratch.
+            // DefaultFetcher::new() handles both http(s):// and file:// URLs.
             let fetcher = DiskCachingFetcher {
-                inner,
+                inner: DefaultFetcher::new(),
                 dir: SCHEMA_CACHE_DIR.clone(),
             };
 
             let mut resolver = SchemaResolver::new(&fetcher);
-            for (_namespace, location) in &schema_locations {
+            for (_namespace, resolved_location) in &resolved_locations {
                 // Per W3C spec, xsi:schemaLocation URLs are hints.
                 // Remote schemas that are unreachable (404, DNS failure, etc.)
                 // are skipped. This may cause false positives if the skipped
                 // schema defines types used elsewhere.
-                let is_remote = location.starts_with("http://") || location.starts_with("https://");
+                let is_remote = resolved_location.starts_with("http://")
+                    || resolved_location.starts_with("https://");
 
-                let fetch_result = match fetcher.fetch(location) {
+                let fetch_result = match fetcher.fetch(resolved_location) {
                     Ok(r) => r,
                     Err(e) if is_remote => {
-                        tracing::warn!(url = %location, error = ?e, "Skipping unreachable remote schema");
+                        tracing::warn!(url = %resolved_location, error = ?e, "Skipping unreachable remote schema");
                         continue;
                     }
                     Err(e) => {
                         return Err(XmlProcessorError::Validator(format!(
-                            "Failed to fetch schema {location}: {e:?}"
+                            "Failed to fetch schema {resolved_location}: {e:?}"
                         )));
                     }
                 };
@@ -635,12 +650,12 @@ impl XmlValidator {
                 match resolver.resolve_entry(&fetch_result.content, base_uri) {
                     Ok(()) => {}
                     Err(e) if is_remote => {
-                        tracing::warn!(url = %location, error = ?e, "Skipping unresolvable remote schema");
+                        tracing::warn!(url = %resolved_location, error = ?e, "Skipping unresolvable remote schema");
                         continue;
                     }
                     Err(e) => {
                         return Err(XmlProcessorError::Validator(format!(
-                            "Failed to resolve schema imports for {location}: {e:?}"
+                            "Failed to resolve schema imports for {resolved_location}: {e:?}"
                         )));
                     }
                 }
@@ -1340,6 +1355,86 @@ mod tests {
             }
             _ => panic!("Expected Noop forwarder for testing"),
         }
+    }
+
+    /// Two XML files with the same relative xsi:schemaLocation but different base
+    /// directories must each be compiled against their own schema, not share a
+    /// cached entry built for the other directory.
+    #[test]
+    fn test_schema_cache_no_collision_across_base_dirs() {
+        // Both schemas share the same namespace and relative filename — only content differs.
+        // Schema A defines <Foo>; schema B defines <Bar>.
+        // This ensures the raw cache key ("urn:test:ns=./schema.xsd") is identical for both,
+        // which is exactly the collision scenario.
+        let xsd_a = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:test:ns">
+    <xs:element name="Foo" type="xs:string"/>
+</xs:schema>"#;
+        let xsd_b = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:test:ns">
+    <xs:element name="Bar" type="xs:string"/>
+</xs:schema>"#;
+
+        // Same namespace, same relative schemaLocation — cache key is identical for both.
+        let xml_a = r#"<?xml version="1.0" encoding="UTF-8"?>
+<tns:Foo xmlns:tns="urn:test:ns"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="urn:test:ns ./schema.xsd">content</tns:Foo>"#;
+        let xml_b = r#"<?xml version="1.0" encoding="UTF-8"?>
+<tns:Bar xmlns:tns="urn:test:ns"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="urn:test:ns ./schema.xsd">content</tns:Bar>"#;
+
+        let dir_a = tempfile::tempdir().unwrap();
+        let dir_b = tempfile::tempdir().unwrap();
+        std::fs::write(dir_a.path().join("schema.xsd"), xsd_a).unwrap();
+        std::fs::write(dir_b.path().join("schema.xsd"), xsd_b).unwrap();
+        let path_a = dir_a.path().join("doc.xml");
+        let path_b = dir_b.path().join("doc.xml");
+        std::fs::write(&path_a, xml_a).unwrap();
+        std::fs::write(&path_b, xml_b).unwrap();
+
+        let validator = XmlValidator {
+            params: XmlValidatorParam {
+                attribute: Attribute::new("xml_path"),
+                input_type: XmlInputType::File,
+                validation_type: ValidationType::SyntaxAndSchema,
+            },
+            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+        };
+
+        let make_feature = |path: &std::path::Path| {
+            let mut attrs = IndexMap::new();
+            attrs.insert(
+                Attribute::new("xml_path"),
+                AttributeValue::String(format!("file://{}", path.display())),
+            );
+            Feature::new_with_attributes_and_geometry(attrs, Geometry::new())
+        };
+
+        let feature_a = make_feature(&path_a);
+        let feature_b = make_feature(&path_b);
+
+        // Process A first — populates the in-memory schema cache.
+        let errors_a = validator
+            .check_schema_streaming(&feature_a, xml_a.as_bytes())
+            .unwrap();
+        assert!(
+            errors_a.is_empty(),
+            "doc_a should be valid against schema A, got: {errors_a:?}"
+        );
+
+        // Process B — must NOT reuse A's cached schema.
+        // If the cache key collided, <Bar> would be unknown (schema A only defines <Foo>).
+        let errors_b = validator
+            .check_schema_streaming(&feature_b, xml_b.as_bytes())
+            .unwrap();
+        assert!(
+            errors_b.is_empty(),
+            "doc_b should be valid against schema B, got: {errors_b:?}"
+        );
     }
 
     /// Link (or copy on non-unix) a fixture subdirectory into the temp directory.
