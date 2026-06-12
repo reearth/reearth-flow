@@ -1357,6 +1357,86 @@ mod tests {
         }
     }
 
+    /// Two XML files with the same relative xsi:schemaLocation but different base
+    /// directories must each be compiled against their own schema, not share a
+    /// cached entry built for the other directory.
+    #[test]
+    fn test_schema_cache_no_collision_across_base_dirs() {
+        // Both schemas share the same namespace and relative filename — only content differs.
+        // Schema A defines <Foo>; schema B defines <Bar>.
+        // This ensures the raw cache key ("urn:test:ns=./schema.xsd") is identical for both,
+        // which is exactly the collision scenario.
+        let xsd_a = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:test:ns">
+    <xs:element name="Foo" type="xs:string"/>
+</xs:schema>"#;
+        let xsd_b = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:test:ns">
+    <xs:element name="Bar" type="xs:string"/>
+</xs:schema>"#;
+
+        // Same namespace, same relative schemaLocation — cache key is identical for both.
+        let xml_a = r#"<?xml version="1.0" encoding="UTF-8"?>
+<tns:Foo xmlns:tns="urn:test:ns"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="urn:test:ns ./schema.xsd">content</tns:Foo>"#;
+        let xml_b = r#"<?xml version="1.0" encoding="UTF-8"?>
+<tns:Bar xmlns:tns="urn:test:ns"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="urn:test:ns ./schema.xsd">content</tns:Bar>"#;
+
+        let dir_a = tempfile::tempdir().unwrap();
+        let dir_b = tempfile::tempdir().unwrap();
+        std::fs::write(dir_a.path().join("schema.xsd"), xsd_a).unwrap();
+        std::fs::write(dir_b.path().join("schema.xsd"), xsd_b).unwrap();
+        let path_a = dir_a.path().join("doc.xml");
+        let path_b = dir_b.path().join("doc.xml");
+        std::fs::write(&path_a, xml_a).unwrap();
+        std::fs::write(&path_b, xml_b).unwrap();
+
+        let validator = XmlValidator {
+            params: XmlValidatorParam {
+                attribute: Attribute::new("xml_path"),
+                input_type: XmlInputType::File,
+                validation_type: ValidationType::SyntaxAndSchema,
+            },
+            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+        };
+
+        let make_feature = |path: &std::path::Path| {
+            let mut attrs = IndexMap::new();
+            attrs.insert(
+                Attribute::new("xml_path"),
+                AttributeValue::String(format!("file://{}", path.display())),
+            );
+            Feature::new_with_attributes_and_geometry(attrs, Geometry::new())
+        };
+
+        let feature_a = make_feature(&path_a);
+        let feature_b = make_feature(&path_b);
+
+        // Process A first — populates the in-memory schema cache.
+        let errors_a = validator
+            .check_schema_streaming(&feature_a, xml_a.as_bytes())
+            .unwrap();
+        assert!(
+            errors_a.is_empty(),
+            "doc_a should be valid against schema A, got: {errors_a:?}"
+        );
+
+        // Process B — must NOT reuse A's cached schema.
+        // If the cache key collided, <Bar> would be unknown (schema A only defines <Foo>).
+        let errors_b = validator
+            .check_schema_streaming(&feature_b, xml_b.as_bytes())
+            .unwrap();
+        assert!(
+            errors_b.is_empty(),
+            "doc_b should be valid against schema B, got: {errors_b:?}"
+        );
+    }
+
     /// Link (or copy on non-unix) a fixture subdirectory into the temp directory.
     fn link_fixture_dir(fixture_src: &Path, dest: &Path) {
         #[cfg(unix)]
