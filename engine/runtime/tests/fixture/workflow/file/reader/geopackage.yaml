@@ -13,7 +13,9 @@ graphs:
         type: action
         action: GeoPackageReader
         with:
-          dataset: ram:///fixture/testdata/file/reader/geopackage/test_geopackage.gpkg
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/file/reader/geopackage/test_geopackage.gpkg
           readMode: all
           includeMetadata: true
 

@@ -7,8 +7,9 @@ nodes:
     action: CsvReader
     with:
       format: csv
-      inline: |
-        env.get("csvFile")
+      inline:
+        type: flowExpr
+        value: env["csvFile"]
 
   - id: d2b4977d-e218-4628-96f2-d26407aeea14
     name: AttributeMapper

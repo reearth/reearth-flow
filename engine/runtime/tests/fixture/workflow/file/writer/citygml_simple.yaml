@@ -13,8 +13,9 @@ graphs:
         type: action
         action: CityGmlReader
         with:
-          dataset: |
-            "ram:///fixture/testdata/file/writer/citygml_simple/simple.gml"
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/file/writer/citygml_simple/simple.gml
       - id: c3c93382-cd00-6e3c-ccd7-60e464c430ed
         name: CityGML-Writer
         type: action

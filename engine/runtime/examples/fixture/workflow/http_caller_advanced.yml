@@ -22,19 +22,21 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                title: "Test Post 1",
-                body: "This is the content of post 1",
-                userId: 1
-              },
-              #{
-                title: "Test Post 2",
-                body: "This is the content of post 2",
-                userId: 2
-              }
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "title": "Test Post 1",
+                  "body": "This is the content of post 1",
+                  "userId": 1
+                },
+                {
+                  "title": "Test Post 2",
+                  "body": "This is the content of post 2",
+                  "userId": 2
+                }
+              ]
 
       # Make HTTP POST requests with authentication and retry
       - id: 550e8400-e29b-41d4-a716-446655440030

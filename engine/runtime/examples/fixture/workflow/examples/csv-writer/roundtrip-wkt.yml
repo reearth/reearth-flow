@@ -14,8 +14,9 @@ graphs:
         action: CsvReader
         with:
           format: csv
-          inline: |
-            env.get("inputCsv")
+          inline:
+            type: flowExpr
+            value: env["inputCsv"]
           geometry:
             geometryMode: wkt
             column: geometry

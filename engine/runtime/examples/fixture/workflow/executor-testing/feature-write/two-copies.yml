@@ -68,12 +68,14 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ category: "A" },
-              #{ category: "B" },
-              #{ category: "C" },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"category": "A"},
+                {"category": "B"},
+                {"category": "C"},
+              ]
 
       - id: 30000000-0000-0000-0000-000000000012
         name: FilterSubGraphCopy1

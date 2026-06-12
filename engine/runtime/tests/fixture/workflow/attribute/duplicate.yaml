@@ -10,8 +10,9 @@ graphs:
         type: action
         action: JsonReader
         with:
-          dataset: |
-            "ram:///fixture/testdata/attribute/duplicate/duplicate.json"
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/attribute/duplicate/duplicate.json
 
       - id: a1a91180-ab88-4c1a-aab5-48c242a218cb
         name: Ops-Duplicate-Filter

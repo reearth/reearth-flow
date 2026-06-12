@@ -573,7 +573,6 @@ impl XmlValidator {
                 .map(PathBuf::from)
                 .filter(|p| p.exists())
         });
-
         // --- Step 1: Extract schema locations (streaming, no DOM) ---
         let schema_locations =
             fastxml::parser::parse_schema_locations_from_reader(std::io::Cursor::new(xml_bytes))

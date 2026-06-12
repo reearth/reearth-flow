@@ -13,7 +13,9 @@ graphs:
         type: action
         action: GeoPackageReader
         with:
-          dataset: ram:///fixture/testdata/file/writer/geopackage/test_geopackage.gpkg
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/file/writer/geopackage/test_geopackage.gpkg
           readMode: all
 
       - id: 01234567-0000-0000-0000-000000000104
