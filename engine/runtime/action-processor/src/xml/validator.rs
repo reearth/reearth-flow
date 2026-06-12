@@ -10,7 +10,7 @@ use std::{
 use bytes::Bytes;
 use fastxml::schema::fetcher::{DefaultFetcher, FetchResult, SchemaFetcher};
 use fastxml::schema::types::CompiledSchema;
-use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver};
+use fastxml::schema::xsd::{compile_schemas, register_builtin_types, resolve_uri, SchemaResolver};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
 use reearth_flow_runtime::{
@@ -598,17 +598,19 @@ impl XmlValidator {
         let compiled = if let Some(compiled) = cached {
             compiled
         } else {
-            // Cache miss - compile from scratch
-            let inner = match &base_dir {
-                Some(dir) => DefaultFetcher::with_base_dir(dir),
-                None => DefaultFetcher::new(),
-            };
-            // Persistent on-disk cache: fetched remote schemas are reused across
-            // documents/runs/processes instead of being re-downloaded each time.
+            // Cache miss - compile from scratch.
+            // DefaultFetcher::new() handles both http(s):// and file:// URLs;
+            // relative paths are pre-resolved below so base_dir is not baked in.
             let fetcher = DiskCachingFetcher {
-                inner,
+                inner: DefaultFetcher::new(),
                 dir: SCHEMA_CACHE_DIR.clone(),
             };
+
+            // Resolve relative xsi:schemaLocation paths to absolute file:// URLs
+            // so the disk cache key is always absolute and unique per base directory.
+            let base_file_uri = base_dir
+                .as_ref()
+                .map(|dir| format!("file://{}/", dir.display()));
 
             let mut resolver = SchemaResolver::new(&fetcher);
             for (_namespace, location) in &schema_locations {
@@ -618,15 +620,20 @@ impl XmlValidator {
                 // schema defines types used elsewhere.
                 let is_remote = location.starts_with("http://") || location.starts_with("https://");
 
-                let fetch_result = match fetcher.fetch(location) {
+                let resolved_location = base_file_uri
+                    .as_deref()
+                    .and_then(|base| resolve_uri(base, location).ok())
+                    .unwrap_or_else(|| location.clone());
+
+                let fetch_result = match fetcher.fetch(&resolved_location) {
                     Ok(r) => r,
                     Err(e) if is_remote => {
-                        tracing::warn!(url = %location, error = ?e, "Skipping unreachable remote schema");
+                        tracing::warn!(url = %resolved_location, error = ?e, "Skipping unreachable remote schema");
                         continue;
                     }
                     Err(e) => {
                         return Err(XmlProcessorError::Validator(format!(
-                            "Failed to fetch schema {location}: {e:?}"
+                            "Failed to fetch schema {resolved_location}: {e:?}"
                         )));
                     }
                 };
@@ -635,12 +642,12 @@ impl XmlValidator {
                 match resolver.resolve_entry(&fetch_result.content, base_uri) {
                     Ok(()) => {}
                     Err(e) if is_remote => {
-                        tracing::warn!(url = %location, error = ?e, "Skipping unresolvable remote schema");
+                        tracing::warn!(url = %resolved_location, error = ?e, "Skipping unresolvable remote schema");
                         continue;
                     }
                     Err(e) => {
                         return Err(XmlProcessorError::Validator(format!(
-                            "Failed to resolve schema imports for {location}: {e:?}"
+                            "Failed to resolve schema imports for {resolved_location}: {e:?}"
                         )));
                     }
                 }
