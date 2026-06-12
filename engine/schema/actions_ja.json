@@ -9691,6 +9691,80 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.MissingAttributeDetector",
+      "type": "processor",
+      "description": "Detect missing attributes in PLATEAU features",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "MissingAttributeDetector Parameters",
+        "description": "Configuration for detecting missing attributes in PLATEAU features.",
+        "type": "object",
+        "required": [
+          "packageAttribute"
+        ],
+        "properties": {
+          "packageAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "required",
+        "target",
+        "dataQualityC07",
+        "dataQualityC08"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.ObjectListExtractor",
+      "type": "processor",
+      "description": "Extract object list",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ObjectListExtractor Parameters",
+        "description": "Configuration for extracting object lists from PLATEAU data.",
+        "type": "object",
+        "required": [
+          "objectListPathAttribute"
+        ],
+        "properties": {
+          "objectListPathAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "type": "processor",
       "description": "PLATEAU6データからUDXフォルダを抽出する",

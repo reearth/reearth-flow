@@ -2983,6 +2983,26 @@
       }
     },
     {
+      "name": "PLATEAU6.MissingAttributeDetector",
+      "parameterI18n": {
+        "": {
+          "title": "MissingAttributeDetector Parameters",
+          "description": "Configuration for detecting missing attributes in PLATEAU features."
+        },
+        "packageAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU6.ObjectListExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "ObjectListExtractor Parameters",
+          "description": "Configuration for extracting object lists from PLATEAU data."
+        },
+        "objectListPathAttribute": {}
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "PLATEAU6データからUDXフォルダを抽出する",
       "parameterI18n": {
