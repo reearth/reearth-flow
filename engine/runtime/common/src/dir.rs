@@ -78,7 +78,7 @@ pub fn copy_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
 
 /// Moves a file like Unix `mv`: rename if possible, else copy + delete.
 /// Always use this function instead of fs::rename to move files to another directory.
-pub fn move_file<P: AsRef<Path>>(src: P, dst: P) -> io::Result<()> {
+pub fn move_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
     match fs::rename(&src, &dst) {
         Ok(_) => Ok(()),
         Err(err) if err.kind() == io::ErrorKind::CrossesDevices => {
