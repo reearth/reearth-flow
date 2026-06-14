@@ -45,7 +45,8 @@ export default function usePagination<
     initialSearchTerm: "",
     delay: 300,
     onDebounced: () => {
-      refetch();
+      if (!workspaceId) return;
+      void refetch();
     },
   });
 
@@ -60,10 +61,11 @@ export default function usePagination<
   };
 
   useEffect(() => {
-    (async () => {
-      await refetch();
+    (() => {
+      if (!workspaceId) return;
+      void refetch();
     })();
-  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
+  }, [currentPage, currentOrderDir, currentOrderBy, workspaceId, refetch]);
 
   const totalPages = page?.totalPages as number;
 
