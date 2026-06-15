@@ -53,6 +53,9 @@ func ToJob(j *job.Job) *Job {
 	if userFacingLogsURL := j.UserFacingLogsURL(); userFacingLogsURL != "" {
 		job.UserFacingLogsURL = &userFacingLogsURL
 	}
+	if previewSchemaURL := j.PreviewSchemaURL(); previewSchemaURL != "" {
+		job.PreviewSchemaURL = &previewSchemaURL
+	}
 	if debug := j.Debug(); debug != nil {
 		job.Debug = debug
 	}

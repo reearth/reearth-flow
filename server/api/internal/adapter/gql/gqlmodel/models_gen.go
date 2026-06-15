@@ -314,6 +314,7 @@ type Job struct {
 	LogsURL           *string     `json:"logsURL,omitempty"`
 	WorkerLogsURL     *string     `json:"workerLogsURL,omitempty"`
 	UserFacingLogsURL *string     `json:"userFacingLogsURL,omitempty"`
+	PreviewSchemaURL  *string     `json:"previewSchemaUrl,omitempty"`
 	OutputURLs        []string    `json:"outputURLs,omitempty"`
 	StartedAt         time.Time   `json:"startedAt"`
 	Status            JobStatus   `json:"status"`
@@ -421,6 +422,18 @@ type ParameterUpdateItem struct {
 	Public       bool          `json:"public"`
 	DefaultValue any           `json:"defaultValue,omitempty"`
 	Config       JSON          `json:"config,omitempty"`
+}
+
+type PreviewSchemaInput struct {
+	ProjectID   ID                   `json:"projectId"`
+	WorkspaceID ID                   `json:"workspaceId"`
+	File        graphql.Upload       `json:"file"`
+	Parameters  []*RunParameterInput `json:"parameters,omitempty"`
+	SampleSize  *int                 `json:"sampleSize,omitempty"`
+}
+
+type PreviewSchemaPayload struct {
+	Job *Job `json:"job"`
 }
 
 type PreviewSnapshot struct {

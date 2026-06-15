@@ -51,6 +51,10 @@ func (f *fakeFile) GetJobUserFacingLogURL(string) string                        
 func (f *fakeFile) CheckJobUserFacingLogExists(context.Context, string) (bool, error) {
 	panic("unused")
 }
+func (f *fakeFile) GetJobPreviewSchemaURL(string) string { panic("unused") }
+func (f *fakeFile) CheckJobPreviewSchemaExists(context.Context, string) (bool, error) {
+	panic("unused")
+}
 func (f *fakeFile) GetIntermediateDataURL(context.Context, string, string) string { panic("unused") }
 func (f *fakeFile) CheckIntermediateDataExists(context.Context, string, string) (bool, error) {
 	panic("unused")
@@ -129,4 +133,72 @@ func TestRunJob_MapsCancelled(t *testing.T) {
 	st, err := repo.RunJob(context.Background(), gateway.RunJobParam{JobID: id.NewJobID(), WorkflowURL: "w", MetadataURL: "m"})
 	assert.NoError(t, err)
 	assert.Equal(t, gateway.JobStatusCancelled, st)
+}
+
+func TestPreviewSchema_HitsDedicatedRouteWithBody(t *testing.T) {
+	var gotPath string
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"COMPLETED"}`))
+	}))
+	defer srv.Close()
+
+	repo := &Worker{serviceURL: srv.URL, file: &fakeFile{bucket: "b"}, httpClient: srv.Client()}
+	jid := id.NewJobID()
+	n := 25
+	st, err := repo.PreviewSchema(context.Background(), gateway.ProbeSchemaParam{
+		JobID:       jid,
+		WorkflowURL: "https://wf",
+		Variables:   map[string]string{"city": "tokyo"},
+		SampleSize:  &n,
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, gateway.JobStatusCompleted, st)
+	// Dedicated route, NOT /run.
+	assert.Equal(t, "/probe-schema", gotPath)
+	assert.Contains(t, string(gotBody), `"job_id":"`+jid.String()+`"`)
+	assert.Contains(t, string(gotBody), `"workflow_url":"https://wf"`)
+	assert.Contains(t, string(gotBody), `"sample_size":25`)
+	assert.Contains(t, string(gotBody), `"city":"tokyo"`)
+	// The probe request must not carry run-only fields.
+	assert.NotContains(t, string(gotBody), "metadata_path")
+}
+
+func TestPreviewSchema_500IsFailed(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"status":"FAILED","error":"probe boom"}`))
+	}))
+	defer srv.Close()
+
+	repo := &Worker{serviceURL: srv.URL, file: &fakeFile{bucket: "b"}, httpClient: srv.Client()}
+	st, err := repo.PreviewSchema(context.Background(), gateway.ProbeSchemaParam{
+		JobID:       id.NewJobID(),
+		WorkflowURL: "w",
+	})
+	assert.Equal(t, gateway.JobStatusFailed, st)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "500")
+	assert.Contains(t, err.Error(), "probe boom")
+	assert.Contains(t, err.Error(), "probe-schema")
+}
+
+func TestPreviewSchema_OmitsSampleSizeWhenNil(t *testing.T) {
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		_, _ = w.Write([]byte(`{"status":"COMPLETED"}`))
+	}))
+	defer srv.Close()
+
+	repo := &Worker{serviceURL: srv.URL, file: &fakeFile{bucket: "b"}, httpClient: srv.Client()}
+	_, _ = repo.PreviewSchema(context.Background(), gateway.ProbeSchemaParam{
+		JobID:       id.NewJobID(),
+		WorkflowURL: "w",
+	})
+	assert.NotContains(t, string(gotBody), "sample_size")
 }

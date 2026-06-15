@@ -85,6 +85,16 @@ func (b *JobBuilder) MetadataURL(metadataURL string) *JobBuilder {
 	return b
 }
 
+func (b *JobBuilder) Mode(mode Mode) *JobBuilder {
+	b.j.mode = mode
+	return b
+}
+
+func (b *JobBuilder) PreviewSchemaURL(previewSchemaURL string) *JobBuilder {
+	b.j.previewSchemaURL = previewSchemaURL
+	return b
+}
+
 func (b *JobBuilder) OutputURLs(outputURLs []string) *JobBuilder {
 	b.j.outputURLs = outputURLs
 	return b
