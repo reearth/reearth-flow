@@ -26,7 +26,7 @@ export default ({ workspace }: { workspace?: Workspace }) => {
   } = usePagination({
     useDataQuery: useGetWorkspaceProjects,
     workspaceId: workspace?.id,
-    defaultOrderBy: ProjectOrderBy.CreatedAt,
+    defaultOrderBy: ProjectOrderBy.UpdatedAt,
   });
 
   const projects = useMemo(() => page?.projects, [page]);
