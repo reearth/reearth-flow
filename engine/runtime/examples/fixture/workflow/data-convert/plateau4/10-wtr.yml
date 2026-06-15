@@ -10,7 +10,6 @@ with:
   schemas: null
   targetPackages:
   - wtr
-  workerArtifactPath: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -285,15 +284,17 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("cityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env["cityGmlPath"],
+              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: 76953c1a-33fb-401e-af09-787d10ff466a
     name: FolderAndFilePathReader
     type: subGraph
@@ -303,10 +304,13 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: true
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
     name: TargetPackagesFilter
     type: action
@@ -327,7 +331,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: Url(attributes["path"]).name.split("_")[0]
+          value: attributes["path"].split("/")[-1].split("_")[0]
       - attribute: gml_id
         method: create
         value:
@@ -414,12 +418,12 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod0")
+        value: attributes["package"] + "_lod0"
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
-          Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_mvt_lod0.zip")
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+          city_gml + "_" + attributes["package"] + "_mvt_lod0.zip"
       skipUnexposedAttributes: true
       colonToUnderscore: true
   - id: 674b22f7-ffb7-4594-b569-4c4f780326ce
@@ -435,12 +439,12 @@ graphs:
       output:
         type: flowExpr
         value: |
-          Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod1")
+          attributes["package"] + "_lod1"
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
-          Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod1.zip")
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+          city_gml + "_" + attributes["package"] + "_3dtiles_lod1.zip"
   edges:
   - id: a869fc02-dfdb-4c39-ac49-7329be13c1b9
     from: 6935ea45-2f34-4047-a33d-e8c34416e328

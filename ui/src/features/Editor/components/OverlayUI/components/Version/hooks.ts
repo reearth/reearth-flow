@@ -156,6 +156,7 @@ export default ({
         previewDocRef.current.destroy();
         previewDocRef.current = null;
       }
+      setPreviewDocYWorkflows(null);
       setIsLoadingPreview(true);
 
       try {

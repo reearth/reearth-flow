@@ -11,7 +11,6 @@ with:
   schemas:
   targetPackages:
     - ubld
-  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -24,15 +23,17 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: 499dfcd0-66df-4354-818e-6d5ed077db2c
         name: FolderAndFilePathReader
@@ -44,11 +45,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       - id: 35f39a3b-24b8-4673-9f59-ca5a0b3b8e4c
         name: TargetPackagesFilter
         type: action
@@ -70,7 +73,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'Url(attributes["path"]).name.split("_")[0]'
+                value: 'attributes["path"].split("/")[-1].split("_")[0]'
             - attribute: gml_id
               method: create
               value:
@@ -153,12 +156,12 @@ graphs:
           output:
             type: flowExpr
             value: |
-              Url(env["workerArtifactPath"]) / (attributes["package"] + "_lod" + attributes["lod"])
+              attributes["package"] + "_lod" + attributes["lod"]
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
-              Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["package"] + "_3dtiles_lod" + attributes["lod"] + ".zip")
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+              city_gml + "_" + attributes["package"] + "_3dtiles_lod" + attributes["lod"] + ".zip"
 
     edges:
       - id: 25accc00-50d0-4fe9-a289-0e84ecaca659

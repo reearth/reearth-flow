@@ -73,6 +73,10 @@ pub enum Token {
     For,
     #[token("return")]
     Return,
+    #[token("fn")]
+    Fn,
+    #[token("let")]
+    Let,
 
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Ident(String),

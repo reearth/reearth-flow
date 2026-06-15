@@ -1,17 +1,22 @@
-import { Button } from "@flow/components";
+import { PlusIcon } from "@phosphor-icons/react";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  IconButton,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 import type { Action } from "@flow/types";
-import { getNodeIcon } from "@flow/utils/getNodeIcon";
-
-import { typeColorClass } from "../utils";
+import { typeColorClass, getNodeIcon } from "@flow/utils";
 
 type Props = {
   action?: Action;
   onAdd?: (name: string) => void;
 };
 
-const ActionPickerDetail = ({ action, onAdd }: Props) => {
+const ActionDetails = ({ action, onAdd }: Props) => {
   const t = useT();
 
   if (!action) {
@@ -25,19 +30,40 @@ const ActionPickerDetail = ({ action, onAdd }: Props) => {
   const Icon = getNodeIcon(action.type);
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex items-center gap-3">
-        <div
-          className={cn("shrink-0 rounded p-1.5", typeColorClass(action.type))}>
-          <Icon size={20} weight="thin" className="text-white" />
+    <div className="mx-2 mb-2 flex flex-col gap-4 rounded-xl border border-primary bg-secondary p-4">
+      <div className="flex justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "shrink-0 rounded p-1.5",
+              typeColorClass(action.type),
+            )}>
+            <Icon size={20} weight="thin" className="text-white" />
+          </div>
+          <h2 className="text-lg font-semibold">{action.name}</h2>
         </div>
-        <h2 className="text-lg font-semibold">{action.name}</h2>
+        {onAdd && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="outline"
+                icon={
+                  <PlusIcon size={20} weight="thin" className="text-white " />
+                }
+                onClick={() => onAdd?.(action.name)}
+              />
+            </TooltipTrigger>
+            <TooltipContent>{t("Add to canvas")}</TooltipContent>
+          </Tooltip>
+        )}
       </div>
-
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-col flex-wrap gap-1.5">
+        <p className="items-center text-xs font-semibold tracking-wide text-muted-foreground">
+          {t("Type")}
+        </p>
         <div
           className={cn(
-            "self-center rounded border p-1 align-middle",
+            "self-start rounded border p-1 align-middle",
             typeColorClass(action.type),
           )}>
           <p className="self-center text-xs text-zinc-200 capitalize">
@@ -45,20 +71,22 @@ const ActionPickerDetail = ({ action, onAdd }: Props) => {
           </p>
         </div>
       </div>
-      <div className="flex flex-col flex-wrap  gap-1.5">
+      <div className="flex flex-col flex-wrap gap-1.5">
         <p className="items-center text-xs font-semibold tracking-wide text-muted-foreground">
           {t("Categories")}
         </p>
         <div className="flex">
           {action.categories.map((c) => (
-            <div key={c} className="w-fit rounded border bg-secondary/80 p-0.5">
+            <div
+              key={c}
+              className="w-fit rounded border bg-secondary/80 px-1 py-0.5">
               <p className="self-center text-xs ">{c}</p>
             </div>
           ))}
         </div>
       </div>
       {action.tags && action.tags.length > 0 && (
-        <div className="flex flex-col flex-wrap  gap-1.5">
+        <div className="flex flex-col flex-wrap gap-1.5">
           <p className="items-center text-xs font-semibold tracking-wide text-muted-foreground">
             {t("Tags")}
           </p>
@@ -66,7 +94,7 @@ const ActionPickerDetail = ({ action, onAdd }: Props) => {
             {action.tags.map((tag) => (
               <div
                 key={tag}
-                className="w-fit rounded border bg-secondary/80 p-0.5">
+                className="w-fit rounded border bg-secondary/80 px-1 py-0.5">
                 <p className="self-center text-xs ">{tag}</p>
               </div>
             ))}
@@ -82,12 +110,8 @@ const ActionPickerDetail = ({ action, onAdd }: Props) => {
           <p className="text-sm leading-relaxed">{action.description}</p>
         </div>
       )}
-
-      <Button className="mt-auto w-full" onClick={() => onAdd?.(action.name)}>
-        {t("Add to canvas")}
-      </Button>
     </div>
   );
 };
 
-export default ActionPickerDetail;
+export { ActionDetails };

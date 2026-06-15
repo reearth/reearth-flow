@@ -2,10 +2,10 @@ mod citygml;
 mod csv;
 mod json;
 
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::collections::HashMap;
 
 use indexmap::IndexMap;
-use reearth_flow_common::{csv::Delimiter, uri::Uri};
+use reearth_flow_common::csv::Delimiter;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{lod::LodMask, Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{lod::LodMask, Attribute, AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,12 +50,12 @@ impl ProcessorFactory for FeatureWriterFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureWriterParam = if let Some(with) = with.clone() {
+        let params: FeatureWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FeatureWriterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -73,33 +73,26 @@ impl ProcessorFactory for FeatureWriterFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         match params {
             FeatureWriterParam::Csv { common_param } => {
-                let common_param = CompiledCommonWriterParam {
-                    output: expr_engine
-                        .compile(common_param.output.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                        })?,
+                let common_param = CommonWriterCompiledParam {
+                    output: common_param.output.compile().map_err(|e| {
+                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
+                    })?,
                 };
                 let process = FeatureWriter {
-                    global_params: with,
                     params: CompiledFeatureWriterParam::Csv { common_param },
                     buffer: HashMap::new(),
                 };
                 Ok(Box::new(process))
             }
             FeatureWriterParam::Tsv { common_param } => {
-                let common_param = CompiledCommonWriterParam {
-                    output: expr_engine
-                        .compile(common_param.output.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                        })?,
+                let common_param = CommonWriterCompiledParam {
+                    output: common_param.output.compile().map_err(|e| {
+                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
+                    })?,
                 };
                 let process = FeatureWriter {
-                    global_params: with,
                     params: CompiledFeatureWriterParam::Tsv { common_param },
                     buffer: HashMap::new(),
                 };
@@ -109,22 +102,17 @@ impl ProcessorFactory for FeatureWriterFactory {
                 common_param,
                 param,
             } => {
-                let common_param = CompiledCommonWriterParam {
-                    output: expr_engine
-                        .compile(common_param.output.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                        })?,
-                };
-                let converter = if let Some(expr) = param.converter {
-                    Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
+                let common_param = CommonWriterCompiledParam {
+                    output: common_param.output.compile().map_err(|e| {
                         FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                    })?)
-                } else {
-                    None
+                    })?,
                 };
+                let converter = param
+                    .converter
+                    .map(|code| code.compile())
+                    .transpose()
+                    .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
                 let process = FeatureWriter {
-                    global_params: with,
                     params: CompiledFeatureWriterParam::Json {
                         common_param,
                         param: json::CompiledJsonWriterParam { converter },
@@ -137,16 +125,13 @@ impl ProcessorFactory for FeatureWriterFactory {
                 common_param,
                 param,
             } => {
-                let common_param = CompiledCommonWriterParam {
-                    output: expr_engine
-                        .compile(common_param.output.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                        })?,
+                let common_param = CommonWriterCompiledParam {
+                    output: common_param.output.compile().map_err(|e| {
+                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
+                    })?,
                 };
                 let lod_mask = citygml::build_lod_mask(&param.lod_filter);
                 let process = FeatureWriter {
-                    global_params: with,
                     params: CompiledFeatureWriterParam::CityGml {
                         common_param,
                         lod_mask,
@@ -163,16 +148,15 @@ impl ProcessorFactory for FeatureWriterFactory {
 
 #[derive(Debug, Clone)]
 struct FeatureWriter {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureWriterParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
+    pub(super) buffer: HashMap<String, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct CommonWriterParam {
     /// # Output path
-    pub(super) output: Expr,
+    pub(super) output: Code,
 }
 
 /// # FeatureWriter Parameters
@@ -210,17 +194,17 @@ enum FeatureWriterParam {
 #[derive(Debug, Clone)]
 enum CompiledFeatureWriterParam {
     Csv {
-        common_param: CompiledCommonWriterParam,
+        common_param: CommonWriterCompiledParam,
     },
     Tsv {
-        common_param: CompiledCommonWriterParam,
+        common_param: CommonWriterCompiledParam,
     },
     Json {
-        common_param: CompiledCommonWriterParam,
+        common_param: CommonWriterCompiledParam,
         param: json::CompiledJsonWriterParam,
     },
     CityGml {
-        common_param: CompiledCommonWriterParam,
+        common_param: CommonWriterCompiledParam,
         lod_mask: LodMask,
         epsg_code: Option<u32>,
         pretty_print: bool,
@@ -228,12 +212,12 @@ enum CompiledFeatureWriterParam {
 }
 
 #[derive(Debug, Clone)]
-struct CompiledCommonWriterParam {
-    output: rhai::AST,
+struct CommonWriterCompiledParam {
+    output: CompiledCode,
 }
 
 impl CompiledFeatureWriterParam {
-    fn output(&self) -> &rhai::AST {
+    fn output(&self) -> &CompiledCode {
         match self {
             CompiledFeatureWriterParam::Csv { common_param } => &common_param.output,
             CompiledFeatureWriterParam::Tsv { common_param } => &common_param.output,
@@ -250,13 +234,14 @@ impl Processor for FeatureWriter {
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let output = self.params.output().clone();
-        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
-        let path = scope
-            .eval_ast::<String>(&output)
-            .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
-        let output = Uri::from_str(path.as_str())?;
-        let buffer = self.buffer.entry(output).or_default();
+        let path = self
+            .params
+            .output()
+            .eval_string(feature, ctx.expr_engine.vars())
+            .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
+        // Validation happens at flush time via SinkOutput::new; nothing to
+        // pre-check here. The buffer is keyed by the raw relative-path string.
+        let buffer = self.buffer.entry(path).or_default();
         buffer.push(ctx.feature);
         Ok(())
     }
@@ -266,7 +251,20 @@ impl Processor for FeatureWriter {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for (output, features) in &self.buffer {
+        for (rel_path, features) in &self.buffer {
+            // SinkOutput::new validates the path and acquires the storage backend,
+            // providing the sandbox gate at flush time.
+            let sink_output = reearth_flow_action_sink::SinkOutput::new(
+                &ctx.sandbox_root,
+                rel_path,
+                &ctx.storage_resolver,
+            )
+            .map_err(|e| {
+                FeatureProcessorError::FeatureWriter(format!(
+                    "sink output {rel_path:?} rejected by sandbox: {e}"
+                ))
+            })?;
+            let output = sink_output.uri();
             let feature: Feature = IndexMap::<Attribute, AttributeValue>::from([
                 (
                     Attribute::new("filePath".to_string()),
@@ -278,14 +276,6 @@ impl Processor for FeatureWriter {
                 ),
             ])
             .into();
-            // Enforce sandbox: CSV/TSV/JSON/CityGML all write directly to
-            // `output`; without this check `FeatureWriter` would be an
-            // out-of-sandbox escape hatch alongside the sink writers.
-            reearth_flow_action_sink::ensure_under(&ctx.sandbox_root, output).map_err(|e| {
-                FeatureProcessorError::FeatureWriter(format!(
-                    "output {output} rejected by sandbox: {e}"
-                ))
-            })?;
             match self.params {
                 CompiledFeatureWriterParam::Csv { .. } => {
                     csv::write_csv(output, Delimiter::Comma, &ctx.storage_resolver, features)?;
@@ -301,7 +291,7 @@ impl Processor for FeatureWriter {
                         output,
                         &param.converter,
                         &ctx.storage_resolver,
-                        &ctx.expr_engine,
+                        ctx.expr_engine.vars(),
                         features,
                     )?;
                 }

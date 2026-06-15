@@ -13,8 +13,8 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
 use super::reader::csv;
-use super::reader::runner::get_content;
-use crate::{errors::SourceError, file::reader::runner::FileReaderCommonParam};
+use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
+use crate::errors::SourceError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CsvReaderFactory;
@@ -52,7 +52,7 @@ impl SourceFactory for CsvReaderFactory {
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: CsvReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::CsvReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -67,14 +67,31 @@ impl SourceFactory for CsvReaderFactory {
             )
             .into());
         };
-        let reader = CsvReader { params };
-        Ok(Box::new(reader))
+        let compiled_params = CsvReaderCompiledParam {
+            common: params.common_property.compile().map_err(|e| {
+                SourceError::CsvReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            property: params.property,
+            format: params.format,
+            encoding: params.encoding,
+        };
+        Ok(Box::new(CsvReader {
+            params: compiled_params,
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
+struct CsvReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    property: csv::CsvReaderParam,
+    format: CsvFormat,
+    encoding: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct CsvReader {
-    params: CsvReaderParam,
+    params: CsvReaderCompiledParam,
 }
 
 /// # CsvReader Parameters
@@ -143,8 +160,7 @@ impl Source for CsvReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
         csv::read_csv(
             self.params.format.delimiter(),
             &content,

@@ -12,8 +12,8 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
 use super::reader::geojson;
-use super::reader::runner::get_content;
-use crate::{errors::SourceError, file::reader::runner::FileReaderCommonParam};
+use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
+use crate::errors::SourceError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GeoJsonReaderFactory;
@@ -51,7 +51,7 @@ impl SourceFactory for GeoJsonReaderFactory {
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: GeoJsonReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::GeoJsonReaderFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -68,14 +68,16 @@ impl SourceFactory for GeoJsonReaderFactory {
             )
             .into());
         };
-        let reader = GeoJsonReader { params };
-        Ok(Box::new(reader))
+        let common = params.common_property.compile().map_err(|e| {
+            SourceError::GeoJsonReaderFactory(format!("Failed to compile params: {e:?}"))
+        })?;
+        Ok(Box::new(GeoJsonReader { common }))
     }
 }
 
 #[derive(Debug, Clone)]
 pub(super) struct GeoJsonReader {
-    pub(super) params: GeoJsonReaderParam,
+    common: FileReaderCompiledParam,
 }
 
 /// # GeoJsonReader Parameters
@@ -107,7 +109,7 @@ impl Source for GeoJsonReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&ctx, &self.common, storage_resolver).await?;
         geojson::read_geojson(&content, sender)
             .await
             .map_err(Into::<BoxedError>::into)

@@ -26,27 +26,25 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            env.get("__value").featureType
+          valueAttribute: featureType
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: issue
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   - id: a7b3c9e5-4f8d-4c2e-9a1b-6e3f5d8c2a7b
     name: FeatureWriterLod0IncorrectOrientation
@@ -54,9 +52,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_LOD0面の向きエラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_LOD0面の向きエラー.csv
   - id: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lod0IncorrectOrientationCounter
     type: action
@@ -81,9 +79,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_LOD0面のエラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_LOD0面のエラー.csv
   - id: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: Lod0InvalidSurfaceCounter
     type: action
@@ -115,27 +113,25 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            env.get("__value").featureType
+          valueAttribute: featureType
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: issue
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   - id: d5a7b9f3-6e4c-4d8a-9f2b-3c7e8d5a6b9f
     name: FeatureWriterLod1InvalidSurface
@@ -143,9 +139,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_LOD1境界面のエラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_LOD1境界面のエラー.csv
   - id: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     name: Lod1InvalidSurfaceCounter
     type: action
@@ -202,27 +198,25 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            env.get("__value").featureType
+          valueAttribute: featureType
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: issue
-          expr: |
-            let value = env.get("__value");
-            if value.validationResult?.details != () {
-              return value.validationResult.details[0][0];
-            }
-            if "issue" in value {
-              return value.issue;
-            }
-            "UnknownError"
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
 
   - id: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
     name: FeatureWriterLod2-4InvalidSurface
@@ -230,9 +224,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_LOD2以上境界面のエラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_LOD2以上境界面のエラー.csv
   - id: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     name: ErrorCount-Lod2InvalidSurface
     type: action
@@ -314,24 +308,25 @@ nodes:
     with:
       mappers:
         - attribute: filename_a
-          expr: env.get("__value").gmlFilename_1
+          valueAttribute: gmlFilename_1
         - attribute: filename_b
-          expr: env.get("__value").gmlFilename_2
+          valueAttribute: gmlFilename_2
         - attribute: feature_type_a
-          expr: env.get("__value").featureType_1
+          valueAttribute: featureType_1
         - attribute: feature_type_b
-          expr: env.get("__value").featureType_2
+          valueAttribute: featureType_2
         - attribute: lod_a
-          expr: env.get("__value").lod_1
+          valueAttribute: lod_1
         - attribute: lod_b
-          expr: env.get("__value").lod_2
+          valueAttribute: lod_2
         - attribute: gml_id_a
-          expr: env.get("__value").gmlId_1
+          valueAttribute: gmlId_1
         - attribute: gml_id_b
-          expr: env.get("__value").gmlId_2
+          valueAttribute: gmlId_2
         - attribute: issue
-          expr: |
-            "Surface Intersection"
+          expr:
+            type: string
+            value: Surface Intersection
 
   - id: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
     name: FeatureWriterLod0SurfaceIntersection
@@ -339,9 +334,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_LOD0面の交差.csv")
-
+      output:
+        type: string
+        value: 02_建築物_LOD0面の交差.csv
   - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: Lod0SurfaceIntersectionCounter
     type: action
@@ -390,29 +385,21 @@ nodes:
     with:
       mappers:
         - attribute: gmlFilename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            env.get("__value").featureType
+          valueAttribute: featureType
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: meshcode
-          expr: |
-            env.get("__value").meshcode
+          valueAttribute: meshcode
         - attribute: meshcount
-          expr: |
-            env.get("__value")._mesh_count
+          valueAttribute: _mesh_count
         - attribute: mesh2area
-          expr: |
-            env.get("__value")._meshcode_to_area
+          valueAttribute: _meshcode_to_area
 
   - id: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeManagerIncorrectMeshCode
@@ -429,9 +416,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_図郭不正.csv")
-
+      output:
+        type: string
+        value: 02_建築物_図郭不正.csv
   - id: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
     name: IncorrectMeshCodeCounter
     type: action
@@ -486,20 +473,17 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            env.get("__value").featureType
+          valueAttribute: featureType
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: issue
-          expr: |
-            "Surface Not Closed"
+          expr:
+            type: string
+            value: Surface Not Closed
 
   - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
     name: FeatureWriterL14-BoundaryNotClosed
@@ -507,9 +491,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_非水密体.csv")
-
+      output:
+        type: string
+        value: 02_建築物_非水密体.csv
   - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: Lod1-4NotClosedSolidCounter
     type: action
@@ -545,20 +529,17 @@ nodes:
     with:
       mappers:
         - attribute: filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: feature_type
-          expr: |
-            env.get("__value").featureType
+          valueAttribute: featureType
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: lod
-          expr: |
-            env.get("__value").lod
+          valueAttribute: lod
         - attribute: issue
-          expr: |
-            "InvalidSolidBoundaries"
+          expr:
+            type: string
+            value: InvalidSolidBoundaries
 
   - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
     name: FeatureWriterL14-BoundaryOtherIssues
@@ -566,9 +547,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_立体のエラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_立体のエラー.csv
   - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     name: Lod1-4SolidIssuesCounter
     type: action
@@ -789,35 +770,47 @@ nodes:
     with:
       mappers:
         - attribute: intersection_id
-          expr: |
-            "lod" + env.get("__value").attrList[0].lod + "_" + env.get("__value").attrList[0].pair_id
+          expr:
+            type: flowExpr
+            value: |
+              item = attributes["attrList"][0];
+              "lod" + str(item["lod"]) + "_" + str(item["pair_id"])
         - attribute: gmlFilenameA
-          expr: |
-            env.get("__value").attrList[0].gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][0]["gmlFilename"]
         - attribute: gmlFilenameB
-          expr: |
-            env.get("__value").attrList[1].gmlFilename
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][1]["gmlFilename"]
         - attribute: featureTypeA
-          expr: |
-            env.get("__value").attrList[0].featureType
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][0]["featureType"]
         - attribute: featureTypeB
-          expr: |
-            env.get("__value").attrList[1].featureType
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][1]["featureType"]
         - attribute: lodA
-          expr: |
-            env.get("__value").attrList[0].lod
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][0]["lod"]
         - attribute: lodB
-          expr: |
-            env.get("__value").attrList[1].lod
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][1]["lod"]
         - attribute: gmlIdA
-          expr: |
-            env.get("__value").attrList[0].gmlId
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][0]["gmlId"]
         - attribute: gmlIdB
-          expr: |
-            env.get("__value").attrList[1].gmlId
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][1]["gmlId"]
         - attribute: issue
-          expr: |
-            "Solid Intersection"
+          expr:
+            type: string
+            value: Solid Intersection
 
   - id: 99cbea75-f9dc-429c-9d42-0213a893090d
     name: FeatureWriterLod1SolidIntersection
@@ -825,9 +818,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_立体交差.csv")
-
+      output:
+        type: string
+        value: 02_建築物_立体交差.csv
   - id: 11d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
     name: SolidIntersectionCounter
     type: action

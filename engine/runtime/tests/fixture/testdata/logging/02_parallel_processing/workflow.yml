@@ -2,7 +2,6 @@ id: 00caad2a-9f7d-4189-b479-153fa9ea36e2
 name: "Parallel Processing Test"
 entryGraphId: 7a8b9c0d-1e2f-3456-ef12-345678900002
 with:
-  workerArtifactPath: null
 graphs:
   - id: 7a8b9c0d-1e2f-3456-ef12-345678900002
     name: main_graph
@@ -12,22 +11,25 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [#{"source": "creator1", "value": 100}]
+          creator:
+            type: flowExpr
+            value: '[{"source": "creator1", "value": 100}]'
       - id: a2fc0a3e-61d3-48e2-a328-e7226c2ad1aa
         name: FeatureCreator2
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [#{"source": "creator2", "value": 200}]
+          creator:
+            type: flowExpr
+            value: '[{"source": "creator2", "value": 200}]'
       - id: a3fc0a3e-61d3-48e2-a328-e7226c2ad1aa
         name: FeatureCreator3
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [#{"source": "creator3", "value": 300}]
+          creator:
+            type: flowExpr
+            value: '[{"source": "creator3", "value": 300}]'
       - id: b2f50a3e-61d3-48e2-a328-e7226c2ad1aa
         name: BulkAttributeRenamer
         type: action
@@ -41,8 +43,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "result.json")
+          output:
+            type: string
+            value: result.json
     edges:
       - id: e1fc0a3e-61d3-48e2-a328-e7226c2ad1aa
         from: a1fc0a3e-61d3-48e2-a328-e7226c2ad1aa

@@ -3,7 +3,7 @@ pub(super) mod citygml3;
 mod csv;
 mod json;
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Expr;
+use reearth_flow_types::{Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,7 +50,7 @@ impl ProcessorFactory for FeatureReaderFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -73,7 +73,6 @@ impl ProcessorFactory for FeatureReaderFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         match params {
             FeatureReaderParam::Csv {
                 common_param,
@@ -81,20 +80,18 @@ impl ProcessorFactory for FeatureReaderFactory {
                 encoding,
             } => {
                 let compiled_common_param = CompiledCommonReaderParam {
-                    expr: expr_engine
-                        .compile(common_param.dataset.as_ref())
+                    dataset: common_param
+                        .dataset
+                        .compile()
                         .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
-                    original_expr: common_param.dataset.clone(),
                 };
-                let process = FeatureReader {
-                    global_params: with,
+                Ok(Box::new(FeatureReader {
                     params: CompiledFeatureReaderParam::Csv {
                         common_param: compiled_common_param,
                         param,
                         encoding,
                     },
-                };
-                Ok(Box::new(process))
+                }))
             }
             FeatureReaderParam::Tsv {
                 common_param,
@@ -102,35 +99,31 @@ impl ProcessorFactory for FeatureReaderFactory {
                 encoding,
             } => {
                 let compiled_common_param = CompiledCommonReaderParam {
-                    expr: expr_engine
-                        .compile(common_param.dataset.as_ref())
+                    dataset: common_param
+                        .dataset
+                        .compile()
                         .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
-                    original_expr: common_param.dataset.clone(),
                 };
-                let process = FeatureReader {
-                    global_params: with,
+                Ok(Box::new(FeatureReader {
                     params: CompiledFeatureReaderParam::Tsv {
                         common_param: compiled_common_param,
                         param,
                         encoding,
                     },
-                };
-                Ok(Box::new(process))
+                }))
             }
             FeatureReaderParam::Json { common_param } => {
                 let compiled_common_param = CompiledCommonReaderParam {
-                    expr: expr_engine
-                        .compile(common_param.dataset.as_ref())
+                    dataset: common_param
+                        .dataset
+                        .compile()
                         .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
-                    original_expr: common_param.dataset.clone(),
                 };
-                let process = FeatureReader {
-                    global_params: with,
+                Ok(Box::new(FeatureReader {
                     params: CompiledFeatureReaderParam::Json {
                         common_param: compiled_common_param,
                     },
-                };
-                Ok(Box::new(process))
+                }))
             }
         }
     }
@@ -138,7 +131,6 @@ impl ProcessorFactory for FeatureReaderFactory {
 
 #[derive(Debug, Clone)]
 struct FeatureReader {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureReaderParam,
 }
 
@@ -150,7 +142,7 @@ struct FeatureReader {
 struct CommonReaderParam {
     /// # Dataset
     /// Path or expression to the dataset file to be read
-    dataset: Expr,
+    dataset: Code,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -208,8 +200,7 @@ enum CompiledFeatureReaderParam {
 
 #[derive(Debug, Clone)]
 struct CompiledCommonReaderParam {
-    expr: rhai::AST,
-    original_expr: reearth_flow_types::Expr,
+    dataset: CompiledCode,
 }
 
 impl Processor for FeatureReader {
@@ -220,7 +211,6 @@ impl Processor for FeatureReader {
     ) -> Result<(), BoxedError> {
         match self {
             FeatureReader {
-                global_params,
                 params:
                     CompiledFeatureReaderParam::Csv {
                         common_param,
@@ -229,7 +219,6 @@ impl Processor for FeatureReader {
                     },
             } => csv::read_csv(
                 reearth_flow_common::csv::Delimiter::Comma,
-                global_params,
                 common_param,
                 param,
                 encoding.as_deref(),
@@ -238,7 +227,6 @@ impl Processor for FeatureReader {
             )
             .map_err(|e| e.into()),
             FeatureReader {
-                global_params,
                 params:
                     CompiledFeatureReaderParam::Tsv {
                         common_param,
@@ -247,7 +235,6 @@ impl Processor for FeatureReader {
                     },
             } => csv::read_csv(
                 reearth_flow_common::csv::Delimiter::Tab,
-                global_params,
                 common_param,
                 param,
                 encoding.as_deref(),
@@ -256,9 +243,8 @@ impl Processor for FeatureReader {
             )
             .map_err(|e| e.into()),
             FeatureReader {
-                global_params,
                 params: CompiledFeatureReaderParam::Json { common_param },
-            } => json::read_json(ctx, fw, global_params, common_param).map_err(|e| e.into()),
+            } => json::read_json(ctx, fw, common_param).map_err(|e| e.into()),
         }
     }
 

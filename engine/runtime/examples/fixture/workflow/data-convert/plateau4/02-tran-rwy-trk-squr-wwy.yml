@@ -14,7 +14,6 @@ with:
   - trk
   - squr
   - wwy
-  workerArtifactPath: null
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -289,15 +288,17 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("cityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env["cityGmlPath"],
+              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
     name: FolderAndFilePathReader
     type: subGraph
@@ -307,10 +308,13 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: true
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: f1e2d3c4-b5a6-7890-f1e2-d3c4b5a67890
     name: TargetPackagesFilter
     type: action
@@ -331,7 +335,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: Url(attributes["path"]).name.split("_")[0]
+          value: attributes["path"].split("/")[-1].split("_")[0]
       - attribute: gml_id
         method: create
         value:
@@ -452,12 +456,12 @@ graphs:
       attachTexture: true
       output:
         type: flowExpr
-        value: Url(env["workerArtifactPath"]) / (attributes["__package"] + "_lod3")
+        value: attributes["__package"] + "_lod3"
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
-          Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_3dtiles_lod3.zip")
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+          city_gml + "_" + attributes["__package"] + "_3dtiles_lod3.zip"
   - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
     name: AttributeManagerByLod0-2
     type: action
@@ -537,12 +541,12 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: Url(env["workerArtifactPath"]) / (attributes["__package"] + "_lod" + attributes["__lod"])
+        value: attributes["__package"] + "_lod" + attributes["__lod"]
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
-          Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_mvt_lod" + attributes["__lod"] + ".zip")
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+          city_gml + "_" + attributes["__package"] + "_mvt_lod" + attributes["__lod"] + ".zip"
       skipUnexposedAttributes: true
       colonToUnderscore: true
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
@@ -648,12 +652,12 @@ graphs:
       extent: 65536
       output:
         type: flowExpr
-        value: Url(env["workerArtifactPath"]) / (attributes["__package"] + "_dm_geometric_attributes")
+        value: attributes["__package"] + "_dm_geometric_attributes"
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = Url(env["cityGmlPath"]).name.remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
-          Url(env["workerArtifactPath"]) / (city_gml + "_" + attributes["__package"] + "_dm_geometric_attributes.zip")
+          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+          city_gml + "_" + attributes["__package"] + "_dm_geometric_attributes.zip"
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:

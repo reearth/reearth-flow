@@ -23,6 +23,8 @@ extern {
         "while" => crate::core::lexer::Token::While,
         "for"    => crate::core::lexer::Token::For,
         "return" => crate::core::lexer::Token::Return,
+        "fn"     => crate::core::lexer::Token::Fn,
+        "let"    => crate::core::lexer::Token::Let,
         "."     => crate::core::lexer::Token::Dot,
         "["     => crate::core::lexer::Token::LBracket,
         "]"     => crate::core::lexer::Token::RBracket,
@@ -115,6 +117,8 @@ Assign: Expr = {
         => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Shl, rhs: Box::new(v) }),
     <l:@L> <lv:Postfix> ">>=" <v:Assign> <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::CompoundAssign { lvalue: Box::new(lv), op: BinOp::Shr, rhs: Box::new(v) }),
+    <l:@L> "let" <lv:BindingPattern> "=" <v:Assign> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Let { lvalue: Box::new(lv), value: Box::new(v) }),
     Or,
 };
 
@@ -238,6 +242,11 @@ OptExpr: Option<Expr> = {
     => None,
 };
 
+FnExpr: Expr = {
+    <l:@L> "fn" "(" <params:Comma<"ident">> ")" <body:BlockExpr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Fn { params, body: Box::new(body) }),
+};
+
 Primary: Expr = {
     <l:@L> <n:"int"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Int(n)),
     <l:@L> <n:"float"> <r:@R> => Expr::new(Span { start: l, end: r }, ExprKind::Float(n)),
@@ -251,6 +260,7 @@ Primary: Expr = {
     <l:@L> "[" <items:Comma<Or>> "]" <r:@R>
         => Expr::new(Span { start: l, end: r }, ExprKind::Array(items)),
     MapExpr,
+    FnExpr,
 };
 
 // ElseBranch is either a block or another `if`, enabling `else if` chains.
@@ -267,8 +277,17 @@ WhileExpr: Expr = {
 };
 
 ForInExpr: Expr = {
-    <l:@L> "for" <var:"ident"> "in" <iter:Or> <body:BlockExpr> <r:@R>
-        => Expr::new(Span { start: l, end: r }, ExprKind::ForIn { var, iterable: Box::new(iter), body: Box::new(body) }),
+    <l:@L> "for" <var:BindingPattern> "in" <iter:Or> <body:BlockExpr> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::ForIn { var: Box::new(var), iterable: Box::new(iter), body: Box::new(body) }),
+};
+
+// Binding pattern: a bare identifier or nested array destructuring.
+// Used by both `for` and `let`.
+BindingPattern: Expr = {
+    <l:@L> <name:"ident"> <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Var(name)),
+    <l:@L> "[" <items:Comma<BindingPattern>> "]" <r:@R>
+        => Expr::new(Span { start: l, end: r }, ExprKind::Array(items)),
 };
 
 ElseBranch: Expr = {

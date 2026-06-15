@@ -135,8 +135,9 @@ nodes:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath1")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath1")
       allowEmptyPath: true
 
   - id: 00000007-0000-0000-0000-000000000002
@@ -194,8 +195,9 @@ nodes:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath2")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath2")
       allowEmptyPath: true
 
   - id: 00000007-0000-0000-0000-000000000012
@@ -253,8 +255,9 @@ nodes:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath3")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath3")
       allowEmptyPath: true
 
   - id: 00000007-0000-0000-0000-000000000022
@@ -312,8 +315,9 @@ nodes:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("snowDepthShapefilePath")
+      dataset:
+        type: flowExpr
+        value: env.get("snowDepthShapefilePath")
       allowEmptyPath: true
 
   - id: 00000007-0000-0000-0000-000000000031
@@ -582,31 +586,31 @@ nodes:
     with:
       mappers:
         - attribute: 建物ID
-          expr: env.get("__value")["gmlId"]
+          valueAttribute: gmlId
         - attribute: 優先度
-          expr: env.get("__value")["priority"]
+          valueAttribute: priority
         - attribute: 適否1_1_1
-          expr: env.get("__value")["result_1_1_1"]
+          valueAttribute: result_1_1_1
         - attribute: 適否1_1_2
-          expr: env.get("__value")["result_1_1_2"]
+          valueAttribute: result_1_1_2
         - attribute: 適否1_2
-          expr: env.get("__value")["result_1_2"]
+          valueAttribute: result_1_2
         - attribute: 適否1_3
-          expr: env.get("__value")["result_1_3"]
+          valueAttribute: result_1_3
         - attribute: 適否2_1
-          expr: env.get("__value")["result_2_1"]
+          valueAttribute: result_2_1
         - attribute: 適否2_2
-          expr: env.get("__value")["result_2_2"]
+          valueAttribute: result_2_2
         - attribute: 適否2_3
-          expr: env.get("__value")["result_2_3"]
+          valueAttribute: result_2_3
         - attribute: 適否2_4
-          expr: env.get("__value")["result_2_4"]
+          valueAttribute: result_2_4
         - attribute: 適否3_1
-          expr: env.get("__value")["result_3_1"]
+          valueAttribute: result_3_1
         - attribute: 適否3_2
-          expr: env.get("__value")["result_3_2"]
+          valueAttribute: result_3_2
         - attribute: 適否3_3
-          expr: env.get("__value")["result_3_3"]
+          valueAttribute: result_3_3
 
   - id: 00000005-0000-0000-0000-000000000062
     name: BuildingJudgmentWriter
@@ -614,8 +618,9 @@ nodes:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "適地判定結果.csv")
+      output:
+        type: string
+        value: 適地判定結果.csv
 
   # ========================================
   # Section 2h: Land Area Pipeline
@@ -821,31 +826,31 @@ nodes:
     with:
       mappers:
         - attribute: 土地ID
-          expr: env.get("__value")["gmlId"]
+          valueAttribute: gmlId
         - attribute: 優先度
-          expr: env.get("__value")["priority"]
+          valueAttribute: priority
         - attribute: 適否1_1_1
-          expr: env.get("__value")["result_1_1_1"]
+          valueAttribute: result_1_1_1
         - attribute: 適否1_1_2
-          expr: env.get("__value")["result_1_1_2"]
+          valueAttribute: result_1_1_2
         - attribute: 適否1_2
-          expr: env.get("__value")["result_1_2"]
+          valueAttribute: result_1_2
         - attribute: 適否1_3
-          expr: env.get("__value")["result_1_3"]
+          valueAttribute: result_1_3
         - attribute: 適否2_1
-          expr: env.get("__value")["result_2_1"]
+          valueAttribute: result_2_1
         - attribute: 適否2_2
-          expr: env.get("__value")["result_2_2"]
+          valueAttribute: result_2_2
         - attribute: 適否2_3
-          expr: env.get("__value")["result_2_3"]
+          valueAttribute: result_2_3
         - attribute: 適否2_4
-          expr: env.get("__value")["result_2_4"]
+          valueAttribute: result_2_4
         - attribute: 適否3_1
-          expr: env.get("__value")["result_3_1"]
+          valueAttribute: result_3_1
         - attribute: 適否3_2
-          expr: env.get("__value")["result_3_2"]
+          valueAttribute: result_3_2
         - attribute: 適否3_3
-          expr: env.get("__value")["result_3_3"]
+          valueAttribute: result_3_3
 
   - id: 00000006-0000-0000-0000-000000000005
     name: LandJudgmentWriter
@@ -853,8 +858,9 @@ nodes:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "土地適地判定結果.csv")
+      output:
+        type: string
+        value: 土地適地判定結果.csv
 
   # Snow spatial filter for land areas
   - id: 00000006-0000-0000-0000-000000000010

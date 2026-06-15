@@ -15,7 +15,7 @@ use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{CitygmlFeatureExt, Expr, Feature};
+use reearth_flow_types::{CitygmlFeatureExt, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -74,12 +74,29 @@ pub fn write_citygml_to_storage(
         .unwrap_or_default();
     let appearance_dir_name = format!("{}_appearance", gml_stem);
 
-    // Parent directory portion of the output URI string
-    let output_str = output.to_string();
-    let parent_str = output_str
+    // Compute the GML output's relative path under sandbox_root by stripping the
+    // sandbox_root prefix. This is used to derive the texture dst relative path.
+    let sandbox_root_str = sandbox_root.as_str().trim_end_matches('/');
+    let output_str = output.as_str();
+    // `output` was produced by SinkOutput::new (sandbox_root.join(relative)),
+    // so it must always start with sandbox_root. If the prefix strip ever fails,
+    // something upstream is broken — fail loudly rather than silently writing
+    // textures to a flat appearance dir, which would collide across groups
+    // and corrupt data.
+    let gml_rel_path: String = output_str
+        .strip_prefix(sandbox_root_str)
+        .map(|s| s.trim_start_matches('/').to_string())
+        .ok_or_else(|| {
+            SinkError::CityGmlWriter(format!(
+                "output URI {output} is not under sandbox_root {sandbox_root_str}; \
+                 refusing to fall back to a flat appearance directory"
+            ))
+        })?;
+    // Parent directory of the GML's relative path (e.g. "group" or "" if at root)
+    let gml_rel_parent = gml_rel_path
         .rsplit_once('/')
         .map(|(parent, _)| parent)
-        .unwrap_or(&output_str);
+        .unwrap_or("");
 
     // Copy texture images to the appearance dir and build a URI → relative-path remap.
     let mut uri_remap: HashMap<String, String> = HashMap::new();
@@ -102,22 +119,17 @@ pub fn write_citygml_to_storage(
                     continue;
                 }
             };
-            let dst_str = format!("{}/{}/{}", parent_str, appearance_dir_name, filename);
+            // Compute the texture destination as a relative path under sandbox_root.
+            // e.g. "group/foo_appearance/bar.png" (or "foo_appearance/bar.png" at root)
+            let texture_rel_path = if gml_rel_parent.is_empty() {
+                format!("{}/{}", appearance_dir_name, filename)
+            } else {
+                format!("{}/{}/{}", gml_rel_parent, appearance_dir_name, filename)
+            };
             let src_uri = match Uri::from_str(&src_str) {
                 Ok(u) => u,
                 Err(e) => {
                     tracing::warn!("failed to parse texture source URI '{}': {}", src_str, e);
-                    continue;
-                }
-            };
-            let dst_uri = match Uri::from_str(&dst_str) {
-                Ok(u) => u,
-                Err(e) => {
-                    tracing::warn!(
-                        "failed to parse texture destination URI '{}': {}",
-                        dst_str,
-                        e
-                    );
                     continue;
                 }
             };
@@ -139,27 +151,20 @@ pub fn write_citygml_to_storage(
                     continue;
                 }
             };
-            // Construct a minimal NodeContext just for the sandbox check on texture dst.
-            // We synthesize a NodeContext because `write_citygml_to_storage` only receives
-            // `storage_resolver` and `sandbox_root` as parameters, not a full NodeContext.
-            let node_ctx = reearth_flow_runtime::executor_operation::NodeContext {
-                storage_resolver: storage_resolver.clone(),
-                sandbox_root: sandbox_root.clone(),
-                ..Default::default()
-            };
-            let dst_out = match crate::SinkOutput::from_path(&node_ctx, dst_uri.as_str()) {
-                Ok(o) => o,
-                Err(e) => {
-                    tracing::warn!(
+            let dst_out =
+                match crate::SinkOutput::new(sandbox_root, &texture_rel_path, storage_resolver) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        tracing::warn!(
                         "failed to acquire sandboxed SinkOutput for texture destination '{}': {}",
-                        dst_str,
+                        texture_rel_path,
                         e
                     );
-                    continue;
-                }
-            };
+                        continue;
+                    }
+                };
             if let Err(e) = dst_out.write(bytes) {
-                tracing::warn!("failed to write texture file '{}': {}", dst_str, e);
+                tracing::warn!("failed to write texture file '{}': {}", texture_rel_path, e);
                 continue;
             }
             uri_remap.insert(src_str, format!("{}/{}", appearance_dir_name, filename));
@@ -279,9 +284,15 @@ impl SinkFactory for CityGmlWriterFactory {
         };
 
         let lod_mask = build_lod_mask(&params.lod_filter);
-
+        let output = params.output.compile().map_err(|e| {
+            SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         Ok(Box::new(CityGmlWriterSink {
-            params,
+            params: CityGmlWriterCompiledParam {
+                output,
+                epsg_code: params.epsg_code,
+                pretty_print: params.pretty_print,
+            },
             lod_mask,
             buffer: Vec::new(),
             envelope: None,
@@ -306,7 +317,7 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// Output file path expression
-    pub output: Expr,
+    pub output: Code,
     /// LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.
     #[serde(default)]
     pub lod_filter: Option<Vec<u8>>,
@@ -323,8 +334,15 @@ fn default_pretty_print() -> Option<bool> {
 }
 
 #[derive(Debug, Clone)]
+struct CityGmlWriterCompiledParam {
+    output: CompiledCode,
+    epsg_code: Option<u32>,
+    pretty_print: Option<bool>,
+}
+
+#[derive(Debug, Clone)]
 struct CityGmlWriterSink {
-    params: CityGmlWriterParam,
+    params: CityGmlWriterCompiledParam,
     lod_mask: LodMask,
     buffer: Vec<Feature>,
     envelope: Option<BoundingEnvelope>,
@@ -352,11 +370,12 @@ impl Sink for CityGmlWriterSink {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let out = crate::SinkOutput::from_path(&ctx, &path)
+        let path = self
+            .params
+            .output
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(|e| SinkError::CityGmlWriter(format!("{e:?}")))?;
+        let out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         write_citygml_to_storage(
@@ -376,31 +395,24 @@ impl Sink for CityGmlWriterSink {
 #[cfg(test)]
 mod sandbox_tests {
     use reearth_flow_common::uri::Uri;
-    use reearth_flow_runtime::executor_operation::NodeContext;
+    use reearth_flow_storage::resolve::StorageResolver;
     use std::str::FromStr;
     use tempfile::tempdir;
 
-    /// Texture dst URIs outside the configured sandbox_root must be rejected
-    /// by SinkOutput::from_path — this catches any regression that would
+    /// Texture dst paths outside the configured sandbox_root must be rejected
+    /// by SinkOutput::new — this catches any regression that would
     /// reintroduce the direct dst_storage.put_sync bypass.
     #[test]
     fn texture_dst_write_outside_sandbox_root_is_rejected() {
         let tmp = tempdir().unwrap();
         let inside = tmp.path().join("inside");
         std::fs::create_dir(&inside).unwrap();
-        let outside = tmp.path().join("outside");
-        std::fs::create_dir(&outside).unwrap();
 
         let sandbox_root = Uri::from_str(&format!("file://{}", inside.display())).unwrap();
-        let ctx = NodeContext {
-            sandbox_root,
-            ..NodeContext::default()
-        };
+        let resolver = StorageResolver::new();
 
-        // The texture dst URI lives outside the sandbox root — SinkOutput::from_path must reject.
-        let dst_path = outside.join("texture.png");
-        let dst_uri_str = format!("file://{}", dst_path.display());
-        let result = crate::SinkOutput::from_path(&ctx, &dst_uri_str);
+        // A traversal path that would escape sandbox_root must be rejected by SinkOutput::new.
+        let result = crate::SinkOutput::new(&sandbox_root, "../../outside/texture.png", &resolver);
         assert!(
             result.is_err(),
             "Texture dst outside sandbox root must be rejected; got: {:?}",

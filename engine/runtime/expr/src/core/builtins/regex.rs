@@ -1,6 +1,7 @@
-use crate::core::error::{InnerError, InnerResult};
+use crate::core::error::{eval_error, Result};
 use crate::core::value::{ImmutableObject, Value};
-use crate::unpack_args;
+
+use crate::expect_arity;
 use regex::Regex;
 
 #[derive(Debug, Clone)]
@@ -14,29 +15,17 @@ impl ImmutableObject for RegexObject {
         "Regex"
     }
 
-    fn get_property(&self, _name: &str) -> Option<InnerResult<Value>> {
-        None
-    }
-
-    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value> {
+    fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
         match method {
             "find" => {
-                unpack_args!(args => s);
-                let Value::String(s) = s else {
-                    return Err(InnerError::new("Regex.find() requires a string argument"));
-                };
-                Ok(regex_find(&self.regex, s))
+                expect_arity("Regex.find", args, 1, 1)?;
+                Ok(regex_find(&self.regex, args[0].as_str()?))
             }
             "find_all" => {
-                unpack_args!(args => s);
-                let Value::String(s) = s else {
-                    return Err(InnerError::new(
-                        "Regex.find_all() requires a string argument",
-                    ));
-                };
-                Ok(Value::array(regex_find_all(&self.regex, s)))
+                expect_arity("Regex.find_all", args, 1, 1)?;
+                Ok(Value::array(regex_find_all(&self.regex, args[0].as_str()?)))
             }
-            m => Err(InnerError::new(format!("Regex has no method '{m}'"))),
+            m => Err(eval_error(format!("Regex has no method '{m}'"))),
         }
     }
 
@@ -68,8 +57,7 @@ fn capture_to_value(cap: &regex::Captures, num_groups: usize) -> Value {
     }
 }
 
-// note that `if Regex(".*").find("1")` is falsy even though constructing patterns that match empty string is considered bad practice
-// Still, for dynamic/user input pattern, it is safer to test with `== null`
+// null-as-falsy is intentional — see docs/design.md#regex-find-null-falsy
 fn regex_find(regex: &Regex, s: &str) -> Value {
     let num_groups = regex.captures_len() - 1;
     if num_groups == 0 {
@@ -100,25 +88,17 @@ fn regex_find_all(regex: &Regex, s: &str) -> Vec<Value> {
     }
 }
 
-pub fn builtin_regex(args: &[Value]) -> InnerResult<Value> {
+pub fn builtin_regex(args: &[Value]) -> Result<Value> {
     if args.len() != 1 {
-        return Err(InnerError::new(format!(
+        return Err(eval_error(format!(
             "Regex() expected 1 argument, got {}",
             args.len()
         )));
     }
-    let pattern = match &args[0] {
-        Value::String(s) => s.clone(),
-        v => {
-            return Err(InnerError::new(format!(
-                "Regex() expects a string, got {}",
-                v.type_name()
-            )))
-        }
-    };
+    let pattern = args[0].as_str()?.to_string();
     // FlowExpr is general-purpose. Do not do implicit caching for Regex patterns here.
     // Compile-time constant folding might be a proper future solution, but currently it is overkill.
-    let regex = Regex::new(&pattern).map_err(|e| InnerError::new(format!("invalid regex: {e}")))?;
+    let regex = Regex::new(&pattern).map_err(|e| eval_error(format!("invalid regex: {e}")))?;
     Ok(Value::object(RegexObject { pattern, regex }))
 }
 

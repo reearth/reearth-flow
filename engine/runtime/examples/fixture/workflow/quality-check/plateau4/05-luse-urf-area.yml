@@ -7,7 +7,6 @@ with:
   schemas: null
   codelistsPath: null
   codelists: null
-  workerArtifactPath: null
   prcs: null
   targetPackages:
   - luse
@@ -1086,23 +1085,28 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: type
-        expr: env.get("__value").xmlError[0].errorType
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["errorType"]
       - attribute: desc
-        expr: env.get("__value").xmlError[0].message
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["message"]
   - id: d9e8f7a6-5b4c-4a3d-9e2f-1c8b7a6e5d4c
     name: FeatureWriterNotWellFormedXmlCsv
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L01エラー.csv")
+      output:
+        type: string
+        value: 01_共通_L01エラー.csv
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
     type: action
@@ -1110,25 +1114,32 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: line
-        expr: env.get("__value").xmlError[0].line
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["line"]
       - attribute: type
-        expr: env.get("__value").xmlError[0].errorType
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["errorType"]
       - attribute: desc
-        expr: env.get("__value").xmlError[0].message
+        expr:
+          type: flowExpr
+          value: attributes["xmlError"][0]["message"]
   - id: f8e2a1b4-7c3d-4e9f-a2b5-8f6c9d3e1a7b
     name: FeatureWriterInvalidXmlCsv
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L02エラー.csv")
+      output:
+        type: string
+        value: 01_共通_L02エラー.csv
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
     type: subGraph
@@ -1158,88 +1169,103 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: |
-          env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: |
-          env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: |
-          file::extract_filename(env.get("__value").path)
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1]
       - attribute: サイズ[KB]
-        expr: |
-          env.get("__value").fileSize / 1024
+        expr:
+          type: flowExpr
+          value: attributes["fileSize"] // 1024
       - attribute: 1GB以下
-        expr: |
-          if env.get("__value").fileSize / 1024 / 1024 / 1024 <= 1 {
-            "OK"
-          } else {
-            "Over"
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes["fileSize"] // 1024 // 1024 // 1024 <= 1 {
+              "OK"
+            } else {
+              "Over"
+            }
       - attribute: XML検証結果
-        expr: |
-          env.get("__value").status
+        valueAttribute: status
       - attribute: L01エラー
-        expr: |
-          env.get("__value").L01Errors ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L01Errors", 0)
       - attribute: L02エラー
-        expr: |
-          env.get("__value").L02Errors ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L02Errors", 0)
       - attribute: L03エラー
-        expr: |
-          env.get("__value").invalidFeatureTypesNum ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("invalidFeatureTypesNum", 0)
       - attribute: L03エラー詳細
-        expr: |
-          env.get("__value").invalidFeatureTypesDetail
+        valueAttribute: invalidFeatureTypesDetail
       - attribute: L04エラー
-        expr: |
-          env.get("__value").inCorrectCodeValue ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("inCorrectCodeValue", 0)
       - attribute: 不正なcodeSpace数
-        expr: |
-          env.get("__value").inCorrectCodeSpace ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("inCorrectCodeSpace", 0)
       - attribute: L05CRS識別子
-        expr: |
-          if env.get("__value").isCorrectSrsName {
-            "OK"
-          } else {
-            "Wrong"
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes["isCorrectSrsName"] {
+              "OK"
+            } else {
+              "Wrong"
+            }
       - attribute: 不正なCRS識別子
-        expr: |
-          if env.get("__value").isCorrectSrsName {
-            ""
-          } else {
-            env.get("__value").srsName
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes["isCorrectSrsName"] {
+              ""
+            } else {
+              attributes["srsName"]
+            }
       - attribute: L06エラー
-        expr: |
-          env.get("__value").inCorrectExtents ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("inCorrectExtents", 0)
       - attribute: T03エラー
-        expr: |
-          env.get("__value").xlinkInvalidObjectType ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("xlinkInvalidObjectType", 0)
       - attribute: xlink参照先なし
-        expr: |
-          env.get("__value").xlinkHasNoReference ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("xlinkHasNoReference", 0)
       - attribute: gml:id重複
-        expr: |
-          env.get("__value").duplicateGmlIdCount
+        valueAttribute: duplicateGmlIdCount
       - attribute: gml:id書式不正
-        expr: |
-          env.get("__value").gmlIdNotWellformed ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("gmlIdNotWellformed", 0)
       - attribute: L-frn-01エラー
-        expr: |
-          env.get("__value").invalidLodXGeometry ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("invalidLodXGeometry", 0)
       - attribute: 補足
-        expr: |
-          env.get("__value").miscellaneous ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("miscellaneous", "")
   - id: 0e9fd0ce-4607-44be-8cdd-b4b2cc2ae04b
     name: FeatureWriterCsv
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通.csv")
+      output:
+        type: string
+        value: 01_共通.csv
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
     type: action
@@ -1289,22 +1315,22 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          for key in feature.keys() {
-            result.push(#{
-              name: key,
-              count: feature[key],
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            result = [];
+            feature = attributes["__features"][0];
+            for key in feature.keys() {
+              result.append({"name": key, "count": feature[key]});
+            }
+            result
           }
-          result
-        }
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "summary_common.json")
+      output:
+        type: string
+        value: summary_common.json
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
     type: action
@@ -1312,23 +1338,24 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
   - id: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
     name: FeatureWriterGmlIdNotWellFormed
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_GML_ID書式不正.csv")
+      output:
+        type: string
+        value: 01_共通_GML_ID書式不正.csv
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
     type: action
@@ -1336,23 +1363,24 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
   - id: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
     name: FeatureWriterGmlIdNotUnique
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_GML_ID重複.csv")
+      output:
+        type: string
+        value: 01_共通_GML_ID重複.csv
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
     type: action
@@ -1360,45 +1388,46 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: Min Latitude
-        expr: env.get("__value").minLatitude
+        valueAttribute: minLatitude
       - attribute: Min Longitude
-        expr: env.get("__value").minLongitude
+        valueAttribute: minLongitude
       - attribute: Min Elevation
-        expr: env.get("__value").minElevation
+        valueAttribute: minElevation
       - attribute: Max Latitude
-        expr: env.get("__value").maxLatitude
+        valueAttribute: maxLatitude
       - attribute: Max Longitude
-        expr: env.get("__value").maxLongitude
+        valueAttribute: maxLongitude
       - attribute: Max Elevation
-        expr: env.get("__value").maxElevation
+        valueAttribute: maxElevation
       - attribute: Lower Latitude
-        expr: env.get("__value").lowerLatitude
+        valueAttribute: lowerLatitude
       - attribute: Lower Longitude
-        expr: env.get("__value").lowerLongitude
+        valueAttribute: lowerLongitude
       - attribute: Lower Elevation
-        expr: env.get("__value").lowerElevation
+        valueAttribute: lowerElevation
       - attribute: Upper Latitude
-        expr: env.get("__value").upperLatitude
+        valueAttribute: upperLatitude
       - attribute: Upper Longitude
-        expr: env.get("__value").upperLongitude
+        valueAttribute: upperLongitude
       - attribute: Upper Elevation
-        expr: env.get("__value").upperElevation
+        valueAttribute: upperElevation
   - id: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
     name: FeatureWriterExtentsValidation
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L06エラー.csv")
+      output:
+        type: string
+        value: 01_共通_L06エラー.csv
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
     type: action
@@ -1406,29 +1435,30 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: XPath
-        expr: env.get("__value").xpath
+        valueAttribute: xpath
       - attribute: CodeSpace
-        expr: env.get("__value").codeSpace
+        valueAttribute: codeSpace
       - attribute: Code
-        expr: env.get("__value").codeSpaceValue
+        valueAttribute: codeSpaceValue
   - id: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
     name: FeatureWriterCodeValidation
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L04エラー.csv")
+      output:
+        type: string
+        value: 01_共通_L04エラー.csv
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
     type: action
@@ -1436,29 +1466,30 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: FeatureType
-        expr: env.get("__value").featureType
+        valueAttribute: featureType
       - attribute: XPath
-        expr: env.get("__value").xpath
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: CodeSpace
-        expr: env.get("__value").codeSpace
+        valueAttribute: codeSpace
   - id: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
     name: FeatureWriterInCorrectCodeSpace
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_不正なcodeSpace.csv")
+      output:
+        type: string
+        value: 01_共通_不正なcodeSpace.csv
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
@@ -1466,13 +1497,21 @@ graphs:
     with:
       mappers:
       - attribute: flag
-        expr: env.get("__value").flag
+        expr:
+          type: flowExpr
+          value: attributes.get("flag")
       - attribute: filename
-        expr: env.get("__value").filename ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("filename", "")
       - attribute: fileCount
-        expr: env.get("__value").fileCount ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("fileCount", 0)
       - attribute: duplicateGmlIdCount
-        expr: env.get("__value").duplicateGmlIdCount ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("duplicateGmlIdCount", 0)
   - id: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
     name: AttributeMapperXlinkNoReference
     type: action
@@ -1480,25 +1519,26 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: XPath
-        expr: env.get("__value").xpath
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: xlink:href
-        expr: env.get("__value").xlinkHref
+        valueAttribute: xlinkHref
   - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
     name: FeatureWriterXlinkNoReference
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_xlink参照先なし.csv")
+      output:
+        type: string
+        value: 01_共通_xlink参照先なし.csv
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
     type: action
@@ -1506,31 +1546,32 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: XPath
-        expr: env.get("__value").xpath
+        valueAttribute: xpath
       - attribute: XML Tag
-        expr: env.get("__value").tag
+        valueAttribute: tag
       - attribute: xlink:href
-        expr: env.get("__value").xlinkHref
+        valueAttribute: xlinkHref
       - attribute: ref XPath
-        expr: env.get("__value").refGmlXpath
+        valueAttribute: refGmlXpath
       - attribute: ref Tag
-        expr: env.get("__value").refGmlTag
+        valueAttribute: refGmlTag
       - attribute: ref gml:id
-        expr: env.get("__value").refGmlId
+        valueAttribute: refGmlId
   - id: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
     name: FeatureWriterXlinkInvalidObjectType
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_T03エラー.csv")
+      output:
+        type: string
+        value: 01_共通_T03エラー.csv
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
     type: action
@@ -1538,26 +1579,28 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: env.get("__value").index
+        valueAttribute: index
       - attribute: Folder
-        expr: env.get("__value").udxDirs
+        valueAttribute: udxDirs
       - attribute: Filename
-        expr: env.get("__value").name
+        valueAttribute: name
       - attribute: FeatureType
-        expr: |
-          env.get("__value").parentTag ?? env.get("__value").featureType
+        expr:
+          type: flowExpr
+          value: attributes.get("parentTag") or attributes.get("featureType")
       - attribute: gml:id
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: InvalidGeometry
-        expr: env.get("__value").invalidGeometry
+        valueAttribute: invalidGeometry
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     name: FeatureWriterInvalidLodXGeometry
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01_共通_L-frn-01エラー.csv")
+      output:
+        type: string
+        value: 01_共通_L-frn-01エラー.csv
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
@@ -1953,15 +1996,19 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          {}
-        } else {
-          let feature = env.get("__features")[0];
-          feature["dataFileData"]
-        }
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "summary_common2-" + env.get("__value")["package"] + ".json")
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            {}
+          } else {
+            feature = attributes["__features"][0];
+            feature["dataFileData"]
+          }
+      output:
+        type: flowExpr
+        value: |
+          "summary_common2-" + attributes["package"] + ".json"
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
     type: action
@@ -1973,8 +2020,9 @@ graphs:
       - attribute: dirs
         valueAttribute: udxDirs
       - attribute: filename
-        expr: |
-          file::extract_filename(env.get("__value")["path"])
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1]
       - attribute: gml_id
         valueAttribute: gmlId
       - attribute: severity
@@ -1989,8 +2037,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C05必須属性等の欠落_" + attributes["package"] + ".csv"
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
     type: action
@@ -2009,8 +2059,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv")
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C06現われない属性等_" + attributes["package"] + ".csv"
   - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
     name: AttributeMapperC07
     type: action
@@ -2022,8 +2074,9 @@ graphs:
       - attribute: dirs
         valueAttribute: udxDirs
       - attribute: filename
-        expr: |
-          file::extract_filename(env.get("__value")["path"])
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1]
       - attribute: gml_id
         valueAttribute: gmlId
       - attribute: feature_type
@@ -2038,8 +2091,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv")
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C07品質属性_" + attributes["package"] + ".csv"
   - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
     name: AttributeMapperC08
     type: action
@@ -2051,8 +2106,9 @@ graphs:
       - attribute: dirs
         valueAttribute: udxDirs
       - attribute: filename
-        expr: |
-          file::extract_filename(env.get("__value")["path"])
+        expr:
+          type: flowExpr
+          value: attributes["path"].split("/")[-1]
       - attribute: gml_id
         valueAttribute: gmlId
       - attribute: feature_type
@@ -2067,8 +2123,10 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv")
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C08公共測量品質属性_" + attributes["package"] + ".csv"
   - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     name: AttributeManagerTotalErrorCount
     type: action
@@ -2303,17 +2361,19 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("cityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env["cityGmlPath"],
+              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+            },
+          ]
   - id: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
     name: DirectoryDecompressor
     type: action
@@ -2372,10 +2432,13 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: true
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
     name: FilterNotCityModel
     type: action
@@ -2425,30 +2488,44 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value")["udxDirs"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("udxDirs", "")
       - attribute: Filename
-        expr: |
-          env.get("__value")["name"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("name", "")
       - attribute: フィーチャータイプ
-        expr: |
-          env.get("__value")["featureType"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureType", "")
       - attribute: インスタンス数
-        expr: |
-          env.get("__value")["_num_instances"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_instances", 0)
       - attribute: Index
-        expr: |
-          env.get("__value")["fileIndex"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("fileIndex", "")
   - id: a453192e-603c-417e-9f65-f57b8e15f7d3
     name: CsvWriterInstanceCount
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
-        file::join_path(env.get("workerArtifactPath"), name + "_地物インスタンス数.csv")
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          if pkg == "luse" {
+            "05_土地利用_地物インスタンス数.csv"
+          } else if pkg == "urf" {
+            "05_都市計画決定情報_地物インスタンス数.csv"
+          } else if pkg == "area" {
+            "05_区域_地物インスタンス数.csv"
+          } else {
+            "05_土地利用_都市決定情報_区域_地物インスタンス数.csv"
+          }
   - id: 7ccbb722-d0cc-4843-a42e-179576530340
     name: FileInfoExtractor
     type: action
@@ -2456,14 +2533,11 @@ graphs:
     with:
       mappers:
       - attribute: Index
-        expr: |
-          env.get("__value").fileIndex
+        valueAttribute: fileIndex
       - attribute: Filename
-        expr: |
-          env.get("__value").name
+        valueAttribute: name
       - attribute: Folder
-        expr: |
-          env.get("__value")["package"]
+        valueAttribute: package
   - id: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
     name: PLATEAU3.SurfaceValidator2D
     type: subGraph
@@ -2475,35 +2549,52 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value")["udxDirs"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("udxDirs", "")
       - attribute: Index
-        expr: |
-          env.get("__value")["fileIndex"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("fileIndex", "")
       - attribute: Filename
-        expr: |
-          env.get("__value")["name"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("name", "")
       - attribute: FeatureType
-        expr: |
-          env.get("__value")["featureType"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureType", "")
       - attribute: エラー数
-        expr: |
-          1
+        expr:
+          type: string
+          value: '1'
       - attribute: gml:id
-        expr: |
-          env.get("__value")["featureId"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureId", "")
       - attribute: 面の向き
-        expr: "\"right_hand_rule\" \n"
+        expr:
+          type: string
+          value: right_hand_rule
   - id: f0fc0309-6d76-4a6b-9fdf-84c433b615f2
     name: CsvWriterSurfaceOrientationErrors
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
-        file::join_path(env.get("workerArtifactPath"), name + "_面の向き不正.csv")
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          if pkg == "luse" {
+            "05_土地利用_面の向き不正.csv"
+          } else if pkg == "urf" {
+            "05_都市計画決定情報_面の向き不正.csv"
+          } else if pkg == "area" {
+            "05_区域_面の向き不正.csv"
+          } else {
+            "05_土地利用_都市決定情報_区域_面の向き不正.csv"
+          }
   - id: 26751290-4ac7-4884-908a-7c231b5f820a
     name: SurfaceOrientationErrorCounter
     type: action
@@ -2521,36 +2612,52 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value")["udxDirs"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("udxDirs", "")
       - attribute: Index
-        expr: |
-          env.get("__value")["fileIndex"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("fileIndex", "")
       - attribute: Filename
-        expr: |
-          env.get("__value")["name"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("name", "")
       - attribute: FeatureType
-        expr: |
-          env.get("__value")["featureType"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureType", "")
       - attribute: エラー数
-        expr: |
-          1
+        expr:
+          type: string
+          value: '1'
       - attribute: gml:id
-        expr: |
-          env.get("__value")["featureId"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("featureId", "")
       - attribute: エラー内容
-        expr: |
-          env.get("__value")["issue"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("issue", "")
   - id: eb34119b-592f-4140-b9b9-f3712a805c47
     name: CsvWriterSurfaceErrors
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
-        file::join_path(env.get("workerArtifactPath"), name + "_面のエラー.csv")
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          if pkg == "luse" {
+            "05_土地利用_面のエラー.csv"
+          } else if pkg == "urf" {
+            "05_都市計画決定情報_面のエラー.csv"
+          } else if pkg == "area" {
+            "05_区域_面のエラー.csv"
+          } else {
+            "05_土地利用_都市決定情報_区域_面のエラー.csv"
+          }
   - id: 667c37eb-2b19-4a86-8aa4-70679f7787b5
     name: SurfaceErrorCounter
     type: action
@@ -2577,30 +2684,38 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value").Folder
+        valueAttribute: Folder
       - attribute: Index
-        expr: |
-          env.get("__value").Index
+        valueAttribute: Index
       - attribute: Filename
-        expr: |
-          env.get("__value").Filename
+        valueAttribute: Filename
       - attribute: 面の向き不正
-        expr: |
-          env.get("__value")._num_incorrect_orientation ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_incorrect_orientation", 0)
       - attribute: 面のエラー
-        expr: |
-          env.get("__value")._num_surface_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_surface_issues", 0)
   - id: f38c754b-98cd-48e1-bfa7-adbf7c390899
     name: CSVSummaryWriter
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        let name = if pkg == "luse" { "05_土地利用" } else if pkg == "urf" { "05_都市計画決定情報" } else if pkg == "area" { "05_区域" } else { "05_土地利用_都市決定情報_区域" };
-        file::join_path(env.get("workerArtifactPath"), name + "_検査結果一覧.csv")
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          if pkg == "luse" {
+            "05_土地利用_検査結果一覧.csv"
+          } else if pkg == "urf" {
+            "05_都市計画決定情報_検査結果一覧.csv"
+          } else if pkg == "area" {
+            "05_区域_検査結果一覧.csv"
+          } else {
+            "05_土地利用_都市決定情報_区域_検査結果一覧.csv"
+          }
   - id: 521b2dea-51af-460f-9eb5-672917768692
     name: StatisticsCalculator
     type: action
@@ -2629,23 +2744,22 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          for key in feature.keys() {
-            result.push(#{
-              name: key,
-              count: feature[key],
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            feature = attributes["__features"][0];
+            itertools.map(feature.keys(), fn(key) {
+              {"name": key, "count": feature[key]}
+            })
           }
-          result
-        }
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        file::join_path(env.get("workerArtifactPath"), "summary_" + pkg + ".json")
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          "summary_" + pkg + ".json"
   - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -2670,20 +2784,20 @@ graphs:
     type: action
     action: JsonWriter
     with:
-      converter: '[]'
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath");
-        file::join_path(dirname, filename)
+      converter:
+        type: flowExpr
+        value: '[]'
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"
   - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
     name: ZipFileWriter
     type: action
     action: ZipFileWriter
     with:
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath");
-        file::join_path(dirname, filename)
+      output:
+        type: flowExpr
+        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"
   edges:
   - id: 235074db-bbc0-484e-bd7e-3af7d707f2fc
     from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873

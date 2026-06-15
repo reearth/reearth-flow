@@ -1,14 +1,12 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use bytes::Bytes;
 use reearth_flow_common::csv::Delimiter;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{AttributeValue, Expr, Feature};
+use reearth_flow_types::{AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -55,7 +53,7 @@ impl SinkFactory for CsvWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: CsvWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::CsvWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -68,8 +66,13 @@ impl SinkFactory for CsvWriterFactory {
             )
             .into());
         };
+        let output = params.output.compile().map_err(|e| {
+            SinkError::CsvWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let sink = CsvWriter {
-            params,
+            format: params.format,
+            geometry: params.geometry,
+            output,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -78,8 +81,10 @@ impl SinkFactory for CsvWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct CsvWriter {
-    pub(super) params: CsvWriterParam,
-    pub(super) buffer: HashMap<Uri, (SinkOutput, Vec<Feature>)>,
+    format: CsvFormat,
+    geometry: Option<super::writer_geometry::GeometryExportConfig>,
+    output: CompiledCode,
+    pub(super) buffer: HashMap<String, (SinkOutput, Vec<Feature>)>,
 }
 
 /// # CsvWriter Parameters
@@ -89,13 +94,13 @@ pub(super) struct CsvWriter {
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvWriterParam {
     /// Output path or expression for the CSV/TSV file to create
-    pub(super) output: Expr,
+    pub(super) output: Code,
     /// File format: csv (comma) or tsv (tab)
     format: CsvFormat,
     /// # Geometry Configuration
     /// Optional configuration for exporting geometry to CSV columns
     #[serde(skip_serializing_if = "Option::is_none")]
-    geometry: Option<super::writer_geometry::GeometryExportConfig>,
+    pub(super) geometry: Option<super::writer_geometry::GeometryExportConfig>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -124,22 +129,24 @@ impl Sink for CsvWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let node_ctx: NodeContext = ctx.clone().into();
-        let scope = node_ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let uri = Uri::from_str(&path)
-            .map_err(|e| SinkError::CsvWriter(format!("invalid path {:?}: {e}", path)))?;
+        let path = self
+            .output
+            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
+        let node_ctx: NodeContext = ctx.into();
         use std::collections::hash_map::Entry;
-        match self.buffer.entry(uri) {
+        match self.buffer.entry(path.clone()) {
             Entry::Occupied(mut e) => {
                 e.get_mut().1.push(feature);
             }
             Entry::Vacant(e) => {
-                let out = crate::SinkOutput::from_path(&node_ctx, &path)
-                    .map_err(|e| SinkError::CsvWriter(e.to_string()))?;
+                let out = crate::SinkOutput::new(
+                    &node_ctx.sandbox_root,
+                    &path,
+                    &node_ctx.storage_resolver,
+                )
+                .map_err(|e| SinkError::CsvWriter(e.to_string()))?;
                 e.insert((out, vec![feature]));
             }
         }
@@ -147,14 +154,9 @@ impl Sink for CsvWriter {
     }
 
     fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
-        let delimiter = self.params.format.delimiter();
+        let delimiter = self.format.delimiter();
         for (out, features) in self.buffer.values() {
-            write_csv(
-                out,
-                features,
-                delimiter.clone(),
-                self.params.geometry.as_ref(),
-            )?;
+            write_csv(out, features, delimiter.clone(), self.geometry.as_ref())?;
         }
         Ok(())
     }

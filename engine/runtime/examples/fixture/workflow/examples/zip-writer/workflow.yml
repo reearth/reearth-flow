@@ -11,25 +11,15 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                testAttribute01: "堺市中区",
-                year: 2025,
-              },
-              #{
-                testAttribute01: "堺市北区",
-                year: 2024,
-              },
-              #{
-                testAttribute01: "堺市西区",
-                year: 2025,
-              },
-              #{
-                testAttribute01: "堺市東区",
-                year: 2024,
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"testAttribute01": "堺市中区", "year": 2025},
+                {"testAttribute01": "堺市北区", "year": 2024},
+                {"testAttribute01": "堺市西区", "year": 2025},
+                {"testAttribute01": "堺市東区", "year": 2024},
+              ]
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         name: FeatureFilterBydate
@@ -52,8 +42,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("currentPath"), "year-2024.csv")
+          output:
+            type: string
+            value: year-2024.csv
 
       - id: 3ec90e43-968e-4bcd-863c-f7c80e37f118
         name: FeatureWriter2025
@@ -61,16 +52,18 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("currentPath"), "year-2025.csv")
+          output:
+            type: string
+            value: year-2025.csv
 
       - id: 5aa001b2-94d4-41c0-8552-58adf04ef66a
         name: ZipFileWriter
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            file::join_path(env.get("currentPath"), "result.zip")
+          output:
+            type: string
+            value: result.zip
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

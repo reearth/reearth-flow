@@ -10,7 +10,6 @@ with:
   codelists:
   objectListsPath:
   objectLists:
-  workerArtifactPath:
   prcs:
   targetPackages:
     - tran
@@ -34,17 +33,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                },
+              ]
 
       - id: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
         name: DirectoryDecompressor
@@ -121,11 +122,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
         name: HorizontalReprojector
         type: action
@@ -150,26 +153,33 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("package", "")
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", "")
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("name", "")
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureType", "")
             - attribute: LOD
-              expr: |
-                env.get("__value")["lod"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "")
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["gmlId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("gmlId", "")
             - attribute: "未参照"
-              expr: |
-                env.get("__value")["unreferenced"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("unreferenced", "")
 
       # Write XLink CSV output
       - id: 737996be-8410-4447-9986-bba01fe9ce0c
@@ -178,8 +188,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_xlink参照エラー.csv")
+          output:
+            type: string
+            value: 03_交通_xlink参照エラー.csv
 
       - id: 51431704-ac14-41cd-988b-88141dc6e326
         name: PLATEAU3.LodSplitterWithDM
@@ -206,33 +217,41 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("package", "")
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", "")
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("name", "")
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureType", "")
             - attribute: LOD
-              expr: |
-                env.get("__value")["lod"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "")
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["featureId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureId", "")
             - attribute: issue
-              expr: |
-                let value = env.get("__value");
-                if value.validationResult?.details != () {
-                  return value.validationResult.details[0][0];
-                }
-                if "issue" in value {
-                  return value.issue;
-                }
-                "UnknownError"
+              expr:
+                type: flowExpr
+                value: |
+                  vr = attributes.get("validationResult");
+                  if vr != null and "details" in vr {
+                    vr["details"][0][0]
+                  } else if "issue" in attributes {
+                    attributes["issue"]
+                  } else {
+                    "UnknownError"
+                  }
 
       # Extract surface orientation
       - id: d60f93c1-c55e-49ee-9332-657f4408ba05
@@ -262,36 +281,45 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("package", "")
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", "")
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("name", "")
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureType", "")
             - attribute: LOD
-              expr: |
-                env.get("__value")["lod"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "")
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["featureId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureId", "")
 
             # The error count is always 1
             - attribute: "エラー数"
-              expr: |
-                1
+              expr:
+                type: flowExpr
+                value: "1"
 
             # We hardcode the following two attributes since coming here means the orientation is incorrect
             - attribute: "エラー内容"
-              expr: |
-                "Incorrect Orientation"
+              expr:
+                type: string
+                value: Incorrect Orientation
             - attribute: "面の向き"
-              expr: |
-                "right_hand_rule"
+              expr:
+                type: string
+                value: right_hand_rule
 
       # Write CSV output
       - id: 2b0d83b3-2c7a-4314-b609-e4f7db379902
@@ -300,8 +328,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_面の向き不正.csv")
+          output:
+            type: string
+            value: 03_交通_面の向き不正.csv
 
       # L-TRAN-02: Adjacent surface overlap detection
       # Filter out features with package == "rwy"
@@ -512,26 +541,33 @@ graphs:
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value")["package"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("package", "")
             - attribute: Index
-              expr: |
-                env.get("__value")["fileIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", "")
             - attribute: Filename
-              expr: |
-                env.get("__value")["name"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("name", "")
             - attribute: FeatureType
-              expr: |
-                env.get("__value")["featureType"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("featureType", "")
             - attribute: LOD
-              expr: |
-                env.get("__value")["lod"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "")
             - attribute: "gml:id"
-              expr: |
-                env.get("__value")["gmlId"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("gmlId", "")
             - attribute: 隣接ID
-              expr: |
-                env.get("__value")["areaOverlapIndex"] ?? ""
+              expr:
+                type: flowExpr
+                value: attributes.get("areaOverlapIndex", "")
 
       # Feature Writer
       - id: e1eb4eb2-b045-4cdb-aa43-922dd5e03a79
@@ -540,8 +576,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_隣接面重複.csv")
+          output:
+            type: string
+            value: 03_交通_隣接面重複.csv
 
       # Write surface validation errors to CSV
       - id: 41bd7fb9-6e5b-4ac6-985f-a9abb40fb1c1
@@ -550,8 +587,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_面のエラー.csv")
+          output:
+            type: string
+            value: 03_交通_面のエラー.csv
 
       # ===== Error Summary Output (Phase 1-10) =====
       # Phase 1: File info extraction
@@ -562,11 +600,9 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: Filename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
 
       # Phase 2: Error counters - Count errors by filename for each error type
       # XLink error counter
@@ -636,24 +672,26 @@ graphs:
         with:
           mappers:
             - attribute: Index
-              expr: |
-                env.get("__value").Index
+              valueAttribute: Index
             - attribute: Filename
-              expr: |
-                env.get("__value").Filename
+              valueAttribute: Filename
             # Domain-specific error columns
             - attribute: "L-TRAN-03 xlink参照エラー"
-              expr: |
-                env.get("__value")._num_unreferenced_surface ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_unreferenced_surface", 0)
             - attribute: "面の向き不正"
-              expr: |
-                env.get("__value")._num_incorrect_orientation ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_incorrect_orientation", 0)
             - attribute: "L-TRAN-02 隣接面重複"
-              expr: |
-                env.get("__value")._num_overlaps ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_overlaps", 0)
             - attribute: "面のエラー"
-              expr: |
-                env.get("__value")._surface_issues ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_surface_issues", 0)
 
       # Phase 5: CSV output
       - id: be20e492-76d2-4afc-a985-e040f43d55fb
@@ -662,8 +700,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "03_交通_検査結果一覧.csv")
+          output:
+            type: string
+            value: 03_交通_検査結果一覧.csv
 
       # Phase 6: StatisticsCalculator for JSON aggregation
       - id: 9068494f-dee6-41ca-aef2-3e493441ece2
@@ -695,22 +734,20 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              for key in feature.keys() {
-                result.push(#{
-                  name: key,
-                  count: feature[key],
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                feature = attributes["__features"][0];
+                itertools.map(feature.keys(), fn(key) {
+                  {"name": key, "count": feature[key]}
+                })
               }
-              result
-            }
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_tran.json")
+          output:
+            type: string
+            value: summary_tran.json
 
       # Phase 8: Calculate total errors for no-error check
       - id: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
@@ -741,11 +778,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # Phase 11: ZipFileWriter - Bundle all output files
       - id: 02fb12bf-a5fc-4b0e-a568-178f5f3a3992
@@ -753,10 +791,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       # Data preparation flow

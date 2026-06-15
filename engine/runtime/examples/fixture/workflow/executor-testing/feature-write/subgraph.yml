@@ -2,7 +2,6 @@ id: 10000000-0000-0000-0000-000000000001
 name: "feature-write-1"
 entryGraphId: 10000000-0000-0000-0000-000000000010
 with:
-  workerArtifactPath:
 
 graphs:
   - id: 10000000-0000-0000-0000-000000000020
@@ -69,12 +68,14 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ category: "A" },
-              #{ category: "B" },
-              #{ category: "C" },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"category": "A"},
+                {"category": "B"},
+                {"category": "C"},
+              ]
 
       - id: 10000000-0000-0000-0000-000000000012
         name: FilterSubGraph
@@ -86,8 +87,9 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "output.csv")
+          output:
+            type: string
+            value: output.csv
           format: csv
 
     edges:

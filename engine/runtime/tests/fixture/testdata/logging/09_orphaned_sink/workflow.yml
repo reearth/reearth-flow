@@ -2,7 +2,6 @@ id: 00caad2a-9f7d-4189-b479-153fa9ea36e9
 name: "Orphaned Sink Test"
 entryGraphId: 7a8b9c0d-1e2f-3456-ef12-345678900009
 with:
-  workerArtifactPath: null
 graphs:
   - id: 7a8b9c0d-1e2f-3456-ef12-345678900009
     name: main_graph
@@ -13,15 +12,17 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [#{"id": 1, "name": "item_1", "value": 10}]
+          creator:
+            type: flowExpr
+            value: '[{"id": 1, "name": "item_1", "value": 10}]'
       - id: c1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         name: JsonWriter
         type: action
         action: JsonWriter
         with:
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "result.json")
+          output:
+            type: string
+            value: result.json
 
       # Orphaned sink: no incoming edges, no ancestor source — must be silently skipped
       - id: c2f90a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -29,8 +30,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "orphaned.json")
+          output:
+            type: string
+            value: orphaned.json
     edges:
       - id: e1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         from: a1f90a3e-61d3-48e2-a328-e7226c2ad1ae

@@ -117,7 +117,7 @@ const FlowExprField = <
             <span className="shrink-0 rounded bg-primary/10 px-1 py-0.5 font-mono text-xs text-primary">
               {t("expr")}
             </span>
-            <span className="truncate font-mono text-xs text-muted-foreground">
+            <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
               {codeValue?.value || (
                 <em className="not-italic opacity-50">{t("(empty)")}</em>
               )}

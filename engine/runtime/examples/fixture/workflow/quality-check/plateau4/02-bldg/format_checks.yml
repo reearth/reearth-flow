@@ -191,9 +191,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_地物インスタンス数.csv")
-  # === End of C02 ===
+      output:
+        type: string
+        value: 02_建築物_地物インスタンス数.csv  # === End of C02 ===
 
   - id: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
     name: FeatureFilterBuildingAndBuildingPart
@@ -222,20 +222,15 @@ nodes:
     with:
       mappers:
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          valueAttribute: fileIndex
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: Building Usage Attribute Error
-          expr: |
-            env.get("__value").errors
+          valueAttribute: errors
         - attribute: Feature Type
-          expr: |
-            env.get("__value").featureType
+          valueAttribute: featureType
 
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
@@ -243,9 +238,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_L-bldg-04,05エラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_L-bldg-04,05エラー.csv
   - id: 5d8e7f4a-3b2c-4f1e-9a8d-6c5b4e3f2a1b
     name: AttributeMapper-city-code-error-transform
     type: action
@@ -253,20 +248,15 @@ nodes:
     with:
       mappers:
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          valueAttribute: fileIndex
         - attribute: gml_id
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: City Code Error
-          expr: |
-            env.get("__value").cityCodeError
+          valueAttribute: cityCodeError
         - attribute: Feature Type
-          expr: |
-            env.get("__value").featureType
+          valueAttribute: featureType
 
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
@@ -274,9 +264,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_市区町村コードエラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_市区町村コードエラー.csv
   - id: 33c1a2b3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: CityCodeErrorCounter
     type: action
@@ -330,7 +320,7 @@ nodes:
               branch_id = building_id_attr.get("uro:branchID", "");
               part_id = building_id_attr.get("uro:partID", "");
               gml_name = attributes.get("gmlName", "");
-              building_id_valid = Regex(r"^\d{5}-bldg-\d+$").find(building_id);
+              building_id_valid = Regex(r"^\d{5}-bldg-\d+$").find(building_id) != null;
               branch_id_valid = branch_id == "" or type(branch_id) == "int";
               if gml_name == "bldg:Building" {
                 part_id_valid = part_id == "";
@@ -349,29 +339,32 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          valueAttribute: fileIndex
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: FeatureType
-          expr: |
-            env.get("__value").gmlName
+          valueAttribute: gmlName
         - attribute: "uro:buildingID"
-          expr: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:buildingID"] ?? ""
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr.get("uro:buildingID", "")
         - attribute: "uro:branchID"
-          expr: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:branchID"] ?? "（なし）"
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr.get("uro:branchID", "（なし）")
         - attribute: "uro:partID"
-          expr: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:partID"] ?? "（なし）"
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr.get("uro:partID", "（なし）")
 
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
     name: FeatureWriter-invalid-building-id-format
@@ -379,9 +372,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_建物ID書式不正.csv")
-
+      output:
+        type: string
+        value: 02_建築物_建物ID書式不正.csv
   - id: 0b291ad6-cdfa-4371-bcbb-3422b2cd53cf
     name: AttributeAggregator-c-bldg-01
     type: action
@@ -439,40 +432,34 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          valueAttribute: fileIndex
         - attribute: Filename
-          expr: |
-            env.get("__value").gmlFilename
+          valueAttribute: gmlFilename
         - attribute: GmlId
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: UroBuildingId
-          expr: |
-            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            bldg_id_attr["uro:buildingID"] ?? ""
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr.get("uro:buildingID", "")
         - attribute: UroBranchId
-          expr: |
-            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            let branch_id = bldg_id_attr["uro:branchID"] ?? "";
-            if (branch_id == "") {
-              "（なし）"
-            } else {
-              branch_id
-            }
-
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              branch_id = bldg_id_attr.get("uro:branchID", "");
+              if branch_id == "" { "（なし）" } else { branch_id }
         - attribute: UroPartId
-          expr: |
-            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            let part_id = bldg_id_attr["uro:partID"] ?? "";
-            if (part_id == "") {
-              "（なし）"
-            } else {
-              part_id
-            }
+          expr:
+            type: flowExpr
+            value: |
+              city_gml = attributes.get("cityGmlAttributes", {});
+              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              part_id = bldg_id_attr.get("uro:partID", "");
+              if part_id == "" { "（なし）" } else { part_id }
 
   - id: bba483d0-9813-499e-a0f6-22874646450d
     name: FeatureWriterCsv-c-bldg-01
@@ -480,9 +467,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_C-bldg-01エラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_C-bldg-01エラー.csv
   - id: 124b1896-04c2-41d9-9e76-0ce32b04089f
     name: C-BLDG-01ErrorCounter
     type: action

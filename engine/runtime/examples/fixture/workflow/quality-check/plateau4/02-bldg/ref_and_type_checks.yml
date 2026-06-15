@@ -71,26 +71,29 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          valueAttribute: fileIndex
         - attribute: Filename
-          expr: |
-            file::extract_filename(env.get("__value").gmlPath)
+          expr:
+            type: flowExpr
+            value: attributes["gmlPath"].split("/")[-1]
         - attribute: gmlFilename
-          expr: |
-            file::extract_filename(env.get("__value").gmlPath)
+          expr:
+            type: flowExpr
+            value: attributes["gmlPath"].split("/")[-1]
         - attribute: "Building gml:id"
-          expr: |
-            env.get("__value").gmlId
+          valueAttribute: gmlId
         - attribute: "Unmatched Xlink Tag"
-          expr: |
-            collection::join_array((env.get("__value").unmatchedXlinkTag ?? []), ",")
+          expr:
+            type: flowExpr
+            value: |
+              ",".join(attributes.get("unmatchedXlinkTag", []))
         - attribute: Attribute
-          expr: |
-            env.get("__value").Attribute
+          valueAttribute: Attribute
         - attribute: "Unmatched Xlink ID"
-          expr: |
-            collection::join_array((env.get("__value").unmatchedXlinkId ?? []), ",")
+          expr:
+            type: flowExpr
+            value: |
+              ",".join(attributes.get("unmatchedXlinkId", []))
 
   - id: 99d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: AttributeManagerLbldg06
@@ -107,9 +110,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_L-bldg-06エラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_L-bldg-06エラー.csv
   - id: 77a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lbldg06ErrorCounter
     type: action
@@ -152,20 +155,17 @@ nodes:
     with:
       mappers:
         - attribute: Index
-          expr: |
-            env.get("__value").fileIndex
+          valueAttribute: fileIndex
         - attribute: Filename
-          expr: |
-            file::extract_filename(env.get("__value").gmlPath)
+          expr:
+            type: flowExpr
+            value: attributes["gmlPath"].split("/")[-1]
         - attribute: "Building gml:id"
-          expr: |
-            env.get("__value").bldgGmlId
+          valueAttribute: bldgGmlId
         - attribute: "BuildingInstallation gml:id"
-          expr: |
-            env.get("__value").instGmlId
+          valueAttribute: instGmlId
         - attribute: "GeometryType"
-          expr: |
-            env.get("__value").geomTag
+          valueAttribute: geomTag
 
   - id: 2bae2659-e981-4eb1-8cbe-ce0352584a10
     name: FileWriterTsvT-bldg-02
@@ -173,9 +173,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "02_建築物_T-bldg-02エラー.csv")
-
+      output:
+        type: string
+        value: 02_建築物_T-bldg-02エラー.csv
   - id: 35e0e6d2-44f4-4e75-abce-5280c2b80a5d
     name: StatisticsCalculatorT-bldg-02
     type: action

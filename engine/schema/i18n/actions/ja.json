@@ -217,10 +217,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Operation": {
           "attribute": {
             "title": "属性名"
@@ -553,12 +549,6 @@
         "skipUnexposedAttributes": {
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1118,10 +1108,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Condition": {
           "expr": {
             "title": "条件式"
@@ -1328,10 +1314,6 @@
         "mappings": {}
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapping": {
           "attribute": {},
           "value": {}
@@ -2189,12 +2171,6 @@
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -2840,6 +2816,26 @@
         "codelistsPath": {
           "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。"
         }
+      }
+    },
+    {
+      "name": "PLATEAU6.MissingAttributeDetector",
+      "parameterI18n": {
+        "": {
+          "title": "MissingAttributeDetector Parameters",
+          "description": "Configuration for detecting missing attributes in PLATEAU features."
+        },
+        "packageAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU6.ObjectListExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "ObjectListExtractor Parameters",
+          "description": "Configuration for extracting object lists from PLATEAU data."
+        },
+        "objectListPathAttribute": {}
       }
     },
     {

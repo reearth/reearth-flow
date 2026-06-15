@@ -2,7 +2,6 @@ id: 30000000-0000-0000-0000-000000000001
 name: "feature-write-two-copies"
 entryGraphId: 30000000-0000-0000-0000-000000000010
 with:
-  workerArtifactPath:
 
 graphs:
   - id: 30000000-0000-0000-0000-000000000020
@@ -69,12 +68,14 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ category: "A" },
-              #{ category: "B" },
-              #{ category: "C" },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"category": "A"},
+                {"category": "B"},
+                {"category": "C"},
+              ]
 
       - id: 30000000-0000-0000-0000-000000000012
         name: FilterSubGraphCopy1
@@ -91,8 +92,9 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "output.csv")
+          output:
+            type: string
+            value: output.csv
           format: csv
 
     edges:

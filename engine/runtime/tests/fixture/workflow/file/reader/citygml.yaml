@@ -10,6 +10,7 @@ graphs:
         type: action
         action: CityGmlReader
         with:
-          dataset: |
-            "ram:///fixture/testdata/file/reader/citygml/udx/urf/533834_urf_6668_sigaidev_op.gml"
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/file/reader/citygml/udx/urf/533834_urf_6668_sigaidev_op.gml
     edges:

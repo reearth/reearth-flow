@@ -9,7 +9,6 @@ with:
   schemas: null
   objectListsPath: null
   objectLists: null
-  workerArtifactPath: null
   prcs: null
   targetPackages: ["brid", "tun", "ubld"]
 graphs:
@@ -37,17 +36,19 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("cityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env["cityGmlPath"],
+              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: c7315341-26b3-4405-9d02-039d721cd225
     name: DirectoryDecompressor
     type: action
@@ -106,10 +107,13 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: true
-      dataset: |
-        env.get("__value")["gmlPath"]
+      dataset:
+        type: flowExpr
+        value: attributes["gmlPath"]
   - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
     name: HorizontalReprojector
     type: action
@@ -309,24 +313,27 @@ graphs:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "09_橋梁_地物インスタンス数.csv")
+      output:
+        type: string
+        value: 09_橋梁_地物インスタンス数.csv
   - id: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
     name: CsvWriterTunnelInstanceCounts
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "09_トンネル_地物インスタンス数.csv")
+      output:
+        type: string
+        value: 09_トンネル_地物インスタンス数.csv
   - id: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: CsvWriterUndergroundBuildingInstanceCounts
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "09_地下街_地物インスタンス数.csv")
+      output:
+        type: string
+        value: 09_地下街_地物インスタンス数.csv
   - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     name: SurfaceValidation
     type: subGraph
@@ -338,14 +345,11 @@ graphs:
     with:
       mappers:
       - attribute: index
-        expr: |
-          env.get("__value").fileIndex
+        valueAttribute: fileIndex
       - attribute: filename
-        expr: |
-          env.get("__value").gmlFilename
+        valueAttribute: gmlFilename
       - attribute: folder
-        expr: |
-          env.get("__value")["package"]
+        valueAttribute: package
   - id: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     name: ErrorSummaryMerger
     type: action
@@ -362,69 +366,90 @@ graphs:
     with:
       mappers:
       - attribute: Folder
-        expr: |
-          env.get("__value").folder
+        valueAttribute: folder
       - attribute: Index
-        expr: |
-          env.get("__value").index
+        valueAttribute: index
       - attribute: Filename
-        expr: |
-          env.get("__value").filename
+        valueAttribute: filename
       - attribute: LOD0 面のエラー
-        expr: |
-          env.get("__value")._num_lod0_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod0_invalid_surface", 0)
       - attribute: LOD0 面の向きエラー
-        expr: |
-          env.get("__value")._num_lod0_incorrect_orientation ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod0_incorrect_orientation", 0)
       - attribute: LOD0 面の交差
-        expr: |
-          env.get("__value")._num_lod0_surface_intersection ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod0_surface_intersection", 0)
       - attribute: LOD1 境界面のエラー
-        expr: |
-          env.get("__value")._num_lod1_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod1_invalid_surface", 0)
       - attribute: LOD1 非水密立体
-        expr: |
-          env.get("__value")._num_lod1_not_closed_solid ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod1_not_closed_solid", 0)
       - attribute: LOD1 立体のエラー
-        expr: |
-          env.get("__value")._num_lod1_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod1_solid_issues", 0)
       - attribute: LOD2 境界面のエラー
-        expr: |
-          env.get("__value")._num_lod2_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod2_invalid_surface", 0)
       - attribute: LOD3 境界面のエラー
-        expr: |
-          env.get("__value")._num_lod3_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod3_invalid_surface", 0)
       - attribute: LOD4 境界面のエラー
-        expr: |
-          env.get("__value")._num_lod4_invalid_surface ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod4_invalid_surface", 0)
       - attribute: LOD2 非水密立体
-        expr: |
-          env.get("__value")._num_lod2_not_closed_solid ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod2_not_closed_solid", 0)
       - attribute: LOD3 非水密立体
-        expr: |
-          env.get("__value")._num_lod3_not_closed_solid ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod3_not_closed_solid", 0)
       - attribute: LOD4 非水密立体
-        expr: |
-          env.get("__value")._num_lod4_not_closed_solid ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod4_not_closed_solid", 0)
       - attribute: LOD2 立体のエラー
-        expr: |
-          env.get("__value")._num_lod2_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod2_solid_issues", 0)
       - attribute: LOD3 立体のエラー
-        expr: |
-          env.get("__value")._num_lod3_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod3_solid_issues", 0)
       - attribute: LOD4 立体のエラー
-        expr: |
-          env.get("__value")._num_lod4_solid_issues ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("_num_lod4_solid_issues", 0)
   - id: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
     name: CSVSummaryWriter
     type: action
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        let name = if pkg == "brid" { "09_橋梁" } else if pkg == "tun" { "09_トンネル" } else if pkg == "ubld" { "09_地下街" } else { "09_橋梁_トンネル_地下街" };
-        file::join_path(env.get("workerArtifactPath"), name + "_検査結果一覧.csv")
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          if pkg == "brid" {
+            "09_橋梁_検査結果一覧.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_検査結果一覧.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_検査結果一覧.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_検査結果一覧.csv"
+          }
   - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
     name: StatisticsCalculator
     type: action
@@ -496,23 +521,22 @@ graphs:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          for key in feature.keys() {
-            result.push(#{
-              name: key,
-              count: feature[key],
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            feature = attributes["__features"][0];
+            itertools.map(feature.keys(), fn(key) {
+              {"name": key, "count": feature[key]}
+            })
           }
-          result
-        }
-      output: |
-        let pkg = env.get("__value")["Folder"] ?? "";
-        file::join_path(env.get("workerArtifactPath"), "summary_" + pkg + ".json")
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("Folder", "");
+          "summary_" + pkg + ".json"
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     name: StatisticsCalculatorTotalErrors
     type: action
@@ -537,20 +561,20 @@ graphs:
     type: action
     action: JsonWriter
     with:
-      converter: '[]'
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-        let dirname = env.get("workerArtifactPath");
-        file::join_path(dirname, filename)
+      converter:
+        type: flowExpr
+        value: '[]'
+      output:
+        type: flowExpr
+        value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
   - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
     name: ZipFileWriter
     type: action
     action: ZipFileWriter
     with:
-      output: |
-        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-        let dirname = env.get("workerArtifactPath");
-        file::join_path(dirname, filename)
+      output:
+        type: flowExpr
+        value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
   edges:
   - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
     from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a

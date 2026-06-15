@@ -1,15 +1,13 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use bytes::Bytes;
 use quick_xml::events::{BytesDecl, BytesStart, Event};
 use quick_xml::writer::Writer;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -56,7 +54,7 @@ impl SinkFactory for XmlWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: XmlWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::XmlWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -69,8 +67,11 @@ impl SinkFactory for XmlWriterFactory {
             )
             .into());
         };
+        let output = params.output.compile().map_err(|e| {
+            SinkError::XmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let sink = XmlWriter {
-            params,
+            output,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -79,8 +80,8 @@ impl SinkFactory for XmlWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct XmlWriter {
-    pub(super) params: XmlWriterParam,
-    pub(super) buffer: HashMap<Uri, (SinkOutput, Vec<Feature>)>,
+    output: CompiledCode,
+    pub(super) buffer: HashMap<String, (SinkOutput, Vec<Feature>)>,
 }
 
 /// # XmlWriter Parameters
@@ -90,7 +91,7 @@ pub(super) struct XmlWriter {
 #[serde(rename_all = "camelCase")]
 pub(super) struct XmlWriterParam {
     /// Output path or expression for the XML file to create
-    pub(super) output: Expr,
+    pub(super) output: Code,
 }
 
 impl Sink for XmlWriter {
@@ -99,22 +100,21 @@ impl Sink for XmlWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let node_ctx: NodeContext = ctx.clone().into();
-        let scope = node_ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let uri = Uri::from_str(&path)
-            .map_err(|e| SinkError::XmlWriter(format!("invalid path {:?}: {e}", path)))?;
+        let path = self
+            .output
+            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .map_err(|e| SinkError::XmlWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
+        let node_ctx: NodeContext = ctx.into();
         use std::collections::hash_map::Entry;
-        match self.buffer.entry(uri) {
+        match self.buffer.entry(path.clone()) {
             Entry::Occupied(mut e) => {
                 e.get_mut().1.push(feature);
             }
             Entry::Vacant(e) => {
-                let out = SinkOutput::from_path(&node_ctx, &path)
-                    .map_err(|e| SinkError::XmlWriter(e.to_string()))?;
+                let out =
+                    SinkOutput::new(&node_ctx.sandbox_root, &path, &node_ctx.storage_resolver)
+                        .map_err(|e| SinkError::XmlWriter(e.to_string()))?;
                 e.insert((out, vec![feature]));
             }
         }

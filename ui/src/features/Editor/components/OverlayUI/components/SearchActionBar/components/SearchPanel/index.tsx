@@ -1,9 +1,24 @@
-import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
+import {
+  ArrowRightIcon,
+  DatabaseIcon,
+  DiscIcon,
+  GraphIcon,
+  LightningIcon,
+  MagnifyingGlassIcon,
+  NoteIcon,
+  RectangleDashedIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 import { NodeChange } from "@xyflow/react";
 import { useEffect, useMemo, useRef } from "react";
 
-import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
+import {
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import { useT } from "@flow/lib/i18n";
 import { Node, Workflow } from "@flow/types";
@@ -62,36 +77,40 @@ const SearchPanel = ({
         cell: ({ row }) => (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="block max-w-[100px] truncate font-medium">
-                {row.original?.displayName}
-              </span>
+              <div className="flex w-[300px] items-center gap-2">
+                <div
+                  className={`flex w-[24px] justify-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/60" : row.original?.nodeType === "reader" ? "bg-node-reader/60" : row.original?.nodeType === "writer" ? "bg-node-writer/60" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/60" : "bg-popover"} p-1 align-middle`}>
+                  <p className="self-center text-xs text-zinc-200">
+                    {row.original?.nodeType === "reader" ? (
+                      <DatabaseIcon className="self-center" />
+                    ) : row.original?.nodeType === "writer" ? (
+                      <DiscIcon className="self-center" />
+                    ) : row.original?.nodeType === "subworkflow" ? (
+                      <GraphIcon className="self-center" />
+                    ) : row.original?.nodeType === "batch" ? (
+                      <RectangleDashedIcon className="self-center" />
+                    ) : row.original?.nodeType === "note" ? (
+                      <NoteIcon className="self-center" />
+                    ) : (
+                      <LightningIcon className="self-center" />
+                    )}
+                  </p>
+                </div>
+                <div className="truncate">
+                  <span className="block truncate font-medium">
+                    {row.original?.displayName}
+                  </span>
+                  <span className="block truncate font-medium text-muted-foreground">
+                    ({row.original?.officialName})
+                  </span>
+                </div>
+              </div>
             </TooltipTrigger>
             <TooltipContent
               side="right"
-              sideOffset={-100}
+              sideOffset={-180}
               className="bg-primary">
               {row.original?.displayName}
-            </TooltipContent>
-          </Tooltip>
-        ),
-      },
-      {
-        accessorFn: (row) => row?.officialName,
-        id: "officialName",
-        header: t("Action"),
-        enableHiding: true,
-        cell: ({ row }) => (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="block max-w-[100px] truncate font-medium">
-                {row.original?.officialName}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              sideOffset={-100}
-              className="bg-primary">
-              {row.original?.officialName}
             </TooltipContent>
           </Tooltip>
         ),
@@ -103,12 +122,12 @@ const SearchPanel = ({
         cell: ({ row }) => (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="block max-w-[100px] truncate font-medium text-muted-foreground">
+              <span className="block max-w-[120px] truncate font-medium text-muted-foreground">
                 {row.original?.workflowName}
               </span>
             </TooltipTrigger>
             <TooltipContent
-              side="right"
+              side="left"
               sideOffset={-100}
               align="center"
               className="bg-primary">
@@ -118,15 +137,15 @@ const SearchPanel = ({
         ),
       },
       {
-        accessorFn: (row) => row?.nodeType,
-        id: "nodeType",
-        header: t("Type"),
+        accessorFn: (row) => row?.workflowName,
+        id: "actions",
+        header: undefined,
         cell: ({ row }) => (
-          <div
-            className={`self-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/35" : row.original?.nodeType === "reader" ? "bg-node-reader/35" : row.original?.nodeType === "writer" ? "bg-node-writer/35" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/35" : "bg-popover"} p-1 align-middle`}>
-            <p className="self-center text-xs text-zinc-200 capitalize">
-              {row.original?.nodeType}
-            </p>
+          <div className="flex justify-end">
+            <IconButton
+              icon={<ArrowRightIcon />}
+              onClick={() => handleRowDoubleClick(row.original)}
+            />
           </div>
         ),
       },
@@ -145,9 +164,27 @@ const SearchPanel = ({
     }
   }, [showSearchPanel, searchInputRef]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onShowSearchPanel(false);
+      }
+    };
+
+    if (showSearchPanel) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      if (showSearchPanel) {
+        document.removeEventListener("keydown", handleKeyDown);
+      }
+    };
+  }, [onShowSearchPanel, showSearchPanel]);
+
   return (
     <div
-      className={`absolute z-50 flex h-[600px] w-[450px] flex-col rounded-md border border-accent bg-primary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
+      className={`absolute z-50 flex h-[600px] w-[550px] flex-col rounded-xl border border-primary bg-secondary/50 p-0 backdrop-blur transition-all duration-150 ease-in-out
       ${showSearchPanel ? "pointer-events-auto scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}
       `}>
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">
@@ -181,7 +218,6 @@ const SearchPanel = ({
             selectedRowIndex={selectedRowIndex}
             onRowClick={handleRowClick}
             onRowDoubleClick={handleRowDoubleClick}
-            condensed
             customGlobalFilterFn={nodeSearchOptions}
           />
         </div>

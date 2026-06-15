@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Code, CompiledCode};
+use reearth_flow_types::{Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -160,7 +160,7 @@ struct FeatureFilterParam {
 #[serde(rename_all = "camelCase")]
 struct Condition {
     /// # Condition expression
-    expr: Code,
+    expr: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Output port
     output_port: Port,
 }

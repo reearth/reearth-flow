@@ -1,37 +1,22 @@
 mod core;
 
-/// Unpack a fixed number of arguments from a method `args: &[Value]` slice,
-/// binding each to a named variable. Generates an arity error if the count
-/// doesn't match.
-///
-/// Usage:
-/// - `unpack_args!(args =>)` — expect 0 arguments
-/// - `unpack_args!(args => x)` — expect 1, bind to `x: &Value`
-/// - `unpack_args!(args => x, y)` — expect 2, bind to `x`, `y`
-#[macro_export]
-macro_rules! unpack_args {
-    ($args:expr =>) => {
-        if !$args.is_empty() {
-            return Err($crate::InnerError::new(format!(
-                "expected 0 argument(s), got {}",
-                $args.len()
-            )));
-        }
-    };
-    ($args:expr => $($var:ident),+) => {
-        let [$($var),+] = $args else {
-            return Err($crate::InnerError::new(format!(
-                "expected {} argument(s), got {}",
-                [$(stringify!($var)),+].len(),
-                $args.len()
-            )));
-        };
-    };
-}
+pub use core::env::Env;
+pub use core::error::{eval_error, Error, Result};
+pub use core::eval::{default_env, env_bind};
+pub use core::value::{ClosureValue, ImmutableObject, NativeFn, Value};
 
-pub use core::error::{Error, InnerError, InnerResult, Result};
-pub use core::eval::{bool_cast, default_env, str_cast, Env};
-pub use core::value::{ImmutableObject, NativeFn, Value};
+pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> Result<()> {
+    let n = args.len();
+    if n >= min && n <= max {
+        return Ok(());
+    }
+    let msg = if min == max {
+        format!("{name}() expected {min} argument(s), got {n}")
+    } else {
+        format!("{name}() expected {min} to {max} argument(s), got {n}")
+    };
+    Err(core::error::eval_error(msg))
+}
 
 /// Compile an expression string into an opaque [`CompiledExpr`].
 pub fn compile(input: &str) -> Result<CompiledExpr> {
@@ -39,7 +24,7 @@ pub fn compile(input: &str) -> Result<CompiledExpr> {
 }
 
 /// Evaluate a compiled expression against an [`Env`].
-pub fn eval(expr: &CompiledExpr, env: &mut Env) -> Result<Value> {
+pub fn eval(expr: &CompiledExpr, env: &Env) -> Result<Value> {
     core::eval::eval(&expr.0, env)
 }
 

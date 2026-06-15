@@ -11,11 +11,13 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ timestamp: "2021-01-01T00:00:00Z" },
-              #{ timestamp: "invalid-datetime" },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"timestamp": "2021-01-01T00:00:00Z"},
+                {"timestamp": "invalid-datetime"},
+              ]
 
       - id: 550e8400-e29b-41d4-a716-446655440203
         name: "DateTimeConverter"
@@ -32,18 +34,18 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "expected_output.json")
-
+          output:
+            type: string
+            value: expected_output.json
       - id: 550e8400-e29b-41d4-a716-446655440205
         name: "FailedOutput"
         type: action
         action: FeatureWriter
         with:
           format: json
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "expected_failed.json")
-
+          output:
+            type: string
+            value: expected_failed.json
     edges:
       - id: 550e8400-e29b-41d4-a716-446655440206
         from: 550e8400-e29b-41d4-a716-446655440202

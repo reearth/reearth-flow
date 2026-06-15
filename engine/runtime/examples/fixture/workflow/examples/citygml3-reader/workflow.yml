@@ -6,7 +6,6 @@ with:
   cityGmlPath:
   codelistsPath:
   schemasPath:
-  workerArtifactPath:
 graphs:
   - id: b2c3d4e5-f6a7-8901-bcde-f12345678901
     name: main
@@ -16,14 +15,16 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                codelists: env.get("codelistsPath"),
-                schemas: env.get("schemasPath"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "codelists": env["codelistsPath"],
+                  "schemas": env["schemasPath"],
+                },
+              ]
 
       - id: b2a1c3d4-e5f6-7890-abcd-ef0123456789
         name: DirectoryDecompressor
@@ -70,8 +71,9 @@ graphs:
         type: action
         action: FeatureCityGml3Reader
         with:
-          dataset: |
-            env.get("__value")["path"]
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
           extractTags:
             - bldg:Building
             - con:FloorSurface
@@ -95,8 +97,8 @@ graphs:
         action: Cesium3DTilesWriter
         with:
           output:
-            type: flowExpr
-            value: Url(env["workerArtifactPath"]) / "citygml3-3dtiles"
+            type: string
+            value: citygml3-3dtiles
           minZoom: 15
           maxZoom: 18
 
