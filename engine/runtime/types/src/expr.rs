@@ -91,13 +91,12 @@ impl<const MASK: u32> Serialize for Code<MASK> {
 impl<'de, const MASK: u32> Deserialize<'de> for Code<MASK> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         #[derive(Deserialize)]
-        #[serde(rename = "Code")]
-        struct Helper {
+        struct Code {
             #[serde(rename = "type")]
             ty: CodeType,
             value: String,
         }
-        let h = Helper::deserialize(deserializer)?;
+        let h = Code::deserialize(deserializer)?;
         if h.ty.as_mask() & MASK == 0 {
             let allowed: Vec<&str> = CodeType::all_variants()
                 .iter()
@@ -111,7 +110,7 @@ impl<'de, const MASK: u32> Deserialize<'de> for Code<MASK> {
                 allowed.join(", ")
             )));
         }
-        Ok(Code {
+        Ok(Self {
             ty: h.ty,
             value: h.value,
         })
