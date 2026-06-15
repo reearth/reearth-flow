@@ -8,7 +8,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -226,7 +228,7 @@ struct Calculation {
     /// # New attribute name
     new_attribute: Attribute,
     /// # Calculation to perform
-    expr: Code,
+    expr: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 impl Processor for StatisticsCalculator {
