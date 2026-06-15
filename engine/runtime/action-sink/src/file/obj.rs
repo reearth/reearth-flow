@@ -610,12 +610,11 @@ mod tests {
 
         features.push(feature);
 
-        let output: Code = Code {
+        let code: Code = Code {
             ty: CodeType::String,
             value: "/tmp/test.obj".to_string(),
-        }
-        .compile()
-        .unwrap();
+        };
+        let output = code.compile().unwrap();
 
         let writer = ObjWriter {
             output,
