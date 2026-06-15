@@ -10533,11 +10533,23 @@ Calculates statistical aggregations on feature attributes with customizable expr
       "properties": {
         "expr": {
           "title": "Calculation to perform",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Code"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "newAttribute": {
           "title": "New attribute name",
@@ -10548,28 +10560,6 @@ Calculates statistical aggregations on feature attributes with customizable expr
           ]
         }
       }
-    },
-    "Code": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
-      ]
     }
   }
 }

@@ -3157,10 +3157,6 @@
           "newAttribute": {
             "title": "新しい属性名"
           }
-        },
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },

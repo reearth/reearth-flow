@@ -3154,10 +3154,6 @@
           "newAttribute": {
             "title": "New attribute name"
           }
-        },
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },

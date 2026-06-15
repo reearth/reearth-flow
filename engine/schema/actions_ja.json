@@ -10819,11 +10819,23 @@
             "properties": {
               "expr": {
                 "title": "実行する計算",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "newAttribute": {
                 "title": "新しい属性名",
@@ -10834,28 +10846,6 @@
                 ]
               }
             }
-          },
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
