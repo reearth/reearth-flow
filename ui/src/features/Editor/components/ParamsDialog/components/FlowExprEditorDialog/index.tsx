@@ -67,8 +67,16 @@ const FlowExprEditorDialog: React.FC<Props> = ({
     | undefined;
   const flowExprAllowed = !allowedTypes || allowedTypes.includes("flowExpr");
   const stringAllowed = !allowedTypes || allowedTypes.includes("string");
+
+  const defaultType: "flowExpr" | "string" = flowExprAllowed
+    ? "flowExpr"
+    : "string";
   const [codeType, setCodeType] = useState<"flowExpr" | "string">(
-    initialCode?.type ?? (flowExprAllowed ? "flowExpr" : "string"),
+    initialCode?.type === "flowExpr" && flowExprAllowed
+      ? "flowExpr"
+      : initialCode?.type === "string" && stringAllowed
+        ? "string"
+        : defaultType,
   );
   const [codeValue, setCodeValue] = useState(initialCode?.value ?? "");
   const [isFullscreen, setIsFullscreen] = useState(false);
