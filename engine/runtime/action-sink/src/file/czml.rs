@@ -1361,13 +1361,12 @@ mod tests {
     }
 
     fn make_timeseries_params() -> CzmlWriterCompiledParam {
+        let output: Code = Code {
+            ty: CodeType::String,
+            value: "/tmp/test.czml".to_string(),
+        };
         CzmlWriterCompiledParam {
-            output: Code {
-                ty: CodeType::String,
-                value: "/tmp/test.czml".to_string(),
-            }
-            .compile()
-            .unwrap(),
+            output: output.compile().unwrap(),
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: Some("2024-01-01T00:00:00Z".into()),
@@ -1487,13 +1486,12 @@ mod tests {
     }
 
     fn make_default_params() -> CzmlWriterCompiledParam {
+        let output: Code = Code {
+            ty: CodeType::String,
+            value: "/tmp/test.czml".to_string(),
+        };
         CzmlWriterCompiledParam {
-            output: Code {
-                ty: CodeType::String,
-                value: "/tmp/test.czml".to_string(),
-            }
-            .compile()
-            .unwrap(),
+            output: output.compile().unwrap(),
             group_by: None,
             time_field: None,
             epoch: None,
@@ -1578,13 +1576,12 @@ mod tests {
     #[test]
     fn test_build_entity_packet_numeric_times() {
         // Test with numeric time values and no explicit epoch
+        let output: Code = Code {
+            ty: CodeType::String,
+            value: "/tmp/test.czml".to_string(),
+        };
         let params = CzmlWriterCompiledParam {
-            output: Code {
-                ty: CodeType::String,
-                value: "/tmp/test.czml".to_string(),
-            }
-            .compile()
-            .unwrap(),
+            output: output.compile().unwrap(),
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: None, // No explicit epoch - should auto-generate
