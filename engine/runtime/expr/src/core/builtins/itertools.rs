@@ -116,7 +116,7 @@ fn sum(args: &[Value]) -> Result<Value> {
         Some(v) => v,
         None => return Ok(Value::Int(0)),
     };
-    iter.try_fold(init, |acc, item| value_add(acc, item))
+    iter.try_fold(init, value_add)
 }
 
 pub fn builtin_itertools() -> Value {
@@ -185,11 +185,7 @@ mod tests {
     fn test_sum() {
         assert_eval("itertools.sum([1, 2, 3])", &[], Value::from(6i64));
         assert_eval("itertools.sum([1, 2.5])", &[], Value::from(3.5f64));
-        assert_eval(
-            r#"itertools.sum(["a", "b", "c"])"#,
-            &[],
-            Value::from("abc"),
-        );
+        assert_eval(r#"itertools.sum(["a", "b", "c"])"#, &[], Value::from("abc"));
         assert_eval("itertools.sum([])", &[], Value::from(0i64));
         assert!(try_run("itertools.sum([1, \"a\"])", &[]).is_err());
     }

@@ -2118,18 +2118,25 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatch1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatch2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatch3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch3", 0)
   - id: 00000001-0000-0000-0000-000000000075
     name: SolarAttributeMerger
     type: action
@@ -2431,8 +2438,9 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalSurfaceArea
-        expr: |
-          env.get("__value")["surfaceArea"]
+        expr:
+          type: flowExpr
+          value: attributes["surfaceArea"]
   - id: 00000001-0000-0000-0000-0000000000d2
     name: BuildingAreaAggregator
     type: action
@@ -2442,8 +2450,9 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalRoofArea
-        expr: |
-          env.get("__value")["totalSurfaceArea"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSurfaceArea"]
   - id: 00000001-0000-0000-0000-0000000000d3
     name: BuildingAreaMerger
     type: action
@@ -2471,18 +2480,25 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatchSum1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatchSum2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatchSum3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum3", 0)
   - id: 00000001-0000-0000-0000-0000000000c5
     name: BuildingPotentialMapper
     type: action
@@ -2585,17 +2601,21 @@ graphs:
       groupBy: []
       calculations:
       - newAttribute: buildingCount
-        expr: |
-          1
+        expr:
+          type: flowExpr
+          value: '1'
       - newAttribute: areaTotalSolarRadiation
-        expr: |
-          env.get("__value")["totalSolarRadiation"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarRadiation"]
       - newAttribute: areaTotalSolarPower
-        expr: |
-          env.get("__value")["totalSolarPower"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarPower"]
       - newAttribute: areaTotalRoofArea
-        expr: |
-          env.get("__value")["totalRoofArea"]
+        expr:
+          type: flowExpr
+          value: attributes["totalRoofArea"]
   - id: 00000001-0000-0000-0000-0000000000c8
     name: AreaAggregationMapper
     type: action
@@ -3000,11 +3020,13 @@ graphs:
       - featureType
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["totalSolarRadiation"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarRadiation"]
       - newAttribute: totalSolarPower
-        expr: |
-          env.get("__value")["totalSolarPower"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarPower"]
   - id: 00000002-0000-0000-0000-00000000000f
     name: GridCellTypeRouter
     type: action
