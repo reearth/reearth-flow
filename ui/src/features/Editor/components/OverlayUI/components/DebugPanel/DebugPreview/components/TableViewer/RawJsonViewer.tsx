@@ -1,8 +1,19 @@
-import { CaretDownIcon, CaretRightIcon, CopyIcon } from "@phosphor-icons/react";
+import {
+  CaretDownIcon,
+  CaretRightIcon,
+  CopyIcon,
+  MagnifyingGlassIcon,
+} from "@phosphor-icons/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, ReactNode, useCallback, useMemo, useState } from "react";
 
-import { Button, Dialog, DialogContent, DialogTitle } from "@flow/components";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Input,
+} from "@flow/components";
 import { toast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 
@@ -120,6 +131,98 @@ function summarize(node: FlatNode): string {
   return `{} ${node.childCount} keys`;
 }
 
+function filterTree(root: unknown, query: string): FlatNode[] {
+  const out: FlatNode[] = [];
+
+  const walk = (
+    rawValue: unknown,
+    label: string | null,
+    depth: number,
+    id: string,
+  ): boolean => {
+    const value = resolveValue(rawValue);
+    const kind = kindOf(value);
+    const labelMatch = label !== null && label.toLowerCase().includes(query);
+
+    if (kind === "primitive") {
+      if (labelMatch || formatPrimitive(value).toLowerCase().includes(query)) {
+        out.push({
+          id,
+          depth,
+          label,
+          value,
+          kind,
+          childCount: 0,
+          expanded: false,
+        });
+        return true;
+      }
+      return false;
+    }
+
+    const entries = entriesOf(value, kind);
+    const openIndex = out.length;
+    out.push({
+      id,
+      depth,
+      label,
+      value,
+      kind,
+      childCount: entries.length,
+      expanded: true,
+    });
+
+    let childMatched = false;
+    for (const [childLabel, childValue] of entries) {
+      if (walk(childValue, childLabel, depth + 1, `${id}.${childLabel}`)) {
+        childMatched = true;
+      }
+    }
+
+    if (childMatched || labelMatch) {
+      out.push({
+        id: `${id}:close`,
+        depth,
+        label: null,
+        value,
+        kind,
+        childCount: entries.length,
+        expanded: true,
+        closingBracket: true,
+      });
+      return true;
+    }
+
+    out.length = openIndex;
+    return false;
+  };
+
+  walk(root, null, 0, "$");
+  return out;
+}
+
+function highlight(text: string, query: string): ReactNode {
+  if (!query) return text;
+  const lower = text.toLowerCase();
+  const parts: ReactNode[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const idx = lower.indexOf(query, i);
+    if (idx === -1) {
+      parts.push(text.slice(i));
+      break;
+    }
+    if (idx > i) parts.push(text.slice(i, idx));
+    parts.push(
+      <mark key={idx} className="rounded-sm bg-yellow-400/40 text-foreground">
+        {text.slice(idx, idx + query.length)}
+      </mark>,
+    );
+    i = idx + query.length;
+  }
+  return parts;
+}
+
 const RawJsonViewer: React.FC<Props> = ({ label, value, open, onClose }) => {
   const t = useT();
 
@@ -127,11 +230,17 @@ const RawJsonViewer: React.FC<Props> = ({ label, value, open, onClose }) => {
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["$"]));
   const [copied, setCopied] = useState(false);
+  const [query, setQuery] = useState("");
 
-  const nodes = useMemo(
-    () => (open ? flatten(value, expanded) : []),
-    [open, value, expanded],
-  );
+  const trimmedQuery = query.trim().toLowerCase();
+  const searching = trimmedQuery.length > 0;
+
+  const nodes = useMemo(() => {
+    if (!open) return [];
+    return searching
+      ? filterTree(value, trimmedQuery)
+      : flatten(value, expanded);
+  }, [open, value, expanded, searching, trimmedQuery]);
 
   const toggle = useCallback((id: string) => {
     setExpanded((prev) => {
@@ -188,76 +297,99 @@ const RawJsonViewer: React.FC<Props> = ({ label, value, open, onClose }) => {
             {copied ? t("Copied") : t("Copy JSON")}
           </Button>
         </DialogTitle>
+        <div className="mx-4 flex shrink-0 items-center gap-2 rounded-md border border-border px-2">
+          <MagnifyingGlassIcon
+            size={14}
+            className="shrink-0 text-muted-foreground"
+          />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("Search keys and values") + "..."}
+            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0"
+          />
+        </div>
         <div
           ref={setScrollEl}
           className="mx-4 mb-4 min-h-0 flex-1 overflow-auto rounded-md bg-muted/30 p-2 font-mono text-xs">
-          <div
-            className="relative w-full"
-            style={{ height: `${virtualizer.getTotalSize()}px` }}>
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const node = nodes[virtualRow.index];
-              const expandable = node.kind !== "primitive";
-              const closeBracket = node.kind === "array" ? "]" : "}";
+          {searching && nodes.length === 0 ? (
+            <p className="p-2 text-muted-foreground">{t("No matches")}</p>
+          ) : (
+            <div
+              className="relative w-full"
+              style={{ height: `${virtualizer.getTotalSize()}px` }}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const node = nodes[virtualRow.index];
+                const expandable = node.kind !== "primitive";
+                const closeBracket = node.kind === "array" ? "]" : "}";
 
-              return (
-                <div
-                  key={node.id}
-                  className="absolute top-0 left-0 flex w-full items-center whitespace-nowrap"
-                  style={{
-                    height: `${ROW_HEIGHT}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                    paddingLeft: `${node.depth * INDENT_PX}px`,
-                  }}>
-                  {node.closingBracket ? (
-                    <span className="ml-5 text-muted-foreground/70">
-                      {closeBracket}
-                    </span>
-                  ) : (
-                    <>
-                      {expandable ? (
-                        <button
-                          type="button"
-                          className="mr-1 flex size-4 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
-                          onClick={() => toggle(node.id)}
-                          aria-label={
-                            node.expanded ? t("Collapse") : t("Expand")
-                          }>
-                          {node.expanded ? (
+                return (
+                  <div
+                    key={node.id}
+                    className="absolute top-0 left-0 flex w-full items-center whitespace-nowrap"
+                    style={{
+                      height: `${ROW_HEIGHT}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                      paddingLeft: `${node.depth * INDENT_PX}px`,
+                    }}>
+                    {node.closingBracket ? (
+                      <span className="ml-5 text-muted-foreground/70">
+                        {closeBracket}
+                      </span>
+                    ) : (
+                      <>
+                        {expandable && !searching ? (
+                          <button
+                            type="button"
+                            className="mr-1 flex size-4 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
+                            onClick={() => toggle(node.id)}
+                            aria-label={
+                              node.expanded ? t("Collapse") : t("Expand")
+                            }>
+                            {node.expanded ? (
+                              <CaretDownIcon size={12} />
+                            ) : (
+                              <CaretRightIcon size={12} />
+                            )}
+                          </button>
+                        ) : expandable ? (
+                          <span className="mr-1 flex size-4 shrink-0 items-center justify-center text-muted-foreground">
                             <CaretDownIcon size={12} />
-                          ) : (
-                            <CaretRightIcon size={12} />
-                          )}
-                        </button>
-                      ) : (
-                        <span className="mr-1 size-4 shrink-0" />
-                      )}
+                          </span>
+                        ) : (
+                          <span className="mr-1 size-4 shrink-0" />
+                        )}
 
-                      {node.label !== null && (
-                        <span className="shrink-0 text-muted-foreground">
-                          {node.label}
-                          {": "}
-                        </span>
-                      )}
+                        {node.label !== null && (
+                          <span className="shrink-0 text-muted-foreground">
+                            {highlight(node.label, trimmedQuery)}
+                            {": "}
+                          </span>
+                        )}
 
-                      {expandable ? (
-                        <span className="text-muted-foreground/70">
-                          {node.expanded
-                            ? node.kind === "array"
-                              ? "["
-                              : "{"
-                            : summarize(node)}
-                        </span>
-                      ) : (
-                        <span className="truncate text-foreground">
-                          {formatPrimitive(node.value)}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                        {expandable ? (
+                          <span className="text-muted-foreground/70">
+                            {node.expanded
+                              ? node.kind === "array"
+                                ? "["
+                                : "{"
+                              : summarize(node)}
+                          </span>
+                        ) : (
+                          <span className="truncate text-foreground">
+                            {highlight(
+                              formatPrimitive(node.value),
+                              trimmedQuery,
+                            )}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

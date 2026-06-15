@@ -253,6 +253,8 @@
   "Unable to copy JSON to clipboard.": "JSONをクリップボードにコピーできませんでした。",
   "Copied": "コピーされました",
   "Copy JSON": "JSONをコピー",
+  "Search keys and values": "キーと値を検索",
+  "No matches": "一致する項目がありません",
   "Collapse": "折りたたむ",
   "Expand": "展開",
   "Geo Viewer": "ジオビューア",

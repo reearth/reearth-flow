@@ -253,6 +253,8 @@
   "Unable to copy JSON to clipboard.": "Impossible de copier le JSON dans le presse-papiers.",
   "Copied": "Copié",
   "Copy JSON": "Copier JSON",
+  "Search keys and values": "Rechercher des clés et des valeurs",
+  "No matches": "Aucune correspondance",
   "Collapse": "Réduire",
   "Expand": "Développer",
   "Geo Viewer": "visualiseur géographique",

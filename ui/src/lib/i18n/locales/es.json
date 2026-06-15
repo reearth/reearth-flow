@@ -253,6 +253,8 @@
   "Unable to copy JSON to clipboard.": "No se pudo copiar el JSON al portapapeles.",
   "Copied": "Copiado",
   "Copy JSON": "Copiar JSON",
+  "Search keys and values": "Buscar claves y valores",
+  "No matches": "No hay coincidencias",
   "Collapse": "Colapsar",
   "Expand": "Expandir",
   "Geo Viewer": "Visor geográfico",

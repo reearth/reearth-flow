@@ -253,6 +253,8 @@
   "Unable to copy JSON to clipboard.": "无法将JSON复制到剪贴板。",
   "Copied": "已复制",
   "Copy JSON": "复制 JSON",
+  "Search keys and values": "搜索键和值",
+  "No matches": "没有匹配项",
   "Collapse": "折叠",
   "Expand": "展开",
   "Geo Viewer": "地理查看器",
