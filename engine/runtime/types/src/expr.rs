@@ -462,7 +462,7 @@ mod tests {
     use crate::feature::Feature;
 
     fn eval_bool(expr: &str, feature: &Feature) -> bool {
-        let code = Code {
+        let code: Code = Code {
             ty: CodeType::FlowExpr,
             value: expr.to_string(),
         };
@@ -482,7 +482,7 @@ mod tests {
         );
         let env_vars = Arc::new(env_vars);
 
-        let literal = Code {
+        let literal: Code = Code {
             ty: CodeType::String,
             value: "hello".to_string(),
         };
@@ -495,7 +495,7 @@ mod tests {
             "hello"
         );
 
-        let expr = Code {
+        let expr: Code = Code {
             ty: CodeType::FlowExpr,
             value: r#"env["key"]"#.to_string(),
         };
@@ -508,7 +508,7 @@ mod tests {
         );
 
         // attributes are not in scope
-        let no_attr = Code {
+        let no_attr: Code = Code {
             ty: CodeType::FlowExpr,
             value: "attributes".to_string(),
         };
