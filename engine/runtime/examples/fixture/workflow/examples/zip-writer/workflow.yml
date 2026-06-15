@@ -11,25 +11,15 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                testAttribute01: "堺市中区",
-                year: 2025,
-              },
-              #{
-                testAttribute01: "堺市北区",
-                year: 2024,
-              },
-              #{
-                testAttribute01: "堺市西区",
-                year: 2025,
-              },
-              #{
-                testAttribute01: "堺市東区",
-                year: 2024,
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"testAttribute01": "堺市中区", "year": 2025},
+                {"testAttribute01": "堺市北区", "year": 2024},
+                {"testAttribute01": "堺市西区", "year": 2025},
+                {"testAttribute01": "堺市東区", "year": 2024},
+              ]
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         name: FeatureFilterBydate

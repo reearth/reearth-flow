@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr};
 
 use reearth_flow_common::csv::{
     auto_generate_header, build_csv_reader, read_merged_header, Delimiter,
@@ -32,7 +32,6 @@ pub struct CsvReaderParam {
 
 pub(crate) fn read_csv(
     delimiter: Delimiter,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
     params: &CompiledCommonReaderParam,
     csv_params: &CsvReaderParam,
     encoding: Option<&str>,
@@ -40,12 +39,11 @@ pub(crate) fn read_csv(
     fw: &ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {
     let feature = &ctx.feature;
-    let expr_engine = Arc::clone(&ctx.expr_engine);
     let storage_resolver = &ctx.storage_resolver;
-    let scope = feature.new_scope(expr_engine.clone(), global_params);
-    let csv_path = scope
-        .eval_ast::<String>(&params.expr)
-        .unwrap_or_else(|_| params.original_expr.to_string());
+    let csv_path = params
+        .dataset
+        .eval_string(feature, ctx.expr_engine.vars())
+        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(csv_path.as_str())
         .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     let storage = storage_resolver

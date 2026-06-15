@@ -214,10 +214,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Operation": {
           "attribute": {
             "title": "Attribute name"
@@ -245,10 +241,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapper": {
           "attribute": {
             "title": "Attribute name"
@@ -555,12 +547,6 @@
           "title": "Skip unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -600,12 +586,6 @@
         },
         "prettyPrint": {
           "description": "Whether to format output with indentation (default: true)"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -724,12 +704,6 @@
           "description": "Output path or expression for the CSV/TSV file to create"
         }
       },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
-      },
       "enumI18n": {
         "CsvFormat": {
           "csv": {
@@ -833,12 +807,6 @@
         "timeField": {
           "title": "Time Field",
           "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       },
       "enumI18n": {
@@ -1006,12 +974,6 @@
         "sheetName": {
           "description": "Sheet name (defaults to \"Sheet1\")"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1143,10 +1105,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Condition": {
           "expr": {
             "title": "Condition expression"
@@ -1310,12 +1268,6 @@
           "title": "FeatureWriter Parameters",
           "description": "Configuration for writing features to different file formats."
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1359,10 +1311,6 @@
         "mappings": {}
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapping": {
           "attribute": {},
           "value": {}
@@ -1404,12 +1352,6 @@
         },
         "output": {
           "description": "Output path or expression for the GeoJSON file to create"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1466,12 +1408,6 @@
         },
         "tableName": {
           "description": "Table name to create (default: \"features\")"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1645,12 +1581,6 @@
         },
         "schemaKey": {
           "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes."
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -2120,12 +2050,6 @@
         "output": {
           "description": "Output path or expression for the JSON file to create"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -2243,12 +2167,6 @@
         "skipUnexposedAttributes": {
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -2450,12 +2368,6 @@
         "writeTexcoords": {
           "title": "Write Texture Coordinates",
           "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -2904,6 +2816,26 @@
       }
     },
     {
+      "name": "PLATEAU6.MissingAttributeDetector",
+      "parameterI18n": {
+        "": {
+          "title": "MissingAttributeDetector Parameters",
+          "description": "Configuration for detecting missing attributes in PLATEAU features."
+        },
+        "packageAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU6.ObjectListExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "ObjectListExtractor Parameters",
+          "description": "Configuration for extracting object lists from PLATEAU data."
+        },
+        "objectListPathAttribute": {}
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "从PLATEAU6数据中提取UDX文件夹",
       "parameterI18n": {
@@ -3113,12 +3045,6 @@
         },
         "output": {
           "description": "Output path or expression for the Shapefile to create"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -3410,12 +3336,6 @@
         "output": {
           "description": "Output path or expression for the XML file to create"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -3428,12 +3348,6 @@
         },
         "output": {
           "description": "Output path"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     }

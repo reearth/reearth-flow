@@ -476,8 +476,61 @@ fn main() {
 
         run_testcase(&testcases_dir, &results_dir, &test_name, stages);
     } else {
-        for name in DEFAULT_TESTS {
-            run_testcase(&testcases_dir, &results_dir, name, "re");
+        // Run testcases concurrently across the testcase set. Each testcase
+        // writes to its own output directory and spawns its own Runner with
+        // isolated state/storage/logger, so they are safe to interleave.
+        //
+        // Concurrency is bounded because each Runner internally spawns ~4
+        // worker threads for its DAG; running too many testcases at once
+        // oversubscribes the CPU and causes the runner agent to lose
+        // heartbeat (same failure mode we saw with --test-threads=16 in
+        // workflow-tests). On a 4-vCPU CI runner, 2 concurrent testcases is
+        // the safe ceiling. Override via PLATEAU_TILES_TEST_CONCURRENCY for
+        // larger machines.
+        let concurrency = env::var("PLATEAU_TILES_TEST_CONCURRENCY")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .map(|n| n.max(1)) // 0 would panic rayon::ThreadPoolBuilder::num_threads
+            .unwrap_or_else(|| (num_cpus::get() / 2).clamp(1, 4));
+
+        eprintln!(
+            "Running {} testcases with concurrency={}",
+            DEFAULT_TESTS.len(),
+            concurrency
+        );
+
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(concurrency)
+            .thread_name(|i| format!("plateau-tiles-test-{i}"))
+            .build()
+            .expect("failed to build rayon thread pool");
+
+        // Collect outcomes so a single panic doesn't abort the whole run —
+        // we still surface every failure, but only after all testcases have
+        // had a chance to run (and after their isolated state is cleaned up).
+        let failures: Vec<String> = pool.install(|| {
+            use rayon::prelude::*;
+            DEFAULT_TESTS
+                .par_iter()
+                .filter_map(|name| {
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        run_testcase(&testcases_dir, &results_dir, name, "re");
+                    }));
+                    if result.is_err() {
+                        Some((*name).to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        });
+
+        if !failures.is_empty() {
+            eprintln!("\n{} testcases failed:", failures.len());
+            for name in &failures {
+                eprintln!("  - {name}");
+            }
+            std::process::exit(1);
         }
     }
 }

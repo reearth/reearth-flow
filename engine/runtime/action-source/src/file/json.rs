@@ -12,8 +12,8 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
 use super::reader::json;
-use super::reader::runner::get_content;
-use crate::{errors::SourceError, file::reader::runner::FileReaderCommonParam};
+use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
+use crate::errors::SourceError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct JsonReaderFactory;
@@ -51,7 +51,7 @@ impl SourceFactory for JsonReaderFactory {
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: JsonReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::JsonReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -66,14 +66,16 @@ impl SourceFactory for JsonReaderFactory {
             )
             .into());
         };
-        let reader = JsonReader { params };
-        Ok(Box::new(reader))
+        let common = params.common_property.compile().map_err(|e| {
+            SourceError::JsonReaderFactory(format!("Failed to compile params: {e:?}"))
+        })?;
+        Ok(Box::new(JsonReader { common }))
     }
 }
 
 #[derive(Debug, Clone)]
 pub(super) struct JsonReader {
-    pub(super) params: JsonReaderParam,
+    common: FileReaderCompiledParam,
 }
 
 /// # JsonReader Parameters
@@ -104,7 +106,7 @@ impl Source for JsonReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&ctx, &self.common, storage_resolver).await?;
         json::read_json(&content, sender)
             .await
             .map_err(Into::<BoxedError>::into)

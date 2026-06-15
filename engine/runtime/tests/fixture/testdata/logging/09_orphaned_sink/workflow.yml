@@ -12,8 +12,9 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [#{"id": 1, "name": "item_1", "value": 10}]
+          creator:
+            type: flowExpr
+            value: '[{"id": 1, "name": "item_1", "value": 10}]'
       - id: c1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         name: JsonWriter
         type: action

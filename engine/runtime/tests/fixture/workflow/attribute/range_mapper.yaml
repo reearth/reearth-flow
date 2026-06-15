@@ -12,15 +12,17 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ id: "feature1", depth: 0.5 },
-              #{ id: "feature2", depth: 3.5 },
-              #{ id: "feature3", depth: 7.0 },
-              #{ id: "feature4", depth: 15.0 },
-              #{ id: "feature5", depth: 25.0 },
-              #{ id: "feature6", depth: 50.0 }
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"id": "feature1", "depth": 0.5},
+                {"id": "feature2", "depth": 3.5},
+                {"id": "feature3", "depth": 7.0},
+                {"id": "feature4", "depth": 15.0},
+                {"id": "feature5", "depth": 25.0},
+                {"id": "feature6", "depth": 50.0}
+              ]
 
       - id: c1a91180-ab88-4c1a-aab5-48c242a218eb
         name: AttributeRangeMapper

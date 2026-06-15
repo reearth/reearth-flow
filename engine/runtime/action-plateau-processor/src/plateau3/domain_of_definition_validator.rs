@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use fastxml::transform::StreamTransformer;
+use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::XmlContext;
@@ -1034,7 +1034,7 @@ fn process_member_node(
                 })?;
                 let collected_ids: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
                 let collected_ids_clone = Rc::clone(&collected_ids);
-                let transformer = StreamTransformer::new(&xml_str)
+                let transformer = Transformer::from(xml_str.as_str())
                     .with_root_namespaces()
                     .map_err(|e| {
                         PlateauProcessorError::DomainOfDefinitionValidator(format!(

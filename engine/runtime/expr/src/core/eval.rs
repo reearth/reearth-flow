@@ -125,6 +125,7 @@ thread_local! {
         env_bind(&env, "type", Value::Fn(NativeFn::new(builtin_type)));
         env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
         env_bind(&env, "itertools", builtin_itertools());
+        env_bind(&env, "range", Value::Fn(NativeFn::new(builtin_range)));
         env
     };
 }
@@ -625,7 +626,7 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
         }
         ExprKind::Var(name) => env_get(env, name.as_str()).ok_or_else(|| Error::Eval {
             pos,
-            msg: format!("unknown variable '{name}'"),
+            msg: format!("'{name}' is not defined"),
         }),
         ExprKind::Index(target, key) => {
             let target = eval_inner(target, env)?;
@@ -1267,6 +1268,56 @@ fn builtin_len(args: &[Value]) -> Result<Value> {
         other => Err(eval_error(format!(
             "len() not supported for {}",
             other.type_name()
+        ))),
+    }
+}
+
+fn builtin_range(args: &[Value]) -> Result<Value> {
+    let to_int = |v: &Value, what: &str| match v {
+        Value::Int(n) => Ok(*n),
+        other => Err(eval_error(format!(
+            "range() {what} must be an integer, got {}",
+            other.type_name()
+        ))),
+    };
+    match args.len() {
+        1 => {
+            let end = to_int(&args[0], "end")?;
+            Ok(Value::array((0..end).map(Value::Int).collect()))
+        }
+        2 => {
+            let start = to_int(&args[0], "start")?;
+            let end = to_int(&args[1], "end")?;
+            Ok(Value::array((start..end).map(Value::Int).collect()))
+        }
+        3 => {
+            let start = to_int(&args[0], "start")?;
+            let end = to_int(&args[1], "end")?;
+            let step = to_int(&args[2], "step")?;
+            if step == 0 {
+                return Err(eval_error("range() step cannot be zero"));
+            }
+            let mut result = Vec::new();
+            let mut i = start;
+            if step > 0 {
+                while i < end {
+                    result.push(Value::Int(i));
+                    i = i
+                        .checked_add(step)
+                        .ok_or_else(|| eval_error("range() step caused integer overflow"))?;
+                }
+            } else {
+                while i > end {
+                    result.push(Value::Int(i));
+                    i = i
+                        .checked_add(step)
+                        .ok_or_else(|| eval_error("range() step caused integer overflow"))?;
+                }
+            }
+            Ok(Value::array(result))
+        }
+        n => Err(eval_error(format!(
+            "range() expects 1-3 arguments, got {n}"
         ))),
     }
 }
@@ -2124,5 +2175,34 @@ mod tests {
         );
         assert!(try_run("fn(x, y) { x + y }(1)", &[]).is_err());
         assert!(try_run("fn() { 1 }(42)", &[]).is_err());
+    }
+
+    #[test]
+    fn test_range() {
+        assert_eval("range(5)", &[], Value::from(vec![0i64, 1, 2, 3, 4]));
+        assert_eval("range(0)", &[], Value::from(Vec::<Value>::new()));
+        assert_eval("range(2, 5)", &[], Value::from(vec![2i64, 3, 4]));
+        assert_eval("range(1, 8, 3)", &[], Value::from(vec![1i64, 4, 7]));
+        assert_eval("range(5, 0, -2)", &[], Value::from(vec![5i64, 3, 1]));
+        assert_eval("range(3, 3)", &[], Value::from(Vec::<Value>::new()));
+        assert!(try_run("range(1, 10, 0)", &[]).is_err());
+        assert!(try_run(
+            "range(start, end, step)",
+            &[
+                ("start", Value::Int(1)),
+                ("end", Value::Int(i64::MAX)),
+                ("step", Value::Int(i64::MAX)),
+            ]
+        )
+        .is_err());
+        assert!(try_run(
+            "range(start, end, step)",
+            &[
+                ("start", Value::Int(-1)),
+                ("end", Value::Int(i64::MIN)),
+                ("step", Value::Int(i64::MIN)),
+            ]
+        )
+        .is_err());
     }
 }

@@ -20,7 +20,9 @@ graphs:
         type: action
         action: GeoJsonReader
         with:
-          dataset: "ram:///fixture/testdata/geometry/neighbor_finder/points_for_proximity_test.geojson"
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/geometry/neighbor_finder/points_for_proximity_test.geojson
 
       - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         name: FilterByType
