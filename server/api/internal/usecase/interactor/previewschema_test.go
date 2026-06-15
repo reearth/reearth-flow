@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
 	"github.com/reearth/reearthx/appx"
@@ -247,6 +248,10 @@ func TestProject_PreviewSchema_CloudRunWorker(t *testing.T) {
 	assert.Equal(t, prj.Workspace(), got.Workspace())
 	assert.Equal(t, 7, *got.ProjectVersion())
 
+	// previewSchemaUrl is NOT set at creation; it's populated on completion by
+	// updateJobArtifacts once the worker has written the report.
+	assert.Empty(t, got.PreviewSchemaURL())
+
 	// Dedicated probe-schema dispatch invoked; run dispatch NOT invoked.
 	assert.Len(t, fj.previewCalls, 1)
 	assert.Len(t, fj.runCalls, 0)
@@ -324,3 +329,40 @@ func (s *stubCloudRunWorker) PreviewSchema(context.Context, gateway.ProbeSchemaP
 	return gateway.JobStatusCompleted, nil
 }
 func (s *stubCloudRunWorker) CancelJob(context.Context, id.JobID) error { return nil }
+
+func TestProject_PreviewSchema_RequiresWorkflow(t *testing.T) {
+	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
+	uc := &Project{
+		permissionChecker: NewMockPermissionChecker(nil),
+	}
+
+	got, err := uc.PreviewSchema(previewTestContext(), interfaces.PreviewSchemaParam{
+		ProjectID: prj.ID(),
+		Workflow:  nil,
+	})
+
+	// A missing workflow yields a clear error, not a nil job (which would violate
+	// the non-null PreviewSchemaPayload.job at the GraphQL layer).
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, interfaces.ErrWorkflowFileRequired)
+}
+
+func TestParametersToVariables(t *testing.T) {
+	mustParam := func(name string, def any) *parameter.Parameter {
+		p, err := parameter.New().Name(name).DefaultValue(def).Build()
+		assert.NoError(t, err)
+		return p
+	}
+
+	assert.Nil(t, parametersToVariables(nil))
+
+	vars := parametersToVariables([]*parameter.Parameter{
+		mustParam("dataset", "file:///a.geojson"),
+		mustParam("noDefault", nil), // must be omitted, never the literal "<nil>"
+		nil,                         // nil entry skipped
+	})
+
+	assert.Equal(t, "file:///a.geojson", vars["dataset"])
+	_, ok := vars["noDefault"]
+	assert.False(t, ok, "parameter with nil default must be omitted, not set to \"<nil>\"")
+}

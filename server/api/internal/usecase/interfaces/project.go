@@ -49,6 +49,7 @@ type PreviewSchemaParam struct {
 var (
 	ErrProjectAliasIsNotSet    error = errors.New("project alias is not set")
 	ErrProjectAliasAlreadyUsed error = errors.New("project alias is already used by another project")
+	ErrWorkflowFileRequired    error = errors.New("workflow file is required")
 )
 
 type Project interface {

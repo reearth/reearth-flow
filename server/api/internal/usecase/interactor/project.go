@@ -345,7 +345,7 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 	}
 
 	if p.Workflow == nil {
-		return nil, nil
+		return nil, interfaces.ErrWorkflowFileRequired
 	}
 
 	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
@@ -401,9 +401,9 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 	// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
 
 	j.SetParameters(p.Parameters)
-	if url := i.file.GetJobPreviewSchemaURL(j.ID().String()); url != "" {
-		j.SetPreviewSchemaURL(url)
-	}
+	// previewSchemaUrl is populated on completion by Job.updateJobArtifacts, not
+	// here: the artifact does not exist until the worker writes it (and never on
+	// failure), so setting it at creation time would hand clients a URL that 404s.
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err
@@ -475,7 +475,14 @@ func parametersToVariables(params []*parameter.Parameter) map[string]string {
 		if p == nil {
 			continue
 		}
-		vars[p.Name()] = fmt.Sprintf("%v", p.DefaultValue())
+		// A parameter with no default must not be sent: stringifying nil yields
+		// the literal "<nil>", which would override the workflow's env.get(...)
+		// resolution / the engine default. Leave it unset instead.
+		dv := p.DefaultValue()
+		if dv == nil {
+			continue
+		}
+		vars[p.Name()] = fmt.Sprintf("%v", dv)
 	}
 	return vars
 }
