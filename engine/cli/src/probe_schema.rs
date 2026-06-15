@@ -138,6 +138,12 @@ impl ProbeSchemaCliCommand {
             }
         }
 
+        // Global `with:` vars (already merged with `--var` above). These seed the
+        // sampling engine so source `dataset` expressions like `env.get("path")`
+        // resolve to the same value they would under `run`. Captured before
+        // `workflow.graphs` is moved into `from_graphs`.
+        let vars = workflow.with.clone().unwrap_or_default();
+
         let mut factories = HashMap::new();
         factories.extend(ALL_ACTION_FACTORIES.clone());
         factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
@@ -147,7 +153,7 @@ impl ProbeSchemaCliCommand {
                 .map_err(crate::errors::Error::run)?;
 
         let inferred =
-            infer_with_sampling(&dag, self.sample_size).map_err(crate::errors::Error::run)?;
+            infer_with_sampling(&dag, self.sample_size, vars).map_err(crate::errors::Error::run)?;
 
         let mut node_ids: Vec<&String> = inferred.node_outputs.keys().collect();
         node_ids.sort();
@@ -241,7 +247,7 @@ mod tests {
         let dataset_uri = format!("file://{geojson_path}");
 
         // 2. Inline workflow: GeoJsonReader -> AttributeManager (remove `name`).
-        //    `dataset` is a quoted rhai string literal that evaluates to the URI.
+        //    `dataset` is a `string`-typed Code literal that resolves to the URI.
         let workflow_yaml = format!(
             r#"id: {WORKFLOW_ID}
 name: schema-cli-test
@@ -256,7 +262,9 @@ graphs:
         type: action
         action: GeoJsonReader
         with:
-          dataset: "\"{dataset_uri}\""
+          dataset:
+            type: string
+            value: {dataset_uri}
       - id: {MANAGER_ID}
         name: manager
         type: action
@@ -331,6 +339,94 @@ graphs:
         assert!(
             !manager_fields.iter().any(|f| f == "name"),
             "manager default port should NOT include removed `name`, got {manager_fields:?}"
+        );
+    }
+
+    #[test]
+    fn schema_command_resolves_dataset_from_var() {
+        // GeoJsonReader whose `dataset` is `env.get("datasetPath")`, with the
+        // value supplied via `--var datasetPath=<uri>` — exactly how `run`
+        // resolves datasets. The sampling engine must be seeded from
+        // `workflow.with` (after merging `--var`) for the reader to read the file.
+        let mut geojson_tmp = tempfile::Builder::new()
+            .suffix(".geojson")
+            .tempfile()
+            .expect("create temp geojson");
+        geojson_tmp
+            .write_all(FIXTURE_GEOJSON.as_bytes())
+            .expect("write geojson fixture");
+        let geojson_path = geojson_tmp
+            .path()
+            .to_str()
+            .expect("utf8 geojson path")
+            .to_string();
+        let dataset_uri = format!("file://{geojson_path}");
+
+        let workflow_yaml = format!(
+            r#"id: {WORKFLOW_ID}
+name: schema-cli-var-test
+entryGraphId: {GRAPH_ID}
+with:
+  datasetPath: ""
+graphs:
+  - id: {GRAPH_ID}
+    name: main
+    nodes:
+      - id: {READER_ID}
+        name: reader
+        type: action
+        action: GeoJsonReader
+        with:
+          dataset:
+            type: flowExpr
+            value: env.get("datasetPath")
+    edges: []
+"#
+        );
+
+        let mut workflow_tmp = tempfile::Builder::new()
+            .suffix(".yml")
+            .tempfile()
+            .expect("create temp workflow");
+        workflow_tmp
+            .write_all(workflow_yaml.as_bytes())
+            .expect("write workflow");
+        let workflow_path = workflow_tmp
+            .path()
+            .to_str()
+            .expect("utf8 workflow path")
+            .to_string();
+
+        let mut vars = HashMap::new();
+        vars.insert("datasetPath".to_string(), dataset_uri);
+
+        let cmd = ProbeSchemaCliCommand {
+            workflow_path,
+            vars,
+            sample_size: 10,
+        };
+        let report = cmd.build_report().expect("build_report succeeds");
+
+        // The reader resolved `env.get("datasetPath")` from the merged var and
+        // sampled the real file: closed schema carrying `id`.
+        let reader_node = report
+            .nodes
+            .get(READER_ID)
+            .expect("reader node present in report");
+        let reader_fields = field_names(&report, READER_ID);
+        assert!(
+            reader_fields.iter().any(|f| f == "id"),
+            "reader should sample `id` via env-var dataset, got {reader_fields:?} (note: {:?})",
+            reader_node.note
+        );
+        let reader_default_port = reader_node
+            .ports
+            .get("default")
+            .expect("reader has a default port");
+        assert!(
+            !reader_default_port.open,
+            "a reader whose dataset resolved from a var yields a closed schema (note: {:?})",
+            reader_node.note
         );
     }
 }

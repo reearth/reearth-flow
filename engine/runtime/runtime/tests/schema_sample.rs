@@ -11,13 +11,20 @@
 
 use std::collections::HashMap;
 use std::io::Write;
+use std::sync::Arc;
 
 use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS;
+use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::node::NodeKind;
 use reearth_flow_runtime::schema_sample::sample_source;
 use reearth_flow_types::attr_schema::AttrType;
 use reearth_flow_types::attribute::Attribute;
 use serde_json::json;
+
+/// An engine with no variables — for `dataset` literals that need no resolution.
+fn empty_engine() -> Arc<Engine> {
+    Arc::new(Engine::new())
+}
 
 const FIXTURE_GEOJSON: &str = r#"{
   "type": "FeatureCollection",
@@ -51,11 +58,14 @@ fn geojson_factory() -> &'static NodeKind {
         .expect("GeoJsonReader factory must be registered")
 }
 
-/// Build `with` whose `dataset` Expr is a quoted rhai string literal that
-/// evaluates to the given URI verbatim.
+/// Build `with` whose `dataset` is a `string`-typed [`Code`] literal that
+/// evaluates to the given URI verbatim (no expression evaluation).
 fn with_dataset(uri: &str) -> HashMap<String, serde_json::Value> {
     let mut with = HashMap::new();
-    with.insert("dataset".to_string(), json!(format!("\"{uri}\"")));
+    with.insert(
+        "dataset".to_string(),
+        json!({ "type": "string", "value": uri }),
+    );
     with
 }
 
@@ -70,7 +80,12 @@ fn samples_geojson_real_attributes() {
     let path = tmp.path().to_str().expect("utf8 temp path").to_string();
     let uri = format!("file://{path}");
 
-    let outcome = sample_source(geojson_factory(), &Some(with_dataset(&uri)), 10);
+    let outcome = sample_source(
+        geojson_factory(),
+        &Some(with_dataset(&uri)),
+        10,
+        empty_engine(),
+    );
 
     assert!(
         outcome.note.is_none(),
@@ -98,8 +113,51 @@ fn samples_geojson_real_attributes() {
 #[test]
 fn unresolved_source_falls_back_to_open_with_note() {
     let with = with_dataset("file:///nonexistent/path/does_not_exist_xyz.geojson");
-    let outcome = sample_source(geojson_factory(), &Some(with), 10);
+    let outcome = sample_source(geojson_factory(), &Some(with), 10, empty_engine());
 
     assert!(outcome.schema.open, "schema should be open on failure");
     assert!(outcome.note.is_some(), "a note should explain the failure");
+}
+
+/// A `dataset` of `env.get("...")` must resolve from the engine's variables
+/// while sampling — i.e. datasets provided via workflow vars (as `run` does)
+/// are honored, not just hardcoded literals. This is the regression guard for
+/// `probe-schema` threading `workflow.with` into the sampling engine.
+#[test]
+fn samples_geojson_dataset_resolved_from_engine_var() {
+    let mut tmp = tempfile::Builder::new()
+        .suffix(".geojson")
+        .tempfile()
+        .expect("create temp geojson");
+    tmp.write_all(FIXTURE_GEOJSON.as_bytes())
+        .expect("write fixture");
+    let path = tmp.path().to_str().expect("utf8 temp path").to_string();
+    let uri = format!("file://{path}");
+
+    // dataset := env.get("datasetPath"); the value lives only in the engine vars.
+    let mut with = HashMap::new();
+    with.insert(
+        "dataset".to_string(),
+        json!({ "type": "flowExpr", "value": "env.get(\"datasetPath\")" }),
+    );
+
+    let mut vars = serde_json::Map::new();
+    vars.insert("datasetPath".to_string(), json!(uri));
+    let engine = Arc::new(Engine::with_vars(vars));
+
+    let outcome = sample_source(geojson_factory(), &Some(with), 10, engine);
+
+    assert!(
+        outcome.note.is_none(),
+        "env.get() dataset should resolve from engine vars, got note: {:?}",
+        outcome.note
+    );
+    assert!(!outcome.schema.open, "schema should be closed");
+    assert!(
+        outcome
+            .schema
+            .fields
+            .contains_key(&Attribute::new("id".to_string())),
+        "sampled schema should include the real `id` attribute"
+    );
 }

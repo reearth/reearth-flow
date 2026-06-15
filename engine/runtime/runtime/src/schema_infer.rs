@@ -147,10 +147,22 @@ pub fn infer_and_validate(dag: &DagSchemas) -> Result<InferResult, crate::errors
 /// propagate exactly as in [`infer_and_validate`]. Per-source failures degrade
 /// to an `open` schema with a recorded note (in [`InferResult::notes`], keyed by
 /// node id).
+///
+/// `vars` are the workflow's global `with:` variables (already merged with any
+/// CLI `--var` overrides). They seed the expression engine used while sampling,
+/// so a source `dataset` expression like `env.get("path")` resolves to the same
+/// value it would under `run`.
 pub fn infer_with_sampling(
     dag: &DagSchemas,
     sample_size: usize,
+    vars: serde_json::Map<String, serde_json::Value>,
 ) -> Result<InferResult, crate::errors::ExecutionError> {
+    // Build the expression engine from the workflow's global `with:` vars,
+    // exactly as the runtime does in `Orchestrator`
+    // (`Engine::with_vars(workflow.with...)`). Threading it into the source
+    // sampling below lets `dataset` expressions such as `env.get("path")`
+    // resolve during sampling — the same way `run` resolves them.
+    let expr_engine = std::sync::Arc::new(reearth_flow_eval_expr::engine::Engine::with_vars(vars));
     let graph = dag.graph();
     let order = petgraph::algo::toposort(graph, None)
         .map_err(|_| crate::errors::ExecutionError::SchemaInferenceCycle)?;
@@ -168,7 +180,12 @@ pub fn infer_with_sampling(
             // declared output port.
             Some(kind @ NodeKind::Source(_)) => {
                 let factory = FactoryRef::of(kind);
-                let outcome = crate::schema_sample::sample_source(kind, &node.with, sample_size);
+                let outcome = crate::schema_sample::sample_source(
+                    kind,
+                    &node.with,
+                    sample_size,
+                    expr_engine.clone(),
+                );
                 if let Some(note) = outcome.note {
                     result.notes.insert(node.handle.id.to_string(), note);
                 }
@@ -471,7 +488,7 @@ mod tests {
     fn infer_with_sampling_records_source_note_and_propagates() {
         // Reuse the StubSource -> Adder dag from propagates_node_outputs.
         let dag = build_dag("Adder");
-        let result = infer_with_sampling(&dag, 10).expect("inference ok");
+        let result = infer_with_sampling(&dag, 10, serde_json::Map::new()).expect("inference ok");
 
         // 1) The StubSource node gets a note: it is not a real reader, so
         //    sampling falls back to open + note. This proves the sampling path
@@ -524,7 +541,7 @@ mod tests {
             .expect("dag construction");
 
         // Exercise both entrypoints: the router port must appear in each.
-        let sampled = infer_with_sampling(&dag, 10).expect("inference ok");
+        let sampled = infer_with_sampling(&dag, 10, serde_json::Map::new()).expect("inference ok");
         let router_out = sampled
             .node_outputs
             .get(&router_id.to_string())
