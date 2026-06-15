@@ -347,7 +347,7 @@ mod tests {
     fn infer_multiple_expr_sets_open() {
         let with = with_from(json!({
             "mappers": [
-                { "multipleExpr": "#{ x: 1 }" }
+                { "multipleExpr": { "type": "flowExpr", "value": "#{ x: 1 }" } }
             ]
         }));
 
