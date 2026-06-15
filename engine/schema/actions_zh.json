@@ -616,28 +616,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Method": {
             "type": "string",
             "enum": [
@@ -669,14 +647,27 @@
               "value": {
                 "title": "Value",
                 "description": "Value to use for the operation",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           }
@@ -716,28 +707,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Mapper": {
             "type": "object",
             "properties": {
@@ -757,25 +726,51 @@
               },
               "expr": {
                 "title": "Expression to evaluate",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "multipleExpr": {
                 "title": "Expression to evaluate multiple attributes",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "parentAttribute": {
                 "title": "Parent attribute name",
@@ -1417,14 +1412,27 @@
           "compressOutput": {
             "title": "Compressed Output Path",
             "description": "Optional path for compressed archive output",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "dracoCompression": {
             "title": "Draco Compression",
@@ -1451,11 +1459,24 @@
           "output": {
             "title": "Output Path",
             "description": "Directory path where the 3D tiles will be written",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "schemaKey": {
             "title": "Schema Key",
@@ -1471,30 +1492,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -1526,14 +1523,27 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "flatten": {
             "type": [
@@ -1544,38 +1554,27 @@
           "inline": {
             "title": "Inline Content",
             "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -1629,11 +1628,24 @@
           },
           "output": {
             "description": "Output file path expression",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "prettyPrint": {
             "description": "Whether to format output with indentation (default: true)",
@@ -1641,30 +1653,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -1911,14 +1899,27 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "encoding": {
             "title": "Character Encoding",
@@ -1962,14 +1963,27 @@
           "inline": {
             "title": "Inline Content",
             "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "offset": {
             "title": "Header Row Offset",
@@ -1983,28 +1997,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "CsvFormat": {
             "oneOf": [
               {
@@ -2138,36 +2130,27 @@
           },
           "output": {
             "description": "Output path or expression for the CSV/TSV file to create",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
+          }
+        },
+        "definitions": {
           "CsvFormat": {
             "oneOf": [
               {
@@ -2266,14 +2249,27 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "force2d": {
             "title": "Force 2D",
@@ -2284,14 +2280,27 @@
           "inline": {
             "title": "Inline Content",
             "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "skipDocumentPacket": {
             "title": "Skip Document Packet",
@@ -2311,28 +2320,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "TimeSamplingStrategy": {
             "description": "Strategy for handling time-dynamic CZML properties.",
             "oneOf": [
@@ -2468,11 +2455,24 @@
           "output": {
             "title": "Output File Path",
             "description": "Path where the CZML file will be written",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "timeField": {
             "title": "Time Field",
@@ -2490,28 +2490,6 @@
         "definitions": {
           "Attribute": {
             "type": "string"
-          },
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           },
           "InterpolationAlgorithm": {
             "description": "Interpolation algorithm for Cesium time-dynamic properties.",
@@ -2967,41 +2945,30 @@
         "properties": {
           "output": {
             "description": "Output path or expression for the Excel file to create",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          },
-          "sheetName": {
-            "description": "Sheet name (defaults to \"Sheet1\")",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
+          "sheetName": {
+            "description": "Sheet name (defaults to \"Sheet1\")",
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
@@ -3074,11 +3041,24 @@
           "dataset": {
             "title": "Dataset",
             "description": "Path expression resolving to the CityGML 3.0 file to read.",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "extractTags": {
             "title": "提取标签",
@@ -3088,30 +3068,6 @@
             "items": {
               "type": "string"
             }
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -3143,23 +3099,49 @@
           "codelistsPath": {
             "title": "Codelists Path",
             "description": "Optional path to the codelists directory for resolving codelist values",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "dataset": {
             "title": "Dataset",
             "description": "Path or expression to the CityGML dataset file to be read",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "flatten": {
             "title": "Flatten",
@@ -3167,30 +3149,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -3282,35 +3240,24 @@
           "creator": {
             "title": "Script Expression",
             "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -3423,28 +3370,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Condition": {
             "type": "object",
             "required": [
@@ -3454,11 +3379,23 @@
             "properties": {
               "expr": {
                 "title": "Condition expression",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "outputPort": {
                 "title": "Output port",
@@ -3782,11 +3719,24 @@
               "dataset": {
                 "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "encoding": {
                 "title": "Character Encoding",
@@ -3835,11 +3785,24 @@
               "dataset": {
                 "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "encoding": {
                 "title": "Character Encoding",
@@ -3888,11 +3851,24 @@
               "dataset": {
                 "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "format": {
                 "type": "string",
@@ -3902,31 +3878,7 @@
               }
             }
           }
-        ],
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          }
-        }
+        ]
       },
       "builtin": true,
       "inputPorts": [
@@ -4111,11 +4063,24 @@
               },
               "output": {
                 "title": "Output path",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -4134,11 +4099,24 @@
               },
               "output": {
                 "title": "Output path",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -4152,14 +4130,27 @@
             ],
             "properties": {
               "converter": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "format": {
                 "type": "string",
@@ -4169,11 +4160,24 @@
               },
               "output": {
                 "title": "Output path",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -4217,11 +4221,24 @@
               },
               "output": {
                 "title": "Output path",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "prettyPrint": {
                 "description": "Whether to format output with indentation (default: true)",
@@ -4233,31 +4250,7 @@
               }
             }
           }
-        ],
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          }
-        }
+        ]
       },
       "builtin": true,
       "inputPorts": [
@@ -4293,35 +4286,24 @@
           "sourceDataset": {
             "title": "Source Dataset",
             "description": "Path or expression pointing to the source directory or archive file",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -4391,28 +4373,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Mapping": {
             "type": "object",
             "required": [
@@ -4424,7 +4384,24 @@
                 "type": "string"
               },
               "value": {
-                "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
               }
             }
           }
@@ -4476,50 +4453,52 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "inline": {
-            "title": "Inline Content",
-            "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -4560,38 +4539,29 @@
           },
           "output": {
             "description": "Output path or expression for the GeoJSON file to create",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -4635,14 +4605,27 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "force2D": {
             "default": false,
@@ -4655,14 +4638,27 @@
           "inline": {
             "title": "Inline Content",
             "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "layerName": {
             "type": [
@@ -4695,28 +4691,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "GeoPackageReadMode": {
             "type": "string",
             "enum": [
@@ -4778,11 +4752,24 @@
           },
           "output": {
             "description": "Output path for the GeoPackage file to create",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "overwrite": {
             "description": "Overwrite existing file (default: false)",
@@ -4799,30 +4786,6 @@
             "description": "Table name to create (default: \"features\")",
             "default": "features",
             "type": "string"
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -5298,14 +5261,27 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "includeNodes": {
             "title": "Include Nodes",
@@ -5316,14 +5292,27 @@
           "inline": {
             "title": "Inline Content",
             "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "mergeMeshes": {
             "title": "Merge Meshes",
@@ -5336,30 +5325,6 @@
             "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
             "default": true,
             "type": "boolean"
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -5403,41 +5368,30 @@
           },
           "output": {
             "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          },
-          "schemaKey": {
-            "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
+          "schemaKey": {
+            "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
@@ -7119,50 +7073,52 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "inline": {
-            "title": "Inline Content",
-            "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -7193,46 +7149,48 @@
         "properties": {
           "converter": {
             "description": "Optional converter expression to transform features before writing",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "output": {
-            "description": "Output path or expression for the JSON file to create",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          "output": {
+            "description": "Output path or expression for the JSON file to create",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -7497,14 +7455,27 @@
           "compressOutput": {
             "title": "Compress Output",
             "description": "Optional expression to determine whether to compress the output tiles",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "extent": {
             "title": "Extent",
@@ -7519,11 +7490,24 @@
           "layerName": {
             "title": "Layer Name",
             "description": "Name of the layer within the MVT tiles",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "maxZoom": {
             "title": "Maximum Zoom",
@@ -7542,11 +7526,24 @@
           "output": {
             "title": "Output",
             "description": "Output directory path or expression for the generated MVT tiles",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "schemaKey": {
             "title": "Schema Key",
@@ -7562,30 +7559,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -7952,14 +7925,27 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "includeNormals": {
             "title": "Include Normals",
@@ -7976,27 +7962,53 @@
           "inline": {
             "title": "Inline Content",
             "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "materialFile": {
             "title": "Material File",
             "description": "Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "mergeGroups": {
             "title": "Merge Groups",
@@ -8015,30 +8027,6 @@
             "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
             "default": false,
             "type": "boolean"
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -8069,11 +8057,24 @@
           "output": {
             "title": "Output Path",
             "description": "Expression for the output file path where the OBJ file will be written",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "writeMaterials": {
             "title": "Write Materials",
@@ -8100,30 +8101,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -10436,14 +10413,27 @@
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "encoding": {
             "title": "Character Encoding",
@@ -10462,38 +10452,27 @@
           "inline": {
             "title": "Inline Content",
             "description": "Expression that returns the file content as text instead of reading from a file path",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -10534,38 +10513,29 @@
           },
           "output": {
             "description": "Output path or expression for the Shapefile to create",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -10784,44 +10754,46 @@
           "databaseUrl": {
             "title": "Database URL",
             "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          },
-          "sql": {
-            "title": "SQL Query",
-            "description": "SQL query expression to execute for retrieving data",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          "sql": {
+            "title": "SQL Query",
+            "description": "SQL query expression to execute for retrieving data",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -11452,35 +11424,24 @@
         "properties": {
           "output": {
             "description": "Output path or expression for the XML file to create",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -11511,35 +11472,24 @@
         "properties": {
           "output": {
             "description": "Output path",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },

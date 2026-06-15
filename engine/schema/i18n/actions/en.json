@@ -212,10 +212,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Operation": {
           "attribute": {
             "title": "Attribute name"
@@ -243,10 +239,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapper": {
           "attribute": {
             "title": "Attribute name"
@@ -550,12 +542,6 @@
           "title": "Skip unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -573,12 +559,6 @@
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -599,12 +579,6 @@
         },
         "prettyPrint": {
           "description": "Whether to format output with indentation (default: true)"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -683,10 +657,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "GeometryConfig": {
           "epsg": {
             "title": "EPSG Code",
@@ -723,12 +693,6 @@
         },
         "output": {
           "description": "Output path or expression for the CSV/TSV file to create"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       },
       "enumI18n": {
@@ -771,12 +735,6 @@
         "timeSampling": {
           "title": "Time Sampling Strategy",
           "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter."
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       },
       "enumI18n": {
@@ -840,12 +798,6 @@
         "timeField": {
           "title": "Time Field",
           "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       },
       "enumI18n": {
@@ -1011,12 +963,6 @@
         "sheetName": {
           "description": "Sheet name (defaults to \"Sheet1\")"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1047,12 +993,6 @@
           "title": "Extract Tags",
           "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1074,12 +1014,6 @@
         "flatten": {
           "title": "Flatten",
           "description": "Whether to flatten the hierarchical structure of the CityGML data"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1116,12 +1050,6 @@
         "creator": {
           "title": "Script Expression",
           "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1165,10 +1093,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Condition": {
           "expr": {
             "title": "Condition expression"
@@ -1272,12 +1196,6 @@
         "": {
           "title": "FeatureReaderParam"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1337,12 +1255,6 @@
           "title": "FeatureWriter Parameters",
           "description": "Configuration for writing features to different file formats."
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1360,12 +1272,6 @@
         "sourceDataset": {
           "title": "Source Dataset",
           "description": "Path or expression pointing to the source directory or archive file"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1391,10 +1297,6 @@
         "mappings": {}
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapping": {
           "attribute": {},
           "value": {}
@@ -1420,12 +1322,6 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1441,12 +1337,6 @@
         },
         "output": {
           "description": "Output path or expression for the GeoJSON file to create"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1473,12 +1363,6 @@
         "readMode": {},
         "spatialFilter": {},
         "tileFormat": {}
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1509,12 +1393,6 @@
         },
         "tableName": {
           "description": "Table name to create (default: \"features\")"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1664,12 +1542,6 @@
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -1691,12 +1563,6 @@
         },
         "schemaKey": {
           "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes."
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -2146,12 +2012,6 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -2166,12 +2026,6 @@
         },
         "output": {
           "description": "Output path or expression for the JSON file to create"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -2288,12 +2142,6 @@
         "skipUnexposedAttributes": {
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -2467,12 +2315,6 @@
           "title": "Triangulate",
           "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -2497,12 +2339,6 @@
         "writeTexcoords": {
           "title": "Write Texture Coordinates",
           "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -3145,12 +2981,6 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -3166,12 +2996,6 @@
         },
         "output": {
           "description": "Output path or expression for the Shapefile to create"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -3263,12 +3087,6 @@
         "sql": {
           "title": "SQL Query",
           "description": "SQL query expression to execute for retrieving data"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -3465,12 +3283,6 @@
         "output": {
           "description": "Output path or expression for the XML file to create"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -3483,12 +3295,6 @@
         },
         "output": {
           "description": "Output path"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     }
