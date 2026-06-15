@@ -632,11 +632,11 @@ type MutationResolver interface {
 	RemoveParameter(ctx context.Context, input gqlmodel.RemoveParameterInput) (bool, error)
 	RemoveParameters(ctx context.Context, input gqlmodel.RemoveParametersInput) (bool, error)
 	UpdateParameters(ctx context.Context, input gqlmodel.ParameterBatchInput) ([]*gqlmodel.Parameter, error)
-	PreviewSchema(ctx context.Context, input gqlmodel.PreviewSchemaInput) (*gqlmodel.PreviewSchemaPayload, error)
 	CreateProject(ctx context.Context, input gqlmodel.CreateProjectInput) (*gqlmodel.ProjectPayload, error)
 	UpdateProject(ctx context.Context, input gqlmodel.UpdateProjectInput) (*gqlmodel.ProjectPayload, error)
 	DeleteProject(ctx context.Context, input gqlmodel.DeleteProjectInput) (*gqlmodel.DeleteProjectPayload, error)
 	RunProject(ctx context.Context, input gqlmodel.RunProjectInput) (*gqlmodel.RunProjectPayload, error)
+	PreviewSchema(ctx context.Context, input gqlmodel.PreviewSchemaInput) (*gqlmodel.PreviewSchemaPayload, error)
 	ShareProject(ctx context.Context, input gqlmodel.ShareProjectInput) (*gqlmodel.ShareProjectPayload, error)
 	UnshareProject(ctx context.Context, input gqlmodel.UnshareProjectInput) (*gqlmodel.UnshareProjectPayload, error)
 	CreateTrigger(ctx context.Context, input gqlmodel.CreateTriggerInput) (*gqlmodel.Trigger, error)
@@ -4065,28 +4065,6 @@ extend type Mutation {
   updateParameters(input: ParameterBatchInput!): [Parameter!]!
 }
 `, BuiltIn: false},
-	{Name: "../../../gql/previewSchema.graphql", Input: `# InputType
-
-input PreviewSchemaInput {
-  projectId: ID!
-  workspaceId: ID!
-  file: Upload!
-  parameters: [RunParameterInput!]
-  sampleSize: Int
-}
-
-# Payload
-
-type PreviewSchemaPayload {
-  job: Job!
-}
-
-# Mutation
-
-extend type Mutation {
-  previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
-}
-`, BuiltIn: false},
 	{Name: "../../../gql/project.graphql", Input: `type Project implements Node {
   basicAuthPassword: String!
   basicAuthUsername: String!
@@ -4146,6 +4124,14 @@ input RunProjectInput {
   parameters: [RunParameterInput!]
 }
 
+input PreviewSchemaInput {
+  projectId: ID!
+  workspaceId: ID!
+  file: Upload!
+  parameters: [RunParameterInput!]
+  sampleSize: Int
+}
+
 # Payload
 
 type ProjectPayload {
@@ -4157,6 +4143,10 @@ type DeleteProjectPayload {
 }
 
 type RunProjectPayload {
+  job: Job!
+}
+
+type PreviewSchemaPayload {
   job: Job!
 }
 
@@ -4184,6 +4174,7 @@ extend type Mutation {
   updateProject(input: UpdateProjectInput!): ProjectPayload
   deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
   runProject(input: RunProjectInput!): RunProjectPayload
+  previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/projectAccess.graphql", Input: `# InputType
@@ -11072,51 +11063,6 @@ func (ec *executionContext) fieldContext_Mutation_updateParameters(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_previewSchema(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_previewSchema,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().PreviewSchema(ctx, fc.Args["input"].(gqlmodel.PreviewSchemaInput))
-		},
-		nil,
-		ec.marshalNPreviewSchemaPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewSchemaPayload,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_previewSchema(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "job":
-				return ec.fieldContext_PreviewSchemaPayload_job(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type PreviewSchemaPayload", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_previewSchema_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_createProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11291,6 +11237,51 @@ func (ec *executionContext) fieldContext_Mutation_runProject(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_runProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_previewSchema(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_previewSchema,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().PreviewSchema(ctx, fc.Args["input"].(gqlmodel.PreviewSchemaInput))
+		},
+		nil,
+		ec.marshalNPreviewSchemaPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewSchemaPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_previewSchema(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "job":
+				return ec.fieldContext_PreviewSchemaPayload_job(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreviewSchemaPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_previewSchema_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -23675,13 +23666,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "previewSchema":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_previewSchema(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "createProject":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createProject(ctx, field)
@@ -23698,6 +23682,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_runProject(ctx, field)
 			})
+		case "previewSchema":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_previewSchema(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "shareProject":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_shareProject(ctx, field)
