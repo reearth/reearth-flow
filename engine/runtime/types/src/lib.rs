@@ -1,3 +1,4 @@
+pub mod attr_schema;
 pub mod attribute;
 pub mod conversion;
 pub mod datetime;
