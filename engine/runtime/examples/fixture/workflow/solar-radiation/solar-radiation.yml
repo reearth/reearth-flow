@@ -227,8 +227,9 @@ graphs:
       - month
       calculations:
       - newAttribute: monthlyDayTimeSumInHours
-        expr: |
-          env.get("__value")["dayTime"]
+        expr:
+          type: flowExpr
+          value: attributes["dayTime"]
   - id: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
     name: MonthlyWeatherDataReader
     type: action
@@ -359,7 +360,9 @@ graphs:
       groupBy: []
       calculations:
       - newAttribute: totalBuildingCount
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 00000005-0000-0000-0000-000000000031
     name: AddBroadcastKey
     type: action
@@ -859,18 +862,25 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatch1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatch2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatch3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch3", 0)
   - id: 00000006-0000-0000-0000-000000000003
     name: LandJudgmentComputer
     type: action
@@ -2044,11 +2054,13 @@ graphs:
       - _grid_row
       calculations:
       - newAttribute: radiationSunnySum
-        expr: |
-          env.get("__value")["radiationSunny"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationSunny"]
       - newAttribute: radiationCloudySum
-        expr: |
-          env.get("__value")["radiationCloudy"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationCloudy"]
   - id: 00000001-0000-0000-0000-000000000052
     name: CloudFactorDTMerger
     type: action
@@ -2089,12 +2101,13 @@ graphs:
       - _grid_row
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
   - id: 00000001-0000-0000-0000-000000000074
     name: SurfaceRadiationAggregator
     type: action

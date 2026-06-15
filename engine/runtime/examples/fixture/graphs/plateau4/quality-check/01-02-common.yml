@@ -268,7 +268,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C05エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Per-file aggregation for C07 errors (data quality attributes)
   - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
@@ -280,7 +282,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C07エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Per-file aggregation for C08 errors (public survey quality attributes)
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
@@ -292,7 +296,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C08エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: OutputRouterPerFile

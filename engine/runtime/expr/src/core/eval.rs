@@ -232,30 +232,34 @@ fn resolve_attr(recv: Value, attr: &str) -> Result<Value> {
     }
 }
 
+pub(super) fn value_add(left: Value, right: Value) -> Result<Value> {
+    if let Value::Object(rc) = &left {
+        return rc.call_method("__add__", &[right]);
+    }
+    match (left, right) {
+        (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
+        (Value::Array(a), Value::Array(b)) => {
+            let mut new_vec = a.borrow().clone();
+            new_vec.extend(b.borrow().iter().cloned());
+            Ok(Value::array(new_vec))
+        }
+        (a, b) => match coerce_numeric(&a, &b) {
+            Ok((Numeric::Int(a), Numeric::Int(b))) => {
+                a.checked_add(b).map(Value::Int).ok_or_else(int_overflow)
+            }
+            Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
+            Ok(_) => unreachable!(),
+            Err(_) => Err(binop_type_error("+", &a, &b)),
+        },
+    }
+}
+
 // Returns a NativeFn for a binary operator. args[0]=left, args[1]=right.
 fn resolve_op(op: &BinOp) -> NativeFn {
     match op {
         BinOp::Add => NativeFn::new(|args| {
             let (left, right) = binary_args(args)?;
-            if let Value::Object(rc) = &left {
-                return rc.call_method("__add__", &[right]);
-            }
-            match (left, right) {
-                (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
-                (Value::Array(a), Value::Array(b)) => {
-                    let mut new_vec = a.borrow().clone();
-                    new_vec.extend(b.borrow().iter().cloned());
-                    Ok(Value::array(new_vec))
-                }
-                (a, b) => match coerce_numeric(&a, &b) {
-                    Ok((Numeric::Int(a), Numeric::Int(b))) => {
-                        a.checked_add(b).map(Value::Int).ok_or_else(int_overflow)
-                    }
-                    Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
-                    Ok(_) => unreachable!(),
-                    Err(_) => Err(binop_type_error("+", &a, &b)),
-                },
-            }
+            value_add(left, right)
         }),
         BinOp::Sub => NativeFn::new(|args| {
             let (left, right) = binary_args(args)?;

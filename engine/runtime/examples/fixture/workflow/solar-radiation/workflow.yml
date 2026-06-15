@@ -647,11 +647,13 @@ graphs:
             - _grid_row
           calculations:
             - newAttribute: radiationSunnySum
-              expr: |
-                env.get("__value")["radiationSunny"]
+              expr:
+                type: flowExpr
+                value: attributes["radiationSunny"]
             - newAttribute: radiationCloudySum
-              expr: |
-                env.get("__value")["radiationCloudy"]
+              expr:
+                type: flowExpr
+                value: attributes["radiationCloudy"]
 
       # Merge cloud factor (sunnyRatio) with monthly DT sums
       - id: 00000001-0000-0000-0000-000000000052
@@ -702,12 +704,13 @@ graphs:
             - _grid_row
           calculations:
             - newAttribute: totalSolarRadiation
-              expr: |
-                env.get("__value")["radiationPerMonth"]
+              expr:
+                type: flowExpr
+                value: attributes["radiationPerMonth"]
             - newAttribute: totalSolarPower
-              expr: |
-                let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-                dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+              expr:
+                type: flowExpr
+                value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
 
       # Aggregate total radiation per surface (sum across all cells of a roof surface)
       - id: 00000001-0000-0000-0000-000000000074

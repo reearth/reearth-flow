@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::core::error::{eval_error, Error, Result};
-use crate::core::eval::{call_value, coerce_numeric, Numeric};
+use crate::core::eval::{call_value, coerce_numeric, value_add, Numeric};
 use crate::core::value::{Module, NativeFn, Value};
 use crate::expect_arity;
 
@@ -100,10 +100,30 @@ fn map(args: &[Value]) -> Result<Value> {
     Ok(Value::array(result))
 }
 
+fn sum(args: &[Value]) -> Result<Value> {
+    expect_arity("itertools.sum", args, 1, 1)?;
+    let items = match &args[0] {
+        Value::Array(rc) => rc.borrow().clone(),
+        other => {
+            return Err(eval_error(format!(
+                "itertools.sum() argument must be a list, got {}",
+                other.type_name()
+            )))
+        }
+    };
+    let mut iter = items.into_iter();
+    let init = match iter.next() {
+        Some(v) => v,
+        None => return Ok(Value::Int(0)),
+    };
+    iter.try_fold(init, |acc, item| value_add(acc, item))
+}
+
 pub fn builtin_itertools() -> Value {
     let mut m = Module::new();
     m.insert("sorted".into(), Value::Fn(NativeFn::new(sorted)));
     m.insert("map".into(), Value::Fn(NativeFn::new(map)));
+    m.insert("sum".into(), Value::Fn(NativeFn::new(sum)));
     Value::module(m)
 }
 
@@ -159,5 +179,18 @@ mod tests {
             &[],
             Value::from(vec![] as Vec<i64>),
         );
+    }
+
+    #[test]
+    fn test_sum() {
+        assert_eval("itertools.sum([1, 2, 3])", &[], Value::from(6i64));
+        assert_eval("itertools.sum([1, 2.5])", &[], Value::from(3.5f64));
+        assert_eval(
+            r#"itertools.sum(["a", "b", "c"])"#,
+            &[],
+            Value::from("abc"),
+        );
+        assert_eval("itertools.sum([])", &[], Value::from(0i64));
+        assert!(try_run("itertools.sum([1, \"a\"])", &[]).is_err());
     }
 }

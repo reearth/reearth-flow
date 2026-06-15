@@ -153,7 +153,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_incorrect_num_vertices
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # Branch 2: Triangle not closed
       - id: b66b8ba8-f685-4d01-83ef-2aaddebbc9eb
@@ -189,7 +191,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_not_closed
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # Branch 3: Wrong orientation
       - id: 17f4fa99-a555-4d8a-b705-8b951c324d8d
@@ -225,7 +229,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_wrong_orientation
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # GeometryValidator for valid triangular meshes
       - id: 793402b8-8abc-4a86-b92d-873d6072f76e
@@ -270,7 +276,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_corrupt_geometry
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # New pipeline nodes: Process valid geometries through boundary extraction and analysis
       - id: ee6d9226-6ff1-4deb-ba68-55d9a6b0429a
@@ -351,7 +359,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_invalid_boundaries
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # FeatureMerger for aggregating error counts
       - id: fb152eb6-3a92-403f-96ce-bf38a420ec51
@@ -419,25 +429,31 @@ graphs:
         with:
           calculations:
             - newAttribute: "不正な頂点の数"
-              expr: |
-                env.get("__value")["不正な頂点の数"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("不正な頂点の数", 0)
             - newAttribute: "閉じていない三角形"
-              expr: |
-                env.get("__value")["閉じていない三角形"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("閉じていない三角形", 0)
             - newAttribute: "三角形の向き不正"
-              expr: |
-                env.get("__value")["三角形の向き不正"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("三角形の向き不正", 0)
             - newAttribute: "潰れた三角形"
-              expr: |
-                env.get("__value")["潰れた三角形"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("潰れた三角形", 0)
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("不正な頂点の数", 0),
+                    attributes.get("閉じていない三角形", 0),
+                    attributes.get("三角形の向き不正", 0),
+                    attributes.get("潰れた三角形", 0),
+                  ])
 
       # JSON output with converter
       - id: 617888e7-5fea-4fcf-a1cd-34861d65be0a
@@ -469,8 +485,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       # Filter for no errors
       - id: 51c9e2d8-5bdc-4fce-9177-d2e650c011b0

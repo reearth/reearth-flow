@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -98,7 +98,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -120,15 +120,13 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut calculations = Vec::<CompiledCalculation>::new();
         for calculation in &params.calculations {
-            let expr = &calculation.expr;
-            let template_ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
+            let compiled = calculation.expr.compile().map_err(|e| {
                 AttributeProcessorError::StatisticsCalculatorFactory(format!("{e:?}"))
             })?;
             calculations.push(CompiledCalculation {
-                expr: template_ast,
+                expr: compiled,
                 new_attribute: calculation.new_attribute.clone(),
             });
         }
@@ -138,7 +136,6 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             group_by: params.group_by,
             calculations,
             aggregate_buffer: HashMap::new(),
-            global_params: with,
         };
         Ok(Box::new(process))
     }
@@ -198,13 +195,12 @@ struct StatisticsCalculator {
     group_by: Option<Vec<Attribute>>,
     calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, NumericValue>>,
-    global_params: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Clone)]
 struct CompiledCalculation {
     new_attribute: Attribute,
-    expr: rhai::AST,
+    expr: CompiledCode,
 }
 
 /// # StatisticsCalculator Parameters
@@ -230,7 +226,7 @@ struct Calculation {
     /// # New attribute name
     new_attribute: Attribute,
     /// # Calculation to perform
-    expr: Expr,
+    expr: Code,
 }
 
 impl Processor for StatisticsCalculator {
@@ -243,9 +239,8 @@ impl Processor for StatisticsCalculator {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let env_vars = ctx.expr_engine.vars();
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         let aggregate_key = self
             .group_by
             .as_ref()
@@ -267,40 +262,38 @@ impl Processor for StatisticsCalculator {
                 .or_default();
             let content = aggregate_buffer.entry(aggregate_key.clone()).or_default();
 
-            // Try to evaluate as f64 first, then fall back to i64
-            let eval_result = scope.eval_ast::<f64>(&calculation.expr);
-            match eval_result {
-                Ok(eval) => {
-                    let numeric_value = NumericValue::Float(eval);
-                    *content = match *content {
-                        NumericValue::Integer(i) => numeric_value.add(NumericValue::Integer(i)),
-                        NumericValue::Float(f) => numeric_value.add(NumericValue::Float(f)),
-                    };
-                }
-                Err(_) => {
-                    // If f64 evaluation fails, try i64
-                    let eval_result = scope.eval_ast::<i64>(&calculation.expr);
-                    match eval_result {
-                        Ok(eval) => {
-                            let numeric_value = NumericValue::Integer(eval);
-                            *content = match *content {
-                                NumericValue::Integer(i) => {
-                                    numeric_value.add(NumericValue::Integer(i))
-                                }
-                                NumericValue::Float(f) => numeric_value.add(NumericValue::Float(f)),
-                            };
-                        }
-                        Err(e) => {
-                            return Err(Box::new(
-                                AttributeProcessorError::StatisticsCalculatorFactory(format!(
-                                    "Failed to evaluate expression for attribute '{}', error: {:?}",
-                                    calculation.new_attribute, e
-                                )),
-                            ));
-                        }
+            let attr_val = calculation
+                .expr
+                .eval(feature, Arc::clone(&env_vars))
+                .map_err(|e| {
+                    AttributeProcessorError::StatisticsCalculator(format!(
+                        "Failed to evaluate expression for attribute '{}': {e}",
+                        calculation.new_attribute
+                    ))
+                })?;
+
+            let numeric_value = match attr_val {
+                AttributeValue::Number(n) => {
+                    if let Some(i) = n.as_i64() {
+                        NumericValue::Integer(i)
+                    } else if let Some(f) = n.as_f64() {
+                        NumericValue::Float(f)
+                    } else {
+                        return Err(Box::new(AttributeProcessorError::StatisticsCalculator(
+                            format!("unrepresentable number for '{}'", calculation.new_attribute),
+                        )));
                     }
                 }
-            }
+                _ => {
+                    return Err(Box::new(AttributeProcessorError::StatisticsCalculator(
+                        format!(
+                            "expression for '{}' did not return a number",
+                            calculation.new_attribute
+                        ),
+                    )))
+                }
+            };
+            *content = content.add(numeric_value);
         }
         fw.send(ctx.new_with_feature_and_port(feature.clone(), COMPLETE_PORT.clone()));
         Ok(())
