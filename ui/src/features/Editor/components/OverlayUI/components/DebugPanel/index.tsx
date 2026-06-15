@@ -183,7 +183,7 @@ const DebugPanel: React.FC = () => {
               value="debug-viewer"
               forceMount={true}
               hidden={tabValue !== "debug-viewer"}
-              className="h-[calc(100%-32px)] overflow-scroll">
+              className="h-[calc(100%-32px)] overflow-hidden">
               <ResizablePanelGroup orientation="horizontal">
                 <ResizablePanel
                   defaultSize={60}
@@ -221,12 +221,7 @@ const DebugPanel: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div
-                    className={
-                      detailsOverlayOpen && detailsFeature
-                        ? "mt-[42px] min-h-0 flex-1"
-                        : "mt-0 min-h-0 flex-1"
-                    }>
+                  <div className="min-h-0 flex-1">
                     <TableViewer
                       fileContent={selectedOutputData}
                       selectedFeatureId={selectedFeatureId}

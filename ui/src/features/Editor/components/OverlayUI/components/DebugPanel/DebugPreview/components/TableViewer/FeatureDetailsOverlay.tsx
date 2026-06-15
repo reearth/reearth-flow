@@ -10,6 +10,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 import {
@@ -18,6 +19,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   IconButton,
+  Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
@@ -142,6 +144,8 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   detectedGeometryType,
 }) => {
   const t = useT();
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
   // Process feature properties for display
   const processedFeature = useMemo(() => {
     if (!feature) return null;
@@ -170,11 +174,49 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
       geometry: filteredGeometry,
     };
   }, [feature]);
+
+  const filteredFeature = useMemo(() => {
+    if (!processedFeature) return null;
+    if (!searchTerm) return processedFeature;
+
+    const lowerSearch = searchTerm.toLowerCase();
+
+    const filteredAttributes = Object.fromEntries(
+      Object.entries(processedFeature?.attributes || {}).filter(
+        ([key, value]) => {
+          const keyMatch = key.toLowerCase().includes(lowerSearch);
+          const valueStr =
+            typeof value === "object" ? JSON.stringify(value) : String(value);
+          const valueMatch = valueStr.toLowerCase().includes(lowerSearch);
+          return keyMatch || valueMatch;
+        },
+      ),
+    );
+
+    const filteredGeometry = Object.fromEntries(
+      Object.entries(processedFeature?.geometry || {}).filter(
+        ([key, value]) => {
+          const keyMatch = key.toLowerCase().includes(lowerSearch);
+          const valueStr =
+            typeof value === "object" ? JSON.stringify(value) : String(value);
+          const valueMatch = valueStr.toLowerCase().includes(lowerSearch);
+          return keyMatch || valueMatch;
+        },
+      ),
+    );
+
+    return {
+      ...processedFeature,
+      attributes: filteredAttributes,
+      geometry: filteredGeometry,
+    };
+  }, [processedFeature, searchTerm]);
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.focus();
+      scrollRef.current.focus({ preventScroll: true });
     }
   }, []);
 
@@ -344,8 +386,20 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   };
 
   return (
-    <div className="absolute inset-y-0 -top-10 left-0 z-10 w-full rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
+    <div className="absolute inset-0 z-10 rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
       {/* Header */}
+      <div className="py-1">
+        <Input
+          placeholder={t("Search") + "..."}
+          value={searchTerm}
+          onChange={(e) => {
+            const value = String(e.target.value);
+            setSearchTerm(value);
+          }}
+          className="max-w-sm"
+        />
+      </div>
+
       <div className="flex items-center justify-between gap-2 border-b border-border p-2 pl-0">
         <div className="flex gap-2">
           <IconButton
@@ -399,7 +453,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             </div>
           )}
           {/* Geometry */}
-          {Object.keys(processedFeature.geometry).length > 0 && (
+          {Object.keys(filteredFeature?.geometry || {}).length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                 {t("Geometry")}
@@ -421,24 +475,27 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             </div>
           )}
           {/* Attributes */}
-          {Object.keys(processedFeature.attributes).length > 0 && (
+          {Object.keys(filteredFeature?.attributes || {}).length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                 {t("Attributes")}
               </h4>
               <div className="space-y-3">
-                {Object.entries(processedFeature.attributes).map(
-                  ([key, value]) => {
-                    const valueType = getValueType(value);
-                    const attributeKey = key.replace(/^attributes/, "");
+                {Object.entries(
+                  (filteredFeature?.attributes ?? {}) as Record<
+                    string,
+                    unknown
+                  >,
+                ).map(([key, value]) => {
+                  const valueType = getValueType(value);
+                  const attributeKey = key.replace(/^attributes/, "");
 
-                    return (
-                      <div key={key}>
-                        {renderEntry(attributeKey, value, valueType)}
-                      </div>
-                    );
-                  },
-                )}
+                  return (
+                    <div key={key}>
+                      {renderEntry(attributeKey, value, valueType)}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
