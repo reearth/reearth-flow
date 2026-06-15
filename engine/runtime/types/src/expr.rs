@@ -91,6 +91,7 @@ impl<const MASK: u32> Serialize for Code<MASK> {
 impl<'de, const MASK: u32> Deserialize<'de> for Code<MASK> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         #[derive(Deserialize)]
+        #[serde(rename = "Code")]
         struct Helper {
             #[serde(rename = "type")]
             ty: CodeType,
