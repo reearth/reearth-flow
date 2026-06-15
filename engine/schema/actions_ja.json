@@ -619,28 +619,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Method": {
             "type": "string",
             "enum": [
@@ -672,14 +650,27 @@
               "value": {
                 "title": "値",
                 "description": "操作に使用する値",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           }
@@ -719,28 +710,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Mapper": {
             "type": "object",
             "properties": {
@@ -760,25 +729,51 @@
               },
               "expr": {
                 "title": "評価する式",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "multipleExpr": {
                 "title": "複数属性を評価する式",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "parentAttribute": {
                 "title": "親属性名",
@@ -1420,14 +1415,27 @@
           "compressOutput": {
             "title": "圧縮出力パス",
             "description": "圧縮アーカイブ出力の出力先パス（任意）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "dracoCompression": {
             "title": "Draco 圧縮",
@@ -1454,11 +1462,24 @@
           "output": {
             "title": "出力パス",
             "description": "3D タイルを書き出すディレクトリパス",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "schemaKey": {
             "title": "スキーマキー",
@@ -1474,30 +1495,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -1529,14 +1526,27 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "flatten": {
             "type": [
@@ -1547,38 +1557,27 @@
           "inline": {
             "title": "インラインコンテンツ",
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -1632,11 +1631,24 @@
           },
           "output": {
             "description": "出力ファイルパスの式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "prettyPrint": {
             "description": "インデント付きでフォーマット出力するか（デフォルト: true）",
@@ -1644,30 +1656,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -1914,14 +1902,27 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "encoding": {
             "title": "文字エンコーディング",
@@ -1965,14 +1966,27 @@
           "inline": {
             "title": "インラインコンテンツ",
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "offset": {
             "title": "ヘッダー行オフセット",
@@ -1986,28 +2000,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "CsvFormat": {
             "oneOf": [
               {
@@ -2141,36 +2133,27 @@
           },
           "output": {
             "description": "作成する CSV/TSV ファイルの出力パスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
+          }
+        },
+        "definitions": {
           "CsvFormat": {
             "oneOf": [
               {
@@ -2269,14 +2252,27 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"data.czml\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "force2d": {
             "title": "2D に強制",
@@ -2287,14 +2283,27 @@
           "inline": {
             "title": "インラインコンテンツ",
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "skipDocumentPacket": {
             "title": "ドキュメントパケットをスキップ",
@@ -2314,28 +2323,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "TimeSamplingStrategy": {
             "description": "Strategy for handling time-dynamic CZML properties.",
             "oneOf": [
@@ -2471,11 +2458,24 @@
           "output": {
             "title": "出力ファイルパス",
             "description": "CZML ファイルを書き出すパス",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "timeField": {
             "title": "時刻フィールド",
@@ -2493,28 +2493,6 @@
         "definitions": {
           "Attribute": {
             "type": "string"
-          },
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           },
           "InterpolationAlgorithm": {
             "description": "Interpolation algorithm for Cesium time-dynamic properties.",
@@ -2970,41 +2948,30 @@
         "properties": {
           "output": {
             "description": "作成する Excel ファイルの出力パスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          },
-          "sheetName": {
-            "description": "シート名（デフォルト: \"Sheet1\"）",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
+          "sheetName": {
+            "description": "シート名（デフォルト: \"Sheet1\"）",
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
@@ -3077,11 +3044,24 @@
           "dataset": {
             "title": "データセット",
             "description": "読み込む CityGML 3.0 ファイルへのパス式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "extractTags": {
             "title": "タグの抽出",
@@ -3091,30 +3071,6 @@
             "items": {
               "type": "string"
             }
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -3146,23 +3102,49 @@
           "codelistsPath": {
             "title": "コードリストパス",
             "description": "コードリスト値を解決するためのコードリストディレクトリへのパス（任意）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "dataset": {
             "title": "データセット",
             "description": "読み込む CityGML データセットファイルへのパスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "flatten": {
             "title": "フラット化",
@@ -3170,30 +3152,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -3285,35 +3243,24 @@
           "creator": {
             "title": "スクリプト式",
             "description": "マップ（単一フィーチャー）またはマップの配列（複数フィーチャー）を返すスクリプト式を記述する。各マップはフィーチャー属性をキーと値のペアで表す。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -3426,28 +3373,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Condition": {
             "type": "object",
             "required": [
@@ -3457,11 +3382,23 @@
             "properties": {
               "expr": {
                 "title": "条件式",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "outputPort": {
                 "title": "出力ポート",
@@ -3785,11 +3722,24 @@
               "dataset": {
                 "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "encoding": {
                 "title": "Character Encoding",
@@ -3838,11 +3788,24 @@
               "dataset": {
                 "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "encoding": {
                 "title": "Character Encoding",
@@ -3891,11 +3854,24 @@
               "dataset": {
                 "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "format": {
                 "type": "string",
@@ -3905,31 +3881,7 @@
               }
             }
           }
-        ],
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          }
-        }
+        ]
       },
       "builtin": true,
       "inputPorts": [
@@ -4114,11 +4066,24 @@
               },
               "output": {
                 "title": "Output path",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -4137,11 +4102,24 @@
               },
               "output": {
                 "title": "Output path",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -4155,14 +4133,27 @@
             ],
             "properties": {
               "converter": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "format": {
                 "type": "string",
@@ -4172,11 +4163,24 @@
               },
               "output": {
                 "title": "Output path",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -4220,11 +4224,24 @@
               },
               "output": {
                 "title": "Output path",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "prettyPrint": {
                 "description": "Whether to format output with indentation (default: true)",
@@ -4236,31 +4253,7 @@
               }
             }
           }
-        ],
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          }
-        }
+        ]
       },
       "builtin": true,
       "inputPorts": [
@@ -4296,35 +4289,24 @@
           "sourceDataset": {
             "title": "ソースデータセット",
             "description": "ソースディレクトリまたはアーカイブファイルへのパスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -4394,28 +4376,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "Mapping": {
             "type": "object",
             "required": [
@@ -4427,7 +4387,24 @@
                 "type": "string"
               },
               "value": {
-                "$ref": "#/definitions/Code"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
               }
             }
           }
@@ -4479,50 +4456,52 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"data.geojson\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "inline": {
-            "title": "インラインコンテンツ",
-            "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          "inline": {
+            "title": "インラインコンテンツ",
+            "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -4563,38 +4542,29 @@
           },
           "output": {
             "description": "作成する GeoJSON ファイルの出力パスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -4638,14 +4608,27 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"data.gpkg\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "force2D": {
             "default": false,
@@ -4658,14 +4641,27 @@
           "inline": {
             "title": "インラインコンテンツ",
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "layerName": {
             "type": [
@@ -4698,28 +4694,6 @@
           }
         },
         "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
-          },
           "GeoPackageReadMode": {
             "type": "string",
             "enum": [
@@ -4781,11 +4755,24 @@
           },
           "output": {
             "description": "作成する GeoPackage ファイルの出力パス",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "overwrite": {
             "description": "既存ファイルを上書きする（デフォルト: false）",
@@ -4802,30 +4789,6 @@
             "description": "作成するテーブル名（デフォルト: \"features\"）",
             "default": "features",
             "type": "string"
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -5301,14 +5264,27 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"model.glb\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "includeNodes": {
             "title": "ノードを含める",
@@ -5319,14 +5295,27 @@
           "inline": {
             "title": "インラインコンテンツ",
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "mergeMeshes": {
             "title": "メッシュをマージ",
@@ -5339,30 +5328,6 @@
             "description": "true の場合、すべてのプリミティブを三角形に変換する（将来の使用のために予約済み。現在はすべてのプリミティブが三角形として処理される）",
             "default": true,
             "type": "boolean"
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -5406,41 +5371,30 @@
           },
           "output": {
             "description": "出力ファイルパス。`schemaKey` が設定されている場合はディレクトリとして扱われ、各フィーチャータイプは `<output>/<schemaKeyValue>.glb` に書き出される。それ以外は、すべてのフィーチャーがこの単一ファイルに書き出される。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          },
-          "schemaKey": {
-            "description": "フィーチャーはこの属性でグループ化され、別々のファイルに書き出される。このキーは出力属性から除外される。",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
+          "schemaKey": {
+            "description": "フィーチャーはこの属性でグループ化され、別々のファイルに書き出される。このキーは出力属性から除外される。",
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
@@ -7122,50 +7076,52 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"data.json\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "inline": {
-            "title": "インラインコンテンツ",
-            "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          "inline": {
+            "title": "インラインコンテンツ",
+            "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -7196,46 +7152,48 @@
         "properties": {
           "converter": {
             "description": "書き出し前にフィーチャーを変換するコンバーター式（任意）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "output": {
-            "description": "作成する JSON ファイルの出力パスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          "output": {
+            "description": "作成する JSON ファイルの出力パスまたは式",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -7500,14 +7458,27 @@
           "compressOutput": {
             "title": "出力を圧縮",
             "description": "出力タイルを圧縮するかを決定する式（任意）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "extent": {
             "title": "エクステント",
@@ -7522,11 +7493,24 @@
           "layerName": {
             "title": "レイヤー名",
             "description": "MVT タイル内のレイヤー名",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "maxZoom": {
             "title": "最大ズームレベル",
@@ -7545,11 +7529,24 @@
           "output": {
             "title": "出力先",
             "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "schemaKey": {
             "title": "スキーマキー",
@@ -7565,30 +7562,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -7955,14 +7928,27 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"model.obj\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "includeNormals": {
             "title": "法線を含める",
@@ -7979,27 +7965,53 @@
           "inline": {
             "title": "インラインコンテンツ",
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "materialFile": {
             "title": "マテリアルファイル",
             "description": "OBJ ファイルの mtllib ディレクティブの代わりに使用する外部 MTL ファイルへのパスを返す式。指定した場合、OBJ ファイル内のマテリアルライブラリ参照を上書きする。",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "mergeGroups": {
             "title": "グループをマージ",
@@ -8018,30 +8030,6 @@
             "description": "3 頂点を超えるポリゴンをファン三角形分割で三角形に変換する",
             "default": false,
             "type": "boolean"
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -8072,11 +8060,24 @@
           "output": {
             "title": "出力パス",
             "description": "OBJ ファイルを書き出す出力ファイルパスの式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "writeMaterials": {
             "title": "マテリアルを書き出す",
@@ -8103,30 +8104,6 @@
             "type": [
               "boolean",
               "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "$ref": "#/definitions/CodeType"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
             ]
           }
         }
@@ -10439,14 +10416,27 @@
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "encoding": {
             "title": "文字エンコーディング",
@@ -10465,38 +10455,27 @@
           "inline": {
             "title": "インラインコンテンツ",
             "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Code"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -10537,38 +10516,29 @@
           },
           "output": {
             "description": "作成する Shapefile の出力パスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -10787,44 +10757,46 @@
           "databaseUrl": {
             "title": "データベース URL",
             "description": "データベース接続 URL（例: `sqlite:///tests/sqlite/sqlite.db`、`mysql://user:password@localhost:3306/db`、`postgresql://user:password@localhost:5432/db`）",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          },
-          "sql": {
-            "title": "SQL クエリ",
-            "description": "データ取得のために実行する SQL クエリ式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
           },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
+          "sql": {
+            "title": "SQL クエリ",
+            "description": "データ取得のために実行する SQL クエリ式",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -11455,35 +11427,24 @@
         "properties": {
           "output": {
             "description": "作成する XML ファイルの出力パスまたは式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
@@ -11514,35 +11475,24 @@
         "properties": {
           "output": {
             "description": "出力パス",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Code"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Code": {
             "type": "object",
+            "format": "code",
             "required": [
               "type",
               "value"
             ],
             "properties": {
               "type": {
-                "$ref": "#/definitions/CodeType"
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
               "value": {
                 "type": "string"
               }
             }
-          },
-          "CodeType": {
-            "type": "string",
-            "enum": [
-              "flowExpr",
-              "string"
-            ]
           }
         }
       },
