@@ -1,5 +1,31 @@
 schema "public" {}
 
+table "config" {
+  schema = schema.public
+  column "id" {
+    type    = integer
+    default = 1
+  }
+  column "migration" {
+    type    = bigint
+    default = 0
+  }
+  column "auth_cert" {
+    type = text
+    null = true
+  }
+  column "auth_key" {
+    type = text
+    null = true
+  }
+  primary_key {
+    columns = [column.id]
+  }
+  check "config_singleton" {
+    expr = "id = 1"
+  }
+}
+
 table "triggers" {
   schema = schema.public
 

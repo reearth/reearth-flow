@@ -10,9 +10,12 @@ import (
 
 type Querier interface {
 	DeleteTrigger(ctx context.Context, id string) error
+	GetConfig(ctx context.Context) (GetConfigRow, error)
 	GetTrigger(ctx context.Context, id string) (Trigger, error)
 	ListTriggersByDeployment(ctx context.Context, deploymentID string) ([]Trigger, error)
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
+	UpsertConfig(ctx context.Context, arg UpsertConfigParams) error
+	UpsertConfigAuth(ctx context.Context, arg UpsertConfigAuthParams) error
 	UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) error
 }
 

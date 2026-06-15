@@ -8,6 +8,13 @@ import (
 	"time"
 )
 
+type Config struct {
+	ID        int32
+	Migration int64
+	AuthCert  *string
+	AuthKey   *string
+}
+
 type Trigger struct {
 	ID            string
 	WorkspaceID   string

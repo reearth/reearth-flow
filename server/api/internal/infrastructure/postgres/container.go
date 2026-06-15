@@ -18,8 +18,11 @@ import (
 // the account container until they are ported in a separate stream.
 func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container) (*repo.Container, error) {
 	client := pgxx.NewClient(pool)
+	lock := NewLock(pool)
 	c := &repo.Container{
 		Trigger:     NewTrigger(client),
+		Config:      NewConfig(client, lock),
+		Lock:        lock,
 		Transaction: client,
 		Workspace:   account.Workspace,
 		User:        account.User,
@@ -45,12 +48,10 @@ func mustComplete(c *repo.Container) error {
 	check("Asset", c.Asset != nil)
 	check("AssetUpload", c.AssetUpload != nil)
 	check("AuthRequest", c.AuthRequest != nil)
-	check("Config", c.Config != nil)
 	check("WorkerConfig", c.WorkerConfig != nil)
 	check("Deployment", c.Deployment != nil)
 	check("EdgeExecution", c.EdgeExecution != nil)
 	check("Job", c.Job != nil)
-	check("Lock", c.Lock != nil)
 	check("NodeExecution", c.NodeExecution != nil)
 	check("Parameter", c.Parameter != nil)
 	check("Project", c.Project != nil)
