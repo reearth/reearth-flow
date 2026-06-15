@@ -11,11 +11,13 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ timestamp: "2021-01-01T00:00:00Z" },
-              #{ timestamp: "invalid-datetime" },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"timestamp": "2021-01-01T00:00:00Z"},
+                {"timestamp": "invalid-datetime"},
+              ]
 
       - id: 550e8400-e29b-41d4-a716-446655440203
         name: "DateTimeConverter"

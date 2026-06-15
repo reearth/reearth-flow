@@ -13,158 +13,162 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                "city": "Tokyo",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Tokyo",
-                "capital": "primary",
-                "population": 37977000,
-                "population_proper": 13515271
-              },
-              #{
-                "city": "Osaka",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Osaka",
-                "capital": "admin",
-                "population": 14977000,
-                "population_proper": 2725006
-              },
-              #{
-                "city": "Nagoya",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Aichi",
-                "capital": "admin",
-                "population": 9113000,
-                "population_proper": 2320361
-              },
-              #{
-                "city": "Yokohama",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Kanagawa",
-                "capital": "admin",
-                "population": 3757630,
-                "population_proper": 3757630
-              },
-              #{
-                "city": "Fukuoka",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Fukuoka",
-                "capital": "admin",
-                "population": 2128000,
-                "population_proper": 1588924
-              },
-              #{
-                "city": "Sapporo",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Hokkaido",
-                "capital": "admin",
-                "population": 1961690,
-                "population_proper": 1961690
-              },
-              #{
-                "city": "Kyoto",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Kyoto",
-                "capital": "admin",
-                "population": 1805000,
-                "population_proper": 1459640
-              },
-              #{
-                "city": "Kobe",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Hyogo",
-                "capital": "admin",
-                "population": 1513193,
-                "population_proper": 1513193
-              },
-              #{
-                "city": "Kawanakajima",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Kanagawa",
-                "capital": "",
-                "population": 1437266,
-                "population_proper": 1306785
-              },
-              #{
-                "city": "Saitama",
-                "country": "Japan",
-                "iso2": "JP",
-                "admin_name": "Saitama",
-                "capital": "admin",
-                "population": 1320571,
-                "population_proper": 1320571
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city": "Tokyo",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Tokyo",
+                  "capital": "primary",
+                  "population": 37977000,
+                  "population_proper": 13515271
+                },
+                {
+                  "city": "Osaka",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Osaka",
+                  "capital": "admin",
+                  "population": 14977000,
+                  "population_proper": 2725006
+                },
+                {
+                  "city": "Nagoya",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Aichi",
+                  "capital": "admin",
+                  "population": 9113000,
+                  "population_proper": 2320361
+                },
+                {
+                  "city": "Yokohama",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Kanagawa",
+                  "capital": "admin",
+                  "population": 3757630,
+                  "population_proper": 3757630
+                },
+                {
+                  "city": "Fukuoka",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Fukuoka",
+                  "capital": "admin",
+                  "population": 2128000,
+                  "population_proper": 1588924
+                },
+                {
+                  "city": "Sapporo",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Hokkaido",
+                  "capital": "admin",
+                  "population": 1961690,
+                  "population_proper": 1961690
+                },
+                {
+                  "city": "Kyoto",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Kyoto",
+                  "capital": "admin",
+                  "population": 1805000,
+                  "population_proper": 1459640
+                },
+                {
+                  "city": "Kobe",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Hyogo",
+                  "capital": "admin",
+                  "population": 1513193,
+                  "population_proper": 1513193
+                },
+                {
+                  "city": "Kawanakajima",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Kanagawa",
+                  "capital": "",
+                  "population": 1437266,
+                  "population_proper": 1306785
+                },
+                {
+                  "city": "Saitama",
+                  "country": "Japan",
+                  "iso2": "JP",
+                  "admin_name": "Saitama",
+                  "capital": "admin",
+                  "population": 1320571,
+                  "population_proper": 1320571
+                },
+              ]
 
       - id: 873032b6-c0e2-41db-9306-abbd8a22047b
         name: FeatureCreatorSupplier
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                "city": "Tokyo",
-                "lat": 35.6897,
-                "lng": 139.6922,
-              },
-              #{
-                "city": "Osaka",
-                "lat": 34.75,
-                "lng": 135.4601,
-              },
-              #{
-                "city": "Nagoya",
-                "lat": 35.1167,
-                "lng": 136.9333,
-              },
-              #{
-                "city": "Yokohama",
-                "lat": 35.4333,
-                "lng": 139.6333,
-              },
-              #{
-                "city": "Fukuoka",
-                "lat": 33.6,
-                "lng": 130.4167,
-              },
-              #{
-                "city": "Sapporo",
-                "lat": 43.0621,
-                "lng": 141.3544,
-              },
-              #{
-                "city": "Kyoto",
-                "lat": 35.0111,
-                "lng": 135.7669,
-              },
-              #{
-                "city": "Kobe",
-                "lat": 34.6913,
-                "lng": 135.183,
-              },
-              #{
-                "city": "Kawanakajima",
-                "lat": 35.53,
-                "lng": 139.705,
-              },
-              #{
-                "city": "Saitama",
-                "lat": 35.8617,
-                "lng": 139.6453,
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city": "Tokyo",
+                  "lat": 35.6897,
+                  "lng": 139.6922,
+                },
+                {
+                  "city": "Osaka",
+                  "lat": 34.75,
+                  "lng": 135.4601,
+                },
+                {
+                  "city": "Nagoya",
+                  "lat": 35.1167,
+                  "lng": 136.9333,
+                },
+                {
+                  "city": "Yokohama",
+                  "lat": 35.4333,
+                  "lng": 139.6333,
+                },
+                {
+                  "city": "Fukuoka",
+                  "lat": 33.6,
+                  "lng": 130.4167,
+                },
+                {
+                  "city": "Sapporo",
+                  "lat": 43.0621,
+                  "lng": 141.3544,
+                },
+                {
+                  "city": "Kyoto",
+                  "lat": 35.0111,
+                  "lng": 135.7669,
+                },
+                {
+                  "city": "Kobe",
+                  "lat": 34.6913,
+                  "lng": 135.183,
+                },
+                {
+                  "city": "Kawanakajima",
+                  "lat": 35.53,
+                  "lng": 139.705,
+                },
+                {
+                  "city": "Saitama",
+                  "lat": 35.8617,
+                  "lng": 139.6453,
+                },
+              ]
 
       - id: d2b4977d-e218-4628-96f2-d26407aeea14
         name: FeatureMerger

@@ -565,7 +565,9 @@ mod tests {
     use reearth_flow_geometry::types::{
         coordinate::Coordinate, geometry::Geometry3D, polygon::Polygon3D,
     };
-    use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+    use reearth_flow_types::{
+        Attribute, AttributeValue, Code, CodeType, Feature, Geometry, GeometryValue,
+    };
 
     #[test]
     fn test_generate_simple_obj() {
@@ -608,12 +610,11 @@ mod tests {
 
         features.push(feature);
 
-        let output = Code {
-            ty: reearth_flow_types::CodeType::String,
+        let code: Code = Code {
+            ty: CodeType::String,
             value: "/tmp/test.obj".to_string(),
-        }
-        .compile()
-        .unwrap();
+        };
+        let output = code.compile().unwrap();
 
         let writer = ObjWriter {
             output,

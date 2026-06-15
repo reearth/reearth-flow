@@ -81,16 +81,18 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("bldgCityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env.get("bldgCityGmlPath"),
+                  "cityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: 00000001-0000-0000-0000-000000000111
         name: FolderAndFilePathReader
@@ -106,16 +108,18 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("demCityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env.get("demCityGmlPath"),
+                  "cityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: 00000002-0000-0000-0000-000000000002
         name: DEMDirectoryDecompressor
@@ -171,11 +175,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       # Filter by LOD level: LOD2 → default (solar pipeline), LOD1/3/4 → separate 3DTiles writers, LOD0 → dropped
       - id: 00000001-0000-0000-0000-00000000003a
         name: LodFilter
@@ -243,8 +249,9 @@ graphs:
         type: action
         action: ShapefileReader
         with:
-          dataset: |
-            env.get("roofFilterShapefilePath")
+          dataset:
+            type: flowExpr
+            value: env.get("roofFilterShapefilePath")
           force2D: true
           allowEmptyPath: true
 
@@ -486,8 +493,9 @@ graphs:
         action: CsvReader
         with:
           format: csv
-          dataset: |
-            env.get("snowDepthDataPath")
+          dataset:
+            type: flowExpr
+            value: env["snowDepthDataPath"]
           offset: 1
           headerRows: 0
 

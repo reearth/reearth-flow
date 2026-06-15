@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
-use fastxml::transform::{EditableNode, StreamTransformer};
+use fastxml::transform::{EditableNode, Transformer};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -732,7 +732,7 @@ fn run_domain_of_definition_checks(
     let mut stream_error: Option<PlateauProcessorError> = None;
     accumulator.response.envelope = stream_extract_envelope(xml_str, &envelope_xpath)?;
 
-    let transformer = StreamTransformer::new(xml_str)
+    let transformer = Transformer::from(xml_str)
         .with_root_namespaces()
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
@@ -919,7 +919,7 @@ fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<
     let envelope = RefCell::new(None);
     let error = RefCell::new(None);
 
-    let transformer = StreamTransformer::new(raw_xml)
+    let transformer = Transformer::from(raw_xml)
         .with_root_namespaces()
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
@@ -1417,7 +1417,7 @@ fn process_member_node(
                         PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                     })?;
                     let gml_path_owned = gml_path.to_string();
-                    let ext_transformer = StreamTransformer::new(&xml_content_str)
+                    let ext_transformer = Transformer::from(xml_content_str.as_str())
                         .with_root_namespaces()
                         .map_err(|e| {
                             PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
@@ -1846,7 +1846,7 @@ fn create_detail_codelist(
     let xml_str = String::from_utf8(xml_content.to_vec())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let mut result = HashMap::new();
-    let transformer = StreamTransformer::new(&xml_str)
+    let transformer = Transformer::from(xml_str.as_str())
         .with_root_namespaces()
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(

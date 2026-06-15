@@ -135,8 +135,9 @@ nodes:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath1")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath1")
       allowEmptyPath: true
 
   - id: 00000007-0000-0000-0000-000000000002
@@ -194,8 +195,9 @@ nodes:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath2")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath2")
       allowEmptyPath: true
 
   - id: 00000007-0000-0000-0000-000000000012
@@ -253,8 +255,9 @@ nodes:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath3")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath3")
       allowEmptyPath: true
 
   - id: 00000007-0000-0000-0000-000000000022
@@ -312,8 +315,9 @@ nodes:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("snowDepthShapefilePath")
+      dataset:
+        type: flowExpr
+        value: env.get("snowDepthShapefilePath")
       allowEmptyPath: true
 
   - id: 00000007-0000-0000-0000-000000000031

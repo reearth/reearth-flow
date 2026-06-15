@@ -61,8 +61,22 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const t = useT();
 
   const initialCode = fieldContext.value as CodeValue | undefined;
+
+  const allowedTypes = (fieldContext.schema as any)?.properties?.type?.enum as
+    | string[]
+    | undefined;
+  const flowExprAllowed = !allowedTypes || allowedTypes.includes("flowExpr");
+  const stringAllowed = !allowedTypes || allowedTypes.includes("string");
+
+  const defaultType: "flowExpr" | "string" = flowExprAllowed
+    ? "flowExpr"
+    : "string";
   const [codeType, setCodeType] = useState<"flowExpr" | "string">(
-    initialCode?.type ?? "flowExpr",
+    initialCode?.type === "flowExpr" && flowExprAllowed
+      ? "flowExpr"
+      : initialCode?.type === "string" && stringAllowed
+        ? "string"
+        : defaultType,
   );
   const [codeValue, setCodeValue] = useState(initialCode?.value ?? "");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -205,13 +219,17 @@ const FlowExprEditorDialog: React.FC<Props> = ({
             value={codeType}
             onValueChange={(v) => setCodeType(v as "flowExpr" | "string")}
             className={`flex flex-col ${isFullscreen ? "h-[calc(100vh-52px)]" : "h-[70vh]"}`}>
-            {/* Mode toggle */}
-            <div className="flex shrink-0 gap-1 border-b px-4 py-2">
-              <TabsList className="flex gap-2">
-                <TabsTrigger value="flowExpr">{t("Expression")}</TabsTrigger>
-                <TabsTrigger value="string">{t("Literal string")}</TabsTrigger>
-              </TabsList>
-            </div>
+            {/* Mode toggle — only shown when more than one type is allowed */}
+            {flowExprAllowed && stringAllowed && (
+              <div className="flex shrink-0 gap-1 border-b px-4 py-2">
+                <TabsList className="flex gap-2">
+                  <TabsTrigger value="flowExpr">{t("Expression")}</TabsTrigger>
+                  <TabsTrigger value="string">
+                    {t("Literal string")}
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            )}
 
             {/* Editor areas */}
             <TabsContent

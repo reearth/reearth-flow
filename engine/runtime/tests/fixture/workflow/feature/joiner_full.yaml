@@ -15,48 +15,52 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                "city": "Tokyo",
-                "country": "Japan",
-                "population": 37977000,
-              },
-              #{
-                "city": "Osaka",
-                "country": "Japan",
-                "population": 14977000,
-              },
-              #{
-                "city": "UnmatchedCity1",
-                "country": "Japan",
-                "population": 100000,
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city": "Tokyo",
+                  "country": "Japan",
+                  "population": 37977000,
+                },
+                {
+                  "city": "Osaka",
+                  "country": "Japan",
+                  "population": 14977000,
+                },
+                {
+                  "city": "UnmatchedCity1",
+                  "country": "Japan",
+                  "population": 100000,
+                },
+              ]
 
       - id: 873032b6-c0e2-41db-9306-abbd8a22047b
         name: FeatureCreatorSupplier
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                "city": "Tokyo",
-                "lat": 35.6897,
-                "lng": 139.6922,
-              },
-              #{
-                "city": "Osaka",
-                "lat": 34.75,
-                "lng": 135.4601,
-              },
-              #{
-                "city": "UnmatchedCity2",
-                "lat": 40.0,
-                "lng": 140.0,
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city": "Tokyo",
+                  "lat": 35.6897,
+                  "lng": 139.6922,
+                },
+                {
+                  "city": "Osaka",
+                  "lat": 34.75,
+                  "lng": 135.4601,
+                },
+                {
+                  "city": "UnmatchedCity2",
+                  "lat": 40.0,
+                  "lng": 140.0,
+                },
+              ]
 
       - id: d2b4977d-e218-4628-96f2-d26407aeea14
         name: FeatureJoiner
