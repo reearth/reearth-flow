@@ -6,7 +6,6 @@ const FIXTURE_DIR: &str = "logging/06_processor_error";
 const WORKFLOW_NAME: &str = "Processor Runtime Error Test";
 
 #[test]
-#[ignore = "RhaiCaller is being removed; error framework needs refactoring"]
 fn test_logging_processor_error() {
     let result = execute_logging_error_test(FIXTURE_DIR, WORKFLOW_NAME);
 
