@@ -6,8 +6,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,34 +25,10 @@ func Connect(t *testing.T) func(*testing.T) *pgxpool.Pool {
 	return func(t *testing.T) *pgxpool.Pool {
 		t.Helper()
 		pool := base(t)
-		applyMigrations(t, pool)
+		if err := pgxtest.ApplyFS(context.Background(), pool, os.DirFS(migrationsDir(t))); err != nil {
+			t.Fatalf("pgtest: apply migrations: %v", err)
+		}
 		return pool
-	}
-}
-
-func applyMigrations(t *testing.T, pool *pgxpool.Pool) {
-	t.Helper()
-	dir := migrationsDir(t)
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("pgtest: read migrations dir: %v", err)
-	}
-	var files []string
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".sql") {
-			files = append(files, e.Name())
-		}
-	}
-	sort.Strings(files)
-	ctx := context.Background()
-	for _, f := range files {
-		sqlBytes, err := os.ReadFile(filepath.Join(dir, f))
-		if err != nil {
-			t.Fatalf("pgtest: read migration %s: %v", f, err)
-		}
-		if _, err := pool.Exec(ctx, string(sqlBytes)); err != nil {
-			t.Fatalf("pgtest: apply migration %s: %v", f, err)
-		}
 	}
 }
 

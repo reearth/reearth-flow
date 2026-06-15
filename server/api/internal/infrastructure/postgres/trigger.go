@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -39,10 +38,7 @@ func (r *Trigger) q(ctx context.Context) *gen.Queries {
 func (r *Trigger) FindByID(ctx context.Context, tid id.TriggerID) (*trigger.Trigger, error) {
 	row, err := r.q(ctx).GetTrigger(ctx, tid.String())
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, rerror.ErrNotFound
-		}
-		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+		return nil, pgxx.MapError(err)
 	}
 	t, err := triggerFromRow(row)
 	if err != nil {
@@ -118,15 +114,10 @@ func (r *Trigger) FindByWorkspace(
 		where = append(where, fmt.Sprintf("(description ILIKE $%d OR id ILIKE $%d)", len(args), len(args)))
 	}
 	whereSQL := "WHERE " + strings.Join(where, " AND ")
-	exec := r.c.DB(ctx)
+	db := r.c.DB(ctx)
 
 	if pagination != nil && pagination.Page != nil {
 		p := pagination.Page
-		var total int64
-		if err := exec.QueryRow(ctx, "SELECT count(*) FROM triggers "+whereSQL, args...).Scan(&total); err != nil {
-			return nil, nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
-		}
-
 		orderCol := "updated_at"
 		dir := "DESC"
 		if p.OrderBy != nil {
@@ -139,18 +130,30 @@ func (r *Trigger) FindByWorkspace(
 			}
 		}
 
-		query := fmt.Sprintf("SELECT * FROM triggers %s ORDER BY %s %s LIMIT $%d OFFSET $%d",
-			whereSQL, orderCol, dir, len(args)+1, len(args)+2)
-		args = append(args, p.PageSize, (p.Page-1)*p.PageSize)
-
-		ts, err := r.queryTriggers(ctx, exec, query, args)
+		// RowToStructByPos is valid here because SELECT * returns columns in
+		// table-definition order, matching gen.Trigger's field order.
+		listSQL := fmt.Sprintf("SELECT * FROM triggers %s ORDER BY %s %s", whereSQL, orderCol, dir)
+		rows, total, err := pgxx.CountAndList(ctx, db,
+			"SELECT count(*) FROM triggers "+whereSQL, listSQL, args,
+			int64(p.PageSize), int64((p.Page-1)*p.PageSize),
+			pgx.RowToStructByPos[gen.Trigger])
+		if err != nil {
+			return nil, nil, err
+		}
+		ts, err := triggersFromRows(rows)
 		if err != nil {
 			return nil, nil, err
 		}
 		return ts, interfaces.NewPageBasedInfo(total, p.Page, p.PageSize), nil
 	}
 
-	ts, err := r.queryTriggers(ctx, exec, "SELECT * FROM triggers "+whereSQL+" ORDER BY updated_at DESC", args)
+	rows, err := pgxx.List(ctx, db,
+		"SELECT * FROM triggers "+whereSQL+" ORDER BY updated_at DESC", args,
+		pgx.RowToStructByPos[gen.Trigger])
+	if err != nil {
+		return nil, nil, err
+	}
+	ts, err := triggersFromRows(rows)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,23 +191,9 @@ func (r *Trigger) Remove(ctx context.Context, tid id.TriggerID) error {
 	return nil
 }
 
-func (r *Trigger) queryTriggers(ctx context.Context, exec pgxx.DBTX, query string, args []any) ([]*trigger.Trigger, error) {
-	rows, err := exec.Query(ctx, query, args...)
-	if err != nil {
-		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
-	}
-	defer rows.Close()
-
-	// RowToStructByPos maps columns to gen.Trigger fields positionally, which is
-	// valid only because SELECT * returns columns in table-definition order and
-	// sqlc generates gen.Trigger's fields in that same order. If a future
-	// migration reorders columns, switch to an explicit column list here.
-	genRows, err := pgx.CollectRows(rows, pgx.RowToStructByPos[gen.Trigger])
-	if err != nil {
-		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
-	}
-	res := make([]*trigger.Trigger, 0, len(genRows))
-	for _, row := range genRows {
+func triggersFromRows(rows []gen.Trigger) ([]*trigger.Trigger, error) {
+	res := make([]*trigger.Trigger, 0, len(rows))
+	for _, row := range rows {
 		t, err := triggerFromRow(row)
 		if err != nil {
 			return nil, err
