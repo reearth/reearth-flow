@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { memo, useCallback, useMemo, useState } from "react";
 
 import { Button, Dialog, DialogContent, DialogTitle } from "@flow/components";
+import { toast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 
 type Props = {
@@ -37,7 +38,7 @@ function resolveValue(value: unknown): unknown {
       const parsed = JSON.parse(value);
       if (typeof parsed === "object" && parsed !== null) return parsed;
     } catch {
-      console.log("Not valid JSON — keep the original string");
+      // Not valid JSON, keep the original string
     }
   }
   return value;
@@ -159,10 +160,18 @@ const RawJsonViewer: React.FC<Props> = ({ label, value, open, onClose }) => {
       await navigator.clipboard.writeText(json);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+      toast({
+        title: t("JSON copied to clipboard"),
+        description: t("JSON has been successfully copied to the clipboard."),
+      });
     } catch {
-      console.log("Failed to copy to clipboard");
+      toast({
+        title: t("Failed to copy JSON"),
+        description: t("Unable to copy JSON to clipboard."),
+        variant: "destructive",
+      });
     }
-  }, [value]);
+  }, [value, t]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
