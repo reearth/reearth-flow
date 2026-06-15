@@ -246,7 +246,7 @@ const DebugPanel: React.FC = () => {
                 {visualizerType && (
                   <>
                     {!minimized && (
-                      <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
+                      <ResizableHandle className="mx-2 w-1" withHandle />
                     )}
                     <ResizablePanel defaultSize={40} minSize={20}>
                       {isLoadingData ? (

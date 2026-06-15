@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use fastxml::transform::StreamTransformer;
+use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -247,7 +247,7 @@ impl UnmatchedXlinkDetector {
         let summary = Rc::new(RefCell::new(Summary::default()));
         let stream_error: Rc<RefCell<Option<Error>>> = Rc::new(RefCell::new(None));
 
-        let transformer = StreamTransformer::new(&xml_content)
+        let transformer = Transformer::from(xml_content.as_str())
             .with_root_namespaces()
             .map_err(|e| Error::UnmatchedXlinkDetector(format!("{e:?}")))?;
 

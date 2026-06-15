@@ -25,15 +25,17 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         name: FolderAndFilePathReader
@@ -45,11 +47,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       - id: 65852d63-eb2c-486c-95d5-2646874d11a2
         name: TargetPackagesFilter
         type: action
@@ -231,33 +235,34 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "dictionary.json"
-          converter: |
-            let packages = #{};
-            for feature in env.get("__features") {
-              let pkg = feature["package"];
-              if pkg == () { continue; }
-              if packages[pkg] == () {
-                packages[pkg] = [];
+          output:
+            type: string
+            value: dictionary.json
+          converter:
+            type: flowExpr
+            value: |
+              packages = {};
+              for feature in attributes["__features"] {
+                pkg = feature.get("package");
+                if pkg != null {
+                  if packages.get(pkg) == null {
+                    packages[pkg] = [];
+                  }
+                  item = {"name": feature.get("dict_name"), "description": feature.get("uro:description")};
+                  if "uro:adminType" in feature {
+                    item["admin"] = feature["uro:adminType"];
+                  }
+                  scale = feature.get("uro:scale", "");
+                  if len(scale) < 2 {
+                  } else if scale[1] == "1" {
+                    item["scale"] = "計画規模";
+                  } else if scale[1] == "2" {
+                    item["scale"] = "想定最大規模";
+                  }
+                  packages[pkg].append(item);
+                }
               }
-              let item = #{
-                name: feature.dict_name,
-                description: feature["uro:description"],
-              };
-              if "uro:adminType" in feature {
-                item.admin = feature["uro:adminType"];
-              }
-              let scale = feature["uro:scale"] ?? "";
-              if scale.len() < 2 {
-              } else if scale[1] == "1" {
-                item.scale = "計画規模";
-              } else if scale[1] == "2" {
-                item.scale = "想定最大規模";
-              }
-              packages[pkg].push(item);
-            }
-            packages
+              packages
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

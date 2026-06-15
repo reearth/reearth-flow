@@ -1,7 +1,8 @@
 use crate::object_list::ObjectListMap;
 
 use super::errors::PlateauProcessorError;
-use fastxml::transform::StreamTransformer;
+use super::PlateauProfile;
+use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -35,16 +36,29 @@ static FEATURE_TYPE_TO_PART_XPATH: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
 static LOD_TAG_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"lod([0-4])").expect("Failed to compile LOD tag pattern"));
 
-#[derive(Debug, Clone, Default)]
-pub struct MissingAttributeDetectorFactory;
+#[derive(Debug, Clone)]
+pub(crate) struct MissingAttributeDetectorFactory {
+    name: String,
+    /// i-UR namespace prefix used to label C07/C08 DataQuality error paths.
+    dataquality_prefix: &'static str,
+}
+
+impl MissingAttributeDetectorFactory {
+    pub(crate) fn new(profile: &PlateauProfile) -> Self {
+        Self {
+            name: profile.action_name("MissingAttributeDetector"),
+            dataquality_prefix: profile.dataquality_prefix(),
+        }
+    }
+}
 
 impl ProcessorFactory for MissingAttributeDetectorFactory {
     fn name(&self) -> &str {
-        "PLATEAU4.MissingAttributeDetector"
+        &self.name
     }
 
     fn description(&self) -> &str {
-        "Detect missing attributes in PLATEAU4 features"
+        "Detect missing attributes in PLATEAU features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -95,6 +109,7 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
         };
         let process = MissingAttributeDetector {
             package_attribute: params.package_attribute,
+            dataquality_prefix: self.dataquality_prefix,
             buffer: HashMap::new(),
         };
         Ok(Box::new(process))
@@ -103,7 +118,7 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
 
 /// # MissingAttributeDetector Parameters
 ///
-/// Configuration for detecting missing attributes in PLATEAU4 features.
+/// Configuration for detecting missing attributes in PLATEAU features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct MissingAttributeDetectorParam {
@@ -124,6 +139,7 @@ struct MissingAttributeBuffer {
 #[derive(Debug, Clone)]
 pub(crate) struct MissingAttributeDetector {
     package_attribute: Attribute,
+    dataquality_prefix: &'static str,
     buffer: HashMap<String, MissingAttributeBuffer>,
 }
 
@@ -346,6 +362,7 @@ impl MissingAttributeDetector {
                 .ok_or(PlateauProcessorError::MissingAttributeDetector(
                     "object list attribute empty".to_string(),
                 ))?;
+        let dataquality_prefix = self.dataquality_prefix;
         let buffer =
             self.buffer
                 .get_mut(package)
@@ -559,7 +576,8 @@ impl MissingAttributeDetector {
 
         // C07/C08 Data Quality Attribute validation
         let lod_count = count_lod_from_collected(&collected, package);
-        let (c07_errors, c08_errors) = validate_data_quality_from_collected(&collected, &lod_count);
+        let (c07_errors, c08_errors) =
+            validate_data_quality_from_collected(&collected, &lod_count, dataquality_prefix);
 
         // Update counters
         buffer.c07_counter += c07_errors.len();
@@ -677,7 +695,7 @@ fn collect_all_info(raw_xml: &str) -> Result<CollectedInfo, PlateauProcessorErro
 
     let collected: RefCell<CollectedInfo> = RefCell::new(CollectedInfo::default());
 
-    let transformer = StreamTransformer::new(raw_xml)
+    let transformer = Transformer::from(raw_xml)
         .with_root_namespaces()
         .map_err(|e| {
             PlateauProcessorError::MissingAttributeDetector(format!(
@@ -822,6 +840,7 @@ fn count_lod_from_collected(collected: &CollectedInfo, package: &str) -> [usize;
 fn validate_data_quality_from_collected(
     collected: &CollectedInfo,
     lod_count: &[usize; 5],
+    dataquality_prefix: &str,
 ) -> (Vec<(usize, String)>, Vec<(usize, String)>) {
     let mut c07_errors = Vec::new();
     let mut c08_errors = Vec::new();
@@ -843,7 +862,9 @@ fn validate_data_quality_from_collected(
                 // Missing geometrySrcDescLod{N} - C07 error
                 c07_errors.push((
                     lod,
-                    format!("uro:DataQualityAttribute/uro:geometrySrcDescLod{lod}"),
+                    format!(
+                        "{dataquality_prefix}:DataQualityAttribute/{dataquality_prefix}:geometrySrcDescLod{lod}"
+                    ),
                 ));
             }
             Some(texts) if texts.len() == 1 => {
@@ -854,7 +875,9 @@ fn validate_data_quality_from_collected(
                     if !collected.all_local_names.contains(&src_scale_key) {
                         c08_errors.push((
                             lod,
-                            format!("uro:PublicSurveyDataQualityAttribute/uro:srcScaleLod{lod}"),
+                            format!(
+                                "{dataquality_prefix}:PublicSurveyDataQualityAttribute/{dataquality_prefix}:srcScaleLod{lod}"
+                            ),
                         ));
                     }
 
@@ -864,7 +887,7 @@ fn validate_data_quality_from_collected(
                         c08_errors.push((
                             lod,
                             format!(
-                                "uro:PublicSurveyDataQualityAttribute/uro:publicSurveySrcDescLod{lod}"
+                                "{dataquality_prefix}:PublicSurveyDataQualityAttribute/{dataquality_prefix}:publicSurveySrcDescLod{lod}"
                             ),
                         ));
                     }
@@ -880,6 +903,7 @@ fn validate_data_quality_from_collected(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::PlateauProfile;
     use crate::object_list::{ObjectList, ObjectListValue};
     use crate::tests::utils::{create_default_execute_context, create_default_node_context};
     use indexmap::IndexMap;
@@ -890,6 +914,14 @@ mod tests {
     };
     use reearth_flow_types::Feature;
     use std::collections::HashMap;
+
+    // Test profile based on CityGML 2.0, so DataQuality labels use the `uro` prefix.
+    static TEST_PROFILE: PlateauProfile = PlateauProfile {
+        citygml: &crate::citygml::CITYGML2,
+        uro_ns: "https://www.geospatial.jp/iur/uro/3.0",
+        urf_ns: "https://www.geospatial.jp/iur/urf/3.0",
+        action_prefix: "PLATEAU",
+    };
 
     #[test]
     fn test_with_valid_input() -> Result<(), BoxedError> {
@@ -1298,7 +1330,7 @@ mod tests {
     fn run_processor_with_feature(
         feature: Feature,
     ) -> Result<ProcessorChannelForwarder, BoxedError> {
-        let factory = MissingAttributeDetectorFactory {};
+        let factory = MissingAttributeDetectorFactory::new(&TEST_PROFILE);
         let params_map = HashMap::from([(
             "packageAttribute".to_string(),
             serde_json::Value::String("package".to_string()),

@@ -27,17 +27,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                },
+              ]
 
       - id: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
         name: DirectoryDecompressor
@@ -114,11 +116,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
         name: FilterNotCityModel
         type: action
@@ -223,10 +227,17 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            let pkg = env.get("__value")["Folder"] ?? "";
-            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
-            name + "_地物インスタンス数.csv"
+          output:
+            type: flowExpr
+            value: |
+              pkg = attributes.get("Folder", "");
+              if pkg == "frn" {
+                "04_都市設備_地物インスタンス数.csv"
+              } else if pkg == "veg" {
+                "04_植生_地物インスタンス数.csv"
+              } else {
+                "04_都市設備_植生_地物インスタンス数.csv"
+              }
 
       # Surface Validation
       - id: 950407af-eec5-49ee-902c-2b41f31150d3
@@ -278,10 +289,17 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            let pkg = env.get("__value")["Folder"] ?? "";
-            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
-            name + "_面のエラー.csv"
+          output:
+            type: flowExpr
+            value: |
+              pkg = attributes.get("Folder", "");
+              if pkg == "frn" {
+                "04_都市設備_面のエラー.csv"
+              } else if pkg == "veg" {
+                "04_植生_面のエラー.csv"
+              } else {
+                "04_都市設備_植生_面のエラー.csv"
+              }
       
       - id: 46d6ed1c-cde5-43a5-837b-8544103aa36b
         name: SurfaceValidationErrorCounter
@@ -356,10 +374,17 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            let pkg = env.get("__value")["Folder"] ?? "";
-            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
-            name + "_非水密体.csv"
+          output:
+            type: flowExpr
+            value: |
+              pkg = attributes.get("Folder", "");
+              if pkg == "frn" {
+                "04_都市設備_非水密体.csv"
+              } else if pkg == "veg" {
+                "04_植生_非水密体.csv"
+              } else {
+                "04_都市設備_植生_非水密体.csv"
+              }
 
       - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
         name: Lod1-4NotClosedSolidCounter
@@ -421,10 +446,17 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            let pkg = env.get("__value")["Folder"] ?? "";
-            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
-            name + "_立体のエラー.csv"
+          output:
+            type: flowExpr
+            value: |
+              pkg = attributes.get("Folder", "");
+              if pkg == "frn" {
+                "04_都市設備_立体のエラー.csv"
+              } else if pkg == "veg" {
+                "04_植生_立体のエラー.csv"
+              } else {
+                "04_都市設備_植生_立体のエラー.csv"
+              }
 
       - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         name: Lod1-4SolidIssuesCounter
@@ -480,10 +512,17 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            let pkg = env.get("__value")["Folder"] ?? "";
-            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
-            name + "_不正なジオメトリ型.csv"
+          output:
+            type: flowExpr
+            value: |
+              pkg = attributes.get("Folder", "");
+              if pkg == "frn" {
+                "04_都市設備_不正なジオメトリ型.csv"
+              } else if pkg == "veg" {
+                "04_植生_不正なジオメトリ型.csv"
+              } else {
+                "04_都市設備_植生_不正なジオメトリ型.csv"
+              }
       
       
       - id: d7c87c17-485d-469e-b216-7797bd63d0e9
@@ -563,10 +602,17 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            let pkg = env.get("__value")["Folder"] ?? "";
-            let name = if pkg == "frn" { "04_都市設備" } else if pkg == "veg" { "04_植生" } else { "04_都市設備_植生" };
-            name + "_検査結果一覧.csv"
+          output:
+            type: flowExpr
+            value: |
+              pkg = attributes.get("Folder", "");
+              if pkg == "frn" {
+                "04_都市設備_検査結果一覧.csv"
+              } else if pkg == "veg" {
+                "04_植生_検査結果一覧.csv"
+              } else {
+                "04_都市設備_植生_検査結果一覧.csv"
+              }
 
       # StatisticsCalculator for JSON aggregation
       - id: 521b2dea-51af-460f-9eb5-672917768692
@@ -606,23 +652,22 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              for key in feature.keys() {
-                result.push(#{
-                  name: key,
-                  count: feature[key],
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                feature = attributes["__features"][0];
+                itertools.map(feature.keys(), fn(key) {
+                  {"name": key, "count": feature[key]}
+                })
               }
-              result
-            }
-          output: |
-            let pkg = env.get("__value")["Folder"] ?? "";
-            "summary_" + pkg + ".json"
+          output:
+            type: flowExpr
+            value: |
+              pkg = attributes.get("Folder", "");
+              "summary_" + pkg + ".json"
 
       # Calculate total errors for no-error check
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
@@ -653,10 +698,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
@@ -664,9 +711,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       # Data preparation flow

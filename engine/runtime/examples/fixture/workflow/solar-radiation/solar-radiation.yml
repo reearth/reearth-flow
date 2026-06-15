@@ -177,8 +177,9 @@ graphs:
     action: CsvReader
     with:
       format: tsv
-      dataset: |
-        env.get("dailySunDataPath")
+      dataset:
+        type: flowExpr
+        value: env["dailySunDataPath"]
   - id: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
     name: ParseDateAndCalcDayTime
     type: action
@@ -237,8 +238,9 @@ graphs:
       encoding: Shift-JIS
       offset: 3
       headerRows: 2
-      dataset: |
-        env.get("monthlyWeatherDataPath")
+      dataset:
+        type: flowExpr
+        value: env["monthlyWeatherDataPath"]
   - id: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
     name: PrepareWeatherDataForMerge
     type: action
@@ -418,8 +420,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath1")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath1")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000002
     name: RestrictZone1Reprojector
@@ -470,8 +473,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath2")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath2")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000012
     name: RestrictZone2Reprojector
@@ -522,8 +526,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("restrictAreaPath3")
+      dataset:
+        type: flowExpr
+        value: env.get("restrictAreaPath3")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000022
     name: RestrictZone3Reprojector
@@ -574,8 +579,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("snowDepthShapefilePath")
+      dataset:
+        type: flowExpr
+        value: env.get("snowDepthShapefilePath")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000031
     name: SnowShapefileReprojector
@@ -841,8 +847,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "適地判定結果.csv"
+      output:
+        type: string
+        value: 適地判定結果.csv
   - id: 00000006-0000-0000-0000-000000000002
     name: LandRadiationAggregator
     type: action
@@ -1046,8 +1053,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "土地適地判定結果.csv"
+      output:
+        type: string
+        value: 土地適地判定結果.csv
   - id: 00000006-0000-0000-0000-000000000010
     name: LandSnowSpatialFilter
     type: action
@@ -1555,16 +1563,18 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("bldgCityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env.get("bldgCityGmlPath"),
+              "cityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+              "baseCityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: 00000001-0000-0000-0000-000000000111
     name: FolderAndFilePathReader
     type: subGraph
@@ -1574,16 +1584,18 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("demCityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env.get("demCityGmlPath"),
+              "cityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+              "baseCityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: 00000002-0000-0000-0000-000000000002
     name: DEMDirectoryDecompressor
     type: action
@@ -1633,10 +1645,13 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: true
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 00000001-0000-0000-0000-00000000003a
     name: LodFilter
     type: action
@@ -1692,8 +1707,9 @@ graphs:
     type: action
     action: ShapefileReader
     with:
-      dataset: |
-        env.get("roofFilterShapefilePath")
+      dataset:
+        type: flowExpr
+        value: env.get("roofFilterShapefilePath")
       force2D: true
       allowEmptyPath: true
   - id: 00000004-0000-0000-0000-000000000002
@@ -1896,8 +1912,9 @@ graphs:
     action: CsvReader
     with:
       format: csv
-      dataset: |
-        env.get("snowDepthDataPath")
+      dataset:
+        type: flowExpr
+        value: env["snowDepthDataPath"]
       offset: 1
       headerRows: 0
   - id: 00000003-0000-0000-0000-000000000002
@@ -2380,8 +2397,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "反射シミュレーション結果.csv"
+      output:
+        type: string
+        value: 反射シミュレーション結果.csv
   - id: 00000001-0000-0000-0000-0000000000d0
     name: RoofAreaCalculator
     type: action
@@ -2484,8 +2502,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "建物ポテンシャル推計結果.csv"
+      output:
+        type: string
+        value: 建物ポテンシャル推計結果.csv
   - id: 00000001-0000-0000-0000-0000000000c6
     name: SurfaceRadiationMapper
     type: action
@@ -2514,8 +2533,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "面別日射量.csv"
+      output:
+        type: string
+        value: 面別日射量.csv
   - id: 00000001-0000-0000-0000-0000000000c7
     name: ReflectionMapper
     type: action
@@ -2585,8 +2605,9 @@ graphs:
     action: CsvWriter
     with:
       format: csv
-      output: |
-        "集計結果.csv"
+      output:
+        type: string
+        value: 集計結果.csv
   - id: 00000001-0000-0000-0000-0000000000a0
     name: BoundsExtractorByLod1
     type: action
@@ -2759,8 +2780,9 @@ graphs:
     type: action
     action: ZipFileWriter
     with:
-      output: |
-        "citygml_bldg.zip"
+      output:
+        type: string
+        value: citygml_bldg.zip
   - id: 00000005-0000-0000-0000-000000000001
     name: BuildingFeatureFilter
     type: action

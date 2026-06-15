@@ -2,10 +2,8 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_eval_expr::{engine::Engine, utils::dynamic_to_value};
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Expr, Feature};
-use rhai::Dynamic;
+use reearth_flow_types::{create_batch_feature, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -17,42 +15,29 @@ use super::FeatureProcessorError;
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct JsonWriterParam {
-    pub(super) converter: Option<Expr>,
+    pub(super) converter: Option<Code>,
 }
 
 #[derive(Debug, Clone)]
 pub(super) struct CompiledJsonWriterParam {
-    pub(super) converter: Option<rhai::AST>,
+    pub(super) converter: Option<CompiledCode>,
 }
 
 pub(super) fn write_json(
     output: &Uri,
-    converter: &Option<rhai::AST>,
+    converter: &Option<CompiledCode>,
     storage_resolver: &Arc<StorageResolver>,
-    expr_engine: &Arc<Engine>,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     features: &[Feature],
 ) -> Result<(), FeatureProcessorError> {
     let json_value: serde_json::Value = if let Some(converter) = converter {
-        let scope = expr_engine.new_scope();
-        let value: serde_json::Value = serde_json::Value::Array(
-            features
-                .iter()
-                .map(|feature| {
-                    serde_json::Value::Object(
-                        feature
-                            .attributes
-                            .iter()
-                            .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone().into()))
-                            .collect::<serde_json::Map<_, _>>(),
-                    )
-                })
-                .collect::<Vec<_>>(),
-        );
-        scope.set("__features", value);
-        let convert = scope.eval_ast::<Dynamic>(converter).map_err(|e| {
-            FeatureProcessorError::FeatureWriter(format!("Failed to evaluate converter: {e:?}"))
-        })?;
-        dynamic_to_value(&convert)
+        let synthetic = create_batch_feature(features);
+        converter
+            .eval(&synthetic, env_vars)
+            .map_err(|e| {
+                FeatureProcessorError::FeatureWriter(format!("Failed to evaluate converter: {e:?}"))
+            })?
+            .into()
     } else {
         let attributes = features
             .iter()

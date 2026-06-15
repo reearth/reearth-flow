@@ -11,8 +11,9 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [#{"id": 1, "value": "test"}]
+          creator:
+            type: flowExpr
+            value: '[{"id": 1, "value": "test"}]'
       - id: b1fa0a3e-61d3-48e2-a328-e7226c2ad1ae
         name: ErrorProcessor
         type: action
@@ -27,8 +28,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "result.json"
+          output:
+            type: string
+            value: result.json
     edges:
       - id: e1fa0a3e-61d3-48e2-a328-e7226c2ad1ae
         from: a1fa0a3e-61d3-48e2-a328-e7226c2ad1ae

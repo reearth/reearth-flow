@@ -19,8 +19,14 @@ defaults:
   run:
     working-directory: engine
 
+# All jobs share the same Rust cache (shared-key: engine-ci). The first run
+# after Cargo.lock changes pays a cache-miss cost in every job; subsequent
+# runs hit the cache the seeding job populated. Net wall clock is bounded by
+# the slowest single job (test-conv, ~7-8 min) instead of the sum of all
+# suites (~18 min on the previous monolithic layout).
 jobs:
-  ci:
+  lint:
+    name: lint (clippy / fmt / taplo)
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - name: Harden Runner
@@ -30,36 +36,9 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@8831c82abf29b34eb2caac48d5f999ecfc0d8eef # v4.1
+      - uses: ./.github/actions/setup-engine-ci
         with:
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-          remove-swapfile: 'true'
-          remove-cached-tools: 'true'
-      - uses: dtolnay/rust-toolchain@2ea1b3bdd0261867664fd125505456a7b9c3385c # 1.93.1
-        with:
-          components: clippy, rustfmt
-      - name: Cache cargo registry
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-        with:
-          workspaces: engine
-          shared-key: "engine-ci"
-      - name: install required tools
-        uses: taiki-e/install-action@74e87cbfa15a59692b158178d8905a61bf6fca95 # v2.75.20
-        with:
-          tool: taplo-cli,cargo-make,cargo-edit
-      - name: install yaml-include
-        run: cargo install yaml-include
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: '20'
-      - name: Install glb-decompress
-        run: npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771
+          rust-components: clippy, rustfmt
       - name: Compare version with previous commit
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
@@ -76,30 +55,128 @@ jobs:
             exit 1
           fi
 
-           echo "Previous version: $PREV_VERSION"
-           echo "Current version:  $CURR_VERSION"
+          echo "Previous version: $PREV_VERSION"
+          echo "Current version:  $CURR_VERSION"
 
-           if [ "$PREV_VERSION" = "$CURR_VERSION" ]; then
-             echo "Error: The version of Cargo.toml has not been changed."
-             echo "       To increase the patch version, run 'cargo set-version --bump patch'."
-             echo "       To bump the version, run one of:"
-             echo "       - 'cargo set-version --bump major'  # For breaking changes"
-             echo "       - 'cargo set-version --bump minor'  # For new features"
-             echo "       - 'cargo set-version --bump patch'  # For bug fixes"
-             exit 1
-           fi
-
-      - name: check
-        run: cargo make check
-      - name: rustfmt
-        run: cargo make format -- --check
+          if [ "$PREV_VERSION" = "$CURR_VERSION" ]; then
+            echo "Error: The version of Cargo.toml has not been changed."
+            echo "       To increase the patch version, run 'cargo set-version --bump patch'."
+            echo "       To bump the version, run one of:"
+            echo "       - 'cargo set-version --bump major'  # For breaking changes"
+            echo "       - 'cargo set-version --bump minor'  # For new features"
+            echo "       - 'cargo set-version --bump patch'  # For bug fixes"
+            exit 1
+          fi
+      # NOTE: `cargo make check` was previously a separate step. It is a
+      # strict subset of `cargo make clippy` (clippy implies check), so it is
+      # not run here.
       - name: clippy
         run: cargo make clippy
+      - name: rustfmt
+        run: cargo make format -- --check
       - name: taplo
-        run: cargo make format-taplo --check
+        run: cargo make format-taplo -- --check
+
+  validate-generated:
+    name: validate generated files (schema + cms workflows)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+      - name: install yaml-include
+        run: cargo install yaml-include
       - name: check generated schema
         run: cargo make check-schema
       - name: check generated cms workflows
         run: cargo make check-generate-examples-cms-workflow
-      - name: run tests
-        run: cargo make test
+
+  test-rs:
+    name: test-rs (workspace unit + integration tests)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+      - name: test-rs
+        run: cargo make test-rs
+
+  test-qc:
+    name: test-qc (workflow integration tests)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+      - name: Cache XSD schema downloads
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          # The XML validator persists remote XSDs (the CityGML/GML base
+          # schemas fetched from schemas.opengis.net) under this directory. A
+          # warm run restores it and skips the downloads entirely; the first
+          # cold run repopulates it, and the in-process single-flight fetcher
+          # keeps that cold run from stampeding the remote server. The run_id
+          # in the key means each run saves a fresh entry while restore-keys
+          # falls back to the most recent prior cache, so newly seen schemas
+          # are persisted instead of frozen at v1.
+          path: /tmp/reearth-flow-xml-schema-cache
+          key: xsd-schemas-v1-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            xsd-schemas-v1-${{ runner.os }}-
+      - name: test-qc
+        # `--test-threads=16` is a CI-specific override (4× oversubscription
+        # on the 4-vCPU runner; safe now that the executor's polling-backoff
+        # uses sleep(100µs) instead of yield_now and the XSD cache shifts
+        # tests toward CPU-bound). Kept on the caller side so `cargo make
+        # test-qc` defaults to N_CPUs for local development.
+        run: cargo make test-qc -- --test-threads=16
+
+  test-conv:
+    name: test-conv (tile output validation)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Install glb-decompress
+        # glb_decompress_draco transitively depends on `sharp`, whose postinstall
+        # script downloads libvips binaries from GitHub Releases. That download
+        # has flaked with 504s during peak GitHub traffic; retry up to 3 times
+        # before giving up so a single transient CDN blip doesn't fail CI.
+        run: |
+          for attempt in 1 2 3; do
+            if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
+              echo "glb-decompress install succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Attempt $attempt failed; sleeping 15s before retry..."
+            sleep 15
+          done
+          echo "glb-decompress install failed after 3 attempts" >&2
+          exit 1
+      - name: test-conv
+        run: cargo make test-conv

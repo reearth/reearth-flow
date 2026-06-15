@@ -16,12 +16,14 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ user_id: 1 },
-              #{ user_id: 2 },
-              #{ user_id: 3 }
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"user_id": 1},
+                {"user_id": 2},
+                {"user_id": 3}
+              ]
 
       # Make HTTP GET requests to fetch user data
       - id: 550e8400-e29b-41d4-a716-446655440020
@@ -58,8 +60,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "{{ env.outputFilePath }}"
+          output:
+            type: flowExpr
+            value: 'env["outputFilePath"]'
 
     edges:
       - id: 550e8400-e29b-41d4-a716-446655440100

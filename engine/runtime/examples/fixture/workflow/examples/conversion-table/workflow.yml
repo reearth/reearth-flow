@@ -11,17 +11,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                testAttribute01: "堺市中区",
-                testAttribute02: "2025-02-01",
-              },
-              #{
-                testAttribute01: "堺市北区",
-                testAttribute02: "2025-02-02",
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "testAttribute01": "堺市中区",
+                  "testAttribute02": "2025-02-01",
+                },
+                {
+                  "testAttribute01": "堺市北区",
+                  "testAttribute02": "2025-02-02",
+                },
+              ]
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         name: AttributeConversionTable
@@ -42,8 +44,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            file::join_path(env.get("currentPath"), "example-conversion-table.csv")
+          output:
+            type: string
+            value: example-conversion-table.csv
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

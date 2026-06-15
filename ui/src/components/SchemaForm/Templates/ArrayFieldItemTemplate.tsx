@@ -41,7 +41,7 @@ const ArrayFieldItemTemplate = <
     <div className="relative flex flex-col items-center rounded-md pt-2 pl-2">
       <div
         className={`w-full ${!schema.required ? "flex justify-between gap-2" : ""}`}>
-        <div className="flex-1">{children}</div>
+        <div className="min-w-0 flex-1">{children}</div>
         {hasToolbar && (
           <div
             className={`${schema.required ? "absolute top-3.5 right-0" : ""} flex items-center gap-1`}>
