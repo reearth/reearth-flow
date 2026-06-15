@@ -109,6 +109,16 @@ function stringifyItem(item: unknown, indent: string, depth = 0): string {
   return `{\n${inner}\n${indent}}`;
 }
 
+function toSearchableString(value: unknown): string {
+  if (typeof value !== "object" || value === null) return String(value);
+  if (estimateSize(value) > LARGE_VALUE_THRESHOLD) return summarizeValue(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 /** Build a lightweight summary string for a large value without JSON.stringify */
 function summarizeValue(value: unknown): string {
   const resolved = resolveValue(value);
@@ -185,9 +195,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
       Object.entries(processedFeature?.attributes || {}).filter(
         ([key, value]) => {
           const keyMatch = key.toLowerCase().includes(lowerSearch);
-          const valueStr =
-            typeof value === "object" ? JSON.stringify(value) : String(value);
-          const valueMatch = valueStr.toLowerCase().includes(lowerSearch);
+          const valueMatch = toSearchableString(value)
+            .toLowerCase()
+            .includes(lowerSearch);
           return keyMatch || valueMatch;
         },
       ),
@@ -197,9 +207,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
       Object.entries(processedFeature?.geometry || {}).filter(
         ([key, value]) => {
           const keyMatch = key.toLowerCase().includes(lowerSearch);
-          const valueStr =
-            typeof value === "object" ? JSON.stringify(value) : String(value);
-          const valueMatch = valueStr.toLowerCase().includes(lowerSearch);
+          const valueMatch = toSearchableString(value)
+            .toLowerCase()
+            .includes(lowerSearch);
           return keyMatch || valueMatch;
         },
       ),
