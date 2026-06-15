@@ -22,6 +22,7 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 	c := &repo.Container{
 		Trigger:     NewTrigger(client),
 		Config:      NewConfig(client, lock),
+		Parameter:   NewParameter(client),
 		Lock:        lock,
 		Transaction: client,
 		Workspace:   account.Workspace,
@@ -53,7 +54,6 @@ func mustComplete(c *repo.Container) error {
 	check("EdgeExecution", c.EdgeExecution != nil)
 	check("Job", c.Job != nil)
 	check("NodeExecution", c.NodeExecution != nil)
-	check("Parameter", c.Parameter != nil)
 	check("Project", c.Project != nil)
 	check("ProjectAccess", c.ProjectAccess != nil)
 	check("Workflow", c.Workflow != nil)

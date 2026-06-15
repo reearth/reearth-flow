@@ -15,6 +15,20 @@ type Config struct {
 	AuthKey   *string
 }
 
+type Parameter struct {
+	ID           string
+	ProjectID    string
+	Name         string
+	Type         string
+	Index        int32
+	Required     bool
+	Public       bool
+	DefaultValue []byte
+	Config       []byte
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type Trigger struct {
 	ID            string
 	WorkspaceID   string

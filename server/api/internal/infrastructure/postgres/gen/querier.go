@@ -9,13 +9,20 @@ import (
 )
 
 type Querier interface {
+	DeleteParameter(ctx context.Context, id string) error
+	DeleteParametersByIDs(ctx context.Context, dollar_1 []string) error
+	DeleteParametersByProject(ctx context.Context, projectID string) error
 	DeleteTrigger(ctx context.Context, id string) error
 	GetConfig(ctx context.Context) (GetConfigRow, error)
+	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetTrigger(ctx context.Context, id string) (Trigger, error)
+	ListParametersByIDs(ctx context.Context, dollar_1 []string) ([]Parameter, error)
+	ListParametersByProject(ctx context.Context, projectID string) ([]Parameter, error)
 	ListTriggersByDeployment(ctx context.Context, deploymentID string) ([]Trigger, error)
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
 	UpsertConfig(ctx context.Context, arg UpsertConfigParams) error
 	UpsertConfigAuth(ctx context.Context, arg UpsertConfigAuthParams) error
+	UpsertParameter(ctx context.Context, arg UpsertParameterParams) error
 	UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) error
 }
 

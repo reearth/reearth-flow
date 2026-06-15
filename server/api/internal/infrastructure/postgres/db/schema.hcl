@@ -83,3 +83,54 @@ table "triggers" {
     columns = [column.deployment_id]
   }
 }
+
+table "parameters" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "project_id" {
+    type = text
+  }
+  column "name" {
+    type = text
+  }
+  column "type" {
+    type = text
+  }
+  column "index" {
+    type    = integer
+    default = 0
+  }
+  column "required" {
+    type    = boolean
+    default = false
+  }
+  column "public" {
+    type    = boolean
+    default = false
+  }
+  column "default_value" {
+    type = jsonb
+    null = true
+  }
+  column "config" {
+    type = jsonb
+    null = true
+  }
+  column "created_at" {
+    type = timestamptz
+  }
+  column "updated_at" {
+    type = timestamptz
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "parameters_project_id_idx" {
+    columns = [column.project_id]
+  }
+}
