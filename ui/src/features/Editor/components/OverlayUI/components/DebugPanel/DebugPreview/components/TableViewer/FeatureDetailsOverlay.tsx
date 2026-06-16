@@ -1,6 +1,6 @@
 import {
   ArrowLeftIcon,
-  ArrowSquareOutIcon,
+  BracketsCurlyIcon,
   CaretDownIcon,
 } from "@phosphor-icons/react";
 import {
@@ -334,7 +334,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               type="button"
               className="flex h-5 items-center gap-1 px-1 text-xs text-muted-foreground hover:text-foreground"
               onClick={() => openRaw(label, value)}>
-              <ArrowSquareOutIcon size={12} />
+              <BracketsCurlyIcon size={12} />
               {t("View raw")}
             </Button>
           )}
@@ -423,7 +423,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             onClick={() =>
               openRaw(`${t("Feature")} ${processedFeature.id}`, feature)
             }>
-            <ArrowSquareOutIcon size={12} />
+            <BracketsCurlyIcon size={12} />
             {t("View all raw")}
           </Button>
         </div>
