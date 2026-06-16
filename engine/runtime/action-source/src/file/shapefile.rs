@@ -121,7 +121,7 @@ impl SourceFactory for ShapefileReaderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -145,7 +145,7 @@ impl SourceFactory for ShapefileReaderFactory {
             .into());
         };
         let compiled_params = ShapefileReaderCompiledParam {
-            common: params.common_property.compile().map_err(|e| {
+            common: params.common_property.compile(&ctx).map_err(|e| {
                 SourceError::ShapefileReaderFactory(format!("Failed to compile params: {e:?}"))
             })?,
             encoding: params.encoding,
@@ -238,19 +238,16 @@ impl Source for ShapefileReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        // When allow_empty_path is set and no inline content is provided,
-        // a null dataset expression means "no input".
-        if self.params.allow_empty_path && self.params.common.inline.is_none() {
-            if let Some(ref dataset) = self.params.common.dataset {
-                if let Ok(reearth_flow_types::AttributeValue::Null) =
-                    dataset.eval_env_only(ctx.expr_engine.vars())
-                {
-                    return Ok(());
-                }
-            }
+        // When allow_empty_path is set and the dataset resolved to null at build time,
+        // treat as "no input" and skip silently.
+        if self.params.allow_empty_path
+            && self.params.common.dataset.is_none()
+            && self.params.common.inline.is_none()
+        {
+            return Ok(());
         }
 
-        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
         read_shapefile(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)

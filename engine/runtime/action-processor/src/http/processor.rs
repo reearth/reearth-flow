@@ -349,12 +349,11 @@ mod tests {
             observability: None,
         };
 
-        let url_ast = Code {
+        let url_ast: Code = Code {
             ty: CodeType::FlowExpr,
             value: r#""https://example.com/test""#.to_string(),
-        }
-        .compile()
-        .unwrap();
+        };
+        let url_ast = url_ast.compile().unwrap();
 
         let processor = HttpCallerProcessor::with_client(Arc::new(mock_client), params, url_ast);
 
@@ -383,12 +382,11 @@ mod tests {
             observability: None,
         };
 
-        let url_ast = Code {
+        let url_ast: Code = Code {
             ty: CodeType::FlowExpr,
             value: r#""https://example.com""#.to_string(),
-        }
-        .compile()
-        .unwrap();
+        };
+        let url_ast = url_ast.compile().unwrap();
 
         let processor = HttpCallerProcessor::with_client(Arc::new(mock_client), params, url_ast);
 

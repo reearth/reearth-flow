@@ -491,12 +491,11 @@ mod tests {
     use crate::tests::utils::create_default_execute_context;
 
     fn create_test_processor(filter_type: PlanarityFilterType, threshold: f64) -> PlanarityFilter {
-        let threshold_ast = Code {
+        let threshold_ast: Code = Code {
             ty: CodeType::FlowExpr,
             value: format!("{threshold}"),
-        }
-        .compile()
-        .unwrap();
+        };
+        let threshold_ast = threshold_ast.compile().unwrap();
         PlanarityFilter {
             filter_type,
             threshold_ast,

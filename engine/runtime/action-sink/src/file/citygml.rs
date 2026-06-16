@@ -15,7 +15,7 @@ use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{CitygmlFeatureExt, Code, CompiledCode, Feature};
+use reearth_flow_types::{CitygmlFeatureExt, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -261,7 +261,7 @@ impl SinkFactory for CityGmlWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -285,9 +285,16 @@ impl SinkFactory for CityGmlWriterFactory {
         };
 
         let lod_mask = build_lod_mask(&params.lod_filter);
-        let output = params.output.compile().map_err(|e| {
-            SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
-        })?;
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(|e| {
+                SinkError::CityGmlWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         Ok(Box::new(CityGmlWriterSink {
             params: CityGmlWriterCompiledParam {
                 output,
@@ -336,7 +343,7 @@ fn default_pretty_print() -> Option<bool> {
 
 #[derive(Debug, Clone)]
 struct CityGmlWriterCompiledParam {
-    output: CompiledCode,
+    output: String,
     epsg_code: Option<u32>,
     pretty_print: Option<bool>,
 }
@@ -373,12 +380,8 @@ impl Sink for CityGmlWriterSink {
 
     #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let path = self
-            .params
-            .output
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(|e| SinkError::CityGmlWriter(format!("{e:?}")))?;
-        let out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
+        let path = self.params.output.as_str();
+        let out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         write_citygml_to_storage(

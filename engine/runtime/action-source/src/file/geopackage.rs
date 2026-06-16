@@ -61,7 +61,7 @@ impl SourceFactory for GeoPackageReaderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -83,7 +83,7 @@ impl SourceFactory for GeoPackageReaderFactory {
             .into());
         };
         let compiled_params = GeoPackageReaderCompiledParam {
-            common: params.common_property.compile().map_err(|e| {
+            common: params.common_property.compile(&ctx).map_err(|e| {
                 SourceError::GeoPackageReader(format!("Failed to compile params: {e:?}"))
             })?,
             read_mode: params.read_mode,
@@ -179,7 +179,7 @@ impl Source for GeoPackageReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
 
         let features = process_geopackage(content, &self.params).await?;
 
