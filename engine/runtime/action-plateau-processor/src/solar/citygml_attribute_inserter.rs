@@ -15,7 +15,7 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::forwarder::ProcessorChannelForwarder;
 use reearth_flow_runtime::node::{Port, Processor, ProcessorFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -60,7 +60,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -83,19 +83,16 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output_dir_ast = expr_engine
-            .compile(params.output_dir.as_ref())
-            .map_err(|e| {
-                CityGmlAttributeInserterError::Factory(format!(
-                    "Failed to compile outputDir expression: {e}"
-                ))
-            })?;
+        let output_dir_ast = params.output_dir.compile().map_err(|e| {
+            CityGmlAttributeInserterError::Factory(format!(
+                "Failed to compile outputDir expression: {e}"
+            ))
+        })?;
 
         let texture_image_path_ast = params
             .texture_image_path
             .map(|expr| {
-                expr_engine.compile(expr.as_ref()).map_err(|e| {
+                expr.compile().map_err(|e| {
                     CityGmlAttributeInserterError::Factory(format!(
                         "Failed to compile textureImagePath expression: {e}"
                     ))
@@ -106,7 +103,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
         let source_epsg_ast = params
             .source_epsg
             .map(|expr| {
-                expr_engine.compile(expr.as_ref()).map_err(|e| {
+                expr.compile().map_err(|e| {
                     CityGmlAttributeInserterError::Factory(format!(
                         "Failed to compile sourceEpsg expression: {e}"
                     ))
@@ -136,7 +133,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
 #[serde(rename_all = "camelCase")]
 struct CityGmlAttributeInserterParam {
     /// Output directory expression for modified CityGML files
-    output_dir: Expr,
+    output_dir: Code<{ CodeType::FlowExpr as u32 }>,
     /// Attribute name on element features holding gml:id (default: "gmlId")
     #[serde(default)]
     gml_id_attribute: Option<String>,
@@ -147,10 +144,10 @@ struct CityGmlAttributeInserterParam {
     measurements: Vec<MeasurementDef>,
     /// Path to the solar radiation texture PNG (texture insertion skipped if absent)
     #[serde(default)]
-    texture_image_path: Option<Expr>,
+    texture_image_path: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// The projected CRS EPSG code used for rasterization (needed for UV computation)
     #[serde(default)]
-    source_epsg: Option<Expr>,
+    source_epsg: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 /// A single measurement attribute definition.
@@ -176,12 +173,12 @@ struct RoofRingData {
 
 #[derive(Debug, Clone)]
 struct CityGmlAttributeInserter {
-    output_dir_ast: rhai::AST,
+    output_dir_ast: CompiledCode,
     gml_id_attribute: String,
     path_attribute: String,
     measurements: Vec<MeasurementDef>,
-    texture_image_path_ast: Option<rhai::AST>,
-    source_epsg_ast: Option<rhai::AST>,
+    texture_image_path_ast: Option<CompiledCode>,
+    source_epsg_ast: Option<CompiledCode>,
     paths: Vec<String>,
     /// gmlId → { attribute_key → value }
     elements: HashMap<String, HashMap<String, f64>>,
@@ -261,11 +258,11 @@ impl Processor for CityGmlAttributeInserter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
+        let env_vars = ctx.expr_engine.vars().clone();
 
-        let output_dir = scope
-            .eval_ast::<String>(&self.output_dir_ast)
+        let output_dir = self
+            .output_dir_ast
+            .eval_string_env_only(env_vars.clone())
             .map_err(|e| {
                 CityGmlAttributeInserterError::Process(format!(
                     "Failed to evaluate outputDir expression: {e}"
@@ -277,7 +274,7 @@ impl Processor for CityGmlAttributeInserter {
             .texture_image_path_ast
             .as_ref()
             .map(|ast| {
-                scope.eval_ast::<String>(ast).map_err(|e| {
+                ast.eval_string_env_only(env_vars.clone()).map_err(|e| {
                     CityGmlAttributeInserterError::Process(format!(
                         "Failed to evaluate textureImagePath expression: {e}"
                     ))
@@ -289,28 +286,29 @@ impl Processor for CityGmlAttributeInserter {
             .source_epsg_ast
             .as_ref()
             .map(|ast| {
-                let val = scope.eval_ast::<rhai::Dynamic>(ast).map_err(|e| {
+                let val = ast.eval_env_only(env_vars.clone()).map_err(|e| {
                     CityGmlAttributeInserterError::Process(format!(
                         "Failed to evaluate sourceEpsg expression: {e}"
                     ))
                 })?;
                 // Accept both integer and string EPSG codes
-                if let Ok(n) = val.as_int() {
-                    u32::try_from(n).map_err(|_| {
-                        CityGmlAttributeInserterError::Process(format!(
-                            "sourceEpsg must be a positive integer, got: {n}"
-                        ))
-                    })
-                } else if let Ok(s) = val.into_string() {
-                    s.parse::<u32>().map_err(|e| {
+                match val {
+                    AttributeValue::Number(n) => {
+                        let i = n.as_i64().unwrap_or(0);
+                        u32::try_from(i).map_err(|_| {
+                            CityGmlAttributeInserterError::Process(format!(
+                                "sourceEpsg must be a positive integer, got: {i}"
+                            ))
+                        })
+                    }
+                    AttributeValue::String(s) => s.parse::<u32>().map_err(|e| {
                         CityGmlAttributeInserterError::Process(format!(
                             "Failed to parse sourceEpsg '{s}' as u32: {e}"
                         ))
-                    })
-                } else {
-                    Err(CityGmlAttributeInserterError::Process(
-                        "sourceEpsg must be an integer or string".to_string(),
-                    ))
+                    }),
+                    other => Err(CityGmlAttributeInserterError::Process(format!(
+                        "sourceEpsg must be an integer or string, got: {other:?}"
+                    ))),
                 }
             })
             .transpose()?;
@@ -1111,7 +1109,12 @@ mod tests {
         elements.insert("bldg_001".to_string(), vals);
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
+            output_dir_ast: Code {
+                ty: CodeType::String,
+                value: String::new(),
+            }
+            .compile()
+            .unwrap(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![
@@ -1187,7 +1190,12 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
+            output_dir_ast: Code {
+                ty: CodeType::String,
+                value: String::new(),
+            }
+            .compile()
+            .unwrap(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![MeasurementDef {
@@ -1243,7 +1251,12 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
+            output_dir_ast: Code {
+                ty: CodeType::String,
+                value: String::new(),
+            }
+            .compile()
+            .unwrap(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![],
@@ -1324,7 +1337,12 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
+            output_dir_ast: Code {
+                ty: CodeType::String,
+                value: String::new(),
+            }
+            .compile()
+            .unwrap(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![],
@@ -1357,7 +1375,12 @@ mod tests {
         elements.insert("bldg_001".to_string(), vals);
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
+            output_dir_ast: Code {
+                ty: CodeType::String,
+                value: String::new(),
+            }
+            .compile()
+            .unwrap(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![MeasurementDef {
@@ -1403,7 +1426,12 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
+            output_dir_ast: Code {
+                ty: CodeType::String,
+                value: String::new(),
+            }
+            .compile()
+            .unwrap(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![],
@@ -1440,7 +1468,12 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: rhai::AST::empty(),
+            output_dir_ast: Code {
+                ty: CodeType::String,
+                value: String::new(),
+            }
+            .compile()
+            .unwrap(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![],

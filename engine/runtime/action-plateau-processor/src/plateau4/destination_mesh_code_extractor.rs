@@ -15,8 +15,9 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, GeometryValue};
-use rhai::AST;
+use reearth_flow_types::{
+    Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature, GeometryValue,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -65,12 +66,12 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: DestinationMeshCodeExtractorParam = if let Some(with) = with.as_ref() {
+        let params: DestinationMeshCodeExtractorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with)
                 .map_err(|e| format!("Failed to serialize parameters: {e}"))?;
             serde_json::from_value(value)
@@ -89,14 +90,12 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
             _ => return Err("Invalid mesh_type. Must be 1-6".into()),
         };
 
-        // Compile EPSG code expression for runtime evaluation
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let epsg_code_ast = expr_engine
-            .compile(params.epsg_code.as_ref())
+        let epsg_code_ast = params
+            .epsg_code
+            .compile()
             .map_err(|e| format!("Failed to compile epsg_code expression: {e}"))?;
 
         Ok(Box::new(DestinationMeshCodeExtractor {
-            global_params: with,
             mesh_type,
             meshcode_attr: params.meshcode_attr,
             epsg_code_ast,
@@ -122,7 +121,7 @@ pub struct DestinationMeshCodeExtractorParam {
     /// # EPSG Code
     /// Japanese Plane Rectangular Coordinate System EPSG code for area calculation
     #[serde(default = "default_epsg_code")]
-    pub epsg_code: Expr,
+    pub epsg_code: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 impl Default for DestinationMeshCodeExtractorParam {
@@ -143,16 +142,18 @@ fn default_meshcode_attr() -> String {
     "_meshcode".to_string()
 }
 
-fn default_epsg_code() -> Expr {
-    Expr::new("6691".to_string()) // JGD2011 / UTM Zone 54N - PLATEAU standard coordinate system
+fn default_epsg_code() -> Code<{ CodeType::FlowExpr as u32 }> {
+    Code {
+        ty: CodeType::FlowExpr,
+        value: "6691".to_string(),
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct DestinationMeshCodeExtractor {
-    global_params: Option<HashMap<String, Value>>,
     mesh_type: JPMeshType,
     meshcode_attr: String,
-    epsg_code_ast: AST,
+    epsg_code_ast: CompiledCode,
 }
 
 /// Helper function to ensure proj instances exist in thread-local cache for the given EPSG code.
@@ -198,8 +199,7 @@ impl Processor for DestinationMeshCodeExtractor {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
-        // Evaluate EPSG code expression at runtime with feature context
-        let epsg_code = self.evaluate_epsg_code(feature, &ctx)?;
+        let epsg_code = self.evaluate_epsg_code(feature, ctx.expr_engine.vars().clone())?;
 
         // Ensure proj instances are cached for this EPSG code
         ensure_proj_cached(&epsg_code)?;
@@ -290,32 +290,23 @@ struct MeshCodeToArea {
 }
 
 impl DestinationMeshCodeExtractor {
-    /// Evaluate the EPSG code expression at runtime with feature context
     fn evaluate_epsg_code(
         &self,
         feature: &Feature,
-        ctx: &ExecutorContext,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<String, BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let epsg_code = scope
-            .eval_ast::<rhai::Dynamic>(&self.epsg_code_ast)
-            .map_err(|e| {
-                PlateauProcessorError::DestinationMeshCodeExtractor(format!(
-                    "Failed to evaluate epsg_code expression: {e:?}"
-                ))
-            })?;
-
-        // Handle both string and integer EPSG codes
-        if let Some(s) = epsg_code.clone().try_cast::<String>() {
-            Ok(s)
-        } else if let Some(i) = epsg_code.clone().try_cast::<i64>() {
-            Ok(i.to_string())
-        } else {
-            Err(PlateauProcessorError::DestinationMeshCodeExtractor(
+        let av = self.epsg_code_ast.eval(feature, env_vars).map_err(|e| {
+            PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                "Failed to evaluate epsg_code expression: {e:?}"
+            ))
+        })?;
+        match av {
+            reearth_flow_types::AttributeValue::String(s) => Ok(s),
+            reearth_flow_types::AttributeValue::Number(n) => Ok(n.to_string()),
+            _ => Err(PlateauProcessorError::DestinationMeshCodeExtractor(
                 "epsg_code expression did not evaluate to a string or integer".to_string(),
             )
-            .into())
+            .into()),
         }
     }
 

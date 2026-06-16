@@ -2,7 +2,6 @@ use base64::{engine::general_purpose, Engine as _};
 use bytes::Bytes;
 use std::sync::Arc;
 
-use reearth_flow_eval_expr::engine::Engine as ExprEngine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{Attribute, AttributeValue};
 
@@ -15,8 +14,7 @@ pub(crate) struct ResponseProcessorConfig<'a> {
     pub encoding: &'a Option<ResponseEncoding>,
     pub auto_detect: bool,
     pub max_size: Option<u64>,
-    pub engine: &'a Arc<ExprEngine>,
-    pub scope: &'a reearth_flow_eval_expr::scope::Scope,
+    pub env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     pub storage_resolver: &'a Arc<StorageResolver>,
     pub response_body_attr: &'a str,
     pub status_code_attr: &'a str,
@@ -73,15 +71,17 @@ pub(crate) fn process_response(
             store_path_in_attribute,
             path_attribute,
         } => {
-            let path_ast = config.engine.compile(path.as_ref()).map_err(|e| {
-                HttpProcessorError::Request(format!(
-                    "Failed to compile output path expression: {e:?}"
-                ))
-            })?;
-
-            let output_path = config.scope.eval_ast::<String>(&path_ast).map_err(|e| {
-                HttpProcessorError::Response(format!("Failed to evaluate output path: {e:?}"))
-            })?;
+            let output_path = path
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!(
+                        "Failed to compile output path expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(config.env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Response(format!("Failed to evaluate output path: {e:?}"))
+                })?;
 
             save_response_to_file(&response.body, &output_path, config.storage_resolver)?;
 
@@ -95,7 +95,6 @@ pub(crate) fn process_response(
                 );
             }
 
-            // Also store metadata in response body attribute
             let metadata = serde_json::json!({
                 "saved_to_file": true,
                 "file_path": output_path,
@@ -113,11 +112,8 @@ pub(crate) fn process_response(
 
 fn encode_response_body(body: &[u8], encoding: &ResponseEncoding) -> String {
     match encoding {
-        ResponseEncoding::Text => {
-            // Try UTF-8 first, fall back to lossy conversion if invalid
-            String::from_utf8(body.to_vec())
-                .unwrap_or_else(|_| String::from_utf8_lossy(body).into_owned())
-        }
+        ResponseEncoding::Text => String::from_utf8(body.to_vec())
+            .unwrap_or_else(|_| String::from_utf8_lossy(body).into_owned()),
         ResponseEncoding::Base64 => general_purpose::STANDARD.encode(body),
         ResponseEncoding::Binary => general_purpose::STANDARD.encode(body),
     }
@@ -177,6 +173,10 @@ fn save_response_to_file(
 mod tests {
     use super::*;
 
+    fn make_env() -> Arc<serde_json::Map<String, serde_json::Value>> {
+        Arc::new(serde_json::Map::new())
+    }
+
     #[test]
     fn test_size_limit_exceeded_returns_error() {
         let response = HttpResponse {
@@ -185,8 +185,6 @@ mod tests {
             body: vec![b'a'; 1000],
         };
 
-        let engine = Arc::new(ExprEngine::new());
-        let scope = engine.new_scope();
         let storage_resolver = Arc::new(StorageResolver::new());
         let mut attributes = indexmap::IndexMap::new();
 
@@ -195,8 +193,7 @@ mod tests {
             encoding: &None,
             auto_detect: true,
             max_size: Some(500),
-            engine: &engine,
-            scope: &scope,
+            env_vars: make_env(),
             storage_resolver: &storage_resolver,
             response_body_attr: "_response",
             status_code_attr: "_status",

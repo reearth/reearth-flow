@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor, str::FromStr, sync::Arc};
+use std::{collections::HashMap, io::Cursor, str::FromStr};
 
 use bytes::Bytes;
 use reearth_flow_common::{csv::Delimiter, uri::Uri};
@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -55,7 +55,7 @@ impl ProcessorFactory for AttributeConversionTableFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeConversionTableParam = if let Some(with) = with.clone() {
+        let params: AttributeConversionTableParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::ConversionTableFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -72,17 +72,16 @@ impl ProcessorFactory for AttributeConversionTableFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let storage_resolver = &ctx.storage_resolver;
-        let scope = expr_engine.new_scope();
-        if let Some(with) = with {
-            for (k, v) in with.iter() {
-                scope.set(k, v.clone());
-            }
-        }
         let bytes = if let Some(dataset) = params.dataset {
-            let input_path = scope
-                .eval::<String>(dataset.to_string().as_str())
+            let input_path = dataset
+                .compile()
+                .map_err(|e| {
+                    super::errors::AttributeProcessorError::ConversionTable(format!(
+                        "Failed to compile dataset expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(ctx.expr_engine.vars().clone())
                 .map_err(|e| {
                     super::errors::AttributeProcessorError::ConversionTable(format!(
                         "Failed to evaluate expr: {e}"
@@ -160,7 +159,7 @@ struct AttributeConversionTableParam {
     rules: Vec<AttributeConversionTableRule>,
     /// # Dataset URI
     /// Path or URI to external conversion table file
-    dataset: Option<Expr>,
+    dataset: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Inline Table Data
     /// Conversion table data provided directly as string content
     inline: Option<String>,

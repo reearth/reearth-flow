@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, str::FromStr, sync::Arc};
+use std::{collections::HashMap, fs, str::FromStr};
 
 use once_cell::sync::Lazy;
 use reearth_flow_common::{dir::project_temp_dir, uri::Uri};
@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{AttributeValue, Expr, Feature, FilePath};
+use reearth_flow_types::{AttributeValue, Code, CodeType, CompiledCode, Feature, FilePath};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -54,12 +54,12 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: FeatureFilePathExtractorParam = if let Some(with) = with.clone() {
+        let param: FeatureFilePathExtractorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FilePathExtractorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -76,21 +76,17 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let source_dataset = expr_engine
-            .compile(param.source_dataset.as_ref())
-            .map_err(|e| {
-                FeatureProcessorError::FilePathExtractorFactory(format!(
-                    "Failed to compile `source_dataset` expression: {e}"
-                ))
-            })?;
+        let source_dataset = param.source_dataset.compile().map_err(|e| {
+            FeatureProcessorError::FilePathExtractorFactory(format!(
+                "Failed to compile `source_dataset` expression: {e}"
+            ))
+        })?;
         let process = FeatureFilePathExtractor {
             params: FeatureFilePathExtractorCompiledParam {
                 source_dataset,
                 extract_archive: param.extract_archive,
                 dest_prefix: param.dest_prefix,
             },
-            with,
         };
         Ok(Box::new(process))
     }
@@ -103,7 +99,7 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
 struct FeatureFilePathExtractorParam {
     /// # Source Dataset
     /// Expression to get the source dataset path or URL
-    source_dataset: Expr,
+    source_dataset: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Extract Archive
     /// Whether to extract archive files found in the dataset
     extract_archive: bool,
@@ -114,7 +110,7 @@ struct FeatureFilePathExtractorParam {
 
 #[derive(Debug, Clone)]
 struct FeatureFilePathExtractorCompiledParam {
-    source_dataset: rhai::AST,
+    source_dataset: CompiledCode,
     extract_archive: bool,
     dest_prefix: Option<String>,
 }
@@ -122,7 +118,6 @@ struct FeatureFilePathExtractorCompiledParam {
 #[derive(Debug, Clone)]
 struct FeatureFilePathExtractor {
     params: FeatureFilePathExtractorCompiledParam,
-    with: Option<HashMap<String, Value>>,
 }
 
 impl Processor for FeatureFilePathExtractor {
@@ -133,10 +128,10 @@ impl Processor for FeatureFilePathExtractor {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let base_attributes = feature.attributes.clone();
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine, &self.with);
-        let source_dataset = scope
-            .eval_ast::<String>(&self.params.source_dataset)
+        let source_dataset = self
+            .params
+            .source_dataset
+            .eval_string(feature, ctx.expr_engine.vars().clone())
             .map_err(|e| {
                 FeatureProcessorError::FilePathExtractor(format!(
                     "Failed to evaluate `source_dataset` expression: {e}"

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -44,13 +44,13 @@ impl ProcessorFactory for HttpCallerFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
         // Parse parameters
-        let params: HttpCallerParam = self.parse_parameters(with.clone())?;
+        let params: HttpCallerParam = self.parse_parameters(with)?;
 
         // Validate parameters
         self.validate_parameters(&params)?;
@@ -89,10 +89,9 @@ impl ProcessorFactory for HttpCallerFactory {
         };
 
         // Compile expressions
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let compiler = ExpressionCompiler::new(expr_engine);
+        let compiler = ExpressionCompiler::new();
 
-        let url_ast = compiler.compile_url(params.url.as_ref())?;
+        let url_ast = compiler.compile_url(&params.url)?;
 
         let compiled_headers = if let Some(headers) = &params.custom_headers {
             compiler.compile_headers(headers)?
@@ -108,7 +107,6 @@ impl ProcessorFactory for HttpCallerFactory {
 
         // Create processor (client will be lazy-initialized in process() method)
         let processor = HttpCallerProcessor::new(
-            with,
             client_config,
             params,
             url_ast,
@@ -138,7 +136,7 @@ impl HttpCallerFactory {
     }
 
     fn validate_parameters(&self, params: &HttpCallerParam) -> Result<()> {
-        if params.url.as_ref().is_empty() {
+        if params.url.value.is_empty() {
             return Err(HttpProcessorError::CallerFactory(
                 "URL parameter is required".to_string(),
             ));
@@ -160,7 +158,7 @@ impl HttpCallerFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::Expr;
+    use reearth_flow_types::{Code, CodeType};
 
     #[test]
     fn test_factory_name() {
@@ -192,7 +190,10 @@ mod tests {
     fn test_validate_parameters_empty_url() {
         let factory = HttpCallerFactory;
         let params = HttpCallerParam {
-            url: Expr::new(""),
+            url: Code {
+                ty: CodeType::FlowExpr,
+                value: String::new(),
+            },
             method: super::super::params::HttpMethod::Get,
             authentication: None,
             custom_headers: None,
@@ -217,7 +218,10 @@ mod tests {
 
         let factory = HttpCallerFactory;
         let params = HttpCallerParam {
-            url: Expr::new("https://example.com"),
+            url: Code {
+                ty: CodeType::FlowExpr,
+                value: "https://example.com".to_string(),
+            },
             method: super::super::params::HttpMethod::Get,
             authentication: None,
             custom_headers: None,

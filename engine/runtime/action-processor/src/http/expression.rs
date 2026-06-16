@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_types::{Code, CodeType, CompiledCode};
 
 use super::errors::{HttpProcessorError, Result};
 use super::params::{HeaderParam, QueryParam};
@@ -8,26 +6,27 @@ use super::params::{HeaderParam, QueryParam};
 #[derive(Debug, Clone)]
 pub(crate) struct CompiledHeader {
     pub name: String,
-    pub value_ast: rhai::AST,
+    pub value_ast: CompiledCode,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct CompiledQueryParam {
     pub name: String,
-    pub value_ast: rhai::AST,
+    pub value_ast: CompiledCode,
 }
 
-pub(crate) struct ExpressionCompiler {
-    engine: Arc<Engine>,
-}
+pub(crate) struct ExpressionCompiler;
 
 impl ExpressionCompiler {
-    pub fn new(engine: Arc<Engine>) -> Self {
-        Self { engine }
+    pub fn new() -> Self {
+        Self
     }
 
-    pub fn compile_url(&self, url_expr: &str) -> Result<rhai::AST> {
-        self.engine.compile(url_expr).map_err(|e| {
+    pub fn compile_url(
+        &self,
+        url_expr: &Code<{ CodeType::FlowExpr as u32 }>,
+    ) -> Result<CompiledCode> {
+        url_expr.compile().map_err(|e| {
             HttpProcessorError::CallerFactory(format!("Failed to compile URL expression: {e:?}"))
         })
     }
@@ -35,7 +34,7 @@ impl ExpressionCompiler {
     pub fn compile_headers(&self, headers: &[HeaderParam]) -> Result<Vec<CompiledHeader>> {
         let mut compiled = Vec::new();
         for header in headers {
-            let value_ast = self.engine.compile(header.value.as_ref()).map_err(|e| {
+            let value_ast = header.value.compile().map_err(|e| {
                 HttpProcessorError::CallerFactory(format!(
                     "Failed to compile header '{}' value expression: {e:?}",
                     header.name
@@ -52,7 +51,7 @@ impl ExpressionCompiler {
     pub fn compile_query_params(&self, params: &[QueryParam]) -> Result<Vec<CompiledQueryParam>> {
         let mut compiled = Vec::new();
         for param in params {
-            let value_ast = self.engine.compile(param.value.as_ref()).map_err(|e| {
+            let value_ast = param.value.compile().map_err(|e| {
                 HttpProcessorError::CallerFactory(format!(
                     "Failed to compile query parameter '{}' expression: {e:?}",
                     param.name
@@ -65,35 +64,32 @@ impl ExpressionCompiler {
         }
         Ok(compiled)
     }
-
-    #[cfg(test)]
-    pub fn compile_body(&self, body_expr: &str) -> Result<rhai::AST> {
-        self.engine.compile(body_expr).map_err(|e| {
-            HttpProcessorError::CallerFactory(format!(
-                "Failed to compile request body expression: {e:?}"
-            ))
-        })
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::Expr;
+    use reearth_flow_types::CodeType;
 
     #[test]
     fn test_expression_compiler() {
-        let engine = Arc::new(Engine::new());
-        let compiler = ExpressionCompiler::new(engine);
+        let compiler = ExpressionCompiler::new();
 
         // Test URL compilation
-        let url_ast = compiler.compile_url(r#""https://example.com/test""#);
+        let url_code = Code {
+            ty: CodeType::FlowExpr,
+            value: r#""https://example.com/test""#.to_string(),
+        };
+        let url_ast = compiler.compile_url(&url_code);
         assert!(url_ast.is_ok());
 
         // Test header compilation
         let headers = vec![HeaderParam {
             name: "Authorization".to_string(),
-            value: Expr::new(r#""Bearer token""#),
+            value: Code {
+                ty: CodeType::FlowExpr,
+                value: r#""Bearer token""#.to_string(),
+            },
         }];
         let compiled_headers = compiler.compile_headers(&headers);
         assert!(compiled_headers.is_ok());
@@ -102,14 +98,13 @@ mod tests {
         // Test query param compilation
         let params = vec![QueryParam {
             name: "id".to_string(),
-            value: Expr::new(r#""123""#),
+            value: Code {
+                ty: CodeType::FlowExpr,
+                value: r#""123""#.to_string(),
+            },
         }];
         let compiled_params = compiler.compile_query_params(&params);
         assert!(compiled_params.is_ok());
         assert_eq!(compiled_params.unwrap().len(), 1);
-
-        // Test body compilation
-        let body_ast = compiler.compile_body(r#"`{"test": "value"}`"#);
-        assert!(body_ast.is_ok());
     }
 }

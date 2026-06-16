@@ -4,36 +4,38 @@ use std::sync::Arc;
 
 use super::errors::{HttpProcessorError, Result};
 use super::params::{ApiKeyLocation, Authentication};
-use reearth_flow_eval_expr::engine::Engine as ExprEngine;
 
 pub(crate) fn apply_authentication(
     auth: &Authentication,
-    engine: &Arc<ExprEngine>,
-    scope: &reearth_flow_eval_expr::scope::Scope,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     headers: &mut HeaderMap,
     query_params: &mut Vec<(String, String)>,
 ) -> Result<()> {
     match auth {
         Authentication::Basic { username, password } => {
-            let username_ast = engine.compile(username.as_ref()).map_err(|e| {
-                HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile username expression: {e:?}"
-                ))
-            })?;
+            let username_val = username
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::CallerFactory(format!(
+                        "Failed to compile username expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!("Failed to evaluate username: {e:?}"))
+                })?;
 
-            let username_val = scope.eval_ast::<String>(&username_ast).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to evaluate username: {e:?}"))
-            })?;
-
-            let password_ast = engine.compile(password.as_ref()).map_err(|e| {
-                HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile password expression: {e:?}"
-                ))
-            })?;
-
-            let password_val = scope.eval_ast::<String>(&password_ast).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to evaluate password: {e:?}"))
-            })?;
+            let password_val = password
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::CallerFactory(format!(
+                        "Failed to compile password expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!("Failed to evaluate password: {e:?}"))
+                })?;
 
             let credentials = format!("{username_val}:{password_val}");
             let encoded = general_purpose::STANDARD.encode(credentials.as_bytes());
@@ -47,15 +49,17 @@ pub(crate) fn apply_authentication(
             );
         }
         Authentication::Bearer { token } => {
-            let token_ast = engine.compile(token.as_ref()).map_err(|e| {
-                HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile token expression: {e:?}"
-                ))
-            })?;
-
-            let token_val = scope.eval_ast::<String>(&token_ast).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to evaluate token: {e:?}"))
-            })?;
+            let token_val = token
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::CallerFactory(format!(
+                        "Failed to compile token expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!("Failed to evaluate token: {e:?}"))
+                })?;
 
             let auth_value = format!("Bearer {token_val}");
             headers.insert(
@@ -70,15 +74,17 @@ pub(crate) fn apply_authentication(
             key_value,
             location,
         } => {
-            let key_ast = engine.compile(key_value.as_ref()).map_err(|e| {
-                HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile API key expression: {e:?}"
-                ))
-            })?;
-
-            let key_val = scope.eval_ast::<String>(&key_ast).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to evaluate API key: {e:?}"))
-            })?;
+            let key_val = key_value
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::CallerFactory(format!(
+                        "Failed to compile API key expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!("Failed to evaluate API key: {e:?}"))
+                })?;
 
             match location {
                 ApiKeyLocation::Header => {
@@ -105,25 +111,35 @@ pub(crate) fn apply_authentication(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_eval_expr::engine::Engine;
-    use reearth_flow_types::Expr;
+    use reearth_flow_types::{Code, CodeType};
+
+    fn make_env(pairs: &[(&str, &str)]) -> Arc<serde_json::Map<String, serde_json::Value>> {
+        let mut map = serde_json::Map::new();
+        for (k, v) in pairs {
+            map.insert(k.to_string(), serde_json::Value::String(v.to_string()));
+        }
+        Arc::new(map)
+    }
 
     #[test]
     fn test_basic_auth() {
-        let engine = Arc::new(Engine::new());
-        let scope = engine.new_scope();
-        scope.set("username", "testuser".into());
-        scope.set("password", "testpass".into());
+        let env_vars = make_env(&[("username", "testuser"), ("password", "testpass")]);
 
         let auth = Authentication::Basic {
-            username: Expr::new(r#"env.get("username")"#),
-            password: Expr::new(r#"env.get("password")"#),
+            username: Code {
+                ty: CodeType::FlowExpr,
+                value: r#"env["username"]"#.to_string(),
+            },
+            password: Code {
+                ty: CodeType::FlowExpr,
+                value: r#"env["password"]"#.to_string(),
+            },
         };
 
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
 
-        let result = apply_authentication(&auth, &engine, &scope, &mut headers, &mut query_params);
+        let result = apply_authentication(&auth, env_vars, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key(AUTHORIZATION));
 
@@ -133,18 +149,19 @@ mod tests {
 
     #[test]
     fn test_bearer_auth() {
-        let engine = Arc::new(Engine::new());
-        let scope = engine.new_scope();
-        scope.set("token", "abc123".into());
+        let env_vars = make_env(&[("token", "abc123")]);
 
         let auth = Authentication::Bearer {
-            token: Expr::new(r#"env.get("token")"#),
+            token: Code {
+                ty: CodeType::FlowExpr,
+                value: r#"env["token"]"#.to_string(),
+            },
         };
 
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
 
-        let result = apply_authentication(&auth, &engine, &scope, &mut headers, &mut query_params);
+        let result = apply_authentication(&auth, env_vars, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key(AUTHORIZATION));
 
@@ -154,20 +171,21 @@ mod tests {
 
     #[test]
     fn test_api_key_header() {
-        let engine = Arc::new(Engine::new());
-        let scope = engine.new_scope();
-        scope.set("api_key", "key123".into());
+        let env_vars = make_env(&[("api_key", "key123")]);
 
         let auth = Authentication::ApiKey {
             key_name: "X-API-Key".to_string(),
-            key_value: Expr::new(r#"env.get("api_key")"#),
+            key_value: Code {
+                ty: CodeType::FlowExpr,
+                value: r#"env["api_key"]"#.to_string(),
+            },
             location: ApiKeyLocation::Header,
         };
 
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
 
-        let result = apply_authentication(&auth, &engine, &scope, &mut headers, &mut query_params);
+        let result = apply_authentication(&auth, env_vars, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key("x-api-key"));
 
@@ -177,20 +195,21 @@ mod tests {
 
     #[test]
     fn test_api_key_query() {
-        let engine = Arc::new(Engine::new());
-        let scope = engine.new_scope();
-        scope.set("api_key", "key456".into());
+        let env_vars = make_env(&[("api_key", "key456")]);
 
         let auth = Authentication::ApiKey {
             key_name: "apikey".to_string(),
-            key_value: Expr::new(r#"env.get("api_key")"#),
+            key_value: Code {
+                ty: CodeType::FlowExpr,
+                value: r#"env["api_key"]"#.to_string(),
+            },
             location: ApiKeyLocation::Query,
         };
 
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
 
-        let result = apply_authentication(&auth, &engine, &scope, &mut headers, &mut query_params);
+        let result = apply_authentication(&auth, env_vars, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert_eq!(query_params.len(), 1);
         assert_eq!(query_params[0].0, "apikey");
