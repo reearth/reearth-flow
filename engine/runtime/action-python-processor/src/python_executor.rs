@@ -273,6 +273,7 @@ fn flow_geometry_2d_to_geojson(geometry: &FlowGeometry2D<f64>) -> serde_json::Va
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn feature_to_geojson(feature: &Feature) -> serde_json::Value {
     let properties: serde_json::Map<String, serde_json::Value> = feature
         .attributes
@@ -610,6 +611,7 @@ fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonPr
 }
 
 impl Processor for PythonScriptProcessor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -870,6 +872,7 @@ print(json.dumps(output))
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

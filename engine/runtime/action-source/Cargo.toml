@@ -10,6 +10,13 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+# Temporary migration flag for the new-geometry migration.
+new-geometry = [
+  "reearth-flow-geometry/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
+
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true

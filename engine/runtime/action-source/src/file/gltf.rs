@@ -138,6 +138,7 @@ impl Source for GltfReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -152,6 +153,7 @@ impl Source for GltfReader {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_gltf(
     ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
@@ -285,6 +287,7 @@ fn merge_geometries(geometries: Vec<&Geometry3D<f64>>) -> Geometry3D<f64> {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn send_feature(
     sender: &Sender<(Port, IngestionMessage)>,
     flow_geometry: Geometry3D<f64>,

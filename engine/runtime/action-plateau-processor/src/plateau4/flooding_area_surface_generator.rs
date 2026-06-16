@@ -180,6 +180,7 @@ impl Clone for FloodingAreaSurfaceGenerator {
 }
 
 impl Processor for FloodingAreaSurfaceGenerator {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -254,6 +255,7 @@ impl Processor for FloodingAreaSurfaceGenerator {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,

@@ -121,6 +121,7 @@ impl GeometryFilterParam {
 }
 
 impl Processor for GeometryFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -155,6 +156,7 @@ impl Processor for GeometryFilter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

@@ -66,6 +66,7 @@ impl Processor for VertexRemover {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -108,6 +109,7 @@ impl Processor for VertexRemover {
 }
 
 impl VertexRemover {
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_2d_geometry(
         &self,
         geos: &Geometry2D,
@@ -146,6 +148,7 @@ impl VertexRemover {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_3d_geometry(
         &self,
         geos: &Geometry3D,

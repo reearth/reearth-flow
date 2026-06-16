@@ -309,6 +309,7 @@ impl Sink for CzmlWriter {
         "CzmlWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
@@ -328,6 +329,7 @@ impl Sink for CzmlWriter {
         self.buffer.entry(key).or_default().push(feature.clone());
         Ok(())
     }
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self
             .params
@@ -417,6 +419,7 @@ impl Sink for CzmlWriter {
 
 /// Build a CZML document from features with embedded `czml.*` attributes
 /// (produced by the reader's `PreserveRaw` strategy).
+#[cfg(not(feature = "new-geometry"))]
 fn build_embedded_czml(
     features: &[Feature],
     params: &CzmlWriterCompiledParam,
@@ -537,6 +540,7 @@ fn build_embedded_czml(
 /// When `params` provides `time_field` and `global_end` is set, per-entity availability
 /// is computed. Polygon geometry is auto-converted when no graphic property exists.
 /// `effective_epoch` is the epoch to use for numeric time conversion (may be auto-detected).
+#[cfg(not(feature = "new-geometry"))]
 fn build_embedded_packet(
     feature: &Feature,
     params: &CzmlWriterCompiledParam,
@@ -714,6 +718,7 @@ fn build_embedded_packet(
 }
 
 /// Build a CZML document with time-dynamic entities grouped by attribute.
+#[cfg(not(feature = "new-geometry"))]
 fn build_timeseries_czml(
     features: &[Feature],
     params: &CzmlWriterCompiledParam,
@@ -810,6 +815,7 @@ fn build_timeseries_czml(
 }
 
 /// Build a single CZML packet for a time-dynamic entity from grouped features.
+#[cfg(not(feature = "new-geometry"))]
 fn build_entity_packet(
     entity_id: &str,
     features: &[&Feature],
@@ -989,6 +995,7 @@ fn build_entity_packet(
     Ok(packet)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn extract_point_coords(feature: &Feature) -> Option<(f64, f64, f64)> {
     match &feature.geometry.value {
         GeometryValue::FlowGeometry3D(Geometry3D::Point(p)) => Some((p.x(), p.y(), p.z())),
@@ -1143,10 +1150,15 @@ fn hex_to_rgba(hex: &str, alpha: u8) -> Option<[u8; 4]> {
 }
 
 /// Convert a Feature's polygon geometry to a styled CZML polygon JSON value.
+<<<<<<< Updated upstream
 fn feature_geometry_to_polygon_json(
     feature: &Feature,
     params: &CzmlWriterCompiledParam,
 ) -> Option<Value> {
+=======
+#[cfg(not(feature = "new-geometry"))]
+fn feature_geometry_to_polygon_json(feature: &Feature, params: &CzmlWriterParam) -> Option<Value> {
+>>>>>>> Stashed changes
     let czml_polygon = match &feature.geometry.value {
         GeometryValue::FlowGeometry3D(Geometry3D::Polygon(poly)) => polygon_to_czml_polygon(poly),
         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)) => {
@@ -1272,6 +1284,7 @@ fn build_properties_bag(feature: &Feature) -> Option<Value> {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
     let Some(parent_id) = feature.feature_id() else {
         ctx.event_hub

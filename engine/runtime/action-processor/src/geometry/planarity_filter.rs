@@ -129,6 +129,7 @@ pub struct PlanarityFilter {
 }
 
 impl Processor for PlanarityFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -250,6 +251,7 @@ impl Processor for PlanarityFilter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

@@ -58,6 +58,7 @@ impl ProcessorFactory for AppearanceRemoverFactory {
 pub struct AppearanceRemover;
 
 impl Processor for AppearanceRemover {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -90,6 +91,7 @@ impl Processor for AppearanceRemover {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

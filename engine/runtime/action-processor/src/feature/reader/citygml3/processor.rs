@@ -177,6 +177,7 @@ impl Processor for FeatureCityGml3Reader {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,

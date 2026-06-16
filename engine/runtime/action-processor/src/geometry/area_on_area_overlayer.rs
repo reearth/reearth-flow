@@ -282,6 +282,7 @@ impl Processor for AreaOnAreaOverlayer {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -341,6 +342,7 @@ impl Processor for AreaOnAreaOverlayer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -481,6 +483,7 @@ impl DiskBackedFeatures {
     }
 
     /// Read and extract only the geometry from a feature at the given index.
+    #[cfg(not(feature = "new-geometry"))]
     fn read_geometry(&self, i: usize) -> Arc<Geometry> {
         let feature = self.read_feature(i);
         feature.geometry
@@ -613,6 +616,7 @@ impl AabbIndex {
 
 /// Disk-backed version of overlay_2d that reads geometries from disk on demand
 /// and writes MiddlePolygons to a JSONL file instead of collecting in memory.
+#[cfg(not(feature = "new-geometry"))]
 fn overlay_2d_disk(
     aabbs: &[[f64; 4]],
     disk_feats: &DiskBackedFeatures,
@@ -715,6 +719,7 @@ fn overlay_2d_disk(
 /// Stream MiddlePolygons from a JSONL file, convert to Features, and write
 /// directly to area/remnants output files without collecting in memory.
 /// Returns (area_count, remnants_count).
+#[cfg(not(feature = "new-geometry"))]
 fn from_midpolygons_disk<W: Write>(
     midpolygons_path: &Path,
     disk_feats: &DiskBackedFeatures,

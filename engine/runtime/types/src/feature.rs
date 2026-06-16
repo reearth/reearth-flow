@@ -17,7 +17,14 @@ use serde_json::Number;
 use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
 
 pub use crate::attribute::AttributeValue;
-use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, lod::LodMask};
+use crate::{all_attribute_keys, attribute::Attribute, lod::LodMask};
+
+// `Feature.geometry` keeps the same field name in both worlds; only its type
+// switches with the `new-geometry` feature.
+#[cfg(not(feature = "new-geometry"))]
+use crate::geometry::Geometry;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::next::Geometry;
 
 pub(crate) const CITYGML_GML_ID_KEY: &str = "__citygml_gml_id";
 pub(crate) const CITYGML_FEATURE_TYPE_KEY: &str = "__citygml_feature_type";

@@ -334,6 +334,7 @@ impl Processor for NeighborFinder {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -420,6 +421,7 @@ impl Processor for NeighborFinder {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -683,6 +685,7 @@ impl NeighborFinder {
     /// Process base features sequentially from disk without loading all into memory.
     /// This maintains memory efficiency - only one base feature is in memory at a time.
     /// Chunk files are deleted immediately after processing to free disk space.
+    #[cfg(not(feature = "new-geometry"))]
     fn process_base_features_from_disk(
         &self,
         ctx: &NodeContext,
@@ -745,6 +748,7 @@ impl NeighborFinder {
     }
 
     /// Process a single base feature
+    #[cfg(not(feature = "new-geometry"))]
     fn process_single_base(
         &self,
         ctx: &NodeContext,
@@ -834,6 +838,7 @@ impl NeighborFinder {
 
     /// Process base features in parallel using rayon.
     /// Performs neighbor matching in parallel, then sends results sequentially.
+    #[cfg(not(feature = "new-geometry"))]
     fn process_base_features_parallel(
         &self,
         ctx: &NodeContext,
@@ -883,6 +888,7 @@ impl NeighborFinder {
 
     /// Process a single base feature and return the result (for parallel execution).
     /// This is a pure computation function that doesn't interact with the forwarder.
+    #[cfg(not(feature = "new-geometry"))]
     fn process_base_feature_to_result(
         &self,
         rtree: &RTree<CandidateIndex>,
@@ -1291,6 +1297,7 @@ fn f64_to_attribute_value(value: f64) -> AttributeValue {
 
 /// Extract representative point from a feature's geometry.
 /// Returns (xy, z) where z is None for 2D geometries.
+#[cfg(not(feature = "new-geometry"))]
 fn extract_representative_point(feature: &Feature) -> Option<([f64; 2], Option<f64>)> {
     match &feature.geometry.value {
         GeometryValue::None => None,

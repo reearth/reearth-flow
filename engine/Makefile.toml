@@ -11,29 +11,53 @@ script = ['''
 cargo fmt --all ${@:-}
 ''']
 
+# NOTE: `--all-features` is intentionally avoided. The `new-geometry` migration
+# flag switches `Feature.geometry` to the new
+# type and is mutually exclusive with the default geometry world, so it cannot be
+# co-enabled with the default world's tests. The default world is gated with
+# `memory-stats` here; the `new-geometry` world is built separately (lib/bin only,
+# since un-ported actions hit the loud runtime default and so their tests fail by
+# design until ported). CI builds both.
 [tasks.check]
 script = [
   '''
 #!/usr/bin/env bash -eux
+<<<<<<< Updated upstream
 cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
 ''',
 ]
+=======
+cargo check --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker
+cargo check -p reearth-flow-cli -p reearth-flow-worker --features new-geometry
+''']
+>>>>>>> Stashed changes
 
 [tasks.clippy]
 script = [
   '''
 #!/usr/bin/env bash -eux
+<<<<<<< Updated upstream
 cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker -- -D warnings
 ''',
 ]
+=======
+cargo clippy --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker -- -D warnings
+cargo clippy -p reearth-flow-cli -p reearth-flow-worker --features new-geometry -- -D warnings
+''']
+>>>>>>> Stashed changes
 
 [tasks.clippy-fix]
 script = [
   '''
 #!/usr/bin/env bash -eux
+<<<<<<< Updated upstream
 cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@:-}
 ''',
 ]
+=======
+cargo clippy --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker --fix ${@:-}
+''']
+>>>>>>> Stashed changes
 
 [tasks.test]
 script = ['''
@@ -47,9 +71,16 @@ cargo make test-conv ${@:-}
 script = [
   '''
 #!/usr/bin/env bash -eux
+<<<<<<< Updated upstream
 cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
 ''',
 ]
+=======
+# Default geometry world only. The `new-geometry` world cannot be tested until
+# actions are ported (un-ported actions hit the loud runtime default).
+cargo test --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
+''']
+>>>>>>> Stashed changes
 
 [tasks.test-qc]
 script = ['''

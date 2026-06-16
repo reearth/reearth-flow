@@ -421,6 +421,7 @@ where
 }
 
 impl Processor for HorizontalReprojector {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -505,6 +506,7 @@ impl Processor for HorizontalReprojector {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

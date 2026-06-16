@@ -112,11 +112,13 @@ impl Sink for ObjWriter {
         "ObjWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         self.buffer.push(ctx.feature);
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self
             .output
@@ -145,6 +147,7 @@ impl Sink for ObjWriter {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn features_to_obj(
     features: &[Feature],
     writer: &ObjWriter,

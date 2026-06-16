@@ -64,6 +64,7 @@ impl ProcessorFactory for HoleExtractorFactory {
 pub struct HoleExtractor;
 
 impl Processor for HoleExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -116,6 +117,7 @@ impl Processor for HoleExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -129,6 +131,7 @@ impl Processor for HoleExtractor {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn handle_polygon2d(
     polygon: &Polygon2D<f64>,
     feature: &Feature,
@@ -155,6 +158,7 @@ fn handle_polygon2d(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn handle_polygon3d(
     polygon: &Polygon3D<f64>,
     feature: &Feature,

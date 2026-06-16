@@ -153,6 +153,7 @@ pub(super) struct CoordinateExtractor {
 }
 
 impl Processor for CoordinateExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -262,6 +263,7 @@ impl Processor for CoordinateExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

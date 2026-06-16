@@ -81,6 +81,7 @@ struct Clipper {
 }
 
 impl Processor for Clipper {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -118,6 +119,7 @@ impl Processor for Clipper {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -243,6 +245,7 @@ impl Processor for Clipper {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn handle_2d_geometry(
     geos: &Geometry2D,
     clip_regions: &[Polygon2D<f64>],
@@ -275,6 +278,7 @@ fn handle_2d_geometry(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn forward_polygon2d(
     insides: &[Polygon2D<f64>],
     outsides: &[Polygon2D<f64>],
@@ -307,6 +311,7 @@ fn forward_polygon2d(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn handle_3d_geometry(
     geos: &Geometry3D,
     clip_regions: &[Polygon3D<f64>],
@@ -339,6 +344,7 @@ fn handle_3d_geometry(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn forward_polygon3d(
     insides: &[Polygon3D<f64>],
     outsides: &[Polygon3D<f64>],
@@ -533,6 +539,7 @@ fn process_gml_geometry(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn handle_citygml_geometry(
     citygml: &CityGmlGeometry,
     clip_regions: &[Polygon3D<f64>],

@@ -91,6 +91,7 @@ impl Processor for GeometryValueFilter {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,

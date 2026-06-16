@@ -13,6 +13,11 @@ version.workspace = true
 [features]
 default = []
 memory-stats = ["reearth-flow-common/memory-stats"]
+# Temporary migration flag for the new-geometry migration.
+new-geometry = [
+  "reearth-flow-geometry/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
 
 [dependencies]
 reearth-flow-action-log.workspace = true

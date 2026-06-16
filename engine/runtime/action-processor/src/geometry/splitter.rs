@@ -132,6 +132,7 @@ fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
 }
 
 impl Processor for GeometrySplitter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -163,6 +164,7 @@ impl Processor for GeometrySplitter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -177,6 +179,7 @@ impl Processor for GeometrySplitter {
 }
 
 impl GeometrySplitter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process_flow_geometry_2d(
         &self,
         geometry: &Geometry2D,
@@ -222,6 +225,7 @@ impl GeometrySplitter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process_flow_geometry_3d(
         &mut self,
         geometry: &Geometry3D,
@@ -281,6 +285,7 @@ impl GeometrySplitter {
         Ok(self.temp_dir.as_ref().unwrap())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process_triangular_mesh(
         &mut self,
         mesh: &reearth_flow_geometry::types::triangular_mesh::TriangularMesh<f64>,
@@ -334,6 +339,7 @@ impl GeometrySplitter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process_citygml_geometry(
         &self,
         city_gml_geometry: &CityGmlGeometry,
@@ -380,6 +386,7 @@ impl GeometrySplitter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn emit_element_level_feature(
         &self,
         split_feature: CityGmlGeometry,
@@ -403,6 +410,7 @@ impl GeometrySplitter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn emit_polygon_level_features(
         &self,
         split_feature: &CityGmlGeometry,

@@ -242,6 +242,7 @@ impl Processor for GridDivider {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -312,6 +313,7 @@ impl Processor for GridDivider {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -1079,6 +1081,7 @@ fn coords_equal_3d(a: &Coordinate3D<f64>, b: &Coordinate3D<f64>) -> bool {
 }
 
 /// Create output feature with all original attributes and grid metadata
+#[cfg(not(feature = "new-geometry"))]
 fn create_output_feature(
     original: &Feature,
     clipped_geometry: GeometryValue,

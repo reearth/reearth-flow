@@ -128,6 +128,7 @@ impl Sink for CsvWriter {
         "CsvWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let path = self
             .output
@@ -153,15 +154,31 @@ impl Sink for CsvWriter {
         Ok(())
     }
 
+<<<<<<< Updated upstream
     fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
         let delimiter = self.format.delimiter();
         for (out, features) in self.buffer.values() {
             write_csv(out, features, delimiter.clone(), self.geometry.as_ref())?;
+=======
+    #[cfg(not(feature = "new-geometry"))]
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let delimiter = self.params.format.delimiter();
+        for (uri, features) in &self.buffer {
+            write_csv(
+                uri,
+                features,
+                delimiter.clone(),
+                &storage_resolver,
+                self.params.geometry.as_ref(),
+            )?;
+>>>>>>> Stashed changes
         }
         Ok(())
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn write_csv(
     out: &SinkOutput,
     features: &[Feature],

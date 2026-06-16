@@ -20,6 +20,15 @@ memory-stats = [
   "reearth-flow-action-plateau-processor/memory-stats",
   "reearth-flow-action-processor/memory-stats",
 ]
+# Temporary migration flag for the new-geometry migration.
+new-geometry = [
+  "reearth-flow-action-plateau-processor/new-geometry",
+  "reearth-flow-action-processor/new-geometry",
+  "reearth-flow-action-python-processor/new-geometry",
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-action-source/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
 
 [dependencies]
 reearth-flow-action-log.workspace = true

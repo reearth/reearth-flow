@@ -88,6 +88,7 @@ pub struct VertexCounter {
 }
 
 impl Processor for VertexCounter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -147,6 +148,7 @@ impl Processor for VertexCounter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

@@ -169,6 +169,7 @@ impl Sink for GltfWriter {
         "GltfWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
@@ -191,6 +192,7 @@ impl Sink for GltfWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let ellipsoid = nusamai_projection::ellipsoid::wgs84();
 

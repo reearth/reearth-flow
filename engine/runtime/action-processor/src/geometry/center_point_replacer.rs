@@ -98,6 +98,7 @@ struct CenterPointReplacer {
 }
 
 impl Processor for CenterPointReplacer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -174,6 +175,7 @@ impl CenterPointReplacer {
         )
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_2d_geometry(
         &self,
         geos: &Geometry2D,
@@ -249,6 +251,7 @@ impl CenterPointReplacer {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_3d_geometry(
         &self,
         geos: &Geometry3D,
@@ -322,6 +325,7 @@ impl CenterPointReplacer {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_citygml_geometry(
         &self,
         city_gml: &CityGmlGeometry,
