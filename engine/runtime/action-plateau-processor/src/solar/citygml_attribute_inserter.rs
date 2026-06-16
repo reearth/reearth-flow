@@ -1086,6 +1086,15 @@ fn extract_f64_attr(feature: &Feature, key: &str) -> Option<f64> {
 mod tests {
     use super::*;
 
+    fn empty_compiled() -> CompiledCode {
+        Code {
+            ty: CodeType::String,
+            value: String::new(),
+        }
+        .compile()
+        .unwrap()
+    }
+
     #[test]
     fn test_insert_attributes_basic() {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -1109,12 +1118,7 @@ mod tests {
         elements.insert("bldg_001".to_string(), vals);
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: Code {
-                ty: CodeType::String,
-                value: String::new(),
-            }
-            .compile()
-            .unwrap(),
+            output_dir_ast: empty_compiled(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![
@@ -1190,12 +1194,7 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: Code {
-                ty: CodeType::String,
-                value: String::new(),
-            }
-            .compile()
-            .unwrap(),
+            output_dir_ast: empty_compiled(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![MeasurementDef {
@@ -1251,12 +1250,7 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: Code {
-                ty: CodeType::String,
-                value: String::new(),
-            }
-            .compile()
-            .unwrap(),
+            output_dir_ast: empty_compiled(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![],
@@ -1337,12 +1331,7 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: Code {
-                ty: CodeType::String,
-                value: String::new(),
-            }
-            .compile()
-            .unwrap(),
+            output_dir_ast: empty_compiled(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![],
@@ -1375,12 +1364,7 @@ mod tests {
         elements.insert("bldg_001".to_string(), vals);
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: Code {
-                ty: CodeType::String,
-                value: String::new(),
-            }
-            .compile()
-            .unwrap(),
+            output_dir_ast: empty_compiled(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![MeasurementDef {
@@ -1426,12 +1410,7 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: Code {
-                ty: CodeType::String,
-                value: String::new(),
-            }
-            .compile()
-            .unwrap(),
+            output_dir_ast: empty_compiled(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![],
@@ -1468,12 +1447,7 @@ mod tests {
 </core:CityModel>"#;
 
         let inserter = CityGmlAttributeInserter {
-            output_dir_ast: Code {
-                ty: CodeType::String,
-                value: String::new(),
-            }
-            .compile()
-            .unwrap(),
+            output_dir_ast: empty_compiled(),
             gml_id_attribute: "gmlId".to_string(),
             path_attribute: "path".to_string(),
             measurements: vec![],
