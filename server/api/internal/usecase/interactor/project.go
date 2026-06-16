@@ -401,15 +401,17 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 	// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
 
 	j.SetParameters(p.Parameters)
-	// previewSchemaUrl is populated on completion by Job.updateJobArtifacts, not
-	// here: the artifact does not exist until the worker writes it (and never on
-	// failure), so setting it at creation time would hand clients a URL that 404s.
+	// The report URL is surfaced via outputURLs on completion by
+	// Job.updateJobArtifacts, not here: the artifact does not exist until the
+	// worker writes it (and never on failure), so setting it at creation time
+	// would hand clients a URL that 404s.
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err
 	}
 
 	variables := parametersToVariables(p.Parameters)
+	reportURL := i.file.GetJobPreviewSchemaUploadURI(j.ID().String())
 
 	if i.cloudRunWorker != nil {
 		tx.Commit()
@@ -419,6 +421,7 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 			i.job.PreviewSchemaCloudRunWorker(j, gateway.ProbeSchemaParam{
 				JobID:       j.ID(),
 				WorkflowURL: workflowURL.String(),
+				ReportURL:   reportURL,
 				Variables:   variables,
 				SampleSize:  sampleSize,
 			})
@@ -427,7 +430,7 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 			}
 		}
 	} else {
-		gcpJobID, err := i.batch.SubmitProbeJob(ctx, j.ID(), workflowURL.String(), variables, sampleSize, p.ProjectID, prj.Workspace())
+		gcpJobID, err := i.batch.SubmitProbeJob(ctx, j.ID(), workflowURL.String(), variables, sampleSize, reportURL, p.ProjectID, prj.Workspace())
 		if err != nil {
 			return nil, fmt.Errorf("failed to submit probe job: %v", err)
 		}

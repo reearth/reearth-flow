@@ -82,6 +82,9 @@ func (f *previewFakeFile) UploadMetadata(context.Context, string, []string) (*ur
 func (f *previewFakeFile) GetJobPreviewSchemaURL(jobID string) string {
 	return "gs://bucket/artifacts/" + jobID + "/schema/schema-report.json"
 }
+func (f *previewFakeFile) GetJobPreviewSchemaUploadURI(jobID string) string {
+	return "gs://bucket/artifacts/" + jobID + "/schema/schema-report.json"
+}
 func (f *previewFakeFile) CheckJobPreviewSchemaExists(context.Context, string) (bool, error) {
 	return true, nil
 }
@@ -169,7 +172,7 @@ type previewFakeBatch struct {
 	runCalls   int
 }
 
-func (b *previewFakeBatch) SubmitProbeJob(context.Context, id.JobID, string, map[string]string, *int, id.ProjectID, accountsid.WorkspaceID) (string, error) {
+func (b *previewFakeBatch) SubmitProbeJob(context.Context, id.JobID, string, map[string]string, *int, string, id.ProjectID, accountsid.WorkspaceID) (string, error) {
 	b.probeCalls++
 	return "projects/p/locations/l/jobs/probe", nil
 }
@@ -248,16 +251,13 @@ func TestProject_PreviewSchema_CloudRunWorker(t *testing.T) {
 	assert.Equal(t, prj.Workspace(), got.Workspace())
 	assert.Equal(t, 7, *got.ProjectVersion())
 
-	// previewSchemaUrl is NOT set at creation; it's populated on completion by
-	// updateJobArtifacts once the worker has written the report.
-	assert.Empty(t, got.PreviewSchemaURL())
-
 	// Dedicated probe-schema dispatch invoked; run dispatch NOT invoked.
 	assert.Len(t, fj.previewCalls, 1)
 	assert.Len(t, fj.runCalls, 0)
 	assert.Equal(t, got.ID(), fj.previewCalls[0].JobID)
 	assert.Equal(t, 25, *fj.previewCalls[0].SampleSize)
 	assert.Equal(t, "gs://bucket/workflows/wf.json", fj.previewCalls[0].WorkflowURL)
+	assert.Equal(t, "gs://bucket/artifacts/"+got.ID().String()+"/schema/schema-report.json", fj.previewCalls[0].ReportURL)
 	assert.Equal(t, 1, fj.monitored)
 
 	// Metadata NOT uploaded; workflow uploaded once.

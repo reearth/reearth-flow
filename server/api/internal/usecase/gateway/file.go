@@ -72,6 +72,9 @@ type File interface {
 	// GetJobPreviewSchemaURL returns the GCS URL where the preview-schema probe
 	// writes its SchemaReport JSON for jobID.
 	GetJobPreviewSchemaURL(string) string
+	// GetJobPreviewSchemaUploadURI returns the gs://-style write URI the worker
+	// writes the SchemaReport to (distinct from the https read URL above).
+	GetJobPreviewSchemaUploadURI(string) string
 	// CheckJobPreviewSchemaExists reports whether the SchemaReport for jobID exists.
 	CheckJobPreviewSchemaExists(context.Context, string) (bool, error)
 	GetIntermediateDataURL(context.Context, string, string) string

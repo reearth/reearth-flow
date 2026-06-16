@@ -51,7 +51,8 @@ func (f *fakeFile) GetJobUserFacingLogURL(string) string                        
 func (f *fakeFile) CheckJobUserFacingLogExists(context.Context, string) (bool, error) {
 	panic("unused")
 }
-func (f *fakeFile) GetJobPreviewSchemaURL(string) string { panic("unused") }
+func (f *fakeFile) GetJobPreviewSchemaURL(string) string       { panic("unused") }
+func (f *fakeFile) GetJobPreviewSchemaUploadURI(string) string { panic("unused") }
 func (f *fakeFile) CheckJobPreviewSchemaExists(context.Context, string) (bool, error) {
 	panic("unused")
 }
@@ -152,6 +153,7 @@ func TestPreviewSchema_HitsDedicatedRouteWithBody(t *testing.T) {
 	st, err := repo.PreviewSchema(context.Background(), gateway.ProbeSchemaParam{
 		JobID:       jid,
 		WorkflowURL: "https://wf",
+		ReportURL:   "gs://mybucket/artifacts/" + jid.String() + "/schema/schema-report.json",
 		Variables:   map[string]string{"city": "tokyo"},
 		SampleSize:  &n,
 	})
@@ -162,6 +164,7 @@ func TestPreviewSchema_HitsDedicatedRouteWithBody(t *testing.T) {
 	assert.Equal(t, "/probe-schema", gotPath)
 	assert.Contains(t, string(gotBody), `"job_id":"`+jid.String()+`"`)
 	assert.Contains(t, string(gotBody), `"workflow_url":"https://wf"`)
+	assert.Contains(t, string(gotBody), `"report_url":"gs://mybucket/artifacts/`+jid.String()+`/schema/schema-report.json"`)
 	assert.Contains(t, string(gotBody), `"sample_size":25`)
 	assert.Contains(t, string(gotBody), `"city":"tokyo"`)
 	// The probe request must not carry run-only fields.

@@ -227,6 +227,11 @@ func (f *fileRepo) GetJobPreviewSchemaURL(jobID string) string {
 	return fmt.Sprintf("file://%s/job-%s-schema-report.json", metadataDir, jobID)
 }
 
+func (f *fileRepo) GetJobPreviewSchemaUploadURI(jobID string) string {
+	// Local dev: the worker writes and the server reads the same file:// path.
+	return f.GetJobPreviewSchemaURL(jobID)
+}
+
 func (f *fileRepo) CheckJobPreviewSchemaExists(ctx context.Context, jobID string) (bool, error) {
 	schemaPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s-schema-report.json", jobID))
 	exists, err := afero.Exists(f.fs, schemaPath)

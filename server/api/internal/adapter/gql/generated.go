@@ -245,7 +245,6 @@ type ComplexityRoot struct {
 		Logs              func(childComplexity int, since time.Time) int
 		LogsURL           func(childComplexity int) int
 		OutputURLs        func(childComplexity int) int
-		PreviewSchemaURL  func(childComplexity int) int
 		StartedAt         func(childComplexity int) int
 		Status            func(childComplexity int) int
 		UserFacingLogsURL func(childComplexity int) int
@@ -1419,12 +1418,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.OutputURLs(childComplexity), true
-	case "Job.previewSchemaUrl":
-		if e.complexity.Job.PreviewSchemaURL == nil {
-			break
-		}
-
-		return e.complexity.Job.PreviewSchemaURL(childComplexity), true
 	case "Job.startedAt":
 		if e.complexity.Job.StartedAt == nil {
 			break
@@ -3838,7 +3831,6 @@ extend type Query {
   logsURL: String
   workerLogsURL: String
   userFacingLogsURL: String
-  previewSchemaUrl: String
   outputURLs: [String!]
   startedAt: DateTime!
   status: JobStatus!
@@ -7903,8 +7895,6 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "userFacingLogsURL":
 				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
-			case "previewSchemaUrl":
-				return ec.fieldContext_Job_previewSchemaUrl(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -9204,35 +9194,6 @@ func (ec *executionContext) fieldContext_Job_userFacingLogsURL(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Job_previewSchemaUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Job_previewSchemaUrl,
-		func(ctx context.Context) (any, error) {
-			return obj.PreviewSchemaURL, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Job_previewSchemaUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Job",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Job_outputURLs(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9522,8 +9483,6 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "userFacingLogsURL":
 				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
-			case "previewSchemaUrl":
-				return ec.fieldContext_Job_previewSchemaUrl(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -9651,8 +9610,6 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "userFacingLogsURL":
 				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
-			case "previewSchemaUrl":
-				return ec.fieldContext_Job_previewSchemaUrl(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -12740,8 +12697,6 @@ func (ec *executionContext) fieldContext_PreviewSchemaPayload_job(_ context.Cont
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "userFacingLogsURL":
 				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
-			case "previewSchemaUrl":
-				return ec.fieldContext_Job_previewSchemaUrl(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -15011,8 +14966,6 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "userFacingLogsURL":
 				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
-			case "previewSchemaUrl":
-				return ec.fieldContext_Job_previewSchemaUrl(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -15705,8 +15658,6 @@ func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "userFacingLogsURL":
 				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
-			case "previewSchemaUrl":
-				return ec.fieldContext_Job_previewSchemaUrl(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -23147,8 +23098,6 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			out.Values[i] = ec._Job_workerLogsURL(ctx, field, obj)
 		case "userFacingLogsURL":
 			out.Values[i] = ec._Job_userFacingLogsURL(ctx, field, obj)
-		case "previewSchemaUrl":
-			out.Values[i] = ec._Job_previewSchemaUrl(ctx, field, obj)
 		case "outputURLs":
 			out.Values[i] = ec._Job_outputURLs(ctx, field, obj)
 		case "startedAt":

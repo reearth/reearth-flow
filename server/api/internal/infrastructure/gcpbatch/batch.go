@@ -139,6 +139,7 @@ func (b *BatchRepo) SubmitProbeJob(
 	workflowsURL string,
 	variables map[string]string,
 	sampleSize *int,
+	reportURL string,
 	projectID id.ProjectID,
 	workspaceID accountsid.WorkspaceID,
 ) (string, error) {
@@ -154,9 +155,10 @@ func (b *BatchRepo) SubmitProbeJob(
 
 	varString := strings.Join(varArgs(variables), " ")
 	workflowCommand := fmt.Sprintf(
-		"%s probe-schema --workflow %q %s %s",
+		"%s probe-schema --workflow %q --report-url %q %s %s",
 		binaryPath,
 		workflowsURL,
+		reportURL,
 		sampleArg,
 		varString,
 	)

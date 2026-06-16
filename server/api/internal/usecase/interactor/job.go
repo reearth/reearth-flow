@@ -527,10 +527,11 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 		j.SetUserFacingLogsURL(userFacingLogURL)
 	}
 
-	// Preview-schema jobs publish their SchemaReport to a dedicated GCS path.
+	// A preview-schema job's only output is its SchemaReport; surface it via
+	// outputURLs (no dedicated Job field).
 	if j.Mode() == job.ModePreviewSchema {
 		if schemaURL := i.file.GetJobPreviewSchemaURL(jobID); schemaURL != "" {
-			j.SetPreviewSchemaURL(schemaURL)
+			j.SetOutputURLs([]string{schemaURL})
 		}
 	}
 

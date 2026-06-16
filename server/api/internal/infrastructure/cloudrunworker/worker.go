@@ -60,6 +60,7 @@ type probeSchemaRequest struct {
 	SampleSize  *int              `json:"sample_size,omitempty"`
 	JobID       string            `json:"job_id"`
 	WorkflowURL string            `json:"workflow_url"`
+	ReportURL   string            `json:"report_url"`
 }
 
 // RunJob POSTs to the Cloud Run Service /run endpoint and blocks until the
@@ -128,6 +129,7 @@ func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) 
 	body := probeSchemaRequest{
 		JobID:       p.JobID.String(),
 		WorkflowURL: p.WorkflowURL,
+		ReportURL:   p.ReportURL,
 		Variables:   p.Variables,
 		SampleSize:  p.SampleSize,
 	}

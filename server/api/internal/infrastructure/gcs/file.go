@@ -342,6 +342,11 @@ func (f *fileRepo) GetJobPreviewSchemaURL(jobID string) string {
 	return url.String()
 }
 
+func (f *fileRepo) GetJobPreviewSchemaUploadURI(jobID string) string {
+	schemaPath := path.Join(gcsArtifactBasePath, jobID, "schema/schema-report.json")
+	return fmt.Sprintf("gs://%s/%s", f.bucketName, schemaPath)
+}
+
 func (f *fileRepo) CheckJobPreviewSchemaExists(ctx context.Context, jobID string) (bool, error) {
 	bucket := f.bucket()
 

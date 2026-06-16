@@ -314,7 +314,6 @@ type Job struct {
 	LogsURL           *string     `json:"logsURL,omitempty"`
 	WorkerLogsURL     *string     `json:"workerLogsURL,omitempty"`
 	UserFacingLogsURL *string     `json:"userFacingLogsURL,omitempty"`
-	PreviewSchemaURL  *string     `json:"previewSchemaUrl,omitempty"`
 	OutputURLs        []string    `json:"outputURLs,omitempty"`
 	StartedAt         time.Time   `json:"startedAt"`
 	Status            JobStatus   `json:"status"`

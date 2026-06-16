@@ -36,5 +36,6 @@ type ProbeSchemaParam struct {
 	Variables   map[string]string
 	SampleSize  *int
 	WorkflowURL string
+	ReportURL   string
 	JobID       id.JobID
 }

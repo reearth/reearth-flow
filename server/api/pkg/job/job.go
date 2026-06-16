@@ -39,7 +39,6 @@ type Job struct {
 	workerLogsURL     string
 	userFacingLogsURL string
 	metadataURL       string
-	previewSchemaURL  string
 	status            Status
 	mode              Mode
 	outputURLs        []string
@@ -155,10 +154,6 @@ func (j *Job) Mode() Mode {
 	return j.mode
 }
 
-func (j *Job) PreviewSchemaURL() string {
-	return j.previewSchemaURL
-}
-
 func (j *Job) OutputURLs() []string {
 	return j.outputURLs
 }
@@ -237,10 +232,6 @@ func (j *Job) SetMetadataURL(metadataURL string) {
 
 func (j *Job) SetMode(mode Mode) {
 	j.mode = mode
-}
-
-func (j *Job) SetPreviewSchemaURL(previewSchemaURL string) {
-	j.previewSchemaURL = previewSchemaURL
 }
 
 func (j *Job) SetOutputURLs(outputURLs []string) {
