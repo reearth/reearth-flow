@@ -435,10 +435,9 @@ impl Feature {
 
     pub fn fetch_attribute_value(
         &self,
-        engine: Arc<Engine>,
-        with: &Option<HashMap<String, serde_json::Value>>,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
         attribute: &Option<Vec<Attribute>>,
-        attribute_ast: &Option<rhai::AST>,
+        attribute_ast: &Option<crate::CompiledCode>,
     ) -> String {
         if let Some(attribute_values) = attribute {
             let values = attribute_values
@@ -452,10 +451,9 @@ impl Feature {
                 .collect::<Vec<_>>()
                 .join("-")
         } else if let Some(attribute_ast) = attribute_ast {
-            let scope = self.new_scope(engine.clone(), with);
-            let value = scope.eval_ast::<String>(attribute_ast);
-
-            value.unwrap_or_else(|_| "".to_string())
+            attribute_ast
+                .eval_string(self, env_vars)
+                .unwrap_or_else(|_| "".to_string())
         } else {
             "".to_string()
         }

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
@@ -13,7 +12,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{material::Texture, Attributes, Expr, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{
+    material::Texture, Attributes, Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -31,9 +32,18 @@ static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureBounds"));
 pub(super) enum OnOverlap {
     TakeLast,
     TakeFirst,
-    Max(Expr),
-    Min(Expr),
+    Max(Code<{ CodeType::FlowExpr as u32 }>),
+    Min(Code<{ CodeType::FlowExpr as u32 }>),
     /// Saturating-add RGB channels of all overlapping polygons.
+    Sum,
+}
+
+#[derive(Debug, Clone)]
+enum CompiledOnOverlap {
+    TakeLast,
+    TakeFirst,
+    Max(CompiledCode),
+    Min(CompiledCode),
     Sum,
 }
 
@@ -124,10 +134,46 @@ impl ProcessorFactory for ImageRasterizerFactory {
             .into());
         };
 
+        let save_to = params
+            .save_to
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    GeometryProcessorError::ImageRasterizerFactory(format!(
+                        "Failed to compile save_to expression: {e:?}"
+                    ))
+                })
+            })
+            .transpose()?;
+
+        let on_overlap = params
+            .on_overlap
+            .map(|ov| {
+                Ok::<CompiledOnOverlap, BoxedError>(match ov {
+                    OnOverlap::TakeLast => CompiledOnOverlap::TakeLast,
+                    OnOverlap::TakeFirst => CompiledOnOverlap::TakeFirst,
+                    OnOverlap::Sum => CompiledOnOverlap::Sum,
+                    OnOverlap::Max(expr) => {
+                        CompiledOnOverlap::Max(expr.compile().map_err(|e| {
+                            GeometryProcessorError::ImageRasterizerFactory(format!(
+                                "Failed to compile overlap Max expression: {e:?}"
+                            ))
+                        })?)
+                    }
+                    OnOverlap::Min(expr) => {
+                        CompiledOnOverlap::Min(expr.compile().map_err(|e| {
+                            GeometryProcessorError::ImageRasterizerFactory(format!(
+                                "Failed to compile overlap Min expression: {e:?}"
+                            ))
+                        })?)
+                    }
+                })
+            })
+            .transpose()?;
+
         let process = ImageRasterizer {
             width: params.image_width,
-            save_to: params.save_to,
-            on_overlap: params.on_overlap,
+            save_to,
+            on_overlap,
             evaluated_save_path: None,
             geometry_polygons: GeometryPolygons::new(),
             texture_coord_features: Vec::new(),
@@ -148,7 +194,7 @@ struct ImageRasterizerParam {
     /// # Save To
     /// Optional path expression to save the generated image. If not provided, uses default cache directory.
     #[serde(default)]
-    save_to: Option<Expr>,
+    save_to: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 
     /// # On Overlap
     /// Strategy for resolving pixel overlap when multiple polygons cover the same pixel.
@@ -159,8 +205,8 @@ struct ImageRasterizerParam {
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
-    save_to: Option<Expr>,
-    on_overlap: Option<OnOverlap>,
+    save_to: Option<CompiledCode>,
+    on_overlap: Option<CompiledOnOverlap>,
     evaluated_save_path: Option<String>,
     geometry_polygons: GeometryPolygons,
     texture_coord_features: Vec<Feature>,
@@ -245,11 +291,9 @@ impl Processor for ImageRasterizer {
         // Evaluate save_to expression on first feature if not already done
         if self.evaluated_save_path.is_none() {
             if let Some(ref save_to_expr) = self.save_to {
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let scope = expr_engine.new_scope();
-                let path = scope
-                    .eval::<String>(save_to_expr.as_ref())
-                    .unwrap_or_else(|_| save_to_expr.as_ref().to_string());
+                let path = save_to_expr
+                    .eval_string_env_only(ctx.expr_engine.vars().clone())
+                    .unwrap_or_else(|_| "".to_string());
                 self.evaluated_save_path = Some(path);
             }
         }
@@ -265,16 +309,15 @@ impl Processor for ImageRasterizer {
                 // Evaluate overlap expression if configured
                 if let Some(ref on_overlap) = self.on_overlap {
                     if let Some(expr) = match on_overlap {
-                        OnOverlap::Max(e) | OnOverlap::Min(e) => Some(e),
+                        CompiledOnOverlap::Max(e) | CompiledOnOverlap::Min(e) => Some(e),
                         _ => None,
                     } {
-                        let scope = feature.new_scope(Arc::clone(&ctx.expr_engine), &None);
-                        if let Ok(val) = scope.eval::<f64>(expr.as_ref()) {
-                            polygon.overlap_value = Some(OverlapValue::Number(val));
-                        } else {
-                            let scope2 = feature.new_scope(Arc::clone(&ctx.expr_engine), &None);
-                            if let Ok(val) = scope2.eval::<String>(expr.as_ref()) {
-                                polygon.overlap_value = Some(OverlapValue::String(val));
+                        let env_vars = ctx.expr_engine.vars().clone();
+                        if let Ok(attr_val) = expr.eval(feature, env_vars) {
+                            if let Some(n) = attr_val.as_f64() {
+                                polygon.overlap_value = Some(OverlapValue::Number(n));
+                            } else if let Some(s) = attr_val.as_string() {
+                                polygon.overlap_value = Some(OverlapValue::String(s));
                             }
                         }
                     }
@@ -907,7 +950,7 @@ impl GeometryPolygons {
         width: u32,
         height: u32,
         fill_area: bool,
-        on_overlap: &Option<OnOverlap>,
+        on_overlap: &Option<CompiledOnOverlap>,
     ) -> image::RgbImage {
         // Create a new image with white background
         let mut img = image::RgbImage::new(width, height);
@@ -927,7 +970,7 @@ impl GeometryPolygons {
             GeometryPolygon::create_mapping_function_to_png(geo_boundary, width, height);
 
         match on_overlap {
-            Some(OnOverlap::TakeFirst) => {
+            Some(CompiledOnOverlap::TakeFirst) => {
                 // Track which pixels have been written
                 let mut written = vec![vec![false; height as usize]; width as usize];
                 for polygon in &self.polygons {
@@ -947,7 +990,7 @@ impl GeometryPolygons {
                     }
                 }
             }
-            Some(OnOverlap::Max(_)) => {
+            Some(CompiledOnOverlap::Max(_)) => {
                 // Track best (max) overlap value per pixel
                 let mut best: HashMap<(u32, u32), (OverlapValue, u8, u8, u8)> = HashMap::new();
                 for polygon in &self.polygons {
@@ -984,7 +1027,7 @@ impl GeometryPolygons {
                     img.put_pixel(*x, *y, image::Rgb([*r, *g, *b]));
                 }
             }
-            Some(OnOverlap::Min(_)) => {
+            Some(CompiledOnOverlap::Min(_)) => {
                 let mut best: HashMap<(u32, u32), (OverlapValue, u8, u8, u8)> = HashMap::new();
                 for polygon in &self.polygons {
                     let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
@@ -1019,7 +1062,7 @@ impl GeometryPolygons {
                     img.put_pixel(*x, *y, image::Rgb([*r, *g, *b]));
                 }
             }
-            Some(OnOverlap::Sum) => {
+            Some(CompiledOnOverlap::Sum) => {
                 // Saturating-add RGB channels per pixel
                 for polygon in &self.polygons {
                     let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);

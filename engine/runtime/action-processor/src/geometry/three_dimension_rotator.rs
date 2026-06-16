@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Expr, GeometryValue};
+use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -48,12 +48,12 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ThreeDimensionRotatorParam = if let Some(with) = with.clone() {
+        let params: ThreeDimensionRotatorParam = if let Some(with) = with {
             let value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ThreeDimensionRotatorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -70,37 +70,18 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let angle_degree = expr_engine
-            .compile(params.angle_degree.as_ref())
-            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
-        let origin_x = expr_engine
-            .compile(params.origin_x.as_ref())
-            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
-        let origin_y = expr_engine
-            .compile(params.origin_y.as_ref())
-            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
-        let origin_z = expr_engine
-            .compile(params.origin_z.as_ref())
-            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
-        let direction_x = expr_engine
-            .compile(params.direction_x.as_ref())
-            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
-        let direction_y = expr_engine
-            .compile(params.direction_y.as_ref())
-            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
-        let direction_z = expr_engine
-            .compile(params.direction_z.as_ref())
-            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
+        let compile = |expr: Code<{ CodeType::FlowExpr as u32 }>| {
+            expr.compile()
+                .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))
+        };
         Ok(Box::new(ThreeDimensionRotator {
-            global_params: with,
-            angle_degree,
-            origin_x,
-            origin_y,
-            origin_z,
-            direction_x,
-            direction_y,
-            direction_z,
+            angle_degree: compile(params.angle_degree)?,
+            origin_x: compile(params.origin_x)?,
+            origin_y: compile(params.origin_y)?,
+            origin_z: compile(params.origin_z)?,
+            direction_x: compile(params.direction_x)?,
+            direction_y: compile(params.direction_y)?,
+            direction_z: compile(params.direction_z)?,
         }))
     }
 }
@@ -112,37 +93,36 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
 pub struct ThreeDimensionRotatorParam {
     /// # Angle in Degrees
     /// Rotation angle in degrees around the specified axis
-    angle_degree: Expr,
+    angle_degree: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Origin X
     /// X coordinate of the rotation origin point
-    origin_x: Expr,
+    origin_x: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Origin Y
     /// Y coordinate of the rotation origin point
-    origin_y: Expr,
+    origin_y: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Origin Z
     /// Z coordinate of the rotation origin point
-    origin_z: Expr,
+    origin_z: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Direction X
     /// X component of the rotation axis direction vector
-    direction_x: Expr,
+    direction_x: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Direction Y
     /// Y component of the rotation axis direction vector
-    direction_y: Expr,
+    direction_y: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Direction Z
     /// Z component of the rotation axis direction vector
-    direction_z: Expr,
+    direction_z: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ThreeDimensionRotator {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    angle_degree: rhai::AST,
-    origin_x: rhai::AST,
-    origin_y: rhai::AST,
-    origin_z: rhai::AST,
-    direction_x: rhai::AST,
-    direction_y: rhai::AST,
-    direction_z: rhai::AST,
+    angle_degree: CompiledCode,
+    origin_x: CompiledCode,
+    origin_y: CompiledCode,
+    origin_z: CompiledCode,
+    direction_x: CompiledCode,
+    direction_y: CompiledCode,
+    direction_z: CompiledCode,
 }
 
 impl Processor for ThreeDimensionRotator {
@@ -153,14 +133,26 @@ impl Processor for ThreeDimensionRotator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
-        let angle_degree = scope.eval_ast::<f64>(&self.angle_degree)?;
-        let origin_x = scope.eval_ast::<f64>(&self.origin_x)?;
-        let origin_y = scope.eval_ast::<f64>(&self.origin_y)?;
-        let origin_z = scope.eval_ast::<f64>(&self.origin_z)?;
-        let direction_x = scope.eval_ast::<f64>(&self.direction_x)?;
-        let direction_y = scope.eval_ast::<f64>(&self.direction_y)?;
-        let direction_z = scope.eval_ast::<f64>(&self.direction_z)?;
+        let env_vars = ctx.expr_engine.vars().clone();
+        let eval_f64 = |code: &CompiledCode| -> Result<f64, BoxedError> {
+            code.eval(feature, env_vars.clone())
+                .map_err(|e| GeometryProcessorError::ThreeDimensionRotator(format!("{e:?}")).into())
+                .and_then(|av| {
+                    av.as_f64().ok_or_else(|| {
+                        GeometryProcessorError::ThreeDimensionRotator(
+                            "expression must evaluate to a number".to_string(),
+                        )
+                        .into()
+                    })
+                })
+        };
+        let angle_degree = eval_f64(&self.angle_degree)?;
+        let origin_x = eval_f64(&self.origin_x)?;
+        let origin_y = eval_f64(&self.origin_y)?;
+        let origin_z = eval_f64(&self.origin_z)?;
+        let direction_x = eval_f64(&self.direction_x)?;
+        let direction_y = eval_f64(&self.direction_y)?;
+        let direction_z = eval_f64(&self.direction_z)?;
         let geometry = &feature.geometry;
         let geometry = match &geometry.value {
             GeometryValue::FlowGeometry3D(geos) => {

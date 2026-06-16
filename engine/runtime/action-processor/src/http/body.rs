@@ -2,7 +2,6 @@ use base64::{engine::general_purpose, Engine as _};
 use reqwest::blocking::multipart::{Form, Part};
 use std::sync::Arc;
 
-use reearth_flow_eval_expr::engine::Engine as ExprEngine;
 use reearth_flow_storage::resolve::StorageResolver;
 
 use super::errors::{HttpProcessorError, Result};
@@ -24,8 +23,7 @@ pub(crate) enum BodyContent {
 
 pub(crate) fn build_request_body(
     body: &RequestBody,
-    engine: &Arc<ExprEngine>,
-    scope: &reearth_flow_eval_expr::scope::Scope,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<BuiltBody> {
     match body {
@@ -33,15 +31,17 @@ pub(crate) fn build_request_body(
             content,
             content_type,
         } => {
-            let content_ast = engine.compile(content.as_ref()).map_err(|e| {
-                HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile body content expression: {e:?}"
-                ))
-            })?;
-
-            let text = scope.eval_ast::<String>(&content_ast).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to evaluate body content: {e:?}"))
-            })?;
+            let text = content
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::CallerFactory(format!(
+                        "Failed to compile body content expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!("Failed to evaluate body content: {e:?}"))
+                })?;
 
             Ok(BuiltBody {
                 content: BodyContent::Text(text),
@@ -53,7 +53,7 @@ pub(crate) fn build_request_body(
             source,
             content_type,
         } => {
-            let binary_data = load_binary_source(source, engine, scope, storage_resolver)?;
+            let binary_data = load_binary_source(source, env_vars, storage_resolver)?;
 
             Ok(BuiltBody {
                 content: BodyContent::Binary(binary_data),
@@ -67,19 +67,22 @@ pub(crate) fn build_request_body(
             let mut form_fields = Vec::new();
 
             for field in fields {
-                let value_ast = engine.compile(field.value.as_ref()).map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile form field '{}' expression: {e:?}",
-                        field.name
-                    ))
-                })?;
-
-                let value = scope.eval_ast::<String>(&value_ast).map_err(|e| {
-                    HttpProcessorError::Request(format!(
-                        "Failed to evaluate form field '{}': {e:?}",
-                        field.name
-                    ))
-                })?;
+                let value = field
+                    .value
+                    .compile()
+                    .map_err(|e| {
+                        HttpProcessorError::CallerFactory(format!(
+                            "Failed to compile form field '{}' expression: {e:?}",
+                            field.name
+                        ))
+                    })?
+                    .eval_string_env_only(env_vars.clone())
+                    .map_err(|e| {
+                        HttpProcessorError::Request(format!(
+                            "Failed to evaluate form field '{}': {e:?}",
+                            field.name
+                        ))
+                    })?;
 
                 form_fields.push((field.name.clone(), value));
             }
@@ -94,7 +97,7 @@ pub(crate) fn build_request_body(
             let mut form = Form::new();
 
             for part in parts {
-                form = add_multipart_part(form, part, engine, scope, storage_resolver)?;
+                form = add_multipart_part(form, part, env_vars.clone(), storage_resolver)?;
             }
 
             Ok(BuiltBody {
@@ -107,21 +110,22 @@ pub(crate) fn build_request_body(
 
 fn load_binary_source(
     source: &BinarySource,
-    engine: &Arc<ExprEngine>,
-    scope: &reearth_flow_eval_expr::scope::Scope,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<Vec<u8>> {
     match source {
         BinarySource::Base64 { data } => {
-            let data_ast = engine.compile(data.as_ref()).map_err(|e| {
-                HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile base64 data expression: {e:?}"
-                ))
-            })?;
-
-            let base64_str = scope.eval_ast::<String>(&data_ast).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to evaluate base64 data: {e:?}"))
-            })?;
+            let base64_str = data
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::CallerFactory(format!(
+                        "Failed to compile base64 data expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!("Failed to evaluate base64 data: {e:?}"))
+                })?;
 
             general_purpose::STANDARD
                 .decode(base64_str.as_bytes())
@@ -131,17 +135,18 @@ fn load_binary_source(
         }
 
         BinarySource::File { path } => {
-            let path_ast = engine.compile(path.as_ref()).map_err(|e| {
-                HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile file path expression: {e:?}"
-                ))
-            })?;
+            let file_path_str = path
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::CallerFactory(format!(
+                        "Failed to compile file path expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!("Failed to evaluate file path: {e:?}"))
+                })?;
 
-            let file_path_str = scope.eval_ast::<String>(&path_ast).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to evaluate file path: {e:?}"))
-            })?;
-
-            // Parse and resolve storage path
             let uri: reearth_flow_common::uri::Uri = file_path_str.parse().map_err(|e| {
                 HttpProcessorError::Request(format!(
                     "Failed to parse storage URI '{file_path_str}': {e:?}"
@@ -153,7 +158,6 @@ fn load_binary_source(
                 ))
             })?;
 
-            // Get path from URI
             let path_string = uri.path().as_path().display().to_string();
             let storage_path = std::path::Path::new(&path_string);
 
@@ -166,27 +170,27 @@ fn load_binary_source(
     }
 }
 
-/// Add a part to multipart form
 fn add_multipart_part(
     form: Form,
     part: &MultipartPart,
-    engine: &Arc<ExprEngine>,
-    scope: &reearth_flow_eval_expr::scope::Scope,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<Form> {
     match part {
         MultipartPart::Text { name, value } => {
-            let value_ast = engine.compile(value.as_ref()).map_err(|e| {
-                HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile multipart text field '{name}' expression: {e:?}"
-                ))
-            })?;
-
-            let text_value = scope.eval_ast::<String>(&value_ast).map_err(|e| {
-                HttpProcessorError::Request(format!(
-                    "Failed to evaluate multipart text field '{name}': {e:?}"
-                ))
-            })?;
+            let text_value = value
+                .compile()
+                .map_err(|e| {
+                    HttpProcessorError::CallerFactory(format!(
+                        "Failed to compile multipart text field '{name}' expression: {e:?}"
+                    ))
+                })?
+                .eval_string_env_only(env_vars.clone())
+                .map_err(|e| {
+                    HttpProcessorError::Request(format!(
+                        "Failed to evaluate multipart text field '{name}': {e:?}"
+                    ))
+                })?;
 
             Ok(form.text(name.clone(), text_value))
         }
@@ -197,7 +201,7 @@ fn add_multipart_part(
             filename,
             content_type,
         } => {
-            let file_data = load_binary_source(source, engine, scope, storage_resolver)?;
+            let file_data = load_binary_source(source, env_vars, storage_resolver)?;
 
             let mut part = Part::bytes(file_data);
 
@@ -219,21 +223,30 @@ fn add_multipart_part(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::Expr;
+    use reearth_flow_types::{Code, CodeType};
+
+    fn make_env(pairs: &[(&str, &str)]) -> Arc<serde_json::Map<String, serde_json::Value>> {
+        let mut map = serde_json::Map::new();
+        for (k, v) in pairs {
+            map.insert(k.to_string(), serde_json::Value::String(v.to_string()));
+        }
+        Arc::new(map)
+    }
 
     #[test]
     fn test_text_body() {
-        let engine = Arc::new(ExprEngine::new());
-        let scope = engine.new_scope();
-        scope.set("message", "Hello World".into());
+        let env_vars = make_env(&[("message", "Hello World")]);
 
         let body = RequestBody::Text {
-            content: Expr::new(r#"env.get("message")"#),
+            content: Code {
+                ty: CodeType::FlowExpr,
+                value: r#"env["message"]"#.to_string(),
+            },
             content_type: Some("text/plain".to_string()),
         };
 
         let storage_resolver = Arc::new(StorageResolver::new());
-        let result = build_request_body(&body, &engine, &scope, &storage_resolver);
+        let result = build_request_body(&body, env_vars, &storage_resolver);
 
         assert!(result.is_ok());
         let built = result.unwrap();
@@ -246,20 +259,20 @@ mod tests {
 
     #[test]
     fn test_base64_binary_body() {
-        let engine = Arc::new(ExprEngine::new());
-        let scope = engine.new_scope();
-        // "Hello" in base64
-        scope.set("data", "SGVsbG8=".into());
+        let env_vars = make_env(&[("data", "SGVsbG8=")]);
 
         let body = RequestBody::Binary {
             source: BinarySource::Base64 {
-                data: Expr::new(r#"env.get("data")"#),
+                data: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["data"]"#.to_string(),
+                },
             },
             content_type: Some("application/octet-stream".to_string()),
         };
 
         let storage_resolver = Arc::new(StorageResolver::new());
-        let result = build_request_body(&body, &engine, &scope, &storage_resolver);
+        let result = build_request_body(&body, env_vars, &storage_resolver);
 
         assert!(result.is_ok());
         let built = result.unwrap();
@@ -271,26 +284,29 @@ mod tests {
 
     #[test]
     fn test_form_urlencoded_body() {
-        let engine = Arc::new(ExprEngine::new());
-        let scope = engine.new_scope();
-        scope.set("user", "john".into());
-        scope.set("pass", "secret".into());
+        let env_vars = make_env(&[("user", "john"), ("pass", "secret")]);
 
         let body = RequestBody::FormUrlEncoded {
             fields: vec![
                 FormField {
                     name: "username".to_string(),
-                    value: Expr::new(r#"env.get("user")"#),
+                    value: Code {
+                        ty: CodeType::FlowExpr,
+                        value: r#"env["user"]"#.to_string(),
+                    },
                 },
                 FormField {
                     name: "password".to_string(),
-                    value: Expr::new(r#"env.get("pass")"#),
+                    value: Code {
+                        ty: CodeType::FlowExpr,
+                        value: r#"env["pass"]"#.to_string(),
+                    },
                 },
             ],
         };
 
         let storage_resolver = Arc::new(StorageResolver::new());
-        let result = build_request_body(&body, &engine, &scope, &storage_resolver);
+        let result = build_request_body(&body, env_vars, &storage_resolver);
 
         assert!(result.is_ok());
         let built = result.unwrap();
@@ -312,19 +328,20 @@ mod tests {
 
     #[test]
     fn test_multipart_text() {
-        let engine = Arc::new(ExprEngine::new());
-        let scope = engine.new_scope();
-        scope.set("name", "John Doe".into());
+        let env_vars = make_env(&[("name", "John Doe")]);
 
         let body = RequestBody::Multipart {
             parts: vec![MultipartPart::Text {
                 name: "username".to_string(),
-                value: Expr::new(r#"env.get("name")"#),
+                value: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["name"]"#.to_string(),
+                },
             }],
         };
 
         let storage_resolver = Arc::new(StorageResolver::new());
-        let result = build_request_body(&body, &engine, &scope, &storage_resolver);
+        let result = build_request_body(&body, env_vars, &storage_resolver);
 
         assert!(result.is_ok());
     }

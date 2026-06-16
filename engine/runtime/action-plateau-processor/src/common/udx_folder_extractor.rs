@@ -16,8 +16,7 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
-use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -97,14 +96,13 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let global_params = with.clone();
-        let params: UDXFolderExtractorParam = if let Some(with) = global_params {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
+        let params: UDXFolderExtractorParam = if let Some(with_val) = with {
+            let value: Value = serde_json::to_value(with_val).map_err(|e| {
                 PlateauProcessorError::UDXFolderExtractorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
                 ))
@@ -121,16 +119,12 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let city_gml_path = expr_engine
-            .compile(params.city_gml_path.as_ref())
-            .map_err(|e| {
-                PlateauProcessorError::UDXFolderExtractorFactory(format!(
-                    "Failed to compile city_gml_path: {e}"
-                ))
-            })?;
+        let city_gml_path = params.city_gml_path.compile().map_err(|e| {
+            PlateauProcessorError::UDXFolderExtractorFactory(format!(
+                "Failed to compile city_gml_path: {e}"
+            ))
+        })?;
         let process = UDXFolderExtractor {
-            global_params: with,
             city_gml_path,
             codelists_path: params.codelists_path,
             schemas_path: params.schemas_path,
@@ -141,8 +135,7 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
 
 #[derive(Debug, Clone)]
 pub struct UDXFolderExtractor {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    city_gml_path: rhai::AST,
+    city_gml_path: CompiledCode,
     codelists_path: Option<Attribute>,
     schemas_path: Option<Attribute>,
 }
@@ -153,7 +146,7 @@ pub struct UDXFolderExtractor {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UDXFolderExtractorParam {
-    city_gml_path: Expr,
+    city_gml_path: Code<{ CodeType::FlowExpr as u32 }>,
     codelists_path: Option<Attribute>,
     schemas_path: Option<Attribute>,
 }
@@ -167,9 +160,8 @@ impl Processor for UDXFolderExtractor {
         let feature = &ctx.feature;
         let res = process_feature(
             feature,
-            &self.global_params,
             &self.city_gml_path,
-            Arc::clone(&ctx.expr_engine),
+            Arc::clone(&ctx.expr_engine.vars()),
             Arc::clone(&ctx.storage_resolver),
             &self.codelists_path,
             &self.schemas_path,
@@ -209,19 +201,15 @@ impl Processor for UDXFolderExtractor {
 
 fn process_feature(
     feature: &Feature,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
-    expr: &rhai::AST,
-    expr_engine: Arc<Engine>,
+    expr: &CompiledCode,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     codelists_path: &Option<Attribute>,
     schemas_path: &Option<Attribute>,
 ) -> super::errors::Result<Schema> {
-    let city_gml_path = {
-        let scope = feature.new_scope(expr_engine.clone(), global_params);
-        scope
-            .eval_ast::<String>(expr)
-            .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?
-    };
+    let city_gml_path = expr
+        .eval_string(feature, env_vars)
+        .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{e:?}")))?;
     let folders = city_gml_path
         .split(MAIN_SEPARATOR)
         .map(String::from)
