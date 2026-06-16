@@ -43,6 +43,7 @@ clap.workspace = true
 futures.workspace = true
 google-cloud-googleapis = "0.16.1"
 google-cloud-pubsub = "0.30.0"
+indexmap.workspace = true
 json-subscriber.workspace = true
 num_cpus.workspace = true
 nutype.workspace = true
@@ -63,3 +64,6 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 walkdir.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
