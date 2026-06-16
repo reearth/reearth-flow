@@ -12,6 +12,7 @@ version.workspace = true
 
 [features]
 # Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
 new-geometry = [
   "reearth-flow-action-plateau-processor/new-geometry",
   "reearth-flow-action-processor/new-geometry",

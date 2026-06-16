@@ -11,8 +11,8 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-# Temporary migration flag: gates the placeholder new top-level geometry type.
-# Removed once the new-geometry migration completes.
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
 new-geometry = []
 
 [dependencies]
