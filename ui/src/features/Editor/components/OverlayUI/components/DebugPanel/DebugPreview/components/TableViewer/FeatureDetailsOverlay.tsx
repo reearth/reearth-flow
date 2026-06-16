@@ -455,18 +455,18 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                 {t("Geometry")}
               </h4>
               <div className="space-y-3">
-                {Object.entries(processedFeature.geometry).map(
-                  ([key, value]) => {
-                    const valueType = getValueType(value);
-                    const geometryKey = key.replace(/^geometry/, "");
+                {Object.entries(
+                  (filteredFeature?.geometry ?? {}) as Record<string, unknown>,
+                ).map(([key, value]) => {
+                  const valueType = getValueType(value);
+                  const geometryKey = key.replace(/^geometry/, "");
 
-                    return (
-                      <div key={key}>
-                        {renderEntry(geometryKey, value, valueType)}
-                      </div>
-                    );
-                  },
-                )}
+                  return (
+                    <div key={key}>
+                      {renderEntry(geometryKey, value, valueType)}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
