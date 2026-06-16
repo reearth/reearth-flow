@@ -17,7 +17,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{Context, ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Code, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -56,7 +56,7 @@ impl SinkFactory for CzmlWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -75,9 +75,16 @@ impl SinkFactory for CzmlWriterFactory {
             .into());
         };
         params.sanitize();
-        let output = params.output.compile().map_err(|e| {
-            SinkError::CzmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
-        })?;
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::CzmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(|e| {
+                SinkError::CzmlWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         let sink = CzmlWriter {
             params: CzmlWriterCompiledParam {
                 output,
@@ -99,7 +106,7 @@ impl SinkFactory for CzmlWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct CzmlWriterCompiledParam {
-    pub(super) output: CompiledCode,
+    pub(super) output: String,
     pub(super) group_by: Option<Vec<Attribute>>,
     pub(super) time_field: Option<Attribute>,
     pub(super) epoch: Option<String>,
@@ -331,11 +338,7 @@ impl Sink for CzmlWriter {
     }
     #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let path = self
-            .params
-            .output
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(crate::errors::SinkError::czml_writer)?;
+        let path = self.params.output.clone();
         for (key, features) in self.buffer.iter() {
             let out_path = if *key == AttributeValue::Null {
                 path.clone()
@@ -1355,7 +1358,7 @@ mod tests {
     use reearth_flow_geometry::types::no_value::NoValue;
     use reearth_flow_geometry::types::point::Point3D;
     use reearth_flow_geometry::types::polygon::Polygon;
-    use reearth_flow_types::{CodeType, Geometry};
+    use reearth_flow_types::Geometry;
 
     #[cfg(not(feature = "new-geometry"))]
     fn make_feature_3d(lon: f64, lat: f64, height: f64) -> Feature {
@@ -1371,12 +1374,8 @@ mod tests {
     }
 
     fn make_timeseries_params() -> CzmlWriterCompiledParam {
-        let output: Code = Code {
-            ty: CodeType::String,
-            value: "/tmp/test.czml".to_string(),
-        };
         CzmlWriterCompiledParam {
-            output: output.compile().unwrap(),
+            output: "/tmp/test.czml".to_string(),
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: Some("2024-01-01T00:00:00Z".into()),
@@ -1499,12 +1498,8 @@ mod tests {
     }
 
     fn make_default_params() -> CzmlWriterCompiledParam {
-        let output: Code = Code {
-            ty: CodeType::String,
-            value: "/tmp/test.czml".to_string(),
-        };
         CzmlWriterCompiledParam {
-            output: output.compile().unwrap(),
+            output: "/tmp/test.czml".to_string(),
             group_by: None,
             time_field: None,
             epoch: None,
@@ -1593,12 +1588,8 @@ mod tests {
     #[test]
     fn test_build_entity_packet_numeric_times() {
         // Test with numeric time values and no explicit epoch
-        let output: Code = Code {
-            ty: CodeType::String,
-            value: "/tmp/test.czml".to_string(),
-        };
         let params = CzmlWriterCompiledParam {
-            output: output.compile().unwrap(),
+            output: "/tmp/test.czml".to_string(),
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: None, // No explicit epoch - should auto-generate

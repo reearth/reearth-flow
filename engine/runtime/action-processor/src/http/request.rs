@@ -134,12 +134,13 @@ mod tests {
 
         let compiled_params = vec![CompiledQueryParam {
             name: "user_id".to_string(),
-            value_ast: Code {
-                ty: CodeType::FlowExpr,
-                value: r#"env["id"]"#.to_string(),
-            }
-            .compile()
-            .unwrap(),
+            value_ast: {
+                let value_ast: Code = Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["id"]"#.to_string(),
+                };
+                value_ast.compile().unwrap()
+            },
         }];
 
         let builder = RequestBuilder::new(Method::GET, "https://example.com".to_string());

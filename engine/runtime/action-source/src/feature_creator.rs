@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -40,7 +40,7 @@ impl SourceFactory for FeatureCreatorFactory {
     }
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -63,11 +63,17 @@ impl SourceFactory for FeatureCreatorFactory {
             )
             .into());
         };
-        let compiled = FeatureCreatorCompiledParam {
-            creator: processor.creator.compile().map_err(|e| {
+        let creator = processor
+            .creator
+            .compile()
+            .map_err(|e| {
                 SourceError::FeatureCreatorFactory(format!("Failed to compile params: {e:?}"))
-            })?,
-        };
+            })?
+            .eval_env_only(ctx.expr_engine.vars())
+            .map_err(|e| {
+                SourceError::FeatureCreatorFactory(format!("Failed to evaluate creator: {e:?}"))
+            })?;
+        let compiled = FeatureCreatorCompiledParam { creator };
         Ok(Box::new(FeatureCreatorSource { params: compiled }))
     }
 }
@@ -84,7 +90,7 @@ pub struct FeatureCreator {
 
 #[derive(Debug, Clone)]
 struct FeatureCreatorCompiledParam {
-    creator: CompiledCode,
+    creator: AttributeValue,
 }
 
 #[derive(Debug, Clone)]
@@ -106,15 +112,10 @@ impl Source for FeatureCreatorSource {
 
     async fn start(
         &mut self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
-        let result = self
-            .params
-            .creator
-            .eval_env_only(ctx.expr_engine.vars())
-            .map_err(|e| SourceError::FeatureCreator(format!("Failed to evaluate: {e}")))?;
-        match result {
+        match self.params.creator.clone() {
             AttributeValue::Map(map) => {
                 let attributes = map
                     .into_iter()

@@ -102,7 +102,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -128,11 +128,18 @@ impl ProcessorFactory for ImageRasterizerFactory {
         let save_to = params
             .save_to
             .map(|expr| {
-                expr.compile().map_err(|e| {
-                    GeometryProcessorError::ImageRasterizerFactory(format!(
-                        "Failed to compile save_to expression: {e:?}"
-                    ))
-                })
+                expr.compile()
+                    .map_err(|e| {
+                        GeometryProcessorError::ImageRasterizerFactory(format!(
+                            "Failed to compile save_to: {e:?}"
+                        ))
+                    })?
+                    .eval_string_env_only(ctx.expr_engine.vars())
+                    .map_err(|e| {
+                        GeometryProcessorError::ImageRasterizerFactory(format!(
+                            "Failed to evaluate save_to: {e:?}"
+                        ))
+                    })
             })
             .transpose()?;
 
@@ -152,7 +159,6 @@ impl ProcessorFactory for ImageRasterizerFactory {
             save_to,
             on_overlap: params.on_overlap,
             overlap_value_ast,
-            evaluated_save_path: None,
             geometry_polygons: GeometryPolygons::new(),
             texture_coord_features: Vec::new(),
         };
@@ -188,10 +194,9 @@ struct ImageRasterizerParam {
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
-    save_to: Option<CompiledCode>,
+    save_to: Option<String>,
     on_overlap: Option<OnOverlap>,
     overlap_value_ast: Option<CompiledCode>,
-    evaluated_save_path: Option<String>,
     geometry_polygons: GeometryPolygons,
     texture_coord_features: Vec<Feature>,
 }
@@ -273,16 +278,6 @@ impl Processor for ImageRasterizer {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
-        // Evaluate save_to expression on first feature if not already done
-        if self.evaluated_save_path.is_none() {
-            if let Some(ref save_to_expr) = self.save_to {
-                let path = save_to_expr
-                    .eval_string_env_only(ctx.expr_engine.vars().clone())
-                    .unwrap_or_else(|_| "".to_string());
-                self.evaluated_save_path = Some(path);
-            }
-        }
-
         // Check which port the feature came from
         if ctx.port == *TEXTURE_COORDS_PORT {
             // Features from textureCoords port are collected for UV assignment
@@ -334,8 +329,8 @@ impl Processor for ImageRasterizer {
             .geometry_polygons
             .draw(width, height, true, &self.on_overlap);
 
-        // Save the image using the helper function with the evaluated save_to path
-        match save_image_with_path_option(&img, self.evaluated_save_path.clone()) {
+        // Save the image using the helper function with the pre-evaluated save_to path
+        match save_image_with_path_option(&img, self.save_to.clone()) {
             Ok(saved_path) => {
                 ctx.event_hub.info_log(
                     None,
