@@ -11,31 +11,29 @@ script = ['''
 cargo fmt --all ${@:-}
 ''']
 
-# NOTE: `--all-features` is intentionally avoided. The `new-geometry` migration
-# flag switches `Feature.geometry` to the new
-# type and is mutually exclusive with the default geometry world, so it cannot be
-# co-enabled with the default world's tests. The default world is gated with
-# `memory-stats` here; the `new-geometry` world is built separately (lib/bin only,
-# since un-ported actions hit the loud runtime default and so their tests fail by
-# design until ported). CI builds both.
+# NOTE: `--all-features` is intentionally avoided. It would enable the `new-geometry`
+# migration flag, which switches `Feature.geometry` to the new type and is mutually
+# exclusive with the default geometry world. So the default world is checked plainly,
+# and `new-geometry` is built separately (lib/bin only, since un-ported actions hit
+# the loud runtime default and their tests fail by design until ported). CI builds both.
 [tasks.check]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo check --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker
+cargo check --workspace --all-targets --exclude plateau-gis-quality-checker
 cargo check -p reearth-flow-cli -p reearth-flow-worker --features new-geometry
 ''']
 
 [tasks.clippy]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker -- -D warnings
+cargo clippy --workspace --all-targets --exclude plateau-gis-quality-checker -- -D warnings
 cargo clippy -p reearth-flow-cli -p reearth-flow-worker --features new-geometry -- -D warnings
 ''']
 
 [tasks.clippy-fix]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker --fix ${@:-}
+cargo clippy --workspace --all-targets --exclude plateau-gis-quality-checker --fix ${@:-}
 ''']
 
 [tasks.test]
@@ -51,7 +49,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 # Default geometry world only. The `new-geometry` world cannot be tested until
 # actions are ported (un-ported actions hit the loud runtime default).
-cargo test --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
+cargo test --workspace --all-targets --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
 ''']
 
 [tasks.test-qc]
