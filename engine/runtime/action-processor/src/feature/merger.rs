@@ -3,7 +3,6 @@ use std::{
     fs::File,
     io::{BufRead, BufReader, BufWriter, Write},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use once_cell::sync::Lazy;
@@ -15,7 +14,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -227,31 +226,6 @@ struct CompiledParam {
     complete_grouped: bool,
 }
 
-fn resolve_key(
-    feature: &Feature,
-    attribute: &Option<Vec<Attribute>>,
-    code: &Option<CompiledCode>,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
-) -> String {
-    if let Some(attrs) = attribute {
-        attrs
-            .iter()
-            .flat_map(|k| feature.get(k))
-            .cloned()
-            .collect::<Vec<_>>()
-            .iter()
-            .map(|v: &AttributeValue| v.to_string())
-            .collect::<Vec<_>>()
-            .join("-")
-    } else if let Some(code) = code {
-        code.eval(feature, env_vars)
-            .map(|v| v.to_string())
-            .unwrap_or_default()
-    } else {
-        String::new()
-    }
-}
-
 fn read_features_from_file(path: &Path) -> Result<Vec<Feature>, BoxedError> {
     let file = File::open(path)?;
     let reader = BufReader::new(zstd::Decoder::new(file)?);
@@ -440,11 +414,10 @@ impl Processor for FeatureMerger {
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
                 let feature = &ctx.feature;
-                let requestor_attribute_value = resolve_key(
-                    feature,
+                let requestor_attribute_value = feature.fetch_attribute_value(
+                    ctx.expr_engine.vars().clone(),
                     &self.params.requestor_attribute,
                     &self.params.requestor_attribute_value,
-                    Arc::clone(&ctx.expr_engine.vars()),
                 );
                 let idx = match self
                     .requestor_key_map
@@ -482,11 +455,10 @@ impl Processor for FeatureMerger {
             }
             port if port == SUPPLIER_PORT.clone() => {
                 let feature = &ctx.feature;
-                let supplier_attribute_value = resolve_key(
-                    feature,
+                let supplier_attribute_value = feature.fetch_attribute_value(
+                    ctx.expr_engine.vars().clone(),
                     &self.params.supplier_attribute,
                     &self.params.supplier_attribute_value,
-                    Arc::clone(&ctx.expr_engine.vars()),
                 );
                 let idx = match self
                     .supplier_key_map
