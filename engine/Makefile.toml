@@ -19,45 +19,24 @@ cargo fmt --all ${@:-}
 # since un-ported actions hit the loud runtime default and so their tests fail by
 # design until ported). CI builds both.
 [tasks.check]
-script = [
-  '''
+script = ['''
 #!/usr/bin/env bash -eux
-<<<<<<< Updated upstream
-cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
-''',
-]
-=======
 cargo check --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker
 cargo check -p reearth-flow-cli -p reearth-flow-worker --features new-geometry
 ''']
->>>>>>> Stashed changes
 
 [tasks.clippy]
-script = [
-  '''
+script = ['''
 #!/usr/bin/env bash -eux
-<<<<<<< Updated upstream
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker -- -D warnings
-''',
-]
-=======
 cargo clippy --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker -- -D warnings
 cargo clippy -p reearth-flow-cli -p reearth-flow-worker --features new-geometry -- -D warnings
 ''']
->>>>>>> Stashed changes
 
 [tasks.clippy-fix]
-script = [
-  '''
+script = ['''
 #!/usr/bin/env bash -eux
-<<<<<<< Updated upstream
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@:-}
-''',
-]
-=======
 cargo clippy --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker --fix ${@:-}
 ''']
->>>>>>> Stashed changes
 
 [tasks.test]
 script = ['''
@@ -68,19 +47,12 @@ cargo make test-conv ${@:-}
 ''']
 
 [tasks.test-rs]
-script = [
-  '''
+script = ['''
 #!/usr/bin/env bash -eux
-<<<<<<< Updated upstream
-cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
-''',
-]
-=======
 # Default geometry world only. The `new-geometry` world cannot be tested until
 # actions are ported (un-ported actions hit the loud runtime default).
 cargo test --workspace --all-targets --features memory-stats --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
 ''']
->>>>>>> Stashed changes
 
 [tasks.test-qc]
 script = ['''

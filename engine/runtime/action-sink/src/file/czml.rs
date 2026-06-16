@@ -1150,15 +1150,11 @@ fn hex_to_rgba(hex: &str, alpha: u8) -> Option<[u8; 4]> {
 }
 
 /// Convert a Feature's polygon geometry to a styled CZML polygon JSON value.
-<<<<<<< Updated upstream
+#[cfg(not(feature = "new-geometry"))]
 fn feature_geometry_to_polygon_json(
     feature: &Feature,
     params: &CzmlWriterCompiledParam,
 ) -> Option<Value> {
-=======
-#[cfg(not(feature = "new-geometry"))]
-fn feature_geometry_to_polygon_json(feature: &Feature, params: &CzmlWriterParam) -> Option<Value> {
->>>>>>> Stashed changes
     let czml_polygon = match &feature.geometry.value {
         GeometryValue::FlowGeometry3D(Geometry3D::Polygon(poly)) => polygon_to_czml_polygon(poly),
         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)) => {
