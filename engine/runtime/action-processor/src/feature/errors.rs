@@ -37,10 +37,6 @@ pub(super) enum FeatureProcessorError {
     FileCsvReader(String),
     #[error("Feature File Json Reader error: {0}")]
     FileJsonReader(String),
-    #[error("RhaiCallerFactory error: {0}")]
-    RhaiCallerFactory(String),
-    #[error("RhaiCaller error: {0}")]
-    RhaiCaller(String),
     #[error("FeatureFilePathExtractorFactory error: {0}")]
     FilePathExtractorFactory(String),
     #[error("FeatureFilePathExtractor error: {0}")]

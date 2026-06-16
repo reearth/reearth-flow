@@ -207,7 +207,9 @@ graphs:
             - featureTypeName
           calculations:
             - newAttribute: instanceCount
-              expr: '1'
+              expr:
+                type: flowExpr
+                value: "1"
 
       # File info extraction for per-file summary
       - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e11
@@ -325,31 +327,41 @@ graphs:
         with:
           calculations:
             - newAttribute: 無効な空間属性の型
-              expr: |
-                env.get("__value")["無効な空間属性の型"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("無効な空間属性の型", 0)
             - newAttribute: 非水密立体
-              expr: |
-                env.get("__value")["非水密立体"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("非水密立体", 0)
             - newAttribute: 立体のその他のエラー
-              expr: |
-                env.get("__value")["立体のその他のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("立体のその他のエラー", 0)
             - newAttribute: 立体の境界面のエラー
-              expr: |
-                env.get("__value")["立体の境界面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("立体の境界面のエラー", 0)
             - newAttribute: 面のエラー
-              expr: |
-                env.get("__value")["面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面のエラー", 0)
             - newAttribute: 不連続なCompositeSurface
-              expr: |
-                env.get("__value")["不連続なCompositeSurface"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("不連続なCompositeSurface", 0)
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("無効な空間属性の型", 0),
+                    attributes.get("非水密立体", 0),
+                    attributes.get("立体のその他のエラー", 0),
+                    attributes.get("立体の境界面のエラー", 0),
+                    attributes.get("面のエラー", 0),
+                    attributes.get("不連続なCompositeSurface", 0),
+                  ])
 
       - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8d
         name: JSONSummaryWriter
@@ -383,8 +395,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c00
         name: FeatureFilterNoErrors

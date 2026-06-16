@@ -161,6 +161,19 @@ impl Value {
             ))),
         }
     }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Null => false,
+            Value::Bool(b) => *b,
+            Value::Int(n) => *n != 0,
+            Value::Float(f) => *f != 0.0,
+            Value::String(s) => !s.is_empty(),
+            Value::Array(a) => !a.borrow().is_empty(),
+            Value::Map(o) => !o.borrow().is_empty(),
+            Value::Fn(_) | Value::Closure(_) | Value::Object(_) | Value::Module(_) => true,
+        }
+    }
 }
 
 /// Format a float: decimal for magnitudes in [1e-4, 1e16), shortest scientific otherwise.

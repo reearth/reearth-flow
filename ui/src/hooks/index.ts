@@ -5,6 +5,7 @@ export { default as useShortcuts } from "./useShortcuts";
 export { default as useProjectDuplicate } from "./useProjectDuplicate";
 export { default as useProjectExport } from "./useProjectExport";
 export { default as useProjectImport } from "./useProjectImport";
+export { default as usePagination } from "./usePagination";
 export { default as useProjectPagination } from "./useProjectPagination";
 export { default as useWorkflowFileUpload } from "./useWorkflowFileUpload";
 export { default as useWorkflowImport } from "./useWorkflowImport";

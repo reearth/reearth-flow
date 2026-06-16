@@ -12,7 +12,6 @@ pub(crate) mod lod_filter;
 pub(crate) mod mapping;
 pub(crate) mod merger;
 pub(crate) mod reader;
-pub(crate) mod rhai;
 pub(crate) mod sorter;
 pub(crate) mod transformer;
 pub(crate) mod type_filter;

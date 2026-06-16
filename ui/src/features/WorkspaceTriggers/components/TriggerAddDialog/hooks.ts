@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { useDebouncedSearch } from "@flow/hooks";
+import { usePagination } from "@flow/hooks";
 import { useTrigger, useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -39,32 +39,23 @@ export default ({
   const [authToken, setAuthToken] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [isTriggerEnabled, setIsTriggerEnabled] = useState<boolean>(true);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrderBy, setCurrentOrderBy] = useState<DeploymentOrderBy>(
-    DeploymentOrderBy.UpdatedAt,
-  );
-  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
-    OrderDirection.Desc,
-  );
   const { useGetDeployments } = useDeployment();
 
-  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
-    initialSearchTerm: "",
-    delay: 300,
-    onDebounced: () => {
-      refetch();
-    },
+  const {
+    page,
+    totalPages,
+    isFetching,
+    currentPage,
+    currentSortValue,
+    isDebouncingSearch,
+    setCurrentPage,
+    setSearchTerm,
+    handleSortChange,
+  } = usePagination({
+    useDataQuery: useGetDeployments,
+    workspaceId: currentWorkspace?.id,
+    defaultOrderBy: DeploymentOrderBy.UpdatedAt,
   });
-
-  const { page, refetch, isFetching } = useGetDeployments(
-    currentWorkspace?.id,
-    searchTerm,
-    {
-      page: currentPage,
-      orderDir: currentOrderDir,
-      orderBy: currentOrderBy,
-    },
-  );
 
   const sortOptions = [
     {
@@ -93,25 +84,7 @@ export default ({
     },
   ];
 
-  useEffect(() => {
-    (async () => {
-      await refetch();
-    })();
-  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
-
-  const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
-
-  const handleSortChange = useCallback((newSortValue: string) => {
-    const [orderBy, orderDir] = newSortValue.split("_") as [
-      DeploymentOrderBy,
-      OrderDirection,
-    ];
-    setCurrentOrderBy(orderBy);
-    setCurrentOrderDir(orderDir);
-  }, []);
-
   const deployments = page?.deployments;
-  const totalPages = page?.totalPages as number;
   const [openSelectDeploymentsDialog, setOpenSelectDeploymentsDialog] =
     useState<boolean>(false);
 

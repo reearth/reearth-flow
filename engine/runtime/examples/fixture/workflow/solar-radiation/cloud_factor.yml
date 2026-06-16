@@ -88,8 +88,9 @@ nodes:
         - month
       calculations:
         - newAttribute: monthlyDayTimeSumInHours
-          expr: |
-            env.get("__value")["dayTime"]
+          expr:
+            type: flowExpr
+            value: attributes["dayTime"]
 
   # ========================================
   # Node 4: Read Monthly Weather Data CSV
