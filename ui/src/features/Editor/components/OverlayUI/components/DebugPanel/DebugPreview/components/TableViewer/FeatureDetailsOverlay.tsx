@@ -1,6 +1,6 @@
 import {
   ArrowLeftIcon,
-  ArrowSquareOutIcon,
+  BracketsCurlyIcon,
   CaretDownIcon,
 } from "@phosphor-icons/react";
 import {
@@ -22,6 +22,8 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+
+import RawJsonViewer from "./RawJsonViewer";
 
 type Props = {
   feature: any;
@@ -253,29 +255,13 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
         break;
     }
   };
-  const openRawInNewWindow = useCallback((label: string, value: unknown) => {
-    const resolved = resolveValue(value);
-    let json: string;
-    try {
-      json = JSON.stringify(resolved, null, 2);
-    } catch {
-      json = String(resolved);
-    }
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.title = label;
-    const pre = w.document.createElement("pre");
-    pre.style.fontFamily = "monospace";
-    pre.style.fontSize = "12px";
-    pre.style.padding = "16px";
-    pre.style.margin = "0";
-    pre.style.whiteSpace = "pre-wrap";
-    pre.style.wordBreak = "break-all";
-    pre.textContent = json;
-    w.document.body.style.margin = "0";
-    w.document.body.style.backgroundColor = "#1e1e2e";
-    w.document.body.style.color = "#cdd6f4";
-    w.document.body.appendChild(pre);
+  const [rawView, setRawView] = useState<{
+    label: string;
+    value: unknown;
+  } | null>(null);
+
+  const openRaw = useCallback((label: string, value: unknown) => {
+    setRawView({ label, value });
   }, []);
 
   if (!feature || !processedFeature) {
@@ -347,8 +333,8 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               variant="ghost"
               type="button"
               className="flex h-5 items-center gap-1 px-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => openRawInNewWindow(label, value)}>
-              <ArrowSquareOutIcon size={12} />
+              onClick={() => openRaw(label, value)}>
+              <BracketsCurlyIcon size={12} />
               {t("View raw")}
             </Button>
           )}
@@ -435,9 +421,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             type="button"
             className="flex h-7 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() =>
-              openRawInNewWindow(`Feature ${processedFeature.id}`, feature)
+              openRaw(`${t("Feature")} ${processedFeature.id}`, feature)
             }>
-            <ArrowSquareOutIcon size={12} />
+            <BracketsCurlyIcon size={12} />
             {t("View all raw")}
           </Button>
         </div>
@@ -469,18 +455,18 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                 {t("Geometry")}
               </h4>
               <div className="space-y-3">
-                {Object.entries(processedFeature.geometry).map(
-                  ([key, value]) => {
-                    const valueType = getValueType(value);
-                    const geometryKey = key.replace(/^geometry/, "");
+                {Object.entries(
+                  (filteredFeature?.geometry ?? {}) as Record<string, unknown>,
+                ).map(([key, value]) => {
+                  const valueType = getValueType(value);
+                  const geometryKey = key.replace(/^geometry/, "");
 
-                    return (
-                      <div key={key}>
-                        {renderEntry(geometryKey, value, valueType)}
-                      </div>
-                    );
-                  },
-                )}
+                  return (
+                    <div key={key}>
+                      {renderEntry(geometryKey, value, valueType)}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -520,6 +506,15 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             )}
         </div>
       </div>
+
+      {rawView && (
+        <RawJsonViewer
+          label={rawView.label}
+          value={rawView.value}
+          open={!!rawView}
+          onClose={() => setRawView(null)}
+        />
+      )}
     </div>
   );
 };
