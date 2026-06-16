@@ -602,42 +602,54 @@ graphs:
     with:
       calculations:
       - newAttribute: L01エラー
-        expr: |
-          env.get("__value")["L01エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L01エラー", 0)
       - newAttribute: L02エラー
-        expr: |
-          env.get("__value")["L02エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L02エラー", 0)
       - newAttribute: L04エラー
-        expr: |
-          env.get("__value")["L04エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L04エラー", 0)
       - newAttribute: 不正なcodeSpace数
-        expr: |
-          env.get("__value")["不正なcodeSpace数"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("不正なcodeSpace数", 0)
       - newAttribute: L05CRS識別子
-        expr: |
-          if env.get("__value")["L05CRS識別子"] == "Wrong" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes.get("L05CRS識別子") == "Wrong" {
+              1
+            } else {
+              0
+            }
       - newAttribute: L06エラー
-        expr: |
-          env.get("__value")["L06エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L06エラー", 0)
       - newAttribute: T03エラー
-        expr: |
-          env.get("__value")["T03エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("T03エラー", 0)
       - newAttribute: xlink参照先なし
-        expr: |
-          env.get("__value")["xlink参照先なし"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("xlink参照先なし", 0)
       - newAttribute: gml:id重複
-        expr: |
-          env.get("__value")["gml:id重複"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("gml:id重複", 0)
       - newAttribute: gml:id書式不正
-        expr: |
-          env.get("__value")["gml:id書式不正"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("gml:id書式不正", 0)
       - newAttribute: L-frn-01エラー
-        expr: |
-          env.get("__value")["L-frn-01エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L-frn-01エラー", 0)
   - id: 50de9474-378b-4878-b85d-516cf8a55547
     name: FeatureWriterJson
     type: action
@@ -1501,7 +1513,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C05エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: StatisticsCalculatorC07PerFile
     type: action
@@ -1511,7 +1525,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C07エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     name: StatisticsCalculatorC08PerFile
     type: action
@@ -1521,7 +1537,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C08エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: OutputRouterPerFile
     type: action
@@ -1795,7 +1813,9 @@ graphs:
       - _relief_index
       calculations:
       - newAttribute: _num_incorrect_num_vertices
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: b66b8ba8-f685-4d01-83ef-2aaddebbc9eb
     name: AttributeMapperNotClosed
     type: action
@@ -1827,7 +1847,9 @@ graphs:
       - _relief_index
       calculations:
       - newAttribute: _num_not_closed
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 17f4fa99-a555-4d8a-b705-8b951c324d8d
     name: AttributeMapperWrongOrientation
     type: action
@@ -1859,7 +1881,9 @@ graphs:
       - _relief_index
       calculations:
       - newAttribute: _num_wrong_orientation
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 793402b8-8abc-4a86-b92d-873d6072f76e
     name: GeometryValidator
     type: action
@@ -1898,7 +1922,9 @@ graphs:
       - _relief_index
       calculations:
       - newAttribute: _num_corrupt_geometry
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: ee6d9226-6ff1-4deb-ba68-55d9a6b0429a
     name: BoundaryExtractor
     type: action
@@ -1969,7 +1995,9 @@ graphs:
       - _relief_index
       calculations:
       - newAttribute: _num_invalid_boundaries
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: fb152eb6-3a92-403f-96ce-bf38a420ec51
     name: ErrorSummaryMerger
     type: action
@@ -2027,25 +2055,31 @@ graphs:
     with:
       calculations:
       - newAttribute: 不正な頂点の数
-        expr: |
-          env.get("__value")["不正な頂点の数"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("不正な頂点の数", 0)
       - newAttribute: 閉じていない三角形
-        expr: |
-          env.get("__value")["閉じていない三角形"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("閉じていない三角形", 0)
       - newAttribute: 三角形の向き不正
-        expr: |
-          env.get("__value")["三角形の向き不正"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("三角形の向き不正", 0)
       - newAttribute: 潰れた三角形
-        expr: |
-          env.get("__value")["潰れた三角形"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("潰れた三角形", 0)
       - newAttribute: totalErrorCount
-        expr: |
-          let total = 0;
-          let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形"];
-          for key in keys {
-            total += env.get("__value")[key] ?? 0;
-          }
-          total
+        expr:
+          type: flowExpr
+          value: |
+            itertools.sum([
+              attributes.get("不正な頂点の数", 0),
+              attributes.get("閉じていない三角形", 0),
+              attributes.get("三角形の向き不正", 0),
+              attributes.get("潰れた三角形", 0),
+            ])
   - id: 617888e7-5fea-4fcf-a1cd-34861d65be0a
     name: JSONSummaryWriter
     type: action
@@ -2073,8 +2107,9 @@ graphs:
     with:
       calculations:
       - newAttribute: totalErrorCount
-        expr: |
-          env.get("__value")["totalErrorCount"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("totalErrorCount", 0)
   - id: 51c9e2d8-5bdc-4fce-9177-d2e650c011b0
     name: FeatureFilterNoErrors
     type: action

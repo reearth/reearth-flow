@@ -302,52 +302,64 @@ nodes:
     with:
       calculations:
         - newAttribute: "L01エラー"
-          expr: |
-            env.get("__value")["L01エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L01エラー", 0)
 
         - newAttribute: "L02エラー"
-          expr: |
-            env.get("__value")["L02エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L02エラー", 0)
 
         - newAttribute: "L04エラー"
-          expr: |
-            env.get("__value")["L04エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L04エラー", 0)
 
         - newAttribute: "不正なcodeSpace数"
-          expr: |
-            env.get("__value")["不正なcodeSpace数"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("不正なcodeSpace数", 0)
 
         - newAttribute: "L05CRS識別子"
-          expr: |
-            if env.get("__value")["L05CRS識別子"] == "Wrong" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: |
+              if attributes.get("L05CRS識別子") == "Wrong" {
+                1
+              } else {
+                0
+              }
 
         - newAttribute: "L06エラー"
-          expr: |
-            env.get("__value")["L06エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L06エラー", 0)
 
         - newAttribute: "T03エラー"
-          expr: |
-            env.get("__value")["T03エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("T03エラー", 0)
 
         - newAttribute: "xlink参照先なし"
-          expr: |
-            env.get("__value")["xlink参照先なし"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("xlink参照先なし", 0)
 
         - newAttribute: "gml:id重複"
-          expr: |
-            env.get("__value")["gml:id重複"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("gml:id重複", 0)
 
         - newAttribute: "gml:id書式不正"
-          expr: |
-            env.get("__value")["gml:id書式不正"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("gml:id書式不正", 0)
 
         - newAttribute: "L-frn-01エラー"
-          expr: |
-            env.get("__value")["L-frn-01エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L-frn-01エラー", 0)
 
   - id: 50de9474-378b-4878-b85d-516cf8a55547
     name: FeatureWriterJson

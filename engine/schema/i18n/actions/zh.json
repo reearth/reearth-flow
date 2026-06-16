@@ -2973,22 +2973,6 @@
       "description": "优化几何"
     },
     {
-      "name": "RhaiCaller",
-      "description": "调用Rhai脚本",
-      "parameterI18n": {
-        "": {
-          "title": "RhaiCaller Parameters",
-          "description": "Configuration for executing Rhai scripts on features with conditional processing."
-        },
-        "isTarget": {
-          "description": "Rhai script expression to determine if the feature should be processed (returns boolean)"
-        },
-        "process": {
-          "description": "Rhai script expression to process and transform the feature when target condition is met"
-        }
-      }
-    },
-    {
       "name": "Rotator3D",
       "description": "使用起止向量或轴角规格旋转3D多边形",
       "parameterI18n": {
