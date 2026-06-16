@@ -82,6 +82,7 @@ pub struct GeometryExtractor {
 }
 
 impl Processor for GeometryExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -104,6 +105,7 @@ impl Processor for GeometryExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

@@ -281,6 +281,7 @@ impl Processor for UnsharedEdgeDetector {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -349,6 +350,7 @@ impl Processor for UnsharedEdgeDetector {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -450,6 +452,7 @@ fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
 }
 
 /// Process all chunks for a single group: multi-pass merge + sliding-window scan.
+#[cfg(not(feature = "new-geometry"))]
 fn process_group_chunks(
     dir: &Path,
     chunk_count: usize,
@@ -550,6 +553,7 @@ fn process_group_chunks(
 /// A group is a micro-gap when it has more than one member and the members do
 /// not all share identical coordinates (i.e., they are within tolerance but not
 /// exactly the same — indicating a tiny gap between mesh triangles).
+#[cfg(not(feature = "new-geometry"))]
 fn emit_microgaps(
     group: (Edge, Vec<Edge>),
     attrs_store: &[IndexMap<Attribute, AttributeValue>],
@@ -661,6 +665,7 @@ fn merge_edge_chunks_to_file(
 }
 
 /// Extract all edges from a feature's geometry (used eagerly in `process()`).
+#[cfg(not(feature = "new-geometry"))]
 fn extract_edges_from_feature(feature: &Feature, attr_idx: u32) -> Vec<Edge> {
     let mut edges = Vec::new();
     if let Some(geom_2d) = extract_geometry_2d(&feature.geometry) {

@@ -247,6 +247,7 @@ impl Processor for LineOnLineOverlayer {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -301,6 +302,7 @@ impl Processor for LineOnLineOverlayer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -455,6 +457,7 @@ impl RTreeObject for AabbEntry {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn process_group<W: Write>(
     group_dir: &Path,
     tolerance: f64,
@@ -1125,6 +1128,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_process_group_two_crossing_lines() {
         let dir =

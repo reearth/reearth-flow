@@ -334,6 +334,7 @@ impl Processor for NeighborFinder {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -420,6 +421,7 @@ impl Processor for NeighborFinder {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -683,6 +685,7 @@ impl NeighborFinder {
     /// Process base features sequentially from disk without loading all into memory.
     /// This maintains memory efficiency - only one base feature is in memory at a time.
     /// Chunk files are deleted immediately after processing to free disk space.
+    #[cfg(not(feature = "new-geometry"))]
     fn process_base_features_from_disk(
         &self,
         ctx: &NodeContext,
@@ -745,6 +748,7 @@ impl NeighborFinder {
     }
 
     /// Process a single base feature
+    #[cfg(not(feature = "new-geometry"))]
     fn process_single_base(
         &self,
         ctx: &NodeContext,
@@ -834,6 +838,7 @@ impl NeighborFinder {
 
     /// Process base features in parallel using rayon.
     /// Performs neighbor matching in parallel, then sends results sequentially.
+    #[cfg(not(feature = "new-geometry"))]
     fn process_base_features_parallel(
         &self,
         ctx: &NodeContext,
@@ -883,6 +888,7 @@ impl NeighborFinder {
 
     /// Process a single base feature and return the result (for parallel execution).
     /// This is a pure computation function that doesn't interact with the forwarder.
+    #[cfg(not(feature = "new-geometry"))]
     fn process_base_feature_to_result(
         &self,
         rtree: &RTree<CandidateIndex>,
@@ -1291,6 +1297,7 @@ fn f64_to_attribute_value(value: f64) -> AttributeValue {
 
 /// Extract representative point from a feature's geometry.
 /// Returns (xy, z) where z is None for 2D geometries.
+#[cfg(not(feature = "new-geometry"))]
 fn extract_representative_point(feature: &Feature) -> Option<([f64; 2], Option<f64>)> {
     match &feature.geometry.value {
         GeometryValue::None => None,
@@ -1367,6 +1374,7 @@ mod tests {
 
     use crate::tests::utils::create_default_execute_context;
 
+    #[cfg(not(feature = "new-geometry"))]
     fn create_point_feature(x: f64, y: f64) -> Feature {
         use reearth_flow_geometry::types::no_value::NoValue;
         Feature::new_with_attributes_and_geometry(
@@ -1382,6 +1390,7 @@ mod tests {
         )
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn create_point_feature_with_attr(
         x: f64,
         y: f64,
@@ -1404,6 +1413,7 @@ mod tests {
         )
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_single_closest_neighbor() {
         let mut finder = NeighborFinder {
@@ -1494,6 +1504,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_max_distance_filtering() {
         let mut finder = NeighborFinder {
@@ -1557,6 +1568,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_no_candidates_all_unmatched() {
         let mut finder = NeighborFinder {
@@ -1597,6 +1609,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_polygon_centroid() {
         use reearth_flow_geometry::types::geometry::Geometry2D;
@@ -1651,6 +1664,7 @@ mod tests {
 
     // v2 Tests
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_num_closest_3() {
         // Test that num_closest actually limits the number of neighbors returned.
@@ -1782,6 +1796,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_repeat_base_strategy() {
         let mut finder = NeighborFinder {
@@ -1891,6 +1906,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_array_attributes_strategy() {
         let mut finder = NeighborFinder {
@@ -1989,6 +2005,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_num_closest_less_than_available() {
         let mut finder = NeighborFinder {
@@ -2068,6 +2085,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_partial_matches_with_max_distance() {
         let mut finder = NeighborFinder {
@@ -2216,6 +2234,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_neighbor_index_attribute_suppressed() {
         let mut finder = NeighborFinder {
@@ -2312,6 +2331,7 @@ mod tests {
         assert!((dist_3d_with_z - 13.0).abs() < 0.001);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     /// Test disk spilling behavior by manually setting up a temp directory.
     /// This verifies that the disk-based candidate storage and retrieval works correctly.
     #[test]
@@ -2427,6 +2447,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     /// Test that disk-based candidate reading works correctly.
     /// This tests the `read_candidates_from_disk` function directly.
     #[test]
@@ -2495,6 +2516,7 @@ mod tests {
         finder.cleanup_temp_dir();
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     /// Test that Haversine distance with ECEF spatial indexing correctly finds
     /// nearest neighbors near the North Pole, where simple Euclidean distance
     /// on lat/lon coordinates would fail.

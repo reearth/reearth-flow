@@ -88,6 +88,7 @@ pub struct VertexCounter {
 }
 
 impl Processor for VertexCounter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -147,6 +148,7 @@ impl Processor for VertexCounter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -170,6 +172,7 @@ mod tests {
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::{feature::Attributes, Attribute, Feature, Geometry, GeometryValue};
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_point_2d() {
         let noop = NoopChannelForwarder::default();
@@ -201,6 +204,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_linestring_2d() {
         let noop = NoopChannelForwarder::default();
@@ -233,6 +237,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_polygon_2d() {
         let noop = NoopChannelForwarder::default();
@@ -273,6 +278,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_polygon_with_hole() {
         let noop = NoopChannelForwarder::default();
@@ -321,6 +327,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_empty_geometry() {
         let noop = NoopChannelForwarder::default();

@@ -129,6 +129,7 @@ pub struct PlanarityFilter {
 }
 
 impl Processor for PlanarityFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -250,6 +251,7 @@ impl Processor for PlanarityFilter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -500,6 +502,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_process_null_geometry_covariance() {
         let mut processor = create_test_processor(PlanarityFilterType::Covariance, 1e-6);
@@ -520,6 +523,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_process_null_geometry_height() {
         let mut processor = create_test_processor(PlanarityFilterType::Height, 0.001);

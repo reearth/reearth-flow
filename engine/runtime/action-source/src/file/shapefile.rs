@@ -230,6 +230,7 @@ impl Source for ShapefileReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -256,6 +257,7 @@ impl Source for ShapefileReader {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_shapefile(
     content: &Bytes,
     params: &ShapefileReaderCompiledParam,

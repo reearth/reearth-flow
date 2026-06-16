@@ -30,6 +30,7 @@ use writer::CityGmlXmlWriter;
 ///
 /// This is the single canonical implementation shared by both the `CityGmlWriter` sink and
 /// the `FeatureWriter` processor.
+#[cfg(not(feature = "new-geometry"))]
 pub fn write_citygml_to_storage(
     output: &Uri,
     sandbox_root: &Uri,
@@ -353,6 +354,7 @@ impl Sink for CityGmlWriterSink {
         "CityGmlWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = ctx.feature;
 
@@ -369,6 +371,7 @@ impl Sink for CityGmlWriterSink {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self
             .params
