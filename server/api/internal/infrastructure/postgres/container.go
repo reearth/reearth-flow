@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/migration"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/pgxx"
@@ -31,6 +32,9 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 		Permittable: account.Permittable,
 	}
 	if err := mustComplete(c); err != nil {
+		return nil, err
+	}
+	if err := migration.Do(ctx, client, c.Config); err != nil {
 		return nil, err
 	}
 	return c, nil
