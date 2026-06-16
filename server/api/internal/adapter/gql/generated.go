@@ -303,6 +303,7 @@ type ComplexityRoot struct {
 		DeleteWorkspace           func(childComplexity int, input gqlmodel.DeleteWorkspaceInput) int
 		ExecuteDeployment         func(childComplexity int, input gqlmodel.ExecuteDeploymentInput) int
 		ImportProject             func(childComplexity int, projectID gqlmodel.ID, data gqlmodel.Bytes) int
+		PreviewSchema             func(childComplexity int, input gqlmodel.PreviewSchemaInput) int
 		PreviewSnapshot           func(childComplexity int, projectID gqlmodel.ID, version int, name *string) int
 		RemoveMemberFromWorkspace func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
 		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
@@ -355,6 +356,10 @@ type ComplexityRoot struct {
 		Required     func(childComplexity int) int
 		Type         func(childComplexity int) int
 		UpdatedAt    func(childComplexity int) int
+	}
+
+	PreviewSchemaPayload struct {
+		Job func(childComplexity int) int
 	}
 
 	PreviewSnapshot struct {
@@ -630,6 +635,7 @@ type MutationResolver interface {
 	UpdateProject(ctx context.Context, input gqlmodel.UpdateProjectInput) (*gqlmodel.ProjectPayload, error)
 	DeleteProject(ctx context.Context, input gqlmodel.DeleteProjectInput) (*gqlmodel.DeleteProjectPayload, error)
 	RunProject(ctx context.Context, input gqlmodel.RunProjectInput) (*gqlmodel.RunProjectPayload, error)
+	PreviewSchema(ctx context.Context, input gqlmodel.PreviewSchemaInput) (*gqlmodel.PreviewSchemaPayload, error)
 	ShareProject(ctx context.Context, input gqlmodel.ShareProjectInput) (*gqlmodel.ShareProjectPayload, error)
 	UnshareProject(ctx context.Context, input gqlmodel.UnshareProjectInput) (*gqlmodel.UnshareProjectPayload, error)
 	CreateTrigger(ctx context.Context, input gqlmodel.CreateTriggerInput) (*gqlmodel.Trigger, error)
@@ -1765,6 +1771,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ImportProject(childComplexity, args["projectId"].(gqlmodel.ID), args["data"].(gqlmodel.Bytes)), true
+	case "Mutation.previewSchema":
+		if e.complexity.Mutation.PreviewSchema == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_previewSchema_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PreviewSchema(childComplexity, args["input"].(gqlmodel.PreviewSchemaInput)), true
 	case "Mutation.previewSnapshot":
 		if e.complexity.Mutation.PreviewSnapshot == nil {
 			break
@@ -2136,6 +2153,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Parameter.UpdatedAt(childComplexity), true
+
+	case "PreviewSchemaPayload.job":
+		if e.complexity.PreviewSchemaPayload.Job == nil {
+			break
+		}
+
+		return e.complexity.PreviewSchemaPayload.Job(childComplexity), true
 
 	case "PreviewSnapshot.id":
 		if e.complexity.PreviewSnapshot.ID == nil {
@@ -3202,6 +3226,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPagination,
 		ec.unmarshalInputParameterBatchInput,
 		ec.unmarshalInputParameterUpdateItem,
+		ec.unmarshalInputPreviewSchemaInput,
 		ec.unmarshalInputRemoveMemberFromWorkspaceInput,
 		ec.unmarshalInputRemoveMyAuthInput,
 		ec.unmarshalInputRemoveParameterInput,
@@ -4091,6 +4116,14 @@ input RunProjectInput {
   parameters: [RunParameterInput!]
 }
 
+input PreviewSchemaInput {
+  projectId: ID!
+  workspaceId: ID!
+  file: Upload!
+  parameters: [RunParameterInput!]
+  sampleSize: Int
+}
+
 # Payload
 
 type ProjectPayload {
@@ -4102,6 +4135,10 @@ type DeleteProjectPayload {
 }
 
 type RunProjectPayload {
+  job: Job!
+}
+
+type PreviewSchemaPayload {
   job: Job!
 }
 
@@ -4129,6 +4166,7 @@ extend type Mutation {
   updateProject(input: UpdateProjectInput!): ProjectPayload
   deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
   runProject(input: RunProjectInput!): RunProjectPayload
+  previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/projectAccess.graphql", Input: `# InputType
@@ -4762,6 +4800,17 @@ func (ec *executionContext) field_Mutation_importProject_args(ctx context.Contex
 		return nil, err
 	}
 	args["data"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_previewSchema_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNPreviewSchemaInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewSchemaInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -11151,6 +11200,51 @@ func (ec *executionContext) fieldContext_Mutation_runProject(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_previewSchema(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_previewSchema,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().PreviewSchema(ctx, fc.Args["input"].(gqlmodel.PreviewSchemaInput))
+		},
+		nil,
+		ec.marshalNPreviewSchemaPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewSchemaPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_previewSchema(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "job":
+				return ec.fieldContext_PreviewSchemaPayload_job(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreviewSchemaPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_previewSchema_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_shareProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -12558,6 +12652,67 @@ func (ec *executionContext) fieldContext_Parameter_config(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSON does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreviewSchemaPayload_job(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PreviewSchemaPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PreviewSchemaPayload_job,
+		func(ctx context.Context) (any, error) {
+			return obj.Job, nil
+		},
+		nil,
+		ec.marshalNJob2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PreviewSchemaPayload_job(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreviewSchemaPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "completedAt":
+				return ec.fieldContext_Job_completedAt(ctx, field)
+			case "deployment":
+				return ec.fieldContext_Job_deployment(ctx, field)
+			case "deploymentId":
+				return ec.fieldContext_Job_deploymentId(ctx, field)
+			case "debug":
+				return ec.fieldContext_Job_debug(ctx, field)
+			case "id":
+				return ec.fieldContext_Job_id(ctx, field)
+			case "logsURL":
+				return ec.fieldContext_Job_logsURL(ctx, field)
+			case "workerLogsURL":
+				return ec.fieldContext_Job_workerLogsURL(ctx, field)
+			case "userFacingLogsURL":
+				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
+			case "outputURLs":
+				return ec.fieldContext_Job_outputURLs(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_Job_startedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Job_status(ctx, field)
+			case "workspace":
+				return ec.fieldContext_Job_workspace(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_Job_workspaceId(ctx, field)
+			case "logs":
+				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
 	}
 	return fc, nil
@@ -20385,6 +20540,61 @@ func (ec *executionContext) unmarshalInputParameterUpdateItem(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPreviewSchemaInput(ctx context.Context, obj any) (gqlmodel.PreviewSchemaInput, error) {
+	var it gqlmodel.PreviewSchemaInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectId", "workspaceId", "file", "parameters", "sampleSize"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "file":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("file"))
+			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.File = data
+		case "parameters":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parameters"))
+			data, err := ec.unmarshalORunParameterInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunParameterInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Parameters = data
+		case "sampleSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sampleSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SampleSize = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRemoveMemberFromWorkspaceInput(ctx context.Context, obj any) (gqlmodel.RemoveMemberFromWorkspaceInput, error) {
 	var it gqlmodel.RemoveMemberFromWorkspaceInput
 	asMap := map[string]any{}
@@ -23421,6 +23631,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_runProject(ctx, field)
 			})
+		case "previewSchema":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_previewSchema(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "shareProject":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_shareProject(ctx, field)
@@ -23687,6 +23904,45 @@ func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet
 			}
 		case "config":
 			out.Values[i] = ec._Parameter_config(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var previewSchemaPayloadImplementors = []string{"PreviewSchemaPayload"}
+
+func (ec *executionContext) _PreviewSchemaPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.PreviewSchemaPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, previewSchemaPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreviewSchemaPayload")
+		case "job":
+			out.Values[i] = ec._PreviewSchemaPayload_job(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -27510,6 +27766,25 @@ func (ec *executionContext) marshalNParameterType2githubᚗcomᚋreearthᚋreear
 func (ec *executionContext) unmarshalNParameterUpdateItem2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterUpdateItem(ctx context.Context, v any) (*gqlmodel.ParameterUpdateItem, error) {
 	res, err := ec.unmarshalInputParameterUpdateItem(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNPreviewSchemaInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewSchemaInput(ctx context.Context, v any) (gqlmodel.PreviewSchemaInput, error) {
+	res, err := ec.unmarshalInputPreviewSchemaInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPreviewSchemaPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewSchemaPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.PreviewSchemaPayload) graphql.Marshaler {
+	return ec._PreviewSchemaPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPreviewSchemaPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewSchemaPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.PreviewSchemaPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreviewSchemaPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNProject2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProject(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Project) graphql.Marshaler {

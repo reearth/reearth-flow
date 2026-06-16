@@ -181,6 +181,30 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 	}()
 }
 
+// PreviewSchemaCloudRunWorker executes a preview-schema probe on the Cloud Run
+// worker via its dedicated probe-schema route. Mirrors RunCloudRunWorker: the
+// worker publishes its result and the standard monitoring loop finalizes the
+// job; only an infra failure is finalized here.
+func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam) {
+	go func() {
+		ctx := context.Background()
+		defer func() {
+			if r := recover(); r != nil {
+				log.Errorfc(ctx, "job: preview-schema cloud run worker %s panicked: %v", j.ID(), r)
+			}
+		}()
+
+		status, err := i.cloudRunWorker.PreviewSchema(ctx, p)
+		if err != nil {
+			log.Errorfc(ctx, "job: preview-schema cloud run worker %s run error: %v", j.ID(), err)
+		}
+
+		if err != nil || status == gateway.JobStatusFailed {
+			i.failCloudRunJob(ctx, j.ID())
+		}
+	}()
+}
+
 // failCloudRunJob marks a debug job failed when the worker call fails. A
 // client-side error may still yield a result, so it waits a grace period and
 // bails if the loop already finalized or a worker event arrived; it sets the
@@ -501,6 +525,14 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 	userFacingLogURL := i.file.GetJobUserFacingLogURL(jobID)
 	if userFacingLogURL != "" {
 		j.SetUserFacingLogsURL(userFacingLogURL)
+	}
+
+	// A preview-schema job's only output is its SchemaReport; surface it via
+	// outputURLs (no dedicated Job field).
+	if j.Mode() == job.ModePreviewSchema {
+		if schemaURL := i.file.GetJobPreviewSchemaURL(jobID); schemaURL != "" {
+			j.SetOutputURLs([]string{schemaURL})
+		}
 	}
 
 	return nil
