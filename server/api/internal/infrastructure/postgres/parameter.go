@@ -42,19 +42,16 @@ func (r *Parameter) FindByIDs(ctx context.Context, ids id.ParameterIDList) (*par
 	if err != nil {
 		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
-	byID := make(map[string]*parameter.Parameter, len(rows))
+	ps := make([]*parameter.Parameter, 0, len(rows))
 	for _, row := range rows {
 		p, err := parameterFromRow(row)
 		if err != nil {
 			return nil, err
 		}
-		byID[p.ID().String()] = p
+		ps = append(ps, p)
 	}
-	res := make([]*parameter.Parameter, 0, len(ids))
-	for _, pid := range ids {
-		res = append(res, byID[pid.String()])
-	}
-	return parameter.NewParameterList(res), nil
+	ordered := pgxx.OrderByIDs(ids.Strings(), ps, func(p *parameter.Parameter) string { return p.ID().String() })
+	return parameter.NewParameterList(ordered), nil
 }
 
 func (r *Parameter) FindByProject(ctx context.Context, pid id.ProjectID) (*parameter.ParameterList, error) {

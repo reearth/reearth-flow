@@ -18,7 +18,7 @@ import (
 // Account-owned repos (User/Workspace/Role/Permittable) continue to come from
 // the account container until they are ported in a separate stream.
 func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container) (*repo.Container, error) {
-	client := pgxx.NewClient(pool)
+	client := pgxx.NewClient(pool, pgxx.WithTxRetry(2)) // retry serialization failures, matching the Mongo path
 	lock := NewLock(pool)
 	c := &repo.Container{
 		Trigger:     NewTrigger(client),

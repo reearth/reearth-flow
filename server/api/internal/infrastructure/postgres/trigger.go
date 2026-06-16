@@ -55,21 +55,17 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	if err != nil {
 		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
-	byID := make(map[string]*trigger.Trigger, len(rows))
+	ts := make([]*trigger.Trigger, 0, len(rows))
 	for _, row := range rows {
 		t, err := triggerFromRow(row)
 		if err != nil {
 			return nil, err
 		}
 		if r.f.CanRead(t.Workspace()) {
-			byID[t.ID().String()] = t
+			ts = append(ts, t)
 		}
 	}
-	res := make([]*trigger.Trigger, 0, len(ids))
-	for _, tid := range ids {
-		res = append(res, byID[tid.String()])
-	}
-	return res, nil
+	return pgxx.OrderByIDs(ids.Strings(), ts, func(t *trigger.Trigger) string { return t.ID().String() }), nil
 }
 
 func (r *Trigger) FindByDeployment(ctx context.Context, did id.DeploymentID) ([]*trigger.Trigger, error) {
