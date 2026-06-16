@@ -1,16 +1,14 @@
 use std::{
     borrow::Cow,
-    env,
     fmt::Debug,
     io::BufRead,
     mem::swap,
     sync::{atomic::AtomicU64, Arc},
-    time::{self, Duration},
+    time,
 };
 
 use crossbeam::channel::Receiver;
 use futures::Future;
-use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
@@ -32,14 +30,6 @@ use crate::{
 use super::receiver_loop::ReceiverLoop;
 use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::init_select};
-
-static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(500))
-});
 
 /// A sink in the execution DAG.
 #[derive(Debug)]
@@ -355,8 +345,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                             status: final_status,
                             feature_id: None,
                         });
-
-                        std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
                         let terminate_result = self.on_terminate(ctx);
 

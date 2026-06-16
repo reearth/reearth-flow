@@ -147,6 +147,7 @@ const Canvas: React.FC<Props> = ({
       nodesConnectable={!readonly}
       nodesDraggable={!readonly}
       nodesFocusable={!readonly}
+      deleteKeyCode={readonly ? null : undefined}
       // elementsSelectable={!readonly}
 
       reconnectRadius={!readonly ? 10 : 0}

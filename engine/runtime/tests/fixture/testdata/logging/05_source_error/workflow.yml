@@ -11,16 +11,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            let x = non_existent_function();
-            [#{"test": x}]
+          creator:
+            type: flowExpr
+            value: |
+              let x = non_existent_function();
+              [{"test": x}]
       - id: c1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         name: JsonWriter
         type: action
         action: JsonWriter
         with:
-          output: |
-            "result.json"
+          output:
+            type: string
+            value: result.json
     edges:
       - id: e1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         from: a1f90a3e-61d3-48e2-a328-e7226c2ad1ae

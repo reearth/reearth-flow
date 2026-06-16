@@ -28,7 +28,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::SourceError,
-    file::reader::runner::{get_content, FileReaderCommonParam},
+    file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
 };
 
 #[derive(Debug, Clone, Default)]
@@ -67,7 +67,7 @@ impl SourceFactory for GeoPackageReaderFactory {
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: GeoPackageReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::GeoPackageReader(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -82,8 +82,22 @@ impl SourceFactory for GeoPackageReaderFactory {
             )
             .into());
         };
-        let reader = GeoPackageReader { params };
-        Ok(Box::new(reader))
+        let compiled_params = GeoPackageReaderCompiledParam {
+            common: params.common_property.compile().map_err(|e| {
+                SourceError::GeoPackageReader(format!("Failed to compile params: {e:?}"))
+            })?,
+            read_mode: params.read_mode,
+            layer_name: params.layer_name,
+            _include_metadata: params.include_metadata,
+            tile_format: params.tile_format,
+            _attribute_filter: params.attribute_filter,
+            _batch_size: params.batch_size,
+            force_2d: params.force_2d,
+            _spatial_filter: params.spatial_filter,
+        };
+        Ok(Box::new(GeoPackageReader {
+            params: compiled_params,
+        }))
     }
 }
 
@@ -129,8 +143,21 @@ enum TileFormat {
 }
 
 #[derive(Debug, Clone)]
+struct GeoPackageReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    read_mode: GeoPackageReadMode,
+    layer_name: Option<String>,
+    _include_metadata: bool,
+    tile_format: TileFormat,
+    _attribute_filter: Option<String>,
+    _batch_size: Option<usize>,
+    force_2d: bool,
+    _spatial_filter: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct GeoPackageReader {
-    params: GeoPackageReaderParam,
+    params: GeoPackageReaderCompiledParam,
 }
 
 #[async_trait::async_trait]
@@ -151,7 +178,7 @@ impl Source for GeoPackageReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
 
         let features = process_geopackage(content, &self.params).await?;
 
@@ -173,7 +200,7 @@ impl Source for GeoPackageReader {
 
 async fn process_geopackage(
     content: Bytes,
-    params: &GeoPackageReaderParam,
+    params: &GeoPackageReaderCompiledParam,
 ) -> Result<Vec<Feature>, SourceError> {
     let temp_file = tempfile::NamedTempFile::new()
         .map_err(|e| SourceError::GeoPackageReader(format!("Failed to create temp file: {e}")))?;
@@ -247,7 +274,7 @@ async fn verify_geopackage(adapter: &SqlAdapter) -> Result<(), SourceError> {
 
 async fn read_features(
     adapter: &SqlAdapter,
-    params: &GeoPackageReaderParam,
+    params: &GeoPackageReaderCompiledParam,
 ) -> Result<Vec<Feature>, SourceError> {
     let layers = if let Some(ref layer_name) = params.layer_name {
         vec![layer_name.clone()]
@@ -1133,7 +1160,7 @@ fn read_coordinates(
 #[allow(dead_code)]
 async fn read_tiles(
     adapter: &SqlAdapter,
-    params: &GeoPackageReaderParam,
+    params: &GeoPackageReaderCompiledParam,
 ) -> Result<Vec<Feature>, SourceError> {
     let layers = if let Some(ref layer_name) = params.layer_name {
         vec![layer_name.clone()]
@@ -1276,7 +1303,7 @@ fn create_tile_bounds_geometry(bounds: (f64, f64, f64, f64)) -> Geometry {
 
 async fn read_metadata(
     adapter: &SqlAdapter,
-    _params: &GeoPackageReaderParam,
+    _params: &GeoPackageReaderCompiledParam,
 ) -> Result<Vec<Feature>, SourceError> {
     let mut all_features = Vec::new();
 
@@ -1447,11 +1474,14 @@ mod tests {
     #[test]
     fn test_camelcase_serialization() {
         use crate::file::reader::runner::FileReaderCommonParam;
-        use reearth_flow_types::Expr;
+        use reearth_flow_types::{Code, CodeType};
 
         let params = GeoPackageReaderParam {
             common_property: FileReaderCommonParam {
-                dataset: Some(Expr::new("test.gpkg")),
+                dataset: Some(Code {
+                    ty: CodeType::String,
+                    value: "test.gpkg".to_string(),
+                }),
                 inline: None,
             },
             read_mode: GeoPackageReadMode::Features,

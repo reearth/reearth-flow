@@ -136,12 +136,14 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{ category: "A" },
-              #{ category: "B" },
-              #{ category: "C" },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"category": "A"},
+                {"category": "B"},
+                {"category": "C"},
+              ]
 
       - id: 40000000-0000-0000-0000-000000000012
         name: SubGraphA
@@ -158,8 +160,9 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          output: |
-            "output.csv"
+          output:
+            type: string
+            value: output.csv
           format: csv
 
     edges:

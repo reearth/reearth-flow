@@ -12,6 +12,14 @@ pub(crate) enum PlateauProcessorError {
     DomainOfDefinitionValidatorFactory(String),
     #[error("DomainOfDefinitionValidator error: {0}")]
     DomainOfDefinitionValidator(String),
+    #[error("ObjectListExtractor Factory error: {0}")]
+    ObjectListExtractorFactory(String),
+    #[error("ObjectListExtractor error: {0}")]
+    ObjectListExtractor(String),
+    #[error("MissingAttributeDetector Factory error: {0}")]
+    MissingAttributeDetectorFactory(String),
+    #[error("MissingAttributeDetector error: {0}")]
+    MissingAttributeDetector(String),
 }
 
 pub(crate) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

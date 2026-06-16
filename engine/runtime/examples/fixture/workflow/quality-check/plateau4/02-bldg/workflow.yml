@@ -33,17 +33,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       # Common quality check subgraphs
       - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
@@ -125,11 +127,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["gmlPath"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["gmlPath"]
       - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         name: AttributeMapperGmlPathAndFilename
         type: action
@@ -378,8 +382,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "02_建築物_検査結果一覧.csv"
+          output:
+            type: string
+            value: 02_建築物_検査結果一覧.csv
 
       # Phase 5: StatisticsCalculator for JSON aggregation
       - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
@@ -504,22 +509,20 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              for key in feature.keys() {
-                result.push(#{
-                  name: key,
-                  count: feature[key],
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                feature = attributes["__features"][0];
+                itertools.map(feature.keys(), fn(key) {
+                  {"name": key, "count": feature[key]}
+                })
               }
-              result
-            }
-          output: |
-            "summary_bldg.json"
+          output:
+            type: string
+            value: summary_bldg.json
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
@@ -547,10 +550,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
@@ -558,9 +563,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f

@@ -24,7 +24,7 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_types::{
     conversion::nusamai::entity_to_geometry, geometry::Geometry, lod::LodMask, Attribute,
-    AttributeValue, CitygmlFeatureExt, Feature,
+    AttributeValue, CitygmlFeatureExt, CompiledCode, Feature,
 };
 use url::Url;
 
@@ -243,10 +243,8 @@ fn emit_flat_entity(
 pub(super) fn parse_and_register(
     ctx: Context,
     feature: Feature,
-    dataset: rhai::AST,
-    original_dataset: reearth_flow_types::Expr,
+    dataset: CompiledCode,
     flatten: Option<bool>,
-    global_params: Option<HashMap<String, serde_json::Value>>,
     codelists_url: Option<Url>,
     geom_registry: &mut HashMap<Url, Arc<RwLock<GeometryStore>>>,
     app_registry: &mut HashMap<Url, Arc<RwLock<AppearanceStore>>>,
@@ -258,11 +256,9 @@ pub(super) fn parse_and_register(
     } else {
         nusamai_plateau::codelist::Resolver::new()
     };
-    let expr_engine = Arc::clone(&ctx.expr_engine);
-    let scope = feature.new_scope(expr_engine.clone(), &global_params);
-    let city_gml_path = scope
-        .eval_ast::<String>(&dataset)
-        .unwrap_or_else(|_| original_dataset.to_string());
+    let city_gml_path = dataset
+        .eval_string(&feature, ctx.expr_engine.vars())
+        .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(city_gml_path.as_str())
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let storage_resolver = Arc::clone(&ctx.storage_resolver);

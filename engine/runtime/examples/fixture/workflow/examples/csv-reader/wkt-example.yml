@@ -14,8 +14,9 @@ graphs:
         action: CsvReader
         with:
           format: csv
-          inline: |
-            env.get("csvFile")
+          inline:
+            type: flowExpr
+            value: env["csvFile"]
           geometry:
             geometryMode: wkt
             column: geometry
@@ -26,7 +27,9 @@ graphs:
         type: action
         action: GeoJsonWriter
         with:
-          output: ./output-wkt.geojson
+          output:
+            type: string
+            value: ./output-wkt.geojson
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540a

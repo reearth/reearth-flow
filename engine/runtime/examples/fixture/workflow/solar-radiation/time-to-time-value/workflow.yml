@@ -7,8 +7,9 @@ nodes:
     action: CsvReader
     with:
       format: csv
-      inline: |
-        env.get("csvFile")
+      inline:
+        type: flowExpr
+        value: env["csvFile"]
 
   - id: d2b4977d-e218-4628-96f2-d26407aeea14
     name: AttributeMapper
@@ -78,8 +79,8 @@ nodes:
           value:
             type: flowExpr
             value: |
-              parts = attributes["南中"].split(":");
-              int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+              [h, m, s] = attributes["南中"].split(":");
+              int(h) * 3600 + int(m) * 60 + int(s)
         - attribute: 出_H
           method: remove
         - attribute: 出_M

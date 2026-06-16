@@ -20,13 +20,15 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            #{
-              file_name: "example.txt",
-              file_content_base64: "SGVsbG8sIFdvcmxkISBUaGlzIGlzIGEgdGVzdCBmaWxlLg==",
-              user_name: "test-user",
-              description: "Example file upload"
-            }
+          creator:
+            type: flowExpr
+            value: |
+              {
+                "file_name": "example.txt",
+                "file_content_base64": "SGVsbG8sIFdvcmxkISBUaGlzIGlzIGEgdGVzdCBmaWxlLg==",
+                "user_name": "test-user",
+                "description": "Example file upload"
+              }
 
       # Example 1: Multipart form data with base64 file
       - id: 550e8400-e29b-41d4-a716-446655440040
@@ -122,8 +124,9 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          output: |
-            "{{ env.outputFilePath }}"
+          output:
+            type: flowExpr
+            value: 'env["outputFilePath"]'
 
     edges:
       - id: 550e8400-e29b-41d4-a716-446655440080

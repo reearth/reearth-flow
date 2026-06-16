@@ -285,16 +285,18 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("cityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env["cityGmlPath"],
+              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
     name: FolderAndFilePathReader
     type: subGraph
@@ -304,10 +306,13 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: false
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 00708c16-ad56-4276-bba6-fee42f412d27
     name: TargetPackagesFilter
     type: action
@@ -402,11 +407,14 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       format: citygml
       flatten: true
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6f
     name: AttributeManagerPreFlattenerForDm
     type: action

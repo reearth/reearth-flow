@@ -56,7 +56,13 @@ const FlowExprField = <
   const awarenessStyle = paramsAwarenessStyles(focusedUsers);
 
   const codeValue = formData as CodeValue | undefined;
-  const isExpression = codeValue?.type === "flowExpr";
+
+  const allowedTypes = (schema as any)?.properties?.type?.enum as
+    | string[]
+    | undefined;
+  const stringAllowed = !allowedTypes || allowedTypes.includes("string");
+  const fallbackType: CodeValue["type"] = stringAllowed ? "string" : "flowExpr";
+  const isExpression = codeValue?.type === "flowExpr" || !stringAllowed;
   const label = schema.title || name;
   const defaultValue = useRef<CodeValue | undefined>(codeValue);
 
@@ -76,12 +82,12 @@ const FlowExprField = <
 
   const handleReset = useCallback(() => {
     onChange(
-      (defaultValue.current ?? { type: "string", value: "" }) as any,
+      (defaultValue.current ?? { type: fallbackType, value: "" }) as any,
       fieldPathId.path,
       undefined,
       id,
     );
-  }, [onChange, fieldPathId.path, id]);
+  }, [onChange, fieldPathId.path, id, fallbackType]);
 
   const handleEditorOpen = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -91,12 +97,20 @@ const FlowExprField = <
       const fieldContext: FieldContext = createFieldContext({
         id,
         name,
-        value: codeValue ?? { type: "string", value: "" },
+        value: codeValue ?? { type: fallbackType, value: "" },
         schema,
       });
       onFlowExprEditorOpen(fieldContext);
     },
-    [id, name, codeValue, schema, onFlowExprEditorOpen, onFieldFocus],
+    [
+      id,
+      name,
+      codeValue,
+      schema,
+      fallbackType,
+      onFlowExprEditorOpen,
+      onFieldFocus,
+    ],
   );
 
   const labelNode = (

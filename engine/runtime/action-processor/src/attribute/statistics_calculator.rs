@@ -142,6 +142,54 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
         };
         Ok(Box::new(process))
     }
+
+    fn infer_output_schema(
+        &self,
+        inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+
+        let params = parse_params(with)?;
+
+        // `default` port: a fresh, CLOSED schema with only the produced keys,
+        // mirroring the `finish` insertion order: group_by, group_id, calculations.
+        let mut default_schema = AttrSchema::empty();
+        if let Some(group_by) = params.group_by.as_ref() {
+            for attr in group_by {
+                default_schema.insert(attr.clone(), AttrField::always(AttrType::String));
+            }
+        }
+        if let Some(group_id) = params.group_id.as_ref() {
+            default_schema.insert(group_id.clone(), AttrField::always(AttrType::String));
+        }
+        for calculation in &params.calculations {
+            default_schema.insert(
+                calculation.new_attribute.clone(),
+                AttrField::always(AttrType::Number),
+            );
+        }
+
+        // `complete` port: identity passthrough of the input feature.
+        let complete_schema = inputs
+            .get(&DEFAULT_PORT.clone())
+            .cloned()
+            .unwrap_or_else(AttrSchema::open);
+
+        Some(HashMap::from([
+            (DEFAULT_PORT.clone(), default_schema),
+            (COMPLETE_PORT.clone(), complete_schema),
+        ]))
+    }
+}
+
+/// Deserialize the `StatisticsCalculatorParam` from the node's `with` params,
+/// mirroring the deserialization done in `build`. Returns `None` when `with`
+/// is absent or the params don't deserialize (inference not possible).
+fn parse_params(with: &Option<HashMap<String, Value>>) -> Option<StatisticsCalculatorParam> {
+    let with = with.as_ref()?;
+    let value = serde_json::to_value(with).ok()?;
+    serde_json::from_value::<StatisticsCalculatorParam>(value).ok()
 }
 
 #[derive(Debug, Clone)]
@@ -302,5 +350,123 @@ impl Processor for StatisticsCalculator {
 
     fn name(&self) -> &str {
         "StatisticsCalculator"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
+    use reearth_flow_types::Attribute;
+    use serde_json::json;
+
+    fn with_from(value: Value) -> Option<HashMap<String, Value>> {
+        Some(serde_json::from_value(value).unwrap())
+    }
+
+    fn attr(name: &str) -> Attribute {
+        Attribute::new(name.to_string())
+    }
+
+    #[test]
+    fn infer_default_port_is_closed_typed_schema() {
+        let with = with_from(json!({
+            "groupBy": ["region"],
+            "groupId": "gid",
+            "calculations": [{ "newAttribute": "total", "expr": "1.0" }]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(attr("junk"), AttrField::always(AttrType::String));
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input);
+
+        let out = StatisticsCalculatorFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
+
+        assert!(!schema.open, "default schema must be closed");
+        assert_eq!(schema.fields.len(), 3, "exactly 3 produced attrs");
+        assert_eq!(
+            schema.fields.get(&attr("region")),
+            Some(&AttrField {
+                ty: AttrType::String,
+                presence: Presence::Always
+            })
+        );
+        assert_eq!(
+            schema.fields.get(&attr("gid")),
+            Some(&AttrField {
+                ty: AttrType::String,
+                presence: Presence::Always
+            })
+        );
+        assert_eq!(
+            schema.fields.get(&attr("total")),
+            Some(&AttrField {
+                ty: AttrType::Number,
+                presence: Presence::Always
+            })
+        );
+        assert!(
+            !schema.fields.contains_key(&attr("junk")),
+            "input attrs must be dropped"
+        );
+    }
+
+    #[test]
+    fn infer_complete_port_is_identity() {
+        let with = with_from(json!({
+            "groupBy": ["region"],
+            "groupId": "gid",
+            "calculations": [{ "newAttribute": "total", "expr": "1.0" }]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(attr("a"), AttrField::always(AttrType::String));
+        input.insert(attr("b"), AttrField::always(AttrType::Number));
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+
+        let out = StatisticsCalculatorFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let complete = out
+            .get(&COMPLETE_PORT.clone())
+            .expect("complete port present");
+
+        assert_eq!(
+            complete, &input,
+            "complete port must be identity passthrough"
+        );
+    }
+
+    #[test]
+    fn infer_no_group_by_only_calculations() {
+        let with = with_from(json!({
+            "calculations": [{ "newAttribute": "cnt", "expr": "1" }]
+        }));
+
+        let inputs = HashMap::new();
+
+        let out = StatisticsCalculatorFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
+
+        assert!(!schema.open);
+        assert_eq!(schema.fields.len(), 1);
+        assert_eq!(
+            schema.fields.get(&attr("cnt")),
+            Some(&AttrField {
+                ty: AttrType::Number,
+                presence: Presence::Always
+            })
+        );
     }
 }
