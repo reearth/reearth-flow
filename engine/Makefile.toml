@@ -11,29 +11,30 @@ script = ['''
 cargo fmt --all ${@:-}
 ''']
 
+# NOTE: `--all-features` is intentionally avoided. It would enable the `new-geometry`
+# migration flag, which switches `Feature.geometry` to the new type and is mutually
+# exclusive with the default geometry world. So the default world is checked plainly,
+# and `new-geometry` is built separately (lib/bin only, since un-ported actions hit
+# the loud runtime default and their tests fail by design until ported). CI builds both.
 [tasks.check]
-script = [
-  '''
+script = ['''
 #!/usr/bin/env bash -eux
-cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
-''',
-]
+cargo check --workspace --all-targets --exclude plateau-gis-quality-checker
+cargo check -p reearth-flow-cli -p reearth-flow-worker --features new-geometry
+''']
 
 [tasks.clippy]
-script = [
-  '''
+script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker -- -D warnings
-''',
-]
+cargo clippy --workspace --all-targets --exclude plateau-gis-quality-checker -- -D warnings
+cargo clippy -p reearth-flow-cli -p reearth-flow-worker --features new-geometry -- -D warnings
+''']
 
 [tasks.clippy-fix]
-script = [
-  '''
+script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@:-}
-''',
-]
+cargo clippy --workspace --all-targets --exclude plateau-gis-quality-checker --fix ${@:-}
+''']
 
 [tasks.test]
 script = ['''
@@ -44,12 +45,12 @@ cargo make test-conv ${@:-}
 ''']
 
 [tasks.test-rs]
-script = [
-  '''
+script = ['''
 #!/usr/bin/env bash -eux
-cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
-''',
-]
+# Default geometry world only. The `new-geometry` world cannot be tested until
+# actions are ported (un-ported actions hit the loud runtime default).
+cargo test --workspace --all-targets --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
+''']
 
 [tasks.test-qc]
 script = ['''

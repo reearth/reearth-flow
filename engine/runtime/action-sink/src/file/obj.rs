@@ -112,11 +112,13 @@ impl Sink for ObjWriter {
         "ObjWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         self.buffer.push(ctx.feature);
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self
             .output
@@ -145,6 +147,7 @@ impl Sink for ObjWriter {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn features_to_obj(
     features: &[Feature],
     writer: &ObjWriter,
@@ -565,8 +568,11 @@ mod tests {
     use reearth_flow_geometry::types::{
         coordinate::Coordinate, geometry::Geometry3D, polygon::Polygon3D,
     };
-    use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+    use reearth_flow_types::{
+        Attribute, AttributeValue, Code, CodeType, Feature, Geometry, GeometryValue,
+    };
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_generate_simple_obj() {
         let mut features = Vec::new();
@@ -608,12 +614,11 @@ mod tests {
 
         features.push(feature);
 
-        let output = Code {
-            ty: reearth_flow_types::CodeType::String,
+        let code: Code = Code {
+            ty: CodeType::String,
             value: "/tmp/test.obj".to_string(),
-        }
-        .compile()
-        .unwrap();
+        };
+        let output = code.compile().unwrap();
 
         let writer = ObjWriter {
             output,

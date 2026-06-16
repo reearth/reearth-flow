@@ -107,6 +107,7 @@ impl Sink for GeoJsonWriter {
         "GeoJsonWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
@@ -126,6 +127,7 @@ impl Sink for GeoJsonWriter {
         self.buffer.entry(key).or_default().push(feature.clone());
         Ok(())
     }
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self
             .output

@@ -93,7 +93,7 @@ const LayoutSubToolbar: React.FC<Props> = ({
         {t("Apply to all workflows")}
       </label>
       <div className="h-5 border-r border-border" />
-      <Button className="h-8 w-18 select-none" onClick={handleCleanUp}>
+      <Button className="h-8 max-w-fit select-none" onClick={handleCleanUp}>
         {t("Clean up")}
       </Button>
     </div>

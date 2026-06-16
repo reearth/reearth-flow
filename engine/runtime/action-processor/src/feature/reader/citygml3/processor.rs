@@ -177,6 +177,7 @@ impl Processor for FeatureCityGml3Reader {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -224,6 +225,7 @@ impl Processor for FeatureCityGml3Reader {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn build_feature(node: &Arc<XmlNode>) -> Feature {
     let (stripped, raw_geoms) = geometry::extract_geometries(node);
     let mut feature = parser::to_feature(&stripped);

@@ -24,6 +24,7 @@ chrono.workspace = true
 crossbeam.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+indexmap.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
@@ -42,3 +43,5 @@ zstd.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+reearth-flow-action-source.workspace = true
+tempfile.workspace = true

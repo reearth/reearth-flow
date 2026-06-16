@@ -298,6 +298,7 @@ pub struct SolarPositionCalculator {
 }
 
 impl Processor for SolarPositionCalculator {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -415,6 +416,7 @@ impl Processor for SolarPositionCalculator {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -501,6 +503,7 @@ impl SolarPositionCalculator {
     }
 
     /// Extract 3D centroid from feature geometry (in source CRS coordinates).
+    #[cfg(not(feature = "new-geometry"))]
     fn extract_centroid_3d(feature: &Feature) -> Result<Centroid3D, SolarPositionError> {
         let geometry = &feature.geometry;
 

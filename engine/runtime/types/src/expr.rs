@@ -33,33 +33,136 @@ use crate::feature::Feature;
 )]
 pub struct Expr(String);
 
-impl Expr {
-    pub fn compile(&self) -> reearth_flow_expr::Result<CompiledCode> {
-        compile(self.as_ref()).map(CompiledCode::Expr)
+#[repr(u32)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum CodeType {
+    FlowExpr = 1 << 0,
+    String = 1 << 1,
+}
+
+impl CodeType {
+    pub const ALL: u32 = Self::FlowExpr as u32 | Self::String as u32;
+
+    pub fn all_variants() -> &'static [CodeType] {
+        &[CodeType::FlowExpr, CodeType::String]
+    }
+
+    pub fn as_mask(self) -> u32 {
+        self as u32
+    }
+
+    pub fn serde_name(self) -> &'static str {
+        match self {
+            CodeType::FlowExpr => "flowExpr",
+            CodeType::String => "string",
+        }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum CodeType {
-    FlowExpr,
-    String,
-}
+/// Bitmask constant covering all [`CodeType`] variants; used as the default for [`Code`].
+pub const ALL_CODE_TYPES: u32 = CodeType::ALL;
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct Code {
-    #[serde(rename = "type")]
+#[derive(Debug, Clone)]
+pub struct Code<const MASK: u32 = ALL_CODE_TYPES> {
     pub ty: CodeType,
     pub value: String,
 }
 
-impl Code {
+impl<const MASK: u32> Code<MASK> {
     pub fn compile(&self) -> reearth_flow_expr::Result<CompiledCode> {
         match self.ty {
             CodeType::FlowExpr => compile(&self.value).map(CompiledCode::Expr),
             CodeType::String => Ok(CompiledCode::Literal(self.value.clone())),
         }
+    }
+}
+
+impl<const MASK: u32> Serialize for Code<MASK> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("Code", 2)?;
+        state.serialize_field("type", &self.ty)?;
+        state.serialize_field("value", &self.value)?;
+        state.end()
+    }
+}
+
+impl<'de, const MASK: u32> Deserialize<'de> for Code<MASK> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Code {
+            #[serde(rename = "type")]
+            ty: CodeType,
+            value: String,
+        }
+        let h = Code::deserialize(deserializer)?;
+        if h.ty.as_mask() & MASK == 0 {
+            let allowed: Vec<&str> = CodeType::all_variants()
+                .iter()
+                .copied()
+                .filter(|v| v.as_mask() & MASK != 0)
+                .map(|v| v.serde_name())
+                .collect();
+            return Err(serde::de::Error::custom(format!(
+                "code type `{}` is not allowed here; allowed: [{}]",
+                h.ty.serde_name(),
+                allowed.join(", ")
+            )));
+        }
+        Ok(Self {
+            ty: h.ty,
+            value: h.value,
+        })
+    }
+}
+
+impl<const MASK: u32> schemars::JsonSchema for Code<MASK> {
+    fn schema_name() -> String {
+        "Code".to_string()
+    }
+
+    fn is_referenceable() -> bool {
+        false
+    }
+
+    fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        use schemars::schema::*;
+
+        let allowed_types: Vec<serde_json::Value> = CodeType::all_variants()
+            .iter()
+            .copied()
+            .filter(|v| v.as_mask() & MASK != 0)
+            .map(|v| serde_json::Value::String(v.serde_name().to_string()))
+            .collect();
+
+        let type_property = Schema::Object(SchemaObject {
+            instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
+            enum_values: Some(allowed_types),
+            ..Default::default()
+        });
+
+        let value_property = Schema::Object(SchemaObject {
+            instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
+            ..Default::default()
+        });
+
+        let mut properties = schemars::Map::new();
+        properties.insert("type".to_string(), type_property);
+        properties.insert("value".to_string(), value_property);
+
+        Schema::Object(SchemaObject {
+            instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Object))),
+            format: Some("code".to_string()),
+            object: Some(Box::new(ObjectValidation {
+                required: ["type".to_string(), "value".to_string()]
+                    .into_iter()
+                    .collect(),
+                properties,
+                ..Default::default()
+            })),
+            ..Default::default()
+        })
     }
 }
 
@@ -359,7 +462,7 @@ mod tests {
     use crate::feature::Feature;
 
     fn eval_bool(expr: &str, feature: &Feature) -> bool {
-        let code = Code {
+        let code: Code = Code {
             ty: CodeType::FlowExpr,
             value: expr.to_string(),
         };
@@ -379,7 +482,7 @@ mod tests {
         );
         let env_vars = Arc::new(env_vars);
 
-        let literal = Code {
+        let literal: Code = Code {
             ty: CodeType::String,
             value: "hello".to_string(),
         };
@@ -392,7 +495,7 @@ mod tests {
             "hello"
         );
 
-        let expr = Code {
+        let expr: Code = Code {
             ty: CodeType::FlowExpr,
             value: r#"env["key"]"#.to_string(),
         };
@@ -405,7 +508,7 @@ mod tests {
         );
 
         // attributes are not in scope
-        let no_attr = Code {
+        let no_attr: Code = Code {
             ty: CodeType::FlowExpr,
             value: "attributes".to_string(),
         };
@@ -425,5 +528,14 @@ mod tests {
         assert!(!eval_bool(r#""missing" in attributes"#, &feature));
         assert!(!eval_bool(r#""foo" not in attributes"#, &feature));
         assert!(eval_bool(r#""missing" not in attributes"#, &feature));
+    }
+
+    #[test]
+    fn code_mask_enforced_on_deserialize() {
+        type FlowExprOnly = Code<{ CodeType::FlowExpr as u32 }>;
+        serde_json::from_str::<FlowExprOnly>(r#"{"type":"flowExpr","value":"1+1"}"#).unwrap();
+        let err =
+            serde_json::from_str::<FlowExprOnly>(r#"{"type":"string","value":"x"}"#).unwrap_err();
+        assert!(err.to_string().contains("not allowed"));
     }
 }

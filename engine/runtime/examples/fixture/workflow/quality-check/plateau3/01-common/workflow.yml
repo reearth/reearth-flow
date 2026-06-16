@@ -231,16 +231,19 @@ graphs:
         with:
           calculations:
             - newAttribute: "L01エラー"
-              expr: |
-                env.get("__value")["L01エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("L01エラー", 0)
 
             - newAttribute: "L02エラー"
-              expr: |
-                env.get("__value")["L02エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("L02エラー", 0)
 
             - newAttribute: "L04エラー"
-              expr: |
-                env.get("__value")["L04エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("L04エラー", 0)
 
             - newAttribute: "不正なcodeSpace数"
               expr: |

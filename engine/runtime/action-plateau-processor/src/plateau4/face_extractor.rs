@@ -301,6 +301,7 @@ impl FaceExtractor {
         Ok(coords)
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process_xml(
         &mut self,
         ctx: &ExecutorContext,
@@ -525,6 +526,7 @@ impl FaceExtractor {
 }
 
 impl Processor for FaceExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -569,6 +571,7 @@ impl Processor for FaceExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,

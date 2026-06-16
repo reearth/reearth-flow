@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.22 - 2026-06-16
+
+### Web
+
+#### 🧪 Testing
+
+- Add e2e test for PLATEAU CityGML to GeoJSON pipeline ([#2154](https://github.com/reearth/reearth-flow/pull/2154)) [`bbfc42`](https://github.com/reearth/reearth-flow/commit/bbfc42)
+
+### engine
+
+#### 🚀 Features
+
+- Expose per-node attribute schemas via &[#39](https://github.com/reearth/reearth-flow/pull/39);probe-schema&[#39](https://github.com/reearth/reearth-flow/pull/39); command ([#2134](https://github.com/reearth/reearth-flow/pull/2134)) [`118e73`](https://github.com/reearth/reearth-flow/commit/118e73)
+- Add 01-02-common quality check for plateau6 ([#2159](https://github.com/reearth/reearth-flow/pull/2159)) [`fdbd25`](https://github.com/reearth/reearth-flow/commit/fdbd25)
+
+#### 🔧 Bug Fixes
+
+- Fix cross-device file moving ([#1534](https://github.com/reearth/reearth-flow/pull/1534)) [`c95ada`](https://github.com/reearth/reearth-flow/commit/c95ada)
+
+#### ⚡️ Performance
+
+- Cut CI from ~32m to ~5m (drop executor sleeps, fix XSD fetch herd, parallelize CI) ([#2147](https://github.com/reearth/reearth-flow/pull/2147)) [`72b7ad`](https://github.com/reearth/reearth-flow/commit/72b7ad)
+
+#### ✨ Refactor
+
+- Code language allowlist in schema definition ([#2126](https://github.com/reearth/reearth-flow/pull/2126)) [`7b0d58`](https://github.com/reearth/reearth-flow/commit/7b0d58)
+- Migrate all readers to FlowExpr ([#2153](https://github.com/reearth/reearth-flow/pull/2153)) [`a55446`](https://github.com/reearth/reearth-flow/commit/a55446)
+- Migrate all writers to FlowExpr ([#2142](https://github.com/reearth/reearth-flow/pull/2142)) [`10f148`](https://github.com/reearth/reearth-flow/commit/10f148)
+
+### ui
+
+#### 🚀 Features
+
+- Add search input for feature details [FLOW-DEV-176] ([#2161](https://github.com/reearth/reearth-flow/pull/2161)) [`ede87e`](https://github.com/reearth/reearth-flow/commit/ede87e)
+
+#### 🔧 Bug Fixes
+
+- Update default order by to &[#39](https://github.com/reearth/reearth-flow/pull/39);UpdatedAt&[#39](https://github.com/reearth/reearth-flow/pull/39); in useProjectPagination hook ([#2166](https://github.com/reearth/reearth-flow/pull/2166)) [`2ecf24`](https://github.com/reearth/reearth-flow/commit/2ecf24)
+- Adjust ResizableHandle height and simplify class names in DebugPanel ([#2157](https://github.com/reearth/reearth-flow/pull/2157)) [`478b1b`](https://github.com/reearth/reearth-flow/commit/478b1b)
+- Prevent backspace deletion for nodes&#x2F;edges when project is locked ([#2152](https://github.com/reearth/reearth-flow/pull/2152)) [`447a73`](https://github.com/reearth/reearth-flow/commit/447a73)
+
+#### Miscellaneous Tasks
+
+- Refactor and create shared usePagination hook [FLOW-DEV-192] ([#2160](https://github.com/reearth/reearth-flow/pull/2160)) [`5f54f9`](https://github.com/reearth/reearth-flow/commit/5f54f9)
+- Enhance FlowExpr handling with dynamic type support in FlowExprField and FlowExprEditorDialog [FLOW-DEV-193] ([#2164](https://github.com/reearth/reearth-flow/pull/2164)) [`34cf95`](https://github.com/reearth/reearth-flow/commit/34cf95)
+- Remove creditContainer from defaultCesiumProps ([#2156](https://github.com/reearth/reearth-flow/pull/2156)) [`b7180a`](https://github.com/reearth/reearth-flow/commit/b7180a)
+
 ## 0.1.0-alpha.21 - 2026-06-10
 
 ### Web

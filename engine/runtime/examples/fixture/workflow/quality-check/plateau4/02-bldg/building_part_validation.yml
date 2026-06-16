@@ -49,7 +49,9 @@ nodes:
         - gmlFilename
       calculations:
         - newAttribute: _num_lod0_1_buildingpart
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 88d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: ErrorCount-Lod0Or1BuildingPart
@@ -100,7 +102,9 @@ nodes:
         - gmlFilename
       calculations:
         - newAttribute: _num_lbldg02_error
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Prepare output attributes
   - id: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e

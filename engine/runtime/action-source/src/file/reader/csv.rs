@@ -30,6 +30,7 @@ pub struct CsvReaderParam {
     pub(crate) geometry: Option<GeometryConfig>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 pub(crate) async fn read_csv(
     delimiter: Delimiter,
     content: &Bytes,

@@ -5806,7 +5806,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.340"
+version = "0.0.341"
 dependencies = [
  "directories",
  "log",
@@ -5835,7 +5835,7 @@ dependencies = [
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.52"
+version = "0.2.53"
 dependencies = [
  "bytes",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
@@ -6631,7 +6631,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "futures",
  "once_cell",
@@ -6651,7 +6651,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "approx",
  "async-trait",
@@ -6697,7 +6697,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "Inflector",
  "approx",
@@ -6755,7 +6755,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "indexmap 2.13.0",
  "once_cell",
@@ -6776,7 +6776,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
@@ -6817,7 +6817,6 @@ dependencies = [
  "reearth-flow-action-log",
  "reearth-flow-atlas",
  "reearth-flow-common",
- "reearth-flow-eval-expr",
  "reearth-flow-geometry",
  "reearth-flow-gltf",
  "reearth-flow-runtime",
@@ -6844,7 +6843,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -6868,7 +6867,6 @@ dependencies = [
  "quick-xml 0.37.5",
  "reearth-flow-action-log",
  "reearth-flow-common",
- "reearth-flow-eval-expr",
  "reearth-flow-geometry",
  "reearth-flow-gltf",
  "reearth-flow-runtime",
@@ -6895,7 +6893,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-atlas"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "image 0.25.10",
  "rstar 0.12.2",
@@ -6906,12 +6904,13 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "bytes",
  "clap",
  "colored",
  "directories",
+ "indexmap 2.13.0",
  "indoc",
  "json-subscriber",
  "num_cpus",
@@ -6934,6 +6933,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "time",
  "tracing",
@@ -6944,7 +6944,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "approx",
  "async-recursion",
@@ -6984,7 +6984,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "chrono",
  "futures",
@@ -6998,7 +6998,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7027,7 +7027,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-expr"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "indexmap 2.13.0",
  "lalrpop",
@@ -7040,7 +7040,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "approx",
  "bvh",
@@ -7070,7 +7070,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "ahash 0.8.12",
  "base64 0.22.1",
@@ -7104,7 +7104,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7113,7 +7113,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7143,7 +7143,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -7152,12 +7152,14 @@ dependencies = [
  "crossbeam",
  "futures",
  "futures-util",
+ "indexmap 2.13.0",
  "nutype",
  "once_cell",
  "parking_lot",
  "petgraph 0.8.3",
  "rayon",
  "reearth-flow-action-log",
+ "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-state",
@@ -7168,6 +7170,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -7177,7 +7180,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -7194,7 +7197,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -7206,7 +7209,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "bytes",
  "futures",
@@ -7223,7 +7226,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "bytes",
  "futures",
@@ -7242,7 +7245,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -7256,7 +7259,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7291,7 +7294,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "ahash 0.8.12",
  "bytes",
@@ -7329,7 +7332,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.403"
+version = "0.0.407"
 dependencies = [
  "async-trait",
  "axum",
@@ -11220,7 +11223,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.242"
+version = "0.1.243"
 dependencies = [
  "anyhow",
  "csv",

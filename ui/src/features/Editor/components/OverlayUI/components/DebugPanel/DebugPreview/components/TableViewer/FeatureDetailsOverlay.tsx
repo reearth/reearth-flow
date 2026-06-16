@@ -1,6 +1,6 @@
 import {
   ArrowLeftIcon,
-  ArrowSquareOutIcon,
+  BracketsCurlyIcon,
   CaretDownIcon,
 } from "@phosphor-icons/react";
 import {
@@ -10,6 +10,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 import {
@@ -18,8 +19,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   IconButton,
+  Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+
+import RawJsonViewer from "./RawJsonViewer";
 
 type Props = {
   feature: any;
@@ -107,6 +111,16 @@ function stringifyItem(item: unknown, indent: string, depth = 0): string {
   return `{\n${inner}\n${indent}}`;
 }
 
+function toSearchableString(value: unknown): string {
+  if (typeof value !== "object" || value === null) return String(value);
+  if (estimateSize(value) > LARGE_VALUE_THRESHOLD) return summarizeValue(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 /** Build a lightweight summary string for a large value without JSON.stringify */
 function summarizeValue(value: unknown): string {
   const resolved = resolveValue(value);
@@ -142,6 +156,8 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   detectedGeometryType,
 }) => {
   const t = useT();
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
   // Process feature properties for display
   const processedFeature = useMemo(() => {
     if (!feature) return null;
@@ -170,11 +186,49 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
       geometry: filteredGeometry,
     };
   }, [feature]);
+
+  const filteredFeature = useMemo(() => {
+    if (!processedFeature) return null;
+    if (!searchTerm) return processedFeature;
+
+    const lowerSearch = searchTerm.toLowerCase();
+
+    const filteredAttributes = Object.fromEntries(
+      Object.entries(processedFeature?.attributes || {}).filter(
+        ([key, value]) => {
+          const keyMatch = key.toLowerCase().includes(lowerSearch);
+          const valueMatch = toSearchableString(value)
+            .toLowerCase()
+            .includes(lowerSearch);
+          return keyMatch || valueMatch;
+        },
+      ),
+    );
+
+    const filteredGeometry = Object.fromEntries(
+      Object.entries(processedFeature?.geometry || {}).filter(
+        ([key, value]) => {
+          const keyMatch = key.toLowerCase().includes(lowerSearch);
+          const valueMatch = toSearchableString(value)
+            .toLowerCase()
+            .includes(lowerSearch);
+          return keyMatch || valueMatch;
+        },
+      ),
+    );
+
+    return {
+      ...processedFeature,
+      attributes: filteredAttributes,
+      geometry: filteredGeometry,
+    };
+  }, [processedFeature, searchTerm]);
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.focus();
+      scrollRef.current.focus({ preventScroll: true });
     }
   }, []);
 
@@ -201,29 +255,13 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
         break;
     }
   };
-  const openRawInNewWindow = useCallback((label: string, value: unknown) => {
-    const resolved = resolveValue(value);
-    let json: string;
-    try {
-      json = JSON.stringify(resolved, null, 2);
-    } catch {
-      json = String(resolved);
-    }
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.title = label;
-    const pre = w.document.createElement("pre");
-    pre.style.fontFamily = "monospace";
-    pre.style.fontSize = "12px";
-    pre.style.padding = "16px";
-    pre.style.margin = "0";
-    pre.style.whiteSpace = "pre-wrap";
-    pre.style.wordBreak = "break-all";
-    pre.textContent = json;
-    w.document.body.style.margin = "0";
-    w.document.body.style.backgroundColor = "#1e1e2e";
-    w.document.body.style.color = "#cdd6f4";
-    w.document.body.appendChild(pre);
+  const [rawView, setRawView] = useState<{
+    label: string;
+    value: unknown;
+  } | null>(null);
+
+  const openRaw = useCallback((label: string, value: unknown) => {
+    setRawView({ label, value });
   }, []);
 
   if (!feature || !processedFeature) {
@@ -295,8 +333,8 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               variant="ghost"
               type="button"
               className="flex h-5 items-center gap-1 px-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => openRawInNewWindow(label, value)}>
-              <ArrowSquareOutIcon size={12} />
+              onClick={() => openRaw(label, value)}>
+              <BracketsCurlyIcon size={12} />
               {t("View raw")}
             </Button>
           )}
@@ -344,8 +382,20 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   };
 
   return (
-    <div className="absolute inset-y-0 -top-10 left-0 z-10 w-full rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
+    <div className="absolute inset-0 z-10 rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
       {/* Header */}
+      <div className="py-1">
+        <Input
+          placeholder={t("Search") + "..."}
+          value={searchTerm}
+          onChange={(e) => {
+            const value = String(e.target.value);
+            setSearchTerm(value);
+          }}
+          className="max-w-sm"
+        />
+      </div>
+
       <div className="flex items-center justify-between gap-2 border-b border-border p-2 pl-0">
         <div className="flex gap-2">
           <IconButton
@@ -371,9 +421,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             type="button"
             className="flex h-7 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() =>
-              openRawInNewWindow(`Feature ${processedFeature.id}`, feature)
+              openRaw(`${t("Feature")} ${processedFeature.id}`, feature)
             }>
-            <ArrowSquareOutIcon size={12} />
+            <BracketsCurlyIcon size={12} />
             {t("View all raw")}
           </Button>
         </div>
@@ -399,46 +449,49 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             </div>
           )}
           {/* Geometry */}
-          {Object.keys(processedFeature.geometry).length > 0 && (
+          {Object.keys(filteredFeature?.geometry || {}).length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                 {t("Geometry")}
               </h4>
               <div className="space-y-3">
-                {Object.entries(processedFeature.geometry).map(
-                  ([key, value]) => {
-                    const valueType = getValueType(value);
-                    const geometryKey = key.replace(/^geometry/, "");
+                {Object.entries(
+                  (filteredFeature?.geometry ?? {}) as Record<string, unknown>,
+                ).map(([key, value]) => {
+                  const valueType = getValueType(value);
+                  const geometryKey = key.replace(/^geometry/, "");
 
-                    return (
-                      <div key={key}>
-                        {renderEntry(geometryKey, value, valueType)}
-                      </div>
-                    );
-                  },
-                )}
+                  return (
+                    <div key={key}>
+                      {renderEntry(geometryKey, value, valueType)}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
           {/* Attributes */}
-          {Object.keys(processedFeature.attributes).length > 0 && (
+          {Object.keys(filteredFeature?.attributes || {}).length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                 {t("Attributes")}
               </h4>
               <div className="space-y-3">
-                {Object.entries(processedFeature.attributes).map(
-                  ([key, value]) => {
-                    const valueType = getValueType(value);
-                    const attributeKey = key.replace(/^attributes/, "");
+                {Object.entries(
+                  (filteredFeature?.attributes ?? {}) as Record<
+                    string,
+                    unknown
+                  >,
+                ).map(([key, value]) => {
+                  const valueType = getValueType(value);
+                  const attributeKey = key.replace(/^attributes/, "");
 
-                    return (
-                      <div key={key}>
-                        {renderEntry(attributeKey, value, valueType)}
-                      </div>
-                    );
-                  },
-                )}
+                  return (
+                    <div key={key}>
+                      {renderEntry(attributeKey, value, valueType)}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -453,6 +506,15 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             )}
         </div>
       </div>
+
+      {rawView && (
+        <RawJsonViewer
+          label={rawView.label}
+          value={rawView.value}
+          open={!!rawView}
+          onClose={() => setRawView(null)}
+        />
+      )}
     </div>
   );
 };

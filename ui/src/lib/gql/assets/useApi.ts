@@ -27,7 +27,7 @@ export const useAsset = () => {
   const { toast } = useToast();
   const t = useT();
   const useGetAssets = (
-    workspaceId: string,
+    workspaceId?: string,
     keyword?: string,
     paginationOptions?: PaginationOptions,
   ) => {
