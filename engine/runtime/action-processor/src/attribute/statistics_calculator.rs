@@ -368,7 +368,7 @@ mod tests {
         let with = with_from(json!({
             "groupBy": ["region"],
             "groupId": "gid",
-            "calculations": [{ "newAttribute": "total", "expr": "1.0" }]
+            "calculations": [{ "newAttribute": "total", "expr": {"type": "flowExpr", "value": "1.0"} }]
         }));
 
         let mut input = AttrSchema::empty();
@@ -417,7 +417,7 @@ mod tests {
         let with = with_from(json!({
             "groupBy": ["region"],
             "groupId": "gid",
-            "calculations": [{ "newAttribute": "total", "expr": "1.0" }]
+            "calculations": [{ "newAttribute": "total", "expr": {"type": "flowExpr", "value": "1.0"} }]
         }));
 
         let mut input = AttrSchema::empty();
@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn infer_no_group_by_only_calculations() {
         let with = with_from(json!({
-            "calculations": [{ "newAttribute": "cnt", "expr": "1" }]
+            "calculations": [{ "newAttribute": "cnt", "expr": {"type": "flowExpr", "value": "1"} }]
         }));
 
         let inputs = HashMap::new();
