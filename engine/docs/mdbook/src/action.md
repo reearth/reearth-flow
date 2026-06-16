@@ -9899,54 +9899,6 @@ Refine Complex Geometries into Simple Geometries
 ### Category
 * Geometry
 
-## RhaiCaller
-### Type
-* processor
-### Description
-Executes Rhai script expressions to conditionally process and transform features
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RhaiCaller Parameters",
-  "description": "Configuration for executing Rhai scripts on features with conditional processing.",
-  "type": "object",
-  "required": [
-    "isTarget",
-    "process"
-  ],
-  "properties": {
-    "isTarget": {
-      "description": "Rhai script expression to determine if the feature should be processed (returns boolean)",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "process": {
-      "description": "Rhai script expression to process and transform the feature when target condition is met",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Transform
-
 ## Rotator3D
 ### Type
 * processor
@@ -10581,11 +10533,23 @@ Calculates statistical aggregations on feature attributes with customizable expr
       "properties": {
         "expr": {
           "title": "Calculation to perform",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "newAttribute": {
           "title": "New attribute name",
@@ -10596,9 +10560,6 @@ Calculates statistical aggregations on feature attributes with customizable expr
           ]
         }
       }
-    },
-    "Expr": {
-      "type": "string"
     }
   }
 }

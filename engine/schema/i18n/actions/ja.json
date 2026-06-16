@@ -2976,22 +2976,6 @@
       "description": "ジオメトリを精緻化する"
     },
     {
-      "name": "RhaiCaller",
-      "description": "Rhaiスクリプトを呼び出す",
-      "parameterI18n": {
-        "": {
-          "title": "RhaiCaller パラメータ",
-          "description": "条件付き処理でフィーチャーに Rhai スクリプトを実行する設定。"
-        },
-        "isTarget": {
-          "description": "フィーチャーを処理するかどうかを判断する Rhai スクリプト式（boolean を返す）"
-        },
-        "process": {
-          "description": "対象条件が満たされたときにフィーチャーを処理・変換する Rhai スクリプト式"
-        }
-      }
-    },
-    {
       "name": "Rotator3D",
       "description": "始点/終点ベクトルまたは軸-角度指定を使用して3Dポリゴンを回転する",
       "parameterI18n": {

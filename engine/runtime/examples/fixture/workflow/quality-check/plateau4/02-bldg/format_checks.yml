@@ -24,157 +24,89 @@ nodes:
       - gmlFilename
       calculations:
         - newAttribute: Building
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:Building" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:Building" { 1 } else { 0 }
 
         - newAttribute: BuildingPart
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:BuildingPart" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:BuildingPart" { 1 } else { 0 }
 
         - newAttribute: RoofSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:RoofSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:RoofSurface" { 1 } else { 0 }
 
         - newAttribute: GroundSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:GroundSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:GroundSurface" { 1 } else { 0 }
 
         - newAttribute: WallSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:WallSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:WallSurface" { 1 } else { 0 }
 
         - newAttribute: ClosureSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:ClosureSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:ClosureSurface" { 1 } else { 0 }
 
         - newAttribute: OuterCeilingSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:OuterCeilingSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:OuterCeilingSurface" { 1 } else { 0 }
 
         - newAttribute: OuterFloorSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:OuterFloorSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:OuterFloorSurface" { 1 } else { 0 }
 
         - newAttribute: BuildingInstallation
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:BuildingInstallation" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:BuildingInstallation" { 1 } else { 0 }
 
         - newAttribute: Door
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:Door" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:Door" { 1 } else { 0 }
 
         - newAttribute: Window
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:Window" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:Window" { 1 } else { 0 }
 
         - newAttribute: Room
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:Room" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:Room" { 1 } else { 0 }
 
         - newAttribute: InteriorWallSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:InteriorWallSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:InteriorWallSurface" { 1 } else { 0 }
 
         - newAttribute: CeilingSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:CeilingSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:CeilingSurface" { 1 } else { 0 }
 
         - newAttribute: FloorSurface
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:FloorSurface" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:FloorSurface" { 1 } else { 0 }
 
         - newAttribute: IntBuildingInstallation
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:IntBuildingInstallation" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:IntBuildingInstallation" { 1 } else { 0 }
 
         - newAttribute: BuildingFurniture
-          expr: |
-            let feature_type = env.get("__value").featureType ?? "";
-            if feature_type == "bldg:BuildingFurniture" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("featureType") == "bldg:BuildingFurniture" { 1 } else { 0 }
 
   - id: 88e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeManagerC02
@@ -276,7 +208,9 @@ nodes:
       - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_city_code
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 44d2b3c4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: ErrorCount-CityCode
@@ -294,7 +228,9 @@ nodes:
       - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_usage_attribute
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 66f4d5e6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: ErrorCount-L0405Bldg
@@ -479,7 +415,9 @@ nodes:
       - gmlFilename
       calculations:
         - newAttribute: _num_duplicate_building_id
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: aa7d7462-2b7f-472f-a381-90bc3cdba432
     name: ErrorCount-C-BLDG-01
@@ -497,7 +435,9 @@ nodes:
       - gmlFilename
       calculations:
         - newAttribute: _num_missing_building_id
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 88b6f7a8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     name: ErrorCount-MissingBuildingId
