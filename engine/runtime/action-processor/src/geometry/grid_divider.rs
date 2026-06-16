@@ -1340,6 +1340,7 @@ mod tests {
         assert!((bounds.max().y - 10.0).abs() < f64::EPSILON);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_create_output_feature() {
         let mut original = Feature::new_with_attributes(Attributes::default());

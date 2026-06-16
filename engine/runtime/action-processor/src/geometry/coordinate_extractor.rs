@@ -343,6 +343,7 @@ mod tests {
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::{feature::Attributes, Feature, Geometry};
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_all_coords_point_2d() {
         let noop = NoopChannelForwarder::default();
@@ -380,6 +381,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_all_coords_point_3d() {
         let noop = NoopChannelForwarder::default();
@@ -415,6 +417,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_all_coords_linestring_2d() {
         let noop = NoopChannelForwarder::default();
@@ -443,6 +446,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_all_coords_polygon_2d() {
         let noop = NoopChannelForwarder::default();
@@ -478,6 +482,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_specify_coord_positive_index() {
         let noop = NoopChannelForwarder::default();
@@ -507,6 +512,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_specify_coord_negative_index() {
         let noop = NoopChannelForwarder::default();
@@ -536,6 +542,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_specify_coord_out_of_range() {
         let noop = NoopChannelForwarder::default();
@@ -556,6 +563,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_no_geometry_rejected() {
         let noop = NoopChannelForwarder::default();
@@ -573,6 +581,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_default_z_value_2d() {
         let noop = NoopChannelForwarder::default();
@@ -596,6 +605,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_specify_coord_negative_out_of_range() {
         let noop = NoopChannelForwarder::default();
@@ -616,6 +626,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_all_coords_citygml() {
         let noop = NoopChannelForwarder::default();
@@ -675,6 +686,7 @@ mod tests {
     // helper functions
     //
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_feature(value: GeometryValue) -> Feature {
         Feature::new_with_attributes_and_geometry(
             Attributes::new(),

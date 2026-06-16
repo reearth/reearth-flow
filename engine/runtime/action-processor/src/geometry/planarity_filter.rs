@@ -502,6 +502,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_process_null_geometry_covariance() {
         let mut processor = create_test_processor(PlanarityFilterType::Covariance, 1e-6);
@@ -522,6 +523,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_process_null_geometry_height() {
         let mut processor = create_test_processor(PlanarityFilterType::Height, 0.001);

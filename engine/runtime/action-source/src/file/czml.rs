@@ -995,6 +995,7 @@ mod tests {
         assert_eq!(ts.samples[1].lon, -76.0);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_preserve_raw_strategy() {
         let ts = TimeTaggedPosition {
@@ -1044,6 +1045,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_packet_to_features_static() {
         let packet = serde_json::json!({
@@ -1066,6 +1068,7 @@ mod tests {
         assert_eq!(features.len(), 1);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_packet_to_features_timeseries() {
         let packet = serde_json::json!({

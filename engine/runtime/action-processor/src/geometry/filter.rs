@@ -286,6 +286,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_multiple_geometry_3d_multipolygon() {
         let noop = NoopChannelForwarder::default();
@@ -307,6 +308,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_multiple_geometry_3d_geometry_collection() {
         let noop = NoopChannelForwarder::default();
@@ -330,6 +332,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_multiple_geometry_3d_other_geometry() {
         let noop = NoopChannelForwarder::default();

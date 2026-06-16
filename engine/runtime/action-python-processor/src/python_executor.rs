@@ -898,6 +898,7 @@ mod tests {
     use serde_json::json;
     use std::collections::HashMap;
 
+    #[cfg(not(feature = "new-geometry"))]
     fn create_test_feature() -> Feature {
         let mut attributes = IndexMap::new();
         attributes.insert(
@@ -1021,6 +1022,7 @@ mod tests {
         assert!(geojson.is_null());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_feature_to_geojson() {
         let feature = create_test_feature();

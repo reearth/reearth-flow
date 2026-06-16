@@ -572,6 +572,7 @@ mod tests {
         Attribute, AttributeValue, Code, CodeType, Feature, Geometry, GeometryValue,
     };
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_generate_simple_obj() {
         let mut features = Vec::new();

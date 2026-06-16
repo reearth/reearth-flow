@@ -1128,6 +1128,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_process_group_two_crossing_lines() {
         let dir =

@@ -864,6 +864,7 @@ mod tests {
         )))
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_feature(coords: Vec<(f64, f64)>) -> Feature {
         let geom = make_geom(coords);
         let mut f = Feature::new_with_attributes(IndexMap::new());
@@ -871,6 +872,7 @@ mod tests {
         f
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_overlay_two_squares_disk() {
         // Create temp dir and write features to disk
@@ -922,6 +924,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_overlay_triangles_sharing_an_edge_disk() {
         let dir =

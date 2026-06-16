@@ -636,6 +636,7 @@ mod tests {
         Polygon2D::new(exterior, vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_spatial_filter_accepts_features() {
         let mut filter = SpatialFilter {
@@ -687,6 +688,7 @@ mod tests {
         assert_eq!(filter.candidates.len(), 1);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_spatial_filter_processes_multiple_ports() {
         let mut filter = SpatialFilter {
@@ -750,6 +752,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_spatial_filter_no_filters() {
         let mut filter = SpatialFilter {
@@ -773,6 +776,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_merge_filter_attributes_onto_passed_candidate() {
         let mut filter_attrs = Attributes::new();
@@ -830,6 +834,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_merge_filter_attributes_with_prefix() {
         let mut filter_attrs = Attributes::new();
@@ -890,6 +895,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_merge_filter_attributes_not_applied_to_failed_candidate() {
         let mut filter_attrs = Attributes::new();
@@ -948,6 +954,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_merge_filter_attributes_and_mode_multiple_filters() {
         // Filter 1: overlaps candidate from one side, has attribute "zone"

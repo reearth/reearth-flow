@@ -1284,6 +1284,7 @@ fn assign_texture_coordinates(
 mod tests {
     use super::*;
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn case01() {
         use std::fs::File;

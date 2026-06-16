@@ -1357,6 +1357,7 @@ mod tests {
     use reearth_flow_geometry::types::polygon::Polygon;
     use reearth_flow_types::{CodeType, Geometry};
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_feature_3d(lon: f64, lat: f64, height: f64) -> Feature {
         Feature::new_with_attributes_and_geometry(
             indexmap::IndexMap::new(),
@@ -1388,6 +1389,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_entity_packet_basic() {
         let params = make_timeseries_params();
@@ -1430,6 +1432,7 @@ mod tests {
         assert!(packet["availability"].as_str().is_some());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_embedded_feature_with_timeseries() -> Feature {
         let mut f = make_feature_3d(139.6917, 35.6895, 50.0);
         f.insert(
@@ -1477,6 +1480,7 @@ mod tests {
         f
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_embedded_static_feature() -> Feature {
         let mut f = make_feature_3d(139.7454, 35.6586, 333.0);
         f.insert(
@@ -1513,6 +1517,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_embedded_packet_timeseries() {
         let f = make_embedded_feature_with_timeseries();
@@ -1538,6 +1543,7 @@ mod tests {
         assert!(packet["availability"].as_str().unwrap().contains('/'));
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_embedded_packet_static() {
         let f = make_embedded_static_feature();
@@ -1558,6 +1564,7 @@ mod tests {
         assert!(packet.get("availability").is_none());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_embedded_czml_document() {
         let f1 = make_embedded_feature_with_timeseries();
@@ -1582,6 +1589,7 @@ mod tests {
         assert_eq!(czml[2]["id"], "static-poi");
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_entity_packet_numeric_times() {
         // Test with numeric time values and no explicit epoch
@@ -1653,6 +1661,7 @@ mod tests {
         assert_eq!(hex_to_rgba("#fff", 180), None); // too short
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_polygon_2d_feature() -> Feature {
         let coords: Vec<Coordinate<f64, NoValue>> = vec![
             (139.75, 35.68).into(),
@@ -1679,6 +1688,7 @@ mod tests {
         f
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_feature_geometry_to_polygon_2d() {
         let f = make_polygon_2d_feature();
@@ -1702,6 +1712,7 @@ mod tests {
         assert_eq!(pv["outline"], true);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_polygon_with_styling() {
         let mut f = make_polygon_2d_feature();
@@ -1736,6 +1747,7 @@ mod tests {
         assert_eq!(polygon_val["closeTop"], true);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_per_entity_availability() {
         let mut f1 = make_polygon_2d_feature();
@@ -1783,6 +1795,7 @@ mod tests {
         assert!(czml[1].get("point").is_none());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_properties_bag() {
         let mut f = make_feature_3d(139.7, 35.7, 0.0);

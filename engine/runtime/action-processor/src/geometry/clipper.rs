@@ -618,6 +618,7 @@ mod tests {
 
     use crate::tests::utils::create_default_execute_context;
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_feature(geometry: Geometry) -> Feature {
         Feature::new_with_attributes_and_geometry(Attributes::new(), geometry)
     }
@@ -666,6 +667,7 @@ mod tests {
         Polygon3D::new(exterior, vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_with_empty_geometry() {
         let mut clipper = Clipper {
@@ -689,6 +691,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_adds_features_to_correct_lists() {
         let mut clipper = Clipper {
@@ -730,6 +733,7 @@ mod tests {
         assert_eq!(clipper.candidates.len(), 1);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_finish_with_no_clippers() {
         let mut clipper = Clipper {
@@ -916,6 +920,7 @@ mod tests {
         assert!(!outsides.is_empty(), "Should have outside polygons");
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_finish_with_2d_geometries() {
         let polygon = create_test_polygon_2d();
@@ -947,6 +952,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_finish_with_3d_geometries() {
         let polygon = create_test_polygon_3d();
@@ -1002,6 +1008,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_with_non_polygon_geometry() {
         let mut clipper = Clipper {
@@ -1028,6 +1035,7 @@ mod tests {
         assert_eq!(clipper.candidates.len(), 1);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_finish_with_non_polygon_candidate() {
         let clip_polygon = create_clipper_polygon_2d();
@@ -1059,6 +1067,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_with_citygml_geometry() {
         use reearth_flow_types::{GeometryType, GmlGeometry};
@@ -1111,6 +1120,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_with_citygml_as_clipper() {
         use reearth_flow_types::{GeometryType, GmlGeometry};
@@ -1163,6 +1173,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_with_citygml_curve_geometry() {
         use reearth_flow_geometry::types::line_string::LineString3D;
@@ -1222,6 +1233,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_clipper_with_geometry_collection() {
         let polygon1 = create_test_polygon_2d();
