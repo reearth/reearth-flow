@@ -9,8 +9,8 @@ use axum::{extract::State, http::StatusCode, routing::get, routing::post, Json, 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_worker::wrapper::{
-    build_worker_args, cancel_requested, cleanup_work_root, make_work_root, validate_job_id,
-    RunRequest,
+    build_probe_args, build_worker_args, cancel_requested, cleanup_work_root, make_work_root,
+    validate_job_id, ProbeRequest, RunRequest,
 };
 use serde_json::json;
 
@@ -128,6 +128,71 @@ async fn run(
     }
 }
 
+/// Handle a `/probe-schema` POST request.
+/// Probe is read-only and fast: no work-root, no cancel-flag, no metadata.
+/// Response: `{"status": "COMPLETED"|"FAILED", "error"?: string}`.
+async fn probe_schema(
+    State(st): State<AppState>,
+    Json(req): Json<ProbeRequest>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    if let Err(e) = validate_job_id(&req.job_id) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"status": "FAILED", "error": e})),
+        );
+    }
+
+    let args = build_probe_args(&req);
+    let output = match tokio::process::Command::new(&st.worker_bin)
+        .args(&args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+    {
+        Ok(o) => o,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"status": "FAILED", "error": e.to_string()})),
+            );
+        }
+    };
+
+    if output.status.success() {
+        (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
+    } else {
+        // `output()` buffers all of stderr in memory; embedding it verbatim
+        // could allocate unboundedly on a chatty failure. Keep only the tail
+        // (where the actionable error usually is) for the JSON response; the
+        // full logs remain in the container's stdout/stderr.
+        const MAX_STDERR: usize = 8 * 1024;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let trimmed = stderr.trim();
+        let detail = if trimmed.len() > MAX_STDERR {
+            // Move the cut point up to the next UTF-8 char boundary so the
+            // byte slice never lands mid-character.
+            let mut cut = trimmed.len() - MAX_STDERR;
+            while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
+                cut += 1;
+            }
+            format!("...(truncated) {}", &trimmed[cut..])
+        } else {
+            trimmed.to_string()
+        };
+        let detail = detail.as_str();
+        let error = if detail.is_empty() {
+            format!("worker exit: {}", output.status)
+        } else {
+            format!("worker exit: {} - {detail}", output.status)
+        };
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"status": "FAILED", "error": error})),
+        )
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let port: u16 = std::env::var("PORT")
@@ -151,6 +216,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/run", post(run))
+        .route("/probe-schema", post(probe_schema))
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
