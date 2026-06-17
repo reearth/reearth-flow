@@ -22,7 +22,7 @@ services:
       - ./mongo:/data/db
 
   reearth-flow-postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: reearth
       POSTGRES_PASSWORD: reearth
