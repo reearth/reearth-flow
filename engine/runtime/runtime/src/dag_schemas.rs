@@ -300,15 +300,6 @@ impl DagSchemas {
         &self.graph
     }
 
-    pub fn collect_ancestor_sources(
-        &self,
-        node_index: petgraph::graph::NodeIndex,
-    ) -> HashSet<NodeHandle> {
-        let mut sources = HashSet::new();
-        collect_ancestor_sources_recursive(self, node_index, &mut sources);
-        sources
-    }
-
     /// For every node, the set of `Source` nodes that are its strict ancestors,
     /// indexed by `NodeIndex::index()`.
     ///
@@ -583,24 +574,6 @@ impl DagSchemas {
                 }
             }
         }
-    }
-}
-
-fn collect_ancestor_sources_recursive(
-    dag: &DagSchemas,
-    node_index: NodeIndex,
-    sources: &mut HashSet<NodeHandle>,
-) {
-    for edge in dag.graph().edges_directed(node_index, Direction::Incoming) {
-        let source_node_index = edge.source();
-        let source_node = &dag.graph()[source_node_index];
-        let Some(ref kind) = source_node.kind else {
-            continue;
-        };
-        if matches!(kind, NodeKind::Source(_)) {
-            sources.insert(source_node.handle.clone());
-        }
-        collect_ancestor_sources_recursive(dag, source_node_index, sources);
     }
 }
 
