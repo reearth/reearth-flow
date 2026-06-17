@@ -461,3 +461,64 @@ table "jobs" {
     columns = [column.workspace_id, column.debug]
   }
 }
+
+table "projects" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "workspace_id" {
+    type = text
+  }
+  column "workflow_id" {
+    type    = text
+    default = ""
+  }
+  column "name" {
+    type    = text
+    default = ""
+  }
+  column "description" {
+    type    = text
+    default = ""
+  }
+  column "is_archived" {
+    type    = boolean
+    default = false
+  }
+  column "is_basic_auth_active" {
+    type    = boolean
+    default = false
+  }
+  column "basic_auth_username" {
+    type    = text
+    default = ""
+  }
+  column "basic_auth_password" {
+    type    = text
+    default = ""
+  }
+  column "shared_token" {
+    type = text
+    null = true
+  }
+  column "updated_at" {
+    type = timestamptz
+  }
+  column "is_locked" {
+    type    = boolean
+    default = false
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "projects_workspace_id_idx" {
+    columns = [column.workspace_id]
+  }
+  index "projects_workspace_id_is_archived_idx" {
+    columns = [column.workspace_id, column.is_archived]
+  }
+}

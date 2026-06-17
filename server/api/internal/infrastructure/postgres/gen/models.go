@@ -78,6 +78,21 @@ type Parameter struct {
 	UpdatedAt    time.Time
 }
 
+type Project struct {
+	ID                string
+	WorkspaceID       string
+	WorkflowID        string
+	Name              string
+	Description       string
+	IsArchived        bool
+	IsBasicAuthActive bool
+	BasicAuthUsername string
+	BasicAuthPassword string
+	SharedToken       *string
+	UpdatedAt         time.Time
+	IsLocked          bool
+}
+
 type ProjectAccess struct {
 	ID        string
 	ProjectID string

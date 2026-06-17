@@ -9,12 +9,19 @@ import (
 )
 
 type Querier interface {
+	CountProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
+	// Flow's project domain has no publishment-status concept. The Mongo impl
+	// counted a raw `publishmentstatus` field that flow never writes (it is not in
+	// mongodoc.ProjectDocument), so it effectively returns 0 for flow-owned data.
+	// Mirror that faithfully rather than inventing an unowned column.
+	CountPublicProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	DeleteDeployment(ctx context.Context, id string) error
 	DeleteJob(ctx context.Context, id string) error
 	DeleteJobsByProject(ctx context.Context, projectID *string) error
 	DeleteParameter(ctx context.Context, id string) error
 	DeleteParametersByIDs(ctx context.Context, dollar_1 []string) error
 	DeleteParametersByProject(ctx context.Context, projectID string) error
+	DeleteProject(ctx context.Context, id string) error
 	DeleteTrigger(ctx context.Context, id string) error
 	DeleteWorkerConfig(ctx context.Context, id string) error
 	DeleteWorkflow(ctx context.Context, id string) error
@@ -25,6 +32,7 @@ type Querier interface {
 	GetJob(ctx context.Context, id string) (Job, error)
 	GetNodeExecutionByJobNodeID(ctx context.Context, arg GetNodeExecutionByJobNodeIDParams) (NodeExecution, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
+	GetProject(ctx context.Context, id string) (Project, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
 	GetProjectAccessByToken(ctx context.Context, token string) (ProjectAccess, error)
 	GetTrigger(ctx context.Context, id string) (Trigger, error)
@@ -35,6 +43,7 @@ type Querier interface {
 	ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error)
 	ListParametersByIDs(ctx context.Context, dollar_1 []string) ([]Parameter, error)
 	ListParametersByProject(ctx context.Context, projectID string) ([]Parameter, error)
+	ListProjectsByIDs(ctx context.Context, dollar_1 []string) ([]Project, error)
 	ListTriggersByDeployment(ctx context.Context, deploymentID string) ([]Trigger, error)
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
 	ListWorkerConfigs(ctx context.Context) ([]WorkerConfig, error)
@@ -46,6 +55,7 @@ type Querier interface {
 	UpsertJob(ctx context.Context, arg UpsertJobParams) error
 	UpsertNodeExecution(ctx context.Context, arg UpsertNodeExecutionParams) error
 	UpsertParameter(ctx context.Context, arg UpsertParameterParams) error
+	UpsertProject(ctx context.Context, arg UpsertProjectParams) error
 	UpsertProjectAccess(ctx context.Context, arg UpsertProjectAccessParams) error
 	UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) error
 	UpsertWorkerConfig(ctx context.Context, arg UpsertWorkerConfigParams) error
