@@ -162,8 +162,25 @@ async fn probe_schema(
     if output.status.success() {
         (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
     } else {
+        // `output()` buffers all of stderr in memory; embedding it verbatim
+        // could allocate unboundedly on a chatty failure. Keep only the tail
+        // (where the actionable error usually is) for the JSON response; the
+        // full logs remain in the container's stdout/stderr.
+        const MAX_STDERR: usize = 8 * 1024;
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let detail = stderr.trim();
+        let trimmed = stderr.trim();
+        let detail = if trimmed.len() > MAX_STDERR {
+            // Move the cut point up to the next UTF-8 char boundary so the
+            // byte slice never lands mid-character.
+            let mut cut = trimmed.len() - MAX_STDERR;
+            while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
+                cut += 1;
+            }
+            format!("...(truncated) {}", &trimmed[cut..])
+        } else {
+            trimmed.to_string()
+        };
+        let detail = detail.as_str();
         let error = if detail.is_empty() {
             format!("worker exit: {}", output.status)
         } else {

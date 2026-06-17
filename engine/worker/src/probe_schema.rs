@@ -2,7 +2,7 @@ use std::{collections::HashMap, io, str::FromStr};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use indexmap::IndexMap;
-use reearth_flow_common::uri::Uri;
+use reearth_flow_common::uri::{Protocol, Uri};
 use reearth_flow_runtime::{
     dag_schemas::DagSchemas, node::SYSTEM_ACTION_FACTORY_MAPPINGS,
     schema_infer::infer_with_sampling,
@@ -29,7 +29,8 @@ pub fn build_probe_schema_command() -> Command {
              workflow's source readers are run against their datasets (sampling the first N \
              features) to discover real attribute names and types, then transforms are propagated \
              through the DAG. The resulting JSON report is written to `--report-url` (e.g. a \
-             gs:// URI) via the storage resolver. Nothing is printed to stdout.",
+             gs:// URI) via the storage resolver; the report itself is not printed to stdout \
+             (worker logs still go to stdout).",
         )
         .arg(workflow_arg())
         .arg(vars_arg())
@@ -41,7 +42,7 @@ fn workflow_arg() -> Arg {
     Arg::new("workflow")
         .long("workflow")
         .help("Workflow file location. Use '-' to read from stdin.")
-        .env("REEARTH_FLOW_WORKFLOW")
+        .env("FLOW_WORKER_WORKFLOW")
         .required(true)
         .display_order(1)
 }
@@ -124,7 +125,15 @@ impl ProbeSchemaCommand {
             (content, None)
         } else {
             let path = Uri::from_str(self.workflow.as_str()).map_err(Error::init)?;
-            let base_dir = path.path().parent().map(|p| p.to_path_buf());
+            // Only derive a base directory for local `file://` workflows. For
+            // remote workflows (e.g. `gs://`) leave it `None` so `!include`
+            // expansion cannot read worker-local files (incl. via `..`
+            // traversal). Mirrors `RunWorkerCommand::download_workflow`.
+            let base_dir = if path.protocol() == Protocol::File {
+                path.path().parent().map(|p| p.to_path_buf())
+            } else {
+                None
+            };
             let storage = storage_resolver.resolve(&path).map_err(Error::init)?;
             let bytes = storage
                 .get_sync(path.path().as_path())
