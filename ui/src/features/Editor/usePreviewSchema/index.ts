@@ -73,16 +73,33 @@ export default ({
 
   const runProbe = useCallback(
     async (nodeId: string) => {
-      if (!currentProject) return;
+      if (!currentProject) {
+        console.debug("[previewSchema] runProbe skipped: no current project", {
+          nodeId,
+        });
+        return;
+      }
       const engineReadyWorkflow = createEngineReadyWorkflow(
         currentProject.name,
         workflowVariablesRef.current,
         rawWorkflowsRef.current,
       );
-      if (!engineReadyWorkflow) return;
+      if (!engineReadyWorkflow) {
+        console.debug(
+          "[previewSchema] runProbe skipped: engine-ready workflow could not be built",
+          { nodeId, workflowCount: rawWorkflowsRef.current?.length },
+        );
+        return;
+      }
 
       // Immediate feedback while the mutation is in flight (jobId filled in next).
       setProbeStatus(nodeId, "", "running");
+
+      console.debug("[previewSchema] firing previewSchema mutation", {
+        nodeId,
+        projectId: currentProject.id,
+        sampleSize,
+      });
 
       const data = await previewSchema(
         currentProject.id,
@@ -92,9 +109,18 @@ export default ({
       );
 
       if (!data.job?.id) {
+        console.debug(
+          "[previewSchema] mutation returned no job (request failed)",
+          { nodeId },
+        );
         setProbeStatus(nodeId, "", "failed");
         return;
       }
+      console.debug("[previewSchema] mutation succeeded", {
+        nodeId,
+        jobId: data.job.id,
+        status: data.job.status,
+      });
       setProbeStatus(nodeId, data.job.id, "running");
     },
     [currentProject, previewSchema, sampleSize, setProbeStatus],
@@ -106,10 +132,28 @@ export default ({
    */
   const handleNodeParamsSaved = useCallback(
     (node: Node) => {
-      if (node.type !== "reader") return;
-      if (!node.data.params || Object.keys(node.data.params).length === 0) {
+      console.debug("[previewSchema] node params saved", {
+        nodeId: node.id,
+        type: node.type,
+        paramKeys: node.data.params ? Object.keys(node.data.params) : [],
+      });
+      if (node.type !== "reader") {
+        console.debug("[previewSchema] skipped: node is not a reader", {
+          nodeId: node.id,
+          type: node.type,
+        });
         return;
       }
+      if (!node.data.params || Object.keys(node.data.params).length === 0) {
+        console.debug("[previewSchema] skipped: reader has no params set", {
+          nodeId: node.id,
+        });
+        return;
+      }
+      console.debug(
+        `[previewSchema] scheduling probe in ${PROBE_DEBOUNCE_MS}ms`,
+        { nodeId: node.id },
+      );
       const existing = debounceTimers.current.get(node.id);
       if (existing) clearTimeout(existing);
       debounceTimers.current.set(
@@ -125,14 +169,29 @@ export default ({
 
   const handleProbeComplete = useCallback(
     async (nodeId: string, job: Job) => {
+      console.debug("[previewSchema] job completed", {
+        nodeId,
+        jobId: job.id,
+        outputURLs: job.outputURLs,
+      });
       const url = findSchemaReportUrl(job.outputURLs);
       if (!url) {
+        console.debug(
+          "[previewSchema] no schema-report URL in outputURLs → failed",
+          { nodeId },
+        );
         setProbeStatus(nodeId, job.id, "failed");
         return;
       }
       try {
         const report = await fetchSchemaReport(url);
         const nodeReport = report.nodes[nodeId];
+        console.debug("[previewSchema] fetched report", {
+          nodeId,
+          url,
+          nodeFound: !!nodeReport,
+          nodeIdsInReport: Object.keys(report.nodes),
+        });
         if (nodeReport) {
           onPersistSchemaRef.current(
             nodeId,
@@ -144,7 +203,12 @@ export default ({
           );
         }
         clearProbe(nodeId);
-      } catch {
+      } catch (err) {
+        console.debug("[previewSchema] failed to fetch/parse report", {
+          nodeId,
+          url,
+          err,
+        });
         setProbeStatus(nodeId, job.id, "failed");
       }
     },
@@ -153,6 +217,7 @@ export default ({
 
   const handleProbeError = useCallback(
     (nodeId: string) => {
+      console.debug("[previewSchema] job failed/cancelled", { nodeId });
       setProbes((prev) => {
         const existing = prev[nodeId];
         return {

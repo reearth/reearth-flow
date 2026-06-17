@@ -12,7 +12,7 @@ export function useSubscription(
 ) {
   return useQuery({
     queryKey: [SubscriptionKeys[subscriptionKey], secondaryCacheKey],
-    queryFn: () => undefined,
+    queryFn: () => null,
     gcTime: Infinity,
     staleTime: Infinity,
     enabled: !disabled,
