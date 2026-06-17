@@ -22,6 +22,15 @@ type EdgeExecution struct {
 	IntermediateDataUrl *string
 }
 
+type NodeExecution struct {
+	ID          string
+	JobID       string
+	NodeID      string
+	Status      string
+	StartedAt   *time.Time
+	CompletedAt *time.Time
+}
+
 type Parameter struct {
 	ID           string
 	ProjectID    string

@@ -224,6 +224,43 @@ table "edge_executions" {
   }
 }
 
+table "node_executions" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "job_id" {
+    type = text
+  }
+  column "node_id" {
+    type = text
+  }
+  column "status" {
+    type    = text
+    default = "PENDING"
+  }
+  column "started_at" {
+    type = timestamptz
+    null = true
+  }
+  column "completed_at" {
+    type = timestamptz
+    null = true
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "node_executions_job_id_idx" {
+    columns = [column.job_id]
+  }
+  index "node_executions_job_id_node_id_idx" {
+    columns = [column.job_id, column.node_id]
+  }
+}
+
 table "worker_configs" {
   schema = schema.public
 

@@ -28,6 +28,7 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 		ProjectAccess: NewProjectAccess(client),
 		Workflow:      NewWorkflow(client),
 		EdgeExecution: NewEdgeExecution(client),
+		NodeExecution: NewNodeExecution(client),
 		Lock:          lock,
 		Transaction:   client,
 		Workspace:     account.Workspace,
@@ -59,7 +60,6 @@ func mustComplete(c *repo.Container) error {
 	check("AuthRequest", c.AuthRequest != nil)
 	check("Deployment", c.Deployment != nil)
 	check("Job", c.Job != nil)
-	check("NodeExecution", c.NodeExecution != nil)
 	check("Project", c.Project != nil)
 	if len(missing) > 0 {
 		return fmt.Errorf("postgres backend not yet implemented for: %v (set DB_DRIVER=mongo)", missing)
