@@ -10,6 +10,8 @@ import (
 
 type Querier interface {
 	DeleteDeployment(ctx context.Context, id string) error
+	DeleteJob(ctx context.Context, id string) error
+	DeleteJobsByProject(ctx context.Context, projectID *string) error
 	DeleteParameter(ctx context.Context, id string) error
 	DeleteParametersByIDs(ctx context.Context, dollar_1 []string) error
 	DeleteParametersByProject(ctx context.Context, projectID string) error
@@ -20,6 +22,7 @@ type Querier interface {
 	GetDeployment(ctx context.Context, id string) (Deployment, error)
 	GetEdgeExecution(ctx context.Context, id string) (EdgeExecution, error)
 	GetEdgeExecutionByJobEdgeID(ctx context.Context, arg GetEdgeExecutionByJobEdgeIDParams) (EdgeExecution, error)
+	GetJob(ctx context.Context, id string) (Job, error)
 	GetNodeExecutionByJobNodeID(ctx context.Context, arg GetNodeExecutionByJobNodeIDParams) (NodeExecution, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
@@ -29,6 +32,7 @@ type Querier interface {
 	GetWorkflow(ctx context.Context, id string) (Workflow, error)
 	ListDeploymentsByIDs(ctx context.Context, dollar_1 []string) ([]Deployment, error)
 	ListEdgeExecutionsByJobID(ctx context.Context, jobID string) ([]EdgeExecution, error)
+	ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error)
 	ListParametersByIDs(ctx context.Context, dollar_1 []string) ([]Parameter, error)
 	ListParametersByProject(ctx context.Context, projectID string) ([]Parameter, error)
 	ListTriggersByDeployment(ctx context.Context, deploymentID string) ([]Trigger, error)
@@ -39,6 +43,7 @@ type Querier interface {
 	UpsertConfigAuth(ctx context.Context, arg UpsertConfigAuthParams) error
 	UpsertDeployment(ctx context.Context, arg UpsertDeploymentParams) error
 	UpsertEdgeExecution(ctx context.Context, arg UpsertEdgeExecutionParams) error
+	UpsertJob(ctx context.Context, arg UpsertJobParams) error
 	UpsertNodeExecution(ctx context.Context, arg UpsertNodeExecutionParams) error
 	UpsertParameter(ctx context.Context, arg UpsertParameterParams) error
 	UpsertProjectAccess(ctx context.Context, arg UpsertProjectAccessParams) error

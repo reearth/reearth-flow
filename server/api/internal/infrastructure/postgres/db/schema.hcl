@@ -370,3 +370,94 @@ table "deployments" {
     columns = [column.workspace_id, column.is_head]
   }
 }
+
+table "jobs" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "workspace_id" {
+    type = text
+  }
+  column "deployment_id" {
+    type = text
+    null = true
+  }
+  column "project_id" {
+    type = text
+    null = true
+  }
+  column "project_version" {
+    type = integer
+    null = true
+  }
+  column "gcp_job_id" {
+    type    = text
+    default = ""
+  }
+  column "logs_url" {
+    type    = text
+    default = ""
+  }
+  column "worker_logs_url" {
+    type    = text
+    default = ""
+  }
+  column "user_facing_logs_url" {
+    type    = text
+    default = ""
+  }
+  column "status" {
+    type    = text
+    default = ""
+  }
+  column "batch_status" {
+    type = text
+    null = true
+  }
+  column "worker_status" {
+    type = text
+    null = true
+  }
+  column "started_at" {
+    type = timestamptz
+  }
+  column "completed_at" {
+    type = timestamptz
+    null = true
+  }
+  column "metadata_url" {
+    type    = text
+    default = ""
+  }
+  column "output_urls" {
+    type = jsonb
+    null = true
+  }
+  column "debug" {
+    type = boolean
+    null = true
+  }
+  column "parameters" {
+    type = jsonb
+    null = true
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "jobs_workspace_id_idx" {
+    columns = [column.workspace_id]
+  }
+  index "jobs_deployment_id_idx" {
+    columns = [column.deployment_id]
+  }
+  index "jobs_project_id_idx" {
+    columns = [column.project_id]
+  }
+  index "jobs_workspace_id_debug_idx" {
+    columns = [column.workspace_id, column.debug]
+  }
+}

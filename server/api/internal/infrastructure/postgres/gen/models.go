@@ -34,6 +34,27 @@ type EdgeExecution struct {
 	IntermediateDataUrl *string
 }
 
+type Job struct {
+	ID                string
+	WorkspaceID       string
+	DeploymentID      *string
+	ProjectID         *string
+	ProjectVersion    *int32
+	GcpJobID          string
+	LogsUrl           string
+	WorkerLogsUrl     string
+	UserFacingLogsUrl string
+	Status            string
+	BatchStatus       *string
+	WorkerStatus      *string
+	StartedAt         time.Time
+	CompletedAt       *time.Time
+	MetadataUrl       string
+	OutputUrls        []byte
+	Debug             *bool
+	Parameters        []byte
+}
+
 type NodeExecution struct {
 	ID          string
 	JobID       string
