@@ -55,7 +55,8 @@ type (
 		Tracer          string `pp:",omitempty"`
 		Web_FaviconURL  string `pp:",omitempty"`
 		Web_Title       string `pp:",omitempty"`
-		WorkflowBaseURL string `default:"http://localhost:8080/workflows"`
+		WorkflowBaseURL      string `default:"http://localhost:8080/workflows"`
+		ActionsSchemaBaseURL string `envconfig:"ACTIONS_SCHEMA_BASE_URL" default:"https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/" pp:",omitempty"`
 
 		// log
 		Redis_URL string `pp:",omitempty"`

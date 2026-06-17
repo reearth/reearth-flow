@@ -92,8 +92,6 @@ func (e *loadError) Error() string { return e.err.Error() }
 func (e *loadError) Unwrap() error { return e.err }
 
 var (
-	actionsDataMap = make(map[string]ActionsData)
-	mutex          sync.RWMutex
 	httpClient     = &http.Client{Timeout: 10 * time.Second}
 	supportedLangs = map[string]bool{
 		"en": true,
@@ -104,7 +102,29 @@ var (
 	}
 )
 
-func loadActionsData(lang string) (ActionsData, error) {
+type ActionsHandler struct {
+	baseURL        string
+	actionsDataMap map[string]ActionsData
+	mu             sync.RWMutex
+}
+
+func NewActionsHandler(baseURL string) *ActionsHandler {
+	return &ActionsHandler{
+		baseURL:        baseURL,
+		actionsDataMap: make(map[string]ActionsData),
+	}
+}
+
+func (h *ActionsHandler) init(ctx context.Context) error {
+	for lang := range supportedLangs {
+		if _, err := h.loadActionsData(lang); err != nil {
+			log.Errorf("Failed to load actions data for language %s: %v", lang, err)
+		}
+	}
+	return nil
+}
+
+func (h *ActionsHandler) loadActionsData(lang string) (ActionsData, error) {
 	if lang != "" && !supportedLangs[lang] {
 		return ActionsData{}, &loadError{err: fmt.Errorf("unsupported language: %s", lang), status: http.StatusBadRequest}
 	}
@@ -112,24 +132,24 @@ func loadActionsData(lang string) (ActionsData, error) {
 	cacheKey := lang
 
 	// Try to get from cache first using read lock
-	mutex.RLock()
-	if data, exists := actionsDataMap[cacheKey]; exists {
-		mutex.RUnlock()
+	h.mu.RLock()
+	if data, exists := h.actionsDataMap[cacheKey]; exists {
+		h.mu.RUnlock()
 		return data, nil
 	}
-	mutex.RUnlock()
+	h.mu.RUnlock()
 
 	// Fetch from GitHub without holding any lock so other requests are not blocked.
-	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
 	filename := "actions.json"
 	if lang != "" {
 		filename = fmt.Sprintf("actions_%s.json", lang)
 	}
+	url := h.baseURL + filename
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	reqCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+filename, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
 	if err != nil {
 		return ActionsData{}, &loadError{err: err, status: http.StatusBadGateway}
 	}
@@ -145,7 +165,7 @@ func loadActionsData(lang string) (ActionsData, error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return ActionsData{}, &loadError{err: fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, baseURL+filename), status: http.StatusBadGateway}
+		return ActionsData{}, &loadError{err: fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, url), status: http.StatusBadGateway}
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -164,12 +184,12 @@ func loadActionsData(lang string) (ActionsData, error) {
 
 	// Store in cache under write lock; double-check in case a concurrent
 	// goroutine already populated the same key while we were fetching.
-	mutex.Lock()
-	defer mutex.Unlock()
-	if data, exists := actionsDataMap[cacheKey]; exists {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if data, exists := h.actionsDataMap[cacheKey]; exists {
 		return data, nil
 	}
-	actionsDataMap[cacheKey] = newData
+	h.actionsDataMap[cacheKey] = newData
 	return newData, nil
 }
 
@@ -187,13 +207,13 @@ func loadActionsData(lang string) (ActionsData, error) {
 // @Failure      500       {object}  object         "Internal server error"
 // @Failure      502       {object}  object         "Upstream fetch error"
 // @Router       /actions [get]
-func listActions(c echo.Context) error {
+func (h *ActionsHandler) listActions(c echo.Context) error {
 	query := c.QueryParam("q")
 	category := c.QueryParam("category")
 	actionType := c.QueryParam("type")
 	lang := c.QueryParam("lang")
 
-	data, err := loadActionsData(lang)
+	data, err := h.loadActionsData(lang)
 	if err != nil {
 		status := http.StatusInternalServerError
 		var le *loadError
@@ -235,11 +255,11 @@ func listActions(c echo.Context) error {
 // @Failure      500   {object}  object             "Internal server error"
 // @Failure      502   {object}  object             "Upstream fetch error"
 // @Router       /actions/segregated [get]
-func getSegregatedActions(c echo.Context) error {
+func (h *ActionsHandler) getSegregatedActions(c echo.Context) error {
 	query := c.QueryParam("q")
 	lang := c.QueryParam("lang")
 
-	data, err := loadActionsData(lang)
+	data, err := h.loadActionsData(lang)
 	if err != nil {
 		status := http.StatusInternalServerError
 		var le *loadError
@@ -356,11 +376,11 @@ func containsCaseInsensitive(slice []string, s string) bool {
 // @Failure      500   {object}  object  "Internal server error"
 // @Failure      502   {object}  object  "Upstream fetch error"
 // @Router       /actions/{id} [get]
-func getActionDetails(c echo.Context) error {
+func (h *ActionsHandler) getActionDetails(c echo.Context) error {
 	id := c.Param("id")
 	lang := c.QueryParam("lang")
 
-	data, err := loadActionsData(lang)
+	data, err := h.loadActionsData(lang)
 	if err != nil {
 		status := http.StatusInternalServerError
 		var le *loadError
@@ -382,8 +402,8 @@ func getActionDetails(c echo.Context) error {
 	return c.JSON(http.StatusNotFound, map[string]string{"error": "Action not found"})
 }
 
-func SetupActionRoutes(e *echo.Echo) {
-	e.GET("/actions", listActions)
-	e.GET("/actions/segregated", getSegregatedActions)
-	e.GET("/actions/:id", getActionDetails)
+func (h *ActionsHandler) SetupRoutes(e *echo.Echo) {
+	e.GET("/actions", h.listActions)
+	e.GET("/actions/segregated", h.getSegregatedActions)
+	e.GET("/actions/:id", h.getActionDetails)
 }
