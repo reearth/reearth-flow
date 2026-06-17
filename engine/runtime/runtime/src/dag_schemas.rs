@@ -309,6 +309,41 @@ impl DagSchemas {
         sources
     }
 
+    /// For every node, the set of `Source` nodes that are its strict ancestors,
+    /// indexed by `NodeIndex::index()`.
+    ///
+    /// Single iterative pass in topological order (mirrors
+    /// `schema_infer::infer_and_validate`). Replaces the former per-node
+    /// recursive `collect_ancestor_sources`, which recursed to depth = ancestor
+    /// chain length (stack overflow on long workflows) and cost O(N^2). A
+    /// predecessor whose `kind` is `None` is a barrier: it and its ancestors are
+    /// excluded, exactly as the old recursive `continue`.
+    pub fn affecting_sources_per_node(
+        &self,
+    ) -> Result<Vec<HashSet<NodeHandle>>, crate::errors::ExecutionError> {
+        let graph = self.graph();
+        let order = petgraph::algo::toposort(graph, None)
+            .map_err(|_| crate::errors::ExecutionError::SchemaInferenceCycle)?;
+
+        let mut result: Vec<HashSet<NodeHandle>> = vec![HashSet::new(); graph.node_count()];
+        for node_index in order {
+            let mut acc: HashSet<NodeHandle> = HashSet::new();
+            for edge in graph.edges_directed(node_index, Direction::Incoming) {
+                let pred_index = edge.source();
+                let pred = &graph[pred_index];
+                let Some(ref kind) = pred.kind else {
+                    continue; // kind == None barrier
+                };
+                acc.extend(result[pred_index.index()].iter().cloned());
+                if matches!(kind, NodeKind::Source(_)) {
+                    acc.insert(pred.handle.clone());
+                }
+            }
+            result[node_index.index()] = acc;
+        }
+        Ok(result)
+    }
+
     pub fn remove_edge(&mut self, edge: petgraph::graph::EdgeIndex) {
         self.graph.remove_edge(edge);
     }
@@ -566,5 +601,229 @@ fn collect_ancestor_sources_recursive(
             sources.insert(source_node.handle.clone());
         }
         collect_ancestor_sources_recursive(dag, source_node_index, sources);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::{HashMap, HashSet};
+
+    use reearth_flow_types::workflow::{Node, NodeEntity};
+    use uuid::Uuid;
+
+    use crate::event::EventHub;
+    use crate::executor_operation::NodeContext;
+    use crate::node::{Processor, ProcessorFactory, Source, SourceFactory, DEFAULT_PORT};
+
+    #[derive(Debug, Clone)]
+    struct StubSource;
+    impl SourceFactory for StubSource {
+        fn name(&self) -> &str {
+            "StubSource"
+        }
+        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+            None
+        }
+        fn get_output_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn build(
+            &self,
+            _ctx: NodeContext,
+            _event_hub: EventHub,
+            _action: String,
+            _with: Option<HashMap<String, serde_json::Value>>,
+            _state: Option<Vec<u8>>,
+        ) -> Result<Box<dyn Source>, crate::errors::BoxedError> {
+            Err("stub".into())
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    struct StubProc;
+    impl ProcessorFactory for StubProc {
+        fn name(&self) -> &str {
+            "StubProc"
+        }
+        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+            None
+        }
+        fn get_input_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn get_output_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn build(
+            &self,
+            _ctx: NodeContext,
+            _event_hub: EventHub,
+            _action: String,
+            _with: Option<HashMap<String, serde_json::Value>>,
+        ) -> Result<Box<dyn Processor>, crate::errors::BoxedError> {
+            unreachable!()
+        }
+    }
+
+    fn dummy_node(name: &str) -> Node {
+        Node::Action {
+            entity: NodeEntity {
+                id: Uuid::new_v4(),
+                name: name.to_string(),
+                with: None,
+            },
+            action: name.to_string(),
+        }
+    }
+
+    fn empty_dag() -> DagSchemas {
+        let g = reearth_flow_types::workflow::Graph {
+            id: Uuid::new_v4(),
+            name: "t".to_string(),
+            nodes: vec![],
+            edges: vec![],
+        };
+        DagSchemas::from_graph(&g, &HashMap::new(), &None)
+    }
+
+    enum K {
+        Source,
+        Proc,
+        None_,
+    }
+
+    fn add(dag: &mut DagSchemas, name: &str, k: K) -> NodeIndex {
+        let kind = match k {
+            K::Source => Some(NodeKind::Source(Box::new(StubSource))),
+            K::Proc => Some(NodeKind::Processor(Box::new(StubProc))),
+            K::None_ => None,
+        };
+        dag.add_node(SchemaNodeType::new(
+            NodeId::new(Uuid::new_v4().to_string()),
+            name.to_string(),
+            dummy_node(name),
+            kind,
+            None,
+            None,
+        ))
+    }
+
+    fn link(dag: &mut DagSchemas, from: NodeIndex, to: NodeIndex) {
+        dag.connect_with_index(
+            EdgeId::new(Uuid::new_v4().to_string()),
+            from,
+            &DEFAULT_PORT,
+            to,
+            &DEFAULT_PORT,
+            None,
+        );
+    }
+
+    fn reference(dag: &DagSchemas, node: NodeIndex, out: &mut HashSet<NodeHandle>) {
+        for edge in dag.graph().edges_directed(node, Direction::Incoming) {
+            let src = edge.source();
+            let n = &dag.graph()[src];
+            let Some(ref kind) = n.kind else { continue };
+            if matches!(kind, NodeKind::Source(_)) {
+                out.insert(n.handle.clone());
+            }
+            reference(dag, src, out);
+        }
+    }
+
+    fn reference_all(dag: &DagSchemas) -> Vec<HashSet<NodeHandle>> {
+        (0..dag.graph().node_count())
+            .map(|i| {
+                let mut s = HashSet::new();
+                reference(dag, NodeIndex::new(i), &mut s);
+                s
+            })
+            .collect()
+    }
+
+    #[test]
+    fn chain_collects_single_source() {
+        let mut dag = empty_dag();
+        let s = add(&mut dag, "s", K::Source);
+        let a = add(&mut dag, "a", K::Proc);
+        let b = add(&mut dag, "b", K::Proc);
+        link(&mut dag, s, a);
+        link(&mut dag, a, b);
+        let got = dag.affecting_sources_per_node().unwrap();
+        let s_handle = dag.graph()[s].handle.clone();
+        assert!(got[s.index()].is_empty());
+        assert_eq!(got[a.index()], HashSet::from([s_handle.clone()]));
+        assert_eq!(got[b.index()], HashSet::from([s_handle]));
+    }
+
+    #[test]
+    fn diamond_unions_sources() {
+        let mut dag = empty_dag();
+        let s1 = add(&mut dag, "s1", K::Source);
+        let s2 = add(&mut dag, "s2", K::Source);
+        let a = add(&mut dag, "a", K::Proc);
+        let b = add(&mut dag, "b", K::Proc);
+        let c = add(&mut dag, "c", K::Proc);
+        link(&mut dag, s1, a);
+        link(&mut dag, a, c);
+        link(&mut dag, s2, b);
+        link(&mut dag, b, c);
+        let got = dag.affecting_sources_per_node().unwrap();
+        let h1 = dag.graph()[s1].handle.clone();
+        let h2 = dag.graph()[s2].handle.clone();
+        assert_eq!(got[c.index()], HashSet::from([h1, h2]));
+    }
+
+    #[test]
+    fn none_kind_predecessor_is_a_barrier() {
+        let mut dag = empty_dag();
+        let s = add(&mut dag, "s", K::Source);
+        let bar = add(&mut dag, "bar", K::None_);
+        let c = add(&mut dag, "c", K::Proc);
+        link(&mut dag, s, bar);
+        link(&mut dag, bar, c);
+        let got = dag.affecting_sources_per_node().unwrap();
+        assert!(got[c.index()].is_empty());
+    }
+
+    #[test]
+    fn differential_matches_reference_on_many_shapes() {
+        for shape in 0..4u8 {
+            let mut dag = empty_dag();
+            let s1 = add(&mut dag, "s1", K::Source);
+            let p1 = add(&mut dag, "p1", K::Proc);
+            link(&mut dag, s1, p1);
+            if shape >= 1 {
+                let s2 = add(&mut dag, "s2", K::Source);
+                link(&mut dag, s2, p1);
+            }
+            if shape >= 2 {
+                let p2 = add(&mut dag, "p2", K::Proc);
+                link(&mut dag, p1, p2);
+            }
+            if shape >= 3 {
+                let bar = add(&mut dag, "bar", K::None_);
+                let z = add(&mut dag, "z", K::Proc);
+                link(&mut dag, s1, bar);
+                link(&mut dag, bar, z);
+            }
+            let got = dag.affecting_sources_per_node().unwrap();
+            let want = reference_all(&dag);
+            assert_eq!(got, want, "iterative != reference for shape {shape}");
+        }
+    }
+
+    #[test]
+    fn cycle_returns_schema_inference_cycle() {
+        let mut dag = empty_dag();
+        let a = add(&mut dag, "a", K::Proc);
+        let b = add(&mut dag, "b", K::Proc);
+        link(&mut dag, a, b);
+        link(&mut dag, b, a);
+        assert!(matches!(
+            dag.affecting_sources_per_node(),
+            Err(crate::errors::ExecutionError::SchemaInferenceCycle)
+        ));
     }
 }
