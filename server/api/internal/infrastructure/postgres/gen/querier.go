@@ -14,12 +14,14 @@ type Querier interface {
 	DeleteParametersByProject(ctx context.Context, projectID string) error
 	DeleteTrigger(ctx context.Context, id string) error
 	DeleteWorkerConfig(ctx context.Context, id string) error
+	DeleteWorkflow(ctx context.Context, id string) error
 	GetConfig(ctx context.Context) (GetConfigRow, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
 	GetProjectAccessByToken(ctx context.Context, token string) (ProjectAccess, error)
 	GetTrigger(ctx context.Context, id string) (Trigger, error)
 	GetWorkerConfig(ctx context.Context, id string) (WorkerConfig, error)
+	GetWorkflow(ctx context.Context, id string) (Workflow, error)
 	ListParametersByIDs(ctx context.Context, dollar_1 []string) ([]Parameter, error)
 	ListParametersByProject(ctx context.Context, projectID string) ([]Parameter, error)
 	ListTriggersByDeployment(ctx context.Context, deploymentID string) ([]Trigger, error)
@@ -32,6 +34,7 @@ type Querier interface {
 	UpsertProjectAccess(ctx context.Context, arg UpsertProjectAccessParams) error
 	UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) error
 	UpsertWorkerConfig(ctx context.Context, arg UpsertWorkerConfigParams) error
+	UpsertWorkflow(ctx context.Context, arg UpsertWorkflowParams) error
 }
 
 var _ Querier = (*Queries)(nil)

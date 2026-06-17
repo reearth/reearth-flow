@@ -66,3 +66,10 @@ type WorkerConfig struct {
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
 }
+
+type Workflow struct {
+	ID          string
+	ProjectID   string
+	WorkspaceID string
+	Url         string
+}

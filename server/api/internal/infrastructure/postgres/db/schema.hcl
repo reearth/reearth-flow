@@ -166,6 +166,35 @@ table "project_accesses" {
   }
 }
 
+table "workflows" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "project_id" {
+    type = text
+  }
+  column "workspace_id" {
+    type = text
+  }
+  column "url" {
+    type    = text
+    default = ""
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "workflows_workspace_id_idx" {
+    columns = [column.workspace_id]
+  }
+  index "workflows_project_id_idx" {
+    columns = [column.project_id]
+  }
+}
+
 table "worker_configs" {
   schema = schema.public
 
