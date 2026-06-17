@@ -319,11 +319,109 @@ StatisticsCalculator
 
 <!-- Session 5 -->
 
+```
+DimensionFilter
+  name:    → "Dimension Filter"
+  desc:    title-case — "Filter Features by Geometry Dimension"; suggest "Routes features
+             to output ports based on the number of geometry dimensions."
+  ports:   inputPorts `default` — global note
+  tags:    ["2d", "3d"] — `2d` not in vocabulary; suggest ["3d", "geometry"]
+
+FeatureFilter
+  name:    → "Feature Filter"
+  desc:    title-case — "Filter Features Based on Custom Conditions"; suggest "Routes
+             features to named output ports based on user-defined filter conditions."
+  params:  Condition.expr — title present, description missing (§3.3)
+           Condition.outputPort — title present, description missing (§3.3)
+  tags:    empty — 0 tags acceptable
+
+FeatureLodFilter
+  name:    → "Feature LOD Filter"
+  desc:    "routing them to appropriate output ports" references port behavior; suggest
+             "Filters features by Level of Detail (LOD), emitting each to the matching
+             LOD output port."
+  params:  filterKey — missing title (§3.3)
+  ports:   inputPorts `default` — global note
+           outputPorts up_to_lod0 through up_to_lod4 — snake_case violates §4.1; rename
+             to up-to-lod0 through up-to-lod4
+  tags:    ["lod", "citygml"] — `lod` not in vocabulary; suggest ["citygml"]
+
+FeatureTypeFilter
+  name:    → "Feature Type Filter"
+  desc:    not third-person singular — "Filter CityGML features by feature type"; suggest
+             "Filters CityGML features by their feature type."
+  params:  targetTypes — missing title (§3.3); description "Target feature types" too
+             brief — describe what values are valid (CityGML feature type strings)
+  ports:   inputPorts `default` — global note
+           outputPorts `default` (matched features) — needs semantic name; suggest `matched`
+  tags:    empty — suggest ["citygml"] (CityGML-specific action)
+
+InputRouter
+  name:    → "Input Router"
+  desc:    not verb-first — "Action for first port forwarding for sub-workflows."; suggest
+             "Forwards features from the parent workflow into a sub-workflow."
+  params:  schema-level description missing (§3.3)
+           routingPort — missing title and description (§3.3)
+  ports:   outputPorts `default` — global note
+
+OutputRouter
+  name:    → "Output Router"
+  desc:    not verb-first — "Action for last port forwarding for sub-workflows."; suggest
+             "Forwards features from a sub-workflow back to the parent workflow."
+  params:  schema-level description missing (§3.3)
+           routingPort — missing title and description (§3.3)
+  ports:   inputPorts `default` — global note
+
+SpatialFilter
+  name:    → "Spatial Filter"
+  desc:    title-case — "Filter Features by Spatial Relationship"; suggest "Filters
+             candidate features based on their spatial relationship to filter geometry."
+  params:  mergeFilterAttributes — description spans multiple conditional clauses covering
+             OR/AND mode behavior; exceeds 2-sentence guideline (§3.3)
+           ordering — alphabetical; suggest: predicate → passOnMultipleMatches →
+             mergeFilterAttributes → mergedAttributesPrefix → outputMatchCountAttribute
+             (§3.5)
+  tags:    empty — suggest ["spatial"]
+```
+
 ---
 
 ## Merge (3)
 
 <!-- Session 5 -->
+
+```
+FeatureJoiner
+  name:    → "Feature Joiner"
+  params:  conflictResolution, joinType, requestorAttribute, requestorAttributeValue,
+             supplierAttribute, supplierAttributeValue — all missing title (§3.3)
+           ordering — required `joinType` is not first; suggest: joinType →
+             requestorAttribute → supplierAttribute → requestorAttributeValue →
+             supplierAttributeValue → conflictResolution (§3.5)
+  ports:   unjoinedRequestor, unjoinedSupplier — camelCase violates §4.1; rename to
+             unjoined-requestor, unjoined-supplier
+  tags:    ["join"] — `join` not in vocabulary; remove (0 tags acceptable — name is
+             self-describing within Merge category)
+
+FeatureMerger
+  name:    → "Feature Merger"
+  params:  completeGrouped, requestorAttribute, requestorAttributeValue, supplierAttribute,
+             supplierAttributeValue — all missing title (§3.3)
+           requestorAttribute, requestorAttributeValue, supplierAttribute,
+             supplierAttributeValue — descriptions reference internal snake_case names
+             (requestor_attribute_value, requestor_attribute, etc.) instead of camelCase
+             param names; update to match schema key names (§3.3)
+           ordering — suggest: requestorAttribute → supplierAttribute →
+             requestorAttributeValue → supplierAttributeValue → completeGrouped (§3.5)
+  tags:    empty — 0 tags acceptable
+
+FeatureSorter
+  name:    → "Feature Sorter"
+  params:  attributes, order — both missing title (§3.3)
+  ports:   inputPorts `default`, outputPorts `default` — global note; rename both to
+             `features`
+  tags:    ["sort"] — `sort` not in vocabulary; remove (0 tags acceptable)
+```
 
 ---
 
