@@ -1,0 +1,418 @@
+# PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 02-bldg sub-graph.
+id: a7a69028-b9d9-4ef1-916a-db453fca2638
+name: PLATEAU6.BuildingQualityCheck-02-bldg
+nodes:
+  - id: 63341eb4-409d-4668-b338-2d1e5ab003fd
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
+  - id: 27bb6136-ff9f-4523-9b28-bf01e0e9f698
+    name: FeatureFilePathExtractor
+    type: action
+    action: FeatureFilePathExtractor
+    with:
+      sourceDataset: |
+        env.get("__value")["cityGmlPath"]
+      extractArchive: true
+      destPrefix: udx
+
+  - id: eb76867a-9d21-4c08-959b-abaf06bfadb6
+    name: FeatureFilterByGml
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["extension"] == "gml"
+          outputPort: default
+
+  - id: a650b6b7-d764-4eb8-aeb0-6dc123e52d26
+    name: FeatureSorterByName
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+        - name
+      order: ascending
+
+  - id: b229d8d1-f6c8-456a-b325-68f39a5fe82b
+    name: FeatureCounterIndex
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 1
+      outputAttribute: index
+
+  - id: 06437150-b04d-4b41-83fc-e5767ea35a23
+    name: FilePropertyExtractor
+    type: action
+    action: FilePropertyExtractor
+    with:
+      filePathAttribute: path
+
+  # Build one summary row per building GML file. Error columns are placeholders
+  # (0) until the matching building check is ported (see TODOs).
+  - id: 428129b3-ad69-4a18-bf99-25492d41ba26
+    name: AttributeMapperBuildingSummary
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: index
+        - attribute: Filename
+          expr:
+            type: flowExpr
+            value: attributes["path"].split("/")[-1]
+        # TODO: wire to a PLATEAU6 city-code validator
+        - attribute: "市区町村コードエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to a PLATEAU6 duplicate-building-id check (C-bldg-01)
+        - attribute: "C-bldg-01 エラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to a PLATEAU6 building-id format check
+        - attribute: "不正な建物ID"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to a PLATEAU6 L-bldg-02 check
+        - attribute: "L-bldg-02 エラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to a PLATEAU6 L-bldg-04,05 usage-attribute validator
+        - attribute: "L-bldg-04,05 エラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to a PLATEAU6 L-bldg-06 check
+        - attribute: "L-bldg-06 エラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to a PLATEAU6 BuildingInstallation geometry-type check (T-bldg-02)
+        - attribute: "T-bldg-02エラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to PLATEAU6 LOD0 surface checks
+        - attribute: "LOD0 面のエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD0 面の向きエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD0 面の交差"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to PLATEAU6 LOD1 surface/solid checks
+        - attribute: "LOD1 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD1 非水密立体"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD1 立体のエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to PLATEAU6 LOD2 surface/solid checks
+        - attribute: "LOD2 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to PLATEAU6 LOD3 surface/solid checks
+        - attribute: "LOD3 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD2 非水密立体"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD3 非水密立体"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD2 立体のエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD3 立体のエラー"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to a PLATEAU6 mesh-code (figure boundary) check
+        - attribute: "図郭不正"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to a PLATEAU6 BuildingPart LOD0-1 check
+        - attribute: "LOD0-1のBuildingPart"
+          expr:
+            type: flowExpr
+            value: "0"
+        # TODO: wire to PLATEAU6 solid-intersection checks
+        - attribute: "LOD1 立体の交差"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD2 立体の交差"
+          expr:
+            type: flowExpr
+            value: "0"
+        - attribute: "LOD3 立体の交差"
+          expr:
+            type: flowExpr
+            value: "0"
+
+  - id: 501a24e8-b919-4f3b-9706-9ae6228f2bfd
+    name: FeatureWriterCsv
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_検査結果一覧.csv
+
+  # Aggregate the per-file building error columns into the error-count summary.
+  # Each newAttribute name becomes a "name" entry in summary_bldg.json.
+  - id: 2eea35c1-6732-471a-bb39-4a03f01d411a
+    name: StatisticsCalculatorBuilding
+    type: action
+    action: StatisticsCalculator
+    with:
+      calculations:
+        - newAttribute: "C-bldg-01 エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("C-bldg-01 エラー", 0)
+        - newAttribute: "不正な建物ID"
+          expr:
+            type: flowExpr
+            value: attributes.get("不正な建物ID", 0)
+        - newAttribute: "市区町村コードエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("市区町村コードエラー", 0)
+        - newAttribute: "L-bldg-02 エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("L-bldg-02 エラー", 0)
+        - newAttribute: "L-bldg-04,05 エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("L-bldg-04,05 エラー", 0)
+        - newAttribute: "L-bldg-06 エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("L-bldg-06 エラー", 0)
+        - newAttribute: "LOD0 面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD0 面のエラー", 0)
+        - newAttribute: "LOD0 面の向きエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD0 面の向きエラー", 0)
+        - newAttribute: "LOD0 面の交差"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD0 面の交差", 0)
+        - newAttribute: "LOD1 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD1 境界面のエラー", 0)
+        - newAttribute: "LOD1 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD1 非水密立体", 0)
+        - newAttribute: "LOD1 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD1 立体のエラー", 0)
+        - newAttribute: "LOD1 立体の交差"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD1 立体の交差", 0)
+        - newAttribute: "LOD2 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD2 境界面のエラー", 0)
+        - newAttribute: "LOD2 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD2 非水密立体", 0)
+        - newAttribute: "LOD2 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD2 立体のエラー", 0)
+        - newAttribute: "LOD2 立体の交差"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD2 立体の交差", 0)
+        - newAttribute: "LOD3 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD3 境界面のエラー", 0)
+        - newAttribute: "LOD3 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD3 非水密立体", 0)
+        - newAttribute: "LOD3 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD3 立体のエラー", 0)
+        - newAttribute: "LOD3 立体の交差"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD3 立体の交差", 0)
+        - newAttribute: "T-bldg-02エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("T-bldg-02エラー", 0)
+        - newAttribute: "LOD0-1のBuildingPart"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD0-1のBuildingPart", 0)
+        - newAttribute: "totalErrorCount"
+          expr:
+            type: flowExpr
+            value: |
+              attributes.get("市区町村コードエラー", 0)
+              + attributes.get("C-bldg-01 エラー", 0)
+              + attributes.get("不正な建物ID", 0)
+              + attributes.get("L-bldg-02 エラー", 0)
+              + attributes.get("L-bldg-04,05 エラー", 0)
+              + attributes.get("L-bldg-06 エラー", 0)
+              + attributes.get("T-bldg-02エラー", 0)
+              + attributes.get("LOD0 面のエラー", 0)
+              + attributes.get("LOD0 面の向きエラー", 0)
+              + attributes.get("LOD0 面の交差", 0)
+              + attributes.get("LOD1 境界面のエラー", 0)
+              + attributes.get("LOD1 非水密立体", 0)
+              + attributes.get("LOD1 立体のエラー", 0)
+              + attributes.get("LOD2 境界面のエラー", 0)
+              + attributes.get("LOD3 境界面のエラー", 0)
+              + attributes.get("LOD2 非水密立体", 0)
+              + attributes.get("LOD3 非水密立体", 0)
+              + attributes.get("LOD2 立体のエラー", 0)
+              + attributes.get("LOD3 立体のエラー", 0)
+              + attributes.get("図郭不正", 0)
+              + attributes.get("LOD0-1のBuildingPart", 0)
+              + attributes.get("LOD1 立体の交差", 0)
+              + attributes.get("LOD2 立体の交差", 0)
+              + attributes.get("LOD3 立体の交差", 0)
+
+  - id: 4375b01b-c253-475b-8737-08736f4961f8
+    name: FeatureWriterJson
+    type: action
+    action: FeatureWriter
+    with:
+      format: json
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            result = [];
+            feature = attributes["__features"][0];
+            for key in feature.keys() {
+              result.append({"name": key, "count": feature[key]});
+            }
+            result
+          }
+      output:
+        type: string
+        value: summary_bldg.json
+
+  - id: 3730412c-8a45-417c-a669-fa10fec80028
+    name: OutputRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: default
+
+  - id: 20e962f2-e612-42c7-a107-8c0ff21a09af
+    name: OutputRouterSummary
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: summaryOutput
+
+edges:
+  - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
+    from: 63341eb4-409d-4668-b338-2d1e5ab003fd
+    to: 27bb6136-ff9f-4523-9b28-bf01e0e9f698
+    fromPort: default
+    toPort: default
+  - id: 938baf36-f831-4d0d-99d4-a330124d723f
+    from: 27bb6136-ff9f-4523-9b28-bf01e0e9f698
+    to: eb76867a-9d21-4c08-959b-abaf06bfadb6
+    fromPort: default
+    toPort: default
+  - id: 247043d6-0323-47c5-add9-a86f07b85f05
+    from: eb76867a-9d21-4c08-959b-abaf06bfadb6
+    to: a650b6b7-d764-4eb8-aeb0-6dc123e52d26
+    fromPort: default
+    toPort: default
+  - id: f6d3dae6-f5fb-4402-9966-af84eb452042
+    from: a650b6b7-d764-4eb8-aeb0-6dc123e52d26
+    to: b229d8d1-f6c8-456a-b325-68f39a5fe82b
+    fromPort: default
+    toPort: default
+  - id: 8899305d-f997-4ba8-9617-2c28e0dc6b60
+    from: b229d8d1-f6c8-456a-b325-68f39a5fe82b
+    to: 06437150-b04d-4b41-83fc-e5767ea35a23
+    fromPort: default
+    toPort: default
+  - id: a33876e6-151d-4095-b2c7-cba0a3881826
+    from: 06437150-b04d-4b41-83fc-e5767ea35a23
+    to: 428129b3-ad69-4a18-bf99-25492d41ba26
+    fromPort: default
+    toPort: default
+  - id: 5caa10d1-f739-467f-858d-64299a29555f
+    from: 428129b3-ad69-4a18-bf99-25492d41ba26
+    to: 501a24e8-b919-4f3b-9706-9ae6228f2bfd
+    fromPort: default
+    toPort: default
+  - id: dae40fc8-8f55-4bc6-910f-489bef4a114f
+    from: 428129b3-ad69-4a18-bf99-25492d41ba26
+    to: 2eea35c1-6732-471a-bb39-4a03f01d411a
+    fromPort: default
+    toPort: default
+  - id: ff9187e7-0435-4833-ba4e-65bac4a2ddd7
+    from: 501a24e8-b919-4f3b-9706-9ae6228f2bfd
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  - id: b71e9291-1a2e-4047-9f47-72f972c2a218
+    from: 2eea35c1-6732-471a-bb39-4a03f01d411a
+    to: 4375b01b-c253-475b-8737-08736f4961f8
+    fromPort: default
+    toPort: default
+  - id: 08e4c111-58f7-4921-82d1-7b5d7e32d43e
+    from: 4375b01b-c253-475b-8737-08736f4961f8
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  - id: 7893662d-62cc-4842-b9a7-782ab16c0d36
+    from: 2eea35c1-6732-471a-bb39-4a03f01d411a
+    to: 20e962f2-e612-42c7-a107-8c0ff21a09af
+    fromPort: default
+    toPort: default
