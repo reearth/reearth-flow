@@ -3,7 +3,7 @@ use bytes::Bytes;
 use std::sync::Arc;
 
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
 use super::client::HttpResponse;
 use super::errors::{HttpProcessorError, Result};
@@ -24,6 +24,7 @@ pub(crate) struct ResponseProcessorConfig<'a> {
 pub(crate) fn process_response(
     response: HttpResponse,
     config: &ResponseProcessorConfig,
+    feature: &Feature,
     attributes: &mut indexmap::IndexMap<Attribute, AttributeValue>,
 ) -> Result<()> {
     if let Some(max_size) = config.max_size {
@@ -78,7 +79,7 @@ pub(crate) fn process_response(
                         "Failed to compile output path expression: {e:?}"
                     ))
                 })?
-                .eval_string_env_only(config.env_vars.clone())
+                .eval_string(feature, config.env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Response(format!("Failed to evaluate output path: {e:?}"))
                 })?;
@@ -172,9 +173,14 @@ fn save_response_to_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_types::Attributes;
 
     fn make_env() -> Arc<serde_json::Map<String, serde_json::Value>> {
         Arc::new(serde_json::Map::new())
+    }
+
+    fn empty_feature() -> Feature {
+        Feature::from(Attributes::new())
     }
 
     #[test]
@@ -187,6 +193,7 @@ mod tests {
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let mut attributes = indexmap::IndexMap::new();
+        let feature = empty_feature();
 
         let config = ResponseProcessorConfig {
             handling: &None,
@@ -200,7 +207,7 @@ mod tests {
             headers_attr: "_headers",
         };
 
-        let result = process_response(response, &config, &mut attributes);
+        let result = process_response(response, &config, &feature, &mut attributes);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("exceeds maximum"));
     }

@@ -2,11 +2,14 @@ use base64::{engine::general_purpose, Engine as _};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION};
 use std::sync::Arc;
 
+use reearth_flow_types::Feature;
+
 use super::errors::{HttpProcessorError, Result};
 use super::params::{ApiKeyLocation, Authentication};
 
 pub(crate) fn apply_authentication(
     auth: &Authentication,
+    feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     headers: &mut HeaderMap,
     query_params: &mut Vec<(String, String)>,
@@ -20,7 +23,7 @@ pub(crate) fn apply_authentication(
                         "Failed to compile username expression: {e:?}"
                     ))
                 })?
-                .eval_string_env_only(env_vars.clone())
+                .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate username: {e:?}"))
                 })?;
@@ -32,7 +35,7 @@ pub(crate) fn apply_authentication(
                         "Failed to compile password expression: {e:?}"
                     ))
                 })?
-                .eval_string_env_only(env_vars.clone())
+                .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate password: {e:?}"))
                 })?;
@@ -56,7 +59,7 @@ pub(crate) fn apply_authentication(
                         "Failed to compile token expression: {e:?}"
                     ))
                 })?
-                .eval_string_env_only(env_vars.clone())
+                .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate token: {e:?}"))
                 })?;
@@ -81,7 +84,7 @@ pub(crate) fn apply_authentication(
                         "Failed to compile API key expression: {e:?}"
                     ))
                 })?
-                .eval_string_env_only(env_vars.clone())
+                .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate API key: {e:?}"))
                 })?;
@@ -111,7 +114,7 @@ pub(crate) fn apply_authentication(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::{Code, CodeType};
+    use reearth_flow_types::{Attributes, Code, CodeType};
 
     fn make_env(pairs: &[(&str, &str)]) -> Arc<serde_json::Map<String, serde_json::Value>> {
         let mut map = serde_json::Map::new();
@@ -119,6 +122,10 @@ mod tests {
             map.insert(k.to_string(), serde_json::Value::String(v.to_string()));
         }
         Arc::new(map)
+    }
+
+    fn empty_feature() -> Feature {
+        Feature::from(Attributes::new())
     }
 
     #[test]
@@ -139,7 +146,9 @@ mod tests {
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
 
-        let result = apply_authentication(&auth, env_vars, &mut headers, &mut query_params);
+        let feature = empty_feature();
+        let result =
+            apply_authentication(&auth, &feature, env_vars, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key(AUTHORIZATION));
 
@@ -161,7 +170,9 @@ mod tests {
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
 
-        let result = apply_authentication(&auth, env_vars, &mut headers, &mut query_params);
+        let feature = empty_feature();
+        let result =
+            apply_authentication(&auth, &feature, env_vars, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key(AUTHORIZATION));
 
@@ -185,7 +196,9 @@ mod tests {
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
 
-        let result = apply_authentication(&auth, env_vars, &mut headers, &mut query_params);
+        let feature = empty_feature();
+        let result =
+            apply_authentication(&auth, &feature, env_vars, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key("x-api-key"));
 
@@ -209,7 +222,9 @@ mod tests {
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
 
-        let result = apply_authentication(&auth, env_vars, &mut headers, &mut query_params);
+        let feature = empty_feature();
+        let result =
+            apply_authentication(&auth, &feature, env_vars, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert_eq!(query_params.len(), 1);
         assert_eq!(query_params[0].0, "apikey");

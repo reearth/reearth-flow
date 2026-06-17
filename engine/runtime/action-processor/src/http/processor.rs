@@ -135,6 +135,7 @@ impl HttpCallerProcessor {
         let built_body = if let Some(body_config) = &self.params.request_body {
             match super::body::build_request_body(
                 body_config,
+                feature,
                 env_vars.clone(),
                 &ctx.storage_resolver,
             ) {
@@ -149,7 +150,7 @@ impl HttpCallerProcessor {
         };
 
         let builder = match builder
-            .with_headers(&self.compiled_headers, env_vars.clone())
+            .with_headers(&self.compiled_headers, feature, env_vars.clone())
             .and_then(|b| {
                 b.with_content_type(
                     built_body
@@ -158,7 +159,9 @@ impl HttpCallerProcessor {
                         .or(self.params.content_type.as_deref()),
                 )
             })
-            .and_then(|b| b.with_query_params(&self.compiled_query_params, env_vars.clone()))
+            .and_then(|b| {
+                b.with_query_params(&self.compiled_query_params, feature, env_vars.clone())
+            })
             .and_then(|b| b.with_body(built_body.map(|b| b.content)))
         {
             Ok(builder) => builder,
@@ -173,6 +176,7 @@ impl HttpCallerProcessor {
         if let Some(auth) = &self.params.authentication {
             if let Err(e) = super::auth::apply_authentication(
                 auth,
+                feature,
                 env_vars.clone(),
                 &mut headers,
                 &mut query_params,
@@ -247,8 +251,12 @@ impl HttpCallerProcessor {
                 .unwrap_or("_headers"),
         };
 
-        let result =
-            super::response::process_response(response, &config, new_feature.attributes_mut());
+        let result = super::response::process_response(
+            response,
+            &config,
+            &ctx.feature,
+            new_feature.attributes_mut(),
+        );
 
         match result {
             Ok(()) => {
