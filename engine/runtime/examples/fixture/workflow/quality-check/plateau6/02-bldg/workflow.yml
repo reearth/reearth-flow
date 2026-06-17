@@ -1,0 +1,3 @@
+# Placeholder for plateau6 02-bldg quality-check workflow.
+# To be implemented via the quality-check-impl skill (port of plateau4/02-bldg.yml to CityGML 3.0 / i-UR 4.0).
+# The test testcases/quality-check/plateau6/02-bldg/Z-bldg-00_no-error is marked skip:true until this is implemented.
