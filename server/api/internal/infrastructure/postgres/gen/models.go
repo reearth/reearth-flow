@@ -43,3 +43,19 @@ type Trigger struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
+
+type WorkerConfig struct {
+	ID                    string
+	MachineType           *string
+	ComputeCpuMilli       *int32
+	ComputeMemoryMib      *int32
+	BootDiskSizeGb        *int32
+	TaskCount             *int32
+	MaxConcurrency        *int32
+	ThreadPoolSize        *int32
+	ChannelBufferSize     *int32
+	FeatureFlushThreshold *int32
+	NodeStatusDelayMilli  *int32
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}

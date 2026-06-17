@@ -134,3 +134,61 @@ table "parameters" {
     columns = [column.project_id]
   }
 }
+
+table "worker_configs" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "machine_type" {
+    type = text
+    null = true
+  }
+  column "compute_cpu_milli" {
+    type = integer
+    null = true
+  }
+  column "compute_memory_mib" {
+    type = integer
+    null = true
+  }
+  column "boot_disk_size_gb" {
+    type = integer
+    null = true
+  }
+  column "task_count" {
+    type = integer
+    null = true
+  }
+  column "max_concurrency" {
+    type = integer
+    null = true
+  }
+  column "thread_pool_size" {
+    type = integer
+    null = true
+  }
+  column "channel_buffer_size" {
+    type = integer
+    null = true
+  }
+  column "feature_flush_threshold" {
+    type = integer
+    null = true
+  }
+  column "node_status_delay_milli" {
+    type = integer
+    null = true
+  }
+  column "created_at" {
+    type = timestamptz
+  }
+  column "updated_at" {
+    type = timestamptz
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+}

@@ -21,15 +21,16 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 	client := pgxx.NewClient(pool, pgxx.WithTxRetry(2)) // retry serialization failures, matching the Mongo path
 	lock := NewLock(pool)
 	c := &repo.Container{
-		Trigger:     NewTrigger(client),
-		Config:      NewConfig(client, lock),
-		Parameter:   NewParameter(client),
-		Lock:        lock,
-		Transaction: client,
-		Workspace:   account.Workspace,
-		User:        account.User,
-		Role:        account.Role,
-		Permittable: account.Permittable,
+		Trigger:      NewTrigger(client),
+		Config:       NewConfig(client, lock),
+		Parameter:    NewParameter(client),
+		WorkerConfig: NewWorkerConfig(client),
+		Lock:         lock,
+		Transaction:  client,
+		Workspace:    account.Workspace,
+		User:         account.User,
+		Role:         account.Role,
+		Permittable:  account.Permittable,
 	}
 	if err := mustComplete(c); err != nil {
 		return nil, err
@@ -53,7 +54,6 @@ func mustComplete(c *repo.Container) error {
 	check("Asset", c.Asset != nil)
 	check("AssetUpload", c.AssetUpload != nil)
 	check("AuthRequest", c.AuthRequest != nil)
-	check("WorkerConfig", c.WorkerConfig != nil)
 	check("Deployment", c.Deployment != nil)
 	check("EdgeExecution", c.EdgeExecution != nil)
 	check("Job", c.Job != nil)
