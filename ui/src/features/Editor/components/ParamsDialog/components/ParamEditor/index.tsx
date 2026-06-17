@@ -176,7 +176,7 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent className="px-4 pb-2" value="params" asChild>
-          <div className="flex min-w-0 size-full min-h-0 flex-col justify-between gap-4">
+          <div className="flex size-full min-h-0 min-w-0 flex-col justify-between gap-4">
             <div className="min-h-0 min-w-0 overflow-scroll rounded px-2">
               {!createdAction?.parameter && (
                 <BasicBoiler
@@ -211,7 +211,7 @@ const ParamEditor: React.FC<Props> = ({
           </div>
         </TabsContent>
         <TabsContent className="px-4 pb-2" value="customizations" asChild>
-          <div className="flex min-w-0 size-full min-h-0 flex-col justify-between gap-4">
+          <div className="flex size-full min-h-0 min-w-0 flex-col justify-between gap-4">
             <div className="min-h-0 min-w-0 overflow-scroll rounded px-2">
               {!createdAction?.customizations && (
                 <BasicBoiler

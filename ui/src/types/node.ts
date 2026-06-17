@@ -4,6 +4,14 @@ import type {
   NodeChange as ReactFlowNodeChange,
 } from "@xyflow/react";
 
+import type { NodeSchemaMeta } from "./schemaPreview";
+
+/** Arbitrary per-node metadata persisted (collaboratively) on the Yjs node. */
+export type NodeMetadata = {
+  /** Output attribute schema as probed by the engine (readers). */
+  schema?: NodeSchemaMeta;
+};
+
 export type NodeParams = Record<string, any>;
 
 // TODO: Add generic for NodeCustomization for better type checking and separation of concerns
@@ -26,6 +34,7 @@ export type NodeData = {
   params?: NodeParams;
   paramsSchema?: RJSFSchema;
   customizations?: NodeCustomizations;
+  metadata?: NodeMetadata;
   workflowPath?: string;
   isCollapsed?: boolean;
   isDisabled?: boolean;

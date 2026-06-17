@@ -27,13 +27,24 @@ type Props = {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  attributeSuggestions?: AutocompleteSuggestion[];
   "data-testid"?: string;
   "aria-label"?: string;
   "data-placeholder"?: string;
 };
 
 const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
-  ({ value = "", onChange, placeholder, className = "", ...props }, ref) => {
+  (
+    {
+      value = "",
+      onChange,
+      placeholder,
+      className = "",
+      attributeSuggestions,
+      ...props
+    },
+    ref,
+  ) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const highlightRef = useRef<HTMLDivElement>(null);
     const placeholderRef = useRef<HTMLDivElement>(null);
@@ -111,7 +122,9 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           return;
         }
 
-        if (/^[a-zA-Z0-9_:.]$/.test(e.key)) {
+        if (/^[a-zA-Z0-9_:.'"]$/.test(e.key)) {
+          // Quotes are included so the attribute autocomplete can open as soon
+          // as the cursor enters an `attributes["…"]` accessor.
           setTimeout(() => setAutocompleteVisible(true), 10);
         } else if (e.key === "Backspace" || e.key === "Delete") {
           setTimeout(() => {
@@ -477,6 +490,7 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           onSuggestionSelect={handleSuggestionSelect}
           visible={autocompleteVisible}
           onVisibilityChange={setAutocompleteVisible}
+          attributeSuggestions={attributeSuggestions}
         />
       </div>
     );

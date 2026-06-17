@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { useT } from "@flow/lib/i18n";
 
 import { type AutocompleteSuggestion } from "./constants";
+import { isInsideAttributeAccessor } from "./flowExprAttributeContext";
 import { getFlowExprAutocompleteSuggestions } from "./flowExprConstants";
 
 type Props = {
@@ -11,6 +12,9 @@ type Props = {
   onSuggestionSelect: (suggestion: AutocompleteSuggestion) => void;
   visible: boolean;
   onVisibilityChange: (visible: boolean) => void;
+  // Per-node attribute-name suggestions, shown when the cursor is inside an
+  // `attributes["…"]` accessor. Sourced from probed reader schemas.
+  attributeSuggestions?: AutocompleteSuggestion[];
 };
 
 const FlowExprAutocomplete: React.FC<Props> = ({
@@ -19,6 +23,7 @@ const FlowExprAutocomplete: React.FC<Props> = ({
   onSuggestionSelect,
   visible,
   onVisibilityChange,
+  attributeSuggestions,
 }) => {
   const t = useT();
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
@@ -111,6 +116,26 @@ const FlowExprAutocomplete: React.FC<Props> = ({
     [indexedSuggestions, functionSuggestions],
   );
 
+  const cursorInsideAttributeAccessor = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return false;
+    const before = textarea.value.substring(0, textarea.selectionStart);
+    return isInsideAttributeAccessor(before);
+  }, [textareaRef]);
+
+  const getFilteredAttributeSuggestions = useCallback(
+    (word: string): AutocompleteSuggestion[] => {
+      const candidates = attributeSuggestions ?? [];
+      if (candidates.length === 0) return [];
+      const lowerWord = word.toLowerCase();
+      if (lowerWord.length === 0) return candidates;
+      return candidates.filter((suggestion) =>
+        suggestion.label.toLowerCase().startsWith(lowerWord),
+      );
+    },
+    [attributeSuggestions],
+  );
+
   const calculatePosition = useCallback(() => {
     if (!textareaRef.current) return;
 
@@ -154,7 +179,9 @@ const FlowExprAutocomplete: React.FC<Props> = ({
     if (!visible) return;
 
     const { word } = getCurrentWordAndPosition();
-    const filtered = getFilteredSuggestions(word);
+    const filtered = cursorInsideAttributeAccessor()
+      ? getFilteredAttributeSuggestions(word)
+      : getFilteredSuggestions(word);
 
     setSuggestions(filtered);
     setSelectedIndex(0);
@@ -169,6 +196,8 @@ const FlowExprAutocomplete: React.FC<Props> = ({
     visible,
     getCurrentWordAndPosition,
     getFilteredSuggestions,
+    cursorInsideAttributeAccessor,
+    getFilteredAttributeSuggestions,
     calculatePosition,
     onVisibilityChange,
   ]);

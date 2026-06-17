@@ -10,6 +10,7 @@ export * from "./userFacingLog";
 export * from "./member";
 export * from "./node";
 export * from "./project";
+export * from "./schemaPreview";
 export * from "./workflowVariables";
 export * from "./shared";
 export * from "./shortcuts";

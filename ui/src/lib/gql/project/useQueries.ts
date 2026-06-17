@@ -13,6 +13,7 @@ import {
   DeleteProjectInput,
   UpdateProjectInput,
   RunProjectInput,
+  PreviewSchemaInput,
 } from "../__gen__/graphql";
 import { toJob, toProject } from "../convert";
 
@@ -160,6 +161,31 @@ export const useQueries = () => {
       }),
   });
 
+  const previewSchemaMutation = useMutation({
+    mutationFn: async ({
+      projectId,
+      workspaceId,
+      file,
+      parameters,
+      sampleSize,
+    }: Omit<PreviewSchemaInput, "file"> & { file: FormData }) => {
+      const data = await graphQLContext?.PreviewSchema({
+        input: {
+          projectId,
+          workspaceId,
+          file: file.get("file"),
+          parameters,
+          sampleSize,
+        },
+      });
+      if (!data?.previewSchema?.job) return { workspaceId };
+      return {
+        job: toJob(data.previewSchema.job),
+        workspaceId,
+      };
+    },
+  });
+
   const copyProjectMutation = useMutation({
     mutationFn: async ({
       projectId,
@@ -213,6 +239,7 @@ export const useQueries = () => {
     deleteProjectMutation,
     updateProjectMutation,
     runProjectMutation,
+    previewSchemaMutation,
     copyProjectMutation,
     importProjectMutation,
     useGetProjectsQuery,
