@@ -553,7 +553,7 @@ BoundsExtractor
            ordering — alphabetical (xmax, xmin, ymax, ymin, zmax, zmin); suggest grouping by
              axis: xmin, xmax, ymin, ymax, zmin, zmax (§3.5 readability)
   ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
-  tags:    [] — suggest ["geometry"]
+  tags:    [] — `geometry` duplicates category (§6); 0 tags acceptable
 
 Bufferer
   desc:    title-case — "Create Buffer Around Features"; suggest "Creates a buffer polygon
@@ -561,7 +561,7 @@ Bufferer
   params:  BufferType oneOf with a single `area2d` variant — incomplete design; other buffer
              types planned but unimplemented (same structural flag as XMLFragmenter)
   ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
-  tags:    ["2d"] — not in vocabulary; replace with ["geometry"]
+  tags:    ["2d"] — not in vocabulary; replace with ["spatial"] (`geometry` duplicates category (§6))
 
 Clipper
   desc:    title-case — "Clip Features Using Boundary Shapes"; suggest "Clips candidate
@@ -599,7 +599,7 @@ GeometryExtractor
              geometry to a compressed JSON representation and stores it in a named attribute."
   ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
              `rejected` — evaluate for features with no geometry (§4.3)
-  tags:    [] — suggest ["geometry"]
+  tags:    [] — `geometry` duplicates category (§6); 0 tags acceptable
 
 GeometryPartExtractor
   name:    → "Geometry Part Extractor"
@@ -611,8 +611,8 @@ GeometryPartExtractor
   ports:   inputPorts `default` — global note; outputPorts `extracted`, `remaining`, `untouched`
              — semantics of `remaining` vs `untouched` need clarification in Phase 4 (both
              receive non-extracted features — are they distinct conditions?)
-  tags:    ["geometry", "decompose"] — `decompose` not in vocabulary; replace with
-             ["geometry", "3d"]
+  tags:    ["geometry", "decompose"] — `decompose` not in vocabulary; `geometry` duplicates
+             category (§6); replace with ["3d"]
 
 GeometryRemover
   name:    → "Geometry Remover"
@@ -660,7 +660,8 @@ GeometrySplitter
              content; trim to one sentence
   ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
              `rejected` — evaluate for features without multi-part geometry (§4.3)
-  tags:    ["split", "geometry"] — `split` not in vocabulary; remove → ["geometry"]
+  tags:    ["split", "geometry"] — `split` not in vocabulary; `geometry` duplicates category
+             (§6); remove both → 0 tags acceptable
 
 GeometryValidator
   name:    → "Geometry Validator"
@@ -742,7 +743,8 @@ TwoDimensionForcer
   desc:    title-case — "Force 3D Geometry to 2D by Removing Z-Coordinates"; suggest
              "Removes Z-coordinates from 3D geometries to produce 2D output."
   ports:   inputPorts `default`, outputPorts `default` — global note
-  tags:    ["2d"] — not in vocabulary; replace with ["geometry"]
+  tags:    ["2d"] — not in vocabulary; `geometry` duplicates category (§6); remove both
+             → 0 tags acceptable
 
 VerticalReprojector
   name:    → "Vertical Reprojector"
