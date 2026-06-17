@@ -4,6 +4,21 @@ Reference for authoring and reviewing Re:Earth Flow actions. Covers naming, desc
 
 ---
 
+## How to use this standard
+
+This standard applies to both **authoring new actions** and **reviewing existing ones**. Use §7 as a self-check before submitting a new action, and as a review checklist during audits.
+
+**The schema is generated — never edit it directly.** All action properties (name, description, parameters, ports, categories, tags) are defined in the Rust implementation. After any change, regenerate the schema:
+
+```bash
+cargo make schema-base        # regenerates actions.json and syncs i18n skeletons
+cargo make schema-translated  # regenerates per-language JSON files
+```
+
+See [engine/AGENTS.md](../AGENTS.md) for the full development workflow.
+
+---
+
 ## 1. Names
 
 ### 1.1 Display name (`name` field)
@@ -34,7 +49,7 @@ When none of these fit, use the most descriptive phrase available.
 
 ## 2. Descriptions
 
-Imperative voice, starting with a verb.
+Verb-first, present tense — start directly with the verb, no subject.
 
 - 1–2 sentences — prefer one; use two only when a single sentence would be genuinely unclear
 - Describes what the action does to data, not how it is implemented
@@ -63,7 +78,7 @@ Imperative voice, starting with a verb.
 
 ### 3.3 Descriptions
 
-Every parameter must have a `description` in the JSON schema.
+The parameter schema object itself must have a top-level `description` summarising what the parameter block configures. Every individual parameter property must also have a `description`.
 
 - Prefer one sentence; two sentences are acceptable when the parameter behaviour is complex enough to warrant it
 - Describes what the parameter controls and what values are valid
@@ -96,7 +111,7 @@ Port names are user-facing and appear as labels on workflow nodes.
 
 ### 4.1 Naming style
 
-- Single-word ports: plain lowercase — `default`, `failed`, `success`, `ray`, `geom`
+- Single-word ports: plain lowercase — `features`, `failed`, `success`, `ray`, `geom`
 - Multi-word ports: kebab-case — `unjoined-requestor`, `no-intersection`, `texture-coordinates`
 - No camelCase, no snake_case, no PascalCase for port names
 
@@ -106,12 +121,14 @@ Use these names when the semantics match. Only use custom names when the action 
 
 | Port | When to use |
 |---|---|
-| `default` | Primary input or output when there is only one meaningful flow |
+| `features` | Primary input or output when the action has a single data stream; also the main output on actions that additionally have condition ports |
 | `rejected` | Features that could not be processed (parse error, missing geometry, unexpected type) |
 | `failed` | Features that were processed but did not meet a condition (validation failure, test returned false) |
 | `success` | Features that satisfy a rule or validation check |
 | `unfiltered` | Valid features that did not match a filter — not errors, just non-matches |
 | `passed` | Features that satisfy a spatial condition |
+
+**Multiple input ports:** When an action takes more than one input stream, both ports must have semantic names that describe their role (e.g. `requestor` + `supplier`, `base` + `overlay`). `features` is only appropriate when there is a single input.
 
 ### 4.3 Port completeness
 
@@ -119,7 +136,7 @@ Every feature received must be accounted for — either emitted to a named outpu
 
 - If an action can fail to process a feature (parse error, missing attribute, invalid geometry) it must have a `rejected` output port for those features
 - Validators and conditional routers must route every feature to a named port
-- Actions with multiple semantically distinct outputs should use descriptive names rather than `default`
+- Actions with multiple semantically distinct outputs should use descriptive names rather than `features`
 
 ---
 
@@ -147,11 +164,11 @@ New categories can be added when a meaningful group of actions does not fit any 
 ## 6. Tags
 
 - All lowercase, hyphenated if multi-word: `coordinate-system`, `citygml`
-- 2–6 tags per action; fewer is better than padding with loosely relevant terms
+- Aim for 2–4 tags; 1 is acceptable when no second tag adds genuine discovery value. Never pad to meet a count.
 - Draw from the established vocabulary below; propose additions conservatively
 
 **Established vocabulary:**
-`3d`, `aggregation`, `attribute`, `citygml`, `coordinate-system`, `csv`, `debug`, `file`, `filter`, `geometry`, `geopackage`, `json`, `list`, `raster`, `routing`, `shapefile`, `spatial`, `tiling`, `validation`, `vector`, `xml`
+`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `json`, `list`, `raster`, `routing`, `shapefile`, `spatial`, `tiling`, `validation`, `vector`, `xml`
 
 New tags can be proposed when an established term does not adequately describe an action's domain. Avoid adding tags that duplicate an action's category.
 
