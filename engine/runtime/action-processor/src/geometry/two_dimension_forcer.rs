@@ -59,6 +59,7 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
 pub struct TwoDimensionForcer;
 
 impl Processor for TwoDimensionForcer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -97,6 +98,7 @@ impl Processor for TwoDimensionForcer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

@@ -172,6 +172,7 @@ impl Source for GeoPackageReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -198,6 +199,7 @@ impl Source for GeoPackageReader {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn process_geopackage(
     content: Bytes,
     params: &GeoPackageReaderCompiledParam,
@@ -272,6 +274,7 @@ async fn verify_geopackage(adapter: &SqlAdapter) -> Result<(), SourceError> {
     Ok(())
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_features(
     adapter: &SqlAdapter,
     params: &GeoPackageReaderCompiledParam,
@@ -305,6 +308,7 @@ async fn get_feature_layers(adapter: &SqlAdapter) -> Result<Vec<String>, SourceE
     Ok(layers)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_layer_features(
     adapter: &SqlAdapter,
     layer_name: &str,
@@ -377,6 +381,7 @@ async fn get_layer_srs_id(adapter: &SqlAdapter, table_name: &str) -> Result<i32,
     Ok(4326)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn row_to_feature(
     row: &AnyRow,
     geom_col: &str,
@@ -1158,6 +1163,7 @@ fn read_coordinates(
 }
 
 #[allow(dead_code)]
+#[cfg(not(feature = "new-geometry"))]
 async fn read_tiles(
     adapter: &SqlAdapter,
     params: &GeoPackageReaderCompiledParam,
@@ -1194,6 +1200,7 @@ async fn get_tile_layers(adapter: &SqlAdapter) -> Result<Vec<String>, SourceErro
 }
 
 #[allow(dead_code)]
+#[cfg(not(feature = "new-geometry"))]
 async fn read_layer_tiles(
     adapter: &SqlAdapter,
     layer_name: &str,

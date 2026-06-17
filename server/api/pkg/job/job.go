@@ -17,6 +17,16 @@ const (
 	StatusFailed    Status = "FAILED"
 )
 
+// Mode discriminates how a job was dispatched. Existing run/debug jobs are
+// ModeRun; the preview-schema pipeline tags its jobs ModePreviewSchema so they
+// can be excluded from normal run history listings.
+type Mode string
+
+const (
+	ModeRun           Mode = "run"
+	ModePreviewSchema Mode = "preview-schema"
+)
+
 type Job struct {
 	startedAt         time.Time
 	completedAt       *time.Time
@@ -30,6 +40,7 @@ type Job struct {
 	userFacingLogsURL string
 	metadataURL       string
 	status            Status
+	mode              Mode
 	outputURLs        []string
 	deployment        *DeploymentID
 	id                ID
@@ -134,6 +145,15 @@ func (j *Job) MetadataURL() string {
 	return j.metadataURL
 }
 
+// Mode returns the dispatch mode. Existing jobs persisted before the Mode field
+// existed have an empty mode and default to ModeRun.
+func (j *Job) Mode() Mode {
+	if j.mode == "" {
+		return ModeRun
+	}
+	return j.mode
+}
+
 func (j *Job) OutputURLs() []string {
 	return j.outputURLs
 }
@@ -208,6 +228,10 @@ func (j *Job) SetUserFacingLogsURL(userFacingLogsURL string) {
 
 func (j *Job) SetMetadataURL(metadataURL string) {
 	j.metadataURL = metadataURL
+}
+
+func (j *Job) SetMode(mode Mode) {
+	j.mode = mode
 }
 
 func (j *Job) SetOutputURLs(outputURLs []string) {

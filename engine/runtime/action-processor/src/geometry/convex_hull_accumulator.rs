@@ -118,6 +118,7 @@ impl Processor for ConvexHullAccumulator {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -174,6 +175,7 @@ impl Processor for ConvexHullAccumulator {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -196,6 +198,7 @@ impl Processor for ConvexHullAccumulator {
 }
 
 impl ConvexHullAccumulator {
+    #[cfg(not(feature = "new-geometry"))]
     fn create_hull(&mut self) -> Vec<Feature> {
         let mut hulls = Vec::new();
         for buffer in std::mem::take(&mut self.buffer).into_values() {
@@ -204,6 +207,7 @@ impl ConvexHullAccumulator {
         hulls
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn create_hull_2d(buffer: GroupBuffer) -> Feature {
         let mut collection = buffer
             .geometries

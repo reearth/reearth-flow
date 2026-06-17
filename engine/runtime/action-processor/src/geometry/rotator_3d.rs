@@ -180,6 +180,7 @@ pub struct Rotator3D {
 }
 
 impl Processor for Rotator3D {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -272,6 +273,7 @@ impl Processor for Rotator3D {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

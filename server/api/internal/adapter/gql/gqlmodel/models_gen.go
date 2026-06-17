@@ -423,6 +423,18 @@ type ParameterUpdateItem struct {
 	Config       JSON          `json:"config,omitempty"`
 }
 
+type PreviewSchemaInput struct {
+	ProjectID   ID                   `json:"projectId"`
+	WorkspaceID ID                   `json:"workspaceId"`
+	File        graphql.Upload       `json:"file"`
+	Parameters  []*RunParameterInput `json:"parameters,omitempty"`
+	SampleSize  *int                 `json:"sampleSize,omitempty"`
+}
+
+type PreviewSchemaPayload struct {
+	Job *Job `json:"job"`
+}
+
 type PreviewSnapshot struct {
 	ID        ID        `json:"id"`
 	Name      *string   `json:"name,omitempty"`

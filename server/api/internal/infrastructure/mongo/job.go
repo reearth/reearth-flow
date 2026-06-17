@@ -166,9 +166,15 @@ func (r *Job) CountByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (
 }
 
 func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {
+	// Exclude preview-schema jobs from run history. They are persisted (debug=true)
+	// but are not real runs, so they must not pollute the project's job listing.
+	// Legacy docs predate the mode field, so treat missing/empty mode as a run.
 	filter := bson.M{
 		"projectid": projectID.String(),
 		"debug":     true,
+		"mode": bson.M{
+			"$ne": string(job.ModePreviewSchema),
+		},
 	}
 
 	return r.find(ctx, filter)

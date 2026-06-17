@@ -128,6 +128,7 @@ impl GeometryPartExtractor {
 }
 
 impl Processor for GeometryPartExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -155,6 +156,7 @@ impl Processor for GeometryPartExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -168,6 +170,7 @@ impl Processor for GeometryPartExtractor {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn extract_surfaces(
     feature: &Feature,
     ctx: &ExecutorContext,
@@ -227,6 +230,7 @@ fn extract_surfaces(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn extract_surfaces_from_solid_2d(
     solid: &Solid2D<f64>,
     feature: &Feature,
@@ -245,6 +249,7 @@ fn extract_surfaces_from_solid_2d(
     true
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn extract_surfaces_from_solid_3d(
     solid: &Solid3D<f64>,
     feature: &Feature,
@@ -263,6 +268,7 @@ fn extract_surfaces_from_solid_3d(
     true
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn send_remaining_feature_with_empty_geometry(
     original_feature: &Feature,
     ctx: &ExecutorContext,
@@ -275,6 +281,7 @@ fn send_remaining_feature_with_empty_geometry(
     fw.send(ctx.new_with_feature_and_port(remaining_feature, REMAINING_PORT.clone()));
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn create_surface_feature_from_face_2d(
     face: &Face<f64, reearth_flow_geometry::types::no_value::NoValue>,
     original_feature: &Feature,
@@ -299,6 +306,7 @@ fn create_surface_feature_from_face_2d(
     fw.send(ctx.new_with_feature_and_port(surface_feature, EXTRACTED_PORT.clone()));
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn create_surface_feature_from_face_3d(
     face: &Face<f64, f64>,
     original_feature: &Feature,
@@ -323,6 +331,7 @@ fn create_surface_feature_from_face_3d(
     fw.send(ctx.new_with_feature_and_port(surface_feature, EXTRACTED_PORT.clone()));
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn create_surface_feature_from_citygml_polygon(
     polygon: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
     original_citygml: &reearth_flow_types::CityGmlGeometry,

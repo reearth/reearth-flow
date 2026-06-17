@@ -124,6 +124,7 @@ fn default_multiplier() -> f64 {
 }
 
 impl Processor for AreaCalculator {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -192,6 +193,7 @@ impl Processor for AreaCalculator {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

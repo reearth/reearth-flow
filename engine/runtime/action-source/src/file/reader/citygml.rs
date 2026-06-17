@@ -29,6 +29,7 @@ pub struct CityGmlReaderParam {
     pub(super) flatten: Option<bool>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 pub(crate) async fn read_citygml(
     content: &Bytes,
     input_path: Option<Uri>,
@@ -57,6 +58,7 @@ pub(crate) async fn read_citygml(
     Ok(())
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn parse_tree_reader<R: BufRead>(
     st: &mut SubTreeReader<'_, '_, R>,
     base_url: Url,

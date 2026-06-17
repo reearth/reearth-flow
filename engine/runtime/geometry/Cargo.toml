@@ -10,6 +10,11 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = []
+
 [dependencies]
 reearth-flow-common.workspace = true
 

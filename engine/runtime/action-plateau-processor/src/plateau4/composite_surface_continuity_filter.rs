@@ -63,6 +63,7 @@ impl ProcessorFactory for CompositeSurfaceContinuityFilterFactory {
 pub struct CompositeSurfaceContinuityFilter;
 
 impl Processor for CompositeSurfaceContinuityFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -122,6 +123,7 @@ impl Processor for CompositeSurfaceContinuityFilter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

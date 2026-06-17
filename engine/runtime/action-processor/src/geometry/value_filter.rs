@@ -91,6 +91,7 @@ impl Processor for GeometryValueFilter {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -140,6 +141,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_null() {
         let noop = NoopChannelForwarder::default();
@@ -156,6 +158,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_none() {
         let noop = NoopChannelForwarder::default();
@@ -172,6 +175,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_2d() {
         let noop = NoopChannelForwarder::default();
@@ -194,6 +198,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_3d() {
         let noop = NoopChannelForwarder::default();
@@ -217,6 +222,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_citygml() {
         let noop = NoopChannelForwarder::default();

@@ -94,6 +94,7 @@ struct GeometryCoercer {
 }
 
 impl Processor for GeometryCoercer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -122,6 +123,7 @@ impl Processor for GeometryCoercer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -136,6 +138,7 @@ impl Processor for GeometryCoercer {
 }
 
 impl GeometryCoercer {
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_2d_geometry(
         &self,
         geos: &Geometry2D,
@@ -242,6 +245,7 @@ impl GeometryCoercer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_3d_geometry(
         &self,
         geos: &Geometry3D,
@@ -365,6 +369,7 @@ impl GeometryCoercer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_city_gml_geometry(
         &self,
         geos: &CityGmlGeometry,
