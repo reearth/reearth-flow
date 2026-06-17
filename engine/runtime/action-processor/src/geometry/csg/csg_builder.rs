@@ -151,6 +151,7 @@ impl Processor for CSGBuilder {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -211,6 +212,7 @@ impl Processor for CSGBuilder {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -244,6 +246,7 @@ impl Processor for CSGBuilder {
 }
 
 impl CSGBuilder {
+    #[cfg(not(feature = "new-geometry"))]
     fn create_and_send_csg(
         &self,
         left_feature: Feature,

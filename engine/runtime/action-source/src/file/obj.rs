@@ -175,6 +175,7 @@ impl Source for ObjReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -329,6 +330,7 @@ fn extract_material_properties(
     (materials_array, material_properties)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_obj(
     ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,

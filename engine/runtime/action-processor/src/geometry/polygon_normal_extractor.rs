@@ -61,6 +61,7 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
 struct PolygonNormalExtractor {}
 
 impl Processor for PolygonNormalExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -127,6 +128,7 @@ impl Processor for PolygonNormalExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

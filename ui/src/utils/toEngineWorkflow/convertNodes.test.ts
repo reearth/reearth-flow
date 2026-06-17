@@ -57,4 +57,31 @@ describe("convertNodes", () => {
 
     expect(convertNodes(input)).toEqual(expected);
   });
+
+  it("should omit empty-valued params from the `with` block", () => {
+    const input: Node[] = [
+      {
+        id: "1",
+        type: "reader",
+        position: { x: 22, y: 22 },
+        data: {
+          officialName: "GeoJsonReader",
+          params: {
+            dataset: { value: "https://example.com/a.geojson", type: "string" },
+            inline: { value: "", type: "string" },
+            format: "geojson",
+            prefix: "",
+            nullish: null,
+          },
+        },
+      },
+    ];
+
+    const result = convertNodes(input);
+
+    expect(result[0].with).toEqual({
+      dataset: { value: "https://example.com/a.geojson", type: "string" },
+      format: "geojson",
+    });
+  });
 });

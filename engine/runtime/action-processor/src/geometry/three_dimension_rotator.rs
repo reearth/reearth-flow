@@ -146,6 +146,7 @@ pub struct ThreeDimensionRotator {
 }
 
 impl Processor for ThreeDimensionRotator {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,

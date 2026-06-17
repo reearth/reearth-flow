@@ -16,6 +16,7 @@ type Job interface {
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string) ([]*job.Job, *PageBasedInfo, error)
 	GetStatus(context.Context, id.JobID) (job.Status, error)
 	RunCloudRunWorker(j *job.Job, p gateway.RunJobParam)
+	PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam)
 	StartMonitoring(context.Context, *job.Job, *string) error
 	Subscribe(context.Context, id.JobID) (chan job.Status, error)
 	Unsubscribe(id.JobID, chan job.Status)

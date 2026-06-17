@@ -189,6 +189,7 @@ fn ensure_proj_cached(epsg_code: &str) -> Result<(), BoxedError> {
 }
 
 impl Processor for DestinationMeshCodeExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -255,6 +256,7 @@ impl Processor for DestinationMeshCodeExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

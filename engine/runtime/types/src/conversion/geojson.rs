@@ -1,3 +1,7 @@
+// Several imports here are only used by the `Feature`-geometry conversions that
+// are gated off under `new-geometry`.
+#![cfg_attr(feature = "new-geometry", allow(unused_imports))]
+
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -10,6 +14,8 @@ use crate::{
     Attribute, AttributeValue, Feature, GeometryValue, GmlGeometry,
 };
 
+// TODO(new-geometry): port to new geometry; gated off until then.
+#[cfg(not(feature = "new-geometry"))]
 impl TryFrom<Feature> for Vec<geojson::Feature> {
     type Error = Error;
 
@@ -69,6 +75,7 @@ impl TryFrom<Feature> for Vec<geojson::Feature> {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn from_attribute_value_map_to_geojson_object(
     map: &IndexMap<Attribute, AttributeValue>,
 ) -> geojson::JsonObject {
@@ -107,6 +114,8 @@ impl From<GmlGeometry> for Vec<geojson::Value> {
     }
 }
 
+// TODO(new-geometry): port to new geometry; gated off until then.
+#[cfg(not(feature = "new-geometry"))]
 impl TryFrom<geojson::Feature> for Feature {
     type Error = Error;
 
@@ -144,6 +153,7 @@ impl TryFrom<geojson::Feature> for Feature {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn from_geojson_object_to_attribute_value_map(
     obj: &geojson::JsonObject,
 ) -> IndexMap<Attribute, AttributeValue> {

@@ -87,6 +87,7 @@ impl Processor for GeometryReplacer {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -110,6 +111,7 @@ impl Processor for GeometryReplacer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

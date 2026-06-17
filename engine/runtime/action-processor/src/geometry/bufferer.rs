@@ -105,6 +105,7 @@ struct Bufferer {
 }
 
 impl Processor for Bufferer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -131,6 +132,7 @@ impl Processor for Bufferer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -145,6 +147,7 @@ impl Processor for Bufferer {
 }
 
 impl Bufferer {
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_2d_geometry(
         &self,
         geos: &Geometry2D,
@@ -216,6 +219,7 @@ impl Bufferer {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_3d_geometry(
         &self,
         geos: &Geometry3D,

@@ -27,7 +27,10 @@ type JobDocument struct {
 	UserFacingLogsURL string              `bson:"userfacinglogsurl"`
 	Status            string              `bson:"status"`
 	MetadataURL       string              `bson:"metadataurl"`
-	OutputURLs        []string            `bson:"outputurls"`
+	// Mode is omitempty so pre-existing docs (no mode) load as ModeRun via the
+	// domain's Mode() default.
+	Mode       string   `bson:"mode,omitempty"`
+	OutputURLs []string `bson:"outputurls"`
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]
@@ -87,6 +90,7 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		StartedAt:         j.StartedAt(),
 		CompletedAt:       j.CompletedAt(),
 		MetadataURL:       j.MetadataURL(),
+		Mode:              string(j.Mode()),
 		OutputURLs:        j.OutputURLs(),
 	}
 
@@ -149,6 +153,10 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		LogsURL(d.LogsURL).
 		WorkerLogsURL(d.WorkerLogsURL).
 		UserFacingLogsURL(d.UserFacingLogsURL)
+
+	if d.Mode != "" {
+		j = j.Mode(job.Mode(d.Mode))
+	}
 
 	if d.CompletedAt != nil {
 		j = j.CompletedAt(d.CompletedAt)
