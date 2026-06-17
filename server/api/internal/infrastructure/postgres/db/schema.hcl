@@ -135,6 +135,37 @@ table "parameters" {
   }
 }
 
+table "project_accesses" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "project_id" {
+    type = text
+  }
+  column "token" {
+    type    = text
+    default = ""
+  }
+  column "is_public" {
+    type    = boolean
+    default = false
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "project_accesses_project_id_idx" {
+    columns = [column.project_id]
+    unique  = true
+  }
+  index "project_accesses_token_idx" {
+    columns = [column.token]
+  }
+}
+
 table "worker_configs" {
   schema = schema.public
 

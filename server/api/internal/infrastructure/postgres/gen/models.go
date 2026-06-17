@@ -29,6 +29,13 @@ type Parameter struct {
 	UpdatedAt    time.Time
 }
 
+type ProjectAccess struct {
+	ID        string
+	ProjectID string
+	Token     string
+	IsPublic  bool
+}
+
 type Trigger struct {
 	ID            string
 	WorkspaceID   string

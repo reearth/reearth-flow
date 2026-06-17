@@ -21,16 +21,17 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 	client := pgxx.NewClient(pool, pgxx.WithTxRetry(2)) // retry serialization failures, matching the Mongo path
 	lock := NewLock(pool)
 	c := &repo.Container{
-		Trigger:      NewTrigger(client),
-		Config:       NewConfig(client, lock),
-		Parameter:    NewParameter(client),
-		WorkerConfig: NewWorkerConfig(client),
-		Lock:         lock,
-		Transaction:  client,
-		Workspace:    account.Workspace,
-		User:         account.User,
-		Role:         account.Role,
-		Permittable:  account.Permittable,
+		Trigger:       NewTrigger(client),
+		Config:        NewConfig(client, lock),
+		Parameter:     NewParameter(client),
+		WorkerConfig:  NewWorkerConfig(client),
+		ProjectAccess: NewProjectAccess(client),
+		Lock:          lock,
+		Transaction:   client,
+		Workspace:     account.Workspace,
+		User:          account.User,
+		Role:          account.Role,
+		Permittable:   account.Permittable,
 	}
 	if err := mustComplete(c); err != nil {
 		return nil, err
@@ -59,7 +60,6 @@ func mustComplete(c *repo.Container) error {
 	check("Job", c.Job != nil)
 	check("NodeExecution", c.NodeExecution != nil)
 	check("Project", c.Project != nil)
-	check("ProjectAccess", c.ProjectAccess != nil)
 	check("Workflow", c.Workflow != nil)
 	if len(missing) > 0 {
 		return fmt.Errorf("postgres backend not yet implemented for: %v (set DB_DRIVER=mongo)", missing)
