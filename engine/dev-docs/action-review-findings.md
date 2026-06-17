@@ -47,9 +47,9 @@ NoopSink
 
 ---
 
-## Input (9)
+## Input (10)
 
-<!-- Session 2 -->
+<!-- Session 2 — FeatureCityGmlReader reviewed in Session 6; original plan had it in Feature/Flow but current schema has Input category -->
 
 ```
 CityGmlReader
@@ -129,6 +129,17 @@ SqlReader
   desc:    title-case — "Read Features from SQL Database"; suggest "Reads features from
              a SQL database."
   tags:    ["database"] — 1 tag; acceptable (no strong second candidate)
+
+FeatureCityGmlReader
+  name:    → "Feature CityGML Reader"
+  desc:    "Reads and processes features from CityGML files with optional flattening" —
+             "reads and processes" is redundant; suggest "Reads CityGML features from a
+             file path stored in the incoming feature, optionally flattening nested
+             attributes."
+  params:  ordering — required `dataset` is not first (codelistsPath is); correct order:
+             dataset → flatten → codelistsPath (§3.5)
+  ports:   inputPorts `default` — global note
+           outputPorts `default` — global note
 ```
 
 ---
@@ -425,9 +436,88 @@ FeatureSorter
 
 ---
 
-## Feature (1) · File (2) · Transform (5)
+## Feature (1) · File (2) · Transform (4)
 
-<!-- Session 6 -->
+<!-- Session 6 — RhaiCaller removed from schema before review; FeatureCityGmlReader added to Input section above -->
+
+```
+FeatureFilePathExtractor
+  name:    → "Feature File Path Extractor"
+  desc:    title-case — "Extract File Paths from Dataset to Features"; suggest "Extracts
+             file paths from a dataset source and creates one feature per path."
+  params:  extractArchive — required but is a boolean with an obvious false default;
+             evaluate as optional with default false (§3.2)
+           ordering — required params `extractArchive` and `sourceDataset` are not first;
+             `destPrefix` (optional) is 1st; correct order: sourceDataset → extractArchive
+             → destPrefix (§3.5)
+  ports:   inputPorts `default` — global note
+           outputPorts `default` — needs semantic name; `unfiltered` semantics worth
+             clarifying during Phase 4
+  tags:    ["file", "path"] — `path` not in vocabulary; suggest ["file"]
+
+DirectoryDecompressor
+  name:    → "Directory Decompressor"
+  desc:    "from specified attributes" is slightly implementation-leaky; suggest
+             "Decompresses archive files referenced in feature attributes and emits the
+             extracted paths."
+  params:  archiveAttributes, findDeepestSingleFolder — both missing title (§3.3)
+  ports:   inputPorts `default` — global note
+           outputPorts `default` — global note; no `rejected` port — evaluate whether
+             failed extractions need a rejected route (§4.3)
+  tags:    ["file-system", "compression"] — `file-system` not in vocabulary; replace with
+             `file`; `compression` in vocabulary; suggest ["file", "compression"]
+
+FilePropertyExtractor
+  name:    → "File Property Extractor"
+  params:  filePathAttribute — missing title (§3.3)
+  ports:   inputPorts `default` — global note
+           outputPorts `default` — needs semantic name; `rejected` ✓
+  tags:    ["file-system"] — not in vocabulary; replace with `file`
+
+FeatureTransformer
+  name:    → "Feature Transformer"
+  params:  transformers — missing title (§3.3)
+           Transform.expr — missing title (§3.3)
+  ports:   inputPorts `default`, outputPorts `default` — global note; rename both to
+             `features`
+  tags:    empty — 0 tags acceptable
+
+ListExploder
+  name:    → "List Exploder"
+  params:  sourceAttribute — missing title (§3.3)
+  ports:   inputPorts `default`, outputPorts `default` — global note
+  tags:    ["list"] — in vocabulary ✓
+
+XMLFragmenter
+  name:    → "XML Fragmenter"
+  desc:    suggest "Splits an XML document into features by matching element patterns,
+             emitting each matched element as a separate feature."
+  params:  oneOf with a single variant suggests incomplete design — other source types
+             planned but only "url" implemented
+           attribute, elementsToExclude, elementsToMatch, source — all missing title and
+             description within the oneOf variant (§3.3)
+  ports:   inputPorts `default`, outputPorts `default` — global note; evaluate adding
+             `rejected` for malformed XML (§4.3)
+  tags:    ["xml"] — in vocabulary ✓
+
+XMLValidator
+  name:    → "XML Validator"
+  desc:    "against XSD schemas" inaccurate for syntax/namespace modes; "with
+             success/failure routing" references port behavior; suggest "Validates XML
+             documents for syntax, namespace conformance, or XSD schema compliance."
+  params:  schema title "XmlValidatorParam" — inconsistent casing; should be "XML
+             Validator Parameters"
+           schema-level description missing (§3.3)
+           attribute, inputType, validationType — all missing title and description (§3.3)
+           ValidationType enum ("syntax", "syntaxAndNamespace", "syntaxAndSchema") — no
+             per-variant descriptions; plain enum type (§3.4)
+           XmlInputType enum ("file", "text") — no per-variant descriptions; plain enum
+             type (§3.4)
+  ports:   inputPorts `default` — global note; outputPorts `success`, `failed` ✓;
+             evaluate adding `rejected` for parse errors (§4.3)
+  tags:    ["xml", "validate"] — `validate` not in vocabulary; `validation` is; correct
+             to ["xml", "validation"]
+```
 
 ---
 
