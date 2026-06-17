@@ -635,4 +635,117 @@ ImageRasterizer
 
 ## Geometry B (11)
 
-<!-- Session 8 — PolygonNormalExtractor through VerticalReprojector -->
+<!-- Session 8 — GeometryReplacer through VerticalReprojector -->
+
+GeometryReplacer
+  name:    → "Geometry Replacer"
+  desc:    title-case — "Replace Feature Geometry from Attribute"; suggest "Replaces a
+             feature's geometry with the compressed geometry data stored in a named attribute."
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
+             `rejected` — evaluate for missing or malformed attribute value (§4.3)
+
+GeometrySplitter
+  name:    → "Geometry Splitter"
+  desc:    title-case — "Split Multi-Geometries into Individual Features"; suggest "Splits
+             multi-part geometries into individual single-geometry features."
+  params:  schema-level description "Parameters for GeometrySplitter" is an internal name
+             recycled as description — not descriptive (§3.3); suggest "Configure how
+             multi-part geometries are split into individual features."
+           splitLevel — missing title (§3.3); description duplicates the oneOf variant
+             content; trim to one sentence
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
+             `rejected` — evaluate for features without multi-part geometry (§4.3)
+  tags:    ["split", "geometry"] — `split` not in vocabulary; remove → ["geometry"]
+
+GeometryValidator
+  name:    → "Geometry Validator"
+  desc:    title-case — "Validate Feature Geometry Quality"; suggest "Validates feature
+             geometry for issues such as duplicate points, corrupt geometry, or
+             self-intersection."
+  params:  ValidationType oneOf — `duplicatePoints` and `duplicateConsecutivePoints` variants
+             missing per-variant descriptions; `corruptGeometry` and `selfIntersection` ✓
+             (§3.4)
+  ports:   inputPorts `default` — global note; outputPorts `success` ✓, `failed` ✓,
+             `rejected` ✓
+  tags:    ["validate"] — not in vocabulary; `validation` is; correct to ["validation"]
+
+GridDivider
+  name:    → "Grid Divider"
+  desc:    title-case — "Divide Polygons into Regular Grid Cells"; suggest "Divides polygon
+             geometries into a regular grid of equal-sized cells."
+  params:  schema-level description missing (§3.3)
+           ordering — required `unitSquareSize` comes after optionals `groupBy` and
+             `keepSquareOnly`; correct order: unitSquareSize → keepSquareOnly → groupBy (§3.5)
+  ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
+  tags:    ["2d"] — not in vocabulary; replace with ["spatial"]
+
+HorizontalReprojector
+  name:    → "Horizontal Reprojector"
+  desc:    title-case — "Reproject Geometry to Different Coordinate System"; suggest
+             "Reprojects feature geometry from one horizontal coordinate system to another
+             using EPSG codes."
+  params:  sourceEpsgCode — description is 4 sentences; exceeds 2-sentence guideline (§3.3)
+           ordering — sourceEpsgCode (optional) appears before targetEpsgCode (required);
+             correct order: targetEpsgCode → sourceEpsgCode (§3.5)
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
+             `rejected` — evaluate for invalid EPSG codes or reprojection failure (§4.3)
+  tags:    ["projection", "2d"] — neither in vocabulary; replace with ["coordinate-system"]
+
+PolygonNormalExtractor
+  name:    → "Polygon Normal Extractor"
+  desc:    imperative not verb-first — "Extract normal vectors and other properties for
+             polygon features"; "other properties" is vague; suggest "Extracts the normal
+             vector and geometric properties from polygon features and stores them as
+             attributes."
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
+             `rejected` — evaluate for non-polygon features (§4.3)
+  tags:    ["normal", "3d"] — `normal` not in vocabulary; remove → ["3d"]
+
+RayIntersector
+  name:    → "Ray Intersector"
+  params:  schema-level description "RayIntersector Parameters" is an internal name, not a
+             description (§3.3); suggest "Configure how rays and geometries are paired and
+             how intersection results are output."
+           closestIntersectionOnly, geomId, includeRayOrigin, outputGeometryType, pairId,
+             ray, tolerance — all 7 top-level params missing title (§3.3)
+           RayDefinition sub-properties dirX, dirY, dirZ, posX, posY, posZ — all missing
+             title (§3.3)
+           ordering — required pairId and ray come after all optional params; correct:
+             pairId → ray → outputGeometryType → closestIntersectionOnly → includeRayOrigin
+             → geomId → tolerance (§3.5)
+  ports:   inputPorts `ray`, `geom` ✓; outputPorts `no_intersection` — snake_case violates
+             §4.1; rename to `no-intersection`; `intersection` ✓, `rejected` ✓
+  tags:    ["ray", "intersection", "3d"] — `ray` and `intersection` not in vocabulary;
+             replace with ["3d", "spatial"]
+
+Refiner
+  desc:    title-case — "Refine Complex Geometries into Simple Geometries"; suggest "Refines
+             complex geometry types into simpler primitives."
+  ports:   inputPorts `default` — global note; outputPorts `remain` — suggest rename to
+             `remaining` for natural English; `default` — global note
+
+ThreeDimensionForcer
+  name:    → "Three Dimension Forcer" — "Dimension" should be plural or adjectival; suggest
+             "Three Dimensions Forcer" or "Three-Dimensional Forcer"
+  desc:    title-case — "Convert 2D Geometry to 3D by Adding Z-Coordinates"; suggest "Adds
+             Z-coordinates to 2D geometries to produce 3D output."
+  ports:   inputPorts `default`, outputPorts `default` — global note
+
+TwoDimensionForcer
+  name:    → "Two Dimension Forcer" — same English issue as ThreeDimensionForcer; suggest
+             "Two Dimensions Forcer" or "Two-Dimensional Forcer"
+  desc:    title-case — "Force 3D Geometry to 2D by Removing Z-Coordinates"; suggest
+             "Removes Z-coordinates from 3D geometries to produce 2D output."
+  ports:   inputPorts `default`, outputPorts `default` — global note
+  tags:    ["2d"] — not in vocabulary; replace with ["geometry"]
+
+VerticalReprojector
+  name:    → "Vertical Reprojector"
+  desc:    title-case — "Reproject Vertical Coordinates Between Datums"; suggest "Reprojects
+             the vertical coordinate of feature geometry between vertical datums."
+  params:  VerticalReprojectorType plain enum — single value `jgd2011ToWgs84` only
+             (incomplete design); no per-variant description (§3.4)
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
+             `rejected` — evaluate for geometry without Z or transformation failure (§4.3)
+  tags:    ["projection", "3d"] — `projection` not in vocabulary; replace with
+             ["coordinate-system", "3d"]
