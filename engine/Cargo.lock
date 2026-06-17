@@ -6599,6 +6599,7 @@ dependencies = [
  "rstar 0.12.2",
  "serde",
  "serde_json",
+ "smallvec",
  "strum_macros",
  "thiserror 2.0.18",
 ]
