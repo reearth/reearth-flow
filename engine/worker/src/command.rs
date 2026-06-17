@@ -39,6 +39,11 @@ const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
 const WORKFLOW_PARSE_ERROR_UUID: Uuid = Uuid::nil(); // 00000000-0000-0000-0000-000000000000
 
 pub fn build_worker_command() -> Command {
+    // The default (subcommand-less) invocation runs a workflow and preserves the
+    // exact flags Batch and the `/run` path depend on (`--workflow`,
+    // `--metadata-path`, `--var`, `--previous-job-id`, `--start-node-id`).
+    // `probe-schema` is registered as an optional subcommand; when present it
+    // takes over, otherwise we fall through to the run behavior.
     Command::new("Re:Earth Flow Worker")
         .about("Start flow worker.")
         .long_about("Start a worker to run a workflow.")
@@ -50,6 +55,11 @@ pub fn build_worker_command() -> Command {
         .arg(vars_arg())
         .arg(previous_job_id_arg())
         .arg(start_node_id_arg())
+        .subcommand(crate::probe_schema::build_probe_schema_command())
+        // When `probe-schema` is used, the top-level required run args
+        // (`--workflow`, `--metadata-path`) are not required. The default
+        // (subcommand-less) run invocation keeps requiring them exactly as before.
+        .subcommand_negates_reqs(true)
 }
 
 fn workflow_arg() -> Arg {
