@@ -195,6 +195,35 @@ table "workflows" {
   }
 }
 
+table "edge_executions" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "edge_id" {
+    type = text
+  }
+  column "job_id" {
+    type = text
+  }
+  column "intermediate_data_url" {
+    type = text
+    null = true
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "edge_executions_job_id_idx" {
+    columns = [column.job_id]
+  }
+  index "edge_executions_job_id_edge_id_idx" {
+    columns = [column.job_id, column.edge_id]
+  }
+}
+
 table "worker_configs" {
   schema = schema.public
 

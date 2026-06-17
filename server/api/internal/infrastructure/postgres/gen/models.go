@@ -15,6 +15,13 @@ type Config struct {
 	AuthKey   *string
 }
 
+type EdgeExecution struct {
+	ID                  string
+	EdgeID              string
+	JobID               string
+	IntermediateDataUrl *string
+}
+
 type Parameter struct {
 	ID           string
 	ProjectID    string

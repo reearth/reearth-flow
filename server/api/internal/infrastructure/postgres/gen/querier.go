@@ -16,12 +16,15 @@ type Querier interface {
 	DeleteWorkerConfig(ctx context.Context, id string) error
 	DeleteWorkflow(ctx context.Context, id string) error
 	GetConfig(ctx context.Context) (GetConfigRow, error)
+	GetEdgeExecution(ctx context.Context, id string) (EdgeExecution, error)
+	GetEdgeExecutionByJobEdgeID(ctx context.Context, arg GetEdgeExecutionByJobEdgeIDParams) (EdgeExecution, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
 	GetProjectAccessByToken(ctx context.Context, token string) (ProjectAccess, error)
 	GetTrigger(ctx context.Context, id string) (Trigger, error)
 	GetWorkerConfig(ctx context.Context, id string) (WorkerConfig, error)
 	GetWorkflow(ctx context.Context, id string) (Workflow, error)
+	ListEdgeExecutionsByJobID(ctx context.Context, jobID string) ([]EdgeExecution, error)
 	ListParametersByIDs(ctx context.Context, dollar_1 []string) ([]Parameter, error)
 	ListParametersByProject(ctx context.Context, projectID string) ([]Parameter, error)
 	ListTriggersByDeployment(ctx context.Context, deploymentID string) ([]Trigger, error)
@@ -30,6 +33,7 @@ type Querier interface {
 	ListWorkerConfigsByIDs(ctx context.Context, dollar_1 []string) ([]WorkerConfig, error)
 	UpsertConfig(ctx context.Context, arg UpsertConfigParams) error
 	UpsertConfigAuth(ctx context.Context, arg UpsertConfigAuthParams) error
+	UpsertEdgeExecution(ctx context.Context, arg UpsertEdgeExecutionParams) error
 	UpsertParameter(ctx context.Context, arg UpsertParameterParams) error
 	UpsertProjectAccess(ctx context.Context, arg UpsertProjectAccessParams) error
 	UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) error
