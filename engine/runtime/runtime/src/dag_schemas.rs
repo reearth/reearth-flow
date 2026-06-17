@@ -799,4 +799,23 @@ mod tests {
             Err(crate::errors::ExecutionError::SchemaInferenceCycle)
         ));
     }
+
+    #[test]
+    fn long_chain_does_not_overflow_stack() {
+        // A linear chain long enough that the OLD recursive walk overflowed the
+        // ~8 MB stack. The iterative pass must complete.
+        const N: usize = 100_000;
+        let mut dag = empty_dag();
+        let s = add(&mut dag, "s", K::Source);
+        let mut prev = s;
+        for _ in 0..N {
+            let p = add(&mut dag, "p", K::Proc);
+            link(&mut dag, prev, p);
+            prev = p;
+        }
+        let got = dag.affecting_sources_per_node().expect("no cycle");
+        let s_handle = dag.graph()[s].handle.clone();
+        assert_eq!(got[prev.index()], HashSet::from([s_handle]));
+        assert_eq!(got.len(), N + 1);
+    }
 }
