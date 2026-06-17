@@ -35,6 +35,9 @@ pub enum Error {
 
     #[error("DatetimeError: {0}")]
     Datetime(String),
+
+    #[error("AttributeError: {0}")]
+    Attribute(String),
 }
 
 impl Error {
@@ -81,10 +84,15 @@ impl Error {
     pub fn datetime<T: ToString>(message: T) -> Self {
         Self::Datetime(message.to_string())
     }
+
+    pub fn attribute<T: ToString>(message: T) -> Self {
+        Self::Attribute(message.to_string())
+    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+pub mod attribute;
 pub mod collection;
 pub mod color;
 pub mod compress;

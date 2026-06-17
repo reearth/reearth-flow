@@ -18,7 +18,8 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{
-    Attribute, AttributeValue, Attributes, Expr, Feature, Geometry, GeometryType, GeometryValue,
+    attribute_value_from_rhai, Attribute, AttributeValue, Attributes, Expr, Feature, Geometry,
+    GeometryType, GeometryValue,
 };
 use rhai::Dynamic;
 use schemars::JsonSchema;
@@ -165,7 +166,7 @@ impl Processor for CSGBuilder {
             let expr_engine = Arc::clone(&ctx.expr_engine);
             let scope = feature.new_scope(expr_engine.clone(), &None);
             match scope.eval_ast::<Dynamic>(expr) {
-                Ok(value) => match value.try_into() {
+                Ok(value) => match attribute_value_from_rhai(value) {
                     Ok(attr_value) => attr_value,
                     Err(_) => {
                         // Failed to convert to AttributeValue, send to rejected
