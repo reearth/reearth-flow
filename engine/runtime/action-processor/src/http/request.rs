@@ -2,6 +2,8 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Method;
 use std::sync::Arc;
 
+use reearth_flow_types::Feature;
+
 use super::body::BodyContent;
 use super::errors::{HttpProcessorError, Result};
 use super::expression::{CompiledHeader, CompiledQueryParam};
@@ -28,12 +30,13 @@ impl RequestBuilder {
     pub fn with_headers(
         mut self,
         compiled_headers: &[CompiledHeader],
+        feature: &Feature,
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self> {
         for compiled_header in compiled_headers {
             let value = compiled_header
                 .value_ast
-                .eval_string_env_only(env_vars.clone())
+                .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!(
                         "Failed to evaluate header '{}': {e:?}",
@@ -74,12 +77,13 @@ impl RequestBuilder {
     pub fn with_query_params(
         mut self,
         compiled_params: &[CompiledQueryParam],
+        feature: &Feature,
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self> {
         for compiled_param in compiled_params {
             let value = compiled_param
                 .value_ast
-                .eval_string_env_only(env_vars.clone())
+                .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!(
                         "Failed to evaluate query parameter '{}': {e:?}",
@@ -118,7 +122,7 @@ impl RequestBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::{Code, CodeType};
+    use reearth_flow_types::{Attributes, Code, CodeType};
 
     fn make_env(pairs: &[(&str, &str)]) -> Arc<serde_json::Map<String, serde_json::Value>> {
         let mut map = serde_json::Map::new();
@@ -126,6 +130,10 @@ mod tests {
             map.insert(k.to_string(), serde_json::Value::String(v.to_string()));
         }
         Arc::new(map)
+    }
+
+    fn empty_feature() -> Feature {
+        Feature::from(Attributes::new())
     }
 
     #[test]
@@ -143,8 +151,9 @@ mod tests {
             },
         }];
 
+        let feature = empty_feature();
         let builder = RequestBuilder::new(Method::GET, "https://example.com".to_string());
-        let result = builder.with_query_params(&compiled_params, env_vars);
+        let result = builder.with_query_params(&compiled_params, &feature, env_vars);
 
         assert!(result.is_ok());
         let builder = result.unwrap();

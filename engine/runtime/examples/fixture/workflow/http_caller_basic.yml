@@ -32,8 +32,10 @@ graphs:
         action: HTTPCaller
         with:
           # Dynamic URL using feature attributes
-          url: |
-            "https://jsonplaceholder.typicode.com/users/" + env.get("__value").user_id
+          url:
+            type: flowExpr
+            value: |
+              "https://jsonplaceholder.typicode.com/users/" + attributes["user_id"]
 
           method: GET
 

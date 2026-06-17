@@ -215,7 +215,9 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: "4326"
+          targetEpsgCode:
+            type: flowExpr
+            value: "4326"
 
       - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
         name: VerticalReprojector
@@ -307,7 +309,9 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: "4326"
+          targetEpsgCode:
+            type: flowExpr
+            value: "4326"
 
       - id: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
         name: TwoDimensionForcerDmGeometricAttribute
