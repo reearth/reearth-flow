@@ -3,11 +3,13 @@
 Phase 3 quality review of the 74 base actions against [action-standard.md](action-standard.md).
 
 **How to use:**
+
 - Fill each action with either `ActionName — OK` or the checklist format from §7 of the standard
 - Phase 4 improvement PRs should reference this file and delete completed sections as fixes land
 - File is deleted when all sections are cleared
 
 **Global fix (applies to all base actions):**
+
 - `ports` — all ports currently named `default` must be assessed and renamed (§4.2); not called out per-action below. Check the Rust implementation to confirm semantics before renaming: if the port carries the primary feature stream rename to `features`; if it is a catch-all for unmatched features consider `unfiltered` instead. Make the change in Rust, then regenerate the schema (`cargo make schema-base`). Do not treat this as a mechanical find-replace.
 
 ---
@@ -525,6 +527,7 @@ XMLValidator
 
 <!-- Session 7 — AppearanceRemover through ImageRasterizer -->
 
+```
 AppearanceRemover
   name:    → "Appearance Remover"
   ports:   inputPorts `default` — global note; outputPorts `default` — global note
@@ -630,6 +633,7 @@ ImageRasterizer
              `default` — global note; `textured` ✓
   tags:    ["raster", "image", "texture"] — `image` and `texture` not in vocabulary; replace
              with ["raster"]
+```
 
 ---
 
@@ -637,6 +641,7 @@ ImageRasterizer
 
 <!-- Session 8 — GeometryReplacer through VerticalReprojector -->
 
+```
 GeometryReplacer
   name:    → "Geometry Replacer"
   desc:    title-case — "Replace Feature Geometry from Attribute"; suggest "Replaces a
@@ -749,3 +754,4 @@ VerticalReprojector
              `rejected` — evaluate for geometry without Z or transformation failure (§4.3)
   tags:    ["projection", "3d"] — `projection` not in vocabulary; replace with
              ["coordinate-system", "3d"]
+```
