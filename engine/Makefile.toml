@@ -66,6 +66,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
+export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # default 4, caller can override
 cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 ''']
 

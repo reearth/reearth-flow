@@ -39,6 +39,7 @@ jobs:
       - uses: ./.github/actions/setup-engine-ci
         with:
           rust-components: clippy, rustfmt
+          tools: cargo-make,taplo-cli
       - name: Compare version with previous commit
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
