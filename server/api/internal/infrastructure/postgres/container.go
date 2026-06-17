@@ -27,6 +27,7 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 		WorkerConfig:  NewWorkerConfig(client),
 		ProjectAccess: NewProjectAccess(client),
 		Workflow:      NewWorkflow(client),
+		Deployment:    NewDeployment(client),
 		EdgeExecution: NewEdgeExecution(client),
 		NodeExecution: NewNodeExecution(client),
 		Lock:          lock,
@@ -58,7 +59,6 @@ func mustComplete(c *repo.Container) error {
 	check("Asset", c.Asset != nil)
 	check("AssetUpload", c.AssetUpload != nil)
 	check("AuthRequest", c.AuthRequest != nil)
-	check("Deployment", c.Deployment != nil)
 	check("Job", c.Job != nil)
 	check("Project", c.Project != nil)
 	if len(missing) > 0 {

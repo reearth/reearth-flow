@@ -15,6 +15,18 @@ type Config struct {
 	AuthKey   *string
 }
 
+type Deployment struct {
+	ID          string
+	WorkspaceID string
+	ProjectID   *string
+	WorkflowUrl string
+	Description string
+	Version     string
+	UpdatedAt   time.Time
+	HeadID      *string
+	IsHead      bool
+}
+
 type EdgeExecution struct {
 	ID                  string
 	EdgeID              string

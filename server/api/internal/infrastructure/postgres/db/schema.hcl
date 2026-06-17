@@ -318,3 +318,55 @@ table "worker_configs" {
     columns = [column.id]
   }
 }
+
+table "deployments" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "workspace_id" {
+    type = text
+  }
+  column "project_id" {
+    type = text
+    null = true
+  }
+  column "workflow_url" {
+    type    = text
+    default = ""
+  }
+  column "description" {
+    type    = text
+    default = ""
+  }
+  column "version" {
+    type    = text
+    default = ""
+  }
+  column "updated_at" {
+    type = timestamptz
+  }
+  column "head_id" {
+    type = text
+    null = true
+  }
+  column "is_head" {
+    type    = boolean
+    default = false
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "deployments_workspace_id_idx" {
+    columns = [column.workspace_id]
+  }
+  index "deployments_project_id_idx" {
+    columns = [column.project_id]
+  }
+  index "deployments_workspace_id_is_head_idx" {
+    columns = [column.workspace_id, column.is_head]
+  }
+}
