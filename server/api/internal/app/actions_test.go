@@ -10,8 +10,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func resetTestData() {
-	actionsDataMap = make(map[string]ActionsData)
+const testSchemaBaseURL = "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+
+func newTestHandler() *ActionsHandler {
+	return NewActionsHandler(testSchemaBaseURL)
+}
+
+func newTestHandlerWithData(data map[string]ActionsData) *ActionsHandler {
+	h := NewActionsHandler("")
+	h.actionsDataMap = data
+	return h
 }
 
 func TestLoadActionsData(t *testing.T) {
@@ -28,8 +36,8 @@ func TestLoadActionsData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetTestData()
-			data, err := loadActionsData(tt.lang)
+			h := newTestHandler()
+			data, err := h.loadActionsData(tt.lang)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -37,8 +45,11 @@ func TestLoadActionsData(t *testing.T) {
 				assert.NotEmpty(t, data.Actions)
 
 				// Verify cache
-				assert.NotNil(t, actionsDataMap[tt.lang])
-				assert.Equal(t, data, actionsDataMap[tt.lang])
+				h.mu.RLock()
+				cached, exists := h.actionsDataMap[tt.lang]
+				h.mu.RUnlock()
+				assert.True(t, exists)
+				assert.Equal(t, data, cached)
 			}
 		})
 	}
@@ -60,12 +71,12 @@ func TestListActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetTestData()
+			h := newTestHandler()
 			req := httptest.NewRequest(http.MethodGet, "/actions?lang="+tt.lang+tt.query, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			err := listActions(c)
+			err := h.listActions(c)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantCode, rec.Code)
 
@@ -86,15 +97,16 @@ func TestListActionsHiddenFilter(t *testing.T) {
 		{Name: "PLATEAU4.SolarPositionCalculator", Type: ActionTypeProcessor, Description: "not in allow-list", Categories: []string{"PLATEAU"}},
 	}
 
-	resetTestData()
-	actionsDataMap[""] = ActionsData{Actions: testActions}
+	h := newTestHandlerWithData(map[string]ActionsData{
+		"": {Actions: testActions},
+	})
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/actions", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	err := listActions(c)
+	err := h.listActions(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 
@@ -140,15 +152,16 @@ func TestGetSegregatedActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetTestData()
-			actionsDataMap[tt.lang] = ActionsData{Actions: testActions}
+			h := newTestHandlerWithData(map[string]ActionsData{
+				tt.lang: {Actions: testActions},
+			})
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/actions/segregated?lang="+tt.lang, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			err := getSegregatedActions(c)
+			err := h.getSegregatedActions(c)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantCode, rec.Code)
 
@@ -194,8 +207,9 @@ func TestGetActionDetails(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetTestData()
-			actionsDataMap[tt.lang] = ActionsData{Actions: []Action{testAction, hiddenAction}}
+			h := newTestHandlerWithData(map[string]ActionsData{
+				tt.lang: {Actions: []Action{testAction, hiddenAction}},
+			})
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/?lang="+tt.lang, nil)
@@ -205,7 +219,7 @@ func TestGetActionDetails(t *testing.T) {
 			c.SetParamNames("id")
 			c.SetParamValues(tt.id)
 
-			err := getActionDetails(c)
+			err := h.getActionDetails(c)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantCode, rec.Code)
 
@@ -220,6 +234,10 @@ func TestGetActionDetails(t *testing.T) {
 }
 
 func TestGetActionDetailsNotFound(t *testing.T) {
+	h := newTestHandlerWithData(map[string]ActionsData{
+		"": {Actions: []Action{}},
+	})
+
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -228,7 +246,7 @@ func TestGetActionDetailsNotFound(t *testing.T) {
 	c.SetParamNames("id")
 	c.SetParamValues("NonExistentAction")
 
-	err := getActionDetails(c)
+	err := h.getActionDetails(c)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 
