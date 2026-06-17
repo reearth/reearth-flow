@@ -525,6 +525,112 @@ XMLValidator
 
 <!-- Session 7 — AppearanceRemover through ImageRasterizer -->
 
+AppearanceRemover
+  name:    → "Appearance Remover"
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note
+
+AreaCalculator
+  name:    → "Area Calculator"
+  params:  areaType — missing title (§3.3); description references "PlaneArea"/"SlopedArea" in
+             PascalCase but actual enum values are camelCase (misleading)
+           multiplier — missing title (§3.3)
+           outputAttribute — missing title (§3.3)
+           AreaType plain enum — no per-variant descriptions (§3.4); convert to oneOf or expand
+             property description to describe each variant
+  ports:   inputPorts `default`, outputPorts `default` — global note; no `rejected` — evaluate
+             whether non-polygon features need a rejected route (§4.3)
+  tags:    ["area", "measurement"] — neither in vocabulary; remove (0 tags acceptable)
+
+BoundsExtractor
+  name:    → "Bounds Extractor"
+  desc:    title-case — "Extract Bounding Box Coordinates from Feature Geometry"; suggest
+             "Extracts the bounding box coordinates of a feature's geometry and stores them as
+             named attributes."
+  params:  schema-level description missing (§3.3)
+           ordering — alphabetical (xmax, xmin, ymax, ymin, zmax, zmin); suggest grouping by
+             axis: xmin, xmax, ymin, ymax, zmin, zmax (§3.5 readability)
+  ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
+  tags:    [] — suggest ["geometry"]
+
+Bufferer
+  desc:    title-case — "Create Buffer Around Features"; suggest "Creates a buffer polygon
+             around each input geometry at a specified distance."
+  params:  BufferType oneOf with a single `area2d` variant — incomplete design; other buffer
+             types planned but unimplemented (same structural flag as XMLFragmenter)
+  ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
+  tags:    ["2d"] — not in vocabulary; replace with ["geometry"]
+
+Clipper
+  desc:    title-case — "Clip Features Using Boundary Shapes"; suggest "Clips candidate
+             features to the boundary geometry, separating results into inside and outside
+             portions."
+  ports:   inputPorts `clipper`, `candidate` ✓; outputPorts `inside`, `outside`, `rejected` ✓
+  tags:    ["2d"] — not in vocabulary; replace with ["spatial"]
+
+ElevationExtractor
+  name:    → "Elevation Extractor"
+  desc:    title-case — "Extract Z-Coordinate Elevation to Attribute"; suggest "Extracts the
+             Z-coordinate elevation from a feature's geometry and stores it in a named
+             attribute."
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
+             `rejected` — evaluate whether features lacking 3D geometry need a rejected route
+             (§4.3)
+
+Extruder
+  desc:    title-case — "Extrude 2D Polygons into 3D Solids"; suggest "Extrudes 2D polygon
+             geometries vertically by a specified distance to produce 3D solid geometries."
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
+             `rejected` — evaluate for non-polygon inputs (§4.3)
+
+FootprintReplacer
+  name:    → "Footprint Replacer"
+  desc:    parenthetical "(supports solids, surfaces, and CityGML)" leaks implementation
+             details; compound "Projects... and computes" obscures user-visible result; suggest
+             "Replaces a feature's 3D geometry with its 2D footprint projected onto the XY
+             plane."
+  ports:   inputPorts `default` — global note; outputPorts `footprint` ✓, `rejected` ✓
+
+GeometryExtractor
+  name:    → "Geometry Extractor"
+  desc:    title-case — "Extract Geometry Data to Attribute"; suggest "Serializes the feature's
+             geometry to a compressed JSON representation and stores it in a named attribute."
+  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
+             `rejected` — evaluate for features with no geometry (§4.3)
+  tags:    [] — suggest ["geometry"]
+
+GeometryPartExtractor
+  name:    → "Geometry Part Extractor"
+  desc:    imperative not verb-first — "Extract geometry parts (surfaces) from 3D geometries as
+             separate features"; suggest "Extracts geometry parts from 3D geometries, emitting
+             each part as a separate feature."
+  params:  GeometryPartType oneOf with a single `surface` variant — incomplete design; evaluate
+             what other part types should be added (Phase 4)
+  ports:   inputPorts `default` — global note; outputPorts `extracted`, `remaining`, `untouched`
+             — semantics of `remaining` vs `untouched` need clarification in Phase 4 (both
+             receive non-extracted features — are they distinct conditions?)
+  tags:    ["geometry", "decompose"] — `decompose` not in vocabulary; replace with
+             ["geometry", "3d"]
+
+GeometryRemover
+  name:    → "Geometry Remover"
+  ports:   inputPorts `default`, outputPorts `default` — global note
+
+ImageRasterizer
+  name:    → "Image Rasterizer"
+  desc:    imperative not verb-first — "Convert vector geometries to raster image format";
+             suggest "Converts vector geometries to a raster image using configurable overlap
+             resolution."
+  params:  imageWidth — missing title (§3.3); description "The width of image" incomplete —
+             suggest "Width of the output image in pixels."
+           OnOverlap — `takeLast`, `takeFirst`, `max`, `min` variants missing per-variant
+             descriptions; only `sum` has one (§3.4)
+  ports:   inputPorts `textureCoordinates` — camelCase violates §4.1; rename to
+             `texture-coordinates`; `default` — global note
+           outputPorts `textureBounds` — camelCase violates §4.1; rename to `texture-bounds`;
+             `default` — global note; `textured` ✓
+  tags:    ["raster", "image", "texture"] — `image` and `texture` not in vocabulary; replace
+             with ["raster"]
+
 ---
 
 ## Geometry B (11)
