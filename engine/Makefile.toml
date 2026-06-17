@@ -66,6 +66,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
+export PLATEAU_TILES_TEST_CONCURRENCY=4 # run 4 testcases concurrently
 cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 ''']
 
