@@ -1,6 +1,6 @@
 # Action Review Findings
 
-Phase 3 quality review of the 74 base actions against [action-standard.md](action-standard.md).
+Phase 3 quality review of the 73 base actions against [action-standard.md](action-standard.md).
 
 **How to use:**
 
@@ -51,7 +51,7 @@ NoopSink
 
 ## Input (10)
 
-<!-- Session 2 — FeatureCityGmlReader reviewed in Session 6; original plan had it in Feature/Flow but current schema has Input category -->
+<!-- Session 2 -->
 
 ```
 CityGmlReader
@@ -146,9 +146,9 @@ FeatureCityGmlReader
 
 ---
 
-## Output (12)
+## Output (10)
 
-<!-- Session 3 — EchoSink and NoopSink already reviewed in Debug section above -->
+<!-- Session 3 -->
 
 ```
 Cesium3DTilesWriter
@@ -401,7 +401,7 @@ SpatialFilter
 
 ## Merge (3)
 
-<!-- Session 5 -->
+<!-- Session 6 -->
 
 ```
 FeatureJoiner
@@ -440,7 +440,7 @@ FeatureSorter
 
 ## Feature (1) · File (2) · Transform (4)
 
-<!-- Session 6 — RhaiCaller removed from schema before review; FeatureCityGmlReader added to Input section above -->
+<!-- Session 7 -->
 
 ```
 FeatureFilePathExtractor
@@ -525,7 +525,7 @@ XMLValidator
 
 ## Geometry A (12)
 
-<!-- Session 7 — AppearanceRemover through ImageRasterizer -->
+<!-- Session 8 — AppearanceRemover through ImageRasterizer -->
 
 ```
 AppearanceRemover
@@ -639,7 +639,7 @@ ImageRasterizer
 
 ## Geometry B (11)
 
-<!-- Session 8 — GeometryReplacer through VerticalReprojector -->
+<!-- Session 9 — GeometryReplacer through VerticalReprojector -->
 
 ```
 GeometryReplacer
