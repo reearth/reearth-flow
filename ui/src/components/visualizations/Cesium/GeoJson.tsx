@@ -291,6 +291,7 @@ const GeoJsonData: React.FC<Props> = ({
       key={dataSourceKey}
       data={sanitizedData}
       onLoad={handleLoad}
+      clampToGround={true}
     />
   );
 };
