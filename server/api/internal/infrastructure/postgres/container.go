@@ -8,6 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/migration"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
+	"github.com/reearth/reearthx/authserver"
 	"github.com/reearth/reearthx/pgxx"
 )
 
@@ -32,6 +33,7 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 		EdgeExecution: NewEdgeExecution(client),
 		NodeExecution: NewNodeExecution(client),
 		Job:           NewJob(client),
+		AuthRequest:   authserver.NewPostgres(client),
 		Lock:          lock,
 		Transaction:   client,
 		Workspace:     account.Workspace,
@@ -60,7 +62,6 @@ func mustComplete(c *repo.Container) error {
 	}
 	check("Asset", c.Asset != nil)
 	check("AssetUpload", c.AssetUpload != nil)
-	check("AuthRequest", c.AuthRequest != nil)
 	if len(missing) > 0 {
 		return fmt.Errorf("postgres backend not yet implemented for: %v (set DB_DRIVER=mongo)", missing)
 	}

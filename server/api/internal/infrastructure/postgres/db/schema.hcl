@@ -522,3 +522,69 @@ table "projects" {
     columns = [column.workspace_id, column.is_archived]
   }
 }
+
+# OAuth2 authorization-request state for the reearthx authserver. The repo
+# (authserver.Postgres) lives in reearthx; flow owns the schema here via Atlas
+# rather than the library's self-managing Init. Columns mirror that Init DDL.
+table "auth_requests" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "client_id" {
+    type    = text
+    default = ""
+  }
+  column "subject" {
+    type    = text
+    default = ""
+  }
+  column "code" {
+    type    = text
+    default = ""
+  }
+  column "state" {
+    type    = text
+    default = ""
+  }
+  column "response_type" {
+    type    = text
+    default = ""
+  }
+  column "scopes" {
+    type = jsonb
+    null = true
+  }
+  column "audiences" {
+    type = jsonb
+    null = true
+  }
+  column "redirect_uri" {
+    type    = text
+    default = ""
+  }
+  column "nonce" {
+    type    = text
+    default = ""
+  }
+  column "code_challenge" {
+    type = jsonb
+    null = true
+  }
+  column "authorized_at" {
+    type = timestamptz
+    null = true
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "auth_requests_code_idx" {
+    columns = [column.code]
+  }
+  index "auth_requests_subject_idx" {
+    columns = [column.subject]
+  }
+}

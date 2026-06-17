@@ -8,6 +8,21 @@ import (
 	"time"
 )
 
+type AuthRequest struct {
+	ID            string
+	ClientID      string
+	Subject       string
+	Code          string
+	State         string
+	ResponseType  string
+	Scopes        []byte
+	Audiences     []byte
+	RedirectUri   string
+	Nonce         string
+	CodeChallenge []byte
+	AuthorizedAt  *time.Time
+}
+
 type Config struct {
 	ID        int32
 	Migration int64
