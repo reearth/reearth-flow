@@ -8,12 +8,15 @@ use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Feature};
 
+#[cfg(not(feature = "new-geometry"))]
+use super::conversion::feature_to_shape;
 use super::{
-    conversion::{attributes_to_record, feature_to_shape, make_table_builder},
+    conversion::{attributes_to_record, make_table_builder},
     crs::{self, ProjectionRepository},
     null_shape,
 };
 
+#[cfg(not(feature = "new-geometry"))]
 pub(super) fn pipeline(
     ctx: &Context,
     sandbox_root: &Uri,

@@ -155,6 +155,7 @@ impl Source for CzmlReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -169,6 +170,7 @@ impl Source for CzmlReader {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_czml(
     content: &Bytes,
     params: &CzmlReaderCompiledParam,
@@ -294,6 +296,7 @@ fn extract_extra_czml_properties(
 
 /// Convert a CZML packet into one or more features depending on the time
 /// sampling strategy.
+#[cfg(not(feature = "new-geometry"))]
 fn packet_to_features(
     packet: &Value,
     params: &CzmlReaderCompiledParam,
@@ -426,6 +429,7 @@ fn parse_time_value(value: &Value) -> Option<(f64, Option<String>)> {
 }
 
 /// Build features from time-tagged position data according to the sampling strategy.
+#[cfg(not(feature = "new-geometry"))]
 fn build_timeseries_features(
     ts: &TimeTaggedPosition,
     base_attributes: &indexmap::IndexMap<Attribute, AttributeValue>,
@@ -991,6 +995,7 @@ mod tests {
         assert_eq!(ts.samples[1].lon, -76.0);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_preserve_raw_strategy() {
         let ts = TimeTaggedPosition {
@@ -1040,6 +1045,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_packet_to_features_static() {
         let packet = serde_json::json!({
@@ -1062,6 +1068,7 @@ mod tests {
         assert_eq!(features.len(), 1);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_packet_to_features_timeseries() {
         let packet = serde_json::json!({

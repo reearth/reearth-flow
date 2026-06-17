@@ -116,6 +116,7 @@ struct FeatureLodFilter {
 }
 
 impl Processor for FeatureLodFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -147,6 +148,7 @@ impl Processor for FeatureLodFilter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -162,6 +164,7 @@ impl Processor for FeatureLodFilter {
 }
 
 impl FeatureLodFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) {
         for (key, features) in self.buffer_features.iter() {
             let lod_count = LodCount {
@@ -173,6 +176,7 @@ impl FeatureLodFilter {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn routing_feature_by_lod(
         ctx: Context,
         fw: &ProcessorChannelForwarder,
@@ -218,6 +222,7 @@ impl FeatureLodFilter {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn feature_with_single_lod(feature: &Feature, max_lod: u8) -> Feature {
         let mut filtered_feature = feature.clone();
 

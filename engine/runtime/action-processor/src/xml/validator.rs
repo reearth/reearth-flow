@@ -724,6 +724,7 @@ mod tests {
     use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
     use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry};
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_xml_validator_syntax_validation() {
         let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -735,6 +736,7 @@ mod tests {
         assert_eq!(port, *SUCCESS_PORT, "Should output to success port");
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_xml_validator_invalid_syntax() {
         let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -774,6 +776,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_xml_validator_malformed_xml() {
         let xml_content = r#"This is not XML at all!
@@ -819,6 +822,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_xml_validator_missing_local_schema() {
         let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -965,6 +969,7 @@ mod tests {
         });
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_xml_validator_schema_unreachable_url_should_not_error() {
         // xsi:schemaLocation URLs are hints per W3C spec.
@@ -1051,6 +1056,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     // Regression test for L02 false positive:
     // "element 'bldg:opening' is not declared in schema" is incorrectly reported
     // for valid PLATEAU CityGML files. The root cause is that check_schema_streaming
@@ -1232,6 +1238,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn create_feature_with_xml(xml_content: &str) -> Feature {
         let mut attributes = IndexMap::new();
         attributes.insert(
@@ -1242,6 +1249,7 @@ mod tests {
         Feature::new_with_attributes_and_geometry(attributes, Geometry::new())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn run_validator_test(
         xml_content: &str,
         validation_type: ValidationType,
@@ -1277,6 +1285,7 @@ mod tests {
         citymodel_name: &'static str,
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     /// Set up a temp directory mimicking the PLATEAU citymodel structure for
     /// file-based schema validation tests:
     ///   <tmp>/

@@ -232,30 +232,34 @@ fn resolve_attr(recv: Value, attr: &str) -> Result<Value> {
     }
 }
 
+pub(super) fn value_add(left: Value, right: Value) -> Result<Value> {
+    if let Value::Object(rc) = &left {
+        return rc.call_method("__add__", &[right]);
+    }
+    match (left, right) {
+        (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
+        (Value::Array(a), Value::Array(b)) => {
+            let mut new_vec = a.borrow().clone();
+            new_vec.extend(b.borrow().iter().cloned());
+            Ok(Value::array(new_vec))
+        }
+        (a, b) => match coerce_numeric(&a, &b) {
+            Ok((Numeric::Int(a), Numeric::Int(b))) => {
+                a.checked_add(b).map(Value::Int).ok_or_else(int_overflow)
+            }
+            Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
+            Ok(_) => unreachable!(),
+            Err(_) => Err(binop_type_error("+", &a, &b)),
+        },
+    }
+}
+
 // Returns a NativeFn for a binary operator. args[0]=left, args[1]=right.
 fn resolve_op(op: &BinOp) -> NativeFn {
     match op {
         BinOp::Add => NativeFn::new(|args| {
             let (left, right) = binary_args(args)?;
-            if let Value::Object(rc) = &left {
-                return rc.call_method("__add__", &[right]);
-            }
-            match (left, right) {
-                (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
-                (Value::Array(a), Value::Array(b)) => {
-                    let mut new_vec = a.borrow().clone();
-                    new_vec.extend(b.borrow().iter().cloned());
-                    Ok(Value::array(new_vec))
-                }
-                (a, b) => match coerce_numeric(&a, &b) {
-                    Ok((Numeric::Int(a), Numeric::Int(b))) => {
-                        a.checked_add(b).map(Value::Int).ok_or_else(int_overflow)
-                    }
-                    Ok((Numeric::Float(a), Numeric::Float(b))) => Ok(Value::Float(a + b)),
-                    Ok(_) => unreachable!(),
-                    Err(_) => Err(binop_type_error("+", &a, &b)),
-                },
-            }
+            value_add(left, right)
         }),
         BinOp::Sub => NativeFn::new(|args| {
             let (left, right) = binary_args(args)?;
@@ -538,7 +542,7 @@ fn resolve_unary_op(op: &UnaryOp) -> NativeFn {
     match op {
         UnaryOp::Not => NativeFn::new(|args| {
             let val = unary_arg(args)?;
-            Ok(Value::Bool(!is_truthy(val)))
+            Ok(Value::Bool(!val.is_truthy()))
         }),
         UnaryOp::Neg => NativeFn::new(|args| {
             let val = unary_arg(args)?;
@@ -665,14 +669,14 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
             match op {
                 BinOp::And => {
                     let l = eval_inner(left, env)?;
-                    if !is_truthy(&l) {
+                    if !l.is_truthy() {
                         return Ok(l);
                     }
                     return eval_inner(right, env);
                 }
                 BinOp::Or => {
                     let l = eval_inner(left, env)?;
-                    if is_truthy(&l) {
+                    if l.is_truthy() {
                         return Ok(l);
                     }
                     return eval_inner(right, env);
@@ -706,7 +710,7 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
         }
         ExprKind::If { cond, then, else_ } => {
             let c = eval_inner(cond, env)?;
-            if is_truthy(&c) {
+            if c.is_truthy() {
                 eval_inner(then, env)
             } else {
                 eval_inner(else_, env)
@@ -716,7 +720,7 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
         ExprKind::While { cond, body } => {
             loop {
                 let c = eval_inner(cond, env)?;
-                if !is_truthy(&c) {
+                if !c.is_truthy() {
                     break;
                 }
                 eval_inner(body, env)?;
@@ -1089,19 +1093,6 @@ fn primitive_eq(a: &Value, b: &Value) -> bool {
     }
 }
 
-fn is_truthy(v: &Value) -> bool {
-    match v {
-        Value::Null => false,
-        Value::Bool(b) => *b,
-        Value::Int(n) => *n != 0,
-        Value::Float(f) => *f != 0.0,
-        Value::String(s) => !s.is_empty(),
-        Value::Array(a) => !a.borrow().is_empty(),
-        Value::Map(o) => !o.borrow().is_empty(),
-        Value::Fn(_) | Value::Closure(_) | Value::Object(_) | Value::Module(_) => true,
-    }
-}
-
 fn builtin_str(args: &[Value]) -> Result<Value> {
     if args.len() > 1 {
         return Err(eval_error(format!(
@@ -1183,7 +1174,9 @@ fn builtin_bool(args: &[Value]) -> Result<Value> {
             args.len()
         )));
     }
-    Ok(Value::Bool(args.first().map(is_truthy).unwrap_or(false)))
+    Ok(Value::Bool(
+        args.first().map(Value::is_truthy).unwrap_or(false),
+    ))
 }
 
 fn builtin_list(args: &[Value]) -> Result<Value> {

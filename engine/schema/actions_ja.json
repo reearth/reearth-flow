@@ -10180,57 +10180,6 @@
       ]
     },
     {
-      "name": "RhaiCaller",
-      "type": "processor",
-      "description": "Rhaiスクリプトを呼び出す",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "RhaiCaller パラメータ",
-        "description": "条件付き処理でフィーチャーに Rhai スクリプトを実行する設定。",
-        "type": "object",
-        "required": [
-          "isTarget",
-          "process"
-        ],
-        "properties": {
-          "isTarget": {
-            "description": "フィーチャーを処理するかどうかを判断する Rhai スクリプト式（boolean を返す）",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
-              }
-            ]
-          },
-          "process": {
-            "description": "対象条件が満たされたときにフィーチャーを処理・変換する Rhai スクリプト式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Transform"
-      ],
-      "tags": [
-        "scripting"
-      ]
-    },
-    {
       "name": "Rotator3D",
       "type": "processor",
       "description": "始点/終点ベクトルまたは軸-角度指定を使用して3Dポリゴンを回転する",
@@ -10870,11 +10819,23 @@
             "properties": {
               "expr": {
                 "title": "実行する計算",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "newAttribute": {
                 "title": "新しい属性名",
@@ -10885,9 +10846,6 @@
                 ]
               }
             }
-          },
-          "Expr": {
-            "type": "string"
           }
         }
       },

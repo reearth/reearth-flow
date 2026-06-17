@@ -615,7 +615,9 @@ graphs:
           - Filename
           calculations:
             - newAttribute: _num_unreferenced_surface
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # Orientation error counter
       - id: bb0de8b2-31f1-44ba-b996-0c8559deb61a
@@ -627,7 +629,9 @@ graphs:
           - Filename
           calculations:
             - newAttribute: _num_incorrect_orientation
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # Overlap error counter
       - id: 63c507b8-49e4-4e4c-a498-e997eba27e09
@@ -639,7 +643,9 @@ graphs:
           - Filename
           calculations:
             - newAttribute: _num_overlaps
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # Surface validation error counter
       - id: 2ca88ff0-efc6-43ca-8c2b-f17606314754
@@ -651,7 +657,9 @@ graphs:
           - Filename
           calculations:
             - newAttribute: _surface_issues
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # Phase 3: FeatureMerger for aggregating error counts
       - id: 71fde7fe-d34a-4318-893a-4d648c09361d
@@ -713,19 +721,21 @@ graphs:
           calculations:
             # Domain-specific error columns
             - newAttribute: "L-TRAN-03 xlink参照エラー"
-              expr: |
-                env.get("__value")["L-TRAN-03 xlink参照エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("L-TRAN-03 xlink参照エラー", 0)
             - newAttribute: "面のエラー"
-              expr: |
-                env.get("__value")["面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面のエラー", 0)
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["L-TRAN-03 xlink参照エラー", "面のエラー"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("L-TRAN-03 xlink参照エラー", 0),
+                    attributes.get("面のエラー", 0),
+                  ])
 
       # Phase 7: JSON output with converter
       - id: df88ca31-bbfd-4322-aff2-86990e91a694
@@ -757,8 +767,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       # Phase 9: Filter for no errors
       - id: c105a305-322f-4710-b999-0c8c044f264a

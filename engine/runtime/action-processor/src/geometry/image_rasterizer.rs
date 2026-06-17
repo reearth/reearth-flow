@@ -234,6 +234,7 @@ impl Default for ImageRasterizerParam {
 }
 
 impl Processor for ImageRasterizer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -285,6 +286,7 @@ impl Processor for ImageRasterizer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -1059,6 +1061,7 @@ impl GeometryPolygons {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPolygon> {
     // Extract color information from the feature attributes
     let r = feature
@@ -1131,6 +1134,7 @@ fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPo
 }
 
 // Helper function to extract coordinates from the feature's geometry field
+#[cfg(not(feature = "new-geometry"))]
 fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Vec<(f64, f64)>>> {
     // Access the geometry field of the feature
     match &feature.geometry.value {
@@ -1187,6 +1191,7 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
 
 /// Assigns texture coordinates to a feature's CityGmlGeometry based on the rasterized image boundary.
 /// Also sets the texture reference on each polygon to point to the generated image.
+#[cfg(not(feature = "new-geometry"))]
 fn assign_texture_coordinates(
     feature: &Feature,
     boundary: &CoordinatesBoundary,
@@ -1279,6 +1284,7 @@ fn assign_texture_coordinates(
 mod tests {
     use super::*;
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn case01() {
         use std::fs::File;

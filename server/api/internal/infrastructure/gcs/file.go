@@ -333,6 +333,34 @@ func (f *fileRepo) CheckJobUserFacingLogExists(ctx context.Context, jobID string
 	return true, nil
 }
 
+func (f *fileRepo) GetJobPreviewSchemaURL(jobID string) string {
+	schemaPath := path.Join(gcsArtifactBasePath, jobID, "schema/schema-report.json")
+	url := getGCSObjectURL(f.base, schemaPath)
+	if url == nil {
+		return ""
+	}
+	return url.String()
+}
+
+func (f *fileRepo) GetJobPreviewSchemaUploadURI(jobID string) string {
+	schemaPath := path.Join(gcsArtifactBasePath, jobID, "schema/schema-report.json")
+	return fmt.Sprintf("gs://%s/%s", f.bucketName, schemaPath)
+}
+
+func (f *fileRepo) CheckJobPreviewSchemaExists(ctx context.Context, jobID string) (bool, error) {
+	bucket := f.bucket()
+
+	schemaPath := path.Join(gcsArtifactBasePath, jobID, "schema/schema-report.json")
+	_, err := bucket.Object(schemaPath).Attrs(ctx)
+	if err == storage.ErrObjectNotExist {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (f *fileRepo) GetIntermediateDataURL(ctx context.Context, edgeID, jobID string) string {
 	intermediateDataPath := path.Join(gcsArtifactBasePath, jobID, "feature-store", edgeID+".jsonl")
 	url := getGCSObjectURL(f.base, intermediateDataPath)

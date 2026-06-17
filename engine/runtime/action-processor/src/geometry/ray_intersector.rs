@@ -515,6 +515,7 @@ impl RayIntersector {
     }
 
     /// Creates an intersection feature (pure function — no fw.send()).
+    #[cfg(not(feature = "new-geometry"))]
     fn create_intersection_feature(
         &self,
         ray_feature: &Feature,
@@ -559,6 +560,7 @@ impl RayIntersector {
 
     /// Creates an output feature with ray geometry when lineSegmentToIntersection is set,
     /// or returns the original feature otherwise.
+    #[cfg(not(feature = "new-geometry"))]
     fn create_ray_output_feature(&self, ray_feature: &Feature, ray: &Ray3D) -> Feature {
         match self.output_geometry_type {
             OutputGeometryType::PointOfIntersection => ray_feature.clone(),
@@ -587,6 +589,7 @@ impl Processor for RayIntersector {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -724,6 +727,7 @@ impl Processor for RayIntersector {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,

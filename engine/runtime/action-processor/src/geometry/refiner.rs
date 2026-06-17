@@ -71,6 +71,7 @@ impl ProcessorFactory for RefinerFactory {
 pub struct Refiner;
 
 impl Processor for Refiner {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -124,6 +125,7 @@ impl Processor for Refiner {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

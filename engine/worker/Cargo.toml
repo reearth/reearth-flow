@@ -10,6 +10,18 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = [
+  "reearth-flow-action-plateau-processor/new-geometry",
+  "reearth-flow-action-processor/new-geometry",
+  "reearth-flow-action-python-processor/new-geometry",
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-action-source/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
+
 [[bin]]
 name = "reearth-flow-worker"
 path = "src/main.rs"
@@ -43,6 +55,7 @@ clap.workspace = true
 futures.workspace = true
 google-cloud-googleapis = "0.16.1"
 google-cloud-pubsub = "0.30.0"
+indexmap.workspace = true
 json-subscriber.workspace = true
 num_cpus.workspace = true
 nutype.workspace = true
@@ -63,3 +76,6 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 walkdir.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

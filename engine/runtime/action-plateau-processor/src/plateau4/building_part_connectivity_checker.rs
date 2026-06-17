@@ -224,6 +224,7 @@ impl Processor for BuildingPartConnectivityChecker {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -297,6 +298,7 @@ impl Processor for BuildingPartConnectivityChecker {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,

@@ -117,8 +117,9 @@ nodes:
     with:
       calculations:
         - newAttribute: 日射量[kWh/m2].sum
-          expr: |
-            env.get("__value")["日射量[kWh/m2]"]
+          expr:
+            type: flowExpr
+            value: 'attributes["日射量[kWh/m2]"]'
 
   - id: 481cea32-ded5-11f0-b1da-7c70db10a7e3
     name: AttributeCreator

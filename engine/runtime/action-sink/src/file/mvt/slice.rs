@@ -20,6 +20,7 @@ pub(super) struct SlicedFeature<'a> {
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(feature = "new-geometry"))]
 pub(super) fn slice_cityobj_geoms<'a>(
     feature: &Feature,
     layer_name: &str,

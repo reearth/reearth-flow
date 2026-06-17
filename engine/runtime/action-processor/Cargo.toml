@@ -13,6 +13,13 @@ version.workspace = true
 [features]
 default = []
 memory-stats = ["reearth-flow-common/memory-stats"]
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = [
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-geometry/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
 
 [dependencies]
 reearth-flow-action-log.workspace = true

@@ -10177,57 +10177,6 @@
       ]
     },
     {
-      "name": "RhaiCaller",
-      "type": "processor",
-      "description": "Calls Rhai script",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "RhaiCaller Parameters",
-        "description": "Configuration for executing Rhai scripts on features with conditional processing.",
-        "type": "object",
-        "required": [
-          "isTarget",
-          "process"
-        ],
-        "properties": {
-          "isTarget": {
-            "description": "Rhai script expression to determine if the feature should be processed (returns boolean)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
-              }
-            ]
-          },
-          "process": {
-            "description": "Rhai script expression to process and transform the feature when target condition is met",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Transform"
-      ],
-      "tags": [
-        "scripting"
-      ]
-    },
-    {
       "name": "Rotator3D",
       "type": "processor",
       "description": "Rotate a 3D polygon using from/to vectors or axis-angle specification",
@@ -10867,11 +10816,23 @@
             "properties": {
               "expr": {
                 "title": "Calculation to perform",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "newAttribute": {
                 "title": "New attribute name",
@@ -10882,9 +10843,6 @@
                 ]
               }
             }
-          },
-          "Expr": {
-            "type": "string"
           }
         }
       },

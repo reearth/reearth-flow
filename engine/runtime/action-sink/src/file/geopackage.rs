@@ -201,6 +201,7 @@ impl Sink for GeoPackageWriter {
         "GeoPackageWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
@@ -222,6 +223,7 @@ impl Sink for GeoPackageWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         if self.buffer.is_empty() {
             return Ok(());
@@ -262,6 +264,7 @@ impl Sink for GeoPackageWriter {
 }
 
 impl GeoPackageWriter {
+    #[cfg(not(feature = "new-geometry"))]
     fn create_geopackage(&self) -> Result<Vec<u8>, BoxedError> {
         // Create in-memory SQLite database
         let temp_file = tempfile::NamedTempFile::new()
@@ -465,6 +468,7 @@ impl GeoPackageWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn create_feature_table(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
         // Build column definitions with proper SQL identifier quoting
         let mut columns = vec![
@@ -541,6 +545,7 @@ impl GeoPackageWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn insert_features(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
         for feature in &self.buffer {
             // Convert geometry to GeoPackage Binary
@@ -593,6 +598,7 @@ impl GeoPackageWriter {
         ))
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn create_spatial_index(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
         // Create safe rtree table name (sanitize to avoid SQL injection)
         let rtree_table = format!(
@@ -658,6 +664,7 @@ impl GeoPackageWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn calculate_bbox(&self) -> (f64, f64, f64, f64) {
         let mut min_x = f64::INFINITY;
         let mut min_y = f64::INFINITY;

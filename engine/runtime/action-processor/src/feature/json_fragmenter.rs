@@ -552,6 +552,7 @@ mod tests {
         assert_eq!(ports[0], DEFAULT_PORT.clone());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_preserves_input_attributes() {
         let mut feature = make_feature_with_json(r#"[{"x": 1}]"#);

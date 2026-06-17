@@ -230,12 +230,9 @@ graphs:
             - lod
           calculations:
             - newAttribute: WaterBody
-              expr: |
-                if env.get("__value")["__citygml_feature_type"] == "wtr:WaterBody" {
-                  1
-                } else {
-                  0
-                }
+              expr:
+                type: flowExpr
+                value: if attributes["__citygml_feature_type"] == "wtr:WaterBody" { 1 } else { 0 }
 
       # Summary CSV output - per-file result
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d5e
@@ -305,28 +302,36 @@ graphs:
         with:
           calculations:
             - newAttribute: 無効な空間属性の型
-              expr: |
-                env.get("__value")["無効な空間属性の型"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("無効な空間属性の型", 0)
             - newAttribute: 非水密立体
-              expr: |
-                env.get("__value")["非水密立体"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("非水密立体", 0)
             - newAttribute: 立体のその他のエラー
-              expr: |
-                env.get("__value")["立体のその他のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("立体のその他のエラー", 0)
             - newAttribute: 立体の境界面のエラー
-              expr: |
-                env.get("__value")["立体の境界面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("立体の境界面のエラー", 0)
             - newAttribute: 面のエラー
-              expr: |
-                env.get("__value")["面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面のエラー", 0)
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("無効な空間属性の型", 0),
+                    attributes.get("非水密立体", 0),
+                    attributes.get("立体のその他のエラー", 0),
+                    attributes.get("立体の境界面のエラー", 0),
+                    attributes.get("面のエラー", 0),
+                  ])
 
       - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b
         name: JSONSummaryWriter
@@ -360,8 +365,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c0e
         name: FeatureFilterNoErrors
