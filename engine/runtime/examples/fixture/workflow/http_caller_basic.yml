@@ -34,8 +34,7 @@ graphs:
           # Dynamic URL using feature attributes
           url:
             type: flowExpr
-            value: |
-              "https://jsonplaceholder.typicode.com/users/" + attributes["user_id"]
+            value: 'str(Url("https://jsonplaceholder.typicode.com/users/") / attributes["user_id"])'
 
           method: GET
 

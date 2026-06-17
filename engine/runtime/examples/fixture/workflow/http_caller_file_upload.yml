@@ -36,8 +36,9 @@ graphs:
         type: action
         action: HTTPCaller
         with:
-          url: |
-            "https://httpbin.org/post"
+          url:
+            type: string
+            value: "https://httpbin.org/post"
 
           method: POST
 
@@ -47,22 +48,25 @@ graphs:
               # Text field
               - type: text
                 name: "username"
-                value: |
-                  env.get("__value").user_name
+                value:
+                  type: flowExpr
+                  value: attributes["user_name"]
 
               # Another text field
               - type: text
                 name: "description"
-                value: |
-                  env.get("__value").description
+                value:
+                  type: flowExpr
+                  value: attributes["description"]
 
               # File from base64 data
               - type: file
                 name: "file"
                 source:
                   type: base64
-                  data: |
-                    env.get("__value").file_content_base64
+                  data:
+                    type: flowExpr
+                    value: attributes["file_content_base64"]
                 filename: "example.txt"
                 contentType: "text/plain"
 
@@ -79,8 +83,9 @@ graphs:
         type: action
         action: HTTPCaller
         with:
-          url: |
-            "https://httpbin.org/post"
+          url:
+            type: string
+            value: "https://httpbin.org/post"
 
           method: POST
 
@@ -88,11 +93,13 @@ graphs:
             type: formUrlEncoded
             fields:
               - name: "username"
-                value: |
-                  env.get("__value").user_name
+                value:
+                  type: flowExpr
+                  value: attributes["user_name"]
               - name: "description"
-                value: |
-                  env.get("__value").description
+                value:
+                  type: flowExpr
+                  value: attributes["description"]
 
           responseBodyAttribute: "_form_response"
           statusCodeAttribute: "_form_status"
@@ -103,16 +110,18 @@ graphs:
         type: action
         action: HTTPCaller
         with:
-          url: |
-            "https://httpbin.org/json"
+          url:
+            type: string
+            value: "https://httpbin.org/json"
 
           method: GET
 
           # Save response to file instead of attribute
           responseHandling:
             type: file
-            path: |
-              "/tmp/downloaded_" + env.get("__value").file_name
+            path:
+              type: flowExpr
+              value: '"/tmp/downloaded_" + attributes["file_name"]'
             storePathInAttribute: true
             pathAttribute: "_file_path"
 
