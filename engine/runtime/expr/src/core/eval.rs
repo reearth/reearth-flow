@@ -1068,9 +1068,7 @@ fn compare_values(
         Ok(_) => unreachable!(),
         Err(_) => match (&left, &right) {
             (Value::String(a), Value::String(b)) => a.as_str().cmp(b.as_str()),
-            (Value::Array(a), Value::Array(b)) => {
-                compare_arrays(&a.borrow(), &b.borrow())?
-            }
+            (Value::Array(a), Value::Array(b)) => compare_arrays(&a.borrow(), &b.borrow())?,
             _ => {
                 return Err(eval_error(format!(
                     "cannot compare {} and {}",
@@ -1443,6 +1441,12 @@ mod tests {
         assert_eval("[1, 2] < [1, 3]", &[], Value::from(true));
         assert_eval("[1, 2] < [1, 2, 3]", &[], Value::from(true));
         assert_eval("[] < [1]", &[], Value::from(true));
+    }
+
+    #[test]
+    // Unlike Python, ordering arrays of non-comparable elements errors rather than short-circuiting through equality.
+    fn test_array_comparison_non_orderable_errors() {
+        assert!(try_run(r#"[{"foo": "bar"}] <= [{"foo": "bar"}]"#, &[]).is_err());
     }
 
     #[test]
