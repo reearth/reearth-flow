@@ -52,8 +52,8 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 	}
 }
 
-func (i *Project) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action)
+func (i *Project) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action, workspaceID...)
 }
 
 func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Project, error) {
@@ -65,7 +65,7 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Pro
 }
 
 func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionList, id); err != nil {
 		return nil, nil, err
 	}
 
@@ -73,7 +73,7 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (_ *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate, p.WorkspaceID); err != nil {
 		return nil, err
 	}
 

@@ -94,8 +94,8 @@ func (i *Job) cleanupJobLock(jobID string) {
 	delete(i.jobLocks, jobID)
 }
 
-func (i *Job) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
+func (i *Job) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action, workspaceID...)
 }
 
 func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
@@ -267,7 +267,7 @@ func (i *Job) FindByWorkspace(
 	p *interfaces.PaginationParam,
 	keyword *string,
 ) ([]*job.Job, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
 		return nil, nil, err
 	}
 

@@ -49,8 +49,8 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 	}
 }
 
-func (i *Trigger) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action)
+func (i *Trigger) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action, workspaceID...)
 }
 
 func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
@@ -62,7 +62,7 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Tri
 }
 
 func (i *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionAny, id); err != nil {
 		return nil, nil, err
 	}
 
@@ -78,7 +78,7 @@ func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigg
 }
 
 func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate, param.WorkspaceID); err != nil {
 		return nil, err
 	}
 
