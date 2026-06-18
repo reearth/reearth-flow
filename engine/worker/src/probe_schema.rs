@@ -210,9 +210,22 @@ impl ProbeSchemaCommand {
 
         let report_uri = Uri::from_str(self.report_url.as_str()).map_err(Error::init)?;
         let storage = storage_resolver.resolve(&report_uri).map_err(Error::init)?;
-        storage
-            .put_sync(report_uri.path().as_path(), json.into())
-            .map_err(Error::run)?;
+        // Write via the async `put`, exactly as the run path's `upload_artifact`
+        // does: object-store backends like GCS do not implement OpenDAL's
+        // blocking layer, so `put_sync` fails with `Unsupported (persistent) at
+        // blocking_write`. `execute` runs in a sync context (worker `main` is
+        // not async), so drive the async write on a Tokio runtime, mirroring
+        // `RunWorkerCommand::execute`.
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .map_err(Error::FailedToCreateTokioRuntime)?;
+        runtime.block_on(async {
+            storage
+                .put(report_uri.path().as_path(), json.into())
+                .await
+                .map_err(Error::run)
+        })?;
         tracing::info!("Wrote probe-schema report to {}", self.report_url);
         Ok(())
     }

@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{attribute_value_from_rhai, Attribute, AttributeValue, Expr, Feature};
 use rhai::Dynamic;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -157,7 +157,7 @@ fn mapper(
     let scope = feature.new_scope(expr_engine.clone(), global_params);
     let new_value = scope.eval_ast::<Dynamic>(expr);
     if let Ok(new_value) = new_value {
-        if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
+        if let Ok(AttributeValue::Map(new_value)) = attribute_value_from_rhai(new_value) {
             return Feature::new_with_attributes(
                 new_value
                     .iter()
