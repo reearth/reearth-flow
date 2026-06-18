@@ -185,6 +185,8 @@ test.describe.serial(
       await expect(editor.actionPicker).toBeHidden();
     });
 
+    // fixme: PLATEAU4.UDXFolderExtractor is not yet in the dev catalog (asserted
+    // absent by the canary test above); enable once it ships to dev.
     test.fixme("completes the chain with UDX, deploys, runs, and produces the buildings artifact", async () => {
       const udxExtractor = await editor.addActionNodeAndGet(
         "transformer",
