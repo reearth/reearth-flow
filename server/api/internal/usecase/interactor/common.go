@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -92,13 +93,13 @@ func setSkipPermissionCheck(isSkipPermissionCheck bool) {
 	skipPermissionCheck = isSkipPermissionCheck
 }
 
-func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string) error {
+func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string, workspaceID ...accountsid.WorkspaceID) error {
 	if skipPermissionCheck {
 		log.Printf("INFO: SkipPermissionCheck enabled, skipping permission check for resource=%s action=%s", resource, action)
 		return nil
 	}
 
-	hasPermission, err := permissionChecker.CheckPermission(ctx, resource, action)
+	hasPermission, err := permissionChecker.CheckPermission(ctx, resource, action, workspaceID...)
 	if err != nil {
 		log.Printf("WARNING: Permission check error for resource=%s action=%s: %v", resource, action, err)
 		return err

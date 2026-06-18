@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -34,8 +35,8 @@ func NewProjectAccess(r *repo.Container, gr *gateway.Container, config Container
 	}
 }
 
-func (i *ProjectAccess) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action)
+func (i *ProjectAccess) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action, workspaceID...)
 }
 
 func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *project.Project, err error) {

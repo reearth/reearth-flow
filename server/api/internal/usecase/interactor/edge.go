@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -30,8 +31,8 @@ func NewEdgeExecution(r *repo.Container, gr *gateway.Container, permissionChecke
 	return ee
 }
 
-func (i *EdgeExecution) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
+func (i *EdgeExecution) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action, workspaceID...)
 }
 
 func (i *EdgeExecution) FindByJobEdgeID(ctx context.Context, jobID id.JobID, edgeID string) (*graph.EdgeExecution, error) {

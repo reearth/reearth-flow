@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"sync"
 	"time"
 
@@ -36,8 +37,8 @@ func NewNodeExecution(nodeRepo repo.NodeExecution, redisGateway gateway.Redis, p
 	return ee
 }
 
-func (i *NodeExecution) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
+func (i *NodeExecution) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action, workspaceID...)
 }
 
 func (i *NodeExecution) FindByJobNodeID(ctx context.Context, id id.JobID, nodeID string) (*graph.NodeExecution, error) {

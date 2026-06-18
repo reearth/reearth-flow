@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"sort"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -30,8 +31,8 @@ func NewParameter(r *repo.Container, permissionChecker gateway.PermissionChecker
 	}
 }
 
-func (i *Parameter) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceParameter, action)
+func (i *Parameter) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceParameter, action, workspaceID...)
 }
 
 func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.DeclareParameterParam) (*parameter.Parameter, error) {
