@@ -135,8 +135,6 @@ struct AttributeAggregatorParam {
     /// # List of attributes to aggregate
     aggregate_attributes: Vec<AggregateAttribute>,
     /// # Calculation to perform
-    /// Expression that evaluates to an integer weight/contribution per feature (e.g., `1` to
-    /// count occurrences, or `feature["qty"]` to sum a numeric field). Must return an integer.
     calculation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Value to use for calculation
     calculation_value: Option<i64>,
@@ -154,10 +152,6 @@ struct AggregateAttribute {
     /// # Existing attribute to use
     attribute: Option<Attribute>,
     /// # Grouping key expression for this attribute
-    /// Expression that evaluates to the value of this attribute per feature. The combination of
-    /// evaluated values across all aggregate_attributes forms the grouping key: features with
-    /// identical values are grouped together, and these values become the output attributes.
-    /// Must produce a value comparable across features (e.g., a string or number from the feature).
     attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
