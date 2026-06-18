@@ -65,10 +65,9 @@ func TestProject_FindByIDs_Order(t *testing.T) {
 	missing := id.NewProjectID()
 	got, err := r.FindByIDs(ctx, id.ProjectIDList{pid2, missing, pid1})
 	require.NoError(t, err)
-	require.Len(t, got, 3)
+	require.Len(t, got, 2) // missing id omitted (OrderByIDs drops absent ids)
 	assert.Equal(t, pid2, got[0].ID())
-	assert.Nil(t, got[1])
-	assert.Equal(t, pid1, got[2].ID())
+	assert.Equal(t, pid1, got[1].ID())
 }
 
 func TestProject_FindByWorkspace_ExcludesArchived(t *testing.T) {

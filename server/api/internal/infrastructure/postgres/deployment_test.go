@@ -71,10 +71,9 @@ func TestDeployment_FindByIDs_Order(t *testing.T) {
 	missing := id.NewDeploymentID()
 	got, err := r.FindByIDs(ctx, id.DeploymentIDList{did2, missing, did1})
 	require.NoError(t, err)
-	require.Len(t, got, 3)
+	require.Len(t, got, 2) // missing id omitted (OrderByIDs drops absent ids)
 	assert.Equal(t, did2, got[0].ID())
-	assert.Nil(t, got[1])
-	assert.Equal(t, did1, got[2].ID())
+	assert.Equal(t, did1, got[1].ID())
 }
 
 func TestDeployment_FindByWorkspace_NoPagination(t *testing.T) {

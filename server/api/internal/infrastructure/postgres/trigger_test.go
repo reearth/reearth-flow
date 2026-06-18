@@ -67,10 +67,9 @@ func TestTrigger_FindByIDs_Order(t *testing.T) {
 	missing := id.NewTriggerID()
 	got, err := r.FindByIDs(ctx, id.TriggerIDList{tid2, missing, tid1})
 	require.NoError(t, err)
-	require.Len(t, got, 3)
+	require.Len(t, got, 2) // missing id omitted (OrderByIDs drops absent ids)
 	assert.Equal(t, tid2, got[0].ID())
-	assert.Nil(t, got[1])
-	assert.Equal(t, tid1, got[2].ID())
+	assert.Equal(t, tid1, got[1].ID())
 }
 
 func TestTrigger_FindByDeployment(t *testing.T) {

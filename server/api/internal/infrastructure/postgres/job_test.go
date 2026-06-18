@@ -75,10 +75,9 @@ func TestJob_FindByIDs_Order(t *testing.T) {
 	missing := id.NewJobID()
 	got, err := r.FindByIDs(ctx, id.JobIDList{jid2, missing, jid1})
 	require.NoError(t, err)
-	require.Len(t, got, 3)
+	require.Len(t, got, 2) // missing id omitted (OrderByIDs drops absent ids)
 	assert.Equal(t, jid2, got[0].ID())
-	assert.Nil(t, got[1])
-	assert.Equal(t, jid1, got[2].ID())
+	assert.Equal(t, jid1, got[1].ID())
 }
 
 func TestJob_FindByWorkspace_ExcludesDebug(t *testing.T) {

@@ -71,10 +71,9 @@ func TestParameter_FindByIDs_Order(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	list := *got
-	require.Len(t, list, 3)
+	require.Len(t, list, 2) // missing id omitted (OrderByIDs drops absent ids)
 	assert.Equal(t, p2.ID(), list[0].ID())
-	assert.Nil(t, list[1])
-	assert.Equal(t, p1.ID(), list[2].ID())
+	assert.Equal(t, p1.ID(), list[1].ID())
 }
 
 func TestParameter_FindByProject_OrderedByIndex(t *testing.T) {

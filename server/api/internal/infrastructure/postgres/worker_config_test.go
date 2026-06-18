@@ -66,10 +66,9 @@ func TestWorkerConfig_FindByIDs_Order(t *testing.T) {
 	missing := id.NewWorkerConfigID()
 	got, err := r.FindByIDs(ctx, []id.WorkerConfigID{wid2, missing, wid1})
 	require.NoError(t, err)
-	require.Len(t, got, 3)
+	require.Len(t, got, 2) // missing id omitted (OrderByIDs drops absent ids)
 	assert.Equal(t, wid2, got[0].ID())
-	assert.Nil(t, got[1])
-	assert.Equal(t, wid1, got[2].ID())
+	assert.Equal(t, wid1, got[1].ID())
 }
 
 func TestWorkerConfig_FindAll(t *testing.T) {
