@@ -15,9 +15,9 @@ import (
 // assert that interactors forward the target workspace. `allow` controls whether
 // the call is permitted, letting a test short-circuit before later side effects.
 type recordingChecker struct {
-	gotWorkspace []accountsid.WorkspaceID
 	gotResource  string
 	gotAction    string
+	gotWorkspace []accountsid.WorkspaceID
 	allow        bool
 }
 
