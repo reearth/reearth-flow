@@ -129,11 +129,8 @@ impl Processor for AttributeRangeMapper {
         // Get the input attribute value
         let input_value = feature.get(&self.params.input_attribute);
 
-        // Convert to f64 for range comparison
         let numeric_value: Option<f64> = input_value.and_then(|v| match v {
             AttributeValue::Number(n) => n.as_f64(),
-            AttributeValue::String(s) => s.parse::<f64>().ok(),
-            AttributeValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
             _ => None,
         });
 
@@ -393,7 +390,6 @@ mod tests {
         let input_value = feature.get(&processor.params.input_attribute);
         let numeric_value: Option<f64> = input_value.and_then(|v| match v {
             AttributeValue::Number(n) => n.as_f64(),
-            AttributeValue::String(s) => s.parse::<f64>().ok(),
             _ => None,
         });
 

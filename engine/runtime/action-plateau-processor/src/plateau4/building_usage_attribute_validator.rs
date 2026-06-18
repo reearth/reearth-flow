@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -116,7 +116,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildingUsageAttributeValidatorParam {
-    codelists_path: Code<{ CodeType::FlowExpr as u32 }>,
+    codelists_path: Code,
 }
 
 #[derive(Debug, Clone)]

@@ -434,8 +434,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000007-0000-0000-0000-000000000004
     name: RestrictZone1SpatialFilter
     type: action
@@ -487,8 +488,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000007-0000-0000-0000-000000000014
     name: RestrictZone2SpatialFilter
     type: action
@@ -540,8 +542,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000007-0000-0000-0000-000000000024
     name: RestrictZone3SpatialFilter
     type: action
@@ -593,8 +596,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000007-0000-0000-0000-000000000033
     name: SnowSpatialFilter
     type: action
@@ -1621,8 +1625,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 00000002-0000-0000-0000-000000000004
@@ -1640,18 +1645,24 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
-      codelistsPath: codelists
-      schemasPath: schemas
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
+      codelistsPath:
+        type: string
+        value: codelists
+      schemasPath:
+        type: string
+        value: schemas
   - id: 00000002-0000-0000-0000-000000000006
     name: DEMPLATEAU4CityGmlMeshBuilder
     type: action
     action: PLATEAU4.CityGmlMeshBuilder
     with:
       errorAttribute: _validation_error
-      epsgCode: |
-        env.get("prcs")
+      epsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000001-0000-0000-0000-000000000002
     name: CityGmlReader
     type: action
@@ -1712,8 +1723,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000004-0000-0000-0000-000000000001
     name: RoofFilterShapefileReader
     type: action
@@ -1729,10 +1741,12 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      sourceEpsgCode: |
-        env.get("roofFilterEpsgCode")
-      targetEpsgCode: |
-        env.get("prcs")
+      sourceEpsgCode:
+        type: flowExpr
+        value: env["roofFilterEpsgCode"]
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000004-0000-0000-0000-000000000003
     name: AreaSpatialFilter
     type: action
@@ -1789,14 +1803,19 @@ graphs:
     action: PLATEAU4.SolarPositionCalculator
     with:
       type: duration
-      start: |
-        env.get("startTime")
-      end: |
-        env.get("endTime")
-      step: '1'
+      start:
+        type: flowExpr
+        value: env["startTime"]
+      end:
+        type: flowExpr
+        value: env["endTime"]
+      step:
+        type: flowExpr
+        value: 1
       stepUnit: hour
-      sourceEpsg: |
-        env.get("prcs")
+      sourceEpsg:
+        type: flowExpr
+        value: env["prcs"]
       outputType: both
   - id: 00000001-0000-0000-0000-000000000040
     name: ConvertDateTimeToIntegers
@@ -1905,11 +1924,18 @@ graphs:
     type: action
     action: RayIntersector
     with:
-      pairId: |
-        "all"
-      closestIntersectionOnly: 'true'
-      includeRayOrigin: 'false'
-      tolerance: '0.01'
+      pairId:
+        type: flowExpr
+        value: '"all"'
+      closestIntersectionOnly:
+        type: flowExpr
+        value: 'true'
+      includeRayOrigin:
+        type: flowExpr
+        value: 'false'
+      tolerance:
+        type: flowExpr
+        value: '0.01'
       outputGeometryType: lineSegmentToIntersection
       ray:
         posX: rayOriginX
@@ -2289,20 +2315,24 @@ graphs:
     action: ImageRasterizer
     with:
       imageWidth: 2048
-      saveTo: |
-        "roof_radiation_texture.png"
+      saveTo:
+        type: string
+        value: roof_radiation_texture.png
       onOverlap:
-        max: |
-          env.get("__value")["maxZ"]
+        max:
+          type: flowExpr
+          value: attributes["maxZ"]
   - id: 00000001-0000-0000-0000-000000000062
     name: TexturedHorizontalReprojector
     type: action
     action: HorizontalReprojector
     with:
-      sourceEpsgCode: |
-        env.get("prcs")
-      targetEpsgCode: |
-        6697
+      sourceEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
+      targetEpsgCode:
+        type: flowExpr
+        value: 6697
   - id: 00000001-0000-0000-0000-000000000063
     name: TexturedBoundsExtractor
     type: action
@@ -2388,13 +2418,21 @@ graphs:
     type: action
     action: RayIntersector
     with:
-      pairId: |
-        "all"
-      closestIntersectionOnly: 'true'
-      includeRayOrigin: 'false'
-      tolerance: '0.01'
-      geomId: |
-        env.get("__value")["gmlId"] ?? ""
+      pairId:
+        type: flowExpr
+        value: '"all"'
+      closestIntersectionOnly:
+        type: flowExpr
+        value: 'true'
+      includeRayOrigin:
+        type: flowExpr
+        value: 'false'
+      tolerance:
+        type: flowExpr
+        value: '0.01'
+      geomId:
+        type: flowExpr
+        value: attributes.get("gmlId", "")
       ray:
         posX: rayOriginX
         posY: rayOriginY
@@ -2795,8 +2833,9 @@ graphs:
     type: action
     action: PLATEAU4.SolarCityGmlAttributeInserter
     with:
-      outputDir: |
-        "citygml"
+      outputDir:
+        type: string
+        value: citygml
       pathAttribute: path
       gmlIdAttribute: gmlId
       measurements:
@@ -2806,10 +2845,12 @@ graphs:
       - name: 年間予測発電量
         attribute: totalSolarPower
         uom: kWh
-      textureImagePath: |
-        "roof_radiation_texture.png"
-      sourceEpsg: |
-        env.get("prcs")
+      textureImagePath:
+        type: string
+        value: roof_radiation_texture.png
+      sourceEpsg:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000001-0000-0000-0000-0000000000e1
     name: CityGmlZipFileWriter
     type: action
@@ -2919,8 +2960,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000005-0000-0000-0000-000000000020
     name: AzimuthDirectionFlags
     type: action

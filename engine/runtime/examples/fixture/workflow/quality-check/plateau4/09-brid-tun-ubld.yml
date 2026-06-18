@@ -1232,8 +1232,9 @@ graphs:
     type: action
     action: SolidBoundaryValidator
     with:
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: '0.01'
   - id: d0132191-a81f-4647-896d-5db49e3fb734
     name: FeatureFilterInvalidSolidBoundary
     type: action
@@ -3625,8 +3626,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13

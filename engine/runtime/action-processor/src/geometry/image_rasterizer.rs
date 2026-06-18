@@ -178,7 +178,7 @@ struct ImageRasterizerParam {
     /// # Save To
     /// Optional path expression to save the generated image. If not provided, uses default cache directory.
     #[serde(default)]
-    save_to: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    save_to: Option<Code>,
 
     /// # On Overlap
     /// Strategy for resolving pixel overlap when multiple polygons cover the same pixel.

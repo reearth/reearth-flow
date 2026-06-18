@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType};
+use reearth_flow_types::{Attribute, AttributeValue, Code};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -159,7 +159,7 @@ struct AttributeConversionTableParam {
     rules: Vec<AttributeConversionTableRule>,
     /// # Dataset URI
     /// Path or URI to external conversion table file
-    dataset: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    dataset: Option<Code>,
     /// # Inline Table Data
     /// Conversion table data provided directly as string content
     inline: Option<String>,

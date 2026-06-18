@@ -2733,8 +2733,9 @@ graphs:
     type: action
     action: PLATEAU4.BuildingUsageAttributeValidator
     with:
-      codelistsPath: |
-        env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
   - id: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: AttributeMapper-l-bldg-04-05-transform
     type: action
@@ -2896,36 +2897,46 @@ graphs:
     with:
       aggregateAttributes:
       - newAttribute: uroBuildingId
-        attributeValue: |
-          let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-          building_id_attribute["uro:buildingID"] ?? ""
+        attributeValue:
+          type: flowExpr
+          value: |
+            attrs = attributes.get("cityGmlAttributes", {})
+            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {})
+            building_id_attribute.get("uro:buildingID", "")
       - newAttribute: uroBranchId
-        attributeValue: |
-          let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-          building_id_attribute["uro:branchID"] ?? ""
+        attributeValue:
+          type: flowExpr
+          value: |
+            attrs = attributes.get("cityGmlAttributes", {})
+            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {})
+            building_id_attribute.get("uro:branchID", "")
       - newAttribute: uroPartId
-        attributeValue: |
-          let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-          building_id_attribute["uro:partID"] ?? ""
-      calculation: |
-        1
-      calculationAttribute: |
-        uroBuildingIdCount
+        attributeValue:
+          type: flowExpr
+          value: |
+            attrs = attributes.get("cityGmlAttributes", {})
+            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {})
+            building_id_attribute.get("uro:partID", "")
+      calculation:
+        type: flowExpr
+        value: '1'
+      calculationAttribute: uroBuildingIdCount
       method: count
   - id: 9feabfe5-44eb-43c9-a892-ca439a0c0562
     name: FeatureMerger-c-bldg-01
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        let attributes = env.get("__value").cityGmlAttributes ?? #{};
-        let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-        (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
-      supplierAttributeValue: |
-        (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
+      requestorAttributeValue:
+        type: flowExpr
+        value: |
+          attrs = attributes.get("cityGmlAttributes", {})
+          building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {})
+          building_id_attribute.get("uro:buildingID", "") + "-" + building_id_attribute.get("uro:branchID", "") + "-" + building_id_attribute.get("uro:partID", "")
+      supplierAttributeValue:
+        type: flowExpr
+        value: |
+          attributes.get("uroBuildingId", "") + "-" + attributes.get("uroBranchId", "") + "-" + attributes.get("uroPartId", "")
   - id: f003fa53-d8da-488b-9be2-9f871a7394b5
     name: FeatureFilterByMultipleBuildingId-c-bldg-01
     type: action
@@ -3875,8 +3886,9 @@ graphs:
     action: PLATEAU4.DestinationMeshCodeExtractor
     with:
       meshType: 3
-      epsgCode: |
-        env.get("prcs")
+      epsgCode:
+        type: flowExpr
+        value: env.get("prcs")
       meshcodeAttr: meshcode
   - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
     name: MeshCodeTester
@@ -3956,8 +3968,9 @@ graphs:
     type: action
     action: SolidBoundaryValidator
     with:
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: '0.01'
   - id: d0132191-a81f-4647-896d-5db49e3fb734
     name: FeatureFilterInvalidSolidBoundary
     type: action
@@ -4230,7 +4243,9 @@ graphs:
     type: action
     action: CSGBuilder
     with:
-      pairIdAttribute: env.get("__value").pair_id
+      pairIdAttribute:
+        type: flowExpr
+        value: attributes["pair_id"]
       createList: true
       listAttributeName: attrList
   - id: 155cb125-9e89-4825-b505-4b2f2b6dbe0d
@@ -4239,8 +4254,9 @@ graphs:
     action: CSGEvaluator
     with:
       operation: intersection
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: '0.01'
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperSolidIntersection
     type: action

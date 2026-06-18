@@ -12,9 +12,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{
-    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
-};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -54,7 +52,7 @@ static UNCODED_GML_NAME_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy
 pub struct GmlNameCodeSpaceValidatorParam {
     /// Expression to get the path to the CityGML file
     #[serde(skip_serializing_if = "Option::is_none")]
-    city_gml_path: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    city_gml_path: Option<Code>,
 }
 
 #[derive(Debug, Clone, Default)]
