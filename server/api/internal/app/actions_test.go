@@ -10,8 +10,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testActionsJSON = `{"actions":[{"name":"CsvReader","type":"source","description":"Reads features from a CSV file","inputPorts":[],"outputPorts":["output"],"categories":["File"],"tags":[],"parameter":{},"builtin":false}]}`
+
 func resetTestData() {
 	actionsDataMap = make(map[string]ActionsData)
+	actionsBaseURL = ""
+}
+
+// setupActionsTestServer starts a local HTTP server serving testActionsJSON for
+// all actions/*.json paths, sets actionsBaseURL, and registers cleanup.
+func setupActionsTestServer(t *testing.T) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(testActionsJSON))
+	}))
+	actionsBaseURL = srv.URL
+	t.Cleanup(srv.Close)
 }
 
 func TestLoadActionsData(t *testing.T) {
@@ -29,6 +44,7 @@ func TestLoadActionsData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
+			setupActionsTestServer(t)
 			data, err := loadActionsData(tt.lang)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -61,6 +77,7 @@ func TestListActions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
+			setupActionsTestServer(t)
 			req := httptest.NewRequest(http.MethodGet, "/actions?lang="+tt.lang+tt.query, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
