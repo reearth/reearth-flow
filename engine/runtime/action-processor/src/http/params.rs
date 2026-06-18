@@ -1,4 +1,4 @@
-use reearth_flow_types::{Code, CodeType};
+use reearth_flow_types::Code;
 use reqwest::Method;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct HttpCallerParam {
     /// # URL
     /// The target URL for the HTTP request (supports expressions)
-    pub url: Code<{ CodeType::FlowExpr as u32 }>,
+    pub url: Code,
 
     /// # HTTP Method
     /// The HTTP method to use for the request
@@ -261,7 +261,7 @@ pub struct HeaderParam {
     pub name: String,
     /// # Header Value
     /// The value of the header (supports expressions)
-    pub value: Code<{ CodeType::FlowExpr as u32 }>,
+    pub value: Code,
 }
 
 /// # Query Parameter
@@ -274,7 +274,7 @@ pub struct QueryParam {
     pub name: String,
     /// # Parameter Value
     /// The value of the parameter (supports expressions)
-    pub value: Code<{ CodeType::FlowExpr as u32 }>,
+    pub value: Code,
 }
 
 /// # Authentication
@@ -288,10 +288,10 @@ pub enum Authentication {
     Basic {
         /// # Username
         /// The username for basic authentication
-        username: Code<{ CodeType::FlowExpr as u32 }>,
+        username: Code,
         /// # Password
         /// The password for basic authentication
-        password: Code<{ CodeType::FlowExpr as u32 }>,
+        password: Code,
     },
     /// # Bearer Token
     /// Bearer token authentication (OAuth 2.0)
@@ -299,7 +299,7 @@ pub enum Authentication {
     Bearer {
         /// # Token
         /// The bearer token value
-        token: Code<{ CodeType::FlowExpr as u32 }>,
+        token: Code,
     },
     /// # API Key
     /// API key authentication in header or query parameter
@@ -310,7 +310,7 @@ pub enum Authentication {
         key_name: String,
         /// # Key Value
         /// The API key value
-        key_value: Code<{ CodeType::FlowExpr as u32 }>,
+        key_value: Code,
         /// # Location
         /// Where to include the API key (header or query parameter)
         #[serde(default = "default_api_key_location")]
@@ -350,7 +350,7 @@ pub enum ResponseHandling {
     File {
         /// # File Path
         /// Path where the response should be saved
-        path: Code<{ CodeType::FlowExpr as u32 }>,
+        path: Code,
         /// # Store Path in Attribute
         /// Whether to store the file path in a feature attribute
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -548,7 +548,7 @@ pub enum RequestBody {
     Text {
         /// # Content
         /// The text content to send (supports expressions)
-        content: Code<{ CodeType::FlowExpr as u32 }>,
+        content: Code,
         /// # Content Type
         /// Override Content-Type header (e.g., application/json, text/plain)
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -595,7 +595,7 @@ pub enum BinarySource {
     Base64 {
         /// # Data
         /// Base64-encoded binary data (supports expressions)
-        data: Code<{ CodeType::FlowExpr as u32 }>,
+        data: Code,
     },
     /// # From File
     /// Read binary data from a file
@@ -603,7 +603,7 @@ pub enum BinarySource {
     File {
         /// # File Path
         /// Path to the file to read (supports expressions)
-        path: Code<{ CodeType::FlowExpr as u32 }>,
+        path: Code,
     },
 }
 
@@ -617,7 +617,7 @@ pub struct FormField {
     pub name: String,
     /// # Field Value
     /// The value of the form field (supports expressions)
-    pub value: Code<{ CodeType::FlowExpr as u32 }>,
+    pub value: Code,
 }
 
 /// # Multipart Part
@@ -634,7 +634,7 @@ pub enum MultipartPart {
         name: String,
         /// # Field Value
         /// The value of the form field (supports expressions)
-        value: Code<{ CodeType::FlowExpr as u32 }>,
+        value: Code,
     },
     /// # File Upload
     /// A file upload in the multipart form

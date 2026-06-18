@@ -153,7 +153,7 @@ pub enum SolarPositionCalculatorParam {
         /// Time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z") or
         /// date-only format (e.g., "2025-01-11" or "2025-01-11+09:00"). When hours, minutes,
         /// and seconds are omitted they default to zero.
-        time: Code<{ CodeType::FlowExpr as u32 }>,
+        time: Code,
         /// Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).
         source_epsg: Code<{ CodeType::FlowExpr as u32 }>,
         /// Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.
@@ -171,11 +171,11 @@ pub enum SolarPositionCalculatorParam {
         /// Start time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z") or
         /// date-only format (e.g., "2025-01-11" or "2025-01-11+09:00"). When hours, minutes,
         /// and seconds are omitted they default to zero.
-        start: Code<{ CodeType::FlowExpr as u32 }>,
+        start: Code,
         /// End time expression evaluating to RFC 3339 format (e.g., "2025-01-12T00:00:00Z") or
         /// date-only format (e.g., "2025-01-12" or "2025-01-12+09:00"). When hours, minutes,
         /// and seconds are omitted they default to zero.
-        end: Code<{ CodeType::FlowExpr as u32 }>,
+        end: Code,
         /// Step value expression evaluating to an integer
         step: Code<{ CodeType::FlowExpr as u32 }>,
         /// Unit for the step value

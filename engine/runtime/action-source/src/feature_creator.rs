@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -85,7 +85,7 @@ impl SourceFactory for FeatureCreatorFactory {
 pub struct FeatureCreator {
     /// # Script Expression
     /// Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.
-    creator: Code,
+    creator: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 #[derive(Debug, Clone)]

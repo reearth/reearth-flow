@@ -1,4 +1,4 @@
-use reearth_flow_types::{Code, CodeType, CompiledCode};
+use reearth_flow_types::{Code, CompiledCode};
 
 use super::errors::{HttpProcessorError, Result};
 use super::params::{HeaderParam, QueryParam};
@@ -22,10 +22,7 @@ impl ExpressionCompiler {
         Self
     }
 
-    pub fn compile_url(
-        &self,
-        url_expr: &Code<{ CodeType::FlowExpr as u32 }>,
-    ) -> Result<CompiledCode> {
+    pub fn compile_url(&self, url_expr: &Code) -> Result<CompiledCode> {
         url_expr.compile().map_err(|e| {
             HttpProcessorError::CallerFactory(format!("Failed to compile URL expression: {e:?}"))
         })
@@ -69,7 +66,7 @@ impl ExpressionCompiler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::CodeType;
+    use reearth_flow_types::{Code, CodeType};
 
     #[test]
     fn test_expression_compiler() {
