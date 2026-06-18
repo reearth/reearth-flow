@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, Code, CodeType, CompiledCode, Feature};
+use reearth_flow_types::{fetch_attribute_value, Attribute, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -414,7 +414,8 @@ impl Processor for FeatureMerger {
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
                 let feature = &ctx.feature;
-                let requestor_attribute_value = feature.fetch_attribute_value(
+                let requestor_attribute_value = fetch_attribute_value(
+                    feature,
                     ctx.expr_engine.vars().clone(),
                     &self.params.requestor_attribute,
                     &self.params.requestor_attribute_value,
@@ -455,7 +456,8 @@ impl Processor for FeatureMerger {
             }
             port if port == SUPPLIER_PORT.clone() => {
                 let feature = &ctx.feature;
-                let supplier_attribute_value = feature.fetch_attribute_value(
+                let supplier_attribute_value = fetch_attribute_value(
+                    feature,
                     ctx.expr_engine.vars().clone(),
                     &self.params.supplier_attribute,
                     &self.params.supplier_attribute_value,
