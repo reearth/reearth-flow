@@ -695,19 +695,8 @@ impl SolarPositionCalculator {
                 }
                 Ok(i as u32)
             }
-            AttributeValue::String(s) => {
-                // Parse string, handling optional "EPSG:" prefix
-                let epsg_str = s.trim().strip_prefix("EPSG:").unwrap_or(s.trim());
-                epsg_str.parse::<u32>().map_err(|_| {
-                    SolarPositionError::Process(format!(
-                        "Invalid EPSG code '{}': must be a positive integer",
-                        s
-                    ))
-                    .into()
-                })
-            }
             _ => Err(SolarPositionError::Process(
-                "source_epsg expression must evaluate to an integer or string".to_string(),
+                "source_epsg expression must evaluate to an integer".to_string(),
             )
             .into()),
         }

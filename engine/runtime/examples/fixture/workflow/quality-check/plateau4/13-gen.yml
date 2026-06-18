@@ -2488,8 +2488,9 @@ graphs:
     type: action
     action: SolidBoundaryValidator
     with:
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: '0.01'
   - id: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     name: FeatureFilterNotClosed
     type: action
@@ -2706,8 +2707,9 @@ graphs:
     type: action
     action: PLATEAU4.GmlNameCodeSpaceValidator
     with:
-      cityGmlPath: |
-        env.get("__value").gmlPath
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["gmlPath"]
   - id: 21a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d3
     name: CsvWriterGmlNameErrors
     type: action

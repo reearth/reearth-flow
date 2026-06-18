@@ -301,10 +301,9 @@ impl DestinationMeshCodeExtractor {
             ))
         })?;
         match av {
-            reearth_flow_types::AttributeValue::String(s) => Ok(s),
             reearth_flow_types::AttributeValue::Number(n) => Ok(n.to_string()),
             _ => Err(PlateauProcessorError::DestinationMeshCodeExtractor(
-                "epsg_code expression did not evaluate to a string or integer".to_string(),
+                "epsg_code expression did not evaluate to an integer".to_string(),
             )
             .into()),
         }

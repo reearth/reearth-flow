@@ -173,7 +173,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
 #[serde(rename_all = "camelCase")]
 struct CityGmlAttributeInserterParam {
     /// Output directory expression for modified CityGML files
-    output_dir: Code<{ CodeType::FlowExpr as u32 }>,
+    output_dir: Code,
     /// Attribute name on element features holding gml:id (default: "gmlId")
     #[serde(default)]
     gml_id_attribute: Option<String>,
@@ -184,7 +184,7 @@ struct CityGmlAttributeInserterParam {
     measurements: Vec<MeasurementDef>,
     /// Path to the solar radiation texture PNG (texture insertion skipped if absent)
     #[serde(default)]
-    texture_image_path: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    texture_image_path: Option<Code>,
     /// The projected CRS EPSG code used for rasterization (needed for UV computation)
     #[serde(default)]
     source_epsg: Option<Code<{ CodeType::FlowExpr as u32 }>>,

@@ -2508,8 +2508,9 @@ graphs:
     type: action
     action: SolidBoundaryValidator
     with:
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: '0.01'
   - id: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     name: FeatureFilterNotClosed
     type: action

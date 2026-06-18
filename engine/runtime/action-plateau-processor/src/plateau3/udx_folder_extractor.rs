@@ -16,7 +16,7 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
-use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -130,7 +130,7 @@ pub struct UdxFolderExtractor {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UdxFolderExtractorParam {
-    city_gml_path: Code<{ CodeType::FlowExpr as u32 }>,
+    city_gml_path: Code,
     codelists_path: Option<String>,
     schemas_path: Option<String>,
 }

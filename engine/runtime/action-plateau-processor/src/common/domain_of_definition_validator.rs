@@ -20,9 +20,7 @@ use reearth_flow_storage::storage::Storage;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_types::{
-    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
-};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
@@ -262,7 +260,7 @@ pub struct DomainOfDefinitionValidatorParam {
     /// at the location relative to the GML file, this path will be used as the base
     /// directory for resolving codeSpace references.
     #[serde(skip_serializing_if = "Option::is_none")]
-    codelists_path: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    codelists_path: Option<Code>,
 }
 
 #[derive(Debug, Clone)]

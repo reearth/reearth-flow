@@ -18,7 +18,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -109,7 +109,7 @@ impl ProcessorFactory for TransportationXlinkDetectorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TransportationXlinkDetectorParam {
-    city_gml_path: Code<{ CodeType::FlowExpr as u32 }>,
+    city_gml_path: Code,
 }
 
 #[derive(Debug, Clone)]
