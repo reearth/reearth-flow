@@ -322,22 +322,22 @@ nodes:
           attributeValue:
             type: flowExpr
             value: |
-              attrs = attributes.get("cityGmlAttributes", {})
-              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {})
+              attrs = attributes.get("cityGmlAttributes", {});
+              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
               building_id_attribute.get("uro:buildingID", "")
         - newAttribute: uroBranchId
           attributeValue:
             type: flowExpr
             value: |
-              attrs = attributes.get("cityGmlAttributes", {})
-              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {})
+              attrs = attributes.get("cityGmlAttributes", {});
+              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
               building_id_attribute.get("uro:branchID", "")
         - newAttribute: uroPartId
           attributeValue:
             type: flowExpr
             value: |
-              attrs = attributes.get("cityGmlAttributes", {})
-              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {})
+              attrs = attributes.get("cityGmlAttributes", {});
+              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
               building_id_attribute.get("uro:partID", "")
       calculation:
         type: flowExpr
@@ -353,8 +353,8 @@ nodes:
       requestorAttributeValue:
         type: flowExpr
         value: |
-          attrs = attributes.get("cityGmlAttributes", {})
-          building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {})
+          attrs = attributes.get("cityGmlAttributes", {});
+          building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
           building_id_attribute.get("uro:buildingID", "") + "-" + building_id_attribute.get("uro:branchID", "") + "-" + building_id_attribute.get("uro:partID", "")
       supplierAttributeValue:
         type: flowExpr
