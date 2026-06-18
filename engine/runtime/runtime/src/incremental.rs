@@ -178,7 +178,7 @@ fn collect_reusable_in_graph_and_upstream_subworkflows(
                 graph_id,
                 sub_graph_id
             );
-            collect_all_in_graph_recursive(
+            collect_all_in_graph(
                 graphs,
                 sub_graph_id,
                 edge_ids,
@@ -192,49 +192,43 @@ fn collect_reusable_in_graph_and_upstream_subworkflows(
     Ok(())
 }
 
-/// Recursively collects all edges and port file IDs in a graph and its nested subgraphs.
-fn collect_all_in_graph_recursive(
+/// Iteratively collect all edge ids and port file ids in a graph and its
+/// nested subgraphs (explicit-stack worklist; no recursion, so deep subgraph
+/// nesting cannot overflow the stack).
+fn collect_all_in_graph(
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
-    graph_id: uuid::Uuid,
+    entry_graph_id: uuid::Uuid,
     edge_ids: &mut HashSet<uuid::Uuid>,
     port_file_ids: &mut HashSet<String>,
     prefix_chains: &HashMap<uuid::Uuid, Vec<Vec<uuid::Uuid>>>,
     visited: &mut HashSet<uuid::Uuid>,
 ) -> Result<(), String> {
-    if !visited.insert(graph_id) {
-        tracing::info!(
-            "Skipping already-visited subgraph {} (cycle detected)",
-            graph_id
-        );
-        return Ok(());
-    }
-
-    let graph = graphs
-        .get(&graph_id)
-        .ok_or_else(|| format!("graph {} not found", graph_id))?;
-
-    for edge in &graph.edges {
-        edge_ids.insert(edge.id);
-    }
-
-    for node in &graph.nodes {
-        if let Some(chains) = prefix_chains.get(&graph_id) {
-            for chain in chains {
-                port_file_ids.extend(compute_port_file_ids(graph, node, chain));
+    let mut stack = vec![entry_graph_id];
+    while let Some(graph_id) = stack.pop() {
+        if !visited.insert(graph_id) {
+            tracing::info!(
+                "Skipping already-visited subgraph {} (cycle detected)",
+                graph_id
+            );
+            continue;
+        }
+        let graph = graphs
+            .get(&graph_id)
+            .ok_or_else(|| format!("graph {} not found", graph_id))?;
+        for edge in &graph.edges {
+            edge_ids.insert(edge.id);
+        }
+        for node in &graph.nodes {
+            if let Some(chains) = prefix_chains.get(&graph_id) {
+                for chain in chains {
+                    port_file_ids.extend(compute_port_file_ids(graph, node, chain));
+                }
+            }
+            if let Some(sub_graph_id) = extract_subgraph_id_if_subworkflow_node(node) {
+                stack.push(sub_graph_id);
             }
         }
-        if let Some(sub_graph_id) = extract_subgraph_id_if_subworkflow_node(node) {
-            collect_all_in_graph_recursive(
-                graphs,
-                sub_graph_id,
-                edge_ids,
-                port_file_ids,
-                prefix_chains,
-                visited,
-            )?;
-        }
     }
-
     Ok(())
 }
 
@@ -375,4 +369,154 @@ fn collect_output_ports(
 
 fn is_output_router(node: &reearth_flow_types::Node) -> bool {
     matches!(node, reearth_flow_types::Node::Action { action, .. } if action == OUTPUT_ROUTING_ACTION)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_types::{Edge, Graph, Node, NodeEntity};
+
+    /// Builds a `Node::SubGraph` referencing `sub_graph_id`. This is the exact
+    /// shape `extract_subgraph_id_if_subworkflow_node` matches.
+    fn subgraph_node(node_id: uuid::Uuid, sub_graph_id: uuid::Uuid) -> Node {
+        Node::SubGraph {
+            entity: NodeEntity {
+                id: node_id,
+                name: "sub".to_string(),
+                with: None,
+            },
+            sub_graph_id,
+        }
+    }
+
+    fn edge(id: uuid::Uuid, from: uuid::Uuid, to: uuid::Uuid) -> Edge {
+        Edge {
+            id,
+            from,
+            to,
+            from_port: "default".to_string(),
+            to_port: "default".to_string(),
+        }
+    }
+
+    #[test]
+    fn collect_all_in_graph_descends_nested_subgraphs() {
+        let g1_id = uuid::Uuid::new_v4();
+        let g2_id = uuid::Uuid::new_v4();
+        let g3_id = uuid::Uuid::new_v4();
+
+        let g1_edge = uuid::Uuid::new_v4();
+        let g2_edge = uuid::Uuid::new_v4();
+        let g3_edge = uuid::Uuid::new_v4();
+
+        // G1 contains a subworkflow node referencing G2.
+        let g1_sub_node = uuid::Uuid::new_v4();
+        let g1 = Graph {
+            id: g1_id,
+            name: "g1".to_string(),
+            nodes: vec![subgraph_node(g1_sub_node, g2_id)],
+            edges: vec![edge(g1_edge, uuid::Uuid::new_v4(), g1_sub_node)],
+        };
+
+        // G2 contains a subworkflow node referencing G3.
+        let g2_sub_node = uuid::Uuid::new_v4();
+        let g2 = Graph {
+            id: g2_id,
+            name: "g2".to_string(),
+            nodes: vec![subgraph_node(g2_sub_node, g3_id)],
+            edges: vec![edge(g2_edge, uuid::Uuid::new_v4(), g2_sub_node)],
+        };
+
+        // G3 is a leaf graph.
+        let g3 = Graph {
+            id: g3_id,
+            name: "g3".to_string(),
+            nodes: vec![],
+            edges: vec![edge(g3_edge, uuid::Uuid::new_v4(), uuid::Uuid::new_v4())],
+        };
+
+        let graphs: HashMap<uuid::Uuid, &Graph> = [(g1_id, &g1), (g2_id, &g2), (g3_id, &g3)]
+            .into_iter()
+            .collect();
+        let prefix_chains: HashMap<uuid::Uuid, Vec<Vec<uuid::Uuid>>> = HashMap::new();
+        let mut edge_ids: HashSet<uuid::Uuid> = HashSet::new();
+        let mut port_file_ids: HashSet<String> = HashSet::new();
+        let mut visited: HashSet<uuid::Uuid> = HashSet::new();
+
+        let result = collect_all_in_graph(
+            &graphs,
+            g1_id,
+            &mut edge_ids,
+            &mut port_file_ids,
+            &prefix_chains,
+            &mut visited,
+        );
+
+        assert_eq!(result, Ok(()));
+        // Edge ids from all three nested graphs must be present, proving the
+        // worklist descended through the full nesting chain.
+        assert!(edge_ids.contains(&g1_edge));
+        assert!(edge_ids.contains(&g2_edge));
+        assert!(edge_ids.contains(&g3_edge));
+        // All three graphs were visited.
+        assert!(visited.contains(&g1_id));
+        assert!(visited.contains(&g2_id));
+        assert!(visited.contains(&g3_id));
+        assert_eq!(visited.len(), 3);
+    }
+
+    #[test]
+    fn collect_all_in_graph_terminates_on_cycle() {
+        let g1_id = uuid::Uuid::new_v4();
+        let g2_id = uuid::Uuid::new_v4();
+        let g3_id = uuid::Uuid::new_v4();
+
+        let g1_edge = uuid::Uuid::new_v4();
+        let g2_edge = uuid::Uuid::new_v4();
+        let g3_edge = uuid::Uuid::new_v4();
+
+        // G1 -> G2 -> G3 -> G1 (cycle back to the entry graph).
+        let g1 = Graph {
+            id: g1_id,
+            name: "g1".to_string(),
+            nodes: vec![subgraph_node(uuid::Uuid::new_v4(), g2_id)],
+            edges: vec![edge(g1_edge, uuid::Uuid::new_v4(), uuid::Uuid::new_v4())],
+        };
+        let g2 = Graph {
+            id: g2_id,
+            name: "g2".to_string(),
+            nodes: vec![subgraph_node(uuid::Uuid::new_v4(), g3_id)],
+            edges: vec![edge(g2_edge, uuid::Uuid::new_v4(), uuid::Uuid::new_v4())],
+        };
+        let g3 = Graph {
+            id: g3_id,
+            name: "g3".to_string(),
+            nodes: vec![subgraph_node(uuid::Uuid::new_v4(), g1_id)],
+            edges: vec![edge(g3_edge, uuid::Uuid::new_v4(), uuid::Uuid::new_v4())],
+        };
+
+        let graphs: HashMap<uuid::Uuid, &Graph> = [(g1_id, &g1), (g2_id, &g2), (g3_id, &g3)]
+            .into_iter()
+            .collect();
+        let prefix_chains: HashMap<uuid::Uuid, Vec<Vec<uuid::Uuid>>> = HashMap::new();
+        let mut edge_ids: HashSet<uuid::Uuid> = HashSet::new();
+        let mut port_file_ids: HashSet<String> = HashSet::new();
+        let mut visited: HashSet<uuid::Uuid> = HashSet::new();
+
+        // Must terminate (not hang or overflow) thanks to the `visited` guard.
+        let result = collect_all_in_graph(
+            &graphs,
+            g1_id,
+            &mut edge_ids,
+            &mut port_file_ids,
+            &prefix_chains,
+            &mut visited,
+        );
+
+        assert_eq!(result, Ok(()));
+        assert_eq!(visited.len(), 3);
+        assert!(edge_ids.contains(&g1_edge));
+        assert!(edge_ids.contains(&g2_edge));
+        assert!(edge_ids.contains(&g3_edge));
+    }
 }
