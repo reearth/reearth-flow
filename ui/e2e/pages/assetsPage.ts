@@ -52,7 +52,7 @@ export class AssetsPage {
     const asset = (await response.json()).data.createAsset.asset;
     await expect(this.assetCreatedToast)
       .toBeVisible({ timeout: 30_000 })
-      .catch(() => { });
+      .catch(() => {});
     return { id: asset.id, name: asset.name, url: asset.url };
   }
 

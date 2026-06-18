@@ -59,9 +59,9 @@ test.describe.serial(
         await deployments.goto();
         await deployments
           .deleteDeploymentIfExists(deploymentDescription)
-          .catch(() => { });
+          .catch(() => {});
         await projects.goto();
-        await projects.deleteProjectIfExists(projectName).catch(() => { });
+        await projects.deleteProjectIfExists(projectName).catch(() => {});
       } finally {
         await context.close();
       }
