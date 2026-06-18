@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{AttributeValue, Code, CodeType, CompiledCode, Feature, FilePath};
+use reearth_flow_types::{AttributeValue, Code, CompiledCode, Feature, FilePath};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -99,7 +99,7 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
 struct FeatureFilePathExtractorParam {
     /// # Source Dataset
     /// Expression to get the source dataset path or URL
-    source_dataset: Code<{ CodeType::FlowExpr as u32 }>,
+    source_dataset: Code,
     /// # Extract Archive
     /// Whether to extract archive files found in the dataset
     extract_archive: bool,

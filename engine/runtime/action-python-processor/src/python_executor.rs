@@ -108,9 +108,7 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             .map(|c| {
                 c.compile()
                     .map_err(|e| {
-                        PythonProcessorError::FactoryError(format!(
-                            "Failed to compile script: {e}"
-                        ))
+                        PythonProcessorError::FactoryError(format!("Failed to compile script: {e}"))
                     })?
                     .eval_string_env_only(env_vars.clone())
                     .map_err(|e| {
