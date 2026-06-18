@@ -8,6 +8,35 @@ import (
 	"time"
 )
 
+type Asset struct {
+	ID                      string
+	WorkspaceID             string
+	CreatedAt               time.Time
+	Name                    string
+	FileName                string
+	Size                    int64
+	Url                     string
+	ContentType             string
+	Uuid                    string
+	FlatFiles               bool
+	Public                  bool
+	ProjectID               *string
+	UserID                  *string
+	IntegrationID           *string
+	ThreadID                *string
+	ArchiveExtractionStatus *string
+}
+
+type AssetUpload struct {
+	Uuid            string
+	WorkspaceID     string
+	FileName        string
+	ContentType     string
+	ContentEncoding string
+	ContentLength   int64
+	ExpiresAt       time.Time
+}
+
 type AuthRequest struct {
 	ID            string
 	ClientID      string

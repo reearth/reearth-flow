@@ -15,6 +15,7 @@ type Querier interface {
 	// mongodoc.ProjectDocument), so it effectively returns 0 for flow-owned data.
 	// Mirror that faithfully rather than inventing an unowned column.
 	CountPublicProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
+	DeleteAsset(ctx context.Context, id string) error
 	DeleteDeployment(ctx context.Context, id string) error
 	DeleteJob(ctx context.Context, id string) error
 	DeleteJobsByProject(ctx context.Context, projectID *string) error
@@ -25,6 +26,8 @@ type Querier interface {
 	DeleteTrigger(ctx context.Context, id string) error
 	DeleteWorkerConfig(ctx context.Context, id string) error
 	DeleteWorkflow(ctx context.Context, id string) error
+	GetAsset(ctx context.Context, id string) (Asset, error)
+	GetAssetUpload(ctx context.Context, uuid string) (AssetUpload, error)
 	GetConfig(ctx context.Context) (GetConfigRow, error)
 	GetDeployment(ctx context.Context, id string) (Deployment, error)
 	GetEdgeExecution(ctx context.Context, id string) (EdgeExecution, error)
@@ -38,6 +41,7 @@ type Querier interface {
 	GetTrigger(ctx context.Context, id string) (Trigger, error)
 	GetWorkerConfig(ctx context.Context, id string) (WorkerConfig, error)
 	GetWorkflow(ctx context.Context, id string) (Workflow, error)
+	ListAssetsByIDs(ctx context.Context, dollar_1 []string) ([]Asset, error)
 	ListDeploymentsByIDs(ctx context.Context, dollar_1 []string) ([]Deployment, error)
 	ListEdgeExecutionsByJobID(ctx context.Context, jobID string) ([]EdgeExecution, error)
 	ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error)
@@ -48,6 +52,8 @@ type Querier interface {
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
 	ListWorkerConfigs(ctx context.Context) ([]WorkerConfig, error)
 	ListWorkerConfigsByIDs(ctx context.Context, dollar_1 []string) ([]WorkerConfig, error)
+	UpsertAsset(ctx context.Context, arg UpsertAssetParams) error
+	UpsertAssetUpload(ctx context.Context, arg UpsertAssetUploadParams) error
 	UpsertConfig(ctx context.Context, arg UpsertConfigParams) error
 	UpsertConfigAuth(ctx context.Context, arg UpsertConfigAuthParams) error
 	UpsertDeployment(ctx context.Context, arg UpsertDeploymentParams) error

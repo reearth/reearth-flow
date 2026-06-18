@@ -523,6 +523,118 @@ table "projects" {
   }
 }
 
+table "assets" {
+  schema = schema.public
+
+  column "id" {
+    type = text
+  }
+  column "workspace_id" {
+    type = text
+  }
+  column "created_at" {
+    type = timestamptz
+  }
+  column "name" {
+    type    = text
+    default = ""
+  }
+  column "file_name" {
+    type    = text
+    default = ""
+  }
+  column "size" {
+    type    = bigint
+    default = 0
+  }
+  column "url" {
+    type    = text
+    default = ""
+  }
+  column "content_type" {
+    type    = text
+    default = ""
+  }
+  column "uuid" {
+    type    = text
+    default = ""
+  }
+  column "flat_files" {
+    type    = boolean
+    default = false
+  }
+  column "public" {
+    type    = boolean
+    default = false
+  }
+  column "project_id" {
+    type = text
+    null = true
+  }
+  column "user_id" {
+    type = text
+    null = true
+  }
+  column "integration_id" {
+    type = text
+    null = true
+  }
+  column "thread_id" {
+    type = text
+    null = true
+  }
+  column "archive_extraction_status" {
+    type = text
+    null = true
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "assets_workspace_id_idx" {
+    columns = [column.workspace_id]
+  }
+}
+
+table "asset_uploads" {
+  schema = schema.public
+
+  column "uuid" {
+    type = text
+  }
+  column "workspace_id" {
+    type = text
+  }
+  column "file_name" {
+    type    = text
+    default = ""
+  }
+  column "content_type" {
+    type    = text
+    default = ""
+  }
+  column "content_encoding" {
+    type    = text
+    default = ""
+  }
+  column "content_length" {
+    type    = bigint
+    default = 0
+  }
+  column "expires_at" {
+    type = timestamptz
+  }
+
+  primary_key {
+    columns = [column.uuid]
+  }
+
+  index "asset_uploads_workspace_id_idx" {
+    columns = [column.workspace_id]
+  }
+}
+
 # OAuth2 authorization-request state for the reearthx authserver. The repo
 # (authserver.Postgres) lives in reearthx; flow owns the schema here via Atlas
 # rather than the library's self-managing Init. Columns mirror that Init DDL.

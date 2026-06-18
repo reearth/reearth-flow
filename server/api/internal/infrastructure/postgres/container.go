@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/migration"
@@ -12,12 +11,9 @@ import (
 	"github.com/reearth/reearthx/pgxx"
 )
 
-// New builds a repo.Container backed by Postgres. During the incremental
-// migration (design A1) only ported entities are implemented here; the
-// remaining repos are left nil and mustComplete fails fast so that
-// DB_DRIVER=postgres cannot boot into production until every entity is ported.
-// Account-owned repos (User/Workspace/Role/Permittable) continue to come from
-// the account container until they are ported in a separate stream.
+// New builds a repo.Container backed by Postgres. All flow-owned repos are
+// implemented; account-owned repos (User/Workspace/Role/Permittable) continue
+// to come from the account container.
 func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container) (*repo.Container, error) {
 	client := pgxx.NewClient(pool, pgxx.WithTxRetry(2)) // retry serialization failures, matching the Mongo path
 	lock := NewLock(pool)
@@ -33,6 +29,8 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 		EdgeExecution: NewEdgeExecution(client),
 		NodeExecution: NewNodeExecution(client),
 		Job:           NewJob(client),
+		Asset:         NewAsset(client),
+		AssetUpload:   NewAssetUpload(client),
 		AuthRequest:   authserver.NewPostgres(client),
 		Lock:          lock,
 		Transaction:   client,
@@ -41,29 +39,8 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 		Role:          account.Role,
 		Permittable:   account.Permittable,
 	}
-	if err := mustComplete(c); err != nil {
-		return nil, err
-	}
 	if err := migration.Do(ctx, client, c.Config); err != nil {
 		return nil, err
 	}
 	return c, nil
-}
-
-// mustComplete reports which flow-owned repos are not yet implemented for
-// Postgres. Remove an entry from this list as each repo is ported; delete the
-// whole guard at the final cutover.
-func mustComplete(c *repo.Container) error {
-	missing := []string{}
-	check := func(name string, ok bool) {
-		if !ok {
-			missing = append(missing, name)
-		}
-	}
-	check("Asset", c.Asset != nil)
-	check("AssetUpload", c.AssetUpload != nil)
-	if len(missing) > 0 {
-		return fmt.Errorf("postgres backend not yet implemented for: %v (set DB_DRIVER=mongo)", missing)
-	}
-	return nil
 }
