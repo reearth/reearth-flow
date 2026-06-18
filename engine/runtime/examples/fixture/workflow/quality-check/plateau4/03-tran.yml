@@ -2457,12 +2457,8 @@ graphs:
       cityGmlPath:
         type: flowExpr
         value: attributes["path"]
-      codelistsPath:
-        type: string
-        value: codelists
-      schemasPath:
-        type: string
-        value: schemas
+      codelistsPath: codelists
+      schemasPath: schemas
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     name: FeatureFilterByPackage
     type: action
@@ -2492,7 +2488,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env.get("prcs")
+        value: env["prcs"]
   - id: 6f556405-1fdb-4807-8e3b-f18da79fbe1a
     name: TransportationXlinkDetector
     type: action

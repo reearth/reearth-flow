@@ -2496,7 +2496,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env.get("prcs")
+        value: env["prcs"]
   - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
     name: PLATEAU3.LodSplitterWithDM
     type: subGraph
