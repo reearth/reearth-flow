@@ -19,7 +19,9 @@ use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::SourceError,
-    file::reader::runner::{get_content, FileReaderCommonParam},
+    file::reader::runner::{
+        get_content, get_input_path, FileReaderCommonParam, FileReaderCompiledParam,
+    },
 };
 
 #[derive(Debug, Clone, Default)]
@@ -54,7 +56,7 @@ impl SourceFactory for GltfReaderFactory {
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: GltfReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::GltfReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -69,14 +71,29 @@ impl SourceFactory for GltfReaderFactory {
             )
             .into());
         };
-        let reader = GltfReader { params };
-        Ok(Box::new(reader))
+        let compiled = GltfReaderCompiledParam {
+            common: params.common.compile().map_err(|e| {
+                SourceError::GltfReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            _triangulate: params.triangulate,
+            merge_meshes: params.merge_meshes,
+            include_nodes: params.include_nodes,
+        };
+        Ok(Box::new(GltfReader { params: compiled }))
     }
 }
 
 #[derive(Debug, Clone)]
+struct GltfReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    _triangulate: bool,
+    merge_meshes: bool,
+    include_nodes: bool,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct GltfReader {
-    params: GltfReaderParam,
+    params: GltfReaderCompiledParam,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -121,6 +138,7 @@ impl Source for GltfReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -135,19 +153,17 @@ impl Source for GltfReader {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_gltf(
     ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
     content: &Bytes,
-    params: &GltfReaderParam,
+    params: &GltfReaderCompiledParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), SourceError> {
-    let gltf_uri = if let Some(dataset) = &params.common.dataset {
-        Uri::from_str(dataset.to_string().trim_matches('"'))
-            .unwrap_or_else(|_| Uri::from_str("file://./unknown.gltf").unwrap())
-    } else {
-        Uri::from_str("file://./unknown.gltf").unwrap()
-    };
+    let gltf_uri = get_input_path(ctx, &params.common)
+        .map_err(SourceError::GltfReader)?
+        .unwrap_or_else(|| Uri::from_str("file://./unknown.gltf").unwrap());
 
     let gltf = gltf::Gltf::from_slice(content)
         .map_err(|e| SourceError::GltfReader(format!("Failed to parse glTF: {e}")))?;
@@ -271,13 +287,14 @@ fn merge_geometries(geometries: Vec<&Geometry3D<f64>>) -> Geometry3D<f64> {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn send_feature(
     sender: &Sender<(Port, IngestionMessage)>,
     flow_geometry: Geometry3D<f64>,
     mesh_names: &[String],
     node_names: &[String],
     primitive_count: usize,
-    params: &GltfReaderParam,
+    params: &GltfReaderCompiledParam,
 ) -> Result<(), SourceError> {
     let geometry = Geometry::with_value(GeometryValue::FlowGeometry3D(flow_geometry));
     let mut attributes = IndexMap::new();

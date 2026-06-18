@@ -214,10 +214,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Operation": {
           "attribute": {
             "title": "Attribute name"
@@ -245,10 +241,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapper": {
           "attribute": {
             "title": "Attribute name"
@@ -554,12 +546,6 @@
         "skipUnexposedAttributes": {
           "title": "Skip unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1119,10 +1105,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Condition": {
           "expr": {
             "title": "Condition expression"
@@ -1329,10 +1311,6 @@
         "mappings": {}
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapping": {
           "attribute": {},
           "value": {}
@@ -2190,12 +2168,6 @@
           "title": "Skip Unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -2844,6 +2816,26 @@
       }
     },
     {
+      "name": "PLATEAU6.MissingAttributeDetector",
+      "parameterI18n": {
+        "": {
+          "title": "MissingAttributeDetector Parameters",
+          "description": "Configuration for detecting missing attributes in PLATEAU features."
+        },
+        "packageAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU6.ObjectListExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "ObjectListExtractor Parameters",
+          "description": "Configuration for extracting object lists from PLATEAU data."
+        },
+        "objectListPathAttribute": {}
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "Extrae carpetas UDX de datos PLATEAU6",
       "parameterI18n": {
@@ -2979,22 +2971,6 @@
     {
       "name": "Refiner",
       "description": "Refina la geometría"
-    },
-    {
-      "name": "RhaiCaller",
-      "description": "Llama a un script Rhai",
-      "parameterI18n": {
-        "": {
-          "title": "RhaiCaller Parameters",
-          "description": "Configuration for executing Rhai scripts on features with conditional processing."
-        },
-        "isTarget": {
-          "description": "Rhai script expression to determine if the feature should be processed (returns boolean)"
-        },
-        "process": {
-          "description": "Rhai script expression to process and transform the feature when target condition is met"
-        }
-      }
     },
     {
       "name": "Rotator3D",

@@ -81,16 +81,18 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("bldgCityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env.get("bldgCityGmlPath"),
+                  "cityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: 00000001-0000-0000-0000-000000000111
         name: FolderAndFilePathReader
@@ -106,16 +108,18 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("demCityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env.get("demCityGmlPath"),
+                  "cityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: 00000002-0000-0000-0000-000000000002
         name: DEMDirectoryDecompressor
@@ -171,11 +175,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       # Filter by LOD level: LOD2 → default (solar pipeline), LOD1/3/4 → separate 3DTiles writers, LOD0 → dropped
       - id: 00000001-0000-0000-0000-00000000003a
         name: LodFilter
@@ -243,8 +249,9 @@ graphs:
         type: action
         action: ShapefileReader
         with:
-          dataset: |
-            env.get("roofFilterShapefilePath")
+          dataset:
+            type: flowExpr
+            value: env.get("roofFilterShapefilePath")
           force2D: true
           allowEmptyPath: true
 
@@ -486,8 +493,9 @@ graphs:
         action: CsvReader
         with:
           format: csv
-          dataset: |
-            env.get("snowDepthDataPath")
+          dataset:
+            type: flowExpr
+            value: env["snowDepthDataPath"]
           offset: 1
           headerRows: 0
 
@@ -639,11 +647,13 @@ graphs:
             - _grid_row
           calculations:
             - newAttribute: radiationSunnySum
-              expr: |
-                env.get("__value")["radiationSunny"]
+              expr:
+                type: flowExpr
+                value: attributes["radiationSunny"]
             - newAttribute: radiationCloudySum
-              expr: |
-                env.get("__value")["radiationCloudy"]
+              expr:
+                type: flowExpr
+                value: attributes["radiationCloudy"]
 
       # Merge cloud factor (sunnyRatio) with monthly DT sums
       - id: 00000001-0000-0000-0000-000000000052
@@ -694,12 +704,13 @@ graphs:
             - _grid_row
           calculations:
             - newAttribute: totalSolarRadiation
-              expr: |
-                env.get("__value")["radiationPerMonth"]
+              expr:
+                type: flowExpr
+                value: attributes["radiationPerMonth"]
             - newAttribute: totalSolarPower
-              expr: |
-                let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-                dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+              expr:
+                type: flowExpr
+                value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
 
       # Aggregate total radiation per surface (sum across all cells of a roof surface)
       - id: 00000001-0000-0000-0000-000000000074
@@ -712,18 +723,25 @@ graphs:
             - gmlId
           calculations:
             - newAttribute: totalSolarRadiation
-              expr: |
-                env.get("__value")["radiationPerMonth"]
+              expr:
+                type: flowExpr
+                value: attributes["radiationPerMonth"]
             - newAttribute: totalSolarPower
-              expr: |
-                let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-                dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+              expr:
+                type: flowExpr
+                value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
             - newAttribute: dirMatchSum1
-              expr: env.get("__value")["dirMatch1"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("dirMatch1", 0)
             - newAttribute: dirMatchSum2
-              expr: env.get("__value")["dirMatch2"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("dirMatch2", 0)
             - newAttribute: dirMatchSum3
-              expr: env.get("__value")["dirMatch3"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("dirMatch3", 0)
 
       # Merge per-surface solar totals onto roof geometry features
       - id: 00000001-0000-0000-0000-000000000075
@@ -1054,8 +1072,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            "反射シミュレーション結果.csv"
+          output:
+            type: string
+            value: 反射シミュレーション結果.csv
 
       # ========================================
       # Area Computation Branch (for CSV per-m2 values)
@@ -1082,8 +1101,9 @@ graphs:
             - gmlId
           calculations:
             - newAttribute: totalSurfaceArea
-              expr: |
-                env.get("__value")["surfaceArea"]
+              expr:
+                type: flowExpr
+                value: attributes["surfaceArea"]
 
       # Aggregate area per building (sum across surfaces)
       - id: 00000001-0000-0000-0000-0000000000d2
@@ -1095,8 +1115,9 @@ graphs:
             - gmlId
           calculations:
             - newAttribute: totalRoofArea
-              expr: |
-                env.get("__value")["totalSurfaceArea"]
+              expr:
+                type: flowExpr
+                value: attributes["totalSurfaceArea"]
 
       # Merge building area into building radiation results
       - id: 00000001-0000-0000-0000-0000000000d3
@@ -1134,18 +1155,25 @@ graphs:
             - gmlId
           calculations:
             - newAttribute: totalSolarRadiation
-              expr: |
-                env.get("__value")["radiationPerMonth"]
+              expr:
+                type: flowExpr
+                value: attributes["radiationPerMonth"]
             - newAttribute: totalSolarPower
-              expr: |
-                let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-                dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+              expr:
+                type: flowExpr
+                value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
             - newAttribute: dirMatchSum1
-              expr: env.get("__value")["dirMatchSum1"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("dirMatchSum1", 0)
             - newAttribute: dirMatchSum2
-              expr: env.get("__value")["dirMatchSum2"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("dirMatchSum2", 0)
             - newAttribute: dirMatchSum3
-              expr: env.get("__value")["dirMatchSum3"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("dirMatchSum3", 0)
 
       # Map building attributes to Japanese column names
       - id: 00000001-0000-0000-0000-0000000000c5
@@ -1182,8 +1210,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            "建物ポテンシャル推計結果.csv"
+          output:
+            type: string
+            value: 建物ポテンシャル推計結果.csv
 
       # ========================================
       # CSV 4: Per-Surface Radiation
@@ -1220,8 +1249,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            "面別日射量.csv"
+          output:
+            type: string
+            value: 面別日射量.csv
 
       # ========================================
       # CSV 5: Reflection — Map to Japanese column names
@@ -1269,17 +1299,21 @@ graphs:
           groupBy: []
           calculations:
             - newAttribute: buildingCount
-              expr: |
-                1
+              expr:
+                type: flowExpr
+                value: "1"
             - newAttribute: areaTotalSolarRadiation
-              expr: |
-                env.get("__value")["totalSolarRadiation"]
+              expr:
+                type: flowExpr
+                value: attributes["totalSolarRadiation"]
             - newAttribute: areaTotalSolarPower
-              expr: |
-                env.get("__value")["totalSolarPower"]
+              expr:
+                type: flowExpr
+                value: attributes["totalSolarPower"]
             - newAttribute: areaTotalRoofArea
-              expr: |
-                env.get("__value")["totalRoofArea"]
+              expr:
+                type: flowExpr
+                value: attributes["totalRoofArea"]
 
       # Map aggregation attributes to Japanese column names
       - id: 00000001-0000-0000-0000-0000000000c8
@@ -1306,8 +1340,9 @@ graphs:
         action: CsvWriter
         with:
           format: csv
-          output: |
-            "集計結果.csv"
+          output:
+            type: string
+            value: 集計結果.csv
 
       # ========================================
       # Per-LOD 3D Tiles Output Pipelines (LOD1, LOD3, LOD4)
@@ -1505,8 +1540,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            "citygml_bldg.zip"
+          output:
+            type: string
+            value: citygml_bldg.zip
 
       # ========================================
       # Section 2b: Building Attributes Preservation Branch
@@ -1749,11 +1785,13 @@ graphs:
             - featureType
           calculations:
             - newAttribute: totalSolarRadiation
-              expr: |
-                env.get("__value")["totalSolarRadiation"]
+              expr:
+                type: flowExpr
+                value: attributes["totalSolarRadiation"]
             - newAttribute: totalSolarPower
-              expr: |
-                env.get("__value")["totalSolarPower"]
+              expr:
+                type: flowExpr
+                value: attributes["totalSolarPower"]
 
       # After GridCellIdCounter: route bldg → CellGeometryMerger.requestor, dem → DEMGridKeyAssigner2
       - id: 00000002-0000-0000-0000-00000000000f

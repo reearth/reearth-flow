@@ -78,9 +78,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "11_水部_無効な空間属性の型.csv"
-
+      output:
+        type: string
+        value: 11_水部_無効な空間属性の型.csv
   - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
     name: StatisticsCalculatorInvalidSpatialAttr
     type: action
@@ -90,7 +90,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_invalid_spatial_attr
-          expr: '1'
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
     name: OutputRouterInvalidSpatialAttr
@@ -167,9 +169,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "11_水部_LOD1面のエラー.csv"
-
+      output:
+        type: string
+        value: 11_水部_LOD1面のエラー.csv
   - id: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
     name: StatisticsCalculatorLod1SurfaceErrors
     type: action
@@ -180,7 +182,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_lod1_surface_errors
-          expr: '1'
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
     name: OutputRouterLod1SurfaceErrors
@@ -245,9 +249,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "11_水部_LOD2-3非水密立体.csv"
-
+      output:
+        type: string
+        value: 11_水部_LOD2-3非水密立体.csv
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
     name: StatisticsCalculatorNotClosed
     type: action
@@ -258,7 +262,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: _num_not_closed_solid
-          expr: '1'
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
     name: OutputRouterNotClosed
@@ -303,9 +309,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "11_水部_LOD2-3立体のエラー.csv"
-
+      output:
+        type: string
+        value: 11_水部_LOD2-3立体のエラー.csv
   - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
     name: StatisticsCalculatorOtherSolidErrors
     type: action
@@ -316,7 +322,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: _num_other_solid_errors
-          expr: '1'
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c
     name: OutputRouterOtherSolidErrors
@@ -392,9 +400,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "11_水部_LOD2-3境界面のエラー.csv"
-
+      output:
+        type: string
+        value: 11_水部_LOD2-3境界面のエラー.csv
   - id: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
     name: StatisticsCalculatorBoundarySurfaceErrors
     type: action
@@ -405,7 +413,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_boundary_surface_errors
-          expr: '1'
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
     name: OutputRouterBoundarySurfaceErrors

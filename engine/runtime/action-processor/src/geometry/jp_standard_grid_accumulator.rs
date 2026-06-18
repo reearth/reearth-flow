@@ -64,6 +64,7 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
 pub struct JPStandardGridAccumulator;
 
 impl Processor for JPStandardGridAccumulator {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -119,6 +120,7 @@ impl Processor for JPStandardGridAccumulator {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

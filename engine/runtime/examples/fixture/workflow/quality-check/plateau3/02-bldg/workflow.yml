@@ -191,13 +191,9 @@ graphs:
           aggregateAttribute: "cityGmlPath"
           calculations:
             - newAttribute: instGmlIdTotalCount
-              expr: |
-                let gml_id = env.get("__value").instGmlId ?? "";
-                if gml_id != "" {
-                  1
-                } else {
-                  0
-                }
+              expr:
+                type: flowExpr
+                value: if attributes.get("instGmlId", "") != "" { 1 } else { 0 }
       - id: 129a0f24-4be9-4a54-9b4b-83080a7cec64
         name: NoopT-bldg-02
         type: action
@@ -213,108 +209,136 @@ graphs:
           aggregateAttribute: "cityGmlPath"
           calculations:
             - newAttribute: Building
-              expr: |
-                let gml_name = env.get("__value").gmlName ?? "";
-                if gml_name == "Building" {
-                  1
-                } else {
-                  0
-                }
+              expr:
+                type: flowExpr
+                value: if attributes.get("gmlName", "") == "Building" { 1 } else { 0 }
             - newAttribute: BuildingPart
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:BuildingPart" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:BuildingPart" }))
 
             - newAttribute: RoofSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:RoofSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:RoofSurface" }))
 
             - newAttribute: GroundSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:GroundSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:GroundSurface" }))
 
             - newAttribute: WallSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:WallSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:WallSurface" }))
 
             - newAttribute: ClosureSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:ClosureSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:ClosureSurface" }))
 
             - newAttribute: OuterFlooringSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:OuterFlooringSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:OuterFlooringSurface" }))
 
             - newAttribute: OuterCeillingSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:OuterCeillingSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:OuterCeillingSurface" }))
 
             - newAttribute: BuildingInstallation
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let building_installations = attributes["bldg:outerBuildingInstallation"] ?? [];
-                building_installations.reduce(|sum| { if this["type"] == "bldg:BuildingInstallation" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  installations = city_attrs.get("bldg:outerBuildingInstallation", []);
+                  itertools.count(itertools.filter(installations, fn(item) { item["type"] == "bldg:BuildingInstallation" }))
 
             - newAttribute: Door
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:Door" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:Door" }))
 
             - newAttribute: Window
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:Window" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:Window" }))
 
             - newAttribute: Room
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:Room" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:Room" }))
 
             - newAttribute: InteriorWallSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:InteriorWallSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:InteriorWallSurface" }))
 
             - newAttribute: CeillingSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:CeillingSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:CeillingSurface" }))
 
             - newAttribute: FloorSurface
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:FloorSurface" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:FloorSurface" }))
 
             - newAttribute: IntBuildingInstallation
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:IntBuildingInstallation" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:IntBuildingInstallation" }))
 
             - newAttribute: BuildingFurniture
-              expr: |
-                let attributes = env.get("__value").cityGmlAttributes ?? #{};
-                let bounded_by = attributes["bldg:boundedBy"] ?? [];
-                bounded_by.reduce(|sum| { if this["type"] == "bldg:BuildingFurniture" { sum + 1 } else { sum } }, 0)
+              expr:
+                type: flowExpr
+                value: |
+                  city_attrs = attributes.get("cityGmlAttributes", {});
+                  bounded_by = city_attrs.get("bldg:boundedBy", []);
+                  itertools.count(itertools.filter(bounded_by, fn(item) { item["type"] == "bldg:BuildingFurniture" }))
 
       - id: 7debf320-37c4-414e-acab-9f2fb41e2848
         name: FileTSVWriterC02

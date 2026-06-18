@@ -99,9 +99,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "13_汎用都市オブジェクト_面のエラー.csv"
-
+      output:
+        type: string
+        value: 13_汎用都市オブジェクト_面のエラー.csv
   # ===== Surface error counter =====
   - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6a
     name: SurfaceErrorCounter
@@ -112,7 +112,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_surface_errors
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
     name: OutputRouterSurfaceErrors
@@ -190,9 +192,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "13_汎用都市オブジェクト_非水密立体.csv"
-
+      output:
+        type: string
+        value: 13_汎用都市オブジェクト_非水密立体.csv
   # Error counter for NotClosed
   - id: a105e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
     name: NotClosedErrorCounter
@@ -203,7 +205,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_not_closed_solid
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d90
     name: OutputRouterNotClosed
@@ -260,9 +264,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "13_汎用都市オブジェクト_立体のエラー.csv"
-
+      output:
+        type: string
+        value: 13_汎用都市オブジェクト_立体のエラー.csv
   # Error counter for Solid Issues
   - id: a121f3a4-b5c6-d7e8-f9a0-a1b2c3d4e5f6
     name: SolidIssuesErrorCounter
@@ -273,7 +277,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_solid_errors
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Orientation errors (面の向き不正) - LOD0 only
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
@@ -321,9 +327,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "13_汎用都市オブジェクト_面の向き不正.csv"
-
+      output:
+        type: string
+        value: 13_汎用都市オブジェクト_面の向き不正.csv
   - id: 15a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c7
     name: OrientationErrorCounter
     type: action
@@ -333,7 +339,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_orientation_errors
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c8
     name: OutputRouterOrientationErrors
@@ -374,9 +382,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "13_汎用都市オブジェクト_gml_nameエラー.csv"
-
+      output:
+        type: string
+        value: 13_汎用都市オブジェクト_gml_nameエラー.csv
   # Statistics calculator for uncoded gml:name counts
   - id: 22a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d4
     name: UncodedGmlNameStatsAggregator
@@ -387,7 +395,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_uncoded_gml_name
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 20a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d2
     name: OutputRouterUncodedGmlName

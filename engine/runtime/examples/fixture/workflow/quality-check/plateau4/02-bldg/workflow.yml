@@ -33,17 +33,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       # Common quality check subgraphs
       - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
@@ -125,11 +127,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["gmlPath"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["gmlPath"]
       - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         name: AttributeMapperGmlPathAndFilename
         type: action
@@ -378,8 +382,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "02_建築物_検査結果一覧.csv"
+          output:
+            type: string
+            value: 02_建築物_検査結果一覧.csv
 
       # Phase 5: StatisticsCalculator for JSON aggregation
       - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
@@ -389,113 +394,159 @@ graphs:
         with:
           calculations:
             - newAttribute: "C-bldg-01 エラー"
-              expr: |
-                env.get("__value")["C-bldg-01 エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("C-bldg-01 エラー", 0)
             - newAttribute: "不正な建物ID"
-              expr: |
-                env.get("__value")["不正な建物ID"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("不正な建物ID", 0)
             - newAttribute: "市区町村コードエラー"
-              expr: |
-                env.get("__value")["市区町村コードエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("市区町村コードエラー", 0)
             - newAttribute: "L-bldg-02 エラー"
-              expr: |
-                env.get("__value")["L-bldg-02 エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("L-bldg-02 エラー", 0)
             - newAttribute: "L-bldg-04,05 エラー"
-              expr: |
-                env.get("__value")["L-bldg-04,05 エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("L-bldg-04,05 エラー", 0)
             - newAttribute: "L-bldg-06 エラー"
-              expr: |
-                env.get("__value")["L-bldg-06 エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("L-bldg-06 エラー", 0)
 
             # LOD0
             - newAttribute: "LOD0 面のエラー"
-              expr: |
-                env.get("__value")["LOD0 面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD0 面のエラー", 0)
             - newAttribute: "LOD0 面の向きエラー"
-              expr: |
-                env.get("__value")["LOD0 面の向きエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD0 面の向きエラー", 0)
             - newAttribute: "LOD0 面の交差"
-              expr: |
-                env.get("__value")["LOD0 面の交差"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD0 面の交差", 0)
 
             # LOD1
             - newAttribute: "LOD1 境界面のエラー"
-              expr: |
-                env.get("__value")["LOD1 境界面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD1 境界面のエラー", 0)
             - newAttribute: "LOD1 非水密立体"
-              expr: |
-                env.get("__value")["LOD1 非水密立体"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD1 非水密立体", 0)
             - newAttribute: "LOD1 立体のエラー"
-              expr: |
-                env.get("__value")["LOD1 立体のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD1 立体のエラー", 0)
             - newAttribute: "LOD1 立体の交差"
-              expr: |
-                env.get("__value")["LOD1 立体の交差"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD1 立体の交差", 0)
 
             # LOD2
             - newAttribute: "LOD2 境界面のエラー"
-              expr: |
-                env.get("__value")["LOD2 境界面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD2 境界面のエラー", 0)
             - newAttribute: "LOD2 非水密立体"
-              expr: |
-                env.get("__value")["LOD2 非水密立体"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD2 非水密立体", 0)
             - newAttribute: "LOD2 立体のエラー"
-              expr: |
-                env.get("__value")["LOD2 立体のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD2 立体のエラー", 0)
             - newAttribute: "LOD2 立体の交差"
-              expr: |
-                env.get("__value")["LOD2 立体の交差"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD2 立体の交差", 0)
 
             # LOD3
             - newAttribute: "LOD3 境界面のエラー"
-              expr: |
-                env.get("__value")["LOD3 境界面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD3 境界面のエラー", 0)
             - newAttribute: "LOD3 非水密立体"
-              expr: |
-                env.get("__value")["LOD3 非水密立体"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD3 非水密立体", 0)
             - newAttribute: "LOD3 立体のエラー"
-              expr: |
-                env.get("__value")["LOD3 立体のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD3 立体のエラー", 0)
             - newAttribute: "LOD3 立体の交差"
-              expr: |
-                env.get("__value")["LOD3 立体の交差"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD3 立体の交差", 0)
 
             # LOD4
             - newAttribute: "LOD4 境界面のエラー"
-              expr: |
-                env.get("__value")["LOD4 境界面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD4 境界面のエラー", 0)
             - newAttribute: "LOD4 非水密立体"
-              expr: |
-                env.get("__value")["LOD4 非水密立体"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD4 非水密立体", 0)
             - newAttribute: "LOD4 立体のエラー"
-              expr: |
-                env.get("__value")["LOD4 立体のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD4 立体のエラー", 0)
             - newAttribute: "LOD4 立体の交差"
-              expr: |
-                env.get("__value")["LOD4 立体の交差"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD4 立体の交差", 0)
 
             - newAttribute: "T-bldg-02エラー"
-              expr: |
-                env.get("__value")["T-bldg-02エラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("T-bldg-02エラー", 0)
             - newAttribute: "LOD0-1のBuildingPart"
-              expr: |
-                env.get("__value")["LOD0-1のBuildingPart"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("LOD0-1のBuildingPart", 0)
 
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["C-bldg-01 エラー", "不正な建物ID", "市区町村コードエラー",
-                            "L-bldg-02 エラー", "L-bldg-04,05 エラー", "L-bldg-06 エラー",
-                            "LOD0 面のエラー", "LOD0 面の向きエラー", "LOD0 面の交差",
-                            "LOD1 境界面のエラー", "LOD1 非水密立体", "LOD1 立体のエラー", "LOD1 立体の交差",
-                            "LOD2 境界面のエラー", "LOD2 非水密立体", "LOD2 立体のエラー", "LOD2 立体の交差",
-                            "LOD3 境界面のエラー", "LOD3 非水密立体", "LOD3 立体のエラー", "LOD3 立体の交差",
-                            "LOD4 境界面のエラー", "LOD4 非水密立体", "LOD4 立体のエラー", "LOD4 立体の交差",
-                            "T-bldg-02エラー", "LOD0-1のBuildingPart", "図郭不正"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("C-bldg-01 エラー", 0),
+                    attributes.get("不正な建物ID", 0),
+                    attributes.get("市区町村コードエラー", 0),
+                    attributes.get("L-bldg-02 エラー", 0),
+                    attributes.get("L-bldg-04,05 エラー", 0),
+                    attributes.get("L-bldg-06 エラー", 0),
+                    attributes.get("LOD0 面のエラー", 0),
+                    attributes.get("LOD0 面の向きエラー", 0),
+                    attributes.get("LOD0 面の交差", 0),
+                    attributes.get("LOD1 境界面のエラー", 0),
+                    attributes.get("LOD1 非水密立体", 0),
+                    attributes.get("LOD1 立体のエラー", 0),
+                    attributes.get("LOD1 立体の交差", 0),
+                    attributes.get("LOD2 境界面のエラー", 0),
+                    attributes.get("LOD2 非水密立体", 0),
+                    attributes.get("LOD2 立体のエラー", 0),
+                    attributes.get("LOD2 立体の交差", 0),
+                    attributes.get("LOD3 境界面のエラー", 0),
+                    attributes.get("LOD3 非水密立体", 0),
+                    attributes.get("LOD3 立体のエラー", 0),
+                    attributes.get("LOD3 立体の交差", 0),
+                    attributes.get("LOD4 境界面のエラー", 0),
+                    attributes.get("LOD4 非水密立体", 0),
+                    attributes.get("LOD4 立体のエラー", 0),
+                    attributes.get("LOD4 立体の交差", 0),
+                    attributes.get("T-bldg-02エラー", 0),
+                    attributes.get("LOD0-1のBuildingPart", 0),
+                    attributes.get("図郭不正", 0),
+                  ])
 
       # Phase 6: JSON output with converter
       - id: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
@@ -504,22 +555,20 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              for key in feature.keys() {
-                result.push(#{
-                  name: key,
-                  count: feature[key],
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                feature = attributes["__features"][0];
+                itertools.map(feature.keys(), fn(key) {
+                  {"name": key, "count": feature[key]}
+                })
               }
-              result
-            }
-          output: |
-            "summary_bldg.json"
+          output:
+            type: string
+            value: summary_bldg.json
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
@@ -528,8 +577,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
         name: FeatureFilterNoErrors
@@ -547,10 +597,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
@@ -558,9 +610,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f

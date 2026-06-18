@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -11,16 +11,14 @@ use super::CompiledCommonReaderParam;
 pub(crate) fn read_json(
     ctx: ExecutorContext,
     fw: &ProcessorChannelForwarder,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
     params: &CompiledCommonReaderParam,
 ) -> Result<(), super::errors::FeatureProcessorError> {
     let feature = &ctx.feature;
-    let expr_engine = Arc::clone(&ctx.expr_engine);
     let storage_resolver = &ctx.storage_resolver;
-    let scope = feature.new_scope(expr_engine.clone(), global_params);
-    let json_path = scope
-        .eval_ast::<String>(&params.expr)
-        .unwrap_or_else(|_| params.original_expr.to_string());
+    let json_path = params
+        .dataset
+        .eval_string(feature, ctx.expr_engine.vars())
+        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(json_path.as_str())
         .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
     let storage = storage_resolver

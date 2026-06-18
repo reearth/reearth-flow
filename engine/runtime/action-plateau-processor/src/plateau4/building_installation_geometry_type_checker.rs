@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use fastxml::transform::StreamTransformer;
+use fastxml::transform::Transformer;
 use reearth_flow_common::{uri::Uri, xml};
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -126,7 +126,7 @@ impl BuildingInstallationGeometryTypeChecker {
 
         let stream_error: Rc<RefCell<Option<Error>>> = Rc::new(RefCell::new(None));
 
-        let transformer = StreamTransformer::new(xml_content.as_str())
+        let transformer = Transformer::from(xml_content.as_str())
             .with_root_namespaces()
             .map_err(|e| Error::FileRead(format!("{e:?}")))?;
 

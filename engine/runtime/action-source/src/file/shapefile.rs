@@ -32,7 +32,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::{ShapefileError, SourceError},
-    file::reader::runner::{get_content, FileReaderCommonParam},
+    file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
 };
 
 /// Character encoding for shapefile DBF files
@@ -127,7 +127,7 @@ impl SourceFactory for ShapefileReaderFactory {
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: ShapefileReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::ShapefileReaderFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -144,14 +144,31 @@ impl SourceFactory for ShapefileReaderFactory {
             )
             .into());
         };
-        let reader = ShapefileReader { params };
-        Ok(Box::new(reader))
+        let compiled_params = ShapefileReaderCompiledParam {
+            common: params.common_property.compile().map_err(|e| {
+                SourceError::ShapefileReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            encoding: params.encoding,
+            force_2d: params.force_2d,
+            allow_empty_path: params.allow_empty_path,
+        };
+        Ok(Box::new(ShapefileReader {
+            params: compiled_params,
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
+struct ShapefileReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    encoding: Option<String>,
+    force_2d: bool,
+    allow_empty_path: bool,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct ShapefileReader {
-    pub(super) params: ShapefileReaderParam,
+    params: ShapefileReaderCompiledParam,
 }
 
 /// # ShapefileReader Parameters
@@ -213,6 +230,7 @@ impl Source for ShapefileReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -222,30 +240,27 @@ impl Source for ShapefileReader {
 
         // When allow_empty_path is set and no inline content is provided,
         // a null dataset expression means "no input".
-        if self.params.allow_empty_path && self.params.common_property.inline.is_none() {
-            if let Some(ref dataset) = self.params.common_property.dataset {
-                let scope = ctx.expr_engine.new_scope();
-                if let Ok(val) = ctx
-                    .expr_engine
-                    .eval_scope::<rhai::Dynamic>(dataset.as_ref(), &scope)
+        if self.params.allow_empty_path && self.params.common.inline.is_none() {
+            if let Some(ref dataset) = self.params.common.dataset {
+                if let Ok(reearth_flow_types::AttributeValue::Null) =
+                    dataset.eval_env_only(ctx.expr_engine.vars())
                 {
-                    if val.is_unit() {
-                        return Ok(());
-                    }
+                    return Ok(());
                 }
             }
         }
 
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
         read_shapefile(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_shapefile(
     content: &Bytes,
-    params: &ShapefileReaderParam,
+    params: &ShapefileReaderCompiledParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let (shapes_and_records, epsg_code) = if is_zip_file(content) {

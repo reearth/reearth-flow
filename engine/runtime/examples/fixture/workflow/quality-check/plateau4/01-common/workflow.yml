@@ -23,17 +23,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: c7315341-26b3-4405-9d02-039d721cd225
         name: DirectoryDecompressor
@@ -59,9 +61,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
@@ -70,8 +72,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
         name: FeatureFilterNoErrors
@@ -89,10 +92,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

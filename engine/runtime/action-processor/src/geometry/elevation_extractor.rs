@@ -95,6 +95,7 @@ impl Processor for ElevationExtractor {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -156,6 +157,7 @@ impl Processor for ElevationExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

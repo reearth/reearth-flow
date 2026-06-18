@@ -24,8 +24,9 @@ nodes:
     action: CsvReader
     with:
       format: tsv
-      dataset: |
-        env.get("dailySunDataPath")
+      dataset:
+        type: flowExpr
+        value: env["dailySunDataPath"]
 
   # ========================================
   # Node 2: Parse Date and Calculate DayTime
@@ -87,8 +88,9 @@ nodes:
         - month
       calculations:
         - newAttribute: monthlyDayTimeSumInHours
-          expr: |
-            env.get("__value")["dayTime"]
+          expr:
+            type: flowExpr
+            value: attributes["dayTime"]
 
   # ========================================
   # Node 4: Read Monthly Weather Data CSV
@@ -102,8 +104,9 @@ nodes:
       encoding: Shift-JIS
       offset: 3
       headerRows: 2
-      dataset: |
-        env.get("monthlyWeatherDataPath")
+      dataset:
+        type: flowExpr
+        value: env["monthlyWeatherDataPath"]
 
   # ========================================
   # Node 5: Prepare Weather Data Year/Month for Merge

@@ -88,6 +88,7 @@ pub struct HoleCounter {
 }
 
 impl Processor for HoleCounter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -131,6 +132,7 @@ impl Processor for HoleCounter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

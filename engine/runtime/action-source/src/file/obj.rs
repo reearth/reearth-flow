@@ -19,7 +19,9 @@ use reearth_flow_runtime::{
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Code, CompiledCode, Feature, Geometry, GeometryValue,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -27,7 +29,9 @@ use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::SourceError,
-    file::reader::runner::{get_content, FileReaderCommonParam},
+    file::reader::runner::{
+        get_content, get_input_path, FileReaderCommonParam, FileReaderCompiledParam,
+    },
 };
 
 #[derive(Debug, Clone, Default)]
@@ -62,7 +66,7 @@ impl SourceFactory for ObjReaderFactory {
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: ObjReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::ObjReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -77,14 +81,41 @@ impl SourceFactory for ObjReaderFactory {
             )
             .into());
         };
-        let reader = ObjReader { params };
-        Ok(Box::new(reader))
+        let compiled = ObjReaderCompiledParam {
+            common: params.common.compile().map_err(|e| {
+                SourceError::ObjReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            parse_materials: params.parse_materials,
+            material_file: params
+                .material_file
+                .map(|c: Code| c.compile())
+                .transpose()
+                .map_err(|e| {
+                    SourceError::ObjReaderFactory(format!("Failed to compile material_file: {e:?}"))
+                })?,
+            triangulate: params.triangulate,
+            merge_groups: params.merge_groups,
+            _include_normals: params.include_normals,
+            _include_texcoords: params.include_texcoords,
+        };
+        Ok(Box::new(ObjReader { params: compiled }))
     }
 }
 
 #[derive(Debug, Clone)]
+struct ObjReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    parse_materials: bool,
+    material_file: Option<CompiledCode>,
+    triangulate: bool,
+    merge_groups: bool,
+    _include_normals: bool,
+    _include_texcoords: bool,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct ObjReader {
-    params: ObjReaderParam,
+    params: ObjReaderCompiledParam,
 }
 
 /// # ObjReader Parameters
@@ -105,7 +136,7 @@ pub(super) struct ObjReaderParam {
     /// # Material File
     /// Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.
     #[serde(default)]
-    pub(super) material_file: Option<Expr>,
+    pub(super) material_file: Option<Code>,
 
     /// # Triangulate
     /// Convert polygons with more than 3 vertices into triangles using fan triangulation
@@ -144,6 +175,7 @@ impl Source for ObjReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -298,31 +330,29 @@ fn extract_material_properties(
     (materials_array, material_properties)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_obj(
     ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
     content: &Bytes,
-    params: &ObjReaderParam,
+    params: &ObjReaderCompiledParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), SourceError> {
     let obj_data = parse_obj_content(content)?;
 
-    let obj_uri = if let Some(dataset) = &params.common.dataset {
-        Uri::from_str(dataset.to_string().trim_matches('"'))
-            .unwrap_or_else(|_| Uri::from_str("file://./unknown.obj").unwrap())
-    } else {
-        Uri::from_str("file://./unknown.obj").unwrap()
-    };
+    let obj_uri = get_input_path(ctx, &params.common)
+        .map_err(SourceError::ObjReader)?
+        .unwrap_or_else(|| Uri::from_str("file://./unknown.obj").unwrap());
 
     let materials = if params.parse_materials {
         let mut all_materials = HashMap::new();
 
-        if let Some(external_mtl_expr) = &params.material_file {
-            let scope = ctx.expr_engine.new_scope();
-            let external_mtl = ctx
-                .expr_engine
-                .eval_scope::<String>(external_mtl_expr.as_ref(), &scope)
-                .unwrap_or_else(|_| external_mtl_expr.to_string());
+        if let Some(ref material_file) = params.material_file {
+            let external_mtl = material_file
+                .eval_string_env_only(ctx.expr_engine.vars())
+                .map_err(|e| {
+                    SourceError::ObjReader(format!("Failed to evaluate material_file: {e:?}"))
+                })?;
             let mtl_uri =
                 resolve_material_path(ctx, storage_resolver.clone(), &obj_uri, &external_mtl)
                     .await?;
@@ -872,7 +902,7 @@ async fn parse_mtl(
 fn create_geometry_from_faces(
     obj_data: &ObjData,
     faces: &[Face],
-    params: &ObjReaderParam,
+    params: &ObjReaderCompiledParam,
 ) -> Result<Geometry, SourceError> {
     let mut polygons = Vec::new();
 
@@ -937,7 +967,6 @@ fn create_geometry_from_faces(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::Expr;
 
     #[test]
     fn test_parse_simple_obj() {
@@ -1006,17 +1035,17 @@ f 1 2 3 4
 
         let obj_data = parse_obj_content(&Bytes::from_static(obj_content)).unwrap();
 
-        let params = ObjReaderParam {
-            common: FileReaderCommonParam {
-                dataset: Some(Expr::new("\"test.obj\"")),
+        let params = ObjReaderCompiledParam {
+            common: FileReaderCompiledParam {
+                dataset: None,
                 inline: None,
             },
             parse_materials: false,
             material_file: None,
             triangulate: true,
             merge_groups: false,
-            include_normals: true,
-            include_texcoords: true,
+            _include_normals: true,
+            _include_texcoords: true,
         };
 
         let geometry = create_geometry_from_faces(&obj_data, &obj_data.faces, &params).unwrap();
@@ -1048,17 +1077,17 @@ f -4 -3 -2 -1
         assert_eq!(face.vertices[2].vertex_index, -2);
         assert_eq!(face.vertices[3].vertex_index, -1);
 
-        let params = ObjReaderParam {
-            common: FileReaderCommonParam {
-                dataset: Some(Expr::new("\"test.obj\"")),
+        let params = ObjReaderCompiledParam {
+            common: FileReaderCompiledParam {
+                dataset: None,
                 inline: None,
             },
             parse_materials: false,
             material_file: None,
             triangulate: false,
             merge_groups: false,
-            include_normals: true,
-            include_texcoords: true,
+            _include_normals: true,
+            _include_texcoords: true,
         };
 
         let geometry = create_geometry_from_faces(&obj_data, &obj_data.faces, &params).unwrap();

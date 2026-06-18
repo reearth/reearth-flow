@@ -110,9 +110,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_L-bldg-06エラー.csv"
-
+      output:
+        type: string
+        value: 02_建築物_L-bldg-06エラー.csv
   - id: 77a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lbldg06ErrorCounter
     type: action
@@ -122,7 +122,9 @@ nodes:
       - gmlFilename
       calculations:
         - newAttribute: _num_lbldg06_error
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 88b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: ErrorCount-Lbldg06
@@ -173,9 +175,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "02_建築物_T-bldg-02エラー.csv"
-
+      output:
+        type: string
+        value: 02_建築物_T-bldg-02エラー.csv
   - id: 35e0e6d2-44f4-4e75-abce-5280c2b80a5d
     name: StatisticsCalculatorT-bldg-02
     type: action
@@ -185,13 +187,9 @@ nodes:
       - "cityGmlPath"
       calculations:
         - newAttribute: instGmlIdTotalCount
-          expr: |
-            let gml_id = env.get("__value").instGmlId ?? "";
-            if gml_id != "" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: if attributes.get("instGmlId", "") != "" { 1 } else { 0 }
 
   - id: 630081e4-0ea1-4fd3-ba31-8154b2980258
     name: NoopT-bldg-02
@@ -207,7 +205,9 @@ nodes:
       - gmlFilename
       calculations:
         - newAttribute: _num_invalid_bldginst_geom_type
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 88d2c3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
     name: ErrorCount-InvalidBldgInstGeomType

@@ -126,9 +126,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L01エラー.csv"
-
+      output:
+        type: string
+        value: 01_共通_L01エラー.csv
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
     type: action
@@ -162,9 +162,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L02エラー.csv"
-
+      output:
+        type: string
+        value: 01_共通_L02エラー.csv
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
     type: subGraph
@@ -292,9 +292,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通.csv"
-
+      output:
+        type: string
+        value: 01_共通.csv
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
     type: action
@@ -302,52 +302,64 @@ nodes:
     with:
       calculations:
         - newAttribute: "L01エラー"
-          expr: |
-            env.get("__value")["L01エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L01エラー", 0)
 
         - newAttribute: "L02エラー"
-          expr: |
-            env.get("__value")["L02エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L02エラー", 0)
 
         - newAttribute: "L04エラー"
-          expr: |
-            env.get("__value")["L04エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L04エラー", 0)
 
         - newAttribute: "不正なcodeSpace数"
-          expr: |
-            env.get("__value")["不正なcodeSpace数"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("不正なcodeSpace数", 0)
 
         - newAttribute: "L05CRS識別子"
-          expr: |
-            if env.get("__value")["L05CRS識別子"] == "Wrong" {
-              1
-            } else {
-              0
-            }
+          expr:
+            type: flowExpr
+            value: |
+              if attributes.get("L05CRS識別子") == "Wrong" {
+                1
+              } else {
+                0
+              }
 
         - newAttribute: "L06エラー"
-          expr: |
-            env.get("__value")["L06エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L06エラー", 0)
 
         - newAttribute: "T03エラー"
-          expr: |
-            env.get("__value")["T03エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("T03エラー", 0)
 
         - newAttribute: "xlink参照先なし"
-          expr: |
-            env.get("__value")["xlink参照先なし"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("xlink参照先なし", 0)
 
         - newAttribute: "gml:id重複"
-          expr: |
-            env.get("__value")["gml:id重複"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("gml:id重複", 0)
 
         - newAttribute: "gml:id書式不正"
-          expr: |
-            env.get("__value")["gml:id書式不正"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("gml:id書式不正", 0)
 
         - newAttribute: "L-frn-01エラー"
-          expr: |
-            env.get("__value")["L-frn-01エラー"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("L-frn-01エラー", 0)
 
   - id: 50de9474-378b-4878-b85d-516cf8a55547
     name: FeatureWriterJson
@@ -355,22 +367,22 @@ nodes:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          []
-        } else {
-          let result = [];
-          let feature = env.get("__features")[0];
-          for key in feature.keys() {
-            result.push(#{
-              name: key,
-              count: feature[key],
-            });
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            result = [];
+            feature = attributes["__features"][0];
+            for key in feature.keys() {
+              result.append({"name": key, "count": feature[key]});
+            }
+            result
           }
-          result
-        }
-      output: |
-        "summary_common.json"
+      output:
+        type: string
+        value: summary_common.json
 
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
@@ -395,9 +407,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_GML_ID書式不正.csv"
-
+      output:
+        type: string
+        value: 01_共通_GML_ID書式不正.csv
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
     type: action
@@ -421,9 +433,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_GML_ID重複.csv"
-
+      output:
+        type: string
+        value: 01_共通_GML_ID重複.csv
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
     type: action
@@ -473,9 +485,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L06エラー.csv"
-
+      output:
+        type: string
+        value: 01_共通_L06エラー.csv
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
     type: action
@@ -505,9 +517,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L04エラー.csv"
-
+      output:
+        type: string
+        value: 01_共通_L04エラー.csv
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
     type: action
@@ -537,9 +549,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_不正なcodeSpace.csv"
-
+      output:
+        type: string
+        value: 01_共通_不正なcodeSpace.csv
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
@@ -588,9 +600,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_xlink参照先なし.csv"
-
+      output:
+        type: string
+        value: 01_共通_xlink参照先なし.csv
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
     type: action
@@ -622,9 +634,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_T03エラー.csv"
-
+      output:
+        type: string
+        value: 01_共通_T03エラー.csv
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
     type: action
@@ -652,9 +664,9 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01_共通_L-frn-01エラー.csv"
-
+      output:
+        type: string
+        value: 01_共通_L-frn-01エラー.csv
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action

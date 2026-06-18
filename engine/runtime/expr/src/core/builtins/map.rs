@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 
 use indexmap::IndexMap;
 
-use crate::core::error::{InnerError, InnerResult};
+use crate::core::error::{eval_error, Result};
 use crate::core::eval::eval_eq;
 use crate::core::value::{NativeFn, Value};
 use crate::expect_arity;
@@ -21,11 +21,11 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     ])
 });
 
-pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
+pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
     let f = METHODS
         .get(method)
         .copied()
-        .ok_or_else(|| InnerError::new(format!("Map has no method '{method}'")))?;
+        .ok_or_else(|| eval_error(format!("Map has no method '{method}'")))?;
     Ok(NativeFn::new(move |args| {
         let mut a = vec![recv.clone()];
         a.extend_from_slice(args);
@@ -33,10 +33,10 @@ pub fn resolve_method(recv: Value, method: &str) -> InnerResult<NativeFn> {
     }))
 }
 
-fn keys(args: &[Value]) -> InnerResult<Value> {
+fn keys(args: &[Value]) -> Result<Value> {
     expect_arity("map.keys", &args[1..], 0, 0)?;
     let Value::Map(rc) = &args[0] else {
-        return Err(InnerError::new("expected map receiver"));
+        return Err(eval_error("expected map receiver"));
     };
     Ok(Value::array(
         rc.borrow()
@@ -46,18 +46,18 @@ fn keys(args: &[Value]) -> InnerResult<Value> {
     ))
 }
 
-fn values(args: &[Value]) -> InnerResult<Value> {
+fn values(args: &[Value]) -> Result<Value> {
     expect_arity("map.values", &args[1..], 0, 0)?;
     let Value::Map(rc) = &args[0] else {
-        return Err(InnerError::new("expected map receiver"));
+        return Err(eval_error("expected map receiver"));
     };
     Ok(Value::array(rc.borrow().values().cloned().collect()))
 }
 
-fn items(args: &[Value]) -> InnerResult<Value> {
+fn items(args: &[Value]) -> Result<Value> {
     expect_arity("map.items", &args[1..], 0, 0)?;
     let Value::Map(rc) = &args[0] else {
-        return Err(InnerError::new("expected map receiver"));
+        return Err(eval_error("expected map receiver"));
     };
     Ok(Value::array(
         rc.borrow()
@@ -67,10 +67,10 @@ fn items(args: &[Value]) -> InnerResult<Value> {
     ))
 }
 
-fn get(args: &[Value]) -> InnerResult<Value> {
+fn get(args: &[Value]) -> Result<Value> {
     expect_arity("map.get", &args[1..], 1, 2)?;
     let Value::Map(rc) = &args[0] else {
-        return Err(InnerError::new("expected map receiver"));
+        return Err(eval_error("expected map receiver"));
     };
     let k = args[1].as_str()?;
     let fallback = args.get(2);
@@ -84,7 +84,7 @@ fn get(args: &[Value]) -> InnerResult<Value> {
 pub fn eq_inner(
     a: &Rc<RefCell<IndexMap<String, Value>>>,
     b: &Rc<RefCell<IndexMap<String, Value>>>,
-) -> InnerResult<bool> {
+) -> Result<bool> {
     if Rc::ptr_eq(a, b) {
         return Ok(true);
     }

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, str::FromStr};
 
 use super::errors::PlateauProcessorError;
+use super::PlateauProfile;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -14,12 +15,22 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Debug, Clone, Default)]
-pub struct ObjectListExtractorFactory;
+#[derive(Debug, Clone)]
+pub(crate) struct ObjectListExtractorFactory {
+    name: String,
+}
+
+impl ObjectListExtractorFactory {
+    pub(crate) fn new(profile: &PlateauProfile) -> Self {
+        Self {
+            name: profile.action_name("ObjectListExtractor"),
+        }
+    }
+}
 
 impl ProcessorFactory for ObjectListExtractorFactory {
     fn name(&self) -> &str {
-        "PLATEAU4.ObjectListExtractor"
+        &self.name
     }
 
     fn description(&self) -> &str {
@@ -75,7 +86,7 @@ impl ProcessorFactory for ObjectListExtractorFactory {
 
 /// # ObjectListExtractor Parameters
 ///
-/// Configuration for extracting object lists from PLATEAU4 data.
+/// Configuration for extracting object lists from PLATEAU data.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ObjectListExtractorParam {

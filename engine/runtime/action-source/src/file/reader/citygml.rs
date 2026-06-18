@@ -13,7 +13,8 @@ use quick_xml::NsReader;
 use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_types::{
-    geometry::Geometry, lod::LodMask, Attribute, AttributeValue, CitygmlFeatureExt, Feature,
+    conversion::nusamai::from_nusamai_citygml_value, geometry::Geometry, lod::LodMask, Attribute,
+    AttributeValue, CitygmlFeatureExt, Feature,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,7 @@ pub struct CityGmlReaderParam {
     pub(super) flatten: Option<bool>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 pub(crate) async fn read_citygml(
     content: &Bytes,
     input_path: Option<Uri>,
@@ -57,6 +59,7 @@ pub(crate) async fn read_citygml(
     Ok(())
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn parse_tree_reader<R: BufRead>(
     st: &mut SubTreeReader<'_, '_, R>,
     base_url: Url,
@@ -131,7 +134,7 @@ async fn parse_tree_reader<R: BufRead>(
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
-        let attributes = AttributeValue::from_nusamai_citygml_value(&entity.root);
+        let attributes = from_nusamai_citygml_value(&entity.root);
         let city_gml_attributes = match attributes.len() {
             0 => AttributeValue::Null,
             1 => attributes.values().next().unwrap().clone(),

@@ -20,6 +20,16 @@ memory-stats = [
   "reearth-flow-action-plateau-processor/memory-stats",
   "reearth-flow-action-processor/memory-stats",
 ]
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = [
+  "reearth-flow-action-plateau-processor/new-geometry",
+  "reearth-flow-action-processor/new-geometry",
+  "reearth-flow-action-python-processor/new-geometry",
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-action-source/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
 
 [dependencies]
 reearth-flow-action-log.workspace = true
@@ -40,6 +50,7 @@ bytes.workspace = true
 clap.workspace = true
 colored.workspace = true
 directories.workspace = true
+indexmap.workspace = true
 indoc.workspace = true
 json-subscriber.workspace = true
 num_cpus.workspace = true
@@ -55,3 +66,6 @@ tracing.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

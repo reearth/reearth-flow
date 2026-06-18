@@ -16,8 +16,18 @@ use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
 
-pub use crate::attribute::AttributeValue;
-use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, lod::LodMask};
+pub use crate::attribute::{AttributeValue, Attributes};
+use crate::{
+    all_attribute_keys, attribute::Attribute,
+    conversion::nusamai::attribute_value_to_citygml_attribute, lod::LodMask,
+};
+
+// `Feature.geometry` keeps the same field name in both worlds; only its type
+// switches with the `new-geometry` feature.
+#[cfg(not(feature = "new-geometry"))]
+use crate::geometry::Geometry;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::Geometry;
 
 pub(crate) const CITYGML_GML_ID_KEY: &str = "__citygml_gml_id";
 pub(crate) const CITYGML_FEATURE_TYPE_KEY: &str = "__citygml_feature_type";
@@ -43,9 +53,6 @@ pub const CITYGML_ROOT_GML_ID_KEY: &str = "__citygml_root_gml_id";
     )
 )]
 pub struct MetadataKey(String);
-
-/// Type alias for feature attributes to reduce verbosity
-pub type Attributes = IndexMap<Attribute, AttributeValue>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
@@ -152,7 +159,10 @@ impl From<&Feature> for nusamai_citygml::schema::TypeDef {
             .filter(|(_, v)| v.convertible_nusamai_type_ref())
         {
             // Use Number as-is without conversion (TypeRef::Integer/Double is auto-determined)
-            attributes.insert(k.to_string(), v.clone().into());
+            attributes.insert(
+                k.to_string(),
+                attribute_value_to_citygml_attribute(v.clone()),
+            );
         }
         nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
             attributes,
@@ -461,6 +471,26 @@ impl Feature {
         }
         keys
     }
+}
+
+pub fn create_batch_feature(features: &[Feature]) -> Feature {
+    let packed = AttributeValue::Array(
+        features
+            .iter()
+            .map(|f| {
+                AttributeValue::Map(
+                    f.attributes
+                        .iter()
+                        .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone()))
+                        .collect(),
+                )
+            })
+            .collect(),
+    );
+    Feature::from(IndexMap::from([(
+        Attribute::new("__features".to_string()),
+        packed,
+    )]))
 }
 
 // avoid using it outside citygml or PLATEAU specific processors

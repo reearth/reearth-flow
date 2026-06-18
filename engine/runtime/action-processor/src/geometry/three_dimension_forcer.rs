@@ -117,6 +117,7 @@ pub struct ThreeDimensionForcer {
 }
 
 impl Processor for ThreeDimensionForcer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -199,6 +200,7 @@ impl Processor for ThreeDimensionForcer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

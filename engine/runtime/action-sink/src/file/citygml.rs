@@ -15,7 +15,7 @@ use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{CitygmlFeatureExt, Expr, Feature};
+use reearth_flow_types::{CitygmlFeatureExt, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -30,6 +30,7 @@ use writer::CityGmlXmlWriter;
 ///
 /// This is the single canonical implementation shared by both the `CityGmlWriter` sink and
 /// the `FeatureWriter` processor.
+#[cfg(not(feature = "new-geometry"))]
 pub fn write_citygml_to_storage(
     output: &Uri,
     sandbox_root: &Uri,
@@ -284,9 +285,15 @@ impl SinkFactory for CityGmlWriterFactory {
         };
 
         let lod_mask = build_lod_mask(&params.lod_filter);
-
+        let output = params.output.compile().map_err(|e| {
+            SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         Ok(Box::new(CityGmlWriterSink {
-            params,
+            params: CityGmlWriterCompiledParam {
+                output,
+                epsg_code: params.epsg_code,
+                pretty_print: params.pretty_print,
+            },
             lod_mask,
             buffer: Vec::new(),
             envelope: None,
@@ -311,7 +318,7 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// Output file path expression
-    pub output: Expr,
+    pub output: Code,
     /// LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.
     #[serde(default)]
     pub lod_filter: Option<Vec<u8>>,
@@ -328,8 +335,15 @@ fn default_pretty_print() -> Option<bool> {
 }
 
 #[derive(Debug, Clone)]
+struct CityGmlWriterCompiledParam {
+    output: CompiledCode,
+    epsg_code: Option<u32>,
+    pretty_print: Option<bool>,
+}
+
+#[derive(Debug, Clone)]
 struct CityGmlWriterSink {
-    params: CityGmlWriterParam,
+    params: CityGmlWriterCompiledParam,
     lod_mask: LodMask,
     buffer: Vec<Feature>,
     envelope: Option<BoundingEnvelope>,
@@ -340,6 +354,7 @@ impl Sink for CityGmlWriterSink {
         "CityGmlWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = ctx.feature;
 
@@ -356,11 +371,13 @@ impl Sink for CityGmlWriterSink {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
+        let path = self
+            .params
+            .output
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(|e| SinkError::CityGmlWriter(format!("{e:?}")))?;
         let out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 

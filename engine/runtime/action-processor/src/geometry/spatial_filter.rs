@@ -162,6 +162,7 @@ struct SpatialFilter {
 }
 
 impl Processor for SpatialFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -201,6 +202,7 @@ impl Processor for SpatialFilter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -298,6 +300,7 @@ fn forward_result(
     ));
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn test_2d_geometry(
     candidate: &Geometry2D,
     filters: &[Feature],
@@ -366,6 +369,7 @@ fn test_2d_geometry(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn test_3d_geometry(
     candidate: &Geometry3D,
     filters: &[Feature],
@@ -426,6 +430,7 @@ fn test_3d_geometry(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn test_citygml_geometry(
     candidate: &CityGmlGeometry,
     filters: &[Feature],
@@ -631,6 +636,7 @@ mod tests {
         Polygon2D::new(exterior, vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_spatial_filter_accepts_features() {
         let mut filter = SpatialFilter {
@@ -682,6 +688,7 @@ mod tests {
         assert_eq!(filter.candidates.len(), 1);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_spatial_filter_processes_multiple_ports() {
         let mut filter = SpatialFilter {
@@ -745,6 +752,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_spatial_filter_no_filters() {
         let mut filter = SpatialFilter {
@@ -768,6 +776,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_merge_filter_attributes_onto_passed_candidate() {
         let mut filter_attrs = Attributes::new();
@@ -825,6 +834,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_merge_filter_attributes_with_prefix() {
         let mut filter_attrs = Attributes::new();
@@ -885,6 +895,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_merge_filter_attributes_not_applied_to_failed_candidate() {
         let mut filter_attrs = Attributes::new();
@@ -943,6 +954,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_merge_filter_attributes_and_mode_multiple_filters() {
         // Filter 1: overlaps candidate from one side, has attribute "zone"

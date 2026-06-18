@@ -1,11 +1,13 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 # PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 01-common workflow.
 #
-# Currently wires the 01-01-common sub-pipeline (L01/L02 XML validation +
-# domain-of-definition validation + per-file summary). The 01-02-common
-# (missing-attribute) sub-pipeline is not yet ported for plateau6; once it is,
-# add it as a second subGraph feeding ZipFileWriter and the totalErrorCount
-# aggregation below (see plateau4 for the full two-subgraph layout).
+# Wires two sub-pipelines in parallel from DirectoryDecompressor:
+#   - 01-01-common: L01/L02 XML validation + domain-of-definition validation
+#     + per-file summary.
+#   - 01-02-common: missing-attribute detection (C05/C06/C07/C08).
+# Both sub-pipelines feed ZipFileWriter (their CSV/JSON outputs) and emit a
+# summaryOutput whose totalErrorCount is accumulated to decide the no-error
+# (qc_result_ok) file (see plateau4 for the original two-subgraph layout).
 id: 75cc2db3-0667-483a-95b1-2cfe089020fd
 name: "PLATEAU6-quality-check-01-common-workflow"
 entryGraphId: 8f17417d-5884-46fc-934b-db1168f9e42e
@@ -21,6 +23,7 @@ graphs:
   - !include ../../../../graphs/plateau6/xml_validator.yml
   - !include ../../../../graphs/plateau6/domain_of_definition_validator.yml
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
   - id: 8f17417d-5884-46fc-934b-db1168f9e42e
     name: entry_point
     nodes:
@@ -29,17 +32,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: c7315341-26b3-4405-9d02-039d721cd225
         name: DirectoryDecompressor
@@ -55,14 +60,19 @@ graphs:
         type: subGraph
         subGraphId: e7503542-d250-46d1-9646-4321b4fedbd3
 
+      - id: 79e9cb77-a7e1-4ab3-ab9a-7fd288dfd3e3
+        name: PLATEAU6.CommonQualityCheck-01-02-common
+        type: subGraph
+        subGraphId: 0c1ed91a-7e69-4196-b6b7-d628060c2590
+
       - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         name: ZipFileWriter
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
@@ -71,8 +81,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
         name: FeatureFilterNoErrors
@@ -90,10 +101,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -106,13 +119,28 @@ graphs:
         to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         fromPort: default
         toPort: default
+      - id: b6088110-9c33-456b-bfb9-d7cbb54761b5
+        from: c7315341-26b3-4405-9d02-039d721cd225
+        to: 79e9cb77-a7e1-4ab3-ab9a-7fd288dfd3e3
+        fromPort: default
+        toPort: default
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
         from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         fromPort: default
         toPort: default
+      - id: 5cba6ba0-5091-4a08-9189-9a6292ad87b9
+        from: 79e9cb77-a7e1-4ab3-ab9a-7fd288dfd3e3
+        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        fromPort: default
+        toPort: default
       - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
         from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+        fromPort: summaryOutput
+        toPort: default
+      - id: c09cb2e4-daea-4d74-aa87-031263b81116
+        from: 79e9cb77-a7e1-4ab3-ab9a-7fd288dfd3e3
         to: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         fromPort: summaryOutput
         toPort: default

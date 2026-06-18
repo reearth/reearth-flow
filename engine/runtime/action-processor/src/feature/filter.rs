@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Code, CompiledCode};
+use reearth_flow_types::{Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -102,6 +102,43 @@ impl ProcessorFactory for FeatureFilterFactory {
         }
         Ok(Box::new(FeatureFilter { conditions }))
     }
+
+    fn infer_output_schema(
+        &self,
+        inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        use reearth_flow_types::attr_schema::AttrSchema;
+
+        // FeatureFilter routes whole features by expression; it never modifies
+        // attributes. So every output port carries the input schema unchanged
+        // (identity). Besides the static "unfiltered" fallback port, condition
+        // output ports are dynamically derived from `with["conditions"]` (mirrors
+        // the dynamic-port derivation in `builder_dag`).
+        let input = inputs
+            .get(&DEFAULT_PORT.clone())
+            .cloned()
+            .unwrap_or_else(AttrSchema::open);
+
+        let mut map: HashMap<Port, AttrSchema> = self
+            .get_output_ports()
+            .into_iter()
+            .map(|port| (port, input.clone()))
+            .collect();
+
+        if let Some(with) = with {
+            if let Some(Value::Array(conditions)) = with.get("conditions") {
+                for condition in conditions {
+                    if let Some(Value::String(port)) = condition.get("outputPort") {
+                        map.entry(Port::new(port.clone()))
+                            .or_insert_with(|| input.clone());
+                    }
+                }
+            }
+        }
+
+        Some(map)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -123,7 +160,7 @@ struct FeatureFilterParam {
 #[serde(rename_all = "camelCase")]
 struct Condition {
     /// # Condition expression
-    expr: Code,
+    expr: Code<{ CodeType::FlowExpr as u32 }>,
     /// # Output port
     output_port: Port,
 }
@@ -184,5 +221,71 @@ impl Processor for FeatureFilter {
 
     fn num_threads(&self) -> usize {
         5
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+    use reearth_flow_types::Attribute;
+
+    #[test]
+    fn infer_is_identity_on_each_output_port() {
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("a".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        input.insert(
+            Attribute::new("b".to_string()),
+            AttrField::always(AttrType::Number),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+
+        let out = FeatureFilterFactory
+            .infer_output_schema(&inputs, &None)
+            .expect("filter is schema-transparent and returns Some");
+
+        let unfiltered = out
+            .get(&UNFILTERED_PORT.clone())
+            .expect("unfiltered port present");
+        assert_eq!(*unfiltered, input);
+    }
+
+    #[test]
+    fn infer_includes_condition_output_ports() {
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("a".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+
+        // Condition param shape: { conditions: [ { expr, outputPort } ] }.
+        let with: HashMap<String, Value> = serde_json::from_value(serde_json::json!({
+            "conditions": [
+                { "expr": "true", "outputPort": "matched" }
+            ]
+        }))
+        .expect("with json");
+
+        let out = FeatureFilterFactory
+            .infer_output_schema(&inputs, &Some(with))
+            .expect("filter is schema-transparent and returns Some");
+
+        // Both the static fallback port and the dynamic condition port must be
+        // present, each carrying the input schema unchanged (identity).
+        let unfiltered = out
+            .get(&UNFILTERED_PORT.clone())
+            .expect("unfiltered port present");
+        assert_eq!(*unfiltered, input);
+
+        let matched = out
+            .get(&Port::new("matched"))
+            .expect("condition output port present");
+        assert_eq!(*matched, input);
     }
 }

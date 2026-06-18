@@ -1,6 +1,6 @@
 module github.com/reearth/reearth-flow/api
 
-go 1.24.10
+go 1.26.2
 
 require (
 	cloud.google.com/go/profiler v0.4.3
@@ -9,7 +9,6 @@ require (
 	github.com/99designs/gqlgen v0.17.84
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
 	github.com/avast/retry-go/v4 v4.7.0
-	github.com/eukarya-inc/reearth-proto v1.0.0-dev.20251112032057
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-redis/redismock/v9 v9.2.0
@@ -25,7 +24,8 @@ require (
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/reearth/reearth-accounts/server v0.0.0-20260407103352-79eb5b61d841
-	github.com/reearth/reearthx v0.0.0-20251202081949-5abca579aec6
+	github.com/reearth/reearth-proto v1.1.0
+	github.com/reearth/reearthx v0.0.0-20260617190835-b0cf3c3ce024
 	github.com/samber/lo v1.52.0
 	github.com/spf13/afero v1.15.0
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0
@@ -40,7 +40,7 @@ require (
 	go.mongodb.org/mongo-driver v1.17.6
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.63.0
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.63.0
-	go.opentelemetry.io/otel v1.38.0
+	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/sdk v1.38.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
@@ -87,6 +87,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/labstack/echo/v5 v5.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20250313105119-ba97887b0a25 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
@@ -188,8 +189,8 @@ require (
 	github.com/zitadel/logging v0.6.2 // indirect
 	go.opentelemetry.io/contrib v1.38.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
-	go.opentelemetry.io/otel/metric v1.38.0 // indirect
-	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	go.opentelemetry.io/otel/metric v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
@@ -206,5 +207,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	moul.io/http2curl/v2 v2.3.0 // indirect
 )
-
-replace github.com/reearth/reearthx => /Users/dexter/active/reearthx

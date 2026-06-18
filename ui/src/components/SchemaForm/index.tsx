@@ -50,7 +50,7 @@ const buildExprUiSchema = (
   }
 
   const isCodeType =
-    schemaObj.$ref === "#/definitions/Code" ||
+    schemaObj.format === "code" ||
     schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Code") ||
     schemaObj.anyOf?.some((item: any) => item.$ref === "#/definitions/Code");
 

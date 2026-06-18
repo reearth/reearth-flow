@@ -1,4 +1,11 @@
-import { Button } from "@flow/components";
+import { PlusIcon } from "@phosphor-icons/react";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  IconButton,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 import type { Action } from "@flow/types";
@@ -24,14 +31,32 @@ const ActionDetails = ({ action, onAdd }: Props) => {
 
   return (
     <div className="mx-2 mb-2 flex flex-col gap-4 rounded-xl border border-primary bg-secondary p-4">
-      <div className="flex items-center gap-3">
-        <div
-          className={cn("shrink-0 rounded p-1.5", typeColorClass(action.type))}>
-          <Icon size={20} weight="thin" className="text-white" />
+      <div className="flex justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "shrink-0 rounded p-1.5",
+              typeColorClass(action.type),
+            )}>
+            <Icon size={20} weight="thin" className="text-white" />
+          </div>
+          <h2 className="text-lg font-semibold">{action.name}</h2>
         </div>
-        <h2 className="text-lg font-semibold">{action.name}</h2>
+        {onAdd && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="outline"
+                icon={
+                  <PlusIcon size={20} weight="thin" className="text-white " />
+                }
+                onClick={() => onAdd?.(action.name)}
+              />
+            </TooltipTrigger>
+            <TooltipContent>{t("Add to canvas")}</TooltipContent>
+          </Tooltip>
+        )}
       </div>
-
       <div className="flex flex-col flex-wrap gap-1.5">
         <p className="items-center text-xs font-semibold tracking-wide text-muted-foreground">
           {t("Type")}
@@ -84,11 +109,6 @@ const ActionDetails = ({ action, onAdd }: Props) => {
           </p>
           <p className="text-sm leading-relaxed">{action.description}</p>
         </div>
-      )}
-      {onAdd && (
-        <Button className="mt-auto w-full" onClick={() => onAdd(action.name)}>
-          {t("Add to canvas")}
-        </Button>
       )}
     </div>
   );

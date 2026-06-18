@@ -11,6 +11,7 @@ use shapefile::{
     NO_DATA,
 };
 
+#[cfg(not(feature = "new-geometry"))]
 pub(super) fn feature_to_shape(feature: &Feature) -> crate::errors::Result<shapefile::Shape> {
     match &feature.geometry.value {
         GeometryValue::CityGmlGeometry(geometry) => {

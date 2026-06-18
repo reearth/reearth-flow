@@ -30,17 +30,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                },
+              ]
 
       - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9b
         name: DirectoryDecompressor
@@ -141,11 +143,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["gmlPath"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["gmlPath"]
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
         name: HorizontalReprojector
         type: action
@@ -226,12 +230,9 @@ graphs:
             - lod
           calculations:
             - newAttribute: GenericCityObject
-              expr: |
-                if env.get("__value")["__citygml_feature_type"] == "gen:GenericCityObject" {
-                  1
-                } else {
-                  0
-                }
+              expr:
+                type: flowExpr
+                value: if attributes["__citygml_feature_type"] == "gen:GenericCityObject" { 1 } else { 0 }
 
       # Summary CSV output - per-file result
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d5f
@@ -289,8 +290,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "13_汎用都市オブジェクト_検査結果一覧.csv"
+          output:
+            type: string
+            value: 13_汎用都市オブジェクト_検査結果一覧.csv
 
       # JSON summary output
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
@@ -300,28 +302,36 @@ graphs:
         with:
           calculations:
             - newAttribute: 面のエラー
-              expr: |
-                env.get("__value")["面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面のエラー", 0)
             - newAttribute: 面の向き不正
-              expr: |
-                env.get("__value")["面の向き不正"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面の向き不正", 0)
             - newAttribute: 非水密立体
-              expr: |
-                env.get("__value")["非水密立体"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("非水密立体", 0)
             - newAttribute: 立体のエラー
-              expr: |
-                env.get("__value")["立体のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("立体のエラー", 0)
             - newAttribute: コード化されていないgml_nameあり
-              expr: |
-                if (env.get("__value")["コード化されていないgml:name"] ?? 0) > 0 { 1 } else { 0 }
+              expr:
+                type: flowExpr
+                value: if attributes.get("コード化されていないgml:name", 0) > 0 { 1 } else { 0 }
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー", "コード化されていないgml:name"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("面のエラー", 0),
+                    attributes.get("面の向き不正", 0),
+                    attributes.get("非水密立体", 0),
+                    attributes.get("立体のエラー", 0),
+                    attributes.get("コード化されていないgml:name", 0),
+                  ])
 
       - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
         name: JSONSummaryWriter
@@ -329,23 +339,23 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー", "コード化されていないgml_nameあり"];
-              for key in keys {
-                result.push(#{
-                  name: key,
-                  count: feature[key] ?? 0,
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                result = [];
+                feature = attributes["__features"][0];
+                keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のエラー", "コード化されていないgml_nameあり"];
+                for key in keys {
+                  result.append({"name": key, "count": feature.get(key, 0)});
+                }
+                result
               }
-              result
-            }
-          output: |
-            "summary_gen.json"
+          output:
+            type: string
+            value: summary_gen.json
 
       # qc_result_ok generation flow
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9e
@@ -355,8 +365,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c0f
         name: FeatureFilterNoErrors
@@ -374,10 +385,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f51
@@ -385,9 +398,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       # FeatureCreator → DirectoryDecompressor

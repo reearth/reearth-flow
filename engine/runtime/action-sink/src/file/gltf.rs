@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::f64::consts::FRAC_PI_2;
 use std::io::BufWriter;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use flatgeom::{Polygon2, Polygon3};
 use glam::{DMat4, DVec3, DVec4};
@@ -14,7 +14,7 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::material::{self, Material};
-use reearth_flow_types::{Expr, GeometryType};
+use reearth_flow_types::{attribute_value_to_citygml_attribute, Code, GeometryType};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -60,7 +60,7 @@ impl SinkFactory for GltfWriterSinkFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: GltfWriterParam = if let Some(with) = with.clone() {
+        let params: GltfWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -72,15 +72,11 @@ impl SinkFactory for GltfWriterSinkFactory {
                 SinkError::BuildFactory("Missing required parameter `with`".to_string()).into(),
             );
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        if let Some(with) = with {
-            for (k, v) in with {
-                scope.set(k.as_str(), v);
-            }
-        }
-        let output = scope
-            .eval::<String>(params.output.to_string().as_str())
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?
+            .eval_string_env_only(ctx.expr_engine.vars())
             .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
         // Store as String — Uri::from_str at build time would silently join with CWD,
         // turning a relative path into an absolute URI that SinkOutput::new would reject.
@@ -126,7 +122,10 @@ impl TryFrom<&ClassFeatures> for Schema {
             .iter()
             .filter(|(_, v)| v.convertible_nusamai_type_ref())
         {
-            attributes.insert(k.to_string(), v.clone().into());
+            attributes.insert(
+                k.to_string(),
+                attribute_value_to_citygml_attribute(v.clone()),
+            );
         }
         schema.types.insert(
             feature_type,
@@ -158,7 +157,7 @@ pub struct GltfWriterParam {
     /// Output file path. When `schemaKey` is set, treated as a directory and
     /// each feature type is written to `<output>/<schemaKeyValue>.glb`;
     /// otherwise all features are written to this single file.
-    output: Expr,
+    output: Code,
     /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
     /// Apply Draco compression to the geometry
@@ -173,6 +172,7 @@ impl Sink for GltfWriter {
         "GltfWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
@@ -195,6 +195,7 @@ impl Sink for GltfWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let ellipsoid = nusamai_projection::ellipsoid::wgs84();
 
@@ -684,69 +685,41 @@ mod tests {
     use reearth_flow_runtime::event::EventHub;
     use serde_json::json;
 
-    fn make_with(entries: &[(&str, serde_json::Value)]) -> HashMap<String, serde_json::Value> {
-        entries
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.clone()))
-            .collect()
+    fn make_with(output: serde_json::Value) -> HashMap<String, serde_json::Value> {
+        [("output".to_string(), output)].into()
     }
 
-    // Regression: with-params must be injected into the eval scope at build time
-    // so the output expression can reference them via `env.get(...)`. If this
-    // breaks, workflows using `env.get("some_with_param")` in their output
-    // silently fail to resolve.
     #[test]
-    fn build_resolves_output_expression_referencing_with_param() {
+    fn build_resolves_literal_output() {
         let ctx = NodeContext::default();
-        // The expression throws if `output_dir` is missing from scope — that
-        // way the test fails loudly if the with-injection regresses, instead
-        // of letting `env.get` return Dynamic::UNIT and silently coercing to
-        // an empty string in the concat.
-        let with = make_with(&[
-            (
-                "output",
-                json!(
-                    r#"let dir = env.get("output_dir"); if type_of(dir) != "string" { throw "output_dir not injected into scope" }; dir + "/feature.glb""#
-                ),
-            ),
-            ("output_dir", json!("file:///tmp/gltf_regression_test")),
-        ]);
-
+        let with = make_with(json!({"type": "string", "value": "output/feature.glb"}));
         let result = GltfWriterSinkFactory.build(
             ctx,
             EventHub::new(10),
             "GltfWriter".to_string(),
             Some(with),
         );
-
         assert!(
             result.is_ok(),
-            "build must succeed when output expression references an injected with-param via env.get; got error: {:?}",
-            result.err(),
+            "build must succeed with a literal output path; got error: {:?}",
+            result.err()
         );
     }
 
-    // Regression: eval failure at build() must surface as SinkError::BuildFactory,
-    // not silently fall through to a literal path. If this breaks, malformed
-    // output expressions produce garbage paths at write time with no signal.
     #[test]
-    fn build_fails_when_output_expression_cannot_evaluate() {
+    fn build_fails_when_output_expression_references_missing_env_var() {
         let ctx = NodeContext::default();
-        let with = make_with(&[
-            // References a variable not present in `with` — Rhai eval will fail.
-            ("output", json!(r#"undefined_variable + "/x.glb""#)),
-        ]);
-
+        let with =
+            make_with(json!({"type": "flowExpr", "value": "env[\"nonexistent_output_dir\"]"}));
         let result = GltfWriterSinkFactory.build(
             ctx,
             EventHub::new(10),
             "GltfWriter".to_string(),
             Some(with),
         );
-
         assert!(
             result.is_err(),
-            "build must error when output expression cannot evaluate; silent fallback would mask this",
+            "build must error when flowExpr references a missing env var"
         );
     }
 }

@@ -1,5 +1,5 @@
 {
-  "description": "Verify output files for plateau6 (CityGML 3.0) quality check with no errors. Input GML is a CityGML 3.0 + i-UR 4.0 building fixture that exercises the major 3.0 changes (Space/SpaceBoundary, con: module, BuildingRoom, i-UR ADE).",
+  "description": "No-error reference for plateau6 (CityGML 3.0 + i-UR 4.0)",
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {
@@ -34,9 +34,14 @@
     }
   ],
   "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_common.json"
-    },
+    "errorCountSummary": [
+      {
+        "expectedFile": "summary_common.json"
+      },
+      {
+        "expectedFile": "summary_common2-bldg.json"
+      }
+    ],
     "fileErrorSummary": {
       "expectedFile": "01_共通.csv"
     }

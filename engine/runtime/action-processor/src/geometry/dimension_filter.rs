@@ -64,6 +64,7 @@ impl ProcessorFactory for DimensionFilterFactory {
 pub struct DimensionFilter;
 
 impl Processor for DimensionFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -114,6 +115,7 @@ impl Processor for DimensionFilter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

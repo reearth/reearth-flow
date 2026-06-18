@@ -283,15 +283,17 @@ graphs:
     type: action
     action: FeatureCreator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("cityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": env["cityGmlPath"],
+              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "schemas": env.get("schemasPath") or env.get("schemas"),
+            },
+          ]
   - id: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
     name: FolderAndFilePathReader
     type: subGraph
@@ -301,10 +303,13 @@ graphs:
     type: action
     action: FeatureCityGmlReader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: true
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 44bd136f-0fba-44f4-b719-22c28163c070
     name: TargetPackagesFilter
     type: action
@@ -365,15 +370,16 @@ graphs:
     type: action
     action: JsonWriter
     with:
-      output: |
-        "dictionary.json"
-      converter: |
-        #{
-          unf: env.get("__features").map(|f| #{
-            name: f.feature_type_without_prefix,
-            description: f.feature_type_ja
-          })
-        }
+      output:
+        type: string
+        value: dictionary.json
+      converter:
+        type: flowExpr
+        value: |
+          result = itertools.map(attributes["__features"], fn(f) {
+            {"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]}
+          });
+          {"unf": result}
   - id: 0f670054-828b-48d8-9672-dbc34247f2b3
     name: AttributeManagerPreFlattener
     type: action

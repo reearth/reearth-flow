@@ -1,8 +1,8 @@
 import { chromium, FullConfig } from "@playwright/test";
 
-import { STORAGE_STATE } from "./playwright.config";
 import { HomePage } from "./pages/homePage";
 import { LoginPage } from "./pages/loginPage";
+import { STORAGE_STATE } from "./playwright.config";
 
 async function globalSetup(_config: FullConfig) {
   const email = process.env.FLOW_DASHBOARD_E2E_USER_EMAIL;
@@ -20,7 +20,21 @@ async function globalSetup(_config: FullConfig) {
   const page = await context.newPage();
 
   try {
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        await page.goto(baseUrl, {
+          waitUntil: "domcontentloaded",
+          timeout: 90_000,
+        });
+        lastError = undefined;
+        break;
+      } catch (error) {
+        lastError = error;
+        console.warn(`Global setup navigation attempt ${attempt} failed`);
+      }
+    }
+    if (lastError) throw lastError;
 
     const loginPage = new LoginPage(page);
     const homePage = new HomePage(page);

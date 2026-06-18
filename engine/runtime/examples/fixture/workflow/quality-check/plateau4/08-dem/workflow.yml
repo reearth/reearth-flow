@@ -26,17 +26,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                },
+              ]
 
       # Common quality check subgraphs
       - id: aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
@@ -136,8 +138,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_不正な頂点の数.shp"
+          output:
+            type: string
+            value: 08_地形_不正な頂点の数.shp
 
       - id: 02c49104-bf18-40de-9ffe-4fbaef2165f9
         name: StatisticsCalculatorForIncorrectNumVertices
@@ -150,7 +153,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_incorrect_num_vertices
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # Branch 2: Triangle not closed
       - id: b66b8ba8-f685-4d01-83ef-2aaddebbc9eb
@@ -171,8 +176,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_閉じていない三角形.shp"
+          output:
+            type: string
+            value: 08_地形_閉じていない三角形.shp
       
       - id: 06bb5316-b980-497c-8ba1-d83953b6f6b8
         name: StatisticsCalculatorForNotClosedErrors
@@ -185,7 +191,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_not_closed
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # Branch 3: Wrong orientation
       - id: 17f4fa99-a555-4d8a-b705-8b951c324d8d
@@ -206,8 +214,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_三角形の向き不正.shp"
+          output:
+            type: string
+            value: 08_地形_三角形の向き不正.shp
 
       - id: 21bf6d61-9924-4f74-8eca-224ad4207c3c
         name: StatisticsCalculatorForWrongOrientation
@@ -220,7 +229,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_wrong_orientation
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # GeometryValidator for valid triangular meshes
       - id: 793402b8-8abc-4a86-b92d-873d6072f76e
@@ -250,8 +261,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_潰れた三角形.shp"
+          output:
+            type: string
+            value: 08_地形_潰れた三角形.shp
 
       - id: ab08b17d-d8a8-4185-a9f0-454432765edd
         name: StatisticsCalculatorForCorruptGeometry
@@ -264,7 +276,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_corrupt_geometry
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # New pipeline nodes: Process valid geometries through boundary extraction and analysis
       - id: ee6d9226-6ff1-4deb-ba68-55d9a6b0429a
@@ -330,8 +344,9 @@ graphs:
         type: action
         action: ShapefileWriter
         with:
-          output: |
-            "08_地形_不正な穴.shp"
+          output:
+            type: string
+            value: 08_地形_不正な穴.shp
 
       - id: e0ebe5cc-8666-4a24-8516-91454d781892
         name: StatisticsCalculatorForInvalidBoundaries
@@ -344,7 +359,9 @@ graphs:
             - _relief_index
           calculations:
             - newAttribute: _num_invalid_boundaries
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       # FeatureMerger for aggregating error counts
       - id: fb152eb6-3a92-403f-96ce-bf38a420ec51
@@ -398,8 +415,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "08_地形_検査結果一覧.csv"
+          output:
+            type: string
+            value: 08_地形_検査結果一覧.csv
 
       # StatisticsCalculator for JSON aggregation
       # Note: "不正な穴" is excluded from JSON summary and totalErrorCount to match FME behavior
@@ -411,25 +429,31 @@ graphs:
         with:
           calculations:
             - newAttribute: "不正な頂点の数"
-              expr: |
-                env.get("__value")["不正な頂点の数"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("不正な頂点の数", 0)
             - newAttribute: "閉じていない三角形"
-              expr: |
-                env.get("__value")["閉じていない三角形"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("閉じていない三角形", 0)
             - newAttribute: "三角形の向き不正"
-              expr: |
-                env.get("__value")["三角形の向き不正"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("三角形の向き不正", 0)
             - newAttribute: "潰れた三角形"
-              expr: |
-                env.get("__value")["潰れた三角形"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("潰れた三角形", 0)
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["不正な頂点の数", "閉じていない三角形", "三角形の向き不正", "潰れた三角形"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("不正な頂点の数", 0),
+                    attributes.get("閉じていない三角形", 0),
+                    attributes.get("三角形の向き不正", 0),
+                    attributes.get("潰れた三角形", 0),
+                  ])
 
       # JSON output with converter
       - id: 617888e7-5fea-4fcf-a1cd-34861d65be0a
@@ -438,22 +462,20 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              for key in feature.keys() {
-                result.push(#{
-                  name: key,
-                  count: feature[key],
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                feature = attributes["__features"][0];
+                itertools.map(feature.keys(), fn(key) {
+                  {"name": key, "count": feature[key]}
+                })
               }
-              result
-            }
-          output: |
-            "summary_dem.json"
+          output:
+            type: string
+            value: summary_dem.json
 
       # Calculate total errors for no-error check
       - id: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
@@ -463,8 +485,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       # Filter for no errors
       - id: 51c9e2d8-5bdc-4fce-9177-d2e650c011b0
@@ -484,10 +507,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: b65d1e91-37a8-489a-87e3-fed91e5de294
@@ -495,9 +520,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       - id: 99b6e8cc-1cba-489a-bc83-9966d3e5fabc

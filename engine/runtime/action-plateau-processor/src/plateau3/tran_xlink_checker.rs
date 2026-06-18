@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::str::FromStr;
 
-use fastxml::transform::StreamTransformer;
+use fastxml::transform::Transformer;
 use itertools::Itertools;
 use reearth_flow_common::{
     uri::Uri,
@@ -100,7 +100,7 @@ impl Processor for TranXLinkChecker {
 
         let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
 
-        let transformer = StreamTransformer::new(&xml_content)
+        let transformer = Transformer::from(xml_content.as_str())
             .with_root_namespaces()
             .map_err(|e| {
                 PlateauProcessorError::TranXLinkChecker(format!(

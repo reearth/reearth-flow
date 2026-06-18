@@ -65,6 +65,7 @@ impl ProcessorFactory for ClosedCurveFilterFactory {
 struct ClosedCurveFilter;
 
 impl Processor for ClosedCurveFilter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -93,6 +94,7 @@ impl Processor for ClosedCurveFilter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

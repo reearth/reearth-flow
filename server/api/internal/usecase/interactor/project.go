@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/usecasex"
 )
@@ -280,4 +281,165 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (*job.J
 	}
 
 	return j, nil
+}
+
+// previewSampleSizeCap bounds the per-source sample count to keep probe cost
+// finite. A nil sampleSize is passed through so the engine applies its own
+// default.
+const previewSampleSizeCap = 1000
+
+// PreviewSchema runs the engine's dynamic probe-schema over the live editor
+// graph. It mirrors Run's orchestration (flush Yjs -> GCS, snapshot, persisted
+// Job, Cloud Run worker dispatch with Batch fallback, monitoring) but is a fully
+// dedicated code path: it never calls Run, tags the job Mode=preview-schema, does
+// NOT upload metadata (the probe does not consume it), and dispatches through the
+// worker's dedicated probe-schema route.
+func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaParam) (*job.Job, error) {
+	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+		return nil, err
+	}
+
+	if p.Workflow == nil {
+		return nil, interfaces.ErrWorkflowFileRequired
+	}
+
+	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
+		return nil, err
+	}
+
+	var j *job.Job
+	var workflowURLStr string
+	var reportURL string
+	variables := parametersToVariables(p.Parameters)
+	sampleSize := capSampleSize(p.SampleSize)
+	useCloudRun := i.cloudRunWorker != nil
+
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+		if err != nil {
+			return err
+		}
+
+		doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
+		if err != nil {
+			return fmt.Errorf("failed to get latest project snapshot: %v", err)
+		}
+		projectID := p.ProjectID
+		projectVersion := doc.Version
+
+		debug := true
+
+		j, err = job.New().
+			NewID().
+			Debug(&debug).
+			Mode(job.ModePreviewSchema).
+			ProjectID(&projectID).
+			ProjectVersion(&projectVersion).
+			Workspace(prj.Workspace()).
+			Status(job.StatusPending).
+			StartedAt(time.Now()).
+			Build()
+		if err != nil {
+			return err
+		}
+
+		workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
+		if err != nil {
+			return err
+		}
+		workflowURLStr = workflowURL.String()
+
+		// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
+
+		j.SetParameters(p.Parameters)
+		// The report URL is surfaced via outputURLs on completion by
+		// Job.updateJobArtifacts, not here: the artifact does not exist until the
+		// worker writes it (and never on failure), so setting it at creation time
+		// would hand clients a URL that 404s.
+
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return err
+		}
+
+		reportURL = i.file.GetJobPreviewSchemaUploadURI(j.ID().String())
+
+		if !useCloudRun {
+			gcpJobID, err := i.batch.SubmitProbeJob(ctx, j.ID(), workflowURLStr, variables, sampleSize, reportURL, p.ProjectID, prj.Workspace())
+			if err != nil {
+				return fmt.Errorf("failed to submit probe job: %v", err)
+			}
+			j.SetGCPJobID(gcpJobID)
+
+			if err := i.jobRepo.Save(ctx, j); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if useCloudRun {
+		if i.job != nil {
+			// Dispatch on Cloud Run via the dedicated probe-schema route; the
+			// standard monitoring loop finalizes the job.
+			i.job.PreviewSchemaCloudRunWorker(j, gateway.ProbeSchemaParam{
+				JobID:       j.ID(),
+				WorkflowURL: workflowURLStr,
+				ReportURL:   reportURL,
+				Variables:   variables,
+				SampleSize:  sampleSize,
+			})
+			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+				return j, fmt.Errorf("failed to start job monitoring: %v", err)
+			}
+		}
+	} else {
+		if i.job != nil {
+			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+				return j, fmt.Errorf("failed to start job monitoring: %v", err)
+			}
+		}
+	}
+
+	return j, nil
+}
+
+// capSampleSize bounds an optional sample size to keep probe cost finite. A nil
+// input is passed through so the engine applies its own default.
+func capSampleSize(s *int) *int {
+	if s == nil {
+		return nil
+	}
+	v := *s
+	if v < 1 {
+		v = 1
+	}
+	if v > previewSampleSizeCap {
+		v = previewSampleSizeCap
+	}
+	return &v
+}
+
+// parametersToVariables renders project parameters as engine --var key/values.
+func parametersToVariables(params []*parameter.Parameter) map[string]string {
+	if len(params) == 0 {
+		return nil
+	}
+	vars := make(map[string]string, len(params))
+	for _, p := range params {
+		if p == nil {
+			continue
+		}
+		// A parameter with no default must not be sent: stringifying nil yields
+		// the literal "<nil>", which would override the workflow's env.get(...)
+		// resolution / the engine default. Leave it unset instead.
+		dv := p.DefaultValue()
+		if dv == nil {
+			continue
+		}
+		vars[p.Name()] = fmt.Sprintf("%v", dv)
+	}
+	return vars
 }

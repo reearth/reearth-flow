@@ -1,11 +1,28 @@
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::fmt;
+use std::rc::{Rc, Weak};
 
 use indexmap::IndexMap;
 
 pub type Module = IndexMap<String, Value>;
 
-use crate::core::error::{InnerError, InnerResult};
+use super::ast::Expr;
+use super::env::Frame;
+use crate::core::error::{eval_error, Result};
+
+/// A user-defined closure: parameter names, body AST, and the lexical env captured at definition.
+#[derive(Clone)]
+pub struct ClosureValue {
+    pub params: Vec<String>,
+    pub body: Rc<Expr>,
+    pub captured: Weak<RefCell<Frame>>,
+}
+
+impl fmt::Debug for ClosureValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<fn({})>", self.params.join(", "))
+    }
+}
 
 /// Trait for typed objects that can respond to method calls.
 ///
@@ -14,8 +31,8 @@ use crate::core::error::{InnerError, InnerResult};
 /// their own `RefCell` internally.
 pub trait ImmutableObject: std::fmt::Debug {
     fn type_name(&self) -> &'static str;
-    fn call_method(&self, method: &str, args: &[Value]) -> InnerResult<Value>;
-    fn get_property(&self, _name: &str) -> Option<InnerResult<Value>> {
+    fn call_method(&self, method: &str, args: &[Value]) -> Result<Value>;
+    fn get_property(&self, _name: &str) -> Option<Result<Value>> {
         None
     }
     fn display(&self) -> String {
@@ -26,18 +43,18 @@ pub trait ImmutableObject: std::fmt::Debug {
     }
 }
 
-type NativeFnInner = Rc<dyn Fn(&[Value]) -> InnerResult<Value>>;
+type NativeFnInner = Rc<dyn Fn(&[Value]) -> Result<Value>>;
 
 /// A native (Rust) function callable from the expression language.
 #[derive(Clone)]
 pub struct NativeFn(NativeFnInner);
 
 impl NativeFn {
-    pub fn new(f: impl Fn(&[Value]) -> InnerResult<Value> + 'static) -> Self {
+    pub fn new(f: impl Fn(&[Value]) -> Result<Value> + 'static) -> Self {
         Self(Rc::new(f))
     }
 
-    pub fn call(&self, args: &[Value]) -> InnerResult<Value> {
+    pub fn call(&self, args: &[Value]) -> Result<Value> {
         (self.0)(args)
     }
 
@@ -72,6 +89,8 @@ pub enum Value {
     Map(Rc<RefCell<IndexMap<String, Value>>>),
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
+    /// A user-defined closure capturing a lexical env frame.
+    Closure(ClosureValue),
     /// A typed object that can respond to method calls via [`ImmutableObject`].
     Object(Rc<dyn ImmutableObject>),
     Module(Rc<Module>),
@@ -102,7 +121,7 @@ impl Value {
             Value::String(_) => "string",
             Value::Array(_) => "list",
             Value::Map(_) => "map",
-            Value::Fn(_) => "function",
+            Value::Fn(_) | Value::Closure(_) => "function",
             Value::Object(rc) => rc.type_name(),
             Value::Module(_) => "module",
         }
@@ -112,34 +131,47 @@ impl Value {
         Value::Module(Rc::new(m))
     }
 
-    pub fn as_str(&self) -> InnerResult<&str> {
+    pub fn as_str(&self) -> Result<&str> {
         match self {
             Value::String(s) => Ok(s.as_str()),
-            other => Err(InnerError::new(format!(
+            other => Err(eval_error(format!(
                 "expected string, got {}",
                 other.type_name()
             ))),
         }
     }
 
-    pub fn as_int(&self) -> InnerResult<i64> {
+    pub fn as_int(&self) -> Result<i64> {
         match self {
             Value::Int(n) => Ok(*n),
-            other => Err(InnerError::new(format!(
+            other => Err(eval_error(format!(
                 "expected int, got {}",
                 other.type_name()
             ))),
         }
     }
 
-    pub fn as_f64(&self) -> InnerResult<f64> {
+    pub fn as_f64(&self) -> Result<f64> {
         match self {
             Value::Float(x) => Ok(*x),
             Value::Int(x) => Ok(*x as f64),
-            other => Err(InnerError::new(format!(
+            other => Err(eval_error(format!(
                 "expected number, got {}",
                 other.type_name()
             ))),
+        }
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Null => false,
+            Value::Bool(b) => *b,
+            Value::Int(n) => *n != 0,
+            Value::Float(f) => *f != 0.0,
+            Value::String(s) => !s.is_empty(),
+            Value::Array(a) => !a.borrow().is_empty(),
+            Value::Map(o) => !o.borrow().is_empty(),
+            Value::Fn(_) | Value::Closure(_) | Value::Object(_) | Value::Module(_) => true,
         }
     }
 }
@@ -202,6 +234,7 @@ impl std::fmt::Display for Value {
                 write!(f, "}}")
             }
             Value::Fn(_) => write!(f, "<fn>"),
+            Value::Closure(c) => write!(f, "<fn({})>", c.params.join(", ")),
             Value::Object(rc) => write!(f, "{}", rc.display()),
             Value::Module(_) => write!(f, "<module>"),
         }

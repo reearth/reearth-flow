@@ -217,10 +217,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Operation": {
           "attribute": {
             "title": "属性名"
@@ -248,10 +244,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapper": {
           "attribute": {
             "title": "属性名"
@@ -557,12 +549,6 @@
         "skipUnexposedAttributes": {
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
-        }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
         }
       }
     },
@@ -1122,10 +1108,6 @@
         }
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Condition": {
           "expr": {
             "title": "条件式"
@@ -1332,10 +1314,6 @@
         "mappings": {}
       },
       "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        },
         "Mapping": {
           "attribute": {},
           "value": {}
@@ -2193,12 +2171,6 @@
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップする"
         }
-      },
-      "definitionI18n": {
-        "Code": {
-          "type": {},
-          "value": {}
-        }
       }
     },
     {
@@ -2847,6 +2819,26 @@
       }
     },
     {
+      "name": "PLATEAU6.MissingAttributeDetector",
+      "parameterI18n": {
+        "": {
+          "title": "MissingAttributeDetector Parameters",
+          "description": "Configuration for detecting missing attributes in PLATEAU features."
+        },
+        "packageAttribute": {}
+      }
+    },
+    {
+      "name": "PLATEAU6.ObjectListExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "ObjectListExtractor Parameters",
+          "description": "Configuration for extracting object lists from PLATEAU data."
+        },
+        "objectListPathAttribute": {}
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "PLATEAU6データからUDXフォルダを抽出する",
       "parameterI18n": {
@@ -2982,22 +2974,6 @@
     {
       "name": "Refiner",
       "description": "ジオメトリを精緻化する"
-    },
-    {
-      "name": "RhaiCaller",
-      "description": "Rhaiスクリプトを呼び出す",
-      "parameterI18n": {
-        "": {
-          "title": "RhaiCaller パラメータ",
-          "description": "条件付き処理でフィーチャーに Rhai スクリプトを実行する設定。"
-        },
-        "isTarget": {
-          "description": "フィーチャーを処理するかどうかを判断する Rhai スクリプト式（boolean を返す）"
-        },
-        "process": {
-          "description": "対象条件が満たされたときにフィーチャーを処理・変換する Rhai スクリプト式"
-        }
-      }
     },
     {
       "name": "Rotator3D",

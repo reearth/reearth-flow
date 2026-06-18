@@ -8,7 +8,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -98,7 +100,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -120,15 +122,13 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut calculations = Vec::<CompiledCalculation>::new();
         for calculation in &params.calculations {
-            let expr = &calculation.expr;
-            let template_ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
+            let compiled = calculation.expr.compile().map_err(|e| {
                 AttributeProcessorError::StatisticsCalculatorFactory(format!("{e:?}"))
             })?;
             calculations.push(CompiledCalculation {
-                expr: template_ast,
+                expr: compiled,
                 new_attribute: calculation.new_attribute.clone(),
             });
         }
@@ -138,10 +138,57 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             group_by: params.group_by,
             calculations,
             aggregate_buffer: HashMap::new(),
-            global_params: with,
         };
         Ok(Box::new(process))
     }
+
+    fn infer_output_schema(
+        &self,
+        inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+
+        let params = parse_params(with)?;
+
+        // `default` port: a fresh, CLOSED schema with only the produced keys,
+        // mirroring the `finish` insertion order: group_by, group_id, calculations.
+        let mut default_schema = AttrSchema::empty();
+        if let Some(group_by) = params.group_by.as_ref() {
+            for attr in group_by {
+                default_schema.insert(attr.clone(), AttrField::always(AttrType::String));
+            }
+        }
+        if let Some(group_id) = params.group_id.as_ref() {
+            default_schema.insert(group_id.clone(), AttrField::always(AttrType::String));
+        }
+        for calculation in &params.calculations {
+            default_schema.insert(
+                calculation.new_attribute.clone(),
+                AttrField::always(AttrType::Number),
+            );
+        }
+
+        // `complete` port: identity passthrough of the input feature.
+        let complete_schema = inputs
+            .get(&DEFAULT_PORT.clone())
+            .cloned()
+            .unwrap_or_else(AttrSchema::open);
+
+        Some(HashMap::from([
+            (DEFAULT_PORT.clone(), default_schema),
+            (COMPLETE_PORT.clone(), complete_schema),
+        ]))
+    }
+}
+
+/// Deserialize the `StatisticsCalculatorParam` from the node's `with` params,
+/// mirroring the deserialization done in `build`. Returns `None` when `with`
+/// is absent or the params don't deserialize (inference not possible).
+fn parse_params(with: &Option<HashMap<String, Value>>) -> Option<StatisticsCalculatorParam> {
+    let with = with.as_ref()?;
+    let value = serde_json::to_value(with).ok()?;
+    serde_json::from_value::<StatisticsCalculatorParam>(value).ok()
 }
 
 #[derive(Debug, Clone)]
@@ -150,13 +197,12 @@ struct StatisticsCalculator {
     group_by: Option<Vec<Attribute>>,
     calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, NumericValue>>,
-    global_params: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Clone)]
 struct CompiledCalculation {
     new_attribute: Attribute,
-    expr: rhai::AST,
+    expr: CompiledCode,
 }
 
 /// # StatisticsCalculator Parameters
@@ -182,7 +228,7 @@ struct Calculation {
     /// # New attribute name
     new_attribute: Attribute,
     /// # Calculation to perform
-    expr: Expr,
+    expr: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 impl Processor for StatisticsCalculator {
@@ -195,9 +241,8 @@ impl Processor for StatisticsCalculator {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let env_vars = ctx.expr_engine.vars();
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         let aggregate_key = self
             .group_by
             .as_ref()
@@ -219,40 +264,38 @@ impl Processor for StatisticsCalculator {
                 .or_default();
             let content = aggregate_buffer.entry(aggregate_key.clone()).or_default();
 
-            // Try to evaluate as f64 first, then fall back to i64
-            let eval_result = scope.eval_ast::<f64>(&calculation.expr);
-            match eval_result {
-                Ok(eval) => {
-                    let numeric_value = NumericValue::Float(eval);
-                    *content = match *content {
-                        NumericValue::Integer(i) => numeric_value.add(NumericValue::Integer(i)),
-                        NumericValue::Float(f) => numeric_value.add(NumericValue::Float(f)),
-                    };
-                }
-                Err(_) => {
-                    // If f64 evaluation fails, try i64
-                    let eval_result = scope.eval_ast::<i64>(&calculation.expr);
-                    match eval_result {
-                        Ok(eval) => {
-                            let numeric_value = NumericValue::Integer(eval);
-                            *content = match *content {
-                                NumericValue::Integer(i) => {
-                                    numeric_value.add(NumericValue::Integer(i))
-                                }
-                                NumericValue::Float(f) => numeric_value.add(NumericValue::Float(f)),
-                            };
-                        }
-                        Err(e) => {
-                            return Err(Box::new(
-                                AttributeProcessorError::StatisticsCalculatorFactory(format!(
-                                    "Failed to evaluate expression for attribute '{}', error: {:?}",
-                                    calculation.new_attribute, e
-                                )),
-                            ));
-                        }
+            let attr_val = calculation
+                .expr
+                .eval(feature, Arc::clone(&env_vars))
+                .map_err(|e| {
+                    AttributeProcessorError::StatisticsCalculator(format!(
+                        "Failed to evaluate expression for attribute '{}': {e}",
+                        calculation.new_attribute
+                    ))
+                })?;
+
+            let numeric_value = match attr_val {
+                AttributeValue::Number(n) => {
+                    if let Some(i) = n.as_i64() {
+                        NumericValue::Integer(i)
+                    } else if let Some(f) = n.as_f64() {
+                        NumericValue::Float(f)
+                    } else {
+                        return Err(Box::new(AttributeProcessorError::StatisticsCalculator(
+                            format!("unrepresentable number for '{}'", calculation.new_attribute),
+                        )));
                     }
                 }
-            }
+                _ => {
+                    return Err(Box::new(AttributeProcessorError::StatisticsCalculator(
+                        format!(
+                            "expression for '{}' did not return a number",
+                            calculation.new_attribute
+                        ),
+                    )))
+                }
+            };
+            *content = content.add(numeric_value);
         }
         fw.send(ctx.new_with_feature_and_port(feature.clone(), COMPLETE_PORT.clone()));
         Ok(())
@@ -302,5 +345,123 @@ impl Processor for StatisticsCalculator {
 
     fn name(&self) -> &str {
         "StatisticsCalculator"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
+    use reearth_flow_types::Attribute;
+    use serde_json::json;
+
+    fn with_from(value: Value) -> Option<HashMap<String, Value>> {
+        Some(serde_json::from_value(value).unwrap())
+    }
+
+    fn attr(name: &str) -> Attribute {
+        Attribute::new(name.to_string())
+    }
+
+    #[test]
+    fn infer_default_port_is_closed_typed_schema() {
+        let with = with_from(json!({
+            "groupBy": ["region"],
+            "groupId": "gid",
+            "calculations": [{ "newAttribute": "total", "expr": {"type": "flowExpr", "value": "1.0"} }]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(attr("junk"), AttrField::always(AttrType::String));
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input);
+
+        let out = StatisticsCalculatorFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
+
+        assert!(!schema.open, "default schema must be closed");
+        assert_eq!(schema.fields.len(), 3, "exactly 3 produced attrs");
+        assert_eq!(
+            schema.fields.get(&attr("region")),
+            Some(&AttrField {
+                ty: AttrType::String,
+                presence: Presence::Always
+            })
+        );
+        assert_eq!(
+            schema.fields.get(&attr("gid")),
+            Some(&AttrField {
+                ty: AttrType::String,
+                presence: Presence::Always
+            })
+        );
+        assert_eq!(
+            schema.fields.get(&attr("total")),
+            Some(&AttrField {
+                ty: AttrType::Number,
+                presence: Presence::Always
+            })
+        );
+        assert!(
+            !schema.fields.contains_key(&attr("junk")),
+            "input attrs must be dropped"
+        );
+    }
+
+    #[test]
+    fn infer_complete_port_is_identity() {
+        let with = with_from(json!({
+            "groupBy": ["region"],
+            "groupId": "gid",
+            "calculations": [{ "newAttribute": "total", "expr": {"type": "flowExpr", "value": "1.0"} }]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(attr("a"), AttrField::always(AttrType::String));
+        input.insert(attr("b"), AttrField::always(AttrType::Number));
+        let mut inputs = HashMap::new();
+        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+
+        let out = StatisticsCalculatorFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let complete = out
+            .get(&COMPLETE_PORT.clone())
+            .expect("complete port present");
+
+        assert_eq!(
+            complete, &input,
+            "complete port must be identity passthrough"
+        );
+    }
+
+    #[test]
+    fn infer_no_group_by_only_calculations() {
+        let with = with_from(json!({
+            "calculations": [{ "newAttribute": "cnt", "expr": {"type": "flowExpr", "value": "1"} }]
+        }));
+
+        let inputs = HashMap::new();
+
+        let out = StatisticsCalculatorFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&DEFAULT_PORT.clone())
+            .expect("default port present");
+
+        assert!(!schema.open);
+        assert_eq!(schema.fields.len(), 1);
+        assert_eq!(
+            schema.fields.get(&attr("cnt")),
+            Some(&AttrField {
+                ty: AttrType::Number,
+                presence: Presence::Always
+            })
+        );
     }
 }

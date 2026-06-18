@@ -21,13 +21,16 @@ use reearth_flow_runtime::executor_operation::NodeContext;
 use reearth_flow_types::Feature;
 use tempfile::tempdir;
 
+#[cfg(not(feature = "new-geometry"))]
+use super::slice::slice_to_tiles;
+use super::tiling;
 use super::tiling::{TileContent, TileTree};
-use super::{slice::slice_to_tiles, tiling};
 use crate::atlas::{build_atlas_geometry, GltfFeature};
 use crate::file::mvt::tileid::TileIdMethod;
 
 type FeatureBuffer<T> = (u64, Option<String>, Vec<T>);
 
+#[cfg(not(feature = "new-geometry"))]
 pub(super) fn geometry_slicing_stage(
     upstream: &[(Option<String>, Vec<Feature>)],
     tile_id_conv: TileIdMethod,

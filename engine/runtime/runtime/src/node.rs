@@ -239,6 +239,17 @@ pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
         with: Option<HashMap<String, Value>>,
         state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError>;
+
+    /// Statically infer this node's output attribute schema per output port, given the
+    /// inferred input schema per input port and the node's `with` params. Default `None`
+    /// = inference not implemented for this factory (treated as schema-transparent/opaque downstream).
+    fn infer_output_schema(
+        &self,
+        _inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        _with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        None
+    }
 }
 
 pub trait SourceFactoryClone {
@@ -266,11 +277,15 @@ pub trait Source: Send + Sync + Debug + SourceClone {
     fn name(&self) -> &str;
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError>;
 
+    // TODO(new-geometry): remove this temporary default after migration; restore
+    // `start` as a required method.
     async fn start(
         &mut self,
-        ctx: NodeContext,
-        sender: Sender<(Port, IngestionMessage)>,
-    ) -> Result<(), BoxedError>;
+        _ctx: NodeContext,
+        _sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -307,6 +322,17 @@ pub trait ProcessorFactory: Send + Sync + Debug + ProcessorFactoryClone {
         action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError>;
+
+    /// Statically infer this node's output attribute schema per output port, given the
+    /// inferred input schema per input port and the node's `with` params. Default `None`
+    /// = inference not implemented for this factory (treated as schema-transparent/opaque downstream).
+    fn infer_output_schema(
+        &self,
+        _inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        _with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        None
+    }
 }
 
 pub trait ProcessorFactoryClone {
@@ -338,16 +364,24 @@ pub trait Processor: Send + Sync + Debug + ProcessorClone {
     fn num_threads(&self) -> usize {
         1
     }
+    // TODO(new-geometry): remove these temporary defaults after migration; restore
+    // `process`/`finish` as required methods.
+    // The loud default fires for actions not yet ported to the new geometry; it must
+    // never be a silent `Ok(())`, which would pass features through unchanged.
     fn process(
         &mut self,
-        ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError>;
+        _ctx: ExecutorContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
     fn finish(
         &mut self,
-        ctx: NodeContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError>;
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 
     fn name(&self) -> &str;
 }
@@ -375,6 +409,17 @@ pub trait SinkFactory: Send + Sync + Debug + SinkFactoryClone {
         action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError>;
+
+    /// Statically infer this node's output attribute schema per output port, given the
+    /// inferred input schema per input port and the node's `with` params. Default `None`
+    /// = inference not implemented for this factory (treated as schema-transparent/opaque downstream).
+    fn infer_output_schema(
+        &self,
+        _inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        _with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        None
+    }
 }
 
 pub trait SinkFactoryClone {
@@ -402,8 +447,14 @@ pub trait Sink: Send + Debug + SinkClone {
     }
 
     fn name(&self) -> &str;
-    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError>;
+    // TODO(new-geometry): remove these temporary defaults after migration; restore
+    // `process`/`finish` as required methods.
+    fn process(&mut self, _ctx: ExecutorContext) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
+    fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 
     fn set_source_state(&mut self, _source_state: &[u8]) -> Result<(), BoxedError> {
         Ok(())
@@ -585,5 +636,43 @@ impl Processor for OutputRouter {
 
     fn name(&self) -> &str {
         OUTPUT_ROUTING_ACTION
+    }
+}
+
+#[cfg(test)]
+mod schema_hook_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[derive(Debug, Clone)]
+    struct DummyProc;
+    impl ProcessorFactory for DummyProc {
+        fn name(&self) -> &str {
+            "DummyProc"
+        }
+        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+            None
+        }
+        fn get_input_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn get_output_ports(&self) -> Vec<Port> {
+            vec![DEFAULT_PORT.clone()]
+        }
+        fn build(
+            &self,
+            _ctx: NodeContext,
+            _event_hub: EventHub,
+            _action: String,
+            _with: Option<HashMap<String, Value>>,
+        ) -> Result<Box<dyn Processor>, BoxedError> {
+            unreachable!("not built in test")
+        }
+    }
+
+    #[test]
+    fn schema_hook_defaults_are_none_and_empty() {
+        let f = DummyProc;
+        assert!(f.infer_output_schema(&HashMap::new(), &None).is_none());
     }
 }

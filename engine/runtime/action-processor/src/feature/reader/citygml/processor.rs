@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Expr;
+use reearth_flow_types::{Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -19,7 +19,9 @@ use url::Url;
 
 use crate::feature::errors::FeatureProcessorError;
 
-use super::reader::{emit_buffered, parse_and_register};
+#[cfg(not(feature = "new-geometry"))]
+use super::reader::emit_buffered;
+use super::reader::parse_and_register;
 
 type StorePool = Vec<(Arc<RwLock<GeometryStore>>, Arc<RwLock<AppearanceStore>>)>;
 
@@ -57,7 +59,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -79,37 +81,34 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let codelists_path = params
             .codelists_path
-            .as_ref()
-            .map(|p| expr_engine.compile(p.as_ref()))
-            .transpose()
-            .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?;
-        let compiled_params = CompiledFeatureCityGmlReaderParam {
-            dataset: expr_engine
-                .compile(params.dataset.as_ref())
+            .map(|p| {
+                p.compile()
+                    .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))
+            })
+            .transpose()?;
+        let compiled_params = FeatureCityGmlReaderCompiledParam {
+            dataset: params
+                .dataset
+                .compile()
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
-            original_dataset: params.dataset.clone(),
             flatten: params.flatten,
             codelists_path,
         };
-        let process = FeatureCityGmlReader {
-            global_params: with,
+        Ok(Box::new(FeatureCityGmlReader {
             params: compiled_params,
             geom_registry: HashMap::new(),
             app_registry: HashMap::new(),
             store_pool: Vec::new(),
             cache_paths: Vec::new(),
             cache_dir: None,
-        };
-        Ok(Box::new(process))
+        }))
     }
 }
 
 pub struct FeatureCityGmlReader {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    params: CompiledFeatureCityGmlReaderParam,
+    params: FeatureCityGmlReaderCompiledParam,
     /// Pass 1 registry: polygon URL → owning GeometryStore (needed for cross-file ref resolution)
     geom_registry: HashMap<Url, Arc<RwLock<GeometryStore>>>,
     /// Pass 1 registry: polygon URL → owning AppearanceStore
@@ -134,7 +133,6 @@ impl std::fmt::Debug for FeatureCityGmlReader {
 impl Clone for FeatureCityGmlReader {
     fn clone(&self) -> Self {
         Self {
-            global_params: self.global_params.clone(),
             params: self.params.clone(),
             geom_registry: HashMap::new(),
             app_registry: HashMap::new(),
@@ -161,21 +159,20 @@ impl Drop for FeatureCityGmlReader {
 pub struct FeatureCityGmlReaderParam {
     /// # Dataset
     /// Path or expression to the CityGML dataset file to be read
-    dataset: Expr,
+    dataset: Code,
     /// # Flatten
     /// Whether to flatten the hierarchical structure of the CityGML data
     flatten: Option<bool>,
     /// # Codelists Path
     /// Optional path to the codelists directory for resolving codelist values
-    codelists_path: Option<Expr>,
+    codelists_path: Option<Code>,
 }
 
 #[derive(Debug, Clone)]
-struct CompiledFeatureCityGmlReaderParam {
-    dataset: rhai::AST,
-    original_dataset: Expr,
+struct FeatureCityGmlReaderCompiledParam {
+    dataset: CompiledCode,
     flatten: Option<bool>,
-    codelists_path: Option<rhai::AST>,
+    codelists_path: Option<CompiledCode>,
 }
 
 impl Processor for FeatureCityGmlReader {
@@ -183,6 +180,7 @@ impl Processor for FeatureCityGmlReader {
         1
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -190,15 +188,10 @@ impl Processor for FeatureCityGmlReader {
     ) -> Result<(), BoxedError> {
         let feature = ctx.feature.clone();
         let ctx = ctx.as_context();
-        let global_params = self.global_params.clone();
         let dataset = self.params.dataset.clone();
-        let original_dataset = self.params.original_dataset.clone();
         let flatten = self.params.flatten;
-        let codelists_url = self.params.codelists_path.clone().and_then(|ast| {
-            let expr_engine = Arc::clone(&ctx.expr_engine);
-            let scope = feature.new_scope(expr_engine.clone(), &global_params);
-            scope
-                .eval_ast::<String>(&ast)
+        let codelists_url = self.params.codelists_path.as_ref().and_then(|code| {
+            code.eval_string(&feature, ctx.expr_engine.vars())
                 .ok()
                 .and_then(|s| Url::from_str(&s).ok())
         });
@@ -220,9 +213,7 @@ impl Processor for FeatureCityGmlReader {
             ctx,
             feature,
             dataset,
-            original_dataset,
             flatten,
-            global_params,
             codelists_url,
             &mut self.geom_registry,
             &mut self.app_registry,
@@ -234,6 +225,7 @@ impl Processor for FeatureCityGmlReader {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,

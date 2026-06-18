@@ -20,15 +20,17 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
 
       - id: d2140af5-0312-471a-9e83-d486a4d949bc
         name: FolderAndFilePathReader
@@ -40,11 +42,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: false
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       - id: aa11bb22-cc33-dd44-ee55-ff6677889900
         name: AttributeManagerAfterReader
         type: action
@@ -63,8 +67,9 @@ graphs:
         action: FeatureWriter
         with:
           format: citygml
-          output: |
-            "citygml-roundtrip-output.gml"
+          output:
+            type: string
+            value: citygml-roundtrip-output.gml
           prettyPrint: true
 
       - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
@@ -72,11 +77,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: false
-          dataset: |
-            env.get("__value")["filePath"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["filePath"]
       - id: bb22cc33-dd44-ee55-ff66-778899001122
         name: AttributeManagerAfterReadback
         type: action

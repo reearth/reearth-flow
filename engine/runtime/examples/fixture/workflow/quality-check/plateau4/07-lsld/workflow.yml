@@ -37,17 +37,19 @@ graphs:
         type: action
         action: FeatureCreator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                },
+              ]
 
       - id: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
         name: DirectoryDecompressor
@@ -113,11 +115,13 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["path"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
       - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
         name: FilterNotCityModel
         type: action
@@ -162,7 +166,9 @@ graphs:
             - udxDirs
           calculations:
             - newAttribute: _num_instances
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
       
       - id: 22641726-fc4a-4d8a-a375-91b5ac6aac28
         name: AttributeMapperForInstanceCount
@@ -187,8 +193,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "07_土砂災害警戒区域_地物インスタンス数.csv"
+          output:
+            type: string
+            value: 07_土砂災害警戒区域_地物インスタンス数.csv
 
       # Surface inspection flow
       - id: 7ccbb722-d0cc-4843-a42e-179576530340
@@ -239,8 +246,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "07_土砂災害警戒区域_面の向き不正.csv"
+          output:
+            type: string
+            value: 07_土砂災害警戒区域_面の向き不正.csv
 
       - id: 26751290-4ac7-4884-908a-7c231b5f820a
         name: SurfaceOrientationErrorCounter
@@ -251,7 +259,9 @@ graphs:
             - name
           calculations:
             - newAttribute: _num_incorrect_orientation
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       - id: ba747af8-c4fb-4481-9406-e14f1d4c7f57
         name: AttributeMapperForSurfaceErrors
@@ -284,8 +294,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "07_土砂災害警戒区域_面のエラー.csv"
+          output:
+            type: string
+            value: 07_土砂災害警戒区域_面のエラー.csv
 
       - id: 667c37eb-2b19-4a86-8aa4-70679f7787b5
         name: SurfaceErrorCounter
@@ -296,7 +307,9 @@ graphs:
             - name
           calculations:
             - newAttribute: _num_surface_issues
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
 
       # FeatureMerger for aggregating error counts
@@ -337,8 +350,9 @@ graphs:
         action: FeatureWriter
         with:
           format: csv
-          output: |
-            "07_土砂災害警戒区域_検査結果一覧.csv"
+          output:
+            type: string
+            value: 07_土砂災害警戒区域_検査結果一覧.csv
 
       # StatisticsCalculator for JSON aggregation
       - id: 521b2dea-51af-460f-9eb5-672917768692
@@ -348,19 +362,21 @@ graphs:
         with:
           calculations:
             - newAttribute: "面の向き不正"
-              expr: |
-                env.get("__value")["面の向き不正"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面の向き不正", 0)
             - newAttribute: "面のエラー"
-              expr: |
-                env.get("__value")["面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面のエラー", 0)
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["面の向き不正", "面のエラー"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("面の向き不正", 0),
+                    attributes.get("面のエラー", 0),
+                  ])
 
       # JSON output with converter
       - id: 4ed9ffc0-9509-4037-bcb6-117829aab7d5
@@ -369,22 +385,20 @@ graphs:
         action: FeatureWriter
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              for key in feature.keys() {
-                result.push(#{
-                  name: key,
-                  count: feature[key],
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                feature = attributes["__features"][0];
+                itertools.map(feature.keys(), fn(key) {
+                  {"name": key, "count": feature[key]}
+                })
               }
-              result
-            }
-          output: |
-            "summary_lsld.json"
+          output:
+            type: string
+            value: summary_lsld.json
 
       # Calculate total errors for no-error check
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
@@ -394,8 +408,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       # Filter for no errors
       - id: 020bac31-10f6-4a00-8426-630d03970c0f
@@ -415,10 +430,12 @@ graphs:
         type: action
         action: JsonWriter
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            filename
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
@@ -426,9 +443,9 @@ graphs:
         type: action
         action: ZipFileWriter
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            filename
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       # Data preparation flow

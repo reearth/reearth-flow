@@ -79,15 +79,19 @@ nodes:
     action: FeatureWriter
     with:
       format: json
-      converter: |
-        if env.get("__features").is_empty() {
-          {}
-        } else {
-          let feature = env.get("__features")[0];
-          feature["dataFileData"]
-        }
-      output: |
-        "summary_common2-" + env.get("__value")["package"] + ".json"
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            {}
+          } else {
+            feature = attributes["__features"][0];
+            feature["dataFileData"]
+          }
+      output:
+        type: flowExpr
+        value: |
+          "summary_common2-" + attributes["package"] + ".json"
 
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
@@ -118,8 +122,10 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C05必須属性等の欠落_" + attributes["package"] + ".csv"
 
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
@@ -140,8 +146,10 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C06現われない属性等_" + attributes["package"] + ".csv"
 
   - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
     name: AttributeMapperC07
@@ -172,8 +180,10 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C07品質属性_" + attributes["package"] + ".csv"
 
   - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
     name: AttributeMapperC08
@@ -204,8 +214,10 @@ nodes:
     action: FeatureWriter
     with:
       format: csv
-      output: |
-        "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv"
+      output:
+        type: flowExpr
+        value: |
+          "01-2_必須属性等_C08公共測量品質属性_" + attributes["package"] + ".csv"
 
   - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     name: AttributeManagerTotalErrorCount
@@ -256,7 +268,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C05エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Per-file aggregation for C07 errors (data quality attributes)
   - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
@@ -268,7 +282,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C07エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Per-file aggregation for C08 errors (public survey quality attributes)
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
@@ -280,7 +296,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C08エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: OutputRouterPerFile

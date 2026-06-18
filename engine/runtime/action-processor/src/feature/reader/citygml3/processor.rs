@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Expr;
+use reearth_flow_types::{Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -65,7 +65,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -88,16 +88,15 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             .into());
         };
 
-        let dataset_ast = Arc::clone(&ctx.expr_engine)
-            .compile(params.dataset.as_ref())
+        let dataset = params
+            .dataset
+            .compile()
             .map_err(|e| FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}")))?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
 
         Ok(Box::new(FeatureCityGml3Reader {
-            global_params: with,
-            dataset_ast,
-            original_dataset: params.dataset,
+            dataset,
             extract_tags,
             parser: Parser::new(),
         }))
@@ -110,7 +109,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
 pub struct FeatureCityGml3ReaderParam {
     /// # Dataset
     /// Path expression resolving to the CityGML 3.0 file to read.
-    dataset: Expr,
+    dataset: Code,
     /// # Extract Tags
     /// Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`),
     /// local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all
@@ -120,9 +119,7 @@ pub struct FeatureCityGml3ReaderParam {
 }
 
 pub struct FeatureCityGml3Reader {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    dataset_ast: rhai::AST,
-    original_dataset: Expr,
+    dataset: CompiledCode,
     extract_tags: HashSet<String>,
     parser: Parser,
 }
@@ -138,9 +135,7 @@ impl std::fmt::Debug for FeatureCityGml3Reader {
 impl Clone for FeatureCityGml3Reader {
     fn clone(&self) -> Self {
         Self {
-            global_params: self.global_params.clone(),
-            dataset_ast: self.dataset_ast.clone(),
-            original_dataset: self.original_dataset.clone(),
+            dataset: self.dataset.clone(),
             extract_tags: self.extract_tags.clone(),
             parser: Parser::new(),
         }
@@ -157,13 +152,12 @@ impl Processor for FeatureCityGml3Reader {
         ctx: ExecutorContext,
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let scope = ctx
-            .feature
-            .new_scope(Arc::clone(&ctx.expr_engine), &self.global_params);
-
-        let path = scope
-            .eval_ast::<String>(&self.dataset_ast)
-            .unwrap_or_else(|_| self.original_dataset.to_string());
+        let path = self
+            .dataset
+            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .map_err(|e| {
+                FeatureProcessorError::FileCityGml3Reader(format!("Failed to eval dataset: {e:?}"))
+            })?;
 
         let uri = Uri::from_str(&path).map_err(|e| {
             FeatureProcessorError::FileCityGml3Reader(format!("Invalid URI `{path}`: {e}"))
@@ -183,6 +177,7 @@ impl Processor for FeatureCityGml3Reader {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -230,6 +225,7 @@ impl Processor for FeatureCityGml3Reader {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn build_feature(node: &Arc<XmlNode>) -> Feature {
     let (stripped, raw_geoms) = geometry::extract_geometries(node);
     let mut feature = parser::to_feature(&stripped);

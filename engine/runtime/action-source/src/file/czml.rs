@@ -19,8 +19,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
-use super::reader::runner::get_content;
-use crate::{errors::SourceError, file::reader::runner::FileReaderCommonParam};
+use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
+use crate::errors::SourceError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CzmlReaderFactory;
@@ -54,7 +54,7 @@ impl SourceFactory for CzmlReaderFactory {
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: CzmlReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::CzmlReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -69,14 +69,31 @@ impl SourceFactory for CzmlReaderFactory {
             )
             .into());
         };
-        let reader = CzmlReader { params };
-        Ok(Box::new(reader))
+        let compiled_params = CzmlReaderCompiledParam {
+            common: params.common_property.compile().map_err(|e| {
+                SourceError::CzmlReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            force_2d: params.force_2d,
+            skip_document_packet: params.skip_document_packet,
+            time_sampling: params.time_sampling,
+        };
+        Ok(Box::new(CzmlReader {
+            params: compiled_params,
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
+struct CzmlReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    force_2d: bool,
+    skip_document_packet: bool,
+    time_sampling: TimeSamplingStrategy,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct CzmlReader {
-    pub(super) params: CzmlReaderParam,
+    params: CzmlReaderCompiledParam,
 }
 
 /// # CzmlReader Parameters
@@ -138,6 +155,7 @@ impl Source for CzmlReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -145,16 +163,17 @@ impl Source for CzmlReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
         read_czml(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_czml(
     content: &Bytes,
-    params: &CzmlReaderParam,
+    params: &CzmlReaderCompiledParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let text = String::from_utf8(content.to_vec())
@@ -277,9 +296,10 @@ fn extract_extra_czml_properties(
 
 /// Convert a CZML packet into one or more features depending on the time
 /// sampling strategy.
+#[cfg(not(feature = "new-geometry"))]
 fn packet_to_features(
     packet: &Value,
-    params: &CzmlReaderParam,
+    params: &CzmlReaderCompiledParam,
 ) -> Result<Vec<Feature>, crate::errors::SourceError> {
     let force_2d = params.force_2d;
     let base_attributes = extract_common_attributes(packet);
@@ -409,6 +429,7 @@ fn parse_time_value(value: &Value) -> Option<(f64, Option<String>)> {
 }
 
 /// Build features from time-tagged position data according to the sampling strategy.
+#[cfg(not(feature = "new-geometry"))]
 fn build_timeseries_features(
     ts: &TimeTaggedPosition,
     base_attributes: &indexmap::IndexMap<Attribute, AttributeValue>,
@@ -974,6 +995,7 @@ mod tests {
         assert_eq!(ts.samples[1].lon, -76.0);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_preserve_raw_strategy() {
         let ts = TimeTaggedPosition {
@@ -1023,6 +1045,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_packet_to_features_static() {
         let packet = serde_json::json!({
@@ -1032,8 +1055,8 @@ mod tests {
                 "cartographicDegrees": [-75.0, 40.0, 100.0]
             }
         });
-        let params = CzmlReaderParam {
-            common_property: FileReaderCommonParam {
+        let params = CzmlReaderCompiledParam {
+            common: FileReaderCompiledParam {
                 dataset: None,
                 inline: None,
             },
@@ -1045,6 +1068,7 @@ mod tests {
         assert_eq!(features.len(), 1);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_packet_to_features_timeseries() {
         let packet = serde_json::json!({
@@ -1059,8 +1083,8 @@ mod tests {
                 ]
             }
         });
-        let params = CzmlReaderParam {
-            common_property: FileReaderCommonParam {
+        let params = CzmlReaderCompiledParam {
+            common: FileReaderCompiledParam {
                 dataset: None,
                 inline: None,
             },
