@@ -215,15 +215,15 @@ func (r *Job) Remove(ctx context.Context, jid id.JobID) error {
 
 // jobParameterJSON is the wire format for parameters stored in JSONB.
 type jobParameterJSON struct {
+	DefaultValue interface{} `json:"default_value,omitempty"`
+	Config       interface{} `json:"config,omitempty"`
 	ID           string      `json:"id"`
 	Name         string      `json:"name"`
 	Type         string      `json:"type"`
+	ProjectID    string      `json:"project_id"`
 	Index        int         `json:"index"`
 	Required     bool        `json:"required"`
 	Public       bool        `json:"public"`
-	DefaultValue interface{} `json:"default_value,omitempty"`
-	Config       interface{} `json:"config,omitempty"`
-	ProjectID    string      `json:"project_id"`
 }
 
 func jobsFromRows(rows []gen.Job) ([]*job.Job, error) {

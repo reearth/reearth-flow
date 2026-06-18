@@ -7,9 +7,9 @@ import (
 )
 
 type variableJSON struct {
+	Value any    `json:"value"`
 	Key   string `json:"key"`
 	Type  string `json:"type"`
-	Value any    `json:"value"`
 }
 
 func variablesToJSON(vars []variable.Variable) ([]byte, error) {

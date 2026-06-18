@@ -98,9 +98,10 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 			CreatedAt(time.Now()).
 			UpdatedAt(time.Now())
 
-		if param.EventSource == "TIME_DRIVEN" {
+		switch param.EventSource {
+		case "TIME_DRIVEN":
 			t = t.TimeInterval(trigger.TimeInterval(param.TimeInterval))
-		} else if param.EventSource == "API_DRIVEN" {
+		case "API_DRIVEN":
 			t = t.AuthToken(param.AuthToken)
 		}
 
@@ -380,11 +381,12 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 			t.SetDescription(*param.Description)
 		}
 
-		if param.EventSource == "TIME_DRIVEN" {
+		switch param.EventSource {
+		case "TIME_DRIVEN":
 			t.SetEventSource(trigger.EventSourceType(param.EventSource))
 			t.SetTimeInterval(trigger.TimeInterval(param.TimeInterval))
 			t.SetAuthToken("")
-		} else if param.EventSource == "API_DRIVEN" {
+		case "API_DRIVEN":
 			t.SetEventSource(trigger.EventSourceType(param.EventSource))
 			t.SetTimeInterval("")
 			t.SetAuthToken(param.AuthToken)
