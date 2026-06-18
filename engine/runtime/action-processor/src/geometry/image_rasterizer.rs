@@ -32,8 +32,8 @@ static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureBounds"));
 pub(super) enum OnOverlap {
     TakeLast,
     TakeFirst,
-    Max,
-    Min,
+    Max(Code<{ CodeType::FlowExpr as u32 }>),
+    Min(Code<{ CodeType::FlowExpr as u32 }>),
     /// Saturating-add RGB channels of all overlapping polygons.
     Sum,
 }
@@ -125,10 +125,10 @@ impl ProcessorFactory for ImageRasterizerFactory {
             .into());
         };
 
-        let save_to = params
+        let evaluated_save_path = params
             .save_to
-            .map(|expr| {
-                expr.compile()
+            .map(|code| {
+                code.compile()
                     .map_err(|e| {
                         GeometryProcessorError::ImageRasterizerFactory(format!(
                             "Failed to compile save_to: {e:?}"
@@ -143,21 +143,21 @@ impl ProcessorFactory for ImageRasterizerFactory {
             })
             .transpose()?;
 
-        let overlap_value_ast = params
-            .overlap_value
-            .map(|expr| {
-                expr.compile().map_err(|e| {
+        let overlap_value_ast = match &params.on_overlap {
+            Some(OnOverlap::Max(code)) | Some(OnOverlap::Min(code)) => {
+                Some(code.clone().compile().map_err(|e| {
                     GeometryProcessorError::ImageRasterizerFactory(format!(
-                        "Failed to compile overlap_value expression: {e:?}"
+                        "Failed to compile overlap expression: {e:?}"
                     ))
-                })
-            })
-            .transpose()?;
+                })?)
+            }
+            _ => None,
+        };
 
         let process = ImageRasterizer {
             width: params.image_width,
-            save_to,
             on_overlap: params.on_overlap,
+            evaluated_save_path,
             overlap_value_ast,
             geometry_polygons: GeometryPolygons::new(),
             texture_coord_features: Vec::new(),
@@ -184,18 +184,13 @@ struct ImageRasterizerParam {
     /// Strategy for resolving pixel overlap when multiple polygons cover the same pixel.
     #[serde(default)]
     on_overlap: Option<OnOverlap>,
-
-    /// # Overlap Value
-    /// Expression evaluated per feature to determine its sort key for Max/Min overlap strategies.
-    #[serde(default)]
-    overlap_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
-    save_to: Option<String>,
     on_overlap: Option<OnOverlap>,
+    evaluated_save_path: Option<String>,
     overlap_value_ast: Option<CompiledCode>,
     geometry_polygons: GeometryPolygons,
     texture_coord_features: Vec<Feature>,
@@ -264,7 +259,6 @@ impl Default for ImageRasterizerParam {
             image_width: default_image_width(),
             save_to: None,
             on_overlap: None,
-            overlap_value: None,
         }
     }
 }
@@ -287,7 +281,10 @@ impl Processor for ImageRasterizer {
             // Extract color and geometry to accumulate in GeometryPolygons
             if let Some(mut polygon) = extract_geometry_polygon_from_feature(feature) {
                 // Evaluate overlap expression if configured
-                if matches!(self.on_overlap, Some(OnOverlap::Max) | Some(OnOverlap::Min)) {
+                if matches!(
+                    self.on_overlap,
+                    Some(OnOverlap::Max(_)) | Some(OnOverlap::Min(_))
+                ) {
                     if let Some(ref ast) = self.overlap_value_ast {
                         let env_vars = ctx.expr_engine.vars().clone();
                         if let Ok(attr_val) = ast.eval(feature, env_vars) {
@@ -329,8 +326,8 @@ impl Processor for ImageRasterizer {
             .geometry_polygons
             .draw(width, height, true, &self.on_overlap);
 
-        // Save the image using the helper function with the pre-evaluated save_to path
-        match save_image_with_path_option(&img, self.save_to.clone()) {
+        // Save the image using the helper function with the evaluated save_to path
+        match save_image_with_path_option(&img, self.evaluated_save_path.clone()) {
             Ok(saved_path) => {
                 ctx.event_hub.info_log(
                     None,
@@ -967,7 +964,7 @@ impl GeometryPolygons {
                     }
                 }
             }
-            Some(OnOverlap::Max) => {
+            Some(OnOverlap::Max(_)) => {
                 // Track best (max) overlap value per pixel
                 let mut best: HashMap<(u32, u32), (OverlapValue, u8, u8, u8)> = HashMap::new();
                 for polygon in &self.polygons {
@@ -1004,7 +1001,7 @@ impl GeometryPolygons {
                     img.put_pixel(*x, *y, image::Rgb([*r, *g, *b]));
                 }
             }
-            Some(OnOverlap::Min) => {
+            Some(OnOverlap::Min(_)) => {
                 let mut best: HashMap<(u32, u32), (OverlapValue, u8, u8, u8)> = HashMap::new();
                 for polygon in &self.polygons {
                     let pixels = polygon.to_image_pixels(&mapping_fn, fill_area);
