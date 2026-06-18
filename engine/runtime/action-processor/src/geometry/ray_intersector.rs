@@ -425,20 +425,10 @@ impl RayIntersector {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<f64, BoxedError> {
         match &self.tolerance_ast {
-            Some(ast) => ast
-                .eval(feature, env_vars)
-                .map_err(|e| {
-                    GeometryProcessorError::RayIntersector(format!(
-                        "Failed to evaluate tolerance: {e}"
-                    ))
-                })?
-                .as_f64()
-                .ok_or_else(|| {
-                    GeometryProcessorError::RayIntersector(
-                        "tolerance must evaluate to a number".to_string(),
-                    )
+            Some(ast) => ast.eval_float(feature, env_vars).map_err(|e| {
+                GeometryProcessorError::RayIntersector(format!("Failed to evaluate tolerance: {e}"))
                     .into()
-                }),
+            }),
             None => Ok(DEFAULT_TOLERANCE),
         }
     }

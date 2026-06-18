@@ -216,19 +216,9 @@ impl Processor for AttributeAggregator {
         let calc = if let Some(value) = self.calculation_value {
             value
         } else if let Some(calculation) = &self.calculation {
-            calculation
-                .eval(feature, env_vars)
-                .map_err(|e| {
-                    AttributeProcessorError::Aggregator(format!(
-                        "Failed to evaluate calculation: {e}"
-                    ))
-                })?
-                .as_i64()
-                .ok_or_else(|| {
-                    AttributeProcessorError::Aggregator(
-                        "calculation must evaluate to an integer".to_string(),
-                    )
-                })?
+            calculation.eval_int(feature, env_vars).map_err(|e| {
+                AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {e}"))
+            })?
         } else {
             return Err(
                 AttributeProcessorError::Aggregator("Calculation not found".to_string()).into(),
