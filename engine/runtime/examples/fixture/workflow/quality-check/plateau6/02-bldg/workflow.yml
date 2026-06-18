@@ -18,6 +18,8 @@ graphs:
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
   - !include building_checks.yml
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/surface_validator.yml
   - id: 028be94c-4528-4349-908c-ecf2b319a67a
     name: entry_point
     nodes:

@@ -54,8 +54,100 @@ nodes:
     with:
       filePathAttribute: path
 
-  # Build one summary row per building GML file. Error columns are placeholders
-  # (0) until the matching building check is ported (see TODOs).
+  # --- LOD0 surface validation pipeline ---
+  # Reads each building GML (CityGML 3.0), splits geometry per LOD, validates the
+  # LOD0 multi-surface.
+  - id: d9349887-1920-44a6-93c9-182c8484d1a2
+    name: FeatureCityGml3Reader
+    type: action
+    action: FeatureCityGml3Reader
+    with:
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
+      extractTags:
+        - bldg:Building
+
+  - id: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
+    name: HorizontalReprojector
+    type: action
+    action: HorizontalReprojector
+    with:
+      sourceEpsgCode: "6697"
+      targetEpsgCode: env.get("prcs")
+
+  - id: 012f23c6-65e1-4759-ab04-f20ebecbadfc
+    name: PLATEAU3.LodSplitterWithDM
+    type: subGraph
+    subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+  - id: d12958f8-f52d-4c95-b62c-58a92d363017
+    name: PLATEAU3.SurfaceValidator2D
+    type: subGraph
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+  - id: b60778f7-b110-44cb-a079-26d03f4dbb51
+    name: Lod0InvalidSurfaceCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lod0_invalid_surface
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: ce1613dd-0b26-45a8-984e-adcf8932656e
+    name: AttributeMapperLod0InvalidSurface
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          valueAttribute: name
+        - attribute: feature_type
+          valueAttribute: __citygml_feature_type
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
+
+  - id: b06c19d6-0ad0-4a3c-90bf-26d3613d7637
+    name: FeatureWriterLod0InvalidSurface
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_LOD0面のエラー.csv
+
+  # Join the per-file LOD0 error counts back onto each building GML file feature.
+  - id: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
+    name: ErrorSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue: |
+        env.get("__value").name
+      supplierAttributeValue: |
+        env.get("__value").name
+
+  # Build one summary row per building GML file.
   - id: 428129b3-ad69-4a18-bf99-25492d41ba26
     name: AttributeMapperBuildingSummary
     type: action
@@ -103,11 +195,11 @@ nodes:
           expr:
             type: flowExpr
             value: "0"
-        # TODO: wire to PLATEAU6 LOD0 surface checks
+        # LOD0 surface errors: TooFewPoints etc.
         - attribute: "LOD0 面のエラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lod0_invalid_surface", 0)
         - attribute: "LOD0 面の向きエラー"
           expr:
             type: flowExpr
@@ -381,10 +473,66 @@ edges:
     to: 06437150-b04d-4b41-83fc-e5767ea35a23
     fromPort: default
     toPort: default
+  # File feature -> ErrorSummaryMerger (requestor) and into the LOD0 pipeline.
   - id: a33876e6-151d-4095-b2c7-cba0a3881826
     from: 06437150-b04d-4b41-83fc-e5767ea35a23
-    to: 428129b3-ad69-4a18-bf99-25492d41ba26
+    to: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
     fromPort: default
+    toPort: requestor
+  - id: c6303dda-980f-458c-9751-6d5138d7b59f
+    from: 06437150-b04d-4b41-83fc-e5767ea35a23
+    to: d9349887-1920-44a6-93c9-182c8484d1a2
+    fromPort: default
+    toPort: default
+
+  # LOD0 surface validation pipeline.
+  - id: 0594a7bb-239c-4a04-a3fb-a09c63d48574
+    from: d9349887-1920-44a6-93c9-182c8484d1a2
+    to: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
+    fromPort: default
+    toPort: default
+  - id: ffb8809c-fed3-4ea6-b53f-868f21a633f0
+    from: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
+    to: 012f23c6-65e1-4759-ab04-f20ebecbadfc
+    fromPort: default
+    toPort: default
+  - id: 31fe411a-c85b-4b13-8c1b-24a191c02ec6
+    from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
+    to: d12958f8-f52d-4c95-b62c-58a92d363017
+    fromPort: lod0
+    toPort: default
+  - id: bd738dc2-1139-4366-b84a-45cc21fd91f7
+    from: d12958f8-f52d-4c95-b62c-58a92d363017
+    to: b60778f7-b110-44cb-a079-26d03f4dbb51
+    fromPort: invalidSurface
+    toPort: default
+  # Counter.complete -> AttributeMapper -> CSV writer
+  - id: 7d2bc7f2-5031-47a2-8767-43295b99f68d
+    from: b60778f7-b110-44cb-a079-26d03f4dbb51
+    to: ce1613dd-0b26-45a8-984e-adcf8932656e
+    fromPort: complete
+    toPort: default
+  - id: 42e83680-f399-4ade-958a-58a8b47fb917
+    from: ce1613dd-0b26-45a8-984e-adcf8932656e
+    to: b06c19d6-0ad0-4a3c-90bf-26d3613d7637
+    fromPort: default
+    toPort: default
+  # Counter.default -> ErrorSummaryMerger (supplier)
+  - id: 23bc5726-958c-4762-ab89-295e914df4e6
+    from: b60778f7-b110-44cb-a079-26d03f4dbb51
+    to: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
+    fromPort: default
+    toPort: supplier
+  # Merged + unmerged file features -> per-file summary
+  - id: 40c7c687-b78b-4e72-8a7a-156730ec2411
+    from: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
+    to: 428129b3-ad69-4a18-bf99-25492d41ba26
+    fromPort: merged
+    toPort: default
+  - id: a2298a01-0ef2-46cd-85a6-a78b4e21d5e9
+    from: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
+    to: 428129b3-ad69-4a18-bf99-25492d41ba26
+    fromPort: unmerged
     toPort: default
   - id: 5caa10d1-f739-467f-858d-64299a29555f
     from: 428129b3-ad69-4a18-bf99-25492d41ba26
@@ -398,6 +546,12 @@ edges:
     toPort: default
   - id: ff9187e7-0435-4833-ba4e-65bac4a2ddd7
     from: 501a24e8-b919-4f3b-9706-9ae6228f2bfd
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Route the written LOD0 error CSV into the result zip.
+  - id: 5a9431ee-c3e8-45c4-acaa-4638da748360
+    from: b06c19d6-0ad0-4a3c-90bf-26d3613d7637
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: default
     toPort: default
