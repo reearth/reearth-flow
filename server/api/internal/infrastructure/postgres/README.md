@@ -33,5 +33,9 @@ returning nil commits; returning an error rolls back.
 
 ## Status
 
-Ported: Trigger. Unported repos are guarded by `mustComplete` in `container.go`;
-`DB_DRIVER=postgres` cannot boot until every entity is ported (design A1).
+All flow-owned repos are ported to Postgres (Trigger, Lock, Config, Parameter,
+WorkerConfig, ProjectAccess, Workflow, Edge/NodeExecution, Deployment, Job,
+Project, Asset, AssetUpload; AuthRequest via reearthx `authserver.Postgres`).
+The interim `mustComplete` boot guard has been removed — `DB_DRIVER=postgres`
+boots a complete backend. Mongo is untouched and remains the default; the
+per-environment rollout is a deployment concern (design A1).

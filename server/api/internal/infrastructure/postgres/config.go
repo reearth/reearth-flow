@@ -32,8 +32,12 @@ func (r *Config) LockAndLoad(ctx context.Context) (*config.Config, error) {
 	row, err := gen.New(r.c.DB(ctx)).GetConfig(ctx)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return &config.Config{}, nil // mirror Mongo: empty config when absent
+			return &config.Config{}, nil // mirror Mongo: empty config when absent (lock stays held for the caller to Unlock)
 		}
+		// Release the lock we just acquired: on this error the caller never gets
+		// a successful load and won't reach Unlock/SaveAndUnlock, so holding it
+		// would leak the pooled advisory-lock connection and block future loads.
+		_ = r.Unlock(ctx)
 		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
 	return configFromRow(row), nil
