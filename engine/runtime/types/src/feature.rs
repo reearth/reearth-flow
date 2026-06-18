@@ -16,8 +16,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
 
-pub use crate::attribute::AttributeValue;
-use crate::{all_attribute_keys, attribute::Attribute, lod::LodMask};
+pub use crate::attribute::{AttributeValue, Attributes};
+use crate::{
+    all_attribute_keys, attribute::Attribute,
+    conversion::nusamai::attribute_value_to_citygml_attribute, lod::LodMask,
+};
 
 // `Feature.geometry` keeps the same field name in both worlds; only its type
 // switches with the `new-geometry` feature.
@@ -50,9 +53,6 @@ pub const CITYGML_ROOT_GML_ID_KEY: &str = "__citygml_root_gml_id";
     )
 )]
 pub struct MetadataKey(String);
-
-/// Type alias for feature attributes to reduce verbosity
-pub type Attributes = IndexMap<Attribute, AttributeValue>;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
@@ -159,7 +159,10 @@ impl From<&Feature> for nusamai_citygml::schema::TypeDef {
             .filter(|(_, v)| v.convertible_nusamai_type_ref())
         {
             // Use Number as-is without conversion (TypeRef::Integer/Double is auto-determined)
-            attributes.insert(k.to_string(), v.clone().into());
+            attributes.insert(
+                k.to_string(),
+                attribute_value_to_citygml_attribute(v.clone()),
+            );
         }
         nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
             attributes,
