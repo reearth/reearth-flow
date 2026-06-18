@@ -5,45 +5,34 @@ use std::sync::Arc;
 use reearth_flow_types::Feature;
 
 use super::errors::{HttpProcessorError, Result};
-use super::params::{ApiKeyLocation, Authentication};
+use super::expression::{CompiledAuthentication, CompiledAuthentication::*};
+use super::params::ApiKeyLocation;
 
 pub(crate) fn apply_authentication(
-    auth: &Authentication,
+    auth: &CompiledAuthentication,
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     headers: &mut HeaderMap,
     query_params: &mut Vec<(String, String)>,
 ) -> Result<()> {
     match auth {
-        Authentication::Basic { username, password } => {
-            let username_val = username
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile username expression: {e:?}"
-                    ))
-                })?
+        Basic {
+            username_ast,
+            password_ast,
+        } => {
+            let username_val = username_ast
                 .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate username: {e:?}"))
                 })?;
-
-            let password_val = password
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile password expression: {e:?}"
-                    ))
-                })?
+            let password_val = password_ast
                 .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate password: {e:?}"))
                 })?;
-
             let credentials = format!("{username_val}:{password_val}");
             let encoded = general_purpose::STANDARD.encode(credentials.as_bytes());
             let auth_value = format!("Basic {encoded}");
-
             headers.insert(
                 AUTHORIZATION,
                 HeaderValue::from_str(&auth_value).map_err(|e| {
@@ -51,19 +40,12 @@ pub(crate) fn apply_authentication(
                 })?,
             );
         }
-        Authentication::Bearer { token } => {
-            let token_val = token
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile token expression: {e:?}"
-                    ))
-                })?
+        Bearer { token_ast } => {
+            let token_val = token_ast
                 .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate token: {e:?}"))
                 })?;
-
             let auth_value = format!("Bearer {token_val}");
             headers.insert(
                 AUTHORIZATION,
@@ -72,33 +54,24 @@ pub(crate) fn apply_authentication(
                 })?,
             );
         }
-        Authentication::ApiKey {
+        ApiKey {
             key_name,
-            key_value,
+            key_value_ast,
             location,
         } => {
-            let key_val = key_value
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile API key expression: {e:?}"
-                    ))
-                })?
+            let key_val = key_value_ast
                 .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate API key: {e:?}"))
                 })?;
-
             match location {
                 ApiKeyLocation::Header => {
                     let header_name = HeaderName::from_bytes(key_name.as_bytes()).map_err(|e| {
                         HttpProcessorError::Request(format!("Invalid API key header name: {e}"))
                     })?;
-
                     let header_value = HeaderValue::from_str(&key_val).map_err(|e| {
                         HttpProcessorError::Request(format!("Invalid API key header value: {e}"))
                     })?;
-
                     headers.insert(header_name, header_value);
                 }
                 ApiKeyLocation::Query => {
@@ -107,12 +80,13 @@ pub(crate) fn apply_authentication(
             }
         }
     }
-
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::expression::ExpressionCompiler;
+    use super::super::params::Authentication;
     use super::*;
     use reearth_flow_types::{Attributes, Code, CodeType};
 
@@ -132,16 +106,18 @@ mod tests {
     fn test_basic_auth() {
         let env_vars = make_env(&[("username", "testuser"), ("password", "testpass")]);
 
-        let auth = Authentication::Basic {
-            username: Code {
-                ty: CodeType::FlowExpr,
-                value: r#"env["username"]"#.to_string(),
-            },
-            password: Code {
-                ty: CodeType::FlowExpr,
-                value: r#"env["password"]"#.to_string(),
-            },
-        };
+        let auth = ExpressionCompiler::new()
+            .compile_auth(&Authentication::Basic {
+                username: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["username"]"#.to_string(),
+                },
+                password: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["password"]"#.to_string(),
+                },
+            })
+            .unwrap();
 
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
@@ -160,12 +136,14 @@ mod tests {
     fn test_bearer_auth() {
         let env_vars = make_env(&[("token", "abc123")]);
 
-        let auth = Authentication::Bearer {
-            token: Code {
-                ty: CodeType::FlowExpr,
-                value: r#"env["token"]"#.to_string(),
-            },
-        };
+        let auth = ExpressionCompiler::new()
+            .compile_auth(&Authentication::Bearer {
+                token: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["token"]"#.to_string(),
+                },
+            })
+            .unwrap();
 
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
@@ -184,14 +162,16 @@ mod tests {
     fn test_api_key_header() {
         let env_vars = make_env(&[("api_key", "key123")]);
 
-        let auth = Authentication::ApiKey {
-            key_name: "X-API-Key".to_string(),
-            key_value: Code {
-                ty: CodeType::FlowExpr,
-                value: r#"env["api_key"]"#.to_string(),
-            },
-            location: ApiKeyLocation::Header,
-        };
+        let auth = ExpressionCompiler::new()
+            .compile_auth(&Authentication::ApiKey {
+                key_name: "X-API-Key".to_string(),
+                key_value: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["api_key"]"#.to_string(),
+                },
+                location: ApiKeyLocation::Header,
+            })
+            .unwrap();
 
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();
@@ -210,14 +190,16 @@ mod tests {
     fn test_api_key_query() {
         let env_vars = make_env(&[("api_key", "key456")]);
 
-        let auth = Authentication::ApiKey {
-            key_name: "apikey".to_string(),
-            key_value: Code {
-                ty: CodeType::FlowExpr,
-                value: r#"env["api_key"]"#.to_string(),
-            },
-            location: ApiKeyLocation::Query,
-        };
+        let auth = ExpressionCompiler::new()
+            .compile_auth(&Authentication::ApiKey {
+                key_name: "apikey".to_string(),
+                key_value: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["api_key"]"#.to_string(),
+                },
+                location: ApiKeyLocation::Query,
+            })
+            .unwrap();
 
         let mut headers = HeaderMap::new();
         let mut query_params = Vec::new();

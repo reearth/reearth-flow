@@ -105,6 +105,25 @@ impl ProcessorFactory for HttpCallerFactory {
             Vec::new()
         };
 
+        let compiled_auth = params
+            .authentication
+            .as_ref()
+            .map(|a| compiler.compile_auth(a))
+            .transpose()?;
+
+        let compiled_body = params
+            .request_body
+            .as_ref()
+            .map(|b| compiler.compile_body(b))
+            .transpose()?;
+
+        let compiled_response_handling = params
+            .response
+            .as_ref()
+            .and_then(|r| r.response_handling.as_ref())
+            .map(|h| compiler.compile_response_handling(h))
+            .transpose()?;
+
         // Create processor (client will be lazy-initialized in process() method)
         let processor = HttpCallerProcessor::new(
             client_config,
@@ -112,6 +131,9 @@ impl ProcessorFactory for HttpCallerFactory {
             url_ast,
             compiled_headers,
             compiled_query_params,
+            compiled_auth,
+            compiled_body,
+            compiled_response_handling,
         );
 
         Ok(Box::new(processor))

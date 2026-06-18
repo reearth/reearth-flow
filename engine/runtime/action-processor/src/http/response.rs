@@ -7,10 +7,11 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
 use super::client::HttpResponse;
 use super::errors::{HttpProcessorError, Result};
-use super::params::{ResponseEncoding, ResponseHandling};
+use super::expression::CompiledResponseHandling;
+use super::params::ResponseEncoding;
 
 pub(crate) struct ResponseProcessorConfig<'a> {
-    pub handling: &'a Option<ResponseHandling>,
+    pub handling: &'a Option<CompiledResponseHandling>,
     pub encoding: &'a Option<ResponseEncoding>,
     pub auto_detect: bool,
     pub max_size: Option<u64>,
@@ -58,27 +59,21 @@ pub(crate) fn process_response(
     match config
         .handling
         .as_ref()
-        .unwrap_or(&ResponseHandling::Attribute)
+        .unwrap_or(&CompiledResponseHandling::Attribute)
     {
-        ResponseHandling::Attribute => {
+        CompiledResponseHandling::Attribute => {
             let encoded_body = encode_response_body(&response.body, &effective_encoding);
             attributes.insert(
                 Attribute::new(config.response_body_attr.to_string()),
                 AttributeValue::String(encoded_body),
             );
         }
-        ResponseHandling::File {
-            path,
+        CompiledResponseHandling::File {
+            path_ast,
             store_path_in_attribute,
             path_attribute,
         } => {
-            let output_path = path
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::Request(format!(
-                        "Failed to compile output path expression: {e:?}"
-                    ))
-                })?
+            let output_path = path_ast
                 .eval_string(feature, config.env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Response(format!("Failed to evaluate output path: {e:?}"))
