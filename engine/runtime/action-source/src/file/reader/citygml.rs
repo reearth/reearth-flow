@@ -13,7 +13,8 @@ use quick_xml::NsReader;
 use reearth_flow_common::{str::to_hash, uri::Uri};
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_types::{
-    geometry::Geometry, lod::LodMask, Attribute, AttributeValue, CitygmlFeatureExt, Feature,
+    conversion::nusamai::from_nusamai_citygml_value, geometry::Geometry, lod::LodMask, Attribute,
+    AttributeValue, CitygmlFeatureExt, Feature,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -133,7 +134,7 @@ async fn parse_tree_reader<R: BufRead>(
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
-        let attributes = AttributeValue::from_nusamai_citygml_value(&entity.root);
+        let attributes = from_nusamai_citygml_value(&entity.root);
         let city_gml_attributes = match attributes.len() {
             0 => AttributeValue::Null,
             1 => attributes.values().next().unwrap().clone(),
