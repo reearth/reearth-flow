@@ -1,0 +1,58 @@
+{
+  "description": "Test quality check L07 extension for LOD0 on plateau6 (CityGML 3.0 + i-UR 4.0). A LOD0 exterior LinearRing with fewer than 4 points (3 points) is expected to be reported as a TooFewPoints error. NOTE: objectlist Excel is a provisional plateau4-derived file (no official CityGML 3.0 version yet).",
+  "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "bldg_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "02_建築物_LOD0面のエラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": [
+        "LOD0 面のエラー"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": [
+        "LOD0 面のエラー"
+      ]
+    }
+  },
+  "expectResultOkFile": false
+}
