@@ -19,21 +19,21 @@ cargo fmt --all ${@:-}
 [tasks.check]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo check --workspace --all-targets --exclude plateau-gis-quality-checker
+cargo check --workspace --all-targets
 cargo check -p reearth-flow-cli -p reearth-flow-worker --features new-geometry
 ''']
 
 [tasks.clippy]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --exclude plateau-gis-quality-checker -- -D warnings
+cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy -p reearth-flow-cli -p reearth-flow-worker --features new-geometry -- -D warnings
 ''']
 
 [tasks.clippy-fix]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --exclude plateau-gis-quality-checker --fix ${@:-}
+cargo clippy --workspace --all-targets --fix ${@:-}
 ''']
 
 [tasks.test]
@@ -49,7 +49,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 # Default geometry world only. The `new-geometry` world cannot be tested until
 # actions are ported (un-ported actions hit the loud runtime default).
-cargo test --workspace --all-targets --exclude plateau-gis-quality-checker --exclude workflow-tests ${@:-}
+cargo test --workspace --all-targets --exclude workflow-tests ${@:-}
 ''']
 
 [tasks.test-qc]
