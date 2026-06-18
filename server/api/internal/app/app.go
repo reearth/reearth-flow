@@ -116,7 +116,11 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		apiPrivate.POST("/signup/verify/:code", SignupVerify())
 		apiPrivate.POST("/password-reset", PasswordReset())
 	}
-	if err := initActionsData(ctx, cfg.Config.AssetBaseURL); err != nil {
+	actionsURL := ""
+	if cfg.Config.GCS.BucketName != "" {
+		actionsURL = cfg.Config.AssetBaseURL
+	}
+	if err := initActionsData(ctx, actionsURL); err != nil {
 		log.Errorf("Failed to initialize actions data: %v", err)
 	}
 	SetupActionRoutes(e)

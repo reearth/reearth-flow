@@ -125,7 +125,12 @@ func loadActionsData(lang string) (ActionsData, error) {
 		filename = fmt.Sprintf("actions_%s.json", lang)
 	}
 
-	baseURL := strings.TrimRight(actionsBaseURL, "/") + "/actions/"
+	var baseURL string
+	if actionsBaseURL != "" {
+		baseURL = strings.TrimRight(actionsBaseURL, "/") + "/actions/"
+	} else {
+		baseURL = "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
