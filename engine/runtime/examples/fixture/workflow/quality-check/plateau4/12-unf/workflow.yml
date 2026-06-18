@@ -102,12 +102,8 @@ graphs:
           cityGmlPath:
             type: flowExpr
             value: attributes["path"]
-          codelistsPath:
-            type: string
-            value: codelists
-          schemasPath:
-            type: string
-            value: schemas
+          codelistsPath: codelists
+          schemasPath: schemas
 
       - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e41
         name: AttributeMapperGmlPathAndFilename
@@ -151,7 +147,7 @@ graphs:
         with:
           targetEpsgCode:
             type: flowExpr
-            value: env.get("prcs")
+            value: env["prcs"]
 
       - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7e
         name: FeatureSorter

@@ -3055,12 +3055,8 @@ graphs:
       cityGmlPath:
         type: flowExpr
         value: attributes["path"]
-      codelistsPath:
-        type: string
-        value: codelists
-      schemasPath:
-        type: string
-        value: schemas
+      codelistsPath: codelists
+      schemasPath: schemas
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     name: FeatureFilterByPackage
     type: action
@@ -3112,7 +3108,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env.get("prcs")
+        value: env["prcs"]
   - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
     name: FeatureSorter
     type: action

@@ -120,7 +120,7 @@ graphs:
           errorAttribute: _validation_error
           epsgCode:
             type: flowExpr
-            value: env.get("prcs")
+            value: env["prcs"]
 
       # Branch 1: Incorrect number of vertices
       - id: 21bb4a5e-5975-443b-8a38-6332789681dd

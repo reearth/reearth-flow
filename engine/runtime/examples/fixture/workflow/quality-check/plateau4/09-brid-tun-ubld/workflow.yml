@@ -123,7 +123,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env.get("prcs")
+        value: env["prcs"]
   - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
     name: AttributeManager
     type: action

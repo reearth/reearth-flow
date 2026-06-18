@@ -1797,7 +1797,7 @@ graphs:
       errorAttribute: _validation_error
       epsgCode:
         type: flowExpr
-        value: env.get("prcs")
+        value: env["prcs"]
   - id: 21bb4a5e-5975-443b-8a38-6332789681dd
     name: AttributeMapperIncorrectNumVertices
     type: action

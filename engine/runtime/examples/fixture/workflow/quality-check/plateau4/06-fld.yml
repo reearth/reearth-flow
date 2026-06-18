@@ -1772,12 +1772,8 @@ graphs:
       cityGmlPath:
         type: flowExpr
         value: attributes["path"]
-      codelistsPath:
-        type: string
-        value: codelists
-      schemasPath:
-        type: string
-        value: schemas
+      codelistsPath: codelists
+      schemasPath: schemas
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     name: FeatureFilterByPackage
     type: action
@@ -1860,7 +1856,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env.get("prcs")
+        value: env["prcs"]
   - id: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
     name: GeometryValidator
     type: action
