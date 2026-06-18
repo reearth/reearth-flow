@@ -426,15 +426,10 @@ impl Processor for HorizontalReprojector {
 
         // Evaluate source EPSG expression if provided
         let source_epsg_from_expr: Option<EpsgCode> = if let Some(ref code) = self.source_epsg_ast {
-            let av = code.eval(feature, env_vars.clone()).map_err(|e| {
+            let value = code.eval_int(feature, env_vars.clone()).map_err(|e| {
                 GeometryProcessorError::HorizontalReprojector(format!(
                     "Failed to evaluate source EPSG expression: {e}"
                 ))
-            })?;
-            let value = av.as_i64().ok_or_else(|| {
-                GeometryProcessorError::HorizontalReprojector(
-                    "source EPSG must evaluate to an integer".to_string(),
-                )
             })?;
             Some(value as EpsgCode)
         } else {
@@ -451,16 +446,14 @@ impl Processor for HorizontalReprojector {
         })?;
 
         // Evaluate target EPSG expression
-        let target_av = self.target_epsg_ast.eval(feature, env_vars).map_err(|e| {
-            GeometryProcessorError::HorizontalReprojector(format!(
-                "Failed to evaluate target EPSG expression: {e}"
-            ))
-        })?;
-        let target_epsg = target_av.as_i64().ok_or_else(|| {
-            GeometryProcessorError::HorizontalReprojector(
-                "target EPSG must evaluate to an integer".to_string(),
-            )
-        })? as EpsgCode;
+        let target_epsg = self
+            .target_epsg_ast
+            .eval_int(feature, env_vars)
+            .map_err(|e| {
+                GeometryProcessorError::HorizontalReprojector(format!(
+                    "Failed to evaluate target EPSG expression: {e}"
+                ))
+            })? as EpsgCode;
 
         // Get or create the projection in thread-local cache
         let from_crs = format!("EPSG:{source_epsg}");

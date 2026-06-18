@@ -305,17 +305,11 @@ impl SolidBoundaryValidator {
         ctx: &ExecutorContext,
     ) -> Result<f64, BoxedError> {
         self.tolerance_ast
-            .eval(feature, Arc::clone(&ctx.expr_engine.vars()))
+            .eval_float(feature, Arc::clone(&ctx.expr_engine.vars()))
             .map_err(|e| {
                 GeometryProcessorError::SolidBoundaryValidatorFactory(format!(
                     "Failed to evaluate tolerance expression: {e:?}"
                 ))
-            })?
-            .as_f64()
-            .ok_or_else(|| {
-                GeometryProcessorError::SolidBoundaryValidatorFactory(
-                    "tolerance must evaluate to a number".to_string(),
-                )
                 .into()
             })
     }

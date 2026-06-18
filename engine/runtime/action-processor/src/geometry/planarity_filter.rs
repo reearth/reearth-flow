@@ -266,17 +266,11 @@ impl PlanarityFilter {
         ctx: &ExecutorContext,
     ) -> Result<f64, BoxedError> {
         self.threshold_ast
-            .eval(feature, ctx.expr_engine.vars().clone())
+            .eval_float(feature, ctx.expr_engine.vars().clone())
             .map_err(|e| {
                 GeometryProcessorError::PlanarityFilterFactory(format!(
                     "Failed to evaluate threshold expression: {e:?}"
                 ))
-            })?
-            .as_f64()
-            .ok_or_else(|| {
-                GeometryProcessorError::PlanarityFilterFactory(
-                    "threshold must evaluate to a number".to_string(),
-                )
                 .into()
             })
     }

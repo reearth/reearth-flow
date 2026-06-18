@@ -135,16 +135,8 @@ impl Processor for ThreeDimensionRotator {
         let feature = &ctx.feature;
         let env_vars = ctx.expr_engine.vars().clone();
         let eval_f64 = |code: &CompiledCode| -> Result<f64, BoxedError> {
-            code.eval(feature, env_vars.clone())
+            code.eval_float(feature, env_vars.clone())
                 .map_err(|e| GeometryProcessorError::ThreeDimensionRotator(format!("{e:?}")).into())
-                .and_then(|av| {
-                    av.as_f64().ok_or_else(|| {
-                        GeometryProcessorError::ThreeDimensionRotator(
-                            "expression must evaluate to a number".to_string(),
-                        )
-                        .into()
-                    })
-                })
         };
         let angle_degree = eval_f64(&self.angle_degree)?;
         let origin_x = eval_f64(&self.origin_x)?;

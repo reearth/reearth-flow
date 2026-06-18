@@ -109,13 +109,9 @@ impl Processor for Extruder {
         let feature = &ctx.feature;
         let height = self
             .distance
-            .eval(feature, ctx.expr_engine.vars().clone())
+            .eval_float(feature, ctx.expr_engine.vars().clone())
             .map_err(|e| {
                 GeometryProcessorError::Extruder(format!("Failed to evaluate distance: {e:?}"))
-            })?
-            .as_f64()
-            .ok_or_else(|| {
-                GeometryProcessorError::Extruder("distance must evaluate to a number".to_string())
             })?;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
