@@ -70,12 +70,14 @@ graphs:
                 filename: "example.txt"
                 contentType: "text/plain"
 
-          responseBodyAttribute: "_upload_response"
-          statusCodeAttribute: "_status"
-          errorAttribute: "_error"
+          response:
+            responseBodyAttribute: "_upload_response"
+            statusCodeAttribute: "_status"
+            errorAttribute: "_error"
 
-          connectionTimeout: 30
-          transferTimeout: 120
+          timeouts:
+            connectionTimeout: 30
+            transferTimeout: 120
 
       # Example 2: Form URL-encoded data (traditional form submission)
       - id: 550e8400-e29b-41d4-a716-446655440050
@@ -101,8 +103,9 @@ graphs:
                   type: flowExpr
                   value: attributes["description"]
 
-          responseBodyAttribute: "_form_response"
-          statusCodeAttribute: "_form_status"
+          response:
+            responseBodyAttribute: "_form_response"
+            statusCodeAttribute: "_form_status"
 
       # Example 3: Download response as file instead of attribute
       - id: 550e8400-e29b-41d4-a716-446655440060
@@ -116,16 +119,15 @@ graphs:
 
           method: GET
 
-          # Save response to file instead of attribute
-          responseHandling:
-            type: file
-            path:
-              type: flowExpr
-              value: '"/tmp/downloaded_" + attributes["file_name"]'
-            storePathInAttribute: true
-            pathAttribute: "_file_path"
-
-          statusCodeAttribute: "_download_status"
+          response:
+            statusCodeAttribute: "_download_status"
+            responseHandling:
+              type: file
+              path:
+                type: flowExpr
+                value: '"/tmp/downloaded_" + attributes["file_name"]'
+              storePathInAttribute: true
+              pathAttribute: "_file_path"
 
       # Write results
       - id: 550e8400-e29b-41d4-a716-446655440070
