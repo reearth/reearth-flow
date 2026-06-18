@@ -433,32 +433,6 @@ impl Feature {
             .collect()
     }
 
-    pub fn fetch_attribute_value(
-        &self,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
-        attribute: &Option<Vec<Attribute>>,
-        attribute_ast: &Option<crate::CompiledCode>,
-    ) -> String {
-        if let Some(attribute_values) = attribute {
-            let values = attribute_values
-                .iter()
-                .flat_map(|key| self.get(key))
-                .cloned()
-                .collect::<Vec<_>>();
-            values
-                .iter()
-                .map(|value| value.to_string())
-                .collect::<Vec<_>>()
-                .join("-")
-        } else if let Some(attribute_ast) = attribute_ast {
-            attribute_ast
-                .eval_string(self, env_vars)
-                .unwrap_or_else(|_| "".to_string())
-        } else {
-            "".to_string()
-        }
-    }
-
     pub fn all_attribute_keys(&self) -> Vec<String> {
         let mut keys = Vec::new();
         for (key, value) in self.attributes.iter() {

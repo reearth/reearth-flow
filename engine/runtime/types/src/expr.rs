@@ -253,6 +253,30 @@ impl CompiledCode {
     }
 }
 
+/// Resolves a feature's join/group key: concatenates named attributes with "-",
+/// or evaluates `attribute_ast` as a string expression. Returns "" if neither is set.
+pub fn fetch_attribute_value(
+    feature: &Feature,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    attribute: &Option<Vec<crate::Attribute>>,
+    attribute_ast: &Option<CompiledCode>,
+) -> String {
+    if let Some(attribute_values) = attribute {
+        attribute_values
+            .iter()
+            .flat_map(|key| feature.get(key))
+            .cloned()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join("-")
+    } else if let Some(ast) = attribute_ast {
+        ast.eval_string(feature, env_vars)
+            .unwrap_or_else(|_| "".to_string())
+    } else {
+        "".to_string()
+    }
+}
+
 pub fn json_to_value(v: serde_json::Value) -> ExprValue {
     match v {
         serde_json::Value::Null => ExprValue::Null,
