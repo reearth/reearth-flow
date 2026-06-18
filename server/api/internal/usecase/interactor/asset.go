@@ -42,11 +42,23 @@ func (i *Asset) checkPermission(ctx context.Context, action string, workspaceID 
 }
 
 func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	res, err := i.repos.Asset.FindByIDs(ctx, assets)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.repos.Asset.FindByIDs(ctx, assets)
+	if len(res) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+	} else {
+		// single-workspace batch assumption
+		if err := i.checkPermission(ctx, rbac.ActionAny, res[0].Workspace()); err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
 }
 
 func (i *Asset) FindByWorkspace(ctx context.Context, wid accountsid.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
@@ -197,7 +209,14 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 }
 
 func (i *Asset) Update(ctx context.Context, inp interfaces.UpdateAssetParam) (result *asset.Asset, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	a, err := i.repos.Asset.FindByID(ctx, inp.AssetID)
+	if err != nil {
+		return nil, err
+	}
+	if a == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, a.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -265,7 +284,14 @@ func (i *Asset) Update(ctx context.Context, inp interfaces.UpdateAssetParam) (re
 }
 
 func (i *Asset) Delete(ctx context.Context, aid id.AssetID) (result id.AssetID, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	a, err := i.repos.Asset.FindByID(ctx, aid)
+	if err != nil {
+		return aid, err
+	}
+	if a == nil {
+		return aid, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, a.Workspace()); err != nil {
 		return aid, err
 	}
 

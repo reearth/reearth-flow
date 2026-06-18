@@ -15,10 +15,10 @@ import (
 // assert that interactors forward the target workspace. `allow` controls whether
 // the call is permitted, letting a test short-circuit before later side effects.
 type recordingChecker struct {
-	allow        bool
+	gotWorkspace []accountsid.WorkspaceID
 	gotResource  string
 	gotAction    string
-	gotWorkspace []accountsid.WorkspaceID
+	allow        bool
 }
 
 func (r *recordingChecker) CheckPermission(_ context.Context, resource, action string, workspaceID ...accountsid.WorkspaceID) (bool, error) {

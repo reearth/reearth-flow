@@ -54,11 +54,22 @@ func (i *Deployment) checkPermission(ctx context.Context, action string, workspa
 }
 
 func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deployment.Deployment, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	deployments, err := i.deploymentRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.deploymentRepo.FindByIDs(ctx, ids)
+	if len(deployments) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := i.checkPermission(ctx, rbac.ActionAny, deployments[0].Workspace()); err != nil { // single-workspace batch assumption
+			return nil, err
+		}
+	}
+
+	return deployments, nil
 }
 
 func (i *Deployment) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
@@ -70,7 +81,14 @@ func (i *Deployment) FindByWorkspace(ctx context.Context, id accountsid.Workspac
 }
 
 func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	project, err := i.projectRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if project == nil {
+		return nil, fmt.Errorf("project not found: %s", id)
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, project.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -183,7 +201,14 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 }
 
 func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentParam) (_ *deployment.Deployment, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	dep, err := i.deploymentRepo.FindByID(ctx, dp.ID)
+	if err != nil {
+		return nil, err
+	}
+	if dep == nil {
+		return nil, fmt.Errorf("deployment not found: %s", dp.ID)
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -251,7 +276,14 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 }
 
 func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	d, err := i.deploymentRepo.FindByID(ctx, deploymentID)
+	if err != nil {
+		return err
+	}
+	if d == nil {
+		return fmt.Errorf("deployment not found: %s", deploymentID)
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, d.Workspace()); err != nil {
 		return err
 	}
 
@@ -317,7 +349,14 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 }
 
 func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeploymentParam) (_ *job.Job, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	dep, err := i.deploymentRepo.FindByID(ctx, p.DeploymentID)
+	if err != nil {
+		return nil, err
+	}
+	if dep == nil {
+		return nil, fmt.Errorf("deployment not found: %s", p.DeploymentID)
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
 		return nil, err
 	}
 

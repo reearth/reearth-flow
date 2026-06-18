@@ -3,9 +3,10 @@ package interactor
 import (
 	"context"
 	"fmt"
-	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"sync"
 	"time"
+
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -19,6 +20,7 @@ import (
 
 type NodeExecution struct {
 	nodeRepo          repo.NodeExecution
+	jobRepo           repo.Job
 	redisGateway      gateway.Redis
 	permissionChecker gateway.PermissionChecker
 	subscriptions     *subscription.NodeManager
@@ -26,9 +28,10 @@ type NodeExecution struct {
 	mu                sync.Mutex
 }
 
-func NewNodeExecution(nodeRepo repo.NodeExecution, redisGateway gateway.Redis, permissionChecker gateway.PermissionChecker) interfaces.NodeExecution {
+func NewNodeExecution(nodeRepo repo.NodeExecution, jobRepo repo.Job, redisGateway gateway.Redis, permissionChecker gateway.PermissionChecker) interfaces.NodeExecution {
 	ee := &NodeExecution{
 		nodeRepo:          nodeRepo,
+		jobRepo:           jobRepo,
 		redisGateway:      redisGateway,
 		subscriptions:     subscription.NewNodeManager(),
 		watchers:          make(map[string]context.CancelFunc),
@@ -42,7 +45,15 @@ func (i *NodeExecution) checkPermission(ctx context.Context, action string, work
 }
 
 func (i *NodeExecution) FindByJobNodeID(ctx context.Context, id id.JobID, nodeID string) (*graph.NodeExecution, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := i.jobRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	var wsIDs []accountsid.WorkspaceID
+	if j != nil {
+		wsIDs = append(wsIDs, j.Workspace())
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
 		return nil, err
 	}
 
@@ -55,7 +66,15 @@ func (i *NodeExecution) FindByJobNodeID(ctx context.Context, id id.JobID, nodeID
 }
 
 func (ei *NodeExecution) GetNodeExecutions(ctx context.Context, jobID id.JobID) ([]*graph.NodeExecution, error) {
-	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := ei.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	var wsIDs []accountsid.WorkspaceID
+	if j != nil {
+		wsIDs = append(wsIDs, j.Workspace())
+	}
+	if err := ei.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
 		return nil, err
 	}
 
@@ -75,7 +94,15 @@ func (ei *NodeExecution) GetNodeExecutions(ctx context.Context, jobID id.JobID) 
 }
 
 func (ei *NodeExecution) GetNodeExecution(ctx context.Context, jobID id.JobID, nodeID string) (*graph.NodeExecution, error) {
-	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := ei.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	var wsIDs []accountsid.WorkspaceID
+	if j != nil {
+		wsIDs = append(wsIDs, j.Workspace())
+	}
+	if err := ei.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
 		return nil, err
 	}
 
@@ -95,7 +122,15 @@ func (ei *NodeExecution) GetNodeExecution(ctx context.Context, jobID id.JobID, n
 }
 
 func (ei *NodeExecution) SubscribeToNode(ctx context.Context, jobID id.JobID, nodeID string) (chan *graph.NodeExecution, error) {
-	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := ei.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	var wsIDs []accountsid.WorkspaceID
+	if j != nil {
+		wsIDs = append(wsIDs, j.Workspace())
+	}
+	if err := ei.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
 		return nil, err
 	}
 
@@ -135,7 +170,14 @@ func (ei *NodeExecution) startWatchingNodeIfNeeded(jobID id.JobID, nodeID string
 }
 
 func (ei *NodeExecution) runNodeMonitoringLoop(ctx context.Context, jobID id.JobID, nodeID string) {
-	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := ei.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return
+	}
+	if j == nil {
+		return
+	}
+	if err := ei.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return
 	}
 

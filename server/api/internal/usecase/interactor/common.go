@@ -49,7 +49,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Deployment:    NewDeployment(r, g, job, permissionChecker),
 		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
 		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
-		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
+		NodeExecution: NewNodeExecution(r.NodeExecution, r.Job, g.Redis, permissionChecker),
 		Parameter:     NewParameter(r, permissionChecker),
 		Project:       NewProject(r, g, job, permissionChecker, GQLClient.WorkspaceRepo, client),
 		ProjectAccess: NewProjectAccess(r, g, config, permissionChecker),
@@ -94,6 +94,12 @@ func setSkipPermissionCheck(isSkipPermissionCheck bool) {
 }
 
 func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string, workspaceID ...accountsid.WorkspaceID) error {
+	// At most one workspace is meaningful; reject misuse and fail closed rather
+	// than silently evaluating against workspaceID[0] and ignoring the rest.
+	if len(workspaceID) > 1 {
+		log.Printf("ERROR: checkPermission called with %d workspace ids for resource=%s action=%s; expected at most one", len(workspaceID), resource, action)
+		return interfaces.ErrOperationDenied
+	}
 	if skipPermissionCheck {
 		log.Printf("INFO: SkipPermissionCheck enabled, skipping permission check for resource=%s action=%s", resource, action)
 		return nil

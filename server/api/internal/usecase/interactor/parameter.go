@@ -2,8 +2,9 @@ package interactor
 
 import (
 	"context"
-	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"sort"
+
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -36,7 +37,14 @@ func (i *Parameter) checkPermission(ctx context.Context, action string, workspac
 }
 
 func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.DeclareParameterParam) (*parameter.Parameter, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -53,7 +61,7 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 	}()
 
 	// Check if project exists
-	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
+	proj, err = i.projectRepo.FindByID(ctx, param.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +107,14 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 }
 
 func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.UpdateParametersParam) (*parameter.ParameterList, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -115,7 +130,7 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 		}
 	}()
 
-	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
+	proj, err = i.projectRepo.FindByID(ctx, param.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -171,15 +186,42 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 }
 
 func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*parameter.ParameterList, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	params, err := i.paramRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.paramRepo.FindByIDs(ctx, ids)
+	if params == nil || len(*params) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+		return params, nil
+	}
+
+	// single-workspace batch assumption
+	proj, err := i.projectRepo.FindByID(ctx, (*params)[0].ProjectID())
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
+		return nil, err
+	}
+
+	return params, nil
 }
 
 func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*parameter.ParameterList, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -200,12 +242,30 @@ func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID) (id
 }
 
 func (i *Parameter) RemoveParameters(ctx context.Context, pids id.ParameterIDList) (id.ParameterIDList, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
+	if len(pids) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+		return id.ParameterIDList{}, nil
 	}
 
-	if len(pids) == 0 {
-		return id.ParameterIDList{}, nil
+	preParams, err := i.paramRepo.FindByIDs(ctx, pids)
+	if err != nil {
+		return nil, err
+	}
+	if preParams == nil || len(*preParams) == 0 {
+		return nil, rerror.ErrNotFound
+	}
+	// single-workspace batch assumption
+	proj, err := i.projectRepo.FindByID(ctx, (*preParams)[0].ProjectID())
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
+		return nil, err
 	}
 
 	tx, err := i.transaction.Begin(ctx)
@@ -279,7 +339,14 @@ func (i *Parameter) RemoveParameters(ctx context.Context, pids id.ParameterIDLis
 }
 
 func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.UpdateParameterOrderParam) (*parameter.ParameterList, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -333,7 +400,21 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 }
 
 func (i *Parameter) UpdateParameter(ctx context.Context, param interfaces.UpdateParameterParam) (*parameter.Parameter, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	target, err := i.paramRepo.FindByID(ctx, param.ParamID)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, rerror.ErrNotFound
+	}
+	proj, err := i.projectRepo.FindByID(ctx, target.ProjectID())
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
