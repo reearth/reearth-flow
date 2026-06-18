@@ -543,12 +543,6 @@ fn convert_generic_attributes(attributes: &nusamai_citygml::object::Map) -> Vec<
     result
 }
 
-/// Convert a nusamai CityGML scalar `Value` into an `AttributeValue`.
-///
-/// Relocated from the former `From<nusamai_citygml::Value> for AttributeValue`
-/// impl: now that `AttributeValue` lives in `reearth_flow_common`, the orphan
-/// rule forbids implementing a `From` from a `nusamai_citygml` type for it
-/// outside that crate, so the conversion is a free function here.
 fn citygml_value_to_attribute_value(value: nusamai_citygml::Value) -> AttributeValue {
     use serde_json::Number;
     match value {
@@ -604,9 +598,6 @@ fn citygml_value_to_attribute_value(value: nusamai_citygml::Value) -> AttributeV
     }
 }
 
-/// Map an `AttributeValue` to the CityGML schema `TypeRef` that best describes
-/// it. Relocated from the former `From<AttributeValue> for
-/// nusamai_citygml::schema::TypeRef` impl (orphan rule, see above).
 pub fn attribute_value_to_citygml_type_ref(
     value: AttributeValue,
 ) -> nusamai_citygml::schema::TypeRef {
@@ -625,9 +616,6 @@ pub fn attribute_value_to_citygml_type_ref(
     }
 }
 
-/// Build a CityGML schema `Attribute` from an `AttributeValue`. Relocated from
-/// the former `From<AttributeValue> for nusamai_citygml::schema::Attribute`
-/// impl (orphan rule, see above).
 pub fn attribute_value_to_citygml_attribute(
     value: AttributeValue,
 ) -> nusamai_citygml::schema::Attribute {

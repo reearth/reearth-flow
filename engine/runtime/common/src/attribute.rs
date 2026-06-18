@@ -14,8 +14,7 @@ use crate::str::base64_encode;
 use crate::uri::Uri;
 use crate::xml::{xpath_value_to_json, XmlXpathValue};
 
-/// Feature / per-geometry attribute map. Keyed by [`Attribute`] with
-/// [`AttributeValue`] payloads.
+/// Type alias for feature attributes to reduce verbosity
 pub type Attributes = IndexMap<Attribute, AttributeValue>;
 
 #[nutype(

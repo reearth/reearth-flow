@@ -1,9 +1,4 @@
-//! Rhai `Dynamic` <-> `AttributeValue` conversions.
-//!
-//! These used to be `TryFrom` impls on `AttributeValue`. Now that
-//! `AttributeValue` lives in `reearth_flow_common`, the orphan rule forbids
-//! implementing a conversion between it and the foreign `rhai::Dynamic` outside
-//! the defining crate, so the conversion is a free function here.
+//! Rhai `Dynamic` to `AttributeValue` conversion.
 
 use rhai::serde::from_dynamic;
 use std::collections::HashMap;
@@ -11,9 +6,6 @@ use std::collections::HashMap;
 use crate::error::Error;
 use crate::AttributeValue;
 
-/// Convert a Rhai `Dynamic` (typically an expression-evaluation result) into an
-/// `AttributeValue`. A `UNIT` (null) dynamic is rejected, matching the previous
-/// behaviour, so that null results do not create attributes.
 pub fn attribute_value_from_rhai(value: rhai::Dynamic) -> Result<AttributeValue, Error> {
     // Skip UNIT (null) values - they should not create attributes
     if value.is_unit() {
