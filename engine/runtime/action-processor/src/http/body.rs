@@ -6,9 +6,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
 
 use super::errors::{HttpProcessorError, Result};
-#[allow(unused_imports)]
-use super::params::FormField;
-use super::params::{BinarySource, MultipartPart, RequestBody};
+use super::expression::{CompiledBinarySource, CompiledMultipartPart, CompiledRequestBody};
 
 pub(crate) struct BuiltBody {
     pub content: BodyContent,
@@ -23,23 +21,17 @@ pub(crate) enum BodyContent {
 }
 
 pub(crate) fn build_request_body(
-    body: &RequestBody,
+    body: &CompiledRequestBody,
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<BuiltBody> {
     match body {
-        RequestBody::Text {
-            content,
+        CompiledRequestBody::Text {
+            content_ast,
             content_type,
         } => {
-            let text = content
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile body content expression: {e:?}"
-                    ))
-                })?
+            let text = content_ast
                 .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate body content: {e:?}"))
@@ -51,7 +43,7 @@ pub(crate) fn build_request_body(
             })
         }
 
-        RequestBody::Binary {
+        CompiledRequestBody::Binary {
             source,
             content_type,
         } => {
@@ -65,19 +57,12 @@ pub(crate) fn build_request_body(
             })
         }
 
-        RequestBody::FormUrlEncoded { fields } => {
+        CompiledRequestBody::FormUrlEncoded { fields } => {
             let mut form_fields = Vec::new();
 
             for field in fields {
                 let value = field
-                    .value
-                    .compile()
-                    .map_err(|e| {
-                        HttpProcessorError::CallerFactory(format!(
-                            "Failed to compile form field '{}' expression: {e:?}",
-                            field.name
-                        ))
-                    })?
+                    .value_ast
                     .eval_string(feature, env_vars.clone())
                     .map_err(|e| {
                         HttpProcessorError::Request(format!(
@@ -95,7 +80,7 @@ pub(crate) fn build_request_body(
             })
         }
 
-        RequestBody::Multipart { parts } => {
+        CompiledRequestBody::Multipart { parts } => {
             let mut form = Form::new();
 
             for part in parts {
@@ -111,20 +96,14 @@ pub(crate) fn build_request_body(
 }
 
 fn load_binary_source(
-    source: &BinarySource,
+    source: &CompiledBinarySource,
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<Vec<u8>> {
     match source {
-        BinarySource::Base64 { data } => {
-            let base64_str = data
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile base64 data expression: {e:?}"
-                    ))
-                })?
+        CompiledBinarySource::Base64 { data_ast } => {
+            let base64_str = data_ast
                 .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate base64 data: {e:?}"))
@@ -137,14 +116,8 @@ fn load_binary_source(
                 })
         }
 
-        BinarySource::File { path } => {
-            let file_path_str = path
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile file path expression: {e:?}"
-                    ))
-                })?
+        CompiledBinarySource::File { path_ast } => {
+            let file_path_str = path_ast
                 .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate file path: {e:?}"))
@@ -175,20 +148,14 @@ fn load_binary_source(
 
 fn add_multipart_part(
     form: Form,
-    part: &MultipartPart,
+    part: &CompiledMultipartPart,
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<Form> {
     match part {
-        MultipartPart::Text { name, value } => {
-            let text_value = value
-                .compile()
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile multipart text field '{name}' expression: {e:?}"
-                    ))
-                })?
+        CompiledMultipartPart::Text { name, value_ast } => {
+            let text_value = value_ast
                 .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!(
@@ -199,7 +166,7 @@ fn add_multipart_part(
             Ok(form.text(name.clone(), text_value))
         }
 
-        MultipartPart::File {
+        CompiledMultipartPart::File {
             name,
             source,
             filename,
@@ -226,6 +193,8 @@ fn add_multipart_part(
 
 #[cfg(test)]
 mod tests {
+    use super::super::expression::ExpressionCompiler;
+    use super::super::params::{BinarySource, FormField, MultipartPart, RequestBody};
     use super::*;
     use reearth_flow_types::{Attributes, Code, CodeType};
 
@@ -245,13 +214,15 @@ mod tests {
     fn test_text_body() {
         let env_vars = make_env(&[("message", "Hello World")]);
 
-        let body = RequestBody::Text {
-            content: Code {
-                ty: CodeType::FlowExpr,
-                value: r#"env["message"]"#.to_string(),
-            },
-            content_type: Some("text/plain".to_string()),
-        };
+        let body = ExpressionCompiler::new()
+            .compile_body(&RequestBody::Text {
+                content: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["message"]"#.to_string(),
+                },
+                content_type: Some("text/plain".to_string()),
+            })
+            .unwrap();
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature = empty_feature();
@@ -270,15 +241,17 @@ mod tests {
     fn test_base64_binary_body() {
         let env_vars = make_env(&[("data", "SGVsbG8=")]);
 
-        let body = RequestBody::Binary {
-            source: BinarySource::Base64 {
-                data: Code {
-                    ty: CodeType::FlowExpr,
-                    value: r#"env["data"]"#.to_string(),
+        let body = ExpressionCompiler::new()
+            .compile_body(&RequestBody::Binary {
+                source: BinarySource::Base64 {
+                    data: Code {
+                        ty: CodeType::FlowExpr,
+                        value: r#"env["data"]"#.to_string(),
+                    },
                 },
-            },
-            content_type: Some("application/octet-stream".to_string()),
-        };
+                content_type: Some("application/octet-stream".to_string()),
+            })
+            .unwrap();
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature = empty_feature();
@@ -296,24 +269,26 @@ mod tests {
     fn test_form_urlencoded_body() {
         let env_vars = make_env(&[("user", "john"), ("pass", "secret")]);
 
-        let body = RequestBody::FormUrlEncoded {
-            fields: vec![
-                FormField {
-                    name: "username".to_string(),
-                    value: Code {
-                        ty: CodeType::FlowExpr,
-                        value: r#"env["user"]"#.to_string(),
+        let body = ExpressionCompiler::new()
+            .compile_body(&RequestBody::FormUrlEncoded {
+                fields: vec![
+                    FormField {
+                        name: "username".to_string(),
+                        value: Code {
+                            ty: CodeType::FlowExpr,
+                            value: r#"env["user"]"#.to_string(),
+                        },
                     },
-                },
-                FormField {
-                    name: "password".to_string(),
-                    value: Code {
-                        ty: CodeType::FlowExpr,
-                        value: r#"env["pass"]"#.to_string(),
+                    FormField {
+                        name: "password".to_string(),
+                        value: Code {
+                            ty: CodeType::FlowExpr,
+                            value: r#"env["pass"]"#.to_string(),
+                        },
                     },
-                },
-            ],
-        };
+                ],
+            })
+            .unwrap();
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature = empty_feature();
@@ -341,15 +316,17 @@ mod tests {
     fn test_multipart_text() {
         let env_vars = make_env(&[("name", "John Doe")]);
 
-        let body = RequestBody::Multipart {
-            parts: vec![MultipartPart::Text {
-                name: "username".to_string(),
-                value: Code {
-                    ty: CodeType::FlowExpr,
-                    value: r#"env["name"]"#.to_string(),
-                },
-            }],
-        };
+        let body = ExpressionCompiler::new()
+            .compile_body(&RequestBody::Multipart {
+                parts: vec![MultipartPart::Text {
+                    name: "username".to_string(),
+                    value: Code {
+                        ty: CodeType::FlowExpr,
+                        value: r#"env["name"]"#.to_string(),
+                    },
+                }],
+            })
+            .unwrap();
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature = empty_feature();

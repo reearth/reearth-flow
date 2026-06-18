@@ -215,13 +215,15 @@ impl CompiledCode {
             {
                 ExprValue::Float(f) => Ok(f),
                 ExprValue::Int(n) => Ok(n as f64),
-                other => Err(TypesError::Conversion(
-                    format!("expected number, got {}", other.type_name()).into(),
-                )),
+                other => Err(TypesError::Conversion(format!(
+                    "expected number, got {}",
+                    other.type_name()
+                ))),
             },
-            CompiledCode::Literal(s) => s.trim().parse::<f64>().map_err(|_| {
-                TypesError::Conversion(format!("literal {s:?} is not a number").into())
-            }),
+            CompiledCode::Literal(s) => s
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not a number"))),
         }
     }
 
@@ -235,13 +237,15 @@ impl CompiledCode {
                 .map_err(|e| TypesError::InternalRuntime(e.to_string()))?
             {
                 ExprValue::Int(n) => Ok(n),
-                other => Err(TypesError::Conversion(
-                    format!("expected integer, got {}", other.type_name()).into(),
-                )),
+                other => Err(TypesError::Conversion(format!(
+                    "expected integer, got {}",
+                    other.type_name()
+                ))),
             },
-            CompiledCode::Literal(s) => s.trim().parse::<i64>().map_err(|_| {
-                TypesError::Conversion(format!("literal {s:?} is not an integer").into())
-            }),
+            CompiledCode::Literal(s) => s
+                .trim()
+                .parse::<i64>()
+                .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not an integer"))),
         }
     }
 
@@ -306,7 +310,6 @@ pub fn fetch_attribute_value(
         attribute_values
             .iter()
             .flat_map(|key| feature.get(key))
-            .cloned()
             .map(|v| v.to_string())
             .collect::<Vec<_>>()
             .join("-")

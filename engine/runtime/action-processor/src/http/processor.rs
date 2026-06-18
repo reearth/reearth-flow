@@ -11,7 +11,10 @@ use reearth_flow_runtime::{
 use reearth_flow_types::{AttributeValue, CompiledCode};
 
 use super::client::{ClientConfig, HttpClient, HttpResponse, ReqwestHttpClient};
-use super::expression::{CompiledHeader, CompiledQueryParam};
+use super::expression::{
+    CompiledAuthentication, CompiledHeader, CompiledQueryParam, CompiledRequestBody,
+    CompiledResponseHandling,
+};
 use super::metrics::{RequestMetrics, RequestTimer};
 use super::params::HttpCallerParam;
 use super::rate_limit::RateLimiter;
@@ -26,6 +29,9 @@ pub struct HttpCallerProcessor {
     url_ast: CompiledCode,
     compiled_headers: Vec<CompiledHeader>,
     compiled_query_params: Vec<CompiledQueryParam>,
+    compiled_auth: Option<CompiledAuthentication>,
+    compiled_body: Option<CompiledRequestBody>,
+    compiled_response_handling: Option<CompiledResponseHandling>,
     rate_limiter: Option<Arc<RateLimiter>>,
 }
 
@@ -38,6 +44,9 @@ impl Clone for HttpCallerProcessor {
             url_ast: self.url_ast.clone(),
             compiled_headers: self.compiled_headers.clone(),
             compiled_query_params: self.compiled_query_params.clone(),
+            compiled_auth: self.compiled_auth.clone(),
+            compiled_body: self.compiled_body.clone(),
+            compiled_response_handling: self.compiled_response_handling.clone(),
             rate_limiter: self.rate_limiter.clone(),
         }
     }
@@ -52,12 +61,16 @@ impl std::fmt::Debug for HttpCallerProcessor {
 }
 
 impl HttpCallerProcessor {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         client_config: ClientConfig,
         params: HttpCallerParam,
         url_ast: CompiledCode,
         compiled_headers: Vec<CompiledHeader>,
         compiled_query_params: Vec<CompiledQueryParam>,
+        compiled_auth: Option<CompiledAuthentication>,
+        compiled_body: Option<CompiledRequestBody>,
+        compiled_response_handling: Option<CompiledResponseHandling>,
     ) -> Self {
         let rate_limiter = params
             .rate_limit
@@ -71,6 +84,9 @@ impl HttpCallerProcessor {
             url_ast,
             compiled_headers,
             compiled_query_params,
+            compiled_auth,
+            compiled_body,
+            compiled_response_handling,
             rate_limiter,
         }
     }
@@ -99,6 +115,9 @@ impl HttpCallerProcessor {
             url_ast,
             compiled_headers: Vec::new(),
             compiled_query_params: Vec::new(),
+            compiled_auth: None,
+            compiled_body: None,
+            compiled_response_handling: None,
             rate_limiter: None,
         }
     }
@@ -132,7 +151,7 @@ impl HttpCallerProcessor {
         let method = self.params.method.clone().into();
         let builder = RequestBuilder::new(method, url);
 
-        let built_body = if let Some(body_config) = &self.params.request_body {
+        let built_body = if let Some(body_config) = &self.compiled_body {
             match super::body::build_request_body(
                 body_config,
                 feature,
@@ -173,7 +192,7 @@ impl HttpCallerProcessor {
 
         let (method, url, mut headers, mut query_params, body) = builder.build();
 
-        if let Some(auth) = &self.params.authentication {
+        if let Some(auth) = &self.compiled_auth {
             if let Err(e) = super::auth::apply_authentication(
                 auth,
                 feature,
@@ -229,10 +248,9 @@ impl HttpCallerProcessor {
         let env_vars = ctx.expr_engine.vars().clone();
 
         let response_config = self.params.response.as_ref();
-        let handling = response_config.and_then(|r| r.response_handling.clone());
         let encoding = response_config.and_then(|r| r.response_encoding.clone());
         let config = super::response::ResponseProcessorConfig {
-            handling: &handling,
+            handling: &self.compiled_response_handling,
             encoding: &encoding,
             auto_detect: response_config
                 .and_then(|r| r.auto_detect_encoding)
