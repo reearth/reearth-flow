@@ -1069,7 +1069,7 @@ fn compare_values(
         Err(_) => match (&left, &right) {
             (Value::String(a), Value::String(b)) => a.as_str().cmp(b.as_str()),
             (Value::Array(a), Value::Array(b)) => {
-                compare_arrays(a.borrow().clone(), b.borrow().clone())?
+                compare_arrays(&a.borrow(), &b.borrow())?
             }
             _ => {
                 return Err(eval_error(format!(
@@ -1083,7 +1083,7 @@ fn compare_values(
     Ok(Value::Bool(pred(ord)))
 }
 
-fn compare_arrays(a: Vec<Value>, b: Vec<Value>) -> Result<std::cmp::Ordering> {
+fn compare_arrays(a: &[Value], b: &[Value]) -> Result<std::cmp::Ordering> {
     for (x, y) in a.iter().zip(b.iter()) {
         let ord = match compare_values(x.clone(), y.clone(), |o| o == std::cmp::Ordering::Less)? {
             Value::Bool(true) => std::cmp::Ordering::Less,
@@ -1435,6 +1435,14 @@ mod tests {
         assert_eval("1 != 2", &[], Value::from(true));
         assert_eval("2 > 1", &[], Value::from(true));
         assert_eval("1 >= 1", &[], Value::from(true));
+    }
+
+    #[test]
+    // Arrays compare lexicographically: first differing element decides; shorter prefix is less.
+    fn test_array_comparison() {
+        assert_eval("[1, 2] < [1, 3]", &[], Value::from(true));
+        assert_eval("[1, 2] < [1, 2, 3]", &[], Value::from(true));
+        assert_eval("[] < [1]", &[], Value::from(true));
     }
 
     #[test]
