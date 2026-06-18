@@ -39,3 +39,20 @@ Project, Asset, AssetUpload; AuthRequest via reearthx `authserver.Postgres`).
 The interim `mustComplete` boot guard has been removed — `DB_DRIVER=postgres`
 boots a complete backend. Mongo is untouched and remains the default; the
 per-environment rollout is a deployment concern (design A1).
+
+## Data migration (Mongo → Postgres)
+
+`cmd/dbmigrate` replicates the flow-owned data. It streams each Mongo collection
+through the same `mongodoc` decoder the Mongo repos use and upserts each record
+via the same Postgres adapter `Save` the API uses, so it inherits both sides'
+field mappings and is idempotent (re-runnable). Account repos stay on Mongo;
+Config (migration bookkeeping) and AuthRequest (transient) are skipped.
+
+```sh
+# target schema must be migrated first (atlas migrate apply)
+REEARTH_FLOW_DB="mongodb+srv://…"  REEARTH_FLOW_DB_PG="postgres://…" \
+  go run ./cmd/dbmigrate -db reearth-flow
+
+# read every replicated row back through the Postgres adapters (target only)
+REEARTH_FLOW_DB_PG="postgres://…" go run ./cmd/dbmigrate -verify
+```
