@@ -15,6 +15,7 @@ type Props = {
   geoJsonData: any | null;
   selectedFeatureId?: string | null;
   showSelectedFeatureOnly: boolean;
+  clampToGround: boolean;
 };
 
 type EntityRecord = {
@@ -70,36 +71,11 @@ function sanitizeGeoJson(geoJson: any) {
 const HIGHLIGHT_COLOR = Color.CYAN.withAlpha(0.7);
 const HIGHLIGHT_FILL = Color.CYAN.withAlpha(0.4);
 
-// Cesium's GeoJsonDataSource `clampToGround` can be problematic for some geometries (e.g. Point/MultiPoint) and can cause z-height issues.
-// Apply per-entity adjustments (clamping where supported + point/billboard rendering tweaks) to improve results.
-
-function applyGroundRenderingAdjustments(entity: Entity): void {
-  if (entity.polyline) {
-    entity.polyline.clampToGround = new ConstantProperty(true);
-  }
-
-  if (entity.polygon) {
-    entity.polygon.perPositionHeight = new ConstantProperty(false);
-    entity.polygon.height = undefined;
-  }
-
-  if (entity.billboard) {
-    entity.billboard.disableDepthTestDistance = new ConstantProperty(
-      Number.POSITIVE_INFINITY,
-    );
-  }
-
-  if (entity.point) {
-    entity.point.disableDepthTestDistance = new ConstantProperty(
-      Number.POSITIVE_INFINITY,
-    );
-  }
-}
-
 const GeoJsonData: React.FC<Props> = ({
   geoJsonData,
   selectedFeatureId,
   showSelectedFeatureOnly,
+  clampToGround,
 }) => {
   const { viewer } = useCesium();
   const latestViewerRef = useRef(viewer);
@@ -240,8 +216,6 @@ const GeoJsonData: React.FC<Props> = ({
         const props = entity.properties?.getValue?.();
         const id = props?._originalId ?? entity.id;
 
-        applyGroundRenderingAdjustments(entity);
-
         const record: EntityRecord = {
           entity,
           origPolygonMaterial: entity.polygon?.material,
@@ -319,6 +293,7 @@ const GeoJsonData: React.FC<Props> = ({
       key={dataSourceKey}
       data={sanitizedData}
       onLoad={handleLoad}
+      clampToGround={clampToGround}
     />
   );
 };
