@@ -954,7 +954,7 @@ mod tests {
         let mut with = HashMap::new();
         with.insert(
             "script".to_string(),
-            json!("properties['result'] = 'success'"),
+            json!({"type": "string", "value": "properties['result'] = 'success'"}),
         );
 
         let result = factory.build(
@@ -1008,9 +1008,12 @@ mod tests {
         let mut with = HashMap::new();
         with.insert(
             "script".to_string(),
-            json!("properties['result'] = 'success'"),
+            json!({"type": "string", "value": "properties['result'] = 'success'"}),
         );
-        with.insert("pythonFile".to_string(), json!("file:///path/to/script.py"));
+        with.insert(
+            "pythonFile".to_string(),
+            json!({"type": "string", "value": "file:///path/to/script.py"}),
+        );
 
         let result = factory.build(
             ctx,
