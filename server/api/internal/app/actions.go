@@ -93,6 +93,7 @@ func (e *loadError) Unwrap() error { return e.err }
 
 var (
 	actionsDataMap = make(map[string]ActionsData)
+	actionsBaseURL string
 	mutex          sync.RWMutex
 	httpClient     = &http.Client{Timeout: 10 * time.Second}
 	supportedLangs = map[string]bool{
@@ -119,12 +120,12 @@ func loadActionsData(lang string) (ActionsData, error) {
 	}
 	mutex.RUnlock()
 
-	// Fetch from GitHub without holding any lock so other requests are not blocked.
-	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
 	filename := "actions.json"
 	if lang != "" {
 		filename = fmt.Sprintf("actions_%s.json", lang)
 	}
+
+	baseURL := strings.TrimRight(actionsBaseURL, "/") + "/actions/"
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
