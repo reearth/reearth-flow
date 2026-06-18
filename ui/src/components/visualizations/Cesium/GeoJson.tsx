@@ -70,9 +70,10 @@ function sanitizeGeoJson(geoJson: any) {
 const HIGHLIGHT_COLOR = Color.CYAN.withAlpha(0.7);
 const HIGHLIGHT_FILL = Color.CYAN.withAlpha(0.4);
 
-// Cesium's clampToGround doesn't work with all geometries (Point/MultiPoint) and can cause z height issues
+// Cesium's GeoJsonDataSource `clampToGround` can be problematic for some geometries (e.g. Point/MultiPoint) and can cause z-height issues.
+// Apply per-entity adjustments (clamping where supported + point/billboard rendering tweaks) to improve results.
 
-function clampEntityToGround(entity: Entity): void {
+function applyGroundRenderingAdjustments(entity: Entity): void {
   if (entity.polyline) {
     entity.polyline.clampToGround = new ConstantProperty(true);
   }
@@ -239,7 +240,7 @@ const GeoJsonData: React.FC<Props> = ({
         const props = entity.properties?.getValue?.();
         const id = props?._originalId ?? entity.id;
 
-        clampEntityToGround(entity);
+        applyGroundRenderingAdjustments(entity);
 
         const record: EntityRecord = {
           entity,
