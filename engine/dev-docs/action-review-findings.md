@@ -626,7 +626,14 @@ ImageRasterizer
   params:  imageWidth — missing title (§3.3); description "The width of image" incomplete —
              suggest "Width of the output image in pixels."
            OnOverlap — `takeLast`, `takeFirst`, `max`, `min` variants missing per-variant
-             descriptions; only `sum` has one (§3.4)
+             descriptions; only `sum` has one (§3.4). UI renders all variants as "option 1/2/3/4"
+             due to two compounding issues: (1) no `/// # Title` on any variant, so `schemars`
+             groups `takeLast`/`takeFirst` into a single two-value enum entry — fix by adding
+             `/// # Title\n/// description` to every variant; (2) more fundamental — the UI's
+             `consolidateOneOfToEnum` in `patchSchemaTypes.ts` bails out entirely when any `oneOf`
+             variant is an object type (`max`, `min`), handing the schema to RJSF which labels
+             variants "option N" regardless of titles. Fix (2) requires a UI-side change to handle
+             object-type variants in `oneOf` using their `title` fields as selector labels.
   ports:   inputPorts `textureCoordinates` — camelCase violates §4.1; rename to
              `texture-coordinates`; `default` — global note
            outputPorts `textureBounds` — camelCase violates §4.1; rename to `texture-bounds`;
@@ -669,8 +676,12 @@ GeometryValidator
              geometry for issues such as duplicate points, corrupt geometry, or
              self-intersection."
   params:  ValidationType oneOf — `duplicatePoints` and `duplicateConsecutivePoints` variants
-             missing per-variant descriptions; `corruptGeometry` and `selfIntersection` ✓
-             (§3.4)
+             missing per-variant descriptions; `corruptGeometry` and `selfIntersection` have
+             descriptions but no `title` (§3.4). Same UI rendering bug as ImageRasterizer
+             OnOverlap: `ValidationType` mixes one string variant (`duplicatePoints`) with three
+             object variants, causing `consolidateOneOfToEnum` in `patchSchemaTypes.ts` to bail
+             and RJSF to label all variants "option N". Requires both the Rust-side `/// # Title`
+             fix on all variants and the UI-side fix to `patchSchemaTypes.ts`.
   ports:   inputPorts `default` — global note; outputPorts `success` ✓, `failed` ✓,
              `rejected` ✓
   tags:    ["validate"] — not in vocabulary; `validation` is; correct to ["validation"]
