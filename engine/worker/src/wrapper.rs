@@ -27,7 +27,8 @@ pub struct RunRequest {
 /// Probe is read-only and fast: no work-root, no cancel-flag, no metadata.
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProbeRequest {
-    /// Validated for path safety but not passed to the worker CLI.
+    /// Validated for path safety and passed to the worker CLI as `--job-id`
+    /// (published in the completion event so the server can finalize the job).
     pub job_id: String,
     pub workflow_url: String,
     #[serde(default)]

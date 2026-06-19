@@ -90,7 +90,7 @@ fn pubsub_backend_arg() -> Arg {
         .long("pubsub-backend")
         .help("Pub/Sub backend for the job-complete event (google|noop)")
         .env("FLOW_WORKER_PUBSUB_BACKEND")
-        .default_value("noop")
+        .default_value("google")
         .required(false)
         .display_order(6)
 }
@@ -141,7 +141,7 @@ impl ProbeSchemaCommand {
             Uuid::from_str(&job_id).map_err(|e| Error::init(format!("Invalid job-id: {e}")))?;
         let pubsub_backend = matches
             .remove_one::<String>("pubsub_backend")
-            .unwrap_or_else(|| "noop".to_string());
+            .unwrap_or_else(|| "google".to_string());
         Ok(Self {
             workflow,
             vars,
@@ -186,8 +186,7 @@ impl ProbeSchemaCommand {
             .merge_with(self.vars.clone())
             .map_err(Error::init)?;
 
-        // Captured before `workflow` is moved into `from_graphs`; needed for the
-        // completion event so the server can correlate the job.
+        // Captured before `workflow` is moved into `from_graphs`; used in the event.
         let workflow_id = workflow.id;
 
         // Capture node id -> display name before `workflow` is moved into `from_graphs`.
@@ -253,21 +252,19 @@ impl ProbeSchemaCommand {
             .map_err(Error::FailedToCreateTokioRuntime)?;
 
         let outcome = self.run_probe(&storage_resolver, &runtime);
-
-        // Publish a JobCompleteEvent so the server's monitoring loop finalizes
-        // the job, exactly as a debug run does. The probe path is otherwise
-        // silent, which would leave the job PENDING forever. Publishing must not
-        // mask the probe's own error: log a publish failure and propagate the
-        // original outcome.
         let (workflow_id, result) = match &outcome {
             Ok(id) => (*id, JobResult::Success),
             Err(_) => (Uuid::nil(), JobResult::Failed),
         };
-        if let Err(e) = runtime.block_on(self.publish_complete(workflow_id, result)) {
-            tracing::error!("probe-schema: failed to publish job-complete event: {e:?}");
-        }
+        let published = runtime.block_on(self.publish_complete(workflow_id, result));
 
-        outcome.map(|_| ())
+        // This event is the only thing that finalizes the job, so on a
+        // successful probe a publish failure is fatal: swallowing it would
+        // report COMPLETED to the server while it never sees the event, leaving
+        // the job PENDING. A probe failure is the primary error; publishing its
+        // failed event is best effort.
+        outcome?;
+        published
     }
 
     /// Run the probe and write the report. Returns the workflow id on success.
