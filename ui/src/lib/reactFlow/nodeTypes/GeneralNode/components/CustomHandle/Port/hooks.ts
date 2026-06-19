@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { config } from "@flow/config";
+import useDoubleClick from "@flow/hooks/useDoubleClick";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
   AvailableIntermediateData,
@@ -125,7 +126,7 @@ export default ({
     updateValue,
   ]);
 
-  const handleClick = useCallback(async () => {
+  const selectIntermediateData = useCallback(async () => {
     if (!dataUrl) return;
 
     const newDebugRunState: DebugRunState = {
@@ -135,30 +136,12 @@ export default ({
           if (job.projectId !== currentProject?.id) return job;
 
           const currentData = job.selectedIntermediateData ?? [];
-          const isCurrentlySelected = currentData.find(
+          const isCurrentlySelected = currentData.some(
             (sid) => sid.nodeId === nodeId && sid.portName === portName,
           );
-
-          let newSelectedIntermediateData:
-            | SelectedIntermediateData[]
-            | undefined;
-          let newFocusedURL: string | undefined;
-
+          let newSelectedIntermediateData: SelectedIntermediateData[];
           if (isCurrentlySelected) {
-            const filtered = currentData.filter(
-              (sid) => !(sid.nodeId === nodeId && sid.portName === portName),
-            );
-            newSelectedIntermediateData = filtered;
-
-            const removedIndex = currentData.findIndex(
-              (sid) => sid.nodeId === nodeId && sid.portName === portName,
-            );
-            if (removedIndex >= 0 && filtered.length > 0) {
-              newFocusedURL =
-                removedIndex < filtered.length
-                  ? filtered[removedIndex].url
-                  : filtered[removedIndex - 1]?.url;
-            }
+            newSelectedIntermediateData = currentData;
           } else {
             const nodeName =
               nodeData.customizations?.customName ||
@@ -177,7 +160,7 @@ export default ({
 
           return {
             ...job,
-            focusedIntermediateData: newFocusedURL ?? dataUrl,
+            focusedIntermediateData: dataUrl,
             selectedIntermediateData: newSelectedIntermediateData,
           };
         }) ?? [],
@@ -193,5 +176,57 @@ export default ({
     updateValue,
   ]);
 
-  return { hasIntermediateData, isSelected, jobStatus, handleClick };
+  const removeIntermediateData = useCallback(async () => {
+    if (!dataUrl) return;
+
+    const newDebugRunState: DebugRunState = {
+      ...debugRunState,
+      jobs:
+        debugRunState?.jobs?.map((job) => {
+          if (job.projectId !== currentProject?.id) return job;
+
+          const currentData = job.selectedIntermediateData ?? [];
+          const isCurrentlySelected = currentData.some(
+            (sid) => sid.nodeId === nodeId && sid.portName === portName,
+          );
+
+          if (!isCurrentlySelected) return job;
+
+          const filtered = currentData.filter(
+            (sid) => !(sid.nodeId === nodeId && sid.portName === portName),
+          );
+
+          const removedIndex = currentData.findIndex(
+            (sid) => sid.nodeId === nodeId && sid.portName === portName,
+          );
+          let newFocusedURL: string | undefined;
+          if (filtered.length > 0) {
+            newFocusedURL =
+              removedIndex < filtered.length
+                ? filtered[removedIndex].url
+                : filtered[removedIndex - 1]?.url;
+          }
+
+          return {
+            ...job,
+            focusedIntermediateData: newFocusedURL,
+            selectedIntermediateData: filtered,
+          };
+        }) ?? [],
+    };
+    await updateValue(newDebugRunState);
+  }, [dataUrl, debugRunState, currentProject, nodeId, portName, updateValue]);
+
+  const [handleSingleClick, handleDoubleClick] = useDoubleClick(
+    selectIntermediateData,
+    removeIntermediateData,
+  );
+
+  return {
+    hasIntermediateData,
+    handleDoubleClick,
+    isSelected,
+    jobStatus,
+    handleSingleClick,
+  };
 };
