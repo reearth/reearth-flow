@@ -396,7 +396,8 @@ impl RayIntersector {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<String, BoxedError> {
         self.pair_id_ast
-            .eval_string(feature, env_vars)
+            .eval(feature, env_vars)
+            .map(|av| av.to_string())
             .map_err(|e| {
                 GeometryProcessorError::RayIntersector(format!("Failed to evaluate pairId: {e}"))
                     .into()
@@ -455,12 +456,12 @@ impl RayIntersector {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Option<String> {
         self.geom_id_ast.as_ref().and_then(|ast| {
-            let s = ast.eval_string(feature, env_vars).ok()?;
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
+            let av = ast.eval(feature, env_vars).ok()?;
+            if matches!(av, AttributeValue::Null) {
+                return None;
             }
+            let s = av.to_string();
+            if s.is_empty() { None } else { Some(s) }
         })
     }
 
