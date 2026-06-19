@@ -31,11 +31,17 @@ pub struct TriangularMesh2D {
     appearance: Option<Appearance>,
 }
 
-/// A triangle mesh in 3D space.
+/// The coordinate-free data of a 3D triangle mesh: the vertex pool, triangle
+/// index list, UV and appearance, with no frame of its own.
+///
+/// Shared by two hosts that each supply the frame: the standalone
+/// [`TriangularMesh3D`] leaf pairs this with its own [`Coordinate`], while a
+/// [`Solid`](crate::solid::Solid) shell stores it directly and takes the one
+/// frame from the enclosing `Solid` — so a solid and its boundaries cannot
+/// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
+/// [`RasterData`](crate::appearance::RasterData) split.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct TriangularMesh3D {
-    /// Coordinate frame these vertices are expressed in.
-    coordinate: Coordinate,
+pub struct TriangularMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
     indices: IndexBuffer<3>,
@@ -43,6 +49,17 @@ pub struct TriangularMesh3D {
     uv_sets: Vec<UvSet>,
     /// Optional materials / themes / per-face binding; `None` = bare.
     appearance: Option<Appearance>,
+}
+
+/// A triangle mesh in 3D space: coordinate-free mesh data plus the frame it is
+/// expressed in.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct TriangularMesh3D {
+    /// Coordinate frame the mesh data is expressed in.
+    coordinate: Coordinate,
+    /// Coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid)
+    /// shell stores directly.
+    data: TriangularMesh3DData,
 }
 
 impl TriangularMesh2D {
@@ -63,12 +80,12 @@ impl TriangularMesh3D {
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
-        &self.appearance
+        &self.data.appearance
     }
 
     /// Mutably borrow the appearance, to set, clear, or edit it in place.
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
-        &mut self.appearance
+        &mut self.data.appearance
     }
 }

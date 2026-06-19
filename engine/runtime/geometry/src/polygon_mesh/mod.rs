@@ -42,11 +42,17 @@ pub struct PolygonMesh2D {
     appearance: Option<Appearance>,
 }
 
-/// A connected, vertex-sharing polygon mesh in 3D space.
+/// The coordinate-free data of a 3D polygon mesh: the vertex pool, CSR face
+/// topology, UV and appearance, with no frame of its own.
+///
+/// Shared by two hosts that each supply the frame: the standalone
+/// [`PolygonMesh3D`] leaf pairs this with its own [`Coordinate`], while a
+/// [`Solid`](crate::solid::Solid) shell stores it directly and takes the one
+/// frame from the enclosing `Solid` — so a solid and its boundaries cannot
+/// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
+/// [`RasterData`](crate::appearance::RasterData) split.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct PolygonMesh3D {
-    /// Coordinate frame these vertices are expressed in.
-    coordinate: Coordinate,
+pub struct PolygonMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// All rings of all faces concatenated; each face is its exterior ring then
     /// its hole rings. Width from `vertices.len() - 1`.
@@ -62,6 +68,17 @@ pub struct PolygonMesh3D {
     uv_sets: Vec<UvSet>,
     /// Optional materials / themes / per-face binding; `None` = bare.
     appearance: Option<Appearance>,
+}
+
+/// A connected, vertex-sharing polygon mesh in 3D space: coordinate-free mesh
+/// data plus the frame it is expressed in.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PolygonMesh3D {
+    /// Coordinate frame the mesh data is expressed in.
+    coordinate: Coordinate,
+    /// Coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid)
+    /// shell stores directly.
+    data: PolygonMesh3DData,
 }
 
 impl PolygonMesh2D {
@@ -82,12 +99,12 @@ impl PolygonMesh3D {
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
-        &self.appearance
+        &self.data.appearance
     }
 
     /// Mutably borrow the appearance, to set, clear, or edit it in place.
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
-        &mut self.appearance
+        &mut self.data.appearance
     }
 }

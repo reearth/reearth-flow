@@ -11,14 +11,16 @@
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::Coordinate;
-use crate::polygon_mesh::PolygonMesh3D;
-use crate::triangular_mesh::TriangularMesh3D;
+use crate::polygon_mesh::PolygonMesh3DData;
+use crate::triangular_mesh::TriangularMesh3DData;
 
-/// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle mesh.
+/// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle
+/// mesh, stored as coordinate-free mesh data so the boundary cannot carry a
+/// frame of its own — its frame is the `Solid`'s.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Shell {
-    PolygonMesh(PolygonMesh3D),
-    TriangularMesh(TriangularMesh3D),
+    PolygonMesh(PolygonMesh3DData),
+    TriangularMesh(TriangularMesh3DData),
 }
 
 /// A volumetric solid bounded by an exterior shell and any number of interior
