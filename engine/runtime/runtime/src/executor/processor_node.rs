@@ -11,7 +11,6 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
@@ -72,7 +71,7 @@ pub struct ProcessorNode<F> {
     process_duration_us: Arc<AtomicU64>,
     /// Sum of squared process() durations in microseconds (for std dev).
     process_duration_sq_us: Arc<AtomicU64>,
-    expr_engine: Arc<Engine>,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
@@ -125,7 +124,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             "node.name" = node_name.as_str(),
         );
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let env_vars = Arc::clone(&ctx.env_vars);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
         let sandbox_root = ctx.sandbox_root.clone();
@@ -154,7 +153,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             features_processed: Arc::new(AtomicU64::new(0)),
             process_duration_us: Arc::new(AtomicU64::new(0)),
             process_duration_sq_us: Arc::new(AtomicU64::new(0)),
-            expr_engine,
+            env_vars,
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
@@ -211,7 +210,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         processor
             .write()
             .initialize(NodeContext::new(
-                self.expr_engine.clone(),
+                self.env_vars.clone(),
                 self.storage_resolver.clone(),
                 self.kv_store.clone(),
                 self.event_hub.clone(),
@@ -303,7 +302,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     });
 
                     let terminate_result = self.on_terminate(NodeContext::new(
-                        self.expr_engine.clone(),
+                        self.env_vars.clone(),
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),

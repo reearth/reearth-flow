@@ -166,7 +166,7 @@ impl Processor for GmlNameCodeSpaceValidator {
 
         // Get city GML path from expression or attribute
         let city_gml_path = if let Some(expr) = &self.city_gml_path_expr {
-            expr.eval_string(feature, ctx.expr_engine.vars().clone())
+            expr.eval_string(feature, ctx.env_vars.clone())
                 .map_err(|e| {
                     PlateauProcessorError::GmlNameCodeSpaceValidator(format!(
                         "Failed to evaluate cityGmlPath expression: {e:?}"

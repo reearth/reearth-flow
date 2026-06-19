@@ -422,7 +422,7 @@ impl Processor for HorizontalReprojector {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
-        let env_vars = ctx.expr_engine.vars().clone();
+        let env_vars = ctx.env_vars.clone();
 
         // Evaluate source EPSG expression if provided
         let source_epsg_from_expr: Option<EpsgCode> = if let Some(ref code) = self.source_epsg_ast {

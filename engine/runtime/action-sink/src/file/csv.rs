@@ -132,7 +132,7 @@ impl Sink for CsvWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let path = self
             .output
-            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .eval_string(&ctx.feature, ctx.env_vars.clone())
             .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
         let node_ctx: NodeContext = ctx.into();

@@ -102,7 +102,7 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             .into());
         }
 
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         let script = params
             .script
             .map(|c| {

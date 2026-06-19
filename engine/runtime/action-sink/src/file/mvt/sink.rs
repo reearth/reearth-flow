@@ -210,7 +210,7 @@ impl Sink for MVTWriter {
         match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_)
             | geometry_types::GeometryValue::FlowGeometry2D(_) => {
-                let env_vars = ctx.expr_engine.vars();
+                let env_vars = ctx.env_vars.clone();
                 let eval = |c: &CompiledCode| {
                     c.eval_string(feature, Arc::clone(&env_vars))
                         .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))

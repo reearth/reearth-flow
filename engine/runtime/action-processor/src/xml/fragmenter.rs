@@ -178,7 +178,7 @@ impl Processor for XmlFragmenter {
                     &property.attribute,
                     &self.elements_to_match_ast,
                     &self.elements_to_exclude_ast,
-                    ctx.expr_engine.vars().clone(),
+                    ctx.env_vars.clone(),
                 )?;
             }
         }

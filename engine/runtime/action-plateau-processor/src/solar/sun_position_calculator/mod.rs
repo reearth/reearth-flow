@@ -598,7 +598,7 @@ impl SolarPositionCalculator {
         ctx: &ExecutorContext,
         ast: &CompiledCode,
     ) -> Result<String, BoxedError> {
-        ast.eval_string(feature, ctx.expr_engine.vars().clone())
+        ast.eval_string(feature, ctx.env_vars.clone())
             .map_err(|e| {
                 SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
             })
@@ -610,7 +610,7 @@ impl SolarPositionCalculator {
         ctx: &ExecutorContext,
         ast: &CompiledCode,
     ) -> Result<i64, BoxedError> {
-        ast.eval_int(feature, ctx.expr_engine.vars().clone())
+        ast.eval_int(feature, ctx.env_vars.clone())
             .map_err(|e| {
                 SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
             })
@@ -622,7 +622,7 @@ impl SolarPositionCalculator {
         ctx: &ExecutorContext,
         ast: &CompiledCode,
     ) -> Result<f64, BoxedError> {
-        ast.eval_float(feature, ctx.expr_engine.vars().clone())
+        ast.eval_float(feature, ctx.env_vars.clone())
             .map_err(|e| {
                 SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
             })
@@ -635,7 +635,7 @@ impl SolarPositionCalculator {
         ast: &CompiledCode,
     ) -> Result<u32, BoxedError> {
         let result = ast
-            .eval(feature, ctx.expr_engine.vars().clone())
+            .eval(feature, ctx.env_vars.clone())
             .map_err(|e| {
                 SolarPositionError::Process(format!(
                     "Failed to evaluate source_epsg expression: {e:?}"

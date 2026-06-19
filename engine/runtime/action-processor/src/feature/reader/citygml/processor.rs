@@ -191,7 +191,7 @@ impl Processor for FeatureCityGmlReader {
         let dataset = self.params.dataset.clone();
         let flatten = self.params.flatten;
         let codelists_url = self.params.codelists_path.as_ref().and_then(|code| {
-            code.eval_string(&feature, ctx.expr_engine.vars())
+            code.eval_string(&feature, ctx.env_vars.clone())
                 .ok()
                 .and_then(|s| Url::from_str(&s).ok())
         });

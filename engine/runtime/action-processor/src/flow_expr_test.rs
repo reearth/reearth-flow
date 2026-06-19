@@ -95,7 +95,7 @@ impl Processor for FlowExprTest {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         let mut feature = ctx.feature.clone();
 
         for (attr, code) in &self.mappings {

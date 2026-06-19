@@ -66,7 +66,7 @@ impl SourceFactory for SqlReaderFactory {
             .into());
         };
 
-        let vars = ctx.expr_engine.vars();
+        let vars = ctx.env_vars.clone();
         let compiled = SqlReaderCompiledParam {
             sql: param
                 .sql
