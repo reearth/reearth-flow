@@ -53,6 +53,7 @@ pub enum PositionEncoding {
 
 impl PositionEncoding {
     /// Byte width of one XYZ position in `data`.
+    #[inline]
     pub fn position_bytes(&self) -> u16 {
         match self {
             PositionEncoding::F64 => 24,
@@ -88,6 +89,7 @@ pub enum AttributeColumn {
 
 impl AttributeColumn {
     /// Number of entries in this column.
+    #[inline]
     pub fn len(&self) -> usize {
         match self {
             AttributeColumn::UInt8(v) => v.len(),
@@ -104,11 +106,13 @@ impl AttributeColumn {
         }
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Whether two columns hold the same variant (same element type).
+    #[inline]
     pub fn same_type(&self, other: &AttributeColumn) -> bool {
         std::mem::discriminant(self) == std::mem::discriminant(other)
     }
@@ -139,22 +143,22 @@ impl AttributeColumn {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Segment {
     /// File / acquisition identifier; `None` = synthetic.
-    pub source: Option<Arc<str>>,
+    pub(crate) source: Option<Arc<str>>,
     /// XYZ encoding; determines the first bytes of each stride.
-    pub position: PositionEncoding,
+    pub(crate) position: PositionEncoding,
     /// Which optional fields are present.
-    pub fields: FieldMask,
+    pub(crate) fields: FieldMask,
     /// `stride = position_bytes + sum(size of each present field)`.
-    pub stride: u16,
+    pub(crate) stride: u16,
     /// `offsets[i]` = byte start of field `i` within the stride; 0 if absent.
-    pub offsets: FieldOffsets,
+    pub(crate) offsets: FieldOffsets,
     /// Packed little-endian AoS byte stream; `len = count * stride`. No
     /// alignment guarantee; read / written only via `from_le_bytes` /
     /// `to_le_bytes`.
-    pub data: Vec<u8>,
-    pub count: usize,
+    pub(crate) data: Vec<u8>,
+    pub(crate) count: usize,
     /// User-defined columns; each column's `len() == count`.
-    pub attributes: HashMap<String, AttributeColumn>,
+    pub(crate) attributes: HashMap<String, AttributeColumn>,
 }
 
 impl Segment {
@@ -179,14 +183,17 @@ impl Segment {
 pub struct PointIndex(u64);
 
 impl PointIndex {
+    #[inline]
     pub fn new(segment_idx: u32, point_idx: u32) -> Self {
         PointIndex(((segment_idx as u64) << 32) | point_idx as u64)
     }
 
+    #[inline]
     pub fn segment_idx(self) -> u32 {
         (self.0 >> 32) as u32
     }
 
+    #[inline]
     pub fn point_idx(self) -> u32 {
         self.0 as u32
     }
@@ -197,15 +204,15 @@ impl PointIndex {
 #[derive(Serialize, Deserialize)]
 pub struct PointCloud {
     /// Coordinate frame all segments are expressed in.
-    pub coordinate: Coordinate,
+    pub(crate) coordinate: Coordinate,
     /// One segment inline (no heap allocation) is the common case.
-    pub segments: SmallVec<[Segment; 1]>,
+    pub(crate) segments: SmallVec<[Segment; 1]>,
     /// Built lazily on first spatial query, or pre-built explicitly. Not part of
     /// the serialized form, and reset on any mutation. The kiddo alias
     /// `ImmutableKdTree<f64, 3>` expands to `<f64, u64, 3, 32>`: `f64` coords,
     /// `u64` content, 3 dimensions, bucket size 32.
     #[serde(skip)]
-    pub kdtree: OnceLock<ImmutableKdTree<f64, 3>>,
+    pub(crate) kdtree: OnceLock<ImmutableKdTree<f64, 3>>,
 }
 
 impl PointCloud {

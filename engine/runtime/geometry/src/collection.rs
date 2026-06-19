@@ -15,17 +15,17 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 /// A `Multi*` collection of 2D geometries; members may differ in CRS.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Collection2D {
-    pub members: Vec<Euclidean2DGeometry>,
+    pub(crate) members: Vec<Euclidean2DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
-    pub attrs: Vec<Attributes>,
+    pub(crate) attrs: Vec<Attributes>,
 }
 
 /// A `Multi*` collection of 3D geometries; members may differ in CRS.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Collection3D {
-    pub members: Vec<Euclidean3DGeometry>,
+    pub(crate) members: Vec<Euclidean3DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
-    pub attrs: Vec<Attributes>,
+    pub(crate) attrs: Vec<Attributes>,
 }

@@ -1,7 +1,6 @@
 //! Texture, sampler and raster types.
 //!
-//! Following the FME split (Appearance -> Texture -> Raster), a `Texture` is the
-//! image-plus-parameters layer over a shared `Raster`. The heavy resource is the
+//! A `Texture` is the image-plus-parameters layer over a shared `Raster`. The heavy resource is the
 //! image, modelled as a `Raster` behind `Arc` so clones are cheap and an edit
 //! copies only the one raster touched (copy-on-write via `Arc::make_mut`).
 //! Splitting `Texture` from `Raster` lets one image back several textures with

@@ -18,29 +18,29 @@ use crate::index::IndexBuffer;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh2D {
     /// Coordinate frame these vertices are expressed in.
-    pub coordinate: Coordinate,
-    pub vertices: Vec<[f64; 2]>,
+    pub(crate) coordinate: Coordinate,
+    pub(crate) vertices: Vec<[f64; 2]>,
     /// Optional per-vertex elevation, parallel to `vertices`. INVARIANT: when
     /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
-    pub z: Option<Box<[f64]>>,
+    pub(crate) z: Option<Box<[f64]>>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
-    pub indices: IndexBuffer<3>,
+    pub(crate) indices: IndexBuffer<3>,
     /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    pub uv_sets: Vec<UvSet>,
+    pub(crate) uv_sets: Vec<UvSet>,
     /// Optional materials / themes / per-face binding; `None` = bare.
-    pub appearance: Option<Appearance>,
+    pub(crate) appearance: Option<Appearance>,
 }
 
 /// A triangle mesh in 3D space.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh3D {
     /// Coordinate frame these vertices are expressed in.
-    pub coordinate: Coordinate,
-    pub vertices: Vec<[f64; 3]>,
+    pub(crate) coordinate: Coordinate,
+    pub(crate) vertices: Vec<[f64; 3]>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
-    pub indices: IndexBuffer<3>,
+    pub(crate) indices: IndexBuffer<3>,
     /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    pub uv_sets: Vec<UvSet>,
+    pub(crate) uv_sets: Vec<UvSet>,
     /// Optional materials / themes / per-face binding; `None` = bare.
-    pub appearance: Option<Appearance>,
+    pub(crate) appearance: Option<Appearance>,
 }

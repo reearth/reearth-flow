@@ -5,7 +5,7 @@
 //! `TriangularMesh`, so a boundary that arrives as a TIN stays a triangle mesh
 //! and a general one stays a polygon mesh, without forcing a single mesh kind on
 //! every shell. (`Shell` rather than `Surface`, to avoid colliding with the
-//! CityGML / FME `Surface` names.) Solids are 3D only; their shells are coordless
+//! CityGML `Surface` name.) Solids are 3D only; their shells are coordless
 //! raw meshes and the one frame lives on the `Solid`.
 
 use serde::{Deserialize, Serialize};
@@ -27,8 +27,8 @@ pub enum Shell {
 pub struct Solid {
     /// Coordinate frame this solid's shells are expressed in; the shells
     /// themselves are coordless raw meshes.
-    pub coordinate: Coordinate,
-    pub exterior: Shell,
+    pub(crate) coordinate: Coordinate,
+    pub(crate) exterior: Shell,
     /// Hollow voids.
-    pub interiors: Vec<Shell>,
+    pub(crate) interiors: Vec<Shell>,
 }

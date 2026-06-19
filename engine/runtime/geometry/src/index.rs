@@ -18,6 +18,7 @@ pub enum IndexType {
 
 impl IndexType {
     /// Pick the narrowest index type that can store `max`.
+    #[inline]
     pub fn for_max_value(max: usize) -> IndexType {
         match max {
             m if m <= u8::MAX as usize => IndexType::U8,
@@ -47,6 +48,7 @@ pub enum IndexBuffer<const N: usize> {
 
 impl<const N: usize> IndexBuffer<N> {
     /// The runtime width tag of this buffer.
+    #[inline]
     pub fn index_type(&self) -> IndexType {
         match self {
             IndexBuffer::U8(_) => IndexType::U8,
@@ -56,6 +58,7 @@ impl<const N: usize> IndexBuffer<N> {
     }
 
     /// Number of stride-`N` entries.
+    #[inline]
     pub fn len(&self) -> usize {
         match self {
             IndexBuffer::U8(v) => v.len(),
@@ -65,6 +68,7 @@ impl<const N: usize> IndexBuffer<N> {
     }
 
     /// Whether the buffer holds no entries.
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

@@ -21,45 +21,45 @@ use crate::index::IndexBuffer;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PolygonMesh2D {
     /// Coordinate frame these vertices are expressed in.
-    pub coordinate: Coordinate,
-    pub vertices: Vec<[f64; 2]>,
+    pub(crate) coordinate: Coordinate,
+    pub(crate) vertices: Vec<[f64; 2]>,
     /// Optional per-vertex elevation, parallel to `vertices`. INVARIANT: when
     /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
-    pub z: Option<Box<[f64]>>,
+    pub(crate) z: Option<Box<[f64]>>,
     /// All rings of all faces concatenated; each face is its exterior ring then
     /// its hole rings. Width from `vertices.len() - 1`.
-    pub face_indices: IndexBuffer<1>,
+    pub(crate) face_indices: IndexBuffer<1>,
     /// `len() = n_faces + 1`; face i spans
     /// `face_indices[face_offsets[i]..face_offsets[i+1]]`. Width from
     /// `face_indices.len()`.
-    pub face_offsets: IndexBuffer<1>,
+    pub(crate) face_offsets: IndexBuffer<1>,
     /// Start in `face_indices` of each hole ring, across all faces; empty when
     /// no face has holes. Width from `face_indices.len()`.
-    pub interior_offsets: IndexBuffer<1>,
+    pub(crate) interior_offsets: IndexBuffer<1>,
     /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    pub uv_sets: Vec<UvSet>,
+    pub(crate) uv_sets: Vec<UvSet>,
     /// Optional materials / themes / per-face binding; `None` = bare.
-    pub appearance: Option<Appearance>,
+    pub(crate) appearance: Option<Appearance>,
 }
 
 /// A connected, vertex-sharing polygon mesh in 3D space.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PolygonMesh3D {
     /// Coordinate frame these vertices are expressed in.
-    pub coordinate: Coordinate,
-    pub vertices: Vec<[f64; 3]>,
+    pub(crate) coordinate: Coordinate,
+    pub(crate) vertices: Vec<[f64; 3]>,
     /// All rings of all faces concatenated; each face is its exterior ring then
     /// its hole rings. Width from `vertices.len() - 1`.
-    pub face_indices: IndexBuffer<1>,
+    pub(crate) face_indices: IndexBuffer<1>,
     /// `len() = n_faces + 1`; face i spans
     /// `face_indices[face_offsets[i]..face_offsets[i+1]]`. Width from
     /// `face_indices.len()`.
-    pub face_offsets: IndexBuffer<1>,
+    pub(crate) face_offsets: IndexBuffer<1>,
     /// Start in `face_indices` of each hole ring, across all faces; empty when
     /// no face has holes. Width from `face_indices.len()`.
-    pub interior_offsets: IndexBuffer<1>,
+    pub(crate) interior_offsets: IndexBuffer<1>,
     /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    pub uv_sets: Vec<UvSet>,
+    pub(crate) uv_sets: Vec<UvSet>,
     /// Optional materials / themes / per-face binding; `None` = bare.
-    pub appearance: Option<Appearance>,
+    pub(crate) appearance: Option<Appearance>,
 }

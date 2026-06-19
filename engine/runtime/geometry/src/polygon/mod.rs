@@ -18,37 +18,37 @@ use crate::coordinate::Coordinate;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
-    pub coordinate: Coordinate,
+    pub(crate) coordinate: Coordinate,
     /// Exterior ring, then all interior rings (holes), concatenated; each ring
     /// closed (first == last).
-    pub coords: Box<[[f64; 2]]>,
+    pub(crate) coords: Box<[[f64; 2]]>,
     /// Start index in `coords` of each interior ring; empty when there are no
     /// holes. exterior = `coords[0 .. first interior start (or end)]`;
     /// interior j = `coords[interior_offsets[j] .. interior_offsets[j+1] (or end)]`.
-    pub interior_offsets: Box<[u32]>,
+    pub(crate) interior_offsets: Box<[u32]>,
     /// Optional per-vertex elevation, parallel to `coords` (same ring
     /// concatenation). INVARIANT: when `Some`, `z.len() == coords.len()`.
     /// `None` = pure 2D (no allocation).
-    pub z: Option<Box<[f64]>>,
+    pub(crate) z: Option<Box<[f64]>>,
     /// UV parallel to `coords` (same ring concatenation); one set per
     /// (theme, channel).
-    pub uv_sets: Vec<UvSet>,
+    pub(crate) uv_sets: Vec<UvSet>,
     /// Materials / themes / single-face binding; `None` = bare geometry.
-    pub appearance: Option<Appearance>,
+    pub(crate) appearance: Option<Appearance>,
 }
 
-/// A planar polygon face in 3D space (FME "Surface").
+/// A planar polygon face in 3D space.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon3D {
     /// Coordinate frame these coords are expressed in.
-    pub coordinate: Coordinate,
+    pub(crate) coordinate: Coordinate,
     /// Exterior ring, then all interior rings (holes), concatenated; each ring
     /// closed (first == last).
-    pub coords: Box<[[f64; 3]]>,
+    pub(crate) coords: Box<[[f64; 3]]>,
     /// Start index in `coords` of each interior ring; empty when there are no holes.
-    pub interior_offsets: Box<[u32]>,
+    pub(crate) interior_offsets: Box<[u32]>,
     /// UV parallel to `coords`; one set per (theme, channel).
-    pub uv_sets: Vec<UvSet>,
+    pub(crate) uv_sets: Vec<UvSet>,
     /// Materials / themes / single-face binding; `None` = bare geometry.
-    pub appearance: Option<Appearance>,
+    pub(crate) appearance: Option<Appearance>,
 }

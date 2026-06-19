@@ -65,10 +65,10 @@ pub enum Geometry {
 /// Ordered members, each optionally carrying its own attributes.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct GeometryCollection {
-    pub members: Vec<Geometry>,
+    pub(crate) members: Vec<Geometry>,
     /// Per-member attributes parallel to `members`; empty = no member carries
     /// any. Child-scoped: not exposed as the feature's own attributes.
-    pub attrs: Vec<Attributes>,
+    pub(crate) attrs: Vec<Attributes>,
 }
 
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)` with an optional
@@ -93,7 +93,7 @@ pub enum Euclidean3DGeometry {
     Point(Point3D),
     PointCloud(PointCloud),
     LineString(LineString3D),
-    /// Face in 3D space (FME "Surface").
+    /// Face in 3D space.
     Polygon(Polygon3D),
     /// Indexed, variable face valence.
     PolygonMesh(PolygonMesh3D),
@@ -115,12 +115,14 @@ impl Default for Geometry {
 }
 
 impl Geometry {
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Whether this geometry carries no primitive. A bare leaf is never empty; a
     /// collection is empty when it has no members.
+    #[inline]
     pub fn is_empty(&self) -> bool {
         match self {
             Geometry::GeometryCollection(c) => c.members.is_empty(),
