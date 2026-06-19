@@ -22,11 +22,10 @@ pub mod _alloc {
 // which selects this `Geometry` for `Feature.geometry`; the types here are not
 // themselves feature-gated.
 //
-// `appearance` is currently an empty placeholder; the materials / textures /
-// UV-set graph is implemented in a later step. The denormalized
-// intermediate-data serialization is also future work: the types derive default
-// `serde` so the enclosing `Feature` can serialize, which is not yet the
-// byte-for-byte round-tripping intermediate form intended for that view.
+// The denormalized intermediate-data serialization is still future work: the
+// types derive default `serde` so the enclosing `Feature` can serialize, which
+// is not yet the byte-for-byte round-tripping intermediate form intended for
+// that view.
 pub mod appearance;
 pub mod collection;
 pub mod coordinate;

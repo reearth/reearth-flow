@@ -13,7 +13,9 @@ use super::solid::Solid;
 /// over.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum ThreeDimensional {
-    Solid(Solid),
+    /// Boxed: a `Solid` (with its shells' appearance) is far larger than the
+    /// boxed `Csg`, so the leaf is boxed to keep the enum small.
+    Solid(Box<Solid>),
     Csg(Box<Csg>),
 }
 
