@@ -139,24 +139,23 @@ export default ({
           const isCurrentlySelected = currentData.some(
             (sid) => sid.nodeId === nodeId && sid.portName === portName,
           );
-          let newSelectedIntermediateData: SelectedIntermediateData[];
-          if (isCurrentlySelected) {
-            newSelectedIntermediateData = currentData;
-          } else {
-            const nodeName =
-              nodeData.customizations?.customName ||
-              nodeData.officialName ||
-              nodeId;
-            newSelectedIntermediateData = [
-              ...currentData,
-              {
-                nodeId,
-                url: dataUrl,
-                portName,
-                displayName: `${nodeName} (${portName})`,
-              },
-            ];
-          }
+          const nodeName =
+            nodeData.customizations?.customName ||
+            nodeData.officialName ||
+            nodeId;
+          const displayName = `${nodeName} (${portName})`;
+
+          const newSelectedIntermediateData: SelectedIntermediateData[] =
+            isCurrentlySelected
+              ? currentData.map((sid) =>
+                  sid.nodeId === nodeId && sid.portName === portName
+                    ? { ...sid, url: dataUrl, displayName }
+                    : sid,
+                )
+              : [
+                  ...currentData,
+                  { nodeId, url: dataUrl, portName, displayName },
+                ];
 
           return {
             ...job,
@@ -192,19 +191,25 @@ export default ({
 
           if (!isCurrentlySelected) return job;
 
+          const removed = currentData.find(
+            (sid) => sid.nodeId === nodeId && sid.portName === portName,
+          );
           const filtered = currentData.filter(
             (sid) => !(sid.nodeId === nodeId && sid.portName === portName),
           );
 
-          const removedIndex = currentData.findIndex(
-            (sid) => sid.nodeId === nodeId && sid.portName === portName,
-          );
-          let newFocusedURL: string | undefined;
-          if (filtered.length > 0) {
-            newFocusedURL =
-              removedIndex < filtered.length
-                ? filtered[removedIndex].url
-                : filtered[removedIndex - 1]?.url;
+          let newFocusedURL = job.focusedIntermediateData;
+          if (job.focusedIntermediateData === removed?.url) {
+            newFocusedURL = undefined;
+            if (filtered.length > 0) {
+              const removedIndex = currentData.findIndex(
+                (sid) => sid.nodeId === nodeId && sid.portName === portName,
+              );
+              newFocusedURL =
+                removedIndex < filtered.length
+                  ? filtered[removedIndex].url
+                  : filtered[removedIndex - 1]?.url;
+            }
           }
 
           return {
