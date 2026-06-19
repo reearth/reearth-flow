@@ -53,17 +53,20 @@ graphs:
           # Custom headers
           customHeaders:
             - name: "Content-Type"
-              value: |
-                "application/json"
+              value:
+                type: string
+                value: "application/json"
             - name: "X-Custom-Header"
-              value: |
-                "reearth-flow"
+              value:
+                type: string
+                value: "reearth-flow"
 
           # Query parameters
           queryParameters:
             - name: "format"
-              value: |
-                "json"
+              value:
+                type: string
+                value: "json"
 
           # Request body - send feature attributes as JSON
           requestBody:
