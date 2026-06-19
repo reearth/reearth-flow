@@ -634,20 +634,41 @@ impl SolarPositionCalculator {
         ctx: &ExecutorContext,
         ast: &CompiledCode,
     ) -> Result<u32, BoxedError> {
-        let i = ast
-            .eval_int(feature, ctx.expr_engine.vars().clone())
+        let result = ast
+            .eval(feature, ctx.expr_engine.vars().clone())
             .map_err(|e| {
                 SolarPositionError::Process(format!(
                     "Failed to evaluate source_epsg expression: {e:?}"
                 ))
             })?;
-        if i <= 0 {
-            return Err(SolarPositionError::Process(
-                "EPSG code must be a positive integer".to_string(),
+        match result {
+            AttributeValue::Number(n) => {
+                let i = n.as_i64().ok_or_else(|| {
+                    SolarPositionError::Process("EPSG code must be a positive integer".to_string())
+                })?;
+                if i <= 0 {
+                    return Err(SolarPositionError::Process(
+                        "EPSG code must be a positive integer".to_string(),
+                    )
+                    .into());
+                }
+                Ok(i as u32)
+            }
+            AttributeValue::String(s) => {
+                let epsg_str = s.trim().strip_prefix("EPSG:").unwrap_or(s.trim());
+                epsg_str.parse::<u32>().map_err(|_| {
+                    SolarPositionError::Process(format!(
+                        "Invalid EPSG code '{}': must be a positive integer",
+                        s
+                    ))
+                    .into()
+                })
+            }
+            _ => Err(SolarPositionError::Process(
+                "source_epsg expression must evaluate to an integer or string".to_string(),
             )
-            .into());
+            .into()),
         }
-        Ok(i as u32)
     }
 
     fn insert_solar_position_attributes(

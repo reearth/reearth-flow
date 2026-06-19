@@ -295,15 +295,20 @@ impl DestinationMeshCodeExtractor {
         feature: &Feature,
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<String, BoxedError> {
-        let n = self
-            .epsg_code_ast
-            .eval_int(feature, env_vars)
-            .map_err(|e| {
-                PlateauProcessorError::DestinationMeshCodeExtractor(format!(
-                    "Failed to evaluate epsg_code expression: {e:?}"
-                ))
-            })?;
-        Ok(n.to_string())
+        let epsg_code = self.epsg_code_ast.eval(feature, env_vars).map_err(|e| {
+            PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                "Failed to evaluate epsg_code expression: {e:?}"
+            ))
+        })?;
+        match epsg_code {
+            AttributeValue::String(s) => Ok(s),
+            AttributeValue::Number(n) => Ok(n.to_string()),
+            other => Err(PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                "epsg_code expression ({:?}) did not evaluate to a string or integer",
+                other
+            ))
+            .into()),
+        }
     }
 
     /// Calculate mesh code with detailed information for all required attributes
