@@ -44,11 +44,27 @@ pub struct Appearance {
     pub default_theme: ThemeId,
 }
 
-/// One theme's face-to-material binding.
+/// One theme's per-side face-to-material binding.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ThemeBinding {
     pub theme: ThemeId,
-    pub binding: FaceBinding,
+    /// Front-side face-to-material binding.
+    pub front: FaceBinding,
+    /// Back-side binding; `None` = single-sided (only the front is painted).
+    /// When `Some`, the back side has its own face-to-material mapping: it may
+    /// bind different materials, or leave faces unbound.
+    pub back: Option<FaceBinding>,
+}
+
+/// Which side of an oriented surface an appearance applies to. The front side
+/// faces along the surface normal (from its winding). Side is a simultaneous
+/// axis (both sides exist at once), distinct from a theme (mutually-exclusive
+/// styling variants).
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Side {
+    #[default]
+    Front,
+    Back,
 }
 
 /// How a theme's faces map to the material palette.

@@ -5,14 +5,15 @@
 //! normal, occlusion ... all sample it), and a material map references a UV set,
 //! never the reverse.
 //!
-//! A map's UV is resolved by two coordinates: the theme comes from the per-face
-//! binding (face under theme T -> material), the channel from the material map's
-//! selector. So `channel` carries no global meaning: it is a material-local
-//! index into the UV sets of whatever theme the face resolves to.
+//! A map's UV is resolved by three coordinates: the theme and side come from
+//! the per-face binding (face under theme T, on side S -> material), the channel
+//! from the material map's selector. So `channel` carries no global meaning: it
+//! is a material-local index into the UV sets of whatever theme/side the face
+//! resolves to.
 
 use serde::{Deserialize, Serialize};
 
-use super::{ChannelId, ThemeId};
+use super::{ChannelId, Side, ThemeId};
 
 /// One UV set on a mesh leaf. The `Explicit` array is parallel to the host
 /// geometry's corner buffer; the alignment is fixed by the geometry type, not
@@ -21,8 +22,11 @@ use super::{ChannelId, ThemeId};
 pub struct UvSet {
     /// Styling variant this UV belongs to; `None` = a single implicit theme.
     pub theme: Option<ThemeId>,
+    /// Which surface side these coordinates parameterise. `Front` for the
+    /// common single-sided case.
+    pub side: Side,
     /// Material-local UV channel; `None` when a theme makes no channel
-    /// distinction (then the theme holds exactly one UV set).
+    /// distinction (then the theme/side holds exactly one UV set).
     pub channel: Option<ChannelId>,
     pub uv: UvSource,
 }
