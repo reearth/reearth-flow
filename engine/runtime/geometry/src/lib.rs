@@ -52,10 +52,14 @@ use polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
 use solid::Solid;
 use triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 
-/// The top-level geometry type. Divided at the top level by embedding
-/// dimension, with a heterogeneous, cross-dimensional collection.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+/// The top-level geometry type: an absent `None`, a geometry in one of the two
+/// embedding dimensions, or a heterogeneous, cross-dimensional collection.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub enum Geometry {
+    /// No geometry: a feature carrying attributes but no spatial payload. This
+    /// is the default — an absent geometry, distinct from an empty collection.
+    #[default]
+    None,
     Euclidean2D(Euclidean2DGeometry),
     Euclidean3D(Euclidean3DGeometry),
     /// Heterogeneous, cross-dimensional, cross-frame.
@@ -83,7 +87,7 @@ pub enum Euclidean2DGeometry {
     PolygonMesh(PolygonMesh2D),
     /// Indexed, fixed 3-index stride (variable width).
     TriangularMesh(TriangularMesh2D),
-    /// `Multi*` collection of 2D geometries; members may differ in CRS.
+    /// `Multi*` collection of 2D geometries; members may differ in coordinate frame.
     Collection(Collection2D),
 }
 
@@ -103,40 +107,6 @@ pub enum Euclidean3DGeometry {
     Solid(Solid),
     /// Coordless boolean tree; frames come from its operand Solids.
     Csg(Csg),
-    /// `Multi*` collection of 3D geometries; members may differ in CRS.
+    /// `Multi*` collection of 3D geometries; members may differ in coordinate frame.
     Collection(Collection3D),
-}
-
-impl Default for Geometry {
-    /// A feature with no geometry is an empty heterogeneous collection.
-    fn default() -> Self {
-        Geometry::GeometryCollection(GeometryCollection::default())
-    }
-}
-
-impl Geometry {
-    #[inline]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Whether this geometry carries no primitive. A bare leaf is never empty; a
-    /// collection is empty when it has no members.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        match self {
-            Geometry::GeometryCollection(c) => c.is_empty(),
-            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => c.is_empty(),
-            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => c.is_empty(),
-            _ => false,
-        }
-    }
-}
-
-impl GeometryCollection {
-    /// Whether the collection has no members.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.members.is_empty()
-    }
 }

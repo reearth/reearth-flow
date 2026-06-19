@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 
-/// A `Multi*` collection of 2D geometries; members may differ in CRS.
+/// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Collection2D {
     members: Vec<Euclidean2DGeometry>,
@@ -21,27 +21,11 @@ pub struct Collection2D {
     attrs: Vec<Attributes>,
 }
 
-/// A `Multi*` collection of 3D geometries; members may differ in CRS.
+/// A `Multi*` collection of 3D geometries; members may differ in coordinate frame.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Collection3D {
     members: Vec<Euclidean3DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
     attrs: Vec<Attributes>,
-}
-
-impl Collection2D {
-    /// Whether the collection has no members.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.members.is_empty()
-    }
-}
-
-impl Collection3D {
-    /// Whether the collection has no members.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.members.is_empty()
-    }
 }
