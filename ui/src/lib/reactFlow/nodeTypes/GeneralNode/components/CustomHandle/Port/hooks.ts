@@ -5,7 +5,6 @@ import useDoubleClick from "@flow/hooks/useDoubleClick";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
   AvailableIntermediateData,
-  DebugRunState,
   SelectedIntermediateData,
   useCurrentProject,
 } from "@flow/stores";
@@ -129,102 +128,87 @@ export default ({
   const selectIntermediateData = useCallback(async () => {
     if (!dataUrl) return;
 
-    const newDebugRunState: DebugRunState = {
-      ...debugRunState,
-      jobs:
-        debugRunState?.jobs?.map((job) => {
-          if (job.projectId !== currentProject?.id) return job;
+    await updateValue((prev) => ({
+      ...prev,
+      jobs: (prev.jobs ?? []).map((job) => {
+        if (job.projectId !== currentProject?.id) return job;
 
-          const currentData = job.selectedIntermediateData ?? [];
-          const isCurrentlySelected = currentData.some(
-            (sid) => sid.nodeId === nodeId && sid.portName === portName,
-          );
-          const nodeName =
-            nodeData.customizations?.customName ||
-            nodeData.officialName ||
-            nodeId;
-          const displayName = `${nodeName} (${portName})`;
+        const currentData = job.selectedIntermediateData ?? [];
+        const isCurrentlySelected = currentData.some(
+          (sid) => sid.nodeId === nodeId && sid.portName === portName,
+        );
+        const nodeName =
+          nodeData.customizations?.customName ||
+          nodeData.officialName ||
+          nodeId;
+        const displayName = `${nodeName} (${portName})`;
 
-          const newSelectedIntermediateData: SelectedIntermediateData[] =
-            isCurrentlySelected
-              ? currentData.map((sid) =>
-                  sid.nodeId === nodeId && sid.portName === portName
-                    ? { ...sid, url: dataUrl, displayName }
-                    : sid,
-                )
-              : [
-                  ...currentData,
-                  { nodeId, url: dataUrl, portName, displayName },
-                ];
+        const newSelectedIntermediateData: SelectedIntermediateData[] =
+          isCurrentlySelected
+            ? currentData.map((sid) =>
+                sid.nodeId === nodeId && sid.portName === portName
+                  ? { ...sid, url: dataUrl, displayName }
+                  : sid,
+              )
+            : [...currentData, { nodeId, url: dataUrl, portName, displayName }];
 
-          return {
-            ...job,
-            focusedIntermediateData: dataUrl,
-            selectedIntermediateData: newSelectedIntermediateData,
-          };
-        }) ?? [],
-    };
-    await updateValue(newDebugRunState);
-  }, [
-    dataUrl,
-    debugRunState,
-    currentProject,
-    nodeId,
-    portName,
-    nodeData,
-    updateValue,
-  ]);
+        return {
+          ...job,
+          focusedIntermediateData: dataUrl,
+          selectedIntermediateData: newSelectedIntermediateData,
+        };
+      }),
+    }));
+  }, [dataUrl, currentProject, nodeId, portName, nodeData, updateValue]);
 
   const removeIntermediateData = useCallback(async () => {
     if (!dataUrl) return;
+    await updateValue((prev) => ({
+      ...prev,
+      jobs: (prev.jobs ?? []).map((job) => {
+        if (job.projectId !== currentProject?.id) return job;
 
-    const newDebugRunState: DebugRunState = {
-      ...debugRunState,
-      jobs:
-        debugRunState?.jobs?.map((job) => {
-          if (job.projectId !== currentProject?.id) return job;
+        const currentData = job.selectedIntermediateData ?? [];
+        const isCurrentlySelected = currentData.some(
+          (sid) => sid.nodeId === nodeId && sid.portName === portName,
+        );
 
-          const currentData = job.selectedIntermediateData ?? [];
-          const isCurrentlySelected = currentData.some(
-            (sid) => sid.nodeId === nodeId && sid.portName === portName,
-          );
+        if (!isCurrentlySelected) return job;
 
-          if (!isCurrentlySelected) return job;
+        const removed = currentData.find(
+          (sid) => sid.nodeId === nodeId && sid.portName === portName,
+        );
+        const filtered = currentData.filter(
+          (sid) => !(sid.nodeId === nodeId && sid.portName === portName),
+        );
 
-          const removed = currentData.find(
-            (sid) => sid.nodeId === nodeId && sid.portName === portName,
-          );
-          const filtered = currentData.filter(
-            (sid) => !(sid.nodeId === nodeId && sid.portName === portName),
-          );
-
-          let newFocusedURL = job.focusedIntermediateData;
-          if (job.focusedIntermediateData === removed?.url) {
-            newFocusedURL = undefined;
-            if (filtered.length > 0) {
-              const removedIndex = currentData.findIndex(
-                (sid) => sid.nodeId === nodeId && sid.portName === portName,
-              );
-              newFocusedURL =
-                removedIndex < filtered.length
-                  ? filtered[removedIndex].url
-                  : filtered[removedIndex - 1]?.url;
-            }
+        let newFocusedURL = job.focusedIntermediateData;
+        if (job.focusedIntermediateData === removed?.url) {
+          newFocusedURL = undefined;
+          if (filtered.length > 0) {
+            const removedIndex = currentData.findIndex(
+              (sid) => sid.nodeId === nodeId && sid.portName === portName,
+            );
+            newFocusedURL =
+              removedIndex < filtered.length
+                ? filtered[removedIndex].url
+                : filtered[removedIndex - 1]?.url;
           }
+        }
 
-          return {
-            ...job,
-            focusedIntermediateData: newFocusedURL,
-            selectedIntermediateData: filtered,
-          };
-        }) ?? [],
-    };
-    await updateValue(newDebugRunState);
-  }, [dataUrl, debugRunState, currentProject, nodeId, portName, updateValue]);
+        return {
+          ...job,
+          focusedIntermediateData: newFocusedURL,
+          selectedIntermediateData: filtered,
+        };
+      }),
+    }));
+  }, [dataUrl, currentProject, nodeId, portName, updateValue]);
 
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     selectIntermediateData,
     removeIntermediateData,
+    250,
   );
 
   return {
