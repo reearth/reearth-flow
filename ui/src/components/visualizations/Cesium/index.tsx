@@ -23,8 +23,7 @@ import GeoJsonData from "./GeoJson";
 
 const defaultCesiumProps: Partial<ViewerProps> = {
   timeline: false,
-  // baseLayerPicker: false,
-  // sceneModePicker: false,
+  baseLayerPicker: false,
   fullscreenButton: false,
   sceneModePicker: false,
   infoBox: false,
