@@ -598,10 +598,9 @@ impl SolarPositionCalculator {
         ctx: &ExecutorContext,
         ast: &CompiledCode,
     ) -> Result<String, BoxedError> {
-        ast.eval_string(feature, ctx.env_vars.clone())
-            .map_err(|e| {
-                SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
-            })
+        ast.eval_string(feature, ctx.env_vars.clone()).map_err(|e| {
+            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
+        })
     }
 
     fn evaluate_int_expr(
@@ -610,10 +609,9 @@ impl SolarPositionCalculator {
         ctx: &ExecutorContext,
         ast: &CompiledCode,
     ) -> Result<i64, BoxedError> {
-        ast.eval_int(feature, ctx.env_vars.clone())
-            .map_err(|e| {
-                SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
-            })
+        ast.eval_int(feature, ctx.env_vars.clone()).map_err(|e| {
+            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
+        })
     }
 
     fn evaluate_float_expr(
@@ -622,10 +620,9 @@ impl SolarPositionCalculator {
         ctx: &ExecutorContext,
         ast: &CompiledCode,
     ) -> Result<f64, BoxedError> {
-        ast.eval_float(feature, ctx.env_vars.clone())
-            .map_err(|e| {
-                SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
-            })
+        ast.eval_float(feature, ctx.env_vars.clone()).map_err(|e| {
+            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
+        })
     }
 
     fn evaluate_epsg_expr(
@@ -634,13 +631,9 @@ impl SolarPositionCalculator {
         ctx: &ExecutorContext,
         ast: &CompiledCode,
     ) -> Result<u32, BoxedError> {
-        let result = ast
-            .eval(feature, ctx.env_vars.clone())
-            .map_err(|e| {
-                SolarPositionError::Process(format!(
-                    "Failed to evaluate source_epsg expression: {e:?}"
-                ))
-            })?;
+        let result = ast.eval(feature, ctx.env_vars.clone()).map_err(|e| {
+            SolarPositionError::Process(format!("Failed to evaluate source_epsg expression: {e:?}"))
+        })?;
         match result {
             AttributeValue::Number(n) => {
                 let i = n.as_i64().ok_or_else(|| {
