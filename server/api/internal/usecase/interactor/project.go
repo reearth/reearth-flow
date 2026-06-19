@@ -15,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -52,20 +53,31 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 	}
 }
 
-func (i *Project) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action)
+func (i *Project) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action, workspaceID...)
 }
 
 func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Project, error) {
-	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+	projects, err := i.projectRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.projectRepo.FindByIDs(ctx, ids)
+	if len(projects) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := i.checkPermission(ctx, rbac.ActionList, projects[0].Workspace()); err != nil { // single-workspace batch assumption
+			return nil, err
+		}
+	}
+
+	return projects, nil
 }
 
 func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionList, id); err != nil {
 		return nil, nil, err
 	}
 
@@ -73,7 +85,7 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (_ *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate, p.WorkspaceID); err != nil {
 		return nil, err
 	}
 
@@ -122,7 +134,14 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (
 }
 
 func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (_ *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -180,7 +199,14 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 }
 
 func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if proj == nil {
+		return rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionDelete, proj.Workspace()); err != nil {
 		return err
 	}
 
@@ -219,7 +245,14 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job.Job, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
