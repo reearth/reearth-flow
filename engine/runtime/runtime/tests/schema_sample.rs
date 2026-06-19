@@ -111,7 +111,7 @@ fn samples_geojson_real_attributes() {
 #[test]
 fn unresolved_source_falls_back_to_open_with_note() {
     let with = with_dataset("file:///nonexistent/path/does_not_exist_xyz.geojson");
-    let outcome = sample_source(geojson_factory(), &Some(with), 10, empty_engine());
+    let outcome = sample_source(geojson_factory(), &Some(with), 10, empty_env());
 
     assert!(outcome.schema.open, "schema should be open on failure");
     assert!(outcome.note.is_some(), "a note should explain the failure");
