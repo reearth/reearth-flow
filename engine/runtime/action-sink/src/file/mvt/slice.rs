@@ -283,15 +283,13 @@ fn normalize_winding(poly: Polygon2) -> Polygon2 {
     let mut normalized = Polygon2::new();
     let exterior = poly.exterior();
     if exterior.signed_ring_area() > 0.0 {
-        let coords: Vec<_> = exterior.iter().collect();
-        normalized.add_ring(coords.into_iter().rev());
+        normalized.add_ring(exterior.raw_coords().iter().rev().copied());
     } else {
         normalized.add_ring(exterior.iter());
     }
     for interior in poly.interiors() {
         if interior.signed_ring_area() < 0.0 {
-            let coords: Vec<_> = interior.iter().collect();
-            normalized.add_ring(coords.into_iter().rev());
+            normalized.add_ring(interior.raw_coords().iter().rev().copied());
         } else {
             normalized.add_ring(interior.iter());
         }
