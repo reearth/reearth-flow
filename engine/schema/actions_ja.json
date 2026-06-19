@@ -194,14 +194,26 @@
           },
           "calculation": {
             "title": "実行する計算",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "calculationAttribute": {
             "title": "計算結果を格納する属性",
@@ -248,14 +260,26 @@
               },
               "attributeValue": {
                 "title": "属性に使用する値",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "newAttribute": {
                 "title": "作成する新規属性",
@@ -268,9 +292,6 @@
             }
           },
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           },
           "Method": {
@@ -373,14 +394,27 @@
           "dataset": {
             "title": "データセット URI",
             "description": "外部変換テーブルファイルのパスまたは URI",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "format": {
             "title": "テーブル形式",
@@ -456,9 +490,6 @@
               "tsv",
               "json"
             ]
-          },
-          "Expr": {
-            "type": "string"
           }
         }
       },
@@ -766,8 +797,7 @@
                   "type": {
                     "type": "string",
                     "enum": [
-                      "flowExpr",
-                      "string"
+                      "flowExpr"
                     ]
                   },
                   "value": {
@@ -1254,19 +1284,26 @@
           "pairIdAttribute": {
             "title": "ペア ID 属性",
             "description": "左右のポートのフィーチャーを照合するペア ID を評価する式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -1302,16 +1339,23 @@
           "tolerance": {
             "title": "許容誤差",
             "description": "ジオメトリ演算の許容誤差値（f64 に評価される式）。頂点のマージおよびメッシュ処理に使用される。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -3002,16 +3046,23 @@
           "distance": {
             "title": "距離",
             "description": "ポリゴンを押し出す垂直距離（高さ）。定数値または式で指定可能。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -3253,8 +3304,7 @@
               "type": {
                 "type": "string",
                 "enum": [
-                  "flowExpr",
-                  "string"
+                  "flowExpr"
                 ]
               },
               "value": {
@@ -3321,16 +3371,24 @@
           "sourceDataset": {
             "title": "ソースデータセット",
             "description": "ソースデータセットのパスまたは URL を取得する式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -3471,14 +3529,26 @@
           },
           "requestorAttributeValue": {
             "description": "リクエスタフィーチャーの照合値を評価する式（requestorAttribute の代替）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "supplierAttribute": {
             "description": "照合に使用するサプライヤフィーチャーの属性（supplierAttributeValue の代替）",
@@ -3492,14 +3562,26 @@
           },
           "supplierAttributeValue": {
             "description": "サプライヤフィーチャーの照合値を評価する式（supplierAttribute の代替）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           }
         },
         "definitions": {
@@ -3523,9 +3605,6 @@
                 ]
               }
             ]
-          },
-          "Expr": {
-            "type": "string"
           },
           "JoinType": {
             "oneOf": [
@@ -3648,14 +3727,26 @@
           },
           "requestorAttributeValue": {
             "description": "リクエスタフィーチャーの照合値を評価する式（requestor_attribute の代替）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "supplierAttribute": {
             "description": "照合に使用するサプライヤフィーチャーの属性（supplier_attribute_value の代替）",
@@ -3669,21 +3760,30 @@
           },
           "supplierAttributeValue": {
             "description": "サプライヤフィーチャーの照合値を評価する式（supplier_attribute の代替）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           }
         },
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           }
         }
@@ -3974,9 +4074,6 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
-          },
           "Transform": {
             "type": "object",
             "required": [
@@ -3985,11 +4082,23 @@
             "properties": {
               "expr": {
                 "description": "フィーチャーを変更する式（属性、ジオメトリなどにアクセス・変更可能）",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           }
@@ -4146,8 +4255,7 @@
                   "type": {
                     "type": "string",
                     "enum": [
-                      "flowExpr",
-                      "string"
+                      "flowExpr"
                     ]
                   },
                   "value": {
@@ -5620,11 +5728,24 @@
           "url": {
             "title": "URL",
             "description": "HTTP リクエストの対象 URL（式に対応）",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           }
         },
         "definitions": {
@@ -5667,11 +5788,24 @@
                   "password": {
                     "title": "Password",
                     "description": "The password for basic authentication",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "type": {
                     "type": "string",
@@ -5682,11 +5816,24 @@
                   "username": {
                     "title": "Username",
                     "description": "The username for basic authentication",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   }
                 }
               },
@@ -5702,11 +5849,24 @@
                   "token": {
                     "title": "Token",
                     "description": "The bearer token value",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "type": {
                     "type": "string",
@@ -5734,11 +5894,24 @@
                   "keyValue": {
                     "title": "Key Value",
                     "description": "The API key value",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "location": {
                     "title": "Location",
@@ -5776,11 +5949,24 @@
                   "data": {
                     "title": "Data",
                     "description": "Base64-encoded binary data (supports expressions)",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "type": {
                     "type": "string",
@@ -5802,11 +5988,24 @@
                   "path": {
                     "title": "File Path",
                     "description": "Path to the file to read (supports expressions)",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "type": {
                     "type": "string",
@@ -5817,9 +6016,6 @@
                 }
               }
             ]
-          },
-          "Expr": {
-            "type": "string"
           },
           "FormField": {
             "title": "Form Field",
@@ -5838,11 +6034,24 @@
               "value": {
                 "title": "フィールド値",
                 "description": "フォームフィールドの値（式に対応）",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -5863,11 +6072,24 @@
               "value": {
                 "title": "ヘッダー値",
                 "description": "ヘッダーの値（式に対応）",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -6058,11 +6280,24 @@
                   "value": {
                     "title": "Field Value",
                     "description": "The value of the form field (supports expressions)",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   }
                 }
               },
@@ -6196,11 +6431,24 @@
               "value": {
                 "title": "パラメータ値",
                 "description": "パラメータの値（式に対応）",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               }
             }
           },
@@ -6255,11 +6503,24 @@
                   "content": {
                     "title": "Content",
                     "description": "The text content to send (supports expressions)",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "contentType": {
                     "title": "Content Type",
@@ -6498,11 +6759,24 @@
                   "path": {
                     "title": "File Path",
                     "description": "Path where the response should be saved",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "pathAttribute": {
                     "title": "Path Attribute Name",
@@ -6728,28 +7002,47 @@
             "title": "入力 EPSG コード",
             "description": "入力座標系の EPSG コード式。指定しない場合はジオメトリの EPSG コードを使用する。後方互換性のため任意だが、明示的に指定することを推奨。定数値（例: \"4326\"）またはフィーチャー属性を参照する式で指定可能。",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "targetEpsgCode": {
             "title": "出力 EPSG コード",
             "description": "再投影先の座標系 EPSG コード式。定数値（例: WGS84 は \"4326\"、NZTM2000 は \"2193\"、Web Mercator は \"3857\"）またはフィーチャー属性を参照する式で指定可能。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -6802,20 +7095,30 @@
             "title": "保存先",
             "description": "生成した画像を保存するパス式（任意）。指定しない場合はデフォルトのキャッシュディレクトリを使用。",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
-          },
           "OnOverlap": {
             "description": "Overlap resolution strategy for rasterized pixels",
             "oneOf": [
@@ -6833,7 +7136,23 @@
                 ],
                 "properties": {
                   "max": {
-                    "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
                   }
                 },
                 "additionalProperties": false
@@ -6845,7 +7164,23 @@
                 ],
                 "properties": {
                   "min": {
-                    "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
                   }
                 },
                 "additionalProperties": false
@@ -7022,11 +7357,24 @@
               },
               "path": {
                 "description": "Expression evaluating to the file path or URL containing JSON",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "recursivelyFlatten": {
                 "description": "If true, recursively flatten nested objects using dot-separated keys",
@@ -7043,9 +7391,6 @@
         ],
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           }
         }
@@ -7165,8 +7510,7 @@
               "type": {
                 "type": "string",
                 "enum": [
-                  "flowExpr",
-                  "string"
+                  "flowExpr"
                 ]
               },
               "value": {
@@ -8608,12 +8952,24 @@
         ],
         "properties": {
           "codelistsPath": {
-            "$ref": "#/definitions/Expr"
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -8696,11 +9052,23 @@
           "epsgCode": {
             "title": "出力 EPSG コード",
             "description": "入力 EPSG 6697 からの座標変換先 EPSG コード。整数または文字列式で指定可能。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "errorAttribute": {
             "title": "エラー属性名",
@@ -8715,9 +9083,6 @@
         },
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           }
         }
@@ -8773,12 +9138,27 @@
           "epsgCode": {
             "title": "EPSG コード",
             "description": "面積計算に使用する日本の平面直角座標系 EPSG コード",
-            "default": "6691",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "default": {
+              "type": "flowExpr",
+              "value": "6691"
+            },
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "meshType": {
             "title": "メッシュタイプ",
@@ -8792,11 +9172,6 @@
             "title": "メッシュコード属性名",
             "description": "メッシュコードの出力属性名",
             "default": "_meshcode",
-            "type": "string"
-          }
-        },
-        "definitions": {
-          "Expr": {
             "type": "string"
           }
         }
@@ -8826,19 +9201,27 @@
         "properties": {
           "codelistsPath": {
             "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -8965,19 +9348,27 @@
         "properties": {
           "cityGmlPath": {
             "description": "CityGML ファイルへのパスを取得する式",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -9139,11 +9530,24 @@
           },
           "outputDir": {
             "description": "変更された CityGML ファイルの出力ディレクトリ式",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "pathAttribute": {
             "description": "ファイルパスを保持するパスフィーチャーの属性名（デフォルト: \"path\"）",
@@ -9156,32 +9560,54 @@
           "sourceEpsg": {
             "description": "ラスタライズに使用する投影 CRS EPSG コード（UV 計算に必要）",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "textureImagePath": {
             "description": "太陽放射テクスチャ PNG へのパス（指定しない場合はテクスチャ挿入をスキップ）",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
-          },
           "MeasurementDef": {
             "description": "A single measurement attribute definition.",
             "type": "object",
@@ -9253,31 +9679,68 @@
               },
               "sourceEpsg": {
                 "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "standardMeridian": {
                 "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
                 "default": null,
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "time": {
                 "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "type": {
                 "type": "string",
@@ -9300,11 +9763,24 @@
             "properties": {
               "end": {
                 "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\") or date-only format (e.g., \"2025-01-12\" or \"2025-01-12+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "outputBelowHorizon": {
                 "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
@@ -9322,39 +9798,88 @@
               },
               "sourceEpsg": {
                 "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "standardMeridian": {
                 "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
                 "default": null,
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "start": {
                 "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "step": {
                 "description": "Step value expression evaluating to an integer",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
                   }
-                ]
+                }
               },
               "stepUnit": {
                 "description": "Unit for the step value",
@@ -9374,9 +9899,6 @@
           }
         ],
         "definitions": {
-          "Expr": {
-            "type": "string"
-          },
           "OutputType": {
             "description": "Output type for solar position calculation",
             "oneOf": [
@@ -9479,12 +10001,24 @@
         ],
         "properties": {
           "cityGmlPath": {
-            "$ref": "#/definitions/Expr"
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -9515,7 +10049,24 @@
         ],
         "properties": {
           "cityGmlPath": {
-            "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           },
           "codelistsPath": {
             "anyOf": [
@@ -9540,9 +10091,6 @@
         },
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           }
         }
@@ -9637,19 +10185,27 @@
         "properties": {
           "codelistsPath": {
             "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -9755,7 +10311,24 @@
         ],
         "properties": {
           "cityGmlPath": {
-            "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           },
           "codelistsPath": {
             "anyOf": [
@@ -9780,9 +10353,6 @@
         },
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           }
         }
@@ -9826,17 +10396,26 @@
           "threshold": {
             "title": "しきい値",
             "description": "平面性チェックのしきい値。共分散モード: 共分散行列の最小固有値の最大許容値。高さモード: 凸包の最小高さの最大許容値。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
-          },
           "PlanarityFilterType": {
             "description": "Filter type for planarity check",
             "oneOf": [
@@ -9903,14 +10482,27 @@
           "pythonFile": {
             "title": "Python ファイル",
             "description": "Python スクリプトファイルのパス（file://、http://、https://、gs:// などに対応）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "pythonPath": {
             "title": "Python パス",
@@ -9923,14 +10515,27 @@
           "script": {
             "title": "インラインスクリプト",
             "description": "インラインで実行する Python スクリプトコード",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "timeoutSeconds": {
             "title": "タイムアウト秒数",
@@ -9941,11 +10546,6 @@
             ],
             "format": "uint64",
             "minimum": 0.0
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
           }
         }
       },
@@ -9979,38 +10579,74 @@
           "closestIntersectionOnly": {
             "description": "true（デフォルト）の場合、レイ-ジオメトリペアごとに最も近い交差点のみを返す。false の場合、すべての交差点を返す。",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "geomId": {
             "description": "ジオメトリフィーチャーに評価されて ID 文字列を抽出する式。設定すると、交差フィーチャーにヒットしたジオメトリを識別する `geom_id` 属性が含まれる。",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "includeRayOrigin": {
             "description": "true（デフォルト）の場合、レイの原点での交差を含める。false の場合、t < 許容誤差の交差を除外する。",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "outputGeometryType": {
             "description": "交差結果として出力するジオメトリのタイプ。- \"pointOfIntersection\"（デフォルト）: 交差位置に点を出力 - \"lineSegmentToIntersection\": レイの原点から交差点までの線分を出力",
@@ -10023,11 +10659,23 @@
           },
           "pairId": {
             "description": "レイとジオメトリをグループ化するためのペア ID（int または string）に評価される式。一致する pairId を持つレイとジオメトリのみが互いにテストされる。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "ray": {
             "description": "フィーチャー属性からレイデータを抽出する方法を定義する",
@@ -10040,21 +10688,30 @@
           "tolerance": {
             "description": "交差計算の許容誤差（f64 に評価される）。指定しない場合はデフォルトの許容誤差が使用される。",
             "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           }
         },
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           },
           "OutputGeometryType": {
@@ -10203,9 +10860,6 @@
           }
         },
         "definitions": {
-          "Expr": {
-            "type": "string"
-          },
           "RotationParam": {
             "description": "Rotation specification",
             "oneOf": [
@@ -10224,51 +10878,123 @@
                 "properties": {
                   "fromX": {
                     "description": "X component of the source direction vector",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "fromY": {
                     "description": "Y component of the source direction vector",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "fromZ": {
                     "description": "Z component of the source direction vector",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "toX": {
                     "description": "X component of the target direction vector",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "toY": {
                     "description": "Y component of the target direction vector",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "toZ": {
                     "description": "Z component of the target direction vector",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "type": {
                     "type": "string",
@@ -10291,35 +11017,83 @@
                 "properties": {
                   "angle": {
                     "description": "Rotation angle in degrees",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "axisX": {
                     "description": "X component of the rotation axis",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "axisY": {
                     "description": "Y component of the rotation axis",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "axisZ": {
                     "description": "Z component of the rotation axis",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/Expr"
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   },
                   "type": {
                     "type": "string",
@@ -10519,16 +11293,23 @@
           "tolerance": {
             "title": "許容誤差",
             "description": "ジオメトリ演算の許容誤差（f64 に評価される式）。頂点のマージおよび面の三角形分割に使用される。",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -10969,25 +11750,32 @@
           "elevation": {
             "title": "標高",
             "description": "すべての点に追加する Z 座標（標高）値。定数値または式で指定可能。指定しない場合のデフォルトは 0.0。",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
               },
-              {
-                "type": "null"
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "preserveExistingZ": {
             "title": "既存の Z 値を保持",
             "description": "true の場合、すでに 3D のジオメトリはそのまま通過する。false の場合、既存の Z 値は指定された標高で置き換えられる。デフォルトは false。",
             "default": false,
             "type": "boolean"
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
           }
         }
       },
@@ -11045,70 +11833,149 @@
           "angleDegree": {
             "title": "回転角度（度）",
             "description": "指定した軸の周りの回転角度（度）",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "directionX": {
             "title": "方向 X",
             "description": "回転軸の方向ベクトルの X 成分",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "directionY": {
             "title": "方向 Y",
             "description": "回転軸の方向ベクトルの Y 成分",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "directionZ": {
             "title": "方向 Z",
             "description": "回転軸の方向ベクトルの Z 成分",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "originX": {
             "title": "原点 X",
             "description": "回転原点の X 座標",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "originY": {
             "title": "原点 Y",
             "description": "回転原点の Y 座標",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
+            }
           },
           "originZ": {
             "title": "原点 Z",
             "description": "回転原点の Z 座標",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
               }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
+            }
           }
         }
       },
@@ -11272,10 +12139,42 @@
                 "$ref": "#/definitions/Attribute"
               },
               "elementsToExclude": {
-                "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
               },
               "elementsToMatch": {
-                "$ref": "#/definitions/Expr"
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
               },
               "source": {
                 "type": "string",
@@ -11288,9 +12187,6 @@
         ],
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           }
         }
