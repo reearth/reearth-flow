@@ -7,27 +7,6 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Names the chosen index width. The container's discriminant ([`IndexBuffer`])
-/// is the tag; there is no separate width field to fall out of sync.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum IndexType {
-    U8,
-    U16,
-    U32,
-}
-
-impl IndexType {
-    /// Pick the narrowest index type that can store `max`.
-    #[inline]
-    pub fn for_max_value(max: usize) -> IndexType {
-        match max {
-            m if m <= u8::MAX as usize => IndexType::U8,
-            m if m <= u16::MAX as usize => IndexType::U16,
-            _ => IndexType::U32, // hard ceiling
-        }
-    }
-}
-
 /// Width-erased index storage. `N` is the stride: 3 for triangles, 1 for the
 /// scalar arrays (`[Idx; 1]` is layout-identical to `Idx`).
 ///
@@ -44,79 +23,6 @@ pub enum IndexBuffer<const N: usize> {
     U8(Vec<[u8; N]>),
     U16(Vec<[u16; N]>),
     U32(Vec<[u32; N]>),
-}
-
-impl<const N: usize> IndexBuffer<N> {
-    /// The runtime width tag of this buffer.
-    #[inline]
-    pub fn index_type(&self) -> IndexType {
-        match self {
-            IndexBuffer::U8(_) => IndexType::U8,
-            IndexBuffer::U16(_) => IndexType::U16,
-            IndexBuffer::U32(_) => IndexType::U32,
-        }
-    }
-
-    /// Number of stride-`N` entries.
-    #[inline]
-    pub fn len(&self) -> usize {
-        match self {
-            IndexBuffer::U8(v) => v.len(),
-            IndexBuffer::U16(v) => v.len(),
-            IndexBuffer::U32(v) => v.len(),
-        }
-    }
-
-    /// Whether the buffer holds no entries.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
-
-/// The concrete integer types an [`IndexBuffer`] can store. Implemented for
-/// `u8` / `u16` / `u32` so hot algorithms can run generically over a concrete
-/// width selected by [`dispatch_index!`].
-///
-/// A trait and an enum cannot share a name (both live in the type namespace),
-/// so the static path is `trait MeshIndex` while the runtime tag stays
-/// `enum IndexType`.
-pub trait MeshIndex: Copy + Ord {
-    fn to_usize(self) -> usize;
-    fn from_usize(i: usize) -> Self;
-}
-
-impl MeshIndex for u8 {
-    #[inline]
-    fn to_usize(self) -> usize {
-        self as usize
-    }
-    #[inline]
-    fn from_usize(i: usize) -> Self {
-        i as u8
-    }
-}
-
-impl MeshIndex for u16 {
-    #[inline]
-    fn to_usize(self) -> usize {
-        self as usize
-    }
-    #[inline]
-    fn from_usize(i: usize) -> Self {
-        i as u16
-    }
-}
-
-impl MeshIndex for u32 {
-    #[inline]
-    fn to_usize(self) -> usize {
-        self as usize
-    }
-    #[inline]
-    fn from_usize(i: usize) -> Self {
-        i as u32
-    }
 }
 
 /// Monomorphize a body over the concrete index width of an [`IndexBuffer`].
@@ -154,35 +60,4 @@ macro_rules! dispatch_index {
             }
         }
     };
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn for_max_value_picks_narrowest_width() {
-        assert_eq!(IndexType::for_max_value(0), IndexType::U8);
-        assert_eq!(IndexType::for_max_value(u8::MAX as usize), IndexType::U8);
-        assert_eq!(
-            IndexType::for_max_value(u8::MAX as usize + 1),
-            IndexType::U16
-        );
-        assert_eq!(IndexType::for_max_value(u16::MAX as usize), IndexType::U16);
-        assert_eq!(
-            IndexType::for_max_value(u16::MAX as usize + 1),
-            IndexType::U32
-        );
-    }
-
-    #[test]
-    fn dispatch_runs_generic_arm() {
-        fn sum<Idx: MeshIndex>(slice: &[[Idx; 1]]) -> usize {
-            slice.iter().map(|[i]| i.to_usize()).sum()
-        }
-        let buf: IndexBuffer<1> = IndexBuffer::U8(vec![[1u8], [2u8], [3u8]]);
-        let total = dispatch_index!(&buf, |Idx, s| sum::<Idx>(s));
-        assert_eq!(total, 6);
-        assert_eq!(buf.index_type(), IndexType::U8);
-    }
 }
