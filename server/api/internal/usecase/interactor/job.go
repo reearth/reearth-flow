@@ -199,8 +199,13 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 			log.Errorfc(ctx, "job: preview-schema cloud run worker %s run error: %v", j.ID(), err)
 		}
 
-		if err != nil || status == gateway.JobStatusFailed {
+		// The probe is synchronous and emits no Redis event, so finalize the job
+		// directly from the HTTP response instead of relying on the monitoring loop.
+		switch {
+		case err != nil || status == gateway.JobStatusFailed:
 			i.failCloudRunJob(ctx, j.ID())
+		case status == gateway.JobStatusCompleted:
+			i.completeCloudRunPreviewJob(ctx, j.ID())
 		}
 	}()
 }
@@ -241,6 +246,38 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 
 	if err := i.handleJobCompletion(ctx, latest); err != nil {
 		log.Errorfc(ctx, "job: completion handling failed for cloud run job %s: %v", jobID, err)
+	}
+	i.subscriptions.Notify(jobID.String(), latest.Status())
+}
+
+// completeCloudRunPreviewJob marks a preview-schema job completed from the
+// synchronous /probe-schema response. Unlike a normal run, the read-only probe
+// emits no Redis completion event, so the monitoring loop would never finalize
+// it and the job would sit at PENDING forever. The HTTP response is the
+// authoritative, synchronous result, so no grace period or Redis check applies.
+func (i *Job) completeCloudRunPreviewJob(ctx context.Context, jobID id.JobID) {
+	lock := i.getJobLock(jobID.String())
+	lock.Lock()
+	defer lock.Unlock()
+
+	latest, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		log.Errorfc(ctx, "job: failed to reload preview job %s: %v", jobID, err)
+		return
+	}
+	if s := latest.Status(); s == job.StatusCancelled || s == job.StatusCompleted || s == job.StatusFailed {
+		return
+	}
+
+	latest.SetStatus(job.StatusCompleted)
+
+	if err := i.jobRepo.Save(ctx, latest); err != nil {
+		log.Errorfc(ctx, "job: failed to save preview job %s: %v", jobID, err)
+		return
+	}
+
+	if err := i.handleJobCompletion(ctx, latest); err != nil {
+		log.Errorfc(ctx, "job: completion handling failed for preview job %s: %v", jobID, err)
 	}
 	i.subscriptions.Notify(jobID.String(), latest.Status())
 }

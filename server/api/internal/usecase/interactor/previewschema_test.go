@@ -4,7 +4,9 @@ import (
 	"context"
 	"io"
 	"net/url"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -17,8 +19,10 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/job/monitor"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/usecasex"
@@ -105,15 +109,15 @@ func (f *previewFakeFile) ReadArtifact(context.Context, string) (io.ReadCloser, 
 	panic("unused")
 }
 func (f *previewFakeFile) ListJobArtifacts(context.Context, string) ([]string, error) {
-	panic("unused")
+	return nil, nil
 }
-func (f *previewFakeFile) GetJobLogURL(string) string                              { panic("unused") }
+func (f *previewFakeFile) GetJobLogURL(string) string                              { return "" }
 func (f *previewFakeFile) CheckJobLogExists(context.Context, string) (bool, error) { panic("unused") }
-func (f *previewFakeFile) GetJobWorkerLogURL(string) string                        { panic("unused") }
+func (f *previewFakeFile) GetJobWorkerLogURL(string) string                        { return "" }
 func (f *previewFakeFile) CheckJobWorkerLogExists(context.Context, string) (bool, error) {
 	panic("unused")
 }
-func (f *previewFakeFile) GetJobUserFacingLogURL(string) string { panic("unused") }
+func (f *previewFakeFile) GetJobUserFacingLogURL(string) string { return "" }
 func (f *previewFakeFile) CheckJobUserFacingLogExists(context.Context, string) (bool, error) {
 	panic("unused")
 }
@@ -365,4 +369,56 @@ func TestParametersToVariables(t *testing.T) {
 	assert.Equal(t, "file:///a.geojson", vars["dataset"])
 	_, ok := vars["noDefault"]
 	assert.False(t, ok, "parameter with nil default must be omitted, not set to \"<nil>\"")
+}
+
+// A successful preview probe is finalized from the synchronous /probe-schema
+// response, since the read-only probe emits no Redis completion event. The job
+// must reach COMPLETED, surface the report via outputURLs, and push COMPLETED to
+// the jobStatus subscription (the bug left it forever PENDING).
+func TestJob_completeCloudRunPreviewJob(t *testing.T) {
+	ctx := context.Background()
+	jobRepo := memory.NewJob()
+
+	debug := true
+	j, err := job.New().
+		NewID().
+		Debug(&debug).
+		Mode(job.ModePreviewSchema).
+		Workspace(project.NewWorkspaceID()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
+	assert.NoError(t, err)
+	assert.NoError(t, jobRepo.Save(ctx, j))
+
+	uc := &Job{
+		jobRepo:       jobRepo,
+		transaction:   &usecasex.NopTransaction{},
+		file:          &previewFakeFile{},
+		monitor:       monitor.NewMonitor(),
+		subscriptions: subscription.NewJobManager(),
+		jobLocks:      map[string]*sync.Mutex{},
+	}
+
+	// Subscribe before finalizing: the fix must push COMPLETED here.
+	ch := uc.subscriptions.Subscribe(j.ID().String())
+
+	uc.completeCloudRunPreviewJob(ctx, j.ID())
+
+	select {
+	case s := <-ch:
+		assert.Equal(t, job.StatusCompleted, s)
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected a COMPLETED notification on the subscription, got none")
+	}
+
+	saved, err := jobRepo.FindByID(ctx, j.ID())
+	assert.NoError(t, err)
+	assert.Equal(t, job.StatusCompleted, saved.Status())
+	assert.NotNil(t, saved.CompletedAt())
+	// The SchemaReport is surfaced via outputURLs (no dedicated Job field).
+	assert.Equal(t,
+		[]string{"gs://bucket/artifacts/" + j.ID().String() + "/schema/schema-report.json"},
+		saved.OutputURLs(),
+	)
 }
