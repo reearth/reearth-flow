@@ -16,6 +16,9 @@ use tracing::debug;
 
 use crate::factory::ALL_ACTION_FACTORIES;
 use reearth_flow_worker::errors::{Error, Result};
+use reearth_flow_worker::pubsub::{PubSubBackend, Publisher};
+use reearth_flow_worker::types::job_complete_event::{JobCompleteEvent, JobResult};
+use uuid::Uuid;
 
 const DEFAULT_SAMPLE_SIZE: usize = 10;
 
@@ -36,6 +39,8 @@ pub fn build_probe_schema_command() -> Command {
         .arg(vars_arg())
         .arg(sample_size_arg())
         .arg(report_url_arg())
+        .arg(job_id_arg())
+        .arg(pubsub_backend_arg())
 }
 
 fn workflow_arg() -> Arg {
@@ -72,12 +77,32 @@ fn report_url_arg() -> Arg {
         .display_order(4)
 }
 
+fn job_id_arg() -> Arg {
+    Arg::new("job_id")
+        .long("job-id")
+        .help("Job id; published in the completion event so the server finalizes the job")
+        .required(true)
+        .display_order(5)
+}
+
+fn pubsub_backend_arg() -> Arg {
+    Arg::new("pubsub_backend")
+        .long("pubsub-backend")
+        .help("Pub/Sub backend for the job-complete event (google|noop)")
+        .env("FLOW_WORKER_PUBSUB_BACKEND")
+        .default_value("noop")
+        .required(false)
+        .display_order(6)
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct ProbeSchemaCommand {
     workflow: String,
     vars: HashMap<String, String>,
     sample_size: usize,
     report_url: String,
+    job_id: Uuid,
+    pubsub_backend: String,
 }
 
 impl ProbeSchemaCommand {
@@ -109,17 +134,27 @@ impl ProbeSchemaCommand {
         let report_url = matches
             .remove_one::<String>("report_url")
             .ok_or(Error::init("No report url provided"))?;
+        let job_id = matches
+            .remove_one::<String>("job_id")
+            .ok_or(Error::init("No job id provided"))?;
+        let job_id =
+            Uuid::from_str(&job_id).map_err(|e| Error::init(format!("Invalid job-id: {e}")))?;
+        let pubsub_backend = matches
+            .remove_one::<String>("pubsub_backend")
+            .unwrap_or_else(|| "noop".to_string());
         Ok(Self {
             workflow,
             vars,
             sample_size,
             report_url,
+            job_id,
+            pubsub_backend,
         })
     }
 
     /// Build the schema report. Mirrors `cli::probe_schema::build_report` but
     /// uses the worker's `ALL_ACTION_FACTORIES`.
-    fn build_report(&self, storage_resolver: &StorageResolver) -> Result<SchemaReport> {
+    fn build_report(&self, storage_resolver: &StorageResolver) -> Result<(Uuid, SchemaReport)> {
         let (yaml_content, base_dir) = if self.workflow == "-" {
             let content = io::read_to_string(io::stdin()).map_err(Error::init)?;
             (content, None)
@@ -150,6 +185,10 @@ impl ProbeSchemaCommand {
         workflow
             .merge_with(self.vars.clone())
             .map_err(Error::init)?;
+
+        // Captured before `workflow` is moved into `from_graphs`; needed for the
+        // completion event so the server can correlate the job.
+        let workflow_id = workflow.id;
 
         // Capture node id -> display name before `workflow` is moved into `from_graphs`.
         let mut names: HashMap<String, String> = HashMap::new();
@@ -195,31 +234,56 @@ impl ProbeSchemaCommand {
             );
         }
 
-        Ok(SchemaReport {
-            version: 1,
-            sample_size: self.sample_size,
-            nodes,
-        })
+        Ok((
+            workflow_id,
+            SchemaReport {
+                version: 1,
+                sample_size: self.sample_size,
+                nodes,
+            },
+        ))
     }
 
     pub fn execute(&self) -> Result<()> {
         debug!(args = ?self, "probe-schema");
         let storage_resolver = StorageResolver::new();
-        let report = self.build_report(&storage_resolver)?;
-        let json = serde_json::to_vec_pretty(&report).map_err(Error::run)?;
-
-        let report_uri = Uri::from_str(self.report_url.as_str()).map_err(Error::init)?;
-        let storage = storage_resolver.resolve(&report_uri).map_err(Error::init)?;
-        // Write via the async `put`, exactly as the run path's `upload_artifact`
-        // does: object-store backends like GCS do not implement OpenDAL's
-        // blocking layer, so `put_sync` fails with `Unsupported (persistent) at
-        // blocking_write`. `execute` runs in a sync context (worker `main` is
-        // not async), so drive the async write on a Tokio runtime, mirroring
-        // `RunWorkerCommand::execute`.
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .map_err(Error::FailedToCreateTokioRuntime)?;
+
+        let outcome = self.run_probe(&storage_resolver, &runtime);
+
+        // Publish a JobCompleteEvent so the server's monitoring loop finalizes
+        // the job, exactly as a debug run does. The probe path is otherwise
+        // silent, which would leave the job PENDING forever. Publishing must not
+        // mask the probe's own error: log a publish failure and propagate the
+        // original outcome.
+        let (workflow_id, result) = match &outcome {
+            Ok(id) => (*id, JobResult::Success),
+            Err(_) => (Uuid::nil(), JobResult::Failed),
+        };
+        if let Err(e) = runtime.block_on(self.publish_complete(workflow_id, result)) {
+            tracing::error!("probe-schema: failed to publish job-complete event: {e:?}");
+        }
+
+        outcome.map(|_| ())
+    }
+
+    /// Run the probe and write the report. Returns the workflow id on success.
+    fn run_probe(
+        &self,
+        storage_resolver: &StorageResolver,
+        runtime: &tokio::runtime::Runtime,
+    ) -> Result<Uuid> {
+        let (workflow_id, report) = self.build_report(storage_resolver)?;
+        let json = serde_json::to_vec_pretty(&report).map_err(Error::run)?;
+
+        let report_uri = Uri::from_str(self.report_url.as_str()).map_err(Error::init)?;
+        let storage = storage_resolver.resolve(&report_uri).map_err(Error::init)?;
+        // Write via the async `put`: object-store backends like GCS do not
+        // implement OpenDAL's blocking layer, so `put_sync` fails with
+        // `Unsupported (persistent) at blocking_write`.
         runtime.block_on(async {
             storage
                 .put(report_uri.path().as_path(), json.into())
@@ -227,7 +291,23 @@ impl ProbeSchemaCommand {
                 .map_err(Error::run)
         })?;
         tracing::info!("Wrote probe-schema report to {}", self.report_url);
-        Ok(())
+        Ok(workflow_id)
+    }
+
+    /// Publish the terminal JobCompleteEvent on the same Pub/Sub backend a run
+    /// uses, so the server's monitoring loop finalizes the preview job.
+    async fn publish_complete(&self, workflow_id: Uuid, result: JobResult) -> Result<()> {
+        let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
+            .await
+            .map_err(|e| Error::run(format!("{e:?}")))?;
+        let event = JobCompleteEvent::new(workflow_id, self.job_id, result);
+        match pubsub {
+            PubSubBackend::Google(p) => p.publish(event).await.map_err(Error::run),
+            PubSubBackend::Noop(p) => p
+                .publish(event)
+                .await
+                .map_err(|e| Error::run(format!("{e:?}"))),
+        }
     }
 }
 
@@ -339,6 +419,9 @@ graphs:
             vars: HashMap::new(),
             sample_size: 10,
             report_url,
+            job_id: Uuid::from_str(WORKFLOW_ID).expect("valid uuid"),
+            // noop backend: execute() publishes a (no-op) completion event.
+            pubsub_backend: "noop".to_string(),
         };
         cmd.execute().expect("probe-schema execute succeeds");
 

@@ -47,6 +47,8 @@ pub fn build_probe_args(req: &ProbeRequest) -> Vec<String> {
         req.workflow_url.clone(),
         "--report-url".to_string(),
         req.report_url.clone(),
+        "--job-id".to_string(),
+        req.job_id.clone(),
     ];
     for (k, v) in &req.variables {
         args.push("--var".to_string());
@@ -201,6 +203,8 @@ mod tests {
                 "gs://b/wf.yml",
                 "--report-url",
                 "gs://b/reports/j1.json",
+                "--job-id",
+                "j1",
             ]
         );
     }
