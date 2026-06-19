@@ -71,8 +71,8 @@ pub struct GeometryCollection {
     attrs: Vec<Attributes>,
 }
 
-/// 2D-embedded geometry. All coordinates are 2D `(x, y)` with an optional
-/// per-vertex elevation (2.5D).
+/// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
+/// optional per-vertex elevation (2.5D).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
     Point(Point2D),

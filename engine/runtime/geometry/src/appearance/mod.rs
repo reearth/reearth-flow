@@ -1,8 +1,9 @@
 //! Surface appearance: a small graph of types hung off a surface geometry.
 //!
 //! Top-down: a geometry optionally has one `Appearance` and owns a pool of
-//! `UvSet`s; an `Appearance` is a material palette plus, per theme, a
-//! face-to-material binding; a `Material` is exactly one of two shading models,
+//! `UvSet`s; an `Appearance` is a material palette plus, per theme, a per-side
+//! (front / optional back) face-to-material binding; a `Material` is exactly one
+//! of two shading models,
 //! each with a fixed set of texture slots; a `Texture` samples one `UvSet` from
 //! the geometry's pool, and several textures may share the same one.
 //!

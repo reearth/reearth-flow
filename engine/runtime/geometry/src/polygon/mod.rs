@@ -31,7 +31,7 @@ pub struct Polygon2D {
     /// `None` = pure 2D (no allocation).
     z: Option<Box<[f64]>>,
     /// UV parallel to `coords` (same ring concatenation); one set per
-    /// (theme, channel).
+    /// (theme, side, channel).
     uv_sets: Vec<UvSet>,
     /// Materials / themes / single-face binding; `None` = bare geometry.
     appearance: Option<Appearance>,
@@ -47,7 +47,7 @@ pub struct Polygon3D {
     coords: Box<[[f64; 3]]>,
     /// Start index in `coords` of each interior ring; empty when there are no holes.
     interior_offsets: Box<[u32]>,
-    /// UV parallel to `coords`; one set per (theme, channel).
+    /// UV parallel to `coords`; one set per (theme, side, channel).
     uv_sets: Vec<UvSet>,
     /// Materials / themes / single-face binding; `None` = bare geometry.
     appearance: Option<Appearance>,
