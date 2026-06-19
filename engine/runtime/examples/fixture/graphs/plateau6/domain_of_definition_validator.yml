@@ -13,8 +13,9 @@ nodes:
     type: action
     action: PLATEAU6.DomainOfDefinitionValidator
     with:
-      codelistsPath: |
-        env.get("__value").dirCodelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["dirCodelists"]
 
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag

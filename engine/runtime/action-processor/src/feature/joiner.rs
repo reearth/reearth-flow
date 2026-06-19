@@ -3,7 +3,6 @@ use std::{
     fs::File,
     io::{BufRead, BufReader, BufWriter, Write},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use once_cell::sync::Lazy;
@@ -15,7 +14,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, Expr, Feature};
+use reearth_flow_types::{fetch_attribute_value, Attribute, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -67,12 +66,12 @@ impl ProcessorFactory for FeatureJoinerFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureJoinerParam = if let Some(with) = with.clone() {
+        let params: FeatureJoinerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::JoinerFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -90,35 +89,27 @@ impl ProcessorFactory for FeatureJoinerFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let requestor_attribute_value = params
+            .requestor_attribute_value
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    FeatureProcessorError::JoinerFactory(format!(
+                        "Failed to compile requestor attribute value: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
 
-        let requestor_attribute_value =
-            if let Some(requestor_attribute_value) = params.requestor_attribute_value {
-                let result = expr_engine
-                    .compile(requestor_attribute_value.as_ref())
-                    .map_err(|e| {
-                        FeatureProcessorError::JoinerFactory(format!(
-                            "Failed to compile requestor attribute value: {e}"
-                        ))
-                    })?;
-                Some(result)
-            } else {
-                None
-            };
-
-        let supplier_attribute_value =
-            if let Some(supplier_attribute_value) = params.supplier_attribute_value {
-                let result = expr_engine
-                    .compile(supplier_attribute_value.as_ref())
-                    .map_err(|e| {
-                        FeatureProcessorError::JoinerFactory(format!(
-                            "Failed to compile supplier attribute value: {e}"
-                        ))
-                    })?;
-                Some(result)
-            } else {
-                None
-            };
+        let supplier_attribute_value = params
+            .supplier_attribute_value
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    FeatureProcessorError::JoinerFactory(format!(
+                        "Failed to compile supplier attribute value: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
 
         if requestor_attribute_value.is_none() && params.requestor_attribute.is_none() {
             return Err(FeatureProcessorError::JoinerFactory(
@@ -141,7 +132,6 @@ impl ProcessorFactory for FeatureJoinerFactory {
             .unwrap_or(ConflictResolution::SupplierWins);
 
         let process = FeatureJoiner {
-            global_params: with,
             params: CompiledParam {
                 join_type: params.join_type,
                 requestor_attribute_value,
@@ -178,9 +168,9 @@ pub struct FeatureJoinerParam {
     /// Attributes from supplier features to use for matching (alternative to supplierAttributeValue)
     supplier_attribute: Option<Vec<Attribute>>,
     /// Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)
-    requestor_attribute_value: Option<Expr>,
+    requestor_attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)
-    supplier_attribute_value: Option<Expr>,
+    supplier_attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// Attribute conflict resolution strategy when both requestor and supplier have the same attribute
     conflict_resolution: Option<ConflictResolution>,
 }
@@ -206,7 +196,6 @@ enum ConflictResolution {
 }
 
 pub struct FeatureJoiner {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledParam,
     // Disk-backed state
     requestor_key_map: HashMap<String, usize>,
@@ -235,7 +224,6 @@ impl std::fmt::Debug for FeatureJoiner {
 impl Clone for FeatureJoiner {
     fn clone(&self) -> Self {
         Self {
-            global_params: self.global_params.clone(),
             params: self.params.clone(),
             requestor_key_map: HashMap::new(),
             supplier_key_map: HashMap::new(),
@@ -263,8 +251,8 @@ struct CompiledParam {
     join_type: JoinType,
     requestor_attribute: Option<Vec<Attribute>>,
     supplier_attribute: Option<Vec<Attribute>>,
-    requestor_attribute_value: Option<rhai::AST>,
-    supplier_attribute_value: Option<rhai::AST>,
+    requestor_attribute_value: Option<CompiledCode>,
+    supplier_attribute_value: Option<CompiledCode>,
     conflict_resolution: ConflictResolution,
 }
 
@@ -430,10 +418,9 @@ impl Processor for FeatureJoiner {
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
                 let feature = &ctx.feature;
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let requestor_attribute_value = feature.fetch_attribute_value(
-                    expr_engine,
-                    &self.global_params,
+                let requestor_attribute_value = fetch_attribute_value(
+                    feature,
+                    ctx.expr_engine.vars().clone(),
                     &self.params.requestor_attribute,
                     &self.params.requestor_attribute_value,
                 );
@@ -455,10 +442,9 @@ impl Processor for FeatureJoiner {
             }
             port if port == SUPPLIER_PORT.clone() => {
                 let feature = &ctx.feature;
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let supplier_attribute_value = feature.fetch_attribute_value(
-                    expr_engine,
-                    &self.global_params,
+                let supplier_attribute_value = fetch_attribute_value(
+                    feature,
+                    ctx.expr_engine.vars().clone(),
                     &self.params.supplier_attribute,
                     &self.params.supplier_attribute_value,
                 );

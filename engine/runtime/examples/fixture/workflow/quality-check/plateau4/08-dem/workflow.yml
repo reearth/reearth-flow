@@ -65,8 +65,9 @@ graphs:
         type: action
         action: FeatureFilePathExtractor
         with:
-          sourceDataset: |
-            env.get("__value")["cityGmlPath"]
+          sourceDataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
           extractArchive: true
           destPrefix: udx
 
@@ -94,8 +95,9 @@ graphs:
         type: action
         action: PLATEAU4.UDXFolderExtractor
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
           codelistsPath: codelists
           schemasPath: schemas
 
@@ -116,8 +118,9 @@ graphs:
         action: PLATEAU4.CityGmlMeshBuilder
         with:
           errorAttribute: _validation_error
-          epsgCode: |
-            env.get("prcs")
+          epsgCode:
+            type: flowExpr
+            value: env["prcs"]
 
       # Branch 1: Incorrect number of vertices
       - id: 21bb4a5e-5975-443b-8a38-6332789681dd
@@ -369,10 +372,12 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttributeValue: |
-            env.get("__value").name
-          supplierAttributeValue: |
-            env.get("__value").name
+          requestorAttributeValue:
+            type: flowExpr
+            value: attributes["name"]
+          supplierAttributeValue:
+            type: flowExpr
+            value: attributes["name"]
 
       # AttributeMapper for CSV formatting
       - id: 6fac13ad-7487-4441-afd9-0812922bd4b8

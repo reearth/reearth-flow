@@ -13,9 +13,7 @@ graphs:
         with:
           creator:
             type: flowExpr
-            value: |
-              let x = non_existent_function();
-              [{"test": x}]
+            value: '"not_an_array"'
       - id: c1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         name: JsonWriter
         type: action

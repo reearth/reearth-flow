@@ -6,7 +6,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{create_batch_feature, Code, CompiledCode, Feature};
+use reearth_flow_types::{create_batch_feature, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -102,7 +102,7 @@ pub(super) struct JsonWriterParam {
     /// Output path or expression for the JSON file to create
     pub(super) output: Code,
     /// Optional converter expression to transform features before writing
-    pub(super) converter: Option<Code>,
+    pub(super) converter: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 impl Sink for JsonWriter {

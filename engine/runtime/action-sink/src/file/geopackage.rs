@@ -8,7 +8,7 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_sql::SqlAdapter;
-use reearth_flow_types::{AttributeValue, Code, CompiledCode, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{AttributeValue, Code, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -49,7 +49,7 @@ impl SinkFactory for GeoPackageWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -71,9 +71,16 @@ impl SinkFactory for GeoPackageWriterFactory {
             )
             .into());
         };
-        let output = params.output.compile().map_err(|e| {
-            SinkError::GeoPackageWriterFactory(format!("Failed to compile `output`: {e:?}"))
-        })?;
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::GeoPackageWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(|e| {
+                SinkError::GeoPackageWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         let sink = GeoPackageWriter {
             params: GeoPackageWriterCompiledParam {
                 output,
@@ -93,7 +100,7 @@ impl SinkFactory for GeoPackageWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct GeoPackageWriterCompiledParam {
-    pub(super) output: CompiledCode,
+    pub(super) output: String,
     pub(super) table_name: String,
     pub(super) geometry_column: String,
     pub(super) srs_id: i32,
@@ -229,12 +236,8 @@ impl Sink for GeoPackageWriter {
             return Ok(());
         }
 
-        let path = self
-            .params
-            .output
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(|e| crate::errors::SinkError::GeoPackageWriter(format!("{e:?}")))?;
-        let out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
+        let path = self.params.output.as_str();
+        let out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
             .map_err(|e| crate::errors::SinkError::GeoPackageWriter(e.to_string()))?;
 
         // Check if file exists

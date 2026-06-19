@@ -9,8 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Expr, Feature, Geometry, GeometryValue};
-use rhai::AST;
+use reearth_flow_types::{Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -54,12 +53,12 @@ impl ProcessorFactory for CSGEvaluatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: CSGEvaluatorParam = if let Some(with_val) = with.clone() {
+        let params: CSGEvaluatorParam = if let Some(with_val) = with {
             let value: Value = serde_json::to_value(with_val).map_err(|e| {
                 GeometryProcessorError::CSGEvaluatorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -77,19 +76,13 @@ impl ProcessorFactory for CSGEvaluatorFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let tolerance_ast = expr_engine
-            .compile(params.tolerance.as_ref())
-            .map_err(|e| {
-                GeometryProcessorError::CSGEvaluatorFactory(format!(
-                    "Failed to compile tolerance expression: {e:?}"
-                ))
-            })?;
+        let tolerance_ast = params.tolerance.compile().map_err(|e| {
+            GeometryProcessorError::CSGEvaluatorFactory(format!(
+                "Failed to compile tolerance expression: {e:?}"
+            ))
+        })?;
 
-        let processor = CSGEvaluator {
-            global_params: with,
-            tolerance_ast,
-        };
+        let processor = CSGEvaluator { tolerance_ast };
         Ok(Box::new(processor))
     }
 }
@@ -102,15 +95,14 @@ pub struct CSGEvaluatorParam {
     /// # Tolerance
     /// Tolerance value for geometry operations (as an expression evaluating to f64).
     /// Used for vertex merging and mesh operations.
-    pub tolerance: Expr,
+    pub tolerance: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 /// # CSG Evaluator
 /// Evaluates a CSG tree to produce a solid geometry mesh
 #[derive(Debug, Clone)]
 pub struct CSGEvaluator {
-    global_params: Option<HashMap<String, Value>>,
-    tolerance_ast: AST,
+    tolerance_ast: CompiledCode,
 }
 
 impl CSGEvaluator {
@@ -120,14 +112,14 @@ impl CSGEvaluator {
         feature: &Feature,
         ctx: &ExecutorContext,
     ) -> Result<f64, BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        scope.eval_ast::<f64>(&self.tolerance_ast).map_err(|e| {
-            GeometryProcessorError::CSGEvaluatorFactory(format!(
-                "Failed to evaluate tolerance expression: {e:?}"
-            ))
-            .into()
-        })
+        self.tolerance_ast
+            .eval_float(feature, Arc::clone(&ctx.expr_engine.vars()))
+            .map_err(|e| {
+                GeometryProcessorError::CSGEvaluatorFactory(format!(
+                    "Failed to evaluate tolerance expression: {e:?}"
+                ))
+                .into()
+            })
     }
 }
 

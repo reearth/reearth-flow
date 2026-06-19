@@ -48,7 +48,7 @@ impl SourceFactory for CzmlReaderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -70,7 +70,7 @@ impl SourceFactory for CzmlReaderFactory {
             .into());
         };
         let compiled_params = CzmlReaderCompiledParam {
-            common: params.common_property.compile().map_err(|e| {
+            common: params.common_property.compile(&ctx).map_err(|e| {
                 SourceError::CzmlReaderFactory(format!("Failed to compile params: {e:?}"))
             })?,
             force_2d: params.force_2d,
@@ -163,7 +163,7 @@ impl Source for CzmlReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
         read_czml(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)

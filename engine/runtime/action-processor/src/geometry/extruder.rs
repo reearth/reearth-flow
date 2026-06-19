@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Expr, Geometry, GeometryValue};
+use reearth_flow_types::{Code, CodeType, CompiledCode, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -49,12 +49,12 @@ impl ProcessorFactory for ExtruderFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ExtruderParam = if let Some(with) = with.clone() {
+        let params: ExtruderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ExtruderFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -72,23 +72,17 @@ impl ProcessorFactory for ExtruderFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let expr = &params.distance;
-        let template_ast = expr_engine
-            .compile(expr.as_ref())
+        let distance = params
+            .distance
+            .compile()
             .map_err(|e| GeometryProcessorError::ExtruderFactory(format!("{e:?}")))?;
-        let process = Extruder {
-            global_params: with,
-            distance: template_ast,
-        };
-        Ok(Box::new(process))
+        Ok(Box::new(Extruder { distance }))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Extruder {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    distance: rhai::AST,
+    distance: CompiledCode,
 }
 
 /// # Extruder Parameters
@@ -98,7 +92,7 @@ pub struct Extruder {
 pub struct ExtruderParam {
     /// # Distance
     /// The vertical distance (height) to extrude the polygon. Can be a constant value or an expression
-    distance: Expr,
+    distance: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 impl Processor for Extruder {
@@ -112,15 +106,13 @@ impl Processor for Extruder {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let Ok(height) = scope.eval_ast::<f64>(&self.distance) else {
-            return Err(GeometryProcessorError::Extruder(
-                "Failed to evaluate distance".to_string(),
-            )
-            .into());
-        };
+        let height = self
+            .distance
+            .eval_float(feature, ctx.expr_engine.vars().clone())
+            .map_err(|e| {
+                GeometryProcessorError::Extruder(format!("Failed to evaluate distance: {e:?}"))
+            })?;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
             return Err(GeometryProcessorError::Extruder("Missing geometry".to_string()).into());

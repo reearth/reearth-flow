@@ -22,8 +22,9 @@ nodes:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value").cityGmlPath
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
 
@@ -43,8 +44,9 @@ nodes:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: "codelists"
       schemasPath: "schemas"
 
