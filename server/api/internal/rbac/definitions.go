@@ -45,141 +45,49 @@ const (
 	roleOwner      = "owner"
 )
 
-func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDefinition {
-	if builder == nil {
-		panic("ResourceBuilder cannot be nil")
+// DefineResources returns the flow RBAC policy as declarative resource rules.
+// reearthx's generator.GeneratePolicies builds and sorts these into Cerbos
+// policies (action ordering is deterministic via the generator), so only the
+// resource→action→roles mapping matters here.
+func DefineResources() []generator.ResourceRule {
+	maintainerOnly := map[string]generator.ActionRule{
+		ActionAny: {Roles: []string{roleMaintainer}},
 	}
-
-	return builder.
-		AddResource(ResourceAsset, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceCMSAsset, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceCMSItem, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceCMSModel, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceCMSProject, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceDeployment, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceEdge, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceJob, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceLog, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceNode, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceParameter, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceProject, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionList, []string{
-				roleSelf,
-				roleMaintainer,
-			}),
-			generator.NewActionDefinition(ActionCreate, []string{
-				roleMaintainer,
-				roleOwner,
-			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleMaintainer,
-				roleOwner,
-			}),
-			generator.NewActionDefinition(ActionDelete, []string{
-				roleMaintainer,
-				roleOwner,
-			}),
-			generator.NewActionDefinition(ActionAny, []string{
-				roleReader,
-				roleEditor,
-				roleOwner,
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceProjectAccess, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceTrigger, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionCreate, []string{
-				roleMaintainer,
-				roleOwner,
-			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleMaintainer,
-				roleOwner,
-			}),
-			generator.NewActionDefinition(ActionDelete, []string{
-				roleMaintainer,
-				roleOwner,
-			}),
-			generator.NewActionDefinition(ActionAny, []string{
-				roleSelf,
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceUser, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionRead, []string{
-				roleSelf,
-				roleMaintainer,
-			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleSelf,
-				roleMaintainer,
-			}),
-		}).
-		AddResource(ResourceWorkspace, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionList, []string{
-				roleSelf,
-				roleMaintainer,
-			}),
-			generator.NewActionDefinition(ActionCreate, []string{
-				roleSelf,
-				roleMaintainer,
-			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleOwner,
-				roleMaintainer,
-			}),
-			generator.NewActionDefinition(ActionDelete, []string{
-				roleOwner,
-				roleMaintainer,
-			}),
-		}).
-		Build()
+	return []generator.ResourceRule{
+		{Resource: ResourceAsset, Actions: maintainerOnly},
+		{Resource: ResourceCMSAsset, Actions: maintainerOnly},
+		{Resource: ResourceCMSItem, Actions: maintainerOnly},
+		{Resource: ResourceCMSModel, Actions: maintainerOnly},
+		{Resource: ResourceCMSProject, Actions: maintainerOnly},
+		{Resource: ResourceDeployment, Actions: maintainerOnly},
+		{Resource: ResourceEdge, Actions: maintainerOnly},
+		{Resource: ResourceJob, Actions: maintainerOnly},
+		{Resource: ResourceLog, Actions: maintainerOnly},
+		{Resource: ResourceNode, Actions: maintainerOnly},
+		{Resource: ResourceParameter, Actions: maintainerOnly},
+		{Resource: ResourceProject, Actions: map[string]generator.ActionRule{
+			ActionList:   {Roles: []string{roleSelf, roleMaintainer}},
+			ActionCreate: {Roles: []string{roleMaintainer, roleOwner}},
+			ActionEdit:   {Roles: []string{roleMaintainer, roleOwner}},
+			ActionDelete: {Roles: []string{roleMaintainer, roleOwner}},
+			ActionAny:    {Roles: []string{roleReader, roleEditor, roleOwner, roleMaintainer}},
+		}},
+		{Resource: ResourceProjectAccess, Actions: maintainerOnly},
+		{Resource: ResourceTrigger, Actions: map[string]generator.ActionRule{
+			ActionCreate: {Roles: []string{roleMaintainer, roleOwner}},
+			ActionEdit:   {Roles: []string{roleMaintainer, roleOwner}},
+			ActionDelete: {Roles: []string{roleMaintainer, roleOwner}},
+			ActionAny:    {Roles: []string{roleSelf, roleMaintainer}},
+		}},
+		{Resource: ResourceUser, Actions: map[string]generator.ActionRule{
+			ActionRead: {Roles: []string{roleSelf, roleMaintainer}},
+			ActionEdit: {Roles: []string{roleSelf, roleMaintainer}},
+		}},
+		{Resource: ResourceWorkspace, Actions: map[string]generator.ActionRule{
+			ActionList:   {Roles: []string{roleSelf, roleMaintainer}},
+			ActionCreate: {Roles: []string{roleSelf, roleMaintainer}},
+			ActionEdit:   {Roles: []string{roleOwner, roleMaintainer}},
+			ActionDelete: {Roles: []string{roleOwner, roleMaintainer}},
+		}},
+	}
 }
