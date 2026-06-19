@@ -48,25 +48,33 @@ fn value_to_json(v: &Value) -> Result<JsonValue> {
     }
 }
 
-fn json_to_value(j: JsonValue) -> Value {
+fn json_to_value(j: JsonValue) -> Result<Value> {
     match j {
-        JsonValue::Null => Value::Null,
-        JsonValue::Bool(b) => Value::Bool(b),
+        JsonValue::Null => Ok(Value::Null),
+        JsonValue::Bool(b) => Ok(Value::Bool(b)),
         JsonValue::Number(n) => {
             if let Some(i) = n.as_i64() {
-                Value::Int(i)
+                Ok(Value::Int(i))
             } else {
-                Value::Float(n.as_f64().unwrap_or(f64::NAN))
+                n.as_f64()
+                    .map(Value::Float)
+                    .ok_or_else(|| eval_error(format!("json.loads: number {n} overflows f64")))
             }
         }
-        JsonValue::String(s) => Value::String(s),
-        JsonValue::Array(items) => Value::array(items.into_iter().map(json_to_value).collect()),
-        JsonValue::Object(obj) => {
-            let map: IndexMap<String, Value> = obj
+        JsonValue::String(s) => Ok(Value::String(s)),
+        JsonValue::Array(items) => {
+            let values = items
                 .into_iter()
-                .map(|(k, v)| (k, json_to_value(v)))
-                .collect();
-            Value::map(map)
+                .map(json_to_value)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Value::array(values))
+        }
+        JsonValue::Object(obj) => {
+            let map = obj
+                .into_iter()
+                .map(|(k, v)| json_to_value(v).map(|val| (k, val)))
+                .collect::<Result<IndexMap<_, _>>>()?;
+            Ok(Value::map(map))
         }
     }
 }
@@ -84,7 +92,7 @@ fn json_loads(args: &[Value]) -> Result<Value> {
     let s = args[0].as_str()?;
     let jv: JsonValue =
         serde_json::from_str(s).map_err(|e| eval_error(format!("json.loads: parse error: {e}")))?;
-    Ok(json_to_value(jv))
+    json_to_value(jv)
 }
 
 pub fn builtin_json() -> Value {
@@ -103,5 +111,11 @@ mod tests {
     fn test_json_smoke() {
         assert_eval(r#"json.dumps({"a": 1})"#, &[], Value::from(r#"{"a":1}"#));
         assert_eval(r#"json.loads("{\"a\":1}")["a"]"#, &[], Value::from(1i64));
+    }
+
+    #[test]
+    fn test_json_loads_overflow() {
+        use crate::core::test_utils::try_run;
+        assert!(try_run(r#"json.loads("1e10000")"#, &[]).is_err());
     }
 }
