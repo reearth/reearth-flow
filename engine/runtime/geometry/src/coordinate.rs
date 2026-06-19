@@ -15,8 +15,11 @@ pub enum Coordinate {
     /// Bare Euclidean space with no geo-referencing.
     #[default]
     Euclidean,
-    /// A 2D plane embedded in 3D, anchored in a base frame.
-    Tangent(TangentPlane),
+    /// A 2D plane embedded in 3D, anchored in a base frame. Boxed: a
+    /// `TangentPlane` is ~72 bytes against the 2-byte `EpsgCode`, and `Tangent`
+    /// is the rare frame, so boxing it keeps `Coordinate` — embedded in every
+    /// geometry leaf — pointer-sized for the common `Crs` / `Euclidean` cases.
+    Tangent(Box<TangentPlane>),
 }
 
 /// The absolute frame a [`TangentPlane`] is anchored in: exactly the non-tangent

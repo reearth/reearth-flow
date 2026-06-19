@@ -77,34 +77,45 @@ pub struct GeometryCollection {
 
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
 /// optional per-vertex elevation (2.5D).
+///
+/// The heavy aggregate leaves (`Polygon`, the meshes) are boxed so the small,
+/// common variants don't inflate the enum — and `Geometry` with them — to the
+/// size of the largest leaf. The small tier (`Point`, `LineString`,
+/// `Collection`) stays inline.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
     LineString(LineString2D),
     /// Exterior ring + optional holes.
-    Polygon(Polygon2D),
+    Polygon(Box<Polygon2D>),
     /// Indexed, variable face valence.
-    PolygonMesh(PolygonMesh2D),
+    PolygonMesh(Box<PolygonMesh2D>),
     /// Indexed, fixed 3-index stride (variable width).
-    TriangularMesh(TriangularMesh2D),
+    TriangularMesh(Box<TriangularMesh2D>),
     /// `Multi*` collection of 2D geometries; members may differ in coordinate frame.
     Collection(Collection2D),
 }
 
 /// 3D-embedded geometry. All coordinates are 3D `(x, y, z)`.
+///
+/// The heavy aggregate leaves (`PointCloud`, `Polygon`, the meshes, `Solid`) are
+/// boxed so the small, common variants don't inflate the enum — and `Geometry`
+/// with them — to the size of the largest leaf. The small tier (`Point`,
+/// `LineString`, `Csg`, `Collection`) stays inline; `Csg` already boxes its own
+/// operands.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
     Point(Point3D),
-    PointCloud(PointCloud),
+    PointCloud(Box<PointCloud>),
     LineString(LineString3D),
     /// Face in 3D space.
-    Polygon(Polygon3D),
+    Polygon(Box<Polygon3D>),
     /// Indexed, variable face valence.
-    PolygonMesh(PolygonMesh3D),
+    PolygonMesh(Box<PolygonMesh3D>),
     /// Indexed, fixed 3-index stride (variable width).
-    TriangularMesh(TriangularMesh3D),
+    TriangularMesh(Box<TriangularMesh3D>),
     /// Exterior + interior shells as coordless raw meshes; one frame on the Solid.
-    Solid(Solid),
+    Solid(Box<Solid>),
     /// Coordless boolean tree; frames come from its operand Solids.
     Csg(Csg),
     /// `Multi*` collection of 3D geometries; members may differ in coordinate frame.

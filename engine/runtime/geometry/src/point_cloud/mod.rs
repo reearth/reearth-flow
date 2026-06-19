@@ -10,10 +10,10 @@
 //! `to_le_bytes`. No `unsafe` is used on the field-access path, so a miscomputed
 //! offset is a bounds panic, never undefined behavior.
 
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, OnceLock};
 
+use indexmap::IndexMap;
 use kiddo::ImmutableKdTree;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
@@ -95,8 +95,10 @@ struct Segment {
     /// `to_le_bytes`.
     data: Vec<u8>,
     count: usize,
-    /// User-defined columns; each column's `len() == count`.
-    attributes: HashMap<String, AttributeColumn>,
+    /// User-defined columns; each column's `len() == count`. `IndexMap` rather
+    /// than `HashMap` so the serialized column order is deterministic
+    /// (insertion order), keeping the intermediate form byte-for-byte stable.
+    attributes: IndexMap<String, AttributeColumn>,
 }
 
 /// A 3D point cloud: one or more acquisition [`Segment`]s sharing a frame, plus

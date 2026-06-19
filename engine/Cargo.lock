@@ -6588,6 +6588,7 @@ dependencies = [
  "geo-types",
  "geojson",
  "i_overlay",
+ "indexmap 2.13.0",
  "kiddo",
  "nalgebra",
  "num-traits",
