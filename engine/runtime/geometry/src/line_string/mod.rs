@@ -14,17 +14,17 @@ use crate::coordinate::Coordinate;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString2D {
     /// Coordinate frame these coords are expressed in.
-    pub(crate) coordinate: Coordinate,
-    pub(crate) coords: Box<[[f64; 2]]>,
+    coordinate: Coordinate,
+    coords: Box<[[f64; 2]]>,
     /// Optional per-vertex elevation, parallel to `coords`.
     /// INVARIANT: when `Some`, `z.len() == coords.len()`. `None` = pure 2D.
-    pub(crate) z: Option<Box<[f64]>>,
+    z: Option<Box<[f64]>>,
 }
 
 /// A polyline in 3D space.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString3D {
     /// Coordinate frame these coords are expressed in.
-    pub(crate) coordinate: Coordinate,
-    pub(crate) coords: Box<[[f64; 3]]>,
+    coordinate: Coordinate,
+    coords: Box<[[f64; 3]]>,
 }

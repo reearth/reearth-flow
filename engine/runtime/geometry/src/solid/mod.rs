@@ -27,8 +27,8 @@ pub enum Shell {
 pub struct Solid {
     /// Coordinate frame this solid's shells are expressed in; the shells
     /// themselves are coordless raw meshes.
-    pub(crate) coordinate: Coordinate,
-    pub(crate) exterior: Shell,
+    coordinate: Coordinate,
+    exterior: Shell,
     /// Hollow voids.
-    pub(crate) interiors: Vec<Shell>,
+    interiors: Vec<Shell>,
 }

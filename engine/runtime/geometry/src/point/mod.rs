@@ -9,14 +9,14 @@ use super::coordinate::Coordinate;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Point2D {
     /// Coordinate frame this position is expressed in.
-    pub(crate) coordinate: Coordinate,
-    pub(crate) position: [f64; 2],
+    coordinate: Coordinate,
+    position: [f64; 2],
 }
 
 /// A single position in 3D space.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Point3D {
     /// Coordinate frame this position is expressed in.
-    pub(crate) coordinate: Coordinate,
-    pub(crate) position: [f64; 3],
+    coordinate: Coordinate,
+    position: [f64; 3],
 }

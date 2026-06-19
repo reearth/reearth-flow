@@ -65,10 +65,10 @@ pub enum Geometry {
 /// Ordered members, each optionally carrying its own attributes.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct GeometryCollection {
-    pub(crate) members: Vec<Geometry>,
+    members: Vec<Geometry>,
     /// Per-member attributes parallel to `members`; empty = no member carries
     /// any. Child-scoped: not exposed as the feature's own attributes.
-    pub(crate) attrs: Vec<Attributes>,
+    attrs: Vec<Attributes>,
 }
 
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)` with an optional
@@ -125,10 +125,18 @@ impl Geometry {
     #[inline]
     pub fn is_empty(&self) -> bool {
         match self {
-            Geometry::GeometryCollection(c) => c.members.is_empty(),
-            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => c.members.is_empty(),
-            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => c.members.is_empty(),
+            Geometry::GeometryCollection(c) => c.is_empty(),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => c.is_empty(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => c.is_empty(),
             _ => false,
         }
+    }
+}
+
+impl GeometryCollection {
+    /// Whether the collection has no members.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.members.is_empty()
     }
 }

@@ -18,29 +18,57 @@ use crate::index::IndexBuffer;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh2D {
     /// Coordinate frame these vertices are expressed in.
-    pub(crate) coordinate: Coordinate,
-    pub(crate) vertices: Vec<[f64; 2]>,
+    coordinate: Coordinate,
+    vertices: Vec<[f64; 2]>,
     /// Optional per-vertex elevation, parallel to `vertices`. INVARIANT: when
     /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
-    pub(crate) z: Option<Box<[f64]>>,
+    z: Option<Box<[f64]>>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
-    pub(crate) indices: IndexBuffer<3>,
+    indices: IndexBuffer<3>,
     /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    pub(crate) uv_sets: Vec<UvSet>,
+    uv_sets: Vec<UvSet>,
     /// Optional materials / themes / per-face binding; `None` = bare.
-    pub(crate) appearance: Option<Appearance>,
+    appearance: Option<Appearance>,
 }
 
 /// A triangle mesh in 3D space.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh3D {
     /// Coordinate frame these vertices are expressed in.
-    pub(crate) coordinate: Coordinate,
-    pub(crate) vertices: Vec<[f64; 3]>,
+    coordinate: Coordinate,
+    vertices: Vec<[f64; 3]>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
-    pub(crate) indices: IndexBuffer<3>,
+    indices: IndexBuffer<3>,
     /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    pub(crate) uv_sets: Vec<UvSet>,
+    uv_sets: Vec<UvSet>,
     /// Optional materials / themes / per-face binding; `None` = bare.
-    pub(crate) appearance: Option<Appearance>,
+    appearance: Option<Appearance>,
+}
+
+impl TriangularMesh2D {
+    /// Borrow the appearance, if any.
+    #[inline]
+    pub fn appearance(&self) -> &Option<Appearance> {
+        &self.appearance
+    }
+
+    /// Mutably borrow the appearance, to set, clear, or edit it in place.
+    #[inline]
+    pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
+        &mut self.appearance
+    }
+}
+
+impl TriangularMesh3D {
+    /// Borrow the appearance, if any.
+    #[inline]
+    pub fn appearance(&self) -> &Option<Appearance> {
+        &self.appearance
+    }
+
+    /// Mutably borrow the appearance, to set, clear, or edit it in place.
+    #[inline]
+    pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
+        &mut self.appearance
+    }
 }
