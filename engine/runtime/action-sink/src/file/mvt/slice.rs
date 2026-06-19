@@ -67,9 +67,7 @@ pub(super) fn slice_cityobj_geoms<'a>(
                                 [mx, my]
                             });
 
-                            if !poly.exterior().is_cw() {
-                                continue;
-                            }
+                            let poly = normalize_winding(poly);
                             let area = poly.area();
 
                             for zoom in min_z..=max_z {
@@ -141,9 +139,7 @@ pub(super) fn slice_cityobj_geoms<'a>(
                         [mx, my]
                     });
 
-                    if !poly.exterior().is_cw() {
-                        return;
-                    }
+                    let poly = normalize_winding(poly);
                     let area = poly.area();
 
                     for zoom in min_z..=max_z {
@@ -281,6 +277,24 @@ pub(super) fn slice_cityobj_geoms<'a>(
     }
 
     Ok(tile_content)
+}
+
+fn normalize_winding(poly: Polygon2) -> Polygon2 {
+    let mut normalized = Polygon2::new();
+    let exterior = poly.exterior();
+    if exterior.signed_ring_area() > 0.0 {
+        normalized.add_ring(exterior.raw_coords().iter().rev().copied());
+    } else {
+        normalized.add_ring(exterior.iter());
+    }
+    for interior in poly.interiors() {
+        if interior.signed_ring_area() < 0.0 {
+            normalized.add_ring(interior.raw_coords().iter().rev().copied());
+        } else {
+            normalized.add_ring(interior.iter());
+        }
+    }
+    normalized
 }
 
 fn slice_polygon(
