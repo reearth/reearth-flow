@@ -5,7 +5,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::executor_operation::NodeContext;
 
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Code, CompiledCode};
+use reearth_flow_types::{AttributeValue, Code};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -21,66 +21,62 @@ pub struct FileReaderCommonParam {
 }
 
 impl FileReaderCommonParam {
-    pub(crate) fn compile(self) -> Result<FileReaderCompiledParam, String> {
-        Ok(FileReaderCompiledParam {
-            dataset: self
-                .dataset
-                .map(|c| c.compile().map_err(|e| format!("dataset: {e}")))
-                .transpose()?,
-            inline: self
-                .inline
-                .map(|c| c.compile().map_err(|e| format!("inline: {e}")))
-                .transpose()?,
-        })
+    pub(crate) fn compile(self, ctx: &NodeContext) -> Result<FileReaderCompiledParam, String> {
+        let dataset = self
+            .dataset
+            .map(|c| {
+                let compiled = c.compile().map_err(|e| format!("dataset compile: {e}"))?;
+                match compiled.eval_env_only(ctx.expr_engine.vars()) {
+                    Ok(AttributeValue::Null) => Ok::<Option<String>, String>(None),
+                    _ => {
+                        let s = compiled
+                            .eval_string_env_only(ctx.expr_engine.vars())
+                            .map_err(|e| format!("dataset eval: {e}"))?;
+                        Ok(if s.is_empty() { None } else { Some(s) })
+                    }
+                }
+            })
+            .transpose()?
+            .flatten();
+        let inline = self
+            .inline
+            .map(|c| {
+                let compiled = c.compile().map_err(|e| format!("inline compile: {e}"))?;
+                let s = compiled
+                    .eval_string_env_only(ctx.expr_engine.vars())
+                    .map_err(|e| format!("inline eval: {e}"))?;
+                Ok::<Bytes, String>(Bytes::from(s))
+            })
+            .transpose()?;
+        Ok(FileReaderCompiledParam { dataset, inline })
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FileReaderCompiledParam {
-    pub(crate) dataset: Option<CompiledCode>,
-    pub(crate) inline: Option<CompiledCode>,
+    /// Pre-evaluated dataset path; `None` means absent or expression evaluated to null.
+    pub(crate) dataset: Option<String>,
+    /// Pre-evaluated inline content; `None` means not provided.
+    pub(crate) inline: Option<Bytes>,
 }
 
-pub(crate) fn get_input_path(
-    ctx: &NodeContext,
-    param: &FileReaderCompiledParam,
-) -> Result<Option<Uri>, String> {
-    let Some(ref dataset) = param.dataset else {
+pub(crate) fn get_input_path(param: &FileReaderCompiledParam) -> Result<Option<Uri>, String> {
+    let Some(ref path) = param.dataset else {
         return Ok(None);
     };
-    let path = dataset
-        .eval_string_env_only(ctx.expr_engine.vars())
-        .map_err(|e| format!("{e:?}"))?;
-    if path.is_empty() {
-        return Ok(None);
-    }
     Uri::from_str(path.as_str())
         .map(Some)
         .map_err(|e| format!("Invalid path {path:?}: {e}"))
 }
 
-fn get_inline_content(
-    ctx: &NodeContext,
-    param: &FileReaderCompiledParam,
-) -> Result<Option<Bytes>, String> {
-    let Some(ref inline) = param.inline else {
-        return Ok(None);
-    };
-    let content = inline
-        .eval_string_env_only(ctx.expr_engine.vars())
-        .map_err(|e| format!("{e:?}"))?;
-    Ok(Some(Bytes::from(content)))
-}
-
 pub(crate) async fn get_content(
-    ctx: &NodeContext,
     param: &FileReaderCompiledParam,
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<Bytes, String> {
-    if let Some(content) = get_inline_content(ctx, param)? {
-        return Ok(content);
+    if let Some(ref content) = param.inline {
+        return Ok(content.clone());
     }
-    if let Some(input_path) = get_input_path(ctx, param)? {
+    if let Some(input_path) = get_input_path(param)? {
         let storage = storage_resolver
             .resolve(&input_path)
             .map_err(|e| format!("{e:?}"))?;

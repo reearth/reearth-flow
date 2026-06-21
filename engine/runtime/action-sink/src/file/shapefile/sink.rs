@@ -5,7 +5,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -48,7 +48,7 @@ impl SinkFactory for ShapefileWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -70,9 +70,16 @@ impl SinkFactory for ShapefileWriterFactory {
             )
             .into());
         };
-        let output = params.output.compile().map_err(|e| {
-            SinkError::ShapefileWriterFactory(format!("Failed to compile `output`: {e:?}"))
-        })?;
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::ShapefileWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_env_only(ctx.expr_engine.vars())
+            .map_err(|e| {
+                SinkError::ShapefileWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         let sink = ShapefileWriter {
             output,
             group_by: params.group_by,
@@ -84,7 +91,7 @@ impl SinkFactory for ShapefileWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ShapefileWriter {
-    output: CompiledCode,
+    output: String,
     group_by: Option<Vec<Attribute>>,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
@@ -128,15 +135,12 @@ impl Sink for ShapefileWriter {
     }
     #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let path = self
-            .output
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(|e| SinkError::ShapefileWriter(format!("{e:?}")))?;
+        let path = self.output.as_str();
         for (key, features) in self.buffer.iter() {
             pipeline::pipeline(
                 &ctx.as_context(),
                 &ctx.sandbox_root,
-                &path,
+                path,
                 key,
                 features,
                 &ctx.storage_resolver,

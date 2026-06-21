@@ -144,8 +144,9 @@ nodes:
     type: action
     action: PLATEAU4.BuildingUsageAttributeValidator
     with:
-      codelistsPath: |
-        env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
 
   - id: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: AttributeMapper-l-bldg-04-05-transform
@@ -318,24 +319,30 @@ nodes:
     with:
       aggregateAttributes:
         - newAttribute: uroBuildingId
-          attributeValue: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:buildingID"] ?? ""
+          attributeValue:
+            type: flowExpr
+            value: |
+              attrs = attributes.get("cityGmlAttributes", {});
+              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+              building_id_attribute.get("uro:buildingID", "")
         - newAttribute: uroBranchId
-          attributeValue: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:branchID"] ?? ""
+          attributeValue:
+            type: flowExpr
+            value: |
+              attrs = attributes.get("cityGmlAttributes", {});
+              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+              building_id_attribute.get("uro:branchID", "")
         - newAttribute: uroPartId
-          attributeValue: |
-            let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-            building_id_attribute["uro:partID"] ?? ""
-      calculation: |
-        1
-      calculationAttribute: |
-        uroBuildingIdCount
+          attributeValue:
+            type: flowExpr
+            value: |
+              attrs = attributes.get("cityGmlAttributes", {});
+              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+              building_id_attribute.get("uro:partID", "")
+      calculation:
+        type: flowExpr
+        value: "1"
+      calculationAttribute: uroBuildingIdCount
       method: count
 
   - id: 9feabfe5-44eb-43c9-a892-ca439a0c0562
@@ -343,12 +350,16 @@ nodes:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        let attributes = env.get("__value").cityGmlAttributes ?? #{};
-        let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-        (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
-      supplierAttributeValue: |
-        (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
+      requestorAttributeValue:
+        type: flowExpr
+        value: |
+          attrs = attributes.get("cityGmlAttributes", {});
+          building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+          building_id_attribute.get("uro:buildingID", "") + "-" + building_id_attribute.get("uro:branchID", "") + "-" + building_id_attribute.get("uro:partID", "")
+      supplierAttributeValue:
+        type: flowExpr
+        value: |
+          attributes.get("uroBuildingId", "") + "-" + attributes.get("uroBranchId", "") + "-" + attributes.get("uroPartId", "")
 
   - id: f003fa53-d8da-488b-9be2-9f871a7394b5
     name: FeatureFilterByMultipleBuildingId-c-bldg-01

@@ -18,7 +18,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -72,7 +72,7 @@ impl ProcessorFactory for TransportationXlinkDetectorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -95,14 +95,11 @@ impl ProcessorFactory for TransportationXlinkDetectorFactory {
             .into());
         };
 
-        let city_gml_path = ctx
-            .expr_engine
-            .compile(params.city_gml_path.as_ref())
-            .map_err(|e| {
-                PlateauProcessorError::TranXlinkDetectorFactory(format!(
-                    "Failed to compile city_gml_path: {e}"
-                ))
-            })?;
+        let city_gml_path = params.city_gml_path.compile().map_err(|e| {
+            PlateauProcessorError::TranXlinkDetectorFactory(format!(
+                "Failed to compile city_gml_path: {e}"
+            ))
+        })?;
 
         let process = TransportationXlinkDetector { city_gml_path };
         Ok(Box::new(process))
@@ -112,12 +109,12 @@ impl ProcessorFactory for TransportationXlinkDetectorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TransportationXlinkDetectorParam {
-    city_gml_path: Expr,
+    city_gml_path: Code,
 }
 
 #[derive(Debug, Clone)]
 pub struct TransportationXlinkDetector {
-    city_gml_path: rhai::AST,
+    city_gml_path: CompiledCode,
 }
 
 impl Processor for TransportationXlinkDetector {
@@ -149,14 +146,14 @@ impl TransportationXlinkDetector {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), Error> {
         let feature = &ctx.feature;
-        let city_gml_path = {
-            let scope = feature.new_scope(ctx.expr_engine.clone(), &None);
-            scope.eval_ast::<String>(&self.city_gml_path).map_err(|e| {
+        let city_gml_path = self
+            .city_gml_path
+            .eval_string(feature, ctx.expr_engine.vars().clone())
+            .map_err(|e| {
                 Error::TranXlinkDetector(format!(
                     "Failed to evaluate cityGmlPath expression: {e:?}"
                 ))
-            })?
-        };
+            })?;
         let uri = Uri::from_str(&city_gml_path)?;
         let storage = ctx.storage_resolver.resolve(&uri)?;
         let content = storage.get_sync(uri.path().as_path())?;

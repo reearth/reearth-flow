@@ -60,7 +60,7 @@ impl SourceFactory for ObjReaderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -82,7 +82,7 @@ impl SourceFactory for ObjReaderFactory {
             .into());
         };
         let compiled = ObjReaderCompiledParam {
-            common: params.common.compile().map_err(|e| {
+            common: params.common.compile(&ctx).map_err(|e| {
                 SourceError::ObjReaderFactory(format!("Failed to compile params: {e:?}"))
             })?,
             parse_materials: params.parse_materials,
@@ -182,7 +182,7 @@ impl Source for ObjReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let content = get_content(&ctx, &self.params.common, storage_resolver.clone()).await?;
+        let content = get_content(&self.params.common, storage_resolver.clone()).await?;
 
         read_obj(&ctx, storage_resolver, &content, &self.params, sender)
             .await
@@ -340,7 +340,7 @@ async fn read_obj(
 ) -> Result<(), SourceError> {
     let obj_data = parse_obj_content(content)?;
 
-    let obj_uri = get_input_path(ctx, &params.common)
+    let obj_uri = get_input_path(&params.common)
         .map_err(SourceError::ObjReader)?
         .unwrap_or_else(|| Uri::from_str("file://./unknown.obj").unwrap());
 

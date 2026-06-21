@@ -4,7 +4,6 @@ use std::{collections::HashMap, path::Path};
 
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -13,7 +12,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -76,12 +75,12 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: BuildingUsageAttributeValidatorParam = if let Some(with) = with.clone() {
+        let param: BuildingUsageAttributeValidatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -101,18 +100,13 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
             );
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let codelists_path_expr =
-            expr_engine
-                .compile(param.codelists_path.as_ref())
-                .map_err(|e| {
-                    PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                        "Failed to compile codelists_path expression: {e}"
-                    ))
-                })?;
+        let codelists_path_expr = param.codelists_path.compile().map_err(|e| {
+            PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
+                "Failed to compile codelists_path expression: {e}"
+            ))
+        })?;
 
         Ok(Box::new(BuildingUsageAttributeValidator {
-            global_params: with,
             codelists_path_expr,
             city_code_to_name: None,
         }))
@@ -122,13 +116,12 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildingUsageAttributeValidatorParam {
-    codelists_path: Expr,
+    codelists_path: Code,
 }
 
 #[derive(Debug, Clone)]
 pub struct BuildingUsageAttributeValidator {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    codelists_path_expr: rhai::AST,
+    codelists_path_expr: CompiledCode,
     city_code_to_name: Option<HashMap<String, String>>,
 }
 
@@ -144,9 +137,8 @@ impl Processor for BuildingUsageAttributeValidator {
         if self.city_code_to_name.is_none() {
             let map = build_city_code_to_name(
                 feature,
-                &self.global_params,
                 &self.codelists_path_expr,
-                Arc::clone(&ctx.expr_engine),
+                ctx.expr_engine.vars().clone(),
                 Arc::clone(&ctx.storage_resolver),
             )?;
             self.city_code_to_name = Some(map);
@@ -307,20 +299,17 @@ impl Processor for BuildingUsageAttributeValidator {
 
 fn build_city_code_to_name(
     feature: &Feature,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
-    codelists_path_expr: &rhai::AST,
-    expr_engine: Arc<Engine>,
+    codelists_path_expr: &CompiledCode,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<HashMap<String, String>, BoxedError> {
-    // Evaluate the codelists_path expression
-    let codelists_path = {
-        let scope = feature.new_scope(expr_engine.clone(), global_params);
-        scope.eval_ast::<String>(codelists_path_expr).map_err(|e| {
+    let codelists_path = codelists_path_expr
+        .eval_string(feature, env_vars)
+        .map_err(|e| {
             PlateauProcessorError::BuildingUsageAttributeValidator(format!(
                 "Failed to evaluate codelists_path expression: {e:?}"
             ))
-        })?
-    };
+        })?;
 
     let dir = Uri::from_str(&codelists_path).map_err(|e| {
         PlateauProcessorError::BuildingUsageAttributeValidator(format!(

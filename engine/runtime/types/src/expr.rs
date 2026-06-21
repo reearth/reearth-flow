@@ -204,6 +204,51 @@ impl CompiledCode {
         }
     }
 
+    pub fn eval_float(
+        &self,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> TypesResult<f64> {
+        match self {
+            CompiledCode::Expr(e) => match eval(e, &env_from_feature(feature, env_vars))
+                .map_err(|e| TypesError::InternalRuntime(e.to_string()))?
+            {
+                ExprValue::Float(f) => Ok(f),
+                ExprValue::Int(n) => Ok(n as f64),
+                other => Err(TypesError::Conversion(format!(
+                    "expected number, got {}",
+                    other.type_name()
+                ))),
+            },
+            CompiledCode::Literal(s) => s
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not a number"))),
+        }
+    }
+
+    pub fn eval_int(
+        &self,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> TypesResult<i64> {
+        match self {
+            CompiledCode::Expr(e) => match eval(e, &env_from_feature(feature, env_vars))
+                .map_err(|e| TypesError::InternalRuntime(e.to_string()))?
+            {
+                ExprValue::Int(n) => Ok(n),
+                other => Err(TypesError::Conversion(format!(
+                    "expected integer, got {}",
+                    other.type_name()
+                ))),
+            },
+            CompiledCode::Literal(s) => s
+                .trim()
+                .parse::<i64>()
+                .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not an integer"))),
+        }
+    }
+
     pub fn eval_string(
         &self,
         feature: &Feature,
@@ -250,6 +295,29 @@ impl CompiledCode {
                 }),
             CompiledCode::Literal(s) => Ok(s.clone()),
         }
+    }
+}
+
+/// Resolves a feature's join/group key: concatenates named attributes with "-",
+/// or evaluates `attribute_ast` as a string expression. Returns "" if neither is set.
+pub fn fetch_attribute_value(
+    feature: &Feature,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    attribute: &Option<Vec<crate::Attribute>>,
+    attribute_ast: &Option<CompiledCode>,
+) -> String {
+    if let Some(attribute_values) = attribute {
+        attribute_values
+            .iter()
+            .flat_map(|key| feature.get(key))
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join("-")
+    } else if let Some(ast) = attribute_ast {
+        ast.eval_string(feature, env_vars)
+            .unwrap_or_else(|_| "".to_string())
+    } else {
+        "".to_string()
     }
 }
 
