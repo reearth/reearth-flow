@@ -9,7 +9,6 @@ require (
 	github.com/99designs/gqlgen v0.17.84
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
 	github.com/avast/retry-go/v4 v4.7.0
-	github.com/eukarya-inc/reearth-proto v1.0.0-dev.20251112032057
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-redis/redismock/v9 v9.2.0
@@ -24,6 +23,7 @@ require (
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/reearth/reearth-accounts/server v0.0.0-20260216070148-6989bf981831
+	github.com/reearth/reearth-proto v1.1.0
 	github.com/reearth/reearthx v0.0.0-20251202081949-5abca579aec6
 	github.com/samber/lo v1.52.0
 	github.com/spf13/afero v1.15.0

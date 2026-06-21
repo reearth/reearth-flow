@@ -126,8 +126,6 @@ github.com/envoyproxy/go-control-plane/ratelimit v0.1.0 h1:/G9QYbddjL25KvtKTv3an
 github.com/envoyproxy/go-control-plane/ratelimit v0.1.0/go.mod h1:Wk+tMFAFbCXaJPzVVHnPgRKdUdwW/KdbRt94AzgRee4=
 github.com/envoyproxy/protoc-gen-validate v1.2.1 h1:DEo3O99U8j4hBFwbJfrz9VtgcDfUKS7KJ7spH3d86P8=
 github.com/envoyproxy/protoc-gen-validate v1.2.1/go.mod h1:d/C80l/jxXLdfEIhX1W2TmLfsJ31lvEjwamM4DxlWXU=
-github.com/eukarya-inc/reearth-proto v1.0.0-dev.20251112032057 h1:FzdEJaPLlH7Zq2EwFn3nKSPMi0nEvMyAmkL9amAdGFA=
-github.com/eukarya-inc/reearth-proto v1.0.0-dev.20251112032057/go.mod h1:gKUnBCl8b9LC+3mZSV01wHUmPeyMMTjwxkeEKNVayuQ=
 github.com/fatih/color v1.18.0 h1:S8gINlzdQ840/4pfAwic/ZE0djQEH3wM94VfqLTZcOM=
 github.com/fatih/color v1.18.0/go.mod h1:4FelSpRwEGDpQ12mAdzqdOukCy4u8WUtOY6lkT/6HfU=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
@@ -332,6 +330,8 @@ github.com/redis/go-redis/v9 v9.14.0 h1:u4tNCjXOyzfgeLN+vAZaW1xUooqWDqVEsZN0U01j
 github.com/redis/go-redis/v9 v9.14.0/go.mod h1:huWgSWd8mW6+m0VPhJjSSQ+d6Nh1VICQ6Q5lHuCH/Iw=
 github.com/reearth/reearth-accounts/server v0.0.0-20260216070148-6989bf981831 h1:H8wFw8YuEJEQ7Srr6GY7l8fswU0aWeKXy7aXWcOIhX4=
 github.com/reearth/reearth-accounts/server v0.0.0-20260216070148-6989bf981831/go.mod h1:QsSV8aNxPZG0hk7gX/h3oOdeBwqwd5jqqT+6Z9JcvW4=
+github.com/reearth/reearth-proto v1.1.0 h1:X+sMDSUSNrCqo/pyhWIo5DP9Y5gDKHHmgbb40UVpdS0=
+github.com/reearth/reearth-proto v1.1.0/go.mod h1:FKi8cux5rfTA4fgkAl/OA/v0bxArXSQAlZY6mDAZ+7o=
 github.com/reearth/reearthx v0.0.0-20251202081949-5abca579aec6 h1:Aoy/50A1vlpm3H8mWGee8QBPjntfy4It5G49TB5o3mQ=
 github.com/reearth/reearthx v0.0.0-20251202081949-5abca579aec6/go.mod h1:z4JjOCy4MZZglLSrJx+btJ1ZLltESDZfSWJCnONwRS4=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
