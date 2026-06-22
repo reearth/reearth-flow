@@ -154,7 +154,7 @@ impl Processor for FeatureCityGml3Reader {
     ) -> Result<(), BoxedError> {
         let path = self
             .dataset
-            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .eval_string(&ctx.feature, ctx.env_vars.clone())
             .map_err(|e| {
                 FeatureProcessorError::FileCityGml3Reader(format!("Failed to eval dataset: {e:?}"))
             })?;

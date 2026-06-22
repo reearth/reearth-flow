@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/notification"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -94,12 +95,19 @@ func (i *Job) cleanupJobLock(jobID string) {
 	delete(i.jobLocks, jobID)
 }
 
-func (i *Job) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
+func (i *Job) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action, workspaceID...)
 }
 
 func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	target, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, target.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -236,19 +244,38 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := i.jobRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if j == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return nil, err
 	}
 
-	return i.jobRepo.FindByID(ctx, id)
+	return j, nil
 }
 
 func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.jobRepo.FindByIDs(ctx, ids)
+	if len(jobs) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+	} else {
+		// single-workspace batch assumption
+		if err := i.checkPermission(ctx, rbac.ActionAny, jobs[0].Workspace()); err != nil {
+			return nil, err
+		}
+	}
+
+	return jobs, nil
 }
 
 func (i *Job) FindByWorkspace(
@@ -257,7 +284,7 @@ func (i *Job) FindByWorkspace(
 	p *interfaces.PaginationParam,
 	keyword *string,
 ) ([]*job.Job, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
 		return nil, nil, err
 	}
 
@@ -265,12 +292,14 @@ func (i *Job) FindByWorkspace(
 }
 
 func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return "", err
-	}
-
 	j, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
+		return "", err
+	}
+	if j == nil {
+		return "", rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return "", err
 	}
 	return j.Status(), nil
@@ -578,7 +607,14 @@ func (i *Job) sendCompletionNotification(
 }
 
 func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if j == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return nil, err
 	}
 

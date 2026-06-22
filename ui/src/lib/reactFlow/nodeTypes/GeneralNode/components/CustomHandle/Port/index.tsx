@@ -34,7 +34,6 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
         type="source"
         className="right-1 z-10 w-[8px] rounded-none transition-colors"
         position={Position.Right}
-        isConnectable={hasIntermediateData ? 1 : 0}
       />
       <div className="group flex w-full min-w-0 -translate-x-0.5 items-center justify-end gap-1">
         <div

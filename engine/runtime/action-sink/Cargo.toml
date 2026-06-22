@@ -69,7 +69,6 @@ prost.workspace = true
 quick-xml.workspace = true
 rayon.workspace = true
 regex.workspace = true
-rhai.workspace = true
 rust_xlsxwriter.workspace = true
 schemars.workspace = true
 serde.workspace = true

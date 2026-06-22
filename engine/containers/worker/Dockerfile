@@ -38,7 +38,6 @@ RUN \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
     --mount=type=bind,source=runtime,target=runtime \
     --mount=type=bind,source=cli,target=cli \
-    --mount=type=bind,source=plateau-gis-quality-checker,target=plateau-gis-quality-checker \
     --mount=type=bind,source=testing/plateau-tiles-test,target=testing/plateau-tiles-test \
     --mount=type=bind,source=testing/workflow-tests,target=testing/workflow-tests \
     --mount=type=bind,source=worker,target=worker \

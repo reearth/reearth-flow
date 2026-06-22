@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -27,8 +29,8 @@ func NewWorkerConfig(r *repo.Container, permissionChecker gateway.PermissionChec
 	}
 }
 
-func (i *WorkerConfig) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceWorkspace, action)
+func (i *WorkerConfig) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceWorkspace, action, workspaceID...)
 }
 
 func (i *WorkerConfig) FindByID(ctx context.Context, wid id.WorkerConfigID) (*workerconfig.WorkerConfig, error) {

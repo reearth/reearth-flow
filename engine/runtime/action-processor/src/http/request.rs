@@ -1,5 +1,8 @@
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Method;
+use std::sync::Arc;
+
+use reearth_flow_types::Feature;
 
 use super::body::BodyContent;
 use super::errors::{HttpProcessorError, Result};
@@ -27,11 +30,13 @@ impl RequestBuilder {
     pub fn with_headers(
         mut self,
         compiled_headers: &[CompiledHeader],
-        scope: &reearth_flow_eval_expr::scope::Scope,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self> {
         for compiled_header in compiled_headers {
-            let value = scope
-                .eval_ast::<String>(&compiled_header.value_ast)
+            let value = compiled_header
+                .value_ast
+                .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!(
                         "Failed to evaluate header '{}': {e:?}",
@@ -72,11 +77,13 @@ impl RequestBuilder {
     pub fn with_query_params(
         mut self,
         compiled_params: &[CompiledQueryParam],
-        scope: &reearth_flow_eval_expr::scope::Scope,
+        feature: &Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self> {
         for compiled_param in compiled_params {
-            let value = scope
-                .eval_ast::<String>(&compiled_param.value_ast)
+            let value = compiled_param
+                .value_ast
+                .eval_string(feature, env_vars.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!(
                         "Failed to evaluate query parameter '{}': {e:?}",
@@ -115,22 +122,38 @@ impl RequestBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_eval_expr::engine::Engine;
+    use reearth_flow_types::{Attributes, Code, CodeType};
+
+    fn make_env(pairs: &[(&str, &str)]) -> Arc<serde_json::Map<String, serde_json::Value>> {
+        let mut map = serde_json::Map::new();
+        for (k, v) in pairs {
+            map.insert(k.to_string(), serde_json::Value::String(v.to_string()));
+        }
+        Arc::new(map)
+    }
+
+    fn empty_feature() -> Feature {
+        Feature::from(Attributes::new())
+    }
 
     #[test]
     fn test_request_builder_evaluates_query_params_from_scope() {
-        let engine = Engine::new();
-        let scope = engine.new_scope();
-        scope.set("id", "123".into());
+        let env_vars = make_env(&[("id", "123")]);
 
-        let ast = engine.compile(r#"env.get("id")"#).unwrap();
         let compiled_params = vec![CompiledQueryParam {
             name: "user_id".to_string(),
-            value_ast: ast,
+            value_ast: {
+                let value_ast: Code = Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#"env["id"]"#.to_string(),
+                };
+                value_ast.compile().unwrap()
+            },
         }];
 
+        let feature = empty_feature();
         let builder = RequestBuilder::new(Method::GET, "https://example.com".to_string());
-        let result = builder.with_query_params(&compiled_params, &scope);
+        let result = builder.with_query_params(&compiled_params, &feature, env_vars);
 
         assert!(result.is_ok());
         let builder = result.unwrap();

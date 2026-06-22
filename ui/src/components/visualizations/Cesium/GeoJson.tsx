@@ -15,6 +15,7 @@ type Props = {
   geoJsonData: any | null;
   selectedFeatureId?: string | null;
   showSelectedFeatureOnly: boolean;
+  clampToGround: boolean;
 };
 
 type EntityRecord = {
@@ -74,6 +75,7 @@ const GeoJsonData: React.FC<Props> = ({
   geoJsonData,
   selectedFeatureId,
   showSelectedFeatureOnly,
+  clampToGround,
 }) => {
   const { viewer } = useCesium();
   const latestViewerRef = useRef(viewer);
@@ -291,7 +293,7 @@ const GeoJsonData: React.FC<Props> = ({
       key={dataSourceKey}
       data={sanitizedData}
       onLoad={handleLoad}
-      clampToGround={false}
+      clampToGround={clampToGround}
     />
   );
 };

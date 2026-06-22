@@ -40,7 +40,7 @@ const (
 const (
 	roleSelf       = "self"
 	roleReader     = "reader"
-	roleEditor     = "editor"
+	roleWriter     = "writer"
 	roleMaintainer = "maintainer"
 	roleOwner      = "owner"
 )
@@ -49,30 +49,45 @@ const (
 // reearthx's generator.GeneratePolicies builds and sorts these into Cerbos
 // policies (action ordering is deterministic via the generator), so only the
 // resource→action→roles mapping matters here.
+//
+// Role vocabulary matches the accounts system and the UI: owner, maintainer,
+// writer, reader, self. The backend previously used "editor", which is not a
+// real workspace role (the accounts roles are owner/maintainer/writer/reader),
+// so writers were effectively ungranted.
 func DefineResources() []generator.ResourceRule {
-	maintainerOnly := map[string]generator.ActionRule{
-		ActionAny: {Roles: []string{roleMaintainer}},
+	// Project content, deploy/run/debug and execution-data actions are granted to
+	// writers, maintainers and owners. Per the Flow user-stories RBAC spec,
+	// deploying a project and listing runs are Writer(Editor) + Maintainer + Owner,
+	// and owner ⊇ maintainer is a universal invariant. These were previously
+	// maintainer-only, which denied workspace owners and writers.
+	writerMaintainerOwner := map[string]generator.ActionRule{
+		ActionAny: {Roles: []string{roleWriter, roleMaintainer, roleOwner}},
+	}
+	// Privileged project-level actions (e.g. public sharing) are limited to
+	// maintainers and owners (no writer).
+	maintainerOwner := map[string]generator.ActionRule{
+		ActionAny: {Roles: []string{roleMaintainer, roleOwner}},
 	}
 	return []generator.ResourceRule{
-		{Resource: ResourceAsset, Actions: maintainerOnly},
-		{Resource: ResourceCMSAsset, Actions: maintainerOnly},
-		{Resource: ResourceCMSItem, Actions: maintainerOnly},
-		{Resource: ResourceCMSModel, Actions: maintainerOnly},
-		{Resource: ResourceCMSProject, Actions: maintainerOnly},
-		{Resource: ResourceDeployment, Actions: maintainerOnly},
-		{Resource: ResourceEdge, Actions: maintainerOnly},
-		{Resource: ResourceJob, Actions: maintainerOnly},
-		{Resource: ResourceLog, Actions: maintainerOnly},
-		{Resource: ResourceNode, Actions: maintainerOnly},
-		{Resource: ResourceParameter, Actions: maintainerOnly},
+		{Resource: ResourceAsset, Actions: writerMaintainerOwner},
+		{Resource: ResourceCMSAsset, Actions: writerMaintainerOwner},
+		{Resource: ResourceCMSItem, Actions: writerMaintainerOwner},
+		{Resource: ResourceCMSModel, Actions: writerMaintainerOwner},
+		{Resource: ResourceCMSProject, Actions: writerMaintainerOwner},
+		{Resource: ResourceDeployment, Actions: writerMaintainerOwner},
+		{Resource: ResourceEdge, Actions: writerMaintainerOwner},
+		{Resource: ResourceJob, Actions: writerMaintainerOwner},
+		{Resource: ResourceLog, Actions: writerMaintainerOwner},
+		{Resource: ResourceNode, Actions: writerMaintainerOwner},
+		{Resource: ResourceParameter, Actions: writerMaintainerOwner},
 		{Resource: ResourceProject, Actions: map[string]generator.ActionRule{
 			ActionList:   {Roles: []string{roleSelf, roleMaintainer}},
 			ActionCreate: {Roles: []string{roleMaintainer, roleOwner}},
 			ActionEdit:   {Roles: []string{roleMaintainer, roleOwner}},
 			ActionDelete: {Roles: []string{roleMaintainer, roleOwner}},
-			ActionAny:    {Roles: []string{roleReader, roleEditor, roleOwner, roleMaintainer}},
+			ActionAny:    {Roles: []string{roleReader, roleWriter, roleOwner, roleMaintainer}},
 		}},
-		{Resource: ResourceProjectAccess, Actions: maintainerOnly},
+		{Resource: ResourceProjectAccess, Actions: maintainerOwner},
 		{Resource: ResourceTrigger, Actions: map[string]generator.ActionRule{
 			ActionCreate: {Roles: []string{roleMaintainer, roleOwner}},
 			ActionEdit:   {Roles: []string{roleMaintainer, roleOwner}},

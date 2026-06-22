@@ -1,7 +1,9 @@
 // import { Viewer as CesiumViewerType } from "cesium";
 import {
   BoundingSphere,
+  createWorldTerrainAsync,
   defined,
+  EllipsoidTerrainProvider,
   SceneMode,
   ScreenSpaceEventType,
 } from "cesium";
@@ -9,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ScreenSpaceEvent,
   ScreenSpaceEventHandler,
+  useCesium,
   Viewer,
   ViewerProps,
 } from "resium";
@@ -20,8 +23,7 @@ import GeoJsonData from "./GeoJson";
 
 const defaultCesiumProps: Partial<ViewerProps> = {
   timeline: false,
-  // baseLayerPicker: false,
-  // sceneModePicker: false,
+  baseLayerPicker: false,
   fullscreenButton: false,
   sceneModePicker: false,
   infoBox: false,
@@ -31,6 +33,36 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   requestRenderMode: true,
   maximumRenderTimeChange: Infinity,
   navigationHelpButton: false,
+};
+
+const TerrainController: React.FC<{ show3DTerrain: boolean }> = ({
+  show3DTerrain,
+}) => {
+  const { viewer } = useCesium();
+
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    let cancelled = false;
+
+    if (show3DTerrain) {
+      createWorldTerrainAsync()
+        .then((terrainProvider) => {
+          if (cancelled || viewer.isDestroyed()) return;
+          viewer.terrainProvider = terrainProvider;
+          viewer.scene.requestRender();
+        })
+        .catch((e) => console.error("Failed to load world terrain:", e));
+    } else {
+      viewer.terrainProvider = new EllipsoidTerrainProvider();
+      viewer.scene.requestRender();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [viewer, show3DTerrain]);
+
+  return null;
 };
 
 type Props = {
@@ -158,6 +190,7 @@ const CesiumViewer: React.FC<Props> = ({
       }
       full
       {...defaultCesiumProps}>
+      <TerrainController show3DTerrain={visualizerType === "3d-map"} />
       {onSelectedFeature && (
         <ScreenSpaceEventHandler>
           <ScreenSpaceEvent
@@ -179,6 +212,7 @@ const CesiumViewer: React.FC<Props> = ({
               geoJsonData={geoJsonData}
               selectedFeatureId={selectedFeatureId}
               showSelectedFeatureOnly={showSelectedFeatureOnly}
+              clampToGround={visualizerType === "3d-map"}
             />
           )}
 

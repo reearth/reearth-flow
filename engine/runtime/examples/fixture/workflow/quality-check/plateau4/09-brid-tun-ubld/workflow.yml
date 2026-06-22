@@ -62,8 +62,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
@@ -88,8 +89,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
@@ -119,7 +121,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
     name: AttributeManager
     type: action
@@ -301,10 +305,12 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").filename
-      supplierAttributeValue: |
-        env.get("__value").gmlFilename
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["filename"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["gmlFilename"]
   - id: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
     name: SummaryAttributeMapper
     type: action

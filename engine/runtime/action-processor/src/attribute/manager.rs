@@ -201,7 +201,7 @@ impl Processor for AttributeManager {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         let feature = process_feature(ctx.as_context(), &ctx.feature, &self.operations, env_vars);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())

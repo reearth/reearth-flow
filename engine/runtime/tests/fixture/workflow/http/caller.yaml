@@ -19,21 +19,25 @@ graphs:
         type: action
         action: HTTPCaller
         with:
-          url: |
-            "https://jsonplaceholder.typicode.com/${env.get('__value').api_endpoint}"
+          url:
+            type: flowExpr
+            value: '"https://jsonplaceholder.typicode.com/" + attributes["api_endpoint"]'
           method: GET
           authentication:
             type: bearer
-            token: |
-              env.get('__value').auth_token
+            token:
+              type: flowExpr
+              value: attributes["auth_token"]
           customHeaders:
             - name: "X-User-ID"
-              value: |
-                env.get('__value').user_id
+              value:
+                type: flowExpr
+                value: attributes["user_id"]
           queryParameters:
             - name: "format"
-              value: |
-                "json"
+              value:
+                type: string
+                value: "json"
           response:
             responseBodyAttribute: "_response"
             statusCodeAttribute: "_status"

@@ -183,14 +183,26 @@ Group and Aggregate Features by Attributes
     },
     "calculation": {
       "title": "Calculation to perform",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "calculationAttribute": {
       "title": "Attribute to store calculation result",
@@ -236,15 +248,27 @@ Group and Aggregate Features by Attributes
           ]
         },
         "attributeValue": {
-          "title": "Value to use for attribute",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "title": "Grouping key expression for this attribute",
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
             },
-            {
-              "type": "null"
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "newAttribute": {
           "title": "New attribute to create",
@@ -257,9 +281,6 @@ Group and Aggregate Features by Attributes
       }
     },
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     },
     "Method": {
@@ -358,14 +379,27 @@ Transform Feature Attributes Using Lookup Tables
     "dataset": {
       "title": "Dataset URI",
       "description": "Path or URI to external conversion table file",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "format": {
       "title": "Table Format",
@@ -441,9 +475,6 @@ Transform Feature Attributes Using Lookup Tables
         "tsv",
         "json"
       ]
-    },
-    "Expr": {
-      "type": "string"
     }
   }
 }
@@ -742,8 +773,7 @@ Transform Feature Attributes Using Expressions and Mappings
             "type": {
               "type": "string",
               "enum": [
-                "flowExpr",
-                "string"
+                "flowExpr"
               ]
             },
             "value": {
@@ -1220,19 +1250,26 @@ Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, 
     "pairIdAttribute": {
       "title": "Pair ID Attribute",
       "description": "Expression to evaluate the pair ID used to match features from left and right ports",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -1267,16 +1304,23 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
     "tolerance": {
       "title": "Tolerance",
       "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -2922,16 +2966,23 @@ Extrude 2D Polygons into 3D Solids
     "distance": {
       "title": "Distance",
       "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -3164,8 +3215,7 @@ Generate Custom Features Using Scripts
         "type": {
           "type": "string",
           "enum": [
-            "flowExpr",
-            "string"
+            "flowExpr"
           ]
         },
         "value": {
@@ -3229,16 +3279,24 @@ Extract File Paths from Dataset to Features
     "sourceDataset": {
       "title": "Source Dataset",
       "description": "Expression to get the source dataset path or URL",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -3374,14 +3432,26 @@ Joins requestor and supplier features based on matching attribute values with co
     },
     "requestorAttributeValue": {
       "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "supplierAttribute": {
       "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
@@ -3395,14 +3465,26 @@ Joins requestor and supplier features based on matching attribute values with co
     },
     "supplierAttributeValue": {
       "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
@@ -3426,9 +3508,6 @@ Joins requestor and supplier features based on matching attribute values with co
           ]
         }
       ]
-    },
-    "Expr": {
-      "type": "string"
     },
     "JoinType": {
       "oneOf": [
@@ -3544,14 +3623,26 @@ Merges requestor and supplier features based on matching attribute values
     },
     "requestorAttributeValue": {
       "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "supplierAttribute": {
       "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
@@ -3565,21 +3656,30 @@ Merges requestor and supplier features based on matching attribute values
     },
     "supplierAttributeValue": {
       "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
@@ -3865,9 +3965,6 @@ Applies transformation expressions to modify feature attributes and properties
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "Transform": {
       "type": "object",
       "required": [
@@ -3876,11 +3973,23 @@ Applies transformation expressions to modify feature attributes and properties
       "properties": {
         "expr": {
           "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         }
       }
     }
@@ -4035,8 +4144,7 @@ Writes features from various formats
             "type": {
               "type": "string",
               "enum": [
-                "flowExpr",
-                "string"
+                "flowExpr"
               ]
             },
             "value": {
@@ -4235,71 +4343,6 @@ Extracts file system properties (type, size, timestamps) from files
 * rejected
 ### Category
 * File
-
-## FlowExprTest
-### Type
-* processor
-### Description
-Experimental testbed for the Flow expression engine
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FlowExprTestParam",
-  "type": "object",
-  "required": [
-    "mappings"
-  ],
-  "properties": {
-    "mappings": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Mapping"
-      }
-    }
-  },
-  "definitions": {
-    "Mapping": {
-      "type": "object",
-      "required": [
-        "attribute",
-        "value"
-      ],
-      "properties": {
-        "attribute": {
-          "type": "string"
-        },
-        "value": {
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Attribute
 
 ## FootprintReplacer
 ### Type
@@ -5464,11 +5507,24 @@ Make HTTP/HTTPS requests and enrich features with response data
     "url": {
       "title": "URL",
       "description": "The target URL for the HTTP request (supports expressions)",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
@@ -5511,11 +5567,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "password": {
               "title": "Password",
               "description": "The password for basic authentication",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "type": {
               "type": "string",
@@ -5526,11 +5595,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "username": {
               "title": "Username",
               "description": "The username for basic authentication",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             }
           }
         },
@@ -5546,11 +5628,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "token": {
               "title": "Token",
               "description": "The bearer token value",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "type": {
               "type": "string",
@@ -5578,11 +5673,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "keyValue": {
               "title": "Key Value",
               "description": "The API key value",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "location": {
               "title": "Location",
@@ -5620,11 +5728,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "data": {
               "title": "Data",
               "description": "Base64-encoded binary data (supports expressions)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "type": {
               "type": "string",
@@ -5646,11 +5767,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "path": {
               "title": "File Path",
               "description": "Path to the file to read (supports expressions)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "type": {
               "type": "string",
@@ -5661,9 +5795,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           }
         }
       ]
-    },
-    "Expr": {
-      "type": "string"
     },
     "FormField": {
       "title": "Form Field",
@@ -5682,11 +5813,24 @@ Make HTTP/HTTPS requests and enrich features with response data
         "value": {
           "title": "Field Value",
           "description": "The value of the form field (supports expressions)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         }
       }
     },
@@ -5707,11 +5851,24 @@ Make HTTP/HTTPS requests and enrich features with response data
         "value": {
           "title": "Header Value",
           "description": "The value of the header (supports expressions)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         }
       }
     },
@@ -5902,11 +6059,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "value": {
               "title": "Field Value",
               "description": "The value of the form field (supports expressions)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             }
           }
         },
@@ -6040,11 +6210,24 @@ Make HTTP/HTTPS requests and enrich features with response data
         "value": {
           "title": "Parameter Value",
           "description": "The value of the parameter (supports expressions)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         }
       }
     },
@@ -6099,11 +6282,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "content": {
               "title": "Content",
               "description": "The text content to send (supports expressions)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "contentType": {
               "title": "Content Type",
@@ -6342,11 +6538,24 @@ Make HTTP/HTTPS requests and enrich features with response data
             "path": {
               "title": "File Path",
               "description": "Path where the response should be saved",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "pathAttribute": {
               "title": "Path Attribute Name",
@@ -6567,28 +6776,47 @@ Reproject Geometry to Different Coordinate System
       "title": "Source EPSG Code",
       "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes.",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "targetEpsgCode": {
       "title": "Target EPSG Code",
       "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -6637,20 +6865,30 @@ Convert vector geometries to raster image format
       "title": "Save To",
       "description": "Optional path expression to save the generated image. If not provided, uses default cache directory.",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "OnOverlap": {
       "description": "Overlap resolution strategy for rasterized pixels",
       "oneOf": [
@@ -6668,7 +6906,23 @@ Convert vector geometries to raster image format
           ],
           "properties": {
             "max": {
-              "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
           },
           "additionalProperties": false
@@ -6680,7 +6934,23 @@ Convert vector geometries to raster image format
           ],
           "properties": {
             "min": {
-              "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
           },
           "additionalProperties": false
@@ -6847,11 +7117,24 @@ Fragments JSON documents into individual features based on a JSONPath query
         },
         "path": {
           "description": "Expression evaluating to the file path or URL containing JSON",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "recursivelyFlatten": {
           "description": "If true, recursively flatten nested objects using dot-separated keys",
@@ -6868,9 +7151,6 @@ Fragments JSON documents into individual features based on a JSONPath query
   ],
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
@@ -6987,8 +7267,7 @@ Writes features to JSON files.
         "type": {
           "type": "string",
           "enum": [
-            "flowExpr",
-            "string"
+            "flowExpr"
           ]
         },
         "value": {
@@ -8376,12 +8655,24 @@ This processor validates building usage attributes by checking for the presence 
   ],
   "properties": {
     "codelistsPath": {
-      "$ref": "#/definitions/Expr"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
@@ -8462,11 +8753,23 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
     "epsgCode": {
       "title": "Target EPSG Code",
       "description": "EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "errorAttribute": {
       "title": "Error Attribute Name",
@@ -8481,9 +8784,6 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
@@ -8535,12 +8835,27 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
     "epsgCode": {
       "title": "EPSG Code",
       "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
-      "default": "6691",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "default": {
+        "type": "flowExpr",
+        "value": "6691"
+      },
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "meshType": {
       "title": "Mesh Type",
@@ -8554,11 +8869,6 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
       "title": "Mesh Code Attribute Name",
       "description": "Output attribute name for the mesh code",
       "default": "_meshcode",
-      "type": "string"
-    }
-  },
-  "definitions": {
-    "Expr": {
       "type": "string"
     }
   }
@@ -8587,19 +8897,27 @@ Validates domain of definition of CityGML features
   "properties": {
     "codelistsPath": {
       "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -8723,19 +9041,27 @@ Validates that gml:name elements have codeSpace attributes (coded values)
   "properties": {
     "cityGmlPath": {
       "description": "Expression to get the path to the CityGML file",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -8893,11 +9219,24 @@ Inserts solar radiation measurement attributes into original CityGML files
     },
     "outputDir": {
       "description": "Output directory expression for modified CityGML files",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "pathAttribute": {
       "description": "Attribute name on path features holding the file path (default: \"path\")",
@@ -8910,32 +9249,54 @@ Inserts solar radiation measurement attributes into original CityGML files
     "sourceEpsg": {
       "description": "The projected CRS EPSG code used for rasterization (needed for UV computation)",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "textureImagePath": {
       "description": "Path to the solar radiation texture PNG (texture insertion skipped if absent)",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "MeasurementDef": {
       "description": "A single measurement attribute definition.",
       "type": "object",
@@ -9006,31 +9367,68 @@ Calculates solar position (altitude and azimuth) for geographic features using S
         },
         "sourceEpsg": {
           "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "standardMeridian": {
           "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
           "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
             },
-            {
-              "type": "null"
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "time": {
           "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "type": {
           "type": "string",
@@ -9053,11 +9451,24 @@ Calculates solar position (altitude and azimuth) for geographic features using S
       "properties": {
         "end": {
           "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\") or date-only format (e.g., \"2025-01-12\" or \"2025-01-12+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "outputBelowHorizon": {
           "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
@@ -9075,39 +9486,88 @@ Calculates solar position (altitude and azimuth) for geographic features using S
         },
         "sourceEpsg": {
           "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "standardMeridian": {
           "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
           "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
             },
-            {
-              "type": "null"
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "start": {
           "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "step": {
           "description": "Step value expression evaluating to an integer",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "stepUnit": {
           "description": "Unit for the step value",
@@ -9127,9 +9587,6 @@ Calculates solar position (altitude and azimuth) for geographic features using S
     }
   ],
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "OutputType": {
       "description": "Output type for solar position calculation",
       "oneOf": [
@@ -9230,12 +9687,24 @@ Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)
   ],
   "properties": {
     "cityGmlPath": {
-      "$ref": "#/definitions/Expr"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
@@ -9265,7 +9734,24 @@ Extracts UDX folders from cityGML path
   ],
   "properties": {
     "cityGmlPath": {
-      "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     },
     "codelistsPath": {
       "anyOf": [
@@ -9290,9 +9776,6 @@ Extracts UDX folders from cityGML path
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
@@ -9382,19 +9865,27 @@ Validates domain of definition of CityGML features
   "properties": {
     "codelistsPath": {
       "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -9497,7 +9988,24 @@ Extracts UDX folders from cityGML path
   ],
   "properties": {
     "cityGmlPath": {
-      "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     },
     "codelistsPath": {
       "anyOf": [
@@ -9522,9 +10030,6 @@ Extracts UDX folders from cityGML path
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
@@ -9567,17 +10072,26 @@ Filter Features by Geometry Planarity
     "threshold": {
       "title": "Threshold",
       "description": "The threshold value for planarity check. For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix. For height mode: the maximum allowed convex hull minimum height.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "PlanarityFilterType": {
       "description": "Filter type for planarity check",
       "oneOf": [
@@ -9637,14 +10151,27 @@ Execute Python Scripts with Geospatial Data Processing
     "pythonFile": {
       "title": "Python File",
       "description": "Path to a Python script file (supports file://, http://, https://, gs://, etc.)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "pythonPath": {
       "title": "Python Path",
@@ -9657,14 +10184,27 @@ Execute Python Scripts with Geospatial Data Processing
     "script": {
       "title": "Inline Script",
       "description": "Python script code to execute inline",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "timeoutSeconds": {
       "title": "Timeout Seconds",
@@ -9675,11 +10215,6 @@ Execute Python Scripts with Geospatial Data Processing
       ],
       "format": "uint64",
       "minimum": 0.0
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
     }
   }
 }
@@ -9712,38 +10247,74 @@ Computes intersection points between rays and geometries
     "closestIntersectionOnly": {
       "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points.",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "geomId": {
       "description": "Expression evaluated on geometry features to extract an ID string. When set, intersection features will include a `geom_id` attribute identifying which geometry was hit.",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "includeRayOrigin": {
       "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance.",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "outputGeometryType": {
       "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point",
@@ -9756,11 +10327,23 @@ Computes intersection points between rays and geometries
     },
     "pairId": {
       "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "ray": {
       "description": "Defines how to extract ray data from feature attributes",
@@ -9773,21 +10356,30 @@ Computes intersection points between rays and geometries
     "tolerance": {
       "description": "Tolerance for intersection calculations (evaluates to f64). If not specified, a default tolerance is used.",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     },
     "OutputGeometryType": {
@@ -9926,9 +10518,6 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "RotationParam": {
       "description": "Rotation specification",
       "oneOf": [
@@ -9947,51 +10536,123 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
           "properties": {
             "fromX": {
               "description": "X component of the source direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "fromY": {
               "description": "Y component of the source direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "fromZ": {
               "description": "Z component of the source direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "toX": {
               "description": "X component of the target direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "toY": {
               "description": "Y component of the target direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "toZ": {
               "description": "Z component of the target direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "type": {
               "type": "string",
@@ -10014,35 +10675,83 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
           "properties": {
             "angle": {
               "description": "Rotation angle in degrees",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "axisX": {
               "description": "X component of the rotation axis",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "axisY": {
               "description": "Y component of the rotation axis",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "axisZ": {
               "description": "Z component of the rotation axis",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "type": {
               "type": "string",
@@ -10080,7 +10789,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
   "properties": {
     "allowEmptyPath": {
       "title": "Allow Null Path",
-      "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
+      "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
       "default": false,
       "type": "boolean"
     },
@@ -10237,16 +10946,23 @@ Validates the Solid Boundary Geometry
     "tolerance": {
       "title": "Tolerance",
       "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -10678,25 +11394,32 @@ Convert 2D Geometry to 3D by Adding Z-Coordinates
     "elevation": {
       "title": "Elevation",
       "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "preserveExistingZ": {
       "title": "Preserve Existing Z Values",
       "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
       "default": false,
       "type": "boolean"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
     }
   }
 }
@@ -10748,70 +11471,149 @@ Rotate 3D Geometry Around Arbitrary Axis
     "angleDegree": {
       "title": "Angle in Degrees",
       "description": "Rotation angle in degrees around the specified axis",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "directionX": {
       "title": "Direction X",
       "description": "X component of the rotation axis direction vector",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "directionY": {
       "title": "Direction Y",
       "description": "Y component of the rotation axis direction vector",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "directionZ": {
       "title": "Direction Z",
       "description": "Z component of the rotation axis direction vector",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "originX": {
       "title": "Origin X",
       "description": "X coordinate of the rotation origin point",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "originY": {
       "title": "Origin Y",
       "description": "Y coordinate of the rotation origin point",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "originZ": {
       "title": "Origin Z",
       "description": "Z coordinate of the rotation origin point",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
@@ -10961,10 +11763,42 @@ Fragments large XML documents into smaller pieces based on specified element pat
           "$ref": "#/definitions/Attribute"
         },
         "elementsToExclude": {
-          "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         },
         "elementsToMatch": {
-          "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         },
         "source": {
           "type": "string",
@@ -10977,9 +11811,6 @@ Fragments large XML documents into smaller pieces based on specified element pat
   ],
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }

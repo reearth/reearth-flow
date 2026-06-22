@@ -95,6 +95,21 @@ export class EditorPage {
     return /\/projects\/[^/]+$/.test(new URL(this.page.url()).pathname);
   }
 
+  async gotoProjectPath(projectPath: string) {
+    await this.page.goto(projectPath);
+    await this.waitForLoaded();
+  }
+
+  nodesOfType(type: ToolId): Locator {
+    return this.page.locator(`.react-flow__node-${type}`);
+  }
+
+  edgeBetween(sourceNodeId: string, targetNodeId: string): Locator {
+    return this.page.locator(
+      `.react-flow__edge[aria-label="Edge from ${sourceNodeId} to ${targetNodeId}"]`,
+    );
+  }
+
   async nodeCount(): Promise<number> {
     return this.nodes.count();
   }
@@ -182,9 +197,32 @@ export class EditorPage {
     await expect(this.nodes).toHaveCount(before + 1);
   }
 
-  async connectNodes(source: Locator, target: Locator) {
-    const sourceHandle = source.locator(".react-flow__handle-right").first();
-    const targetHandle = target.locator(".react-flow__handle-left").first();
+  async actionNodeIds(): Promise<string[]> {
+    return this.nodes.evaluateAll((els) =>
+      els
+        .map((e) => e.getAttribute("data-id") ?? "")
+        .filter((id) => id.length > 0),
+    );
+  }
+
+  async addActionNodeAndGet(
+    tool: ActionToolId,
+    actionName: string,
+    target?: Point,
+  ): Promise<Locator> {
+    const before = new Set(await this.actionNodeIds());
+    await this.addSpecificActionNode(tool, actionName, target);
+    const created = (await this.actionNodeIds()).find((id) => !before.has(id));
+    if (!created) {
+      throw new Error(`Could not resolve created node id for ${actionName}`);
+    }
+    return this.page.locator(`.react-flow__node[data-id="${created}"]`);
+  }
+
+  private async dragHandleToHandle(
+    sourceHandle: Locator,
+    targetHandle: Locator,
+  ) {
     const from = await sourceHandle.boundingBox();
     const to = await targetHandle.boundingBox();
     if (!from || !to) throw new Error("Connection handles not found");
@@ -197,10 +235,48 @@ export class EditorPage {
     await this.page.mouse.move(fromX, fromY);
     await this.page.mouse.down();
     await this.page.mouse.move((fromX + toX) / 2, (fromY + toY) / 2, {
-      steps: 8,
+      steps: 10,
     });
-    await this.page.mouse.move(toX, toY, { steps: 8 });
+    await this.page.mouse.move(toX, toY, { steps: 10 });
+    await this.page.mouse.move(toX, toY);
     await this.page.mouse.up();
+  }
+
+  private async connectAndVerify(sourceHandle: Locator, targetHandle: Locator) {
+    const before = await this.edges.count();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.dragHandleToHandle(sourceHandle, targetHandle);
+      try {
+        await expect(this.edges).toHaveCount(before + 1, { timeout: 3000 });
+        return;
+      } catch {
+        await this.clickPane();
+      }
+    }
+    throw new Error("Failed to create edge after 3 attempts");
+  }
+
+  async connectNodes(source: Locator, target: Locator) {
+    await this.connectAndVerify(
+      source.locator(".react-flow__handle-right").first(),
+      target.locator(".react-flow__handle-left").first(),
+    );
+  }
+
+  async connectFromPort(
+    source: Locator,
+    target: Locator,
+    sourcePortId: string,
+    targetPortId = "default",
+  ) {
+    await this.connectAndVerify(
+      source.locator(
+        `.react-flow__handle-right[data-handleid="${sourcePortId}"]`,
+      ),
+      target.locator(
+        `.react-flow__handle-left[data-handleid="${targetPortId}"]`,
+      ),
+    );
   }
 
   async selectNode(node: Locator) {
@@ -260,7 +336,7 @@ export class EditorPage {
   paramFieldRow(label: string): Locator {
     return this.paramsDialog
       .locator("div.flex.flex-1.items-center.gap-6")
-      .filter({ has: this.paramsDialog.getByText(label, { exact: true }) });
+      .filter({ has: this.page.getByText(label, { exact: true }) });
   }
 
   async setParamText(fieldId: string, value: string) {
@@ -276,8 +352,12 @@ export class EditorPage {
       .click();
   }
 
-  async setParamFlowExpr(label: string, expression: string) {
-    await this.paramFieldRow(label).getByRole("button").first().click();
+  async setParamFlowExpr(label: string, expression: string, nth = 0) {
+    await this.paramFieldRow(label)
+      .nth(nth)
+      .getByRole("button")
+      .first()
+      .click();
     await expect(this.flowExprDialog).toBeVisible();
 
     await this.flowExprDialog.getByRole("tab", { name: "Expression" }).click();
@@ -285,6 +365,19 @@ export class EditorPage {
 
     await this.flowExprDialog.getByRole("button", { name: "Apply" }).click();
     await expect(this.flowExprDialog).toBeHidden();
+  }
+
+  async setParamCheckbox(fieldId: string, checked: boolean) {
+    const box = this.paramsDialog.locator(`#${fieldId}`);
+    await box.waitFor({ state: "visible" });
+    const isChecked = (await box.getAttribute("data-state")) === "checked";
+    if (isChecked !== checked) await box.click();
+  }
+
+  async setParamCodeString(label: string, value: string) {
+    const input = this.paramFieldRow(label).locator("input").first();
+    await input.waitFor({ state: "visible" });
+    await input.fill(value);
   }
 
   async addParamArrayItem() {

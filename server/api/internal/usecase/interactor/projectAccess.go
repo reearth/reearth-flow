@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -34,15 +36,11 @@ func NewProjectAccess(r *repo.Container, gr *gateway.Container, config Container
 	}
 }
 
-func (i *ProjectAccess) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action)
+func (i *ProjectAccess) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action, workspaceID...)
 }
 
 func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
 	pa, err := i.projectAccessRepo.FindByToken(ctx, token)
 	if err != nil {
 		return nil, err
@@ -55,11 +53,29 @@ func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *proje
 		return nil, errors.New("project access is not public")
 	}
 
-	return i.projectRepo.FindByID(ctx, pa.Project())
+	prj, err := i.projectRepo.FindByID(ctx, pa.Project())
+	if err != nil {
+		return nil, err
+	}
+	if prj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, prj.Workspace()); err != nil {
+		return nil, err
+	}
+
+	return prj, nil
 }
 
 func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID) (sharingUrl string, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	target, err := i.projectRepo.FindByID(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	if target == nil {
+		return "", rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, target.Workspace()); err != nil {
 		return "", err
 	}
 
@@ -106,8 +122,15 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID) (shar
 	return sharingUrl, nil
 }
 
-func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID) (err error) {
+	target, err := i.projectRepo.FindByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if target == nil {
+		return rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, target.Workspace()); err != nil {
 		return err
 	}
 
