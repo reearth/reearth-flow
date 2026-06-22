@@ -141,6 +141,111 @@ nodes:
         type: string
         value: 02_建築物_LOD0面のエラー.csv
 
+  # --- LOD0 surface intersection pipeline (Z-bldg-02) ---
+  # Detect footprints of different buildings that overlap within the same GML.
+  # Taps the valid LOD0 surfaces from SurfaceValidator2D, turns them into 2D line
+  # work, then overlays the areas; any region covered by 2+ footprints is reported.
+  - id: 5eb65556-a94e-4b76-a396-1752283d48a4
+    name: GeometryCoercerLod0SurfaceIntersection
+    type: action
+    action: GeometryCoercer
+    with:
+      targetType: lineString
+
+  - id: d65886fc-2d62-448c-8b2e-16841e3c4887
+    name: TwoDimensionForcer
+    type: action
+    action: TwoDimensionForcer
+
+  - id: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
+    name: AreaOnAreaOverlayerLod0
+    type: action
+    action: AreaOnAreaOverlayer
+    with:
+      accumulationMode: dropIncomingAttributes
+      outputAttribute: overlap
+      generateList: list
+      tolerance: 0.01
+
+  - id: 2550e8a3-04e0-446d-b592-886edcc3d351
+    name: FeatureFilterByAreaOnAreaOverlap
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["overlap"] > 1
+          outputPort: intersectionSurface
+
+  - id: fd8dd5ad-cd3a-4703-87b9-663cd0bfb589
+    name: ListIndexer1
+    type: action
+    action: ListIndexer
+    with:
+      listAttribute: list
+      listIndexToCopy: 0
+      copiedAttributeSuffix: _1
+
+  - id: af899976-7fb2-4c38-a0ff-c76ce7d00709
+    name: ListIndexer2
+    type: action
+    action: ListIndexer
+    with:
+      listAttribute: list
+      listIndexToCopy: 1
+      copiedAttributeSuffix: _2
+
+  - id: 2a060073-02a0-460a-8b68-c3ea965a96d6
+    name: AttributeMapperLod0SurfaceIntersection
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename_a
+          valueAttribute: name_1
+        - attribute: filename_b
+          valueAttribute: name_2
+        - attribute: feature_type_a
+          valueAttribute: __citygml_feature_type_1
+        - attribute: feature_type_b
+          valueAttribute: __citygml_feature_type_2
+        - attribute: lod_a
+          valueAttribute: lod_1
+        - attribute: lod_b
+          valueAttribute: lod_2
+        - attribute: gml_id_a
+          valueAttribute: __citygml_gml_id_1
+        - attribute: gml_id_b
+          valueAttribute: __citygml_gml_id_2
+        - attribute: issue
+          expr:
+            type: string
+            value: Surface Intersection
+
+  - id: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
+    name: Lod0SurfaceIntersectionCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - filename_a
+      calculations:
+        - newAttribute: _num_lod0_surface_intersection
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: acb7b8cf-9059-4c7f-9b51-45cf430be09a
+    name: FeatureWriterLod0SurfaceIntersection
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_LOD0面の交差.csv
+
   # Join the per-file LOD0 error counts back onto each building GML file feature.
   - id: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
     name: ErrorSummaryMerger
@@ -153,6 +258,19 @@ nodes:
       supplierAttributeValue:
         type: flowExpr
         value: attributes["name"]
+
+  # Join the per-file LOD0 surface-intersection counts onto each file feature.
+  - id: 7f364020-94f2-4c3a-9642-f94b696dc551
+    name: SurfaceIntersectionSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["filename_a"]
 
   # Build one summary row per building GML file.
   - id: 428129b3-ad69-4a18-bf99-25492d41ba26
@@ -214,7 +332,7 @@ nodes:
         - attribute: "LOD0 面の交差"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lod0_surface_intersection", 0)
         # TODO: wire to PLATEAU6 LOD1 surface/solid checks
         - attribute: "LOD1 境界面のエラー"
           expr:
@@ -530,14 +648,85 @@ edges:
     to: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
     fromPort: default
     toPort: supplier
-  # Merged + unmerged file features -> per-file summary
+
+  # LOD0 surface intersection pipeline (taps valid LOD0 surfaces).
+  - id: 9ec657c4-6b91-4a90-a7dc-948d7a09dc1a
+    from: d12958f8-f52d-4c95-b62c-58a92d363017
+    to: 5eb65556-a94e-4b76-a396-1752283d48a4
+    fromPort: default
+    toPort: default
+  - id: 21677d05-2fa4-4b30-bdfd-0bd777f0d7ad
+    from: 5eb65556-a94e-4b76-a396-1752283d48a4
+    to: d65886fc-2d62-448c-8b2e-16841e3c4887
+    fromPort: default
+    toPort: default
+  - id: ddf2120f-3285-4ce5-b93d-5d58db773f1a
+    from: d65886fc-2d62-448c-8b2e-16841e3c4887
+    to: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
+    fromPort: default
+    toPort: default
+  - id: 4465b7f4-22fc-4cc5-b28f-e2277b823454
+    from: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
+    to: 2550e8a3-04e0-446d-b592-886edcc3d351
+    fromPort: area
+    toPort: default
+  - id: be0511b9-7638-419a-b09c-2deaee3e484c
+    from: 2550e8a3-04e0-446d-b592-886edcc3d351
+    to: fd8dd5ad-cd3a-4703-87b9-663cd0bfb589
+    fromPort: intersectionSurface
+    toPort: default
+  - id: f56397ab-2ebc-49c3-b00b-db802bcc9716
+    from: fd8dd5ad-cd3a-4703-87b9-663cd0bfb589
+    to: af899976-7fb2-4c38-a0ff-c76ce7d00709
+    fromPort: default
+    toPort: default
+  - id: 2041c5fd-f1ed-4763-9cc0-f0b3ace86c13
+    from: af899976-7fb2-4c38-a0ff-c76ce7d00709
+    to: 2a060073-02a0-460a-8b68-c3ea965a96d6
+    fromPort: default
+    toPort: default
+  - id: 68ebbdf1-e929-4761-a298-3d7fc0e74c84
+    from: 2a060073-02a0-460a-8b68-c3ea965a96d6
+    to: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
+    fromPort: default
+    toPort: default
+  # Counter.complete -> CSV writer (one row per intersection pair)
+  - id: 25aeaf03-8309-43a2-914d-5d703338fbb7
+    from: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
+    to: acb7b8cf-9059-4c7f-9b51-45cf430be09a
+    fromPort: complete
+    toPort: default
+  # Counter.default -> SurfaceIntersectionSummaryMerger (supplier)
+  - id: dc34f178-3b7c-4c87-9da9-9472ac1eb8d2
+    from: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
+    to: 7f364020-94f2-4c3a-9642-f94b696dc551
+    fromPort: default
+    toPort: supplier
+  # Route the written LOD0 intersection CSV into the result zip.
+  - id: 6d38927a-36c8-45af-93e8-083c2d233b7b
+    from: acb7b8cf-9059-4c7f-9b51-45cf430be09a
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Merged + unmerged file features -> surface-intersection merger (requestor)
   - id: 40c7c687-b78b-4e72-8a7a-156730ec2411
     from: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
+    to: 7f364020-94f2-4c3a-9642-f94b696dc551
+    fromPort: merged
+    toPort: requestor
+  - id: a2298a01-0ef2-46cd-85a6-a78b4e21d5e9
+    from: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
+    to: 7f364020-94f2-4c3a-9642-f94b696dc551
+    fromPort: unmerged
+    toPort: requestor
+  # Surface-intersection merger output -> per-file summary
+  - id: 21a1414b-8ecc-43ba-9c98-fdeffdce8fec
+    from: 7f364020-94f2-4c3a-9642-f94b696dc551
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: a2298a01-0ef2-46cd-85a6-a78b4e21d5e9
-    from: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
+  - id: 5c289a15-f8d7-4766-94ea-18aabd6a44bd
+    from: 7f364020-94f2-4c3a-9642-f94b696dc551
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default
