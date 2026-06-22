@@ -89,6 +89,9 @@ func (f *previewFakeFile) CheckJobPreviewSchemaExists(context.Context, string) (
 	return true, nil
 }
 func (f *previewFakeFile) ReadAsset(context.Context, string) (io.ReadCloser, error) { panic("unused") }
+func (f *previewFakeFile) ReadActions(context.Context, string) (io.ReadCloser, error) {
+	panic("unused")
+}
 func (f *previewFakeFile) UploadAsset(context.Context, *file.File) (*url.URL, int64, error) {
 	panic("unused")
 }

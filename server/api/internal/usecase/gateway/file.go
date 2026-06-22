@@ -53,6 +53,7 @@ func (p IssueUploadAssetParam) GetOrGuessContentType() string {
 
 type File interface {
 	ReadAsset(context.Context, string) (io.ReadCloser, error)
+	ReadActions(context.Context, string) (io.ReadCloser, error)
 	UploadAsset(context.Context, *file.File) (*url.URL, int64, error)
 	DeleteAsset(context.Context, *url.URL) error
 	ReadWorkflow(context.Context, string) (io.ReadCloser, error)
