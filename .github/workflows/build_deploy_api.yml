@@ -163,6 +163,14 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
 
+      - name: Checkout Repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Upload actions schema to GCS
+        run: gsutil -m cp engine/schema/actions*.json gs://${{ secrets.GCS_ASSETS_BUCKET }}/actions/
+
       - name: Configure Docker for GCP
         run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
