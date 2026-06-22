@@ -1,0 +1,58 @@
+{
+  "description": "Test Z-bldg-02 LOD0 surface intersection for plateau6 (CityGML 3.0 + i-UR 4.0). Two buildings (A/B) whose lod0MultiSurface footprints overlap; reported as 'Surface Intersection' under 'LOD0 面の交差'. NOTE: the 02-bldg workflow does not yet wire the AreaOnAreaOverlayer-based LOD0 面の交差 pipeline (currently 0-filled placeholder), so this test is expected to FAIL until that wiring is added. objectlist is the provisional plateau4-derived xlsx.",
+  "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "bldg_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/bldg",
+      "name": "bldg_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "02_建築物_LOD0面の交差.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": [
+        "LOD0 面の交差"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": [
+        "LOD0 面の交差"
+      ]
+    }
+  },
+  "expectResultOkFile": false
+}
