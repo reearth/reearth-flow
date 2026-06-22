@@ -16,6 +16,8 @@ use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
 use crate::index::IndexBuffer;
 
+mod constructor;
+
 /// A connected, vertex-sharing polygon mesh in 2D space, with optional
 /// per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
