@@ -14,6 +14,10 @@ use serde::{Deserialize, Serialize};
 use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
 
+mod constructor;
+
+pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D};
+
 /// A planar polygon face in 2D space, with optional per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon2D {
