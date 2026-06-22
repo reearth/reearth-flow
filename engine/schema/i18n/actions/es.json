@@ -1302,22 +1302,6 @@
       }
     },
     {
-      "name": "FlowExprTest",
-      "description": "Banco de pruebas experimental para el motor de expresiones Flow",
-      "parameterI18n": {
-        "": {
-          "title": "Parámetros de FlowExprTest"
-        },
-        "mappings": {}
-      },
-      "definitionI18n": {
-        "Mapping": {
-          "attribute": {},
-          "value": {}
-        }
-      }
-    },
-    {
       "name": "FootprintReplacer",
       "description": "Proyecta la geometría 3D al plano XY y calcula el polígono base unificado (compatible con sólidos, superficies y CityGML)"
     },
