@@ -39,14 +39,6 @@ pub(crate) enum IndexBuffer<const N: usize> {
 ///
 /// Algorithms that read two arrays of independently-chosen width nest the
 /// macro, giving 3x3 = 9 monomorphizations of one generic impl.
-///
-/// The second form dispatches on an [`IndexWidth`] instead of an existing buffer:
-/// it binds `$Idx` to the chosen width and wraps the body's `Vec<[$Idx; N]>` in the
-/// matching variant, for constructors that pick a variant to *build*:
-///
-/// ```ignore
-/// dispatch_index!(width => |Idx| collect_indices::<Idx, N>(iter))
-/// ```
 #[macro_export]
 macro_rules! dispatch_index {
     ($buf:expr, |$Idx:ident, $slice:ident| $body:expr) => {
@@ -65,22 +57,6 @@ macro_rules! dispatch_index {
                 type $Idx = u32;
                 let $slice = v;
                 $body
-            }
-        }
-    };
-    ($width:expr => |$Idx:ident| $body:expr) => {
-        match $width {
-            $crate::index::IndexWidth::U8 => {
-                type $Idx = u8;
-                $crate::index::IndexBuffer::U8($body)
-            }
-            $crate::index::IndexWidth::U16 => {
-                type $Idx = u16;
-                $crate::index::IndexBuffer::U16($body)
-            }
-            $crate::index::IndexWidth::U32 => {
-                type $Idx = u32;
-                $crate::index::IndexBuffer::U32($body)
             }
         }
     };
@@ -163,14 +139,18 @@ where
     F: Fn(u32) -> T + Copy,
 {
     let mut v: Vec<[T; N]> = Vec::with_capacity(len);
-    let ptr = v.as_mut_ptr();
-    let mut i = 0usize;
+    let start = v.as_mut_ptr();
+    let end = start.add(len);
+    let mut dst = start;
     for element in iter {
-        ptr.add(i).write(element.map(f));
-        i += 1;
+        debug_assert!(
+            dst < end,
+            "iterator yielded more than the {len} items reserved"
+        );
+        dst.write(element.map(f));
+        dst = dst.add(1);
     }
-    debug_assert_eq!(i, len, "iterator yielded {i} items, expected {len}");
-    v.set_len(i);
+    v.set_len(dst.offset_from(start) as usize);
     v
 }
 
@@ -281,7 +261,11 @@ impl<const N: usize> IndexBuffer<N> {
         len: usize,
         iter: impl IntoIterator<Item = [u32; N]>,
     ) -> Self {
-        dispatch_index!(width => |Idx| fill_uninit::<N, Idx, _>(len, iter, |x| x as Idx))
+        match width {
+            IndexWidth::U8 => IndexBuffer::U8(fill_uninit(len, iter, |x| x as u8)),
+            IndexWidth::U16 => IndexBuffer::U16(fill_uninit(len, iter, |x| x as u16)),
+            IndexWidth::U32 => IndexBuffer::U32(fill_uninit(len, iter, |x| x)),
+        }
     }
 }
 

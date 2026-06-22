@@ -381,9 +381,13 @@ where
     R: IntoIterator<Item = [f64; N]>,
 {
     let mut coords: Vec<[f64; N]> = exterior.into_iter().collect();
-    if !coords.is_empty() {
-        close_ring(&mut coords, 0);
+    if coords.is_empty() {
+        // No exterior ring: an empty polygon carries no holes, so we drop any and
+        // never record an interior offset of 0 — the invalid state (a hole posing as
+        // the exterior) that `from_raw_parts`'s `1..coords.len()` check rejects.
+        return (coords, Vec::new());
     }
+    close_ring(&mut coords, 0);
     let mut interior_offsets: Vec<u32> = Vec::new();
     for ring in interiors {
         let start = coords.len();
@@ -440,6 +444,19 @@ mod tests {
         assert!(p.interior_offsets.is_empty());
         assert!(p.z.is_none());
         assert_eq!(p.coordinate, Coordinate::Euclidean);
+    }
+
+    // An empty exterior yields an empty polygon with its holes dropped — never an
+    // interior offset of 0, which `from_raw_parts` rejects.
+    #[test]
+    fn from_rings_empty_exterior_drops_holes() {
+        let p = Polygon3D::from_rings(
+            Coordinate::Euclidean,
+            Vec::<[f64; 3]>::new(),
+            vec![vec![[1.0, 1.0, 0.0], [2.0, 1.0, 0.0], [2.0, 2.0, 0.0]]],
+        );
+        assert!(p.coords.is_empty());
+        assert!(p.interior_offsets.is_empty());
     }
 
     #[test]
