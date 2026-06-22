@@ -14,8 +14,9 @@ nodes:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
 
@@ -73,8 +74,12 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      sourceEpsgCode: "6697"
-      targetEpsgCode: env.get("prcs")
+      sourceEpsgCode:
+        type: flowExpr
+        value: "6697"
+      targetEpsgCode:
+        type: flowExpr
+        value: env.get("prcs")
 
   - id: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     name: PLATEAU3.LodSplitterWithDM
@@ -142,10 +147,12 @@ nodes:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").name
-      supplierAttributeValue: |
-        env.get("__value").name
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
 
   # Build one summary row per building GML file.
   - id: 428129b3-ad69-4a18-bf99-25492d41ba26
