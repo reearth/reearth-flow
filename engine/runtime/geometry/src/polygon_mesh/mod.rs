@@ -31,9 +31,11 @@ pub struct PolygonMesh2D {
     /// All rings of all faces concatenated; each face is its exterior ring then
     /// its hole rings. Width from `vertices.len() - 1`.
     face_indices: IndexBuffer<1>,
-    /// `len() = n_faces + 1`; face i spans
-    /// `face_indices[face_offsets[i]..face_offsets[i+1]]`. Width from
-    /// `face_indices.len()`.
+    /// Internal face boundaries into `face_indices`: `len() = n_faces - 1`, no
+    /// leading 0. `face_offsets[i]` is where face `i+1` begins; face `i` spans
+    /// `face_indices[s..e]` with `s = if i == 0 { 0 } else { face_offsets[i-1] }`
+    /// and `e = face_offsets.get(i).copied().unwrap_or(face_indices.len())`. Width
+    /// from `face_indices.len()`.
     face_offsets: IndexBuffer<1>,
     /// Start in `face_indices` of each hole ring, across all faces; empty when
     /// no face has holes. Width from `face_indices.len()`.
@@ -59,9 +61,11 @@ pub struct PolygonMesh3DData {
     /// All rings of all faces concatenated; each face is its exterior ring then
     /// its hole rings. Width from `vertices.len() - 1`.
     face_indices: IndexBuffer<1>,
-    /// `len() = n_faces + 1`; face i spans
-    /// `face_indices[face_offsets[i]..face_offsets[i+1]]`. Width from
-    /// `face_indices.len()`.
+    /// Internal face boundaries into `face_indices`: `len() = n_faces - 1`, no
+    /// leading 0. `face_offsets[i]` is where face `i+1` begins; face `i` spans
+    /// `face_indices[s..e]` with `s = if i == 0 { 0 } else { face_offsets[i-1] }`
+    /// and `e = face_offsets.get(i).copied().unwrap_or(face_indices.len())`. Width
+    /// from `face_indices.len()`.
     face_offsets: IndexBuffer<1>,
     /// Start in `face_indices` of each hole ring, across all faces; empty when
     /// no face has holes. Width from `face_indices.len()`.

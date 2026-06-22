@@ -272,7 +272,7 @@ where
     let mut vertices: Vec<[f64; N]> = Vec::new();
     let mut seen: HashMap<[u64; N], u32> = HashMap::new();
     let mut face_indices: Vec<u32> = Vec::new();
-    let mut face_offsets: Vec<u32> = vec![0];
+    let mut face_offsets: Vec<u32> = Vec::new();
     let mut interior_offsets: Vec<u32> = Vec::new();
     for face in faces {
         let mut is_exterior = true;
@@ -287,6 +287,9 @@ where
         }
         face_offsets.push(face_indices.len() as u32);
     }
+    // `face_offsets` holds only the internal boundaries — no leading 0, no trailing
+    // total — so drop the last face's end (the implicit `face_indices.len()`).
+    face_offsets.pop();
     (vertices, face_indices, face_offsets, interior_offsets)
 }
 
@@ -297,7 +300,7 @@ fn index_faces(
     faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
 ) -> Result<(Vec<u32>, Vec<u32>), Error> {
     let mut face_indices: Vec<u32> = Vec::new();
-    let mut face_offsets: Vec<u32> = vec![0];
+    let mut face_offsets: Vec<u32> = Vec::new();
     for face in faces {
         for index in face {
             if index as usize >= vertex_count {
@@ -309,35 +312,22 @@ fn index_faces(
         }
         face_offsets.push(face_indices.len() as u32);
     }
+    // Keep only the internal boundaries (no leading 0, no trailing total).
+    face_offsets.pop();
     Ok((face_indices, face_offsets))
 }
 
-/// Validate flat CSR buffers: `face_offsets` starts at 0, is non-decreasing and
-/// ends at `face_indices.len()`; every index is `< vertex_count`; every interior
-/// offset is strictly increasing and within `face_indices`.
+/// Validate flat CSR buffers. `face_offsets` holds the `n_faces - 1` internal face
+/// boundaries (no leading 0): strictly increasing, each in `1..face_indices.len()`
+/// (every face non-empty). Every vertex index is `< vertex_count`. Each interior
+/// offset is strictly increasing, in `1..face_indices.len()`, and not a face
+/// boundary — so a hole starts strictly inside a face, after its exterior.
 fn validate_csr(
     vertex_count: usize,
     face_indices: &[u32],
     face_offsets: &[u32],
     interior_offsets: &[u32],
 ) -> Result<(), Error> {
-    match face_offsets.first() {
-        None => return Err(Error::invalid_geometry("face_offsets must not be empty")),
-        Some(&first) if first != 0 => {
-            return Err(Error::invalid_geometry("face_offsets must start at 0"))
-        }
-        _ => {}
-    }
-    if face_offsets.windows(2).any(|w| w[0] > w[1]) {
-        return Err(Error::invalid_geometry(
-            "face_offsets must be non-decreasing",
-        ));
-    }
-    if *face_offsets.last().unwrap() as usize != face_indices.len() {
-        return Err(Error::invalid_geometry(
-            "the last face_offset must equal face_indices length",
-        ));
-    }
     for &index in face_indices {
         if index as usize >= vertex_count {
             return Err(Error::invalid_geometry(format!(
@@ -346,10 +336,25 @@ fn validate_csr(
         }
     }
     let mut prev = 0u32;
-    for &offset in interior_offsets {
-        if offset <= prev || offset as usize >= face_indices.len() {
+    for (i, &boundary) in face_offsets.iter().enumerate() {
+        if boundary <= prev || boundary as usize >= face_indices.len() {
             return Err(Error::invalid_geometry(format!(
-                "interior_offset {offset} is out of range or not strictly increasing"
+                "face_offsets[{i}] = {boundary} must be strictly increasing and within 1..{}",
+                face_indices.len()
+            )));
+        }
+        prev = boundary;
+    }
+    let mut prev = 0u32;
+    for (i, &offset) in interior_offsets.iter().enumerate() {
+        if offset <= prev
+            || offset as usize >= face_indices.len()
+            || face_offsets.binary_search(&offset).is_ok()
+        {
+            return Err(Error::invalid_geometry(format!(
+                "interior_offsets[{i}] = {offset} must be strictly increasing, within \
+                 1..{}, and not coincide with a face boundary",
+                face_indices.len()
             )));
         }
         prev = offset;
@@ -432,7 +437,8 @@ mod tests {
         );
         // Rings stored open (the closing duplicate is dropped).
         assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 3, 1, 4, 5, 2]);
-        assert_eq!(ones(&m.data.face_offsets), vec![0, 4, 8]);
+        // Internal boundary only: face 0 ends / face 1 begins at 4.
+        assert_eq!(ones(&m.data.face_offsets), vec![4]);
         assert!(ones(&m.data.interior_offsets).is_empty());
     }
 
@@ -444,7 +450,8 @@ mod tests {
         let m = PolygonMesh3DData::from_polygons([&p]);
         assert_eq!(m.vertices.len(), 8);
         assert_eq!(ones(&m.face_indices), vec![0, 1, 2, 3, 4, 5, 6, 7]);
-        assert_eq!(ones(&m.face_offsets), vec![0, 8]);
+        // Single face -> no internal boundaries; the hole starts at index 4.
+        assert!(ones(&m.face_offsets).is_empty());
         assert_eq!(ones(&m.interior_offsets), vec![4]);
     }
 
@@ -461,7 +468,8 @@ mod tests {
         let faces = vec![vec![0u32, 1, 2], vec![0u32, 2, 3]];
         let m = PolygonMesh3D::from_parts(Coordinate::Euclidean, verts, faces).unwrap();
         assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 0, 2, 3]);
-        assert_eq!(ones(&m.data.face_offsets), vec![0, 3, 6]);
+        // Two faces -> a single internal boundary at 3.
+        assert_eq!(ones(&m.data.face_offsets), vec![3]);
         assert!(ones(&m.data.interior_offsets).is_empty());
     }
 
@@ -487,25 +495,42 @@ mod tests {
     #[test]
     fn from_raw_parts_validates_offsets() {
         let verts = vec![[0., 0., 0.], [1., 0., 0.], [1., 1., 0.]];
-        // Good: one triangular face.
+        // Good: a single triangular face has no internal boundaries.
+        assert!(
+            PolygonMesh3DData::from_raw_parts(verts.clone(), vec![0, 1, 2], vec![], vec![]).is_ok()
+        );
+        // Good: two faces with one internal boundary at 3.
         assert!(PolygonMesh3DData::from_raw_parts(
             verts.clone(),
-            vec![0, 1, 2],
-            vec![0, 3],
-            vec![]
+            vec![0, 1, 2, 0, 1, 2],
+            vec![3],
+            vec![],
         )
         .is_ok());
-        // Last offset must equal face_indices length.
+        // A leading 0 is no longer allowed (it would mean an empty first face).
+        assert!(
+            PolygonMesh3DData::from_raw_parts(verts.clone(), vec![0, 1, 2], vec![0], vec![])
+                .is_err()
+        );
+        // Equal boundaries (an empty face) are rejected.
         assert!(PolygonMesh3DData::from_raw_parts(
             verts.clone(),
-            vec![0, 1, 2],
-            vec![0, 2],
-            vec![]
+            vec![0, 1, 2, 0, 1, 2],
+            vec![3, 3],
+            vec![],
         )
         .is_err());
         // Index out of range.
+        assert!(PolygonMesh3DData::from_raw_parts(verts, vec![0, 1, 9], vec![], vec![]).is_err());
+    }
+
+    #[test]
+    fn from_raw_parts_rejects_interior_on_face_boundary() {
+        // Two faces, boundary at 3; an interior offset of 3 coincides with it.
+        let verts = vec![[0., 0., 0.], [1., 0., 0.], [1., 1., 0.]];
         assert!(
-            PolygonMesh3DData::from_raw_parts(verts, vec![0, 1, 9], vec![0, 3], vec![]).is_err()
+            PolygonMesh3DData::from_raw_parts(verts, vec![0, 1, 2, 0, 1, 2], vec![3], vec![3],)
+                .is_err()
         );
     }
 }
