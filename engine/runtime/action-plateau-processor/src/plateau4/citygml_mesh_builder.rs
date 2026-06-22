@@ -289,7 +289,7 @@ impl CityGmlMeshBuilder {
     ) -> Result<String, BoxedError> {
         let epsg_code = self
             .epsg_code_ast
-            .eval(feature, ctx.expr_engine.vars().clone())
+            .eval(feature, ctx.env_vars.clone())
             .map_err(|e| {
                 PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
                     "Failed to evaluate epsg_code expression: {e:?}"

@@ -588,7 +588,7 @@ impl Processor for RayIntersector {
         }
 
         let feature = &ctx.feature;
-        let env_vars = ctx.expr_engine.vars().clone();
+        let env_vars = ctx.env_vars.clone();
 
         let pair_id = self.evaluate_pair_id(feature, env_vars.clone())?;
 
@@ -732,7 +732,7 @@ impl Processor for RayIntersector {
             None => return Ok(()),
         };
 
-        let env_vars = ctx.expr_engine.vars().clone();
+        let env_vars = ctx.env_vars.clone();
         let pair_ids = std::mem::take(&mut self.pair_ids);
 
         let intersection_path = dir.join("intersection.jsonl.zst");

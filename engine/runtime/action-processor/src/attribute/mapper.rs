@@ -214,7 +214,7 @@ impl Processor for AttributeMapper {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         let mut attributes = IndexMap::<Attribute, AttributeValue>::new();
         for mapper in &self.mapper.mappers {
             match &mapper.attribute {

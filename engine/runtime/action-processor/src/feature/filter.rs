@@ -177,7 +177,7 @@ impl Processor for FeatureFilter {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         let feature = &ctx.feature;
         let mut routing = false;
         for condition in &self.conditions {

@@ -162,7 +162,7 @@ impl Processor for CSGBuilder {
 
         // Get the pair ID from the feature by evaluating the expression
         let pair_id = if let Some(expr) = &self.pair_id_attribute {
-            match expr.eval(&feature, ctx.expr_engine.vars().clone()) {
+            match expr.eval(&feature, ctx.env_vars.clone()) {
                 Ok(attr_value) => attr_value,
                 Err(_) => {
                     fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));

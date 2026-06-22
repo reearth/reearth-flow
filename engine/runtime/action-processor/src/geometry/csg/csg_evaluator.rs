@@ -113,7 +113,7 @@ impl CSGEvaluator {
         ctx: &ExecutorContext,
     ) -> Result<f64, BoxedError> {
         self.tolerance_ast
-            .eval_float(feature, Arc::clone(&ctx.expr_engine.vars()))
+            .eval_float(feature, Arc::clone(&ctx.env_vars))
             .map_err(|e| {
                 GeometryProcessorError::CSGEvaluatorFactory(format!(
                     "Failed to evaluate tolerance expression: {e:?}"

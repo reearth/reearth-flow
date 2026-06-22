@@ -133,7 +133,7 @@ impl Processor for ThreeDimensionRotator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let env_vars = ctx.expr_engine.vars().clone();
+        let env_vars = ctx.env_vars.clone();
         let eval_f64 = |code: &CompiledCode| -> Result<f64, BoxedError> {
             code.eval_float(feature, env_vars.clone())
                 .map_err(|e| GeometryProcessorError::ThreeDimensionRotator(format!("{e:?}")).into())

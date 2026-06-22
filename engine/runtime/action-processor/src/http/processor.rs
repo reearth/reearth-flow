@@ -137,7 +137,7 @@ impl HttpCallerProcessor {
         };
 
         let feature = &ctx.feature;
-        let env_vars = ctx.expr_engine.vars().clone();
+        let env_vars = ctx.env_vars.clone();
 
         let url = match self.url_ast.eval_string(feature, env_vars.clone()) {
             Ok(url) => url,
@@ -245,7 +245,7 @@ impl HttpCallerProcessor {
         metrics: RequestMetrics,
     ) {
         let mut new_feature = ctx.feature.clone();
-        let env_vars = ctx.expr_engine.vars().clone();
+        let env_vars = ctx.env_vars.clone();
 
         let response_config = self.params.response.as_ref();
         let encoding = response_config.and_then(|r| r.response_encoding.clone());

@@ -83,7 +83,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
             .into());
         };
 
-        let vars = ctx.expr_engine.vars();
+        let vars = ctx.env_vars.clone();
 
         let output_dir = params
             .output_dir

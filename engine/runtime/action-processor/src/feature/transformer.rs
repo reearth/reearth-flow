@@ -113,7 +113,7 @@ impl Processor for FeatureTransformer {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let env_vars = ctx.expr_engine.vars().clone();
+        let env_vars = ctx.env_vars.clone();
         let mut new_feature = feature.clone();
         for transformer in &self.transformers {
             new_feature = mapper(&new_feature, &transformer.expr, env_vars.clone());

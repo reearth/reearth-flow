@@ -4344,71 +4344,6 @@ Extracts file system properties (type, size, timestamps) from files
 ### Category
 * File
 
-## FlowExprTest
-### Type
-* processor
-### Description
-Experimental testbed for the Flow expression engine
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FlowExprTestParam",
-  "type": "object",
-  "required": [
-    "mappings"
-  ],
-  "properties": {
-    "mappings": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Mapping"
-      }
-    }
-  },
-  "definitions": {
-    "Mapping": {
-      "type": "object",
-      "required": [
-        "attribute",
-        "value"
-      ],
-      "properties": {
-        "attribute": {
-          "type": "string"
-        },
-        "value": {
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Attribute
-
 ## FootprintReplacer
 ### Type
 * processor
@@ -10854,7 +10789,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
   "properties": {
     "allowEmptyPath": {
       "title": "Allow Null Path",
-      "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
+      "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
       "default": false,
       "type": "boolean"
     },

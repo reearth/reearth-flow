@@ -193,7 +193,7 @@ impl Processor for AttributeAggregator {
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let env_vars = ctx.expr_engine.vars().clone();
+        let env_vars = ctx.env_vars.clone();
 
         let mut aggregates = Vec::new();
         for aggregate_attribute in &self.aggregate_attributes {
