@@ -163,14 +163,6 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
 
-      - name: Checkout Repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          ref: ${{ inputs.sha }}
-
-      - name: Upload actions schema to GCS
-        run: gsutil -m cp engine/schema/actions*.json gs://${{ secrets.GCS_ASSETS_BUCKET }}/actions/
-
       - name: Configure Docker for GCP
         run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
@@ -187,3 +179,30 @@ jobs:
             --region ${{ secrets.GC_REGION }} \
             --platform managed \
             --quiet
+
+  upload-actions-schema:
+    name: Upload Actions Schema to GCS (Nightly)
+    needs: build-api
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - name: Checkout Repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.sha }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+      - name: Upload actions schema to GCS
+        run: gsutil -m cp engine/schema/actions*.json gs://${{ secrets.GCS_ASSETS_BUCKET }}/actions/
