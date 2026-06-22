@@ -62,7 +62,6 @@ jobs:
             server/api/internal/rbac/**
             .github/workflows/ci.yml
             .github/workflows/ci_policies.yml
-            .github/workflows/update_policies_and_deploy_cerbos.yml
       - name: changed files for subscriber
         id: subscriber
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -248,15 +247,6 @@ jobs:
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
-  update-policies-and-deploy-cerbos:
-    needs:
-      - ci
-      - ci-policies
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_policies_cerbos.yml
-    if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
-    secrets: inherit
-
   prepare-info-pr:
     runs-on: ubuntu-latest
     if: ${{ needs.prepare.outputs.ui == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main' && (github.event.action == 'opened' || github.event.action == 'synchronize') }}
