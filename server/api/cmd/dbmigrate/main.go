@@ -45,8 +45,10 @@ func migrate[D any, M any](
 ) (ok, fail int) {
 	cur, err := db.Collection(coll).Find(ctx, bson.D{})
 	if err != nil {
+		// Count as a failure so a fully-skipped collection forces a non-zero exit
+		// instead of silently reporting success.
 		log.Printf("  %-16s find error: %v", coll, err)
-		return 0, 0
+		return 0, 1
 	}
 	defer cur.Close(ctx)
 
@@ -71,7 +73,10 @@ func migrate[D any, M any](
 		ok++
 	}
 	if err := cur.Err(); err != nil {
-		log.Printf("  %-16s cursor error: %v", coll, err)
+		// A mid-stream cursor error truncates the collection; count it so the
+		// partial migration forces a non-zero exit rather than passing silently.
+		log.Printf("  %-16s cursor error (partial): %v", coll, err)
+		fail++
 	}
 	log.Printf("  %-16s migrated=%-7d failed=%d", coll, ok, fail)
 	return ok, fail
