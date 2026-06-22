@@ -9,8 +9,8 @@ INSERT INTO jobs (
   id, workspace_id, deployment_id, project_id, project_version,
   gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url,
   status, batch_status, worker_status,
-  started_at, completed_at, metadata_url, output_urls, debug, parameters
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+  started_at, completed_at, metadata_url, output_urls, debug, parameters, mode
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   deployment_id        = EXCLUDED.deployment_id,
@@ -28,7 +28,8 @@ ON CONFLICT (id) DO UPDATE SET
   metadata_url         = EXCLUDED.metadata_url,
   output_urls          = EXCLUDED.output_urls,
   debug                = EXCLUDED.debug,
-  parameters           = EXCLUDED.parameters;
+  parameters           = EXCLUDED.parameters,
+  mode                 = EXCLUDED.mode;
 
 -- name: DeleteJob :exec
 DELETE FROM jobs WHERE id = $1;

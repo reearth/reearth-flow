@@ -443,6 +443,10 @@ table "jobs" {
     type = jsonb
     null = true
   }
+  column "mode" {
+    type    = text
+    default = ""
+  }
 
   primary_key {
     columns = [column.id]

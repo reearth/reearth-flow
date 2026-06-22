@@ -153,8 +153,11 @@ func (r *Job) FindByWorkspace(
 // FindByProject returns debug jobs for a project (mirrors Mongo: {projectid, debug:true}).
 func (r *Job) FindByProject(ctx context.Context, pid id.ProjectID) ([]*job.Job, error) {
 	db := r.c.DB(ctx)
+	// Exclude preview-schema jobs from run history: they are persisted (debug=true)
+	// but are not real runs. Legacy rows predate the mode column (default ''), so
+	// `mode <> 'preview-schema'` keeps them. Mirrors the Mongo FindByProject filter.
 	rows, err := pgxx.List(ctx, db,
-		"SELECT * FROM jobs WHERE project_id = $1 AND debug = true",
+		"SELECT * FROM jobs WHERE project_id = $1 AND debug = true AND mode <> 'preview-schema'",
 		[]any{pid.String()},
 		pgx.RowToStructByPos[gen.Job])
 	if err != nil {
@@ -251,6 +254,7 @@ func jobToParams(j *job.Job) (gen.UpsertJobParams, error) {
 		CompletedAt:       j.CompletedAt(),
 		MetadataUrl:       j.MetadataURL(),
 		Debug:             j.Debug(),
+		Mode:              string(j.Mode()),
 	}
 	if did := j.Deployment(); did != nil {
 		s := did.String()
@@ -394,6 +398,9 @@ func jobFromRow(row gen.Job) (*job.Job, error) {
 			params = append(params, p)
 		}
 		b = b.Parameters(params)
+	}
+	if row.Mode != "" {
+		b = b.Mode(job.Mode(row.Mode))
 	}
 	return b.Build()
 }

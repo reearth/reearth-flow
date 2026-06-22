@@ -159,6 +159,37 @@ func TestJob_FindByProject_ReturnsDebugJobsOnly(t *testing.T) {
 	}
 }
 
+func TestJob_Mode_RoundTripAndPreviewSchemaExcluded(t *testing.T) {
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	r := postgres.NewJob(pgxx.NewClient(pool))
+	wid := accountsid.NewWorkspaceID()
+	pid := id.NewProjectID()
+	debug := true
+
+	runJob := newDebugJob(wid, id.NewJobID(), pid) // mode defaults to run
+	previewID := id.NewJobID()
+	previewJob := job.New().
+		ID(previewID).Workspace(wid).ProjectID(&pid).
+		Debug(&debug).Mode(job.ModePreviewSchema).
+		GCPJobID("gcp-x").Status(job.StatusPending).StartedAt(time.Now()).
+		MustBuild()
+	require.NoError(t, r.Save(ctx, runJob))
+	require.NoError(t, r.Save(ctx, previewJob))
+
+	// Mode round-trips through Postgres.
+	got, err := r.FindByID(ctx, previewID)
+	require.NoError(t, err)
+	assert.Equal(t, job.ModePreviewSchema, got.Mode())
+
+	// FindByProject excludes the preview-schema job (run history must stay clean).
+	byProj, err := r.FindByProject(ctx, pid)
+	require.NoError(t, err)
+	require.Len(t, byProj, 1)
+	assert.Equal(t, runJob.ID(), byProj[0].ID())
+	assert.Equal(t, job.ModeRun, byProj[0].Mode())
+}
+
 func TestJob_RemoveByProject(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()

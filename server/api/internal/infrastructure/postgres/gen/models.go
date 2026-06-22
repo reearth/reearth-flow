@@ -97,6 +97,7 @@ type Job struct {
 	OutputUrls        []byte
 	Debug             *bool
 	Parameters        []byte
+	Mode              string
 }
 
 type NodeExecution struct {
