@@ -14,6 +14,8 @@ use crate::coordinate::Coordinate;
 use crate::polygon_mesh::PolygonMesh3DData;
 use crate::triangular_mesh::TriangularMesh3DData;
 
+mod constructor;
+
 /// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle
 /// mesh, stored as coordinate-free mesh data so the boundary cannot carry a
 /// frame of its own — its frame is the `Solid`'s.
