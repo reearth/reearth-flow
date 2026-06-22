@@ -352,22 +352,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atlas-packer"
-version = "0.0.0"
-source = "git+https://github.com/reearth/atlas-packer?tag=v0.0.3#4f99fa237780004a4b0e57a095d088d7cdabb529"
-dependencies = [
- "clap",
- "hashbrown 0.15.5",
- "image 0.25.9",
- "rayon",
- "rstar 0.12.2",
- "stretto",
- "sys-info",
- "thiserror 2.0.18",
- "webp",
-]
-
-[[package]]
 name = "atoi"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3261,7 +3245,6 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash 0.1.5",
- "rayon",
  "serde",
 ]
 
@@ -4255,16 +4238,6 @@ dependencies = [
  "cc",
  "pkg-config",
  "vcpkg",
-]
-
-[[package]]
-name = "libwebp-sys"
-version = "0.9.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54cd30df7c7165ce74a456e4ca9732c603e8dc5e60784558c1c6dc047f876733"
-dependencies = [
- "cc",
- "glob",
 ]
 
 [[package]]
@@ -6677,7 +6650,6 @@ version = "0.0.352"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
- "atlas-packer",
  "bincode",
  "bytemuck",
  "byteorder",
@@ -6713,6 +6685,7 @@ dependencies = [
  "quick-xml 0.37.5",
  "rayon",
  "reearth-flow-action-log",
+ "reearth-flow-atlas",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
@@ -6788,6 +6761,17 @@ dependencies = [
  "uuid",
  "wkt",
  "zip 8.1.0",
+]
+
+[[package]]
+name = "reearth-flow-atlas"
+version = "0.0.352"
+dependencies = [
+ "image 0.25.9",
+ "rstar 0.12.2",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
@@ -8807,16 +8791,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sys-info"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b3a0d0aba8bf96a0e1ddfdc352fc53b3df7f39318c71854910c3c4b024ae52c"
-dependencies = [
- "cc",
- "libc",
-]
-
-[[package]]
 name = "sysctl"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10277,16 +10251,6 @@ dependencies = [
  "pkg-config",
  "soup2-sys",
  "system-deps 6.2.2",
-]
-
-[[package]]
-name = "webp"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c071456adef4aca59bf6a583c46b90ff5eb0b4f758fc347cea81290288f37ce1"
-dependencies = [
- "image 0.25.9",
- "libwebp-sys",
 ]
 
 [[package]]

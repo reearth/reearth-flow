@@ -400,7 +400,7 @@ pub(super) fn tile_writing_stage(
             let valid_features: Vec<&GltfFeature> = features
                 .iter()
                 .filter(|feature| {
-                    match metadata_encoder.add_feature(typename, &feature.attributes) {
+                    match metadata_encoder.add_feature(&typename, &feature.attributes) {
                         Ok(_) => true,
                         Err(e) => {
                             tracing::error!("Failed to add feature with error = {e:?}");
