@@ -213,48 +213,52 @@ impl BroadcastPool {
     }
 
     async fn perform_cleanup(&self, doc_id: &str) {
-        // Decide-and-remove under the per-doc lock (fast), then run the potentially
-        // slow, GCS/Redis-bound shutdown OUTSIDE the lock so a stalled flush can never
-        // block new connections to this room (which previously caused 504 hangs).
-        let group_to_shutdown = {
-            let lock = self.get_or_create_lock(doc_id);
-            let _guard = lock.lock().await;
+        // Hold the per-doc lock for the whole cleanup — including a *bounded* shutdown —
+        // so a concurrent ensure_group for this doc cannot create a fresh BroadcastGroup
+        // while the old one is still flushing/trimming the Redis stream and persisting to
+        // GCS (which would risk lost updates or a stream deleted mid-startup). The
+        // shutdown is timeout-bounded, so a stalled flush can no longer hold the lock
+        // indefinitely (the original 504 cause).
+        let lock = self.get_or_create_lock(doc_id);
+        let guard = lock.lock().await;
 
-            match self.groups.get(doc_id).map(|entry| entry.clone()) {
-                Some(group) => {
-                    if group.get_connections_count().await == 0 {
-                        self.groups.remove(doc_id).map(|(_, g)| g)
-                    } else {
-                        info!(
-                            "Skipping cleanup for doc_id: {} (active connections)",
-                            doc_id
-                        );
-                        // Group still in use — keep the group and lock entries.
-                        return;
-                    }
-                }
-                None => None,
+        let group = match self.groups.get(doc_id).map(|entry| entry.clone()) {
+            Some(group) => group,
+            None => {
+                drop(guard);
+                self.locks.remove(doc_id);
+                return;
             }
         };
 
-        if let Some(group) = group_to_shutdown {
-            match timeout(self.shutdown_timeout, group.shutdown()).await {
-                Ok(Ok(())) => info!("Shutdown BroadcastGroup for doc_id: {}", doc_id),
-                Ok(Err(e)) => error!(
-                    "Shutdown failed for doc_id '{}': {}. In-memory resources released; \
-                     unsaved state may be recoverable from the Redis stream.",
-                    doc_id, e
-                ),
-                Err(_) => error!(
-                    "Shutdown timed out after {:?} for doc_id '{}'. In-memory resources \
-                     released; unsaved state may be recoverable from the Redis stream.",
-                    self.shutdown_timeout, doc_id
-                ),
-            }
+        if group.get_connections_count().await != 0 {
+            info!(
+                "Skipping cleanup for doc_id: {} (active connections)",
+                doc_id
+            );
+            // Group still in use — keep the group and lock entries.
+            return;
         }
 
-        // No active group remains for this doc_id (removed above, or never existed),
-        // so drop the per-doc lock entry to bound the locks map.
+        // Remove from the map first so no caller hands out a shutting-down group, then
+        // shut it down while still holding the lock so no fresh group is created for this
+        // doc until shutdown completes.
+        self.groups.remove(doc_id);
+        match timeout(self.shutdown_timeout, group.shutdown()).await {
+            Ok(Ok(())) => info!("Shutdown BroadcastGroup for doc_id: {}", doc_id),
+            Ok(Err(e)) => error!(
+                "Shutdown failed for doc_id '{}': {}. In-memory resources released; \
+                 unsaved state may be recoverable from the Redis stream.",
+                doc_id, e
+            ),
+            Err(_) => error!(
+                "Shutdown timed out after {:?} for doc_id '{}'. In-memory resources \
+                 released; unsaved state may be recoverable from the Redis stream.",
+                self.shutdown_timeout, doc_id
+            ),
+        }
+
+        drop(guard);
         self.locks.remove(doc_id);
     }
 
