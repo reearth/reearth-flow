@@ -97,7 +97,7 @@ pub(crate) enum IndexWidth {
 
 impl IndexWidth {
     /// Narrowest width that can store `value`.
-    fn for_value(value: u32) -> Self {
+    pub(crate) fn for_value(value: u32) -> Self {
         if value <= u8::MAX as u32 {
             IndexWidth::U8
         } else if value <= u16::MAX as u32 {
