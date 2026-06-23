@@ -7,7 +7,7 @@ import {
 import { isDefined } from "../isDefined";
 
 /**
- * Converts literal escape sequences to actual characters for Rhai engine compatibility on the engine.
+ * Converts literal escape sequences to actual characters for expression engine compatibility on the engine.
  * This fixes the issue where UI sends \\n but engine expects actual newline characters.
  */
 const convertEscapeSequences = (obj: any): any => {

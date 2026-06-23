@@ -68,7 +68,7 @@ const buildExprUiSchema = (
     const fieldName = path.split(".").pop() || "";
     const isPythonScript =
       actionName === "PythonScriptProcessor" && fieldName === "script";
-    return { "ui:exprType": isPythonScript ? "python" : "rhai" };
+    return { "ui:exprType": isPythonScript ? "python" : "flowExpr" };
   }
 
   // Resolve a plain $ref to its definition and recurse into it.
