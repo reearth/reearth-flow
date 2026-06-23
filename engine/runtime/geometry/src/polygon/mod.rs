@@ -64,7 +64,8 @@ impl Polygon2D {
         &self.coordinate
     }
 
-    /// The exterior ring, as stored (closed: first == last).
+    /// The exterior ring, as stored verbatim — a well-formed ring is closed
+    /// (first == last), but an open ring is preserved as-is for later validation.
     pub fn exterior(&self) -> &[[f64; 2]] {
         let end = self
             .interior_offsets
@@ -73,7 +74,8 @@ impl Polygon2D {
         &self.coords[..end]
     }
 
-    /// The interior (hole) rings, each as stored (closed), in order.
+    /// The interior (hole) rings, each as stored verbatim (not guaranteed closed),
+    /// in order.
     pub fn interiors(&self) -> impl Iterator<Item = &[[f64; 2]]> + '_ {
         let coords = &self.coords;
         let offsets = &self.interior_offsets;
@@ -104,7 +106,8 @@ impl Polygon3D {
         &self.coordinate
     }
 
-    /// The exterior ring, as stored (closed: first == last).
+    /// The exterior ring, as stored verbatim — a well-formed ring is closed
+    /// (first == last), but an open ring is preserved as-is for later validation.
     pub fn exterior(&self) -> &[[f64; 3]] {
         let end = self
             .interior_offsets
@@ -113,7 +116,8 @@ impl Polygon3D {
         &self.coords[..end]
     }
 
-    /// The interior (hole) rings, each as stored (closed), in order.
+    /// The interior (hole) rings, each as stored verbatim (not guaranteed closed),
+    /// in order.
     pub fn interiors(&self) -> impl Iterator<Item = &[[f64; 3]]> + '_ {
         let coords = &self.coords;
         let offsets = &self.interior_offsets;
