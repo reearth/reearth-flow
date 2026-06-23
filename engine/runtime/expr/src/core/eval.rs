@@ -8,7 +8,7 @@ use super::builtins::{array as array_methods, map as map_methods, str as str_met
 use super::builtins::{builtin_itertools, builtin_json, builtin_math, builtin_regex, builtin_url};
 use super::env::{new_frame, Env};
 use super::error::{eval_error, Error, Result, POS_UNSET};
-use super::value::{format_float, ClosureValue, NativeFn, Value};
+use super::value::{format_float, ClosureValue, NativeFn, TypeTag, Value};
 use crate::expect_arity;
 
 struct DepthCounter {
@@ -112,12 +112,12 @@ pub fn env_bind(env: &Env, name: impl Into<String>, val: Value) {
 thread_local! {
     static BUILTIN_ENV: Env = {
         let env = new_frame(None);
-        env_bind(&env, "str", Value::Fn(NativeFn::new(builtin_str)));
-        env_bind(&env, "int", Value::Fn(NativeFn::new(builtin_int)));
-        env_bind(&env, "float", Value::Fn(NativeFn::new(builtin_float)));
-        env_bind(&env, "bool", Value::Fn(NativeFn::new(builtin_bool)));
-        env_bind(&env, "list", Value::Fn(NativeFn::new(builtin_list)));
-        env_bind(&env, "map", Value::Fn(NativeFn::new(builtin_map)));
+        env_bind(&env, "str", Value::Type(TypeTag::Str));
+        env_bind(&env, "int", Value::Type(TypeTag::Int));
+        env_bind(&env, "float", Value::Type(TypeTag::Float));
+        env_bind(&env, "bool", Value::Type(TypeTag::Bool));
+        env_bind(&env, "list", Value::Type(TypeTag::List));
+        env_bind(&env, "dict", Value::Type(TypeTag::Dict));
         env_bind(&env, "Url", Value::Fn(NativeFn::new(builtin_url)));
         env_bind(&env, "Regex", Value::Fn(NativeFn::new(builtin_regex)));
         env_bind(&env, "math", builtin_math());
@@ -142,11 +142,33 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Value> {
     }
 }
 
-/// Unified callable dispatch: invokes a NativeFn or Closure by value.
+fn call_type_constructor(tag: TypeTag, args: &[Value]) -> Result<Value> {
+    match tag {
+        TypeTag::Int => builtin_int(args),
+        TypeTag::Float => builtin_float(args),
+        TypeTag::Str => builtin_str(args),
+        TypeTag::Bool => builtin_bool(args),
+        TypeTag::List => builtin_list(args),
+        TypeTag::Dict => builtin_map(args),
+        TypeTag::Null => {
+            if !args.is_empty() {
+                return Err(eval_error(format!(
+                    "null() expects 0 arguments, got {}",
+                    args.len()
+                )));
+            }
+            Ok(Value::Null)
+        }
+        TypeTag::Fn => Err(eval_error("fn is not callable as a constructor")),
+    }
+}
+
+/// Unified callable dispatch: invokes a NativeFn, Type constructor, or Closure by value.
 pub(crate) fn call_value(f: Value, args: Vec<Value>) -> Result<Value> {
     let _guard = DepthGuard::enter(&CALL_DEPTH)?;
     match f {
         Value::Fn(native) => native.call(&args),
+        Value::Type(tag) => call_type_constructor(tag, &args),
         Value::Closure(cl) => {
             if args.len() != cl.params.len() {
                 return Err(eval_error(format!(
@@ -1615,7 +1637,7 @@ mod tests {
     #[test]
     fn test_map() {
         assert_eval(
-            r#"map([["a", 1], ["b", 2]])"#,
+            r#"dict([["a", 1], ["b", 2]])"#,
             &[],
             Value::map(indexmap::indexmap! {
                 "a".into() => Value::from(1i64),
@@ -1894,9 +1916,9 @@ mod tests {
         assert_eval("type(true)", &[], Value::from("bool"));
         assert_eval("type(42)", &[], Value::from("int"));
         assert_eval("type(3.14)", &[], Value::from("float"));
-        assert_eval(r#"type("hello")"#, &[], Value::from("string"));
+        assert_eval(r#"type("hello")"#, &[], Value::from("str"));
         assert_eval("type([1, 2])", &[], Value::from("list"));
-        assert_eval(r#"type({"a": 1})"#, &[], Value::from("map"));
+        assert_eval(r#"type({"a": 1})"#, &[], Value::from("dict"));
     }
 
     #[test]

@@ -17,7 +17,7 @@ The implementation may contain unstabilized features not yet documented here.
 Spec files follow the naming convention `<number>-<name>.md` (e.g. `1-base-language.md`).
 They are ordered by the time the decision was proposed, not by topic.
 
-Other documentation structured by topic can be generated from these files as the authoritative source.
+Other documentation structured by topic can be generated from these files.
 
 Code should refer spec only, not user-facing documentation.
 Refer spec section from code with anchors following the GitHub convention: convert section title to lowercase, spaces replaced with `-`.

@@ -1500,7 +1500,7 @@ graphs:
             data = attributes.get("dataFileData");
             if data != null {
               for item in data {
-                if type(item) == "map" {
+                if type(item) == "dict" {
                   count = item.get("count");
                   if count != null and type(count) == "int" {
                     total += count;

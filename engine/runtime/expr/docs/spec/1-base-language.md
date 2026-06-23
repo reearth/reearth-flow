@@ -2,7 +2,7 @@
 
 **FlowExpr** is an expression language: every program is an expression that evaluates to a single value.
 
-This document specifies the built-in immutable types.
+This document specifies the built-in types.
 
 ## null
 
