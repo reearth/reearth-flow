@@ -11,6 +11,9 @@ pub enum Error {
         expected_type: &'static str,
         found_type: &'static str,
     },
+
+    #[error("Invalid geometry construction: {0}")]
+    InvalidGeometry(String),
 }
 
 impl Error {
@@ -21,6 +24,10 @@ impl Error {
     pub fn projection<T: ToString>(message: T) -> Self {
         Self::Projection(message.to_string())
     }
+
+    pub fn invalid_geometry<T: ToString>(message: T) -> Self {
+        Self::InvalidGeometry(message.to_string())
+    }
 }
 
 // implement Eq and PartialEq for Error so that we can compare errors in tests
@@ -29,6 +36,7 @@ impl PartialEq for Error {
         match (self, other) {
             (Self::MismatchedGeometry(a), Self::MismatchedGeometry(b)) => a == b,
             (Self::Projection(a), Self::Projection(b)) => a == b,
+            (Self::InvalidGeometry(a), Self::InvalidGeometry(b)) => a == b,
             _ => false,
         }
     }

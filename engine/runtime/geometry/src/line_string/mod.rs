@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinate::Coordinate;
 
+mod constructor;
+
 /// A polyline in 2D space, with optional per-vertex elevation (2.5D).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString2D {
