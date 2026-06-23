@@ -41,6 +41,10 @@ type Adapter struct {
 	// durable checkpoint write but before deleting future updates in PruneAfter.
 	mu                   sync.Mutex
 	crashAfterCheckpoint func() bool
+	// crashAfterRecoveryWrite, when set and true, simulates a crash in
+	// AppendUpdate's recovery path right after the new update is durably
+	// written (test injection only).
+	crashAfterRecoveryWrite func() bool
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32

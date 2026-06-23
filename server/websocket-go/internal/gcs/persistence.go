@@ -168,14 +168,20 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 		return 0, err
 	}
 	// Recovery path: if a ceiling is present, a prior PruneAfter may have crashed
-	// mid-delete. Finish the interrupted prune before clearing the ceiling below,
-	// else clearing it would resurrect orphan updates > ceiling.
+	// mid-delete. Finish the interrupted prune, then clear the ceiling BEFORE
+	// writing the new update below — so a crash after the write can never leave a
+	// durable-but-ceiling-hidden update that the next recovery would delete.
 	ceil, hasCeil, err := a.ceiling(ctx, room)
 	if err != nil {
 		return 0, err
 	}
 	if hasCeil {
 		if err := a.finishInterruptedPrune(ctx, room, oid, ceil); err != nil {
+			return 0, err
+		}
+		// Safe to clear now: finishInterruptedPrune removed every orphan > ceil,
+		// so clearing the ceiling resurrects nothing.
+		if err := a.store.delete(ctx, a.ceilingName(room)); err != nil {
 			return 0, err
 		}
 	}
@@ -188,12 +194,14 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 	if err := a.store.put(ctx, a.layout.UpdateName(room, oid, clock), update); err != nil {
 		return 0, err
 	}
-	// A new real edit ends the rollback: clear the ceiling so this and future
-	// updates are visible.
-	if hasCeil {
-		if err := a.store.delete(ctx, a.ceilingName(room)); err != nil {
-			return 0, err
-		}
+	// Test-injection crash seam: simulate the process dying right after the
+	// recovery update is durably written. The ceiling was already cleared above,
+	// so the written update stays visible (at-least-once) rather than hidden.
+	a.mu.Lock()
+	crashW := a.crashAfterRecoveryWrite
+	a.mu.Unlock()
+	if crashW != nil && crashW() {
+		return 0, errSimulatedRecoveryCrash
 	}
 	if clock%10 == 0 {
 		if err := a.compactToCheckpoint(ctx, room, oid, clock); err != nil {
