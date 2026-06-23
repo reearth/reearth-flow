@@ -121,7 +121,7 @@ thread_local! {
     static DICT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("dict", Some(NativeFn::new(builtin_dict))));
     static FN_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("function", None));
     static MODULE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("module", None));
-    static TYPE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("type", None));
+    static TYPE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("type", Some(NativeFn::new(builtin_type))));
 }
 
 thread_local! {
@@ -137,7 +137,7 @@ thread_local! {
         env_bind(&env, "Regex", Value::Type(regex_type_value()));
         env_bind(&env, "math", builtin_math());
         env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
-        env_bind(&env, "type", Value::Fn(NativeFn::new(builtin_type)));
+        env_bind(&env, "type", Value::Type(TYPE_TYPE.with(Rc::clone)));
         env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
         env_bind(&env, "itertools", builtin_itertools());
         env_bind(&env, "json", builtin_json());
@@ -1940,6 +1940,9 @@ mod tests {
         assert_eval("type(42) != float", &[], Value::Bool(true));
         assert_eval("int == int", &[], Value::Bool(true));
         assert_eval("int == str", &[], Value::Bool(false));
+        assert_eval("type(type) == type", &[], Value::Bool(true));
+        assert_eval("type(int) == type", &[], Value::Bool(true));
+        assert_eval("type(42) == type", &[], Value::Bool(false));
     }
 
     #[test]
