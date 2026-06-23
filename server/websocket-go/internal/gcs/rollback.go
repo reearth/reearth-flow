@@ -2,10 +2,15 @@ package gcs
 
 import (
 	"context"
+	"errors"
 
 	"github.com/reearth/ygo/crdt"
 	"github.com/reearth/ygo/persistence"
 )
+
+// errSimulatedRecoveryCrash is returned by AppendUpdate when the recovery-write
+// crash seam fires. It models an unacked crash and is used only by tests.
+var errSimulatedRecoveryCrash = errors.New("gcs: simulated crash after recovery write (test injection)")
 
 // PruneAfter is the crash-safe rollback primitive: snapshot-before-delete. Under
 // gcs:lock it (1) writes rolledBack as the new doc_v2, (2) writes checkpoint and
@@ -182,6 +187,15 @@ func (a *Adapter) compactToCheckpoint(ctx context.Context, room DocID, oid, cloc
 func (a *Adapter) SetCrashAfterCheckpoint(fn func() bool) {
 	a.mu.Lock()
 	a.crashAfterCheckpoint = fn
+	a.mu.Unlock()
+}
+
+// SetCrashAfterRecoveryWrite installs a crash predicate (test injection): when
+// true, AppendUpdate returns errSimulatedRecoveryCrash right after durably
+// writing the recovery update, before any subsequent bookkeeping.
+func (a *Adapter) SetCrashAfterRecoveryWrite(fn func() bool) {
+	a.mu.Lock()
+	a.crashAfterRecoveryWrite = fn
 	a.mu.Unlock()
 }
 
