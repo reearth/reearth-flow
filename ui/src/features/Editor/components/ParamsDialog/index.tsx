@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@flow/components";
+import { applySchemaDefaults } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser, Node } from "@flow/types";
@@ -154,11 +155,15 @@ const ParamsDialog: React.FC<Props> = ({
 
       const latestNodeDrafts = rawDrafts[id] ?? {};
 
-      const updatedParams = applyMergedPatch(
+      const mergedParams = applyMergedPatch(
         openNode.data.params,
         latestNodeDrafts,
         "paramsPatch",
       );
+
+      const updatedParams = paramsSchema
+        ? applySchemaDefaults(paramsSchema, mergedParams)
+        : mergedParams;
 
       const updatedCustomizations = applyMergedPatch(
         openNode.data.customizations,
