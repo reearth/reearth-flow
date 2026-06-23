@@ -45,7 +45,7 @@ A 64-bit signed integer. Integer literals match one of:
 - `int`: same value
 - `float`: truncated toward zero; error if not finite or out of range
 - `bool`: `0` or `1`
-- `string`: decimal integer parsed from the trimmed string; error if not parseable
+- `str`: decimal integer parsed from the trimmed string; error if not parseable
 - no argument: `0`
 
 ## float type
@@ -60,7 +60,7 @@ Float literals must contain a decimal point or an exponent (e.g. `1.0`, `1e10`).
 - `float`: same value
 - `int`: same numeric value
 - `bool`: `1.0` or `0.0`
-- `string`: decimal float parsed from the trimmed string; error if not parseable
+- `str`: decimal float parsed from the trimmed string; error if not parseable
 - no argument: `0.0`
 
 ## string type
@@ -81,7 +81,7 @@ Inside a double-quoted string, the following escape sequences are recognized:
 
 `str` is a type object. Calling `str(value)` constructs a string based on the type of `value`:
 
-- `string`: same value
+- `str`: same value
 - `int`: decimal representation
 - `float`: a decimal representation; the exact format is unspecified
 - `bool`: `"true"` or `"false"`
@@ -98,13 +98,13 @@ List literals use square brackets (e.g. `[1, "two", true]`). Elements may be of 
 `list` is a type object. Calling `list(value)` constructs a list based on the type of `value`:
 
 - `list`: shallow copy
-- `string`: list of single-character strings, one per Unicode codepoint
+- `str`: list of single-character strings, one per Unicode codepoint
 - `dict`: list of keys
 - no argument: `[]`
 
 ## dictionary type
 
-A mutable, ordered map from string keys to values. Other key types are undefined.
+A mutable map from string keys to values. Other key types are undefined.
 Dict literals use curly braces (e.g. `{"a": 1, "b": 2}`).
 Insertion order preservation is not stabilized by this spec.
 
@@ -245,4 +245,4 @@ Whether a type is effectively mutable depends solely on whether it exposes any m
 Cyclic references (e.g. a list that contains itself) are undefined behavior.
 
 Notes: An implication is that FlowExpr may be implemented with reference counting memory management.
-However, silent memory leak is usually unwanted in most embeded evaluation environments that need to be handled or at least detected.
+However, silent memory leak is usually unwanted in most embedded evaluation environments that need to be handled or at least detected.

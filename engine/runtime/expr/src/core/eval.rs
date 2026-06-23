@@ -1258,7 +1258,7 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
         Some(Value::Array(a)) => a.borrow().clone(),
         _ => {
             return Err(eval_error(
-                "dict() expects a dict, an array of [key, value] pairs, or no argument",
+                "dict() expects a dict, a list of [key, value] pairs, or no argument",
             ))
         }
     };
@@ -1269,7 +1269,7 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
                 let kv = kv.borrow();
                 if kv.len() != 2 {
                     return Err(eval_error(format!(
-                        "dict() entry at index {i} must be a 2-element array"
+                        "dict() entry at index {i} must be a 2-element list"
                     )));
                 }
                 let key = match &kv[0] {
@@ -1285,7 +1285,7 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
             }
             _ => {
                 return Err(eval_error(format!(
-                    "dict() entry at index {i} must be a 2-element array"
+                    "dict() entry at index {i} must be a 2-element list"
                 )))
             }
         }
