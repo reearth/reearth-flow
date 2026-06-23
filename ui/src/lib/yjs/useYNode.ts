@@ -388,9 +388,7 @@ export default ({
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
         if (!yNodes) return;
-        const yData = yNodes.get(nodeId)?.get("data") as
-          | Y.Map<any>
-          | undefined;
+        const yData = yNodes.get(nodeId)?.get("data") as Y.Map<any> | undefined;
         if (!yData) return;
         const prevMetadata =
           (yData.get("metadata") as NodeMetadata | undefined) ?? {};
