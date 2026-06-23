@@ -18,9 +18,9 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{
-    Attribute, AttributeValue, Attributes, Expr, Feature, Geometry, GeometryType, GeometryValue,
+    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature, Geometry,
+    GeometryType, GeometryValue,
 };
-use rhai::Dynamic;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -68,7 +68,7 @@ impl ProcessorFactory for CSGBuilderFactory {
     }
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -91,16 +91,16 @@ impl ProcessorFactory for CSGBuilderFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let pair_id_attribute = if let Some(expr) = &param.pair_id_attribute {
-            Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
-                GeometryProcessorError::CSGBuilderFactory(format!(
-                    "Failed to compile pair_id_attribute expression: {e:?}"
-                ))
-            })?)
-        } else {
-            None
-        };
+        let pair_id_attribute = param
+            .pair_id_attribute
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    GeometryProcessorError::CSGBuilderFactory(format!(
+                        "Failed to compile pair_id_attribute expression: {e:?}"
+                    ))
+                })
+            })
+            .transpose()?;
 
         let processor = CSGBuilder {
             pair_id_attribute,
@@ -120,7 +120,7 @@ impl ProcessorFactory for CSGBuilderFactory {
 struct CSGBuilderParam {
     /// # Pair ID Attribute
     /// Expression to evaluate the pair ID used to match features from left and right ports
-    pair_id_attribute: Option<Expr>,
+    pair_id_attribute: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 
     /// # Create List
     /// When enabled, creates a list of attribute values from both children (left and right)
@@ -135,7 +135,7 @@ struct CSGBuilderParam {
 /// Builds a CSG tree from two solid geometries. To create a mesh from the CSG tree, use CSGEvaluator.
 #[derive(Debug, Clone)]
 pub struct CSGBuilder {
-    pair_id_attribute: Option<rhai::AST>,
+    pair_id_attribute: Option<CompiledCode>,
     left_buffer: HashMap<AttributeValue, Feature>,
     right_buffer: HashMap<AttributeValue, Feature>,
     create_list: Option<bool>,
@@ -162,25 +162,14 @@ impl Processor for CSGBuilder {
 
         // Get the pair ID from the feature by evaluating the expression
         let pair_id = if let Some(expr) = &self.pair_id_attribute {
-            let expr_engine = Arc::clone(&ctx.expr_engine);
-            let scope = feature.new_scope(expr_engine.clone(), &None);
-            match scope.eval_ast::<Dynamic>(expr) {
-                Ok(value) => match value.try_into() {
-                    Ok(attr_value) => attr_value,
-                    Err(_) => {
-                        // Failed to convert to AttributeValue, send to rejected
-                        fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
-                        return Ok(());
-                    }
-                },
-                Err(_e) => {
-                    // Failed to evaluate expression, send to rejected
+            match expr.eval(&feature, ctx.env_vars.clone()) {
+                Ok(attr_value) => attr_value,
+                Err(_) => {
                     fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
                     return Ok(());
                 }
             }
         } else {
-            // No expression configured, send to rejected
             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
             return Ok(());
         };

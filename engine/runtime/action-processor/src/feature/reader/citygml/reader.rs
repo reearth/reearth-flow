@@ -23,8 +23,10 @@ use reearth_flow_runtime::{
     node::DEFAULT_PORT,
 };
 use reearth_flow_types::{
-    conversion::nusamai::entity_to_geometry, geometry::Geometry, lod::LodMask, Attribute,
-    AttributeValue, CitygmlFeatureExt, CompiledCode, Feature,
+    conversion::nusamai::{entity_to_geometry, from_nusamai_citygml_value},
+    geometry::Geometry,
+    lod::LodMask,
+    Attribute, AttributeValue, CitygmlFeatureExt, CompiledCode, Feature,
 };
 use url::Url;
 
@@ -201,8 +203,7 @@ fn emit_flat_entity(
         }
     }
 
-    let citygml_attributes =
-        AttributeValue::Map(AttributeValue::from_nusamai_citygml_value(&ent.root));
+    let citygml_attributes = AttributeValue::Map(from_nusamai_citygml_value(&ent.root));
     let geometry: Geometry = entity_to_geometry(ent, root_needs_reconstruction)
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let mut feature: Feature = geometry.into();
@@ -258,7 +259,7 @@ pub(super) fn parse_and_register(
         nusamai_plateau::codelist::Resolver::new()
     };
     let city_gml_path = dataset
-        .eval_string(&feature, ctx.expr_engine.vars())
+        .eval_string(&feature, ctx.env_vars.clone())
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(city_gml_path.as_str())
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;

@@ -2,7 +2,6 @@
 exclude = ["runtime/action-wasm-processor"]
 members = [
   "cli",
-  "plateau-gis-quality-checker/src-tauri",
   "runtime/*",
   "testing/plateau-tiles-test",
   "testing/workflow-tests",
@@ -21,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.409"
+version = "0.0.416"
 
 [profile.dev]
 opt-level = 0
@@ -56,7 +55,6 @@ reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
 reearth-flow-atlas = { path = "runtime/atlas" }
 reearth-flow-common = { path = "runtime/common" }
-reearth-flow-eval-expr = { path = "runtime/eval-expr" }
 reearth-flow-expr = { path = "runtime/expr" }
 reearth-flow-geometry = { path = "runtime/geometry" }
 reearth-flow-gltf = { path = "runtime/gltf" }
@@ -192,18 +190,12 @@ reqwest = { version = "0.12.28", default-features = false, features = [
   "multipart",
   "rustls-tls-native-roots",
 ] }
-rhai = { version = "1.24.0", features = [
-  "internals",
-  "metadata",
-  "serde",
-  "sync",
-] }
 rmp-serde = "1.3.1"
 robust = "1.2.0"
 rstar = "0.12.2"
 rust_xlsxwriter = "0.93.0"
 schemars = { version = "0.8.22", features = ["chrono", "uuid1"] }
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive", "rc"] }
 serde_json = { version = "1.0.149", features = [
   "arbitrary_precision",
   "preserve_order",
@@ -218,6 +210,7 @@ slog = { version = "2.8.2", features = [
 slog-async = "2.8.0"
 slog-term = "2.9.2"
 sloggers = { version = "2.2.0", default-features = false }
+smallvec = { version = "1", features = ["serde"] }
 spade = "2.15.0"
 sqlx = { version = "0.8.6", features = [
   "any",

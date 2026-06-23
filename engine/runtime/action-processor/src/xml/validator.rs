@@ -854,7 +854,6 @@ mod tests {
     #[test]
     fn test_xml_validator_in_async_context() {
         // Verify that lazy initialization prevents panic when creating reqwest::blocking::Client in async context
-        use reearth_flow_eval_expr::engine::Engine;
         use reearth_flow_runtime::{
             event::EventHub,
             executor_operation::{ExecutorContext, NodeContext},
@@ -875,13 +874,13 @@ mod tests {
             let factory = XmlValidatorFactory {};
 
             // Create required dependencies for NodeContext
-            let expr_engine = Arc::new(Engine::new());
+            let env_vars = Arc::new(serde_json::Map::new());
             let storage_resolver = Arc::new(StorageResolver::new());
             let kv_store = Arc::new(create_kv_store());
             let event_hub = EventHub::new(1024);
 
             let ctx = NodeContext::new(
-                expr_engine.clone(),
+                env_vars.clone(),
                 storage_resolver.clone(),
                 kv_store.clone(),
                 event_hub.clone(),
@@ -934,7 +933,7 @@ mod tests {
                 let exec_ctx = ExecutorContext::new(
                     feature,
                     DEFAULT_PORT.clone(),
-                    expr_engine,
+                    env_vars,
                     storage_resolver,
                     kv_store,
                     EventHub::new(1024),

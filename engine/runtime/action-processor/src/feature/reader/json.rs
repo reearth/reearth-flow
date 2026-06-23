@@ -17,7 +17,7 @@ pub(crate) fn read_json(
     let storage_resolver = &ctx.storage_resolver;
     let json_path = params
         .dataset
-        .eval_string(feature, ctx.expr_engine.vars())
+        .eval_string(feature, ctx.env_vars.clone())
         .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(json_path.as_str())
         .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;

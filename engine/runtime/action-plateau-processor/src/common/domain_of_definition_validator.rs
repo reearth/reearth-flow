@@ -20,7 +20,7 @@ use reearth_flow_storage::storage::Storage;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
@@ -260,7 +260,7 @@ pub struct DomainOfDefinitionValidatorParam {
     /// at the location relative to the GML file, this path will be used as the base
     /// directory for resolving codeSpace references.
     #[serde(skip_serializing_if = "Option::is_none")]
-    codelists_path: Option<Expr>,
+    codelists_path: Option<Code>,
 }
 
 #[derive(Debug, Clone)]
@@ -309,12 +309,11 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let global_params = with.clone();
         let params: DomainOfDefinitionValidatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::DomainOfDefinitionValidatorFactory(format!(
@@ -330,16 +329,16 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
             DomainOfDefinitionValidatorParam::default()
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let codelists_path_expr = if let Some(expr) = params.codelists_path {
-            Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidatorFactory(format!(
-                    "Failed to compile codelists_path expression: {e}"
-                ))
-            })?)
-        } else {
-            None
-        };
+        let codelists_path_expr = params
+            .codelists_path
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidatorFactory(format!(
+                        "Failed to compile codelists_path expression: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
 
         let process = DomainOfDefinitionValidator {
             profile: self.profile,
@@ -347,7 +346,6 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
             codelists: None,
             filenames: HashSet::new(),
             codelists_path_expr,
-            global_params,
         };
         Ok(Box::new(process))
     }
@@ -361,8 +359,7 @@ pub struct DomainOfDefinitionValidator {
     feature_buffer: FeatureBuffer,
     codelists: Option<HashMap<String, HashMap<String, String>>>,
     filenames: HashSet<String>,
-    codelists_path_expr: Option<rhai::AST>,
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    codelists_path_expr: Option<CompiledCode>,
 }
 
 impl Processor for DomainOfDefinitionValidator {
@@ -385,12 +382,13 @@ impl Processor for DomainOfDefinitionValidator {
 
         // Evaluate fallback codelists path expression if provided
         let fallback_codelists_path = if let Some(expr) = &self.codelists_path_expr {
-            let scope = feature.new_scope(Arc::clone(&ctx.expr_engine), &self.global_params);
-            let path: String = scope.eval_ast(expr).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                    "Failed to evaluate codelists_path expression: {e:?}"
-                ))
-            })?;
+            let path = expr
+                .eval_string(feature, ctx.env_vars.clone())
+                .map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                        "Failed to evaluate codelists_path expression: {e:?}"
+                    ))
+                })?;
             Some(Uri::from_str(&path).map_err(|e| {
                 PlateauProcessorError::DomainOfDefinitionValidator(format!(
                     "Invalid codelists_path URI: {e:?}"

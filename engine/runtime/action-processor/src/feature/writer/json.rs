@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{create_batch_feature, Code, CompiledCode, Feature};
+use reearth_flow_types::{create_batch_feature, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +15,7 @@ use super::FeatureProcessorError;
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct JsonWriterParam {
-    pub(super) converter: Option<Code>,
+    pub(super) converter: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 #[derive(Debug, Clone)]

@@ -13,6 +13,10 @@ pub mod material;
 pub mod workflow;
 
 pub use attribute::*;
+pub use conversion::nusamai::{
+    attribute_value_to_citygml_attribute, attribute_value_to_citygml_type_ref,
+    from_nusamai_citygml_value,
+};
 pub use expr::*;
 pub use feature::*;
 pub use file::*;

@@ -66,8 +66,9 @@ graphs:
         type: action
         action: FeatureFilePathExtractor
         with:
-          sourceDataset: |
-            env.get("__value")["cityGmlPath"]
+          sourceDataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
           extractArchive: true
           destPrefix: udx
 
@@ -95,8 +96,9 @@ graphs:
         type: action
         action: PLATEAU4.UDXFolderExtractor
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
           codelistsPath: codelists
           schemasPath: schemas
 
@@ -139,7 +141,9 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: env.get("prcs")
+          targetEpsgCode:
+            type: flowExpr
+            value: env["prcs"]
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: PLATEAU3.LodSplitterWithDM
@@ -322,8 +326,9 @@ graphs:
         type: action
         action: SolidBoundaryValidator
         with:
-          tolerance: |
-            0.01
+          tolerance:
+            type: flowExpr
+            value: "0.01"
 
       - id: d0132191-a81f-4647-896d-5db49e3fb734
         name: FeatureFilterInvalidSolidBoundary
@@ -565,10 +570,12 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttributeValue: |
-            env.get("__value").fileIndex
-          supplierAttributeValue: |
-            env.get("__value").name
+          requestorAttributeValue:
+            type: flowExpr
+            value: str(attributes["fileIndex"])
+          supplierAttributeValue:
+            type: flowExpr
+            value: attributes["name"]
 
       # AttributeMapper for CSV formatting
       - id: f58eeb2c-9187-4880-8c1f-7da2f9388069

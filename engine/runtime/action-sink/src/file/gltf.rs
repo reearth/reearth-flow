@@ -14,7 +14,7 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::material::{self, Material};
-use reearth_flow_types::{Code, GeometryType};
+use reearth_flow_types::{attribute_value_to_citygml_attribute, Code, GeometryType};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -76,7 +76,7 @@ impl SinkFactory for GltfWriterSinkFactory {
             .output
             .compile()
             .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?
-            .eval_string_env_only(ctx.expr_engine.vars())
+            .eval_string_env_only(ctx.env_vars.clone())
             .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
         // Store as String — Uri::from_str at build time would silently join with CWD,
         // turning a relative path into an absolute URI that SinkOutput::new would reject.
@@ -122,7 +122,10 @@ impl TryFrom<&ClassFeatures> for Schema {
             .iter()
             .filter(|(_, v)| v.convertible_nusamai_type_ref())
         {
-            attributes.insert(k.to_string(), v.clone().into());
+            attributes.insert(
+                k.to_string(),
+                attribute_value_to_citygml_attribute(v.clone()),
+            );
         }
         schema.types.insert(
             feature_type,

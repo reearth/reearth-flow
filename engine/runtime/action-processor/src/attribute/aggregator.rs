@@ -1,7 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_eval_expr::utils::dynamic_to_value;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -9,7 +8,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,12 +51,12 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeAggregatorParam = if let Some(with) = with.clone() {
+        let params: AttributeAggregatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::AggregatorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -73,40 +74,38 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut aggregate_attributes = Vec::<CompliledAggregateAttribute>::new();
-        for aggregte_attribute in &params.aggregate_attributes {
-            if let Some(expr) = &aggregte_attribute.attribute_value {
-                let template_ast = expr_engine
-                    .compile(expr.as_ref())
+        for aggregte_attribute in params.aggregate_attributes {
+            if let Some(expr) = aggregte_attribute.attribute_value {
+                let compiled = expr
+                    .compile()
                     .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{e:?}")))?;
                 aggregate_attributes.push(CompliledAggregateAttribute {
-                    attribute_value: Some(template_ast),
-                    new_attribute: aggregte_attribute.new_attribute.clone(),
+                    attribute_value: Some(compiled),
+                    new_attribute: aggregte_attribute.new_attribute,
                     attribute: None,
                 });
             } else {
                 aggregate_attributes.push(CompliledAggregateAttribute {
                     attribute_value: None,
-                    new_attribute: aggregte_attribute.new_attribute.clone(),
-                    attribute: aggregte_attribute.attribute.clone(),
+                    new_attribute: aggregte_attribute.new_attribute,
+                    attribute: aggregte_attribute.attribute,
                 });
             }
         }
 
-        let calculation = if let Some(expr) = params.calculation {
-            let ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
-                AttributeProcessorError::AggregatorFactory(format!(
-                    "Failed to compile calculation: {e}"
-                ))
-            })?;
-            Some(ast)
-        } else {
-            None
-        };
+        let calculation = params
+            .calculation
+            .map(|c| {
+                c.compile().map_err(|e| {
+                    AttributeProcessorError::AggregatorFactory(format!(
+                        "Failed to compile calculation: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
 
         let process = AttributeAggregator {
-            global_params: with,
             aggregate_attributes,
             calculation,
             calculation_value: params.calculation_value,
@@ -120,9 +119,8 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 
 #[derive(Debug, Clone)]
 struct AttributeAggregator {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
-    calculation: Option<rhai::AST>,
+    calculation: Option<CompiledCode>,
     calculation_value: Option<i64>,
     calculation_attribute: Attribute,
     method: Method,
@@ -137,7 +135,7 @@ struct AttributeAggregatorParam {
     /// # List of attributes to aggregate
     aggregate_attributes: Vec<AggregateAttribute>,
     /// # Calculation to perform
-    calculation: Option<Expr>,
+    calculation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Value to use for calculation
     calculation_value: Option<i64>,
     /// # Attribute to store calculation result
@@ -153,15 +151,15 @@ struct AggregateAttribute {
     new_attribute: Attribute,
     /// # Existing attribute to use
     attribute: Option<Attribute>,
-    /// # Value to use for attribute
-    attribute_value: Option<Expr>,
+    /// # Grouping key expression for this attribute
+    attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 #[derive(Debug, Clone)]
 struct CompliledAggregateAttribute {
     new_attribute: Attribute,
     attribute: Option<Attribute>,
-    attribute_value: Option<rhai::AST>,
+    attribute_value: Option<CompiledCode>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -195,8 +193,7 @@ impl Processor for AttributeAggregator {
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
+        let env_vars = ctx.env_vars.clone();
 
         let mut aggregates = Vec::new();
         for aggregate_attribute in &self.aggregate_attributes {
@@ -207,19 +204,19 @@ impl Processor for AttributeAggregator {
                 aggregates.push(result.clone());
                 continue;
             }
-            if let Some(ast) = &aggregate_attribute.attribute_value {
-                let result = scope.eval_ast::<rhai::Dynamic>(ast).map_err(|e| {
+            if let Some(code) = &aggregate_attribute.attribute_value {
+                let result = code.eval(feature, env_vars.clone()).map_err(|e| {
                     AttributeProcessorError::Aggregator(format!(
                         "Failed to evaluate aggregation: {e}"
                     ))
                 })?;
-                aggregates.push(dynamic_to_value(&result).into());
+                aggregates.push(result);
             }
         }
         let calc = if let Some(value) = self.calculation_value {
             value
         } else if let Some(calculation) = &self.calculation {
-            scope.eval_ast::<i64>(calculation).map_err(|e| {
+            calculation.eval_int(feature, env_vars).map_err(|e| {
                 AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {e}"))
             })?
         } else {
@@ -297,7 +294,6 @@ mod tests {
 
     fn make_processor() -> AttributeAggregator {
         AttributeAggregator {
-            global_params: None,
             aggregate_attributes: vec![CompliledAggregateAttribute {
                 new_attribute: Attribute::new("file"),
                 attribute: Some(Attribute::new("file")),

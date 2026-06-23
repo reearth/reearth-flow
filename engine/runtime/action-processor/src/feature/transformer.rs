@@ -1,6 +1,5 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -8,8 +7,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
-use rhai::Dynamic;
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -46,12 +44,12 @@ impl ProcessorFactory for FeatureTransformerFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureTransformerParam = if let Some(with) = with.clone() {
+        let params: FeatureTransformerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::TransformerFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -69,26 +67,20 @@ impl ProcessorFactory for FeatureTransformerFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let mut transformers = Vec::new();
-        for condition in &params.transformers {
-            let expr = &condition.expr;
-            let template_ast = expr_engine
-                .compile(expr.as_ref())
+        for condition in params.transformers {
+            let expr = condition
+                .expr
+                .compile()
                 .map_err(|e| FeatureProcessorError::TransformerFactory(format!("{e:?}")))?;
-            transformers.push(CompiledTransform { expr: template_ast });
+            transformers.push(CompiledTransform { expr });
         }
-        let process = FeatureTransformer {
-            global_params: with,
-            transformers,
-        };
-        Ok(Box::new(process))
+        Ok(Box::new(FeatureTransformer { transformers }))
     }
 }
 
 #[derive(Debug, Clone)]
 struct FeatureTransformer {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     transformers: Vec<CompiledTransform>,
 }
 
@@ -106,12 +98,12 @@ struct FeatureTransformerParam {
 #[serde(rename_all = "camelCase")]
 struct Transform {
     /// Expression that modifies the feature (can access and modify attributes, geometry, etc.)
-    expr: Expr,
+    expr: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 #[derive(Debug, Clone)]
 struct CompiledTransform {
-    expr: rhai::AST,
+    expr: CompiledCode,
 }
 
 impl Processor for FeatureTransformer {
@@ -120,16 +112,11 @@ impl Processor for FeatureTransformer {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
+        let env_vars = ctx.env_vars.clone();
         let mut new_feature = feature.clone();
         for transformer in &self.transformers {
-            new_feature = mapper(
-                &new_feature,
-                &transformer.expr,
-                expr_engine.clone(),
-                &self.global_params,
-            );
+            new_feature = mapper(&new_feature, &transformer.expr, env_vars.clone());
         }
         fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
         Ok(())
@@ -150,21 +137,19 @@ impl Processor for FeatureTransformer {
 
 fn mapper(
     feature: &Feature,
-    expr: &rhai::AST,
-    expr_engine: Arc<Engine>,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
+    code: &CompiledCode,
+    env_vars: std::sync::Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Feature {
-    let scope = feature.new_scope(expr_engine.clone(), global_params);
-    let new_value = scope.eval_ast::<Dynamic>(expr);
-    if let Ok(new_value) = new_value {
-        if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-            return Feature::new_with_attributes(
-                new_value
-                    .iter()
-                    .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                    .collect(),
-            );
-        }
+    let Ok(new_value) = code.eval(feature, env_vars) else {
+        return feature.clone();
+    };
+    if let AttributeValue::Map(new_value) = new_value {
+        return Feature::new_with_attributes(
+            new_value
+                .iter()
+                .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
+                .collect(),
+        );
     }
     feature.clone()
 }

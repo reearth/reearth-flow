@@ -147,8 +147,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
 
   - id: 00000007-0000-0000-0000-000000000004
     name: RestrictZone1SpatialFilter
@@ -207,8 +208,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
 
   - id: 00000007-0000-0000-0000-000000000014
     name: RestrictZone2SpatialFilter
@@ -267,8 +269,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
 
   - id: 00000007-0000-0000-0000-000000000024
     name: RestrictZone3SpatialFilter
@@ -327,8 +330,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
 
   - id: 00000007-0000-0000-0000-000000000033
     name: SnowSpatialFilter

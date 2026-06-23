@@ -154,8 +154,9 @@ nodes:
     type: action
     action: SolidBoundaryValidator
     with:
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: "0.01"
 
   # Filter for NotClosed errors (NotA2Manifold = non-watertight solid)
   - id: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
