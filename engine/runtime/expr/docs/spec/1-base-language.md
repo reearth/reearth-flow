@@ -1,6 +1,6 @@
-# Base Language
+# (DRAFT) Base Language
 
-**FlowExpr** is an expression language: every program is an expression that evaluates to a single value.
+**FlowExpr** is an expression language: every program evaluates to a single value.
 
 This document specifies the base language: basic types and operators, and the semantics.
 
@@ -11,6 +11,23 @@ This document specifies the base language: basic types and operators, and the se
 ## boolean type
 
 A boolean value, written `true` or `false`.
+
+### truthiness
+
+Truthiness by type:
+
+- `null`: always falsy
+- `bool`: its value
+- `int`: falsy if `0`, truthy otherwise
+- `float`: falsy if `0.0`, truthy otherwise
+- `str`: falsy if empty, truthy otherwise
+- `list`: falsy if empty, truthy otherwise
+- `dict`: falsy if empty, truthy otherwise
+
+### constructor
+
+`bool` is a type object. Calling `bool(value)` converts `value` to a boolean based on its truthiness.
+`bool()` with no argument returns `false`.
 
 ## integer type
 
@@ -51,6 +68,15 @@ Float literals must contain a decimal point or an exponent (e.g. `1.0`, `1e10`).
 An immutable sequence of Unicode codepoints.
 String literals are enclosed in double quotes (e.g. `"hello"`).
 
+### escape sequences
+
+Inside a double-quoted string, the following escape sequences are recognized:
+
+- `\n`: newline
+- `\t`: tab
+- `\\`: backslash
+- `\"`: double quote
+
 ### constructor
 
 `str` is a type object. Calling `str(value)` constructs a string based on the type of `value`:
@@ -90,6 +116,16 @@ Insertion order preservation is not stabilized by this spec.
 - `list`: each element is a 2-element `[key, value]` list where `key` is a string
 - no argument: `{}`
 
+## "type" type
+
+A type object represents a type. Type objects are first-class values and can be compared with `==`.
+
+### constructor
+
+`type` is a type object. Calling `type(value)` returns the type object of `value`.
+
+Built-in type objects: `null`, `bool`, `int`, `float`, `str`, `list`, `dict`, `type`.
+
 ## operators
 
 Operators listed from lowest to highest precedence.
@@ -109,7 +145,7 @@ Operators listed from lowest to highest precedence.
 - unary `-` (prefix)
 - `**` (right)
 
-## integer and float division
+### integer and float division
 
 `/` always returns a float, even when both operands are integers.
 `//` is floor division: the result is rounded toward negative infinity.
@@ -117,12 +153,48 @@ Operators listed from lowest to highest precedence.
 
 Division by zero is an error for `/`, `//`, and `%`.
 
-## bitwise operators
+### bitwise operators
 
 `&`, `|`, `^`, `<<`, `>>` operate on integers. Both operands must be non-negative integers.
 
-Implementations must support left shift results across the full range of non-negative integers.
-Right shift (`>>`) with an amount >= 63 returns `0`.
+Left shift results that exceed the positive range of the integer type are an error.
+Right shift with an amount at or beyond the positive range of the integer type returns `0`.
+
+## block
+
+A block is a sequence of expressions separated by `;`. It evaluates to its last expression.
+
+A trailing `;` appends an implicit `null`, making the block evaluate to `null`.
+
+## program
+
+A program is a block.
+
+## return
+
+`return v` exits early, producing `v` as the result of the program.
+
+## control flow
+
+### if
+
+`if cond { ... }` evaluates the block if `cond` is truthy and returns its value.
+Without an `else` branch, the result is `null` when the condition is false.
+`else if` chains are supported.
+
+### while
+
+`while cond { ... }` loops while `cond` is truthy.
+
+## assignment
+
+`=` is the assignment operator. It overwrites the existing binding of a name or creates a new one.
+
+`a[i] = v` assigns to an element: an integer index into a list, or a string key into a dict.
+
+## numeric coercion
+
+When one operand of an arithmetic or comparison operator is `int` and the other is `float`, the `int` is converted to `float` before the operation.
 
 ## mutability
 
