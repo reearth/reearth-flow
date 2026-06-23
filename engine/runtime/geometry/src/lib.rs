@@ -75,6 +75,32 @@ pub struct GeometryCollection {
     attrs: Vec<Attributes>,
 }
 
+impl GeometryCollection {
+    /// Collect members, with no per-child attributes.
+    pub fn new(members: impl IntoIterator<Item = Geometry>) -> Self {
+        Self {
+            members: members.into_iter().collect(),
+            attrs: Vec::new(),
+        }
+    }
+
+    /// Build with per-child attributes parallel to `members`. `attrs` must be empty
+    /// or exactly one entry per member.
+    pub fn with_attributes(
+        members: Vec<Geometry>,
+        attrs: Vec<Attributes>,
+    ) -> Result<Self, error::Error> {
+        if !attrs.is_empty() && attrs.len() != members.len() {
+            return Err(error::Error::invalid_geometry(format!(
+                "attribute count {} does not match member count {}",
+                attrs.len(),
+                members.len()
+            )));
+        }
+        Ok(Self { members, attrs })
+    }
+}
+
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
 /// optional per-vertex elevation (2.5D).
 ///
