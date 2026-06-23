@@ -246,6 +246,82 @@ nodes:
         type: string
         value: 02_建築物_LOD0面の交差.csv
 
+  # --- LOD0 surface orientation pipeline ---
+  # SurfaceValidator2D emits LOD0 surfaces whose exterior ring is not
+  # counter-clockwise on the inCorrectOrientation port. Keep only genuinely
+  # reversed (clockwise) surfaces; degenerate "no_orientation" /
+  # "invalid_orientation" rings come from self-intersecting or corrupt geometry
+  # and are already reported under "LOD0 面のエラー", so they must not be
+  # double-counted here.
+  - id: aefb9355-f63a-459c-beee-69635c4afaf1
+    name: FeatureFilterLod0IncorrectOrientation
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["outerOrientation"] == "clockwise"
+          outputPort: clockwise
+
+  # Exclude surfaces that are also invalid (e.g. self-intersecting): those are
+  # reported under "LOD0 面のエラー" and must not be double-counted as an
+  # orientation error. The unmerged port carries reversed-but-otherwise-valid
+  # surfaces (gml_id not present in the invalid-surface stream).
+  - id: af670379-9f3c-4eef-bccb-580a53c2cc69
+    name: OrientationInvalidSurfaceExcluder
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["__citygml_gml_id"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["__citygml_gml_id"]
+
+  - id: 0177ff7b-a842-4aca-be99-47813bf1b11d
+    name: Lod0IncorrectOrientationCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lod0_incorrect_orientation
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: 8b6e3dbc-4c45-4d8d-8f64-58ee6e2c419a
+    name: AttributeMapperLod0IncorrectOrientation
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          valueAttribute: name
+        - attribute: feature_type
+          valueAttribute: __citygml_feature_type
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: IncorrectOrientation
+
+  - id: d0a4c34c-c050-4017-960a-762a0ad09441
+    name: FeatureWriterLod0IncorrectOrientation
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_LOD0面の向きエラー.csv
+
   # Join the per-file LOD0 error counts back onto each building GML file feature.
   - id: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
     name: ErrorSummaryMerger
@@ -271,6 +347,19 @@ nodes:
       supplierAttributeValue:
         type: flowExpr
         value: attributes["filename_a"]
+
+  # Join the per-file LOD0 orientation-error counts onto each file feature.
+  - id: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
+    name: OrientationSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
 
   # Build one summary row per building GML file.
   - id: 428129b3-ad69-4a18-bf99-25492d41ba26
@@ -328,7 +417,7 @@ nodes:
         - attribute: "LOD0 面の向きエラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lod0_incorrect_orientation", 0)
         - attribute: "LOD0 面の交差"
           expr:
             type: flowExpr
@@ -708,6 +797,54 @@ edges:
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: default
     toPort: default
+
+  # LOD0 surface orientation pipeline (taps inCorrectOrientation surfaces).
+  - id: 8712059f-8e80-4cb6-ba77-12c294035546
+    from: d12958f8-f52d-4c95-b62c-58a92d363017
+    to: aefb9355-f63a-459c-beee-69635c4afaf1
+    fromPort: inCorrectOrientation
+    toPort: default
+  # Keep only genuinely reversed (clockwise) surfaces.
+  - id: da71725b-a9e9-43da-a1c4-7fd1f9d432bd
+    from: aefb9355-f63a-459c-beee-69635c4afaf1
+    to: af670379-9f3c-4eef-bccb-580a53c2cc69
+    fromPort: clockwise
+    toPort: requestor
+  # Invalid LOD0 surfaces feed the excluder as suppliers (anti-join key gml_id).
+  - id: 469b3b7d-20fd-419b-84c2-3b4c1fb4b66b
+    from: d12958f8-f52d-4c95-b62c-58a92d363017
+    to: af670379-9f3c-4eef-bccb-580a53c2cc69
+    fromPort: invalidSurface
+    toPort: supplier
+  # Reversed-but-valid surfaces (unmerged) -> orientation counter.
+  - id: f91d425d-2d3d-4a2a-bcc7-fa40b2848977
+    from: af670379-9f3c-4eef-bccb-580a53c2cc69
+    to: 0177ff7b-a842-4aca-be99-47813bf1b11d
+    fromPort: unmerged
+    toPort: default
+  # Counter.complete -> AttributeMapper -> CSV writer (one row per surface)
+  - id: 6acfa6f3-ff6b-43e9-af8e-72c99ea08c36
+    from: 0177ff7b-a842-4aca-be99-47813bf1b11d
+    to: 8b6e3dbc-4c45-4d8d-8f64-58ee6e2c419a
+    fromPort: complete
+    toPort: default
+  - id: 93b1af53-7434-436d-b50b-303ea4d5cbdf
+    from: 8b6e3dbc-4c45-4d8d-8f64-58ee6e2c419a
+    to: d0a4c34c-c050-4017-960a-762a0ad09441
+    fromPort: default
+    toPort: default
+  # Route the written LOD0 orientation CSV into the result zip.
+  - id: d1216ed0-dbd7-478a-82ed-7640b87c8996
+    from: d0a4c34c-c050-4017-960a-762a0ad09441
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Counter.default -> OrientationSummaryMerger (supplier)
+  - id: b73d84ce-6c41-471f-9f0c-32fa737ecfae
+    from: 0177ff7b-a842-4aca-be99-47813bf1b11d
+    to: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
+    fromPort: default
+    toPort: supplier
   # Merged + unmerged file features -> surface-intersection merger (requestor)
   - id: 40c7c687-b78b-4e72-8a7a-156730ec2411
     from: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
@@ -719,14 +856,25 @@ edges:
     to: 7f364020-94f2-4c3a-9642-f94b696dc551
     fromPort: unmerged
     toPort: requestor
-  # Surface-intersection merger output -> per-file summary
+  # Surface-intersection merger output -> orientation merger (requestor)
   - id: 21a1414b-8ecc-43ba-9c98-fdeffdce8fec
     from: 7f364020-94f2-4c3a-9642-f94b696dc551
+    to: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
+    fromPort: merged
+    toPort: requestor
+  - id: 5c289a15-f8d7-4766-94ea-18aabd6a44bd
+    from: 7f364020-94f2-4c3a-9642-f94b696dc551
+    to: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
+    fromPort: unmerged
+    toPort: requestor
+  # Orientation merger output -> per-file summary
+  - id: 7fcea7cb-1a55-4949-b9d0-f9a3b470922b
+    from: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: 5c289a15-f8d7-4766-94ea-18aabd6a44bd
-    from: 7f364020-94f2-4c3a-9642-f94b696dc551
+  - id: 252cb692-e2d4-47fc-83d3-904d36a3e929
+    from: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default
