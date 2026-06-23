@@ -275,6 +275,8 @@ where
     let mut face_offsets: Vec<u32> = Vec::new();
     let mut interior_offsets: Vec<u32> = Vec::new();
     for face in faces {
+        let index_start = face_indices.len();
+        let interior_start = interior_offsets.len();
         let mut is_exterior = true;
         for ring in face {
             if !is_exterior {
@@ -284,6 +286,12 @@ where
             for &coord in open_ring(ring) {
                 face_indices.push(dedup_index(&mut vertices, &mut seen, coord));
             }
+        }
+        if face_indices.len() == index_start {
+            // Empty face contributes no geometry: drop it (and any hole offsets it
+            // recorded) so `face_offsets` stays strictly increasing with no leading 0.
+            interior_offsets.truncate(interior_start);
+            continue;
         }
         face_offsets.push(face_indices.len() as u32);
     }
@@ -302,6 +310,7 @@ fn index_faces(
     let mut face_indices: Vec<u32> = Vec::new();
     let mut face_offsets: Vec<u32> = Vec::new();
     for face in faces {
+        let index_start = face_indices.len();
         for index in face {
             if index as usize >= vertex_count {
                 return Err(Error::invalid_geometry(format!(
@@ -309,6 +318,11 @@ fn index_faces(
                 )));
             }
             face_indices.push(index);
+        }
+        if face_indices.len() == index_start {
+            // Empty face: contributes no ring, so record no boundary for it (keeps
+            // `face_offsets` strictly increasing with no leading 0).
+            continue;
         }
         face_offsets.push(face_indices.len() as u32);
     }
@@ -362,8 +376,10 @@ fn validate_csr(
     Ok(())
 }
 
-/// Pack the flat CSR buffers into width-erased index buffers: `face_indices` at
-/// the vertex-count-derived width, the offsets at the `face_indices.len()` width.
+/// Pack the flat CSR buffers into width-erased index buffers: `face_indices` at the
+/// vertex-count-derived width, the offsets at the `face_indices.len() - 1` width
+/// (the largest possible offset, since the internal boundaries carry no trailing
+/// total and every offset is `< face_indices.len()`).
 fn pack_csr(
     vertex_count: usize,
     face_indices: Vec<u32>,
@@ -371,7 +387,7 @@ fn pack_csr(
     interior_offsets: Vec<u32>,
 ) -> (IndexBuffer<1>, IndexBuffer<1>, IndexBuffer<1>) {
     let index_width = IndexWidth::for_value(vertex_count.saturating_sub(1) as u32);
-    let offset_width = IndexWidth::for_value(face_indices.len() as u32);
+    let offset_width = IndexWidth::for_value(face_indices.len().saturating_sub(1) as u32);
     (
         IndexBuffer::with_exact_width(
             index_width,
@@ -477,6 +493,32 @@ mod tests {
     fn from_parts_rejects_out_of_range_index() {
         let verts = vec![[0., 0., 0.]];
         assert!(PolygonMesh3DData::from_parts(verts, vec![vec![0u32, 1, 2]]).is_err());
+    }
+
+    // An empty face contributes no ring, so it is skipped rather than producing a
+    // duplicate (non-increasing) boundary.
+    #[test]
+    fn from_polygons_skips_empty_face() {
+        let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
+        let empty = Polygon3D::from_rings(
+            Coordinate::Euclidean,
+            Vec::<[f64; 3]>::new(),
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let b = quad([[1., 0., 0.], [2., 0., 0.], [2., 1., 0.], [1., 1., 0.]]);
+        let m = PolygonMesh3DData::from_polygons([&a, &empty, &b]);
+        assert_eq!(m.vertices.len(), 6);
+        // Two real faces -> one internal boundary, no duplicate from the empty face.
+        assert_eq!(ones(&m.face_offsets), vec![4]);
+    }
+
+    #[test]
+    fn from_parts_skips_empty_face() {
+        let verts = vec![[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]];
+        let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2], vec![], vec![0, 2, 3]];
+        let m = PolygonMesh3D::from_parts(Coordinate::Euclidean, verts, faces).unwrap();
+        assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 0, 2, 3]);
+        assert_eq!(ones(&m.data.face_offsets), vec![3]);
     }
 
     #[test]

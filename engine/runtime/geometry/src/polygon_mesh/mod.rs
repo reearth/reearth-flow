@@ -35,10 +35,10 @@ pub struct PolygonMesh2D {
     /// leading 0. `face_offsets[i]` is where face `i+1` begins; face `i` spans
     /// `face_indices[s..e]` with `s = if i == 0 { 0 } else { face_offsets[i-1] }`
     /// and `e = face_offsets.get(i).copied().unwrap_or(face_indices.len())`. Width
-    /// from `face_indices.len()`.
+    /// from `face_indices.len() - 1`.
     face_offsets: IndexBuffer<1>,
     /// Start in `face_indices` of each hole ring, across all faces; empty when
-    /// no face has holes. Width from `face_indices.len()`.
+    /// no face has holes. Width from `face_indices.len() - 1`.
     interior_offsets: IndexBuffer<1>,
     /// Geometric UV, parallel to the corner buffers; empty = no UV.
     uv_sets: Vec<UvSet>,
@@ -65,10 +65,10 @@ pub struct PolygonMesh3DData {
     /// leading 0. `face_offsets[i]` is where face `i+1` begins; face `i` spans
     /// `face_indices[s..e]` with `s = if i == 0 { 0 } else { face_offsets[i-1] }`
     /// and `e = face_offsets.get(i).copied().unwrap_or(face_indices.len())`. Width
-    /// from `face_indices.len()`.
+    /// from `face_indices.len() - 1`.
     face_offsets: IndexBuffer<1>,
     /// Start in `face_indices` of each hole ring, across all faces; empty when
-    /// no face has holes. Width from `face_indices.len()`.
+    /// no face has holes. Width from `face_indices.len() - 1`.
     interior_offsets: IndexBuffer<1>,
     /// Geometric UV, parallel to the corner buffers; empty = no UV.
     uv_sets: Vec<UvSet>,
