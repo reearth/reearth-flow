@@ -124,7 +124,7 @@ A type object represents a type. Type objects are first-class values and can be 
 
 `type` is a type object. Calling `type(value)` returns the type object of `value`.
 
-Built-in type objects: `null`, `bool`, `int`, `float`, `str`, `list`, `dict`, `type`.
+Built-in type objects: `bool`, `int`, `float`, `str`, `list`, `dict`, `type`.
 
 ## operators
 
@@ -160,6 +160,26 @@ Division by zero is an error for `/`, `//`, and `%`.
 Left shift results that exceed the positive range of the integer type are an error.
 Right shift with an amount at or beyond the positive range of the integer type returns `0`.
 
+### logical operators
+
+`and` and `or` return one of their operands, not a boolean:
+
+- `a and b`: returns `a` if falsy, otherwise `b`
+- `a or b`: returns `a` if truthy, otherwise `b`
+- `not a` returns the boolean negation of `a`'s truthiness.
+
+`and` and `or` are short-circuit.
+
+### membership operators
+
+`v in x` tests whether `v` is contained in `x`:
+
+- `list`: `v` equals any element
+- `str`: `v` is a substring (must be a `str`)
+- `dict`: `v` is a key
+
+`v not in x` is the negation of `v in x`.
+
 ## block
 
 A block is a sequence of expressions separated by `;`. It evaluates to its last expression.
@@ -185,6 +205,11 @@ Without an `else` branch, the result is `null` when the condition is false.
 ### while
 
 `while cond { ... }` loops while `cond` is truthy.
+
+## scoping
+
+Variables are scoped to the whole program.
+A variable bound by `=` is accessible from that point to the end of the program.
 
 ## assignment
 

@@ -112,7 +112,7 @@ pub fn env_bind(env: &Env, name: impl Into<String>, val: Value) {
 }
 
 thread_local! {
-    static NULL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("null", None));
+    static NULL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("nullType", None));
     static BOOL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("bool", Some(NativeFn::new(builtin_bool))));
     static INT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("int", Some(NativeFn::new(builtin_int))));
     static FLOAT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("float", Some(NativeFn::new(builtin_float))));
