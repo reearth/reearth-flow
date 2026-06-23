@@ -211,7 +211,7 @@ pub(super) struct ShapefileReaderParam {
     #[serde(default)]
     pub(super) force_2d: bool,
     /// # Allow Null Path
-    /// If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features
+    /// If true, a dataset expression that evaluates to null produces zero features
     /// instead of an error. This is useful for optional shapefile inputs where the path may
     /// not be configured.
     #[serde(default, alias = "allowEmptyPath")]

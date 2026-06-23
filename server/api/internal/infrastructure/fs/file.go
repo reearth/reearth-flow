@@ -157,6 +157,10 @@ func (f *fileRepo) ReadAsset(ctx context.Context, filename string) (io.ReadClose
 	return f.read(ctx, filepath.Join(assetDir, sanitize.Path(filename)))
 }
 
+func (f *fileRepo) ReadActions(ctx context.Context, filename string) (io.ReadCloser, error) {
+	return f.read(ctx, filepath.Join(actionsDir, sanitize.Path(filename)))
+}
+
 func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, int64, error) {
 	filename := sanitize.Path(newAssetID() + filepath.Ext(file.Path))
 	size, err := f.upload(ctx, filepath.Join(assetDir, filename), file.Content)

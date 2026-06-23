@@ -104,6 +104,20 @@ var (
 	}
 )
 
+// actionsReader reads a schema file (e.g. "actions_en.json") from the env bucket's
+// "actions/" prefix. gateway.File satisfies it via ReadActions.
+type actionsReader interface {
+	ReadActions(context.Context, string) (io.ReadCloser, error)
+}
+
+var (
+	// actionsRepo, when set, is the bucket-backed schema source. nil → GitHub.
+	actionsRepo actionsReader
+	// actionsFallbackBaseURL is used when actionsRepo is unset or a read fails
+	// (local dev / cold bucket). Overridable in tests.
+	actionsFallbackBaseURL = "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+)
+
 func loadActionsData(lang string) (ActionsData, error) {
 	if lang != "" && !supportedLangs[lang] {
 		return ActionsData{}, &loadError{err: fmt.Errorf("unsupported language: %s", lang), status: http.StatusBadRequest}
@@ -119,38 +133,14 @@ func loadActionsData(lang string) (ActionsData, error) {
 	}
 	mutex.RUnlock()
 
-	// Fetch from GitHub without holding any lock so other requests are not blocked.
-	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
 	filename := "actions.json"
 	if lang != "" {
 		filename = fmt.Sprintf("actions_%s.json", lang)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+filename, nil)
+	body, err := fetchActionsFile(filename)
 	if err != nil {
-		return ActionsData{}, &loadError{err: err, status: http.StatusBadGateway}
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return ActionsData{}, &loadError{err: err, status: http.StatusBadGateway}
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Warnf("actions: error closing response body: %v", err)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return ActionsData{}, &loadError{err: fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, baseURL+filename), status: http.StatusBadGateway}
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ActionsData{}, &loadError{err: err, status: http.StatusInternalServerError}
+		return ActionsData{}, err
 	}
 
 	var newData ActionsData
@@ -171,6 +161,53 @@ func loadActionsData(lang string) (ActionsData, error) {
 	}
 	actionsDataMap[cacheKey] = newData
 	return newData, nil
+}
+
+// fetchActionsFile returns the bytes of a schema file, preferring the bucket-backed
+// actionsRepo and falling back to GitHub (actionsFallbackBaseURL).
+func fetchActionsFile(filename string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if actionsRepo != nil {
+		rc, err := actionsRepo.ReadActions(ctx, filename)
+		if err == nil {
+			defer func() {
+				if cerr := rc.Close(); cerr != nil {
+					log.Warnf("actions: error closing reader: %v", cerr)
+				}
+			}()
+			body, rerr := io.ReadAll(rc)
+			if rerr != nil {
+				return nil, &loadError{err: rerr, status: http.StatusInternalServerError}
+			}
+			return body, nil
+		}
+		log.Warnf("actions: bucket read failed for %s, falling back to GitHub: %v", filename, err)
+	}
+
+	url := actionsFallbackBaseURL + filename
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, &loadError{err: err, status: http.StatusBadGateway}
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, &loadError{err: err, status: http.StatusBadGateway}
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			log.Warnf("actions: error closing response body: %v", cerr)
+		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		return nil, &loadError{err: fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, url), status: http.StatusBadGateway}
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, &loadError{err: err, status: http.StatusInternalServerError}
+	}
+	return body, nil
 }
 
 // listActions godoc

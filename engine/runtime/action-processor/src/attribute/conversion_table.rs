@@ -81,7 +81,7 @@ impl ProcessorFactory for AttributeConversionTableFactory {
                         "Failed to compile dataset expression: {e:?}"
                     ))
                 })?
-                .eval_string_env_only(ctx.expr_engine.vars().clone())
+                .eval_string_env_only(ctx.env_vars.clone())
                 .map_err(|e| {
                     super::errors::AttributeProcessorError::ConversionTable(format!(
                         "Failed to evaluate expr: {e}"

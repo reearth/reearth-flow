@@ -199,7 +199,7 @@ impl Processor for DestinationMeshCodeExtractor {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
-        let epsg_code = self.evaluate_epsg_code(feature, ctx.expr_engine.vars().clone())?;
+        let epsg_code = self.evaluate_epsg_code(feature, ctx.env_vars.clone())?;
 
         // Ensure proj instances are cached for this EPSG code
         ensure_proj_cached(&epsg_code)?;

@@ -2,6 +2,102 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.23 - 2026-06-23
+
+### Web
+
+#### 🧪 Testing
+
+- Add school-to-parks spatial-filter e2e ([#2184](https://github.com/reearth/reearth-flow/pull/2184)) [`4e71a1`](https://github.com/reearth/reearth-flow/commit/4e71a1)
+
+### Server
+
+#### 🚀 Features
+
+- PreviewSchema mutation (Preview Schema) ([#2165](https://github.com/reearth/reearth-flow/pull/2165)) [`6c3330`](https://github.com/reearth/reearth-flow/commit/6c3330)
+
+#### Miscellaneous Tasks
+
+- Bump Go to 1.26.2 + reearthx (Transactor&#x2F;pgx release) ([#2176](https://github.com/reearth/reearth-flow/pull/2176)) [`2392db`](https://github.com/reearth/reearth-flow/commit/2392db)
+
+### api
+
+#### 🚀 Features
+
+- Per-environment, branch-matched actions schema from GCS bucket ([#2196](https://github.com/reearth/reearth-flow/pull/2196)) [`2b5282`](https://github.com/reearth/reearth-flow/commit/2b5282)
+
+#### 🔧 Bug Fixes
+
+- Authorize permission checks by workspace role ([#2186](https://github.com/reearth/reearth-flow/pull/2186)) [`061127`](https://github.com/reearth/reearth-flow/commit/061127)
+
+### ci
+
+#### Miscellaneous Tasks
+
+- Remove redundant Flow Cerbos policy deploy workflow ([#2192](https://github.com/reearth/reearth-flow/pull/2192)) [`1a0f79`](https://github.com/reearth/reearth-flow/commit/1a0f79)
+
+### ci&#x2F;oss
+
+#### 🔧 Bug Fixes
+
+- Isolate actions-schema upload into its own job ([#2197](https://github.com/reearth/reearth-flow/pull/2197)) [`4eb7be`](https://github.com/reearth/reearth-flow/commit/4eb7be)
+
+### engine
+
+#### 🚀 Features
+
+- Introducing new geometry types ([#2174](https://github.com/reearth/reearth-flow/pull/2174)) [`730400`](https://github.com/reearth/reearth-flow/commit/730400)
+- Relocating attribute definitions from types to common ([#2182](https://github.com/reearth/reearth-flow/pull/2182)) [`fda8d6`](https://github.com/reearth/reearth-flow/commit/fda8d6)
+
+#### 🔧 Bug Fixes
+
+- Normalize MVT winding instead of filtering ([#2178](https://github.com/reearth/reearth-flow/pull/2178)) [`b9f124`](https://github.com/reearth/reearth-flow/commit/b9f124)
+- Iterative DAG traversal to prevent stack overflow on long workflows ([#2173](https://github.com/reearth/reearth-flow/pull/2173)) [`552fdf`](https://github.com/reearth/reearth-flow/commit/552fdf)
+
+#### ✨ Refactor
+
+- Remove Rhai, unused workflows, and plateau-gis-quality-checker ([#2089](https://github.com/reearth/reearth-flow/pull/2089)) [`1fc5cf`](https://github.com/reearth/reearth-flow/commit/1fc5cf)
+- Migration all remaining actions to FlowExpr ([#2169](https://github.com/reearth/reearth-flow/pull/2169)) [`c9ed25`](https://github.com/reearth/reearth-flow/commit/c9ed25)
+- Migrate statistics calculator and remove rhai caller ([#2162](https://github.com/reearth/reearth-flow/pull/2162)) [`5cbe73`](https://github.com/reearth/reearth-flow/commit/5cbe73)
+
+#### Miscellaneous Tasks
+
+- Further improvements on CI ([#2172](https://github.com/reearth/reearth-flow/pull/2172)) [`96e81a`](https://github.com/reearth/reearth-flow/commit/96e81a)
+- Introducing the geometry migration feature ([#2167](https://github.com/reearth/reearth-flow/pull/2167)) [`fcc288`](https://github.com/reearth/reearth-flow/commit/fcc288)
+
+### ui
+
+#### 🚀 Features
+
+- Implement RawJsonViewer component and update FeatureDetails Overlay for raw JSON viewing [FLOW-DEV-166] ([#2163](https://github.com/reearth/reearth-flow/pull/2163)) [`471c0e`](https://github.com/reearth/reearth-flow/commit/471c0e)
+
+#### 🔧 Bug Fixes
+
+- Refactor click handling to use single and double click events for intermediate data selection [FLOW-DEV-200] ([#2188](https://github.com/reearth/reearth-flow/pull/2188)) [`4dfcd3`](https://github.com/reearth/reearth-flow/commit/4dfcd3)
+- Integrate schema utilities for default form state handling and prevent input deletion on enter key down ([#2187](https://github.com/reearth/reearth-flow/pull/2187)) [`8a4800`](https://github.com/reearth/reearth-flow/commit/8a4800)
+- Remove isConnectable prop from CustomHandle component ([#2191](https://github.com/reearth/reearth-flow/pull/2191)) [`e9b450`](https://github.com/reearth/reearth-flow/commit/e9b450)
+- Implement clampEntityToGround function for better geometry handling ([#2177](https://github.com/reearth/reearth-flow/pull/2177)) [`ec601a`](https://github.com/reearth/reearth-flow/commit/ec601a)
+- Revert clampToGround ([#2179](https://github.com/reearth/reearth-flow/pull/2179)) [`57ee5f`](https://github.com/reearth/reearth-flow/commit/57ee5f)
+- Clamp to ground geojson ([#2171](https://github.com/reearth/reearth-flow/pull/2171)) [`bd7949`](https://github.com/reearth/reearth-flow/commit/bd7949)
+- Add functionality to omit empty-valued params in convertNodes ([#2170](https://github.com/reearth/reearth-flow/pull/2170)) [`e0d73a`](https://github.com/reearth/reearth-flow/commit/e0d73a)
+
+### websocket
+
+#### 🔧 Bug Fixes
+
+- Bound doc-load and harden cleanup to stop 504 project-open hang ([#2195](https://github.com/reearth/reearth-flow/pull/2195)) [`8f2f81`](https://github.com/reearth/reearth-flow/commit/8f2f81)
+
+### worker
+
+#### 🚀 Features
+
+- Probe-schema subcommand + &#x2F;probe-schema route ([#2168](https://github.com/reearth/reearth-flow/pull/2168)) [`9a79ff`](https://github.com/reearth/reearth-flow/commit/9a79ff)
+
+#### 🔧 Bug Fixes
+
+- Publish JobCompleteEvent from probe-schema so preview jobs finalize ([#2190](https://github.com/reearth/reearth-flow/pull/2190)) [`027b1e`](https://github.com/reearth/reearth-flow/commit/027b1e)
+- Write probe-schema report via async put (GCS has no blocking_write) ([#2180](https://github.com/reearth/reearth-flow/pull/2180)) [`c98835`](https://github.com/reearth/reearth-flow/commit/c98835)
+
 ## 0.1.0-alpha.22 - 2026-06-16
 
 ### Web

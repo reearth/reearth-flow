@@ -4462,72 +4462,6 @@
       ]
     },
     {
-      "name": "FlowExprTest",
-      "type": "processor",
-      "description": "Flow 表达式引擎的实验性测试平台",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FlowExprTest 参数",
-        "type": "object",
-        "required": [
-          "mappings"
-        ],
-        "properties": {
-          "mappings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Mapping"
-            }
-          }
-        },
-        "definitions": {
-          "Mapping": {
-            "type": "object",
-            "required": [
-              "attribute",
-              "value"
-            ],
-            "properties": {
-              "attribute": {
-                "type": "string"
-              },
-              "value": {
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Attribute"
-      ],
-      "tags": []
-    },
-    {
       "name": "FootprintReplacer",
       "type": "processor",
       "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）",
@@ -11129,7 +11063,7 @@
         "properties": {
           "allowEmptyPath": {
             "title": "Allow Null Path",
-            "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
+            "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
             "default": false,
             "type": "boolean"
           },

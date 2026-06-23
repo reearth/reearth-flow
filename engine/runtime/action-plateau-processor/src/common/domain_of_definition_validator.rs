@@ -383,7 +383,7 @@ impl Processor for DomainOfDefinitionValidator {
         // Evaluate fallback codelists path expression if provided
         let fallback_codelists_path = if let Some(expr) = &self.codelists_path_expr {
             let path = expr
-                .eval_string(feature, ctx.expr_engine.vars().clone())
+                .eval_string(feature, ctx.env_vars.clone())
                 .map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!(
                         "Failed to evaluate codelists_path expression: {e:?}"

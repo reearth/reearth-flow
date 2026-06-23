@@ -113,7 +113,7 @@ impl Sink for JsonWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let path = self
             .output
-            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .eval_string(&ctx.feature, ctx.env_vars.clone())
             .map_err(|e| SinkError::JsonWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
         let node_ctx: NodeContext = ctx.into();
@@ -133,7 +133,7 @@ impl Sink for JsonWriter {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         for (out, features) in self.buffer.values() {
             write_json(
                 out,

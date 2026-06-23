@@ -161,7 +161,7 @@ impl Processor for UDXFolderExtractor {
         let res = process_feature(
             feature,
             &self.city_gml_path,
-            Arc::clone(&ctx.expr_engine.vars()),
+            Arc::clone(&ctx.env_vars),
             Arc::clone(&ctx.storage_resolver),
             &self.codelists_path,
             &self.schemas_path,

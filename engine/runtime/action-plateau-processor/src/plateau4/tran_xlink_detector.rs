@@ -148,7 +148,7 @@ impl TransportationXlinkDetector {
         let feature = &ctx.feature;
         let city_gml_path = self
             .city_gml_path
-            .eval_string(feature, ctx.expr_engine.vars().clone())
+            .eval_string(feature, ctx.env_vars.clone())
             .map_err(|e| {
                 Error::TranXlinkDetector(format!(
                     "Failed to evaluate cityGmlPath expression: {e:?}"

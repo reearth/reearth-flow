@@ -138,7 +138,7 @@ impl Processor for BuildingUsageAttributeValidator {
             let map = build_city_code_to_name(
                 feature,
                 &self.codelists_path_expr,
-                ctx.expr_engine.vars().clone(),
+                ctx.env_vars.clone(),
                 Arc::clone(&ctx.storage_resolver),
             )?;
             self.city_code_to_name = Some(map);

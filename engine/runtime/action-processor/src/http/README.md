@@ -512,7 +512,7 @@ response:
 
 ## Expression Support
 
-Most string parameters support Rhai expressions:
+Most string parameters support expressions:
 
 ```yaml
 url: "https://api.example.com/v1/users/${feature.id}"

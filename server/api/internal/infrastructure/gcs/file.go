@@ -30,6 +30,7 @@ const (
 	gcsAssetBasePath    string = "assets"
 	gcsMetadataBasePath string = "metadata"
 	gcsWorkflowBasePath string = "workflows"
+	gcsActionsBasePath  string = "actions"
 	fileSizeLimit       int64  = 1024 * 1024 * 100 // about 100MB
 )
 
@@ -77,6 +78,14 @@ func (f *fileRepo) ReadAsset(ctx context.Context, name string) (io.ReadCloser, e
 		return nil, rerror.ErrNotFound
 	}
 	return f.read(ctx, path.Join(gcsAssetBasePath, sn))
+}
+
+func (f *fileRepo) ReadActions(ctx context.Context, name string) (io.ReadCloser, error) {
+	sn := sanitizePath(name)
+	if sn == "" {
+		return nil, rerror.ErrNotFound
+	}
+	return f.read(ctx, path.Join(gcsActionsBasePath, sn))
 }
 
 func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, int64, error) {

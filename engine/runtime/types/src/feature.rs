@@ -11,7 +11,6 @@ use reearth_flow_common::{
     str,
     xml::{xpath_value_to_json, XmlXpathValue},
 };
-use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
@@ -403,27 +402,6 @@ impl Feature {
 
     pub fn iter(&self) -> impl Iterator<Item = (&Attribute, &AttributeValue)> {
         self.attributes.iter()
-    }
-
-    pub fn new_scope(
-        &self,
-        engine: Arc<Engine>,
-        with: &Option<HashMap<String, serde_json::Value>>,
-    ) -> Scope {
-        let scope = engine.new_scope();
-        let value: serde_json::Value = serde_json::Value::Object(
-            self.attributes
-                .iter()
-                .map(|(k, v)| (k.clone().into_inner(), v.clone().into()))
-                .collect::<serde_json::Map<_, _>>(),
-        );
-        scope.set("__value", value);
-        if let Some(with) = with {
-            for (k, v) in with {
-                scope.set(k, v.clone());
-            }
-        }
-        scope
     }
 
     pub fn as_map(&self) -> HashMap<String, AttributeValue> {

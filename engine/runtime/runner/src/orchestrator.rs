@@ -6,7 +6,6 @@ use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::event::EventHandler;
 use reearth_flow_runtime::executor_operation::ExecutorOptions;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
@@ -81,12 +80,12 @@ impl Orchestrator {
             feature_flush_threshold: *FEATURE_FLUSH_THRESHOLD,
             sandbox_root,
         };
-        let expr_engine = Arc::new(Engine::with_vars(workflow.with.clone().unwrap_or_default()));
+        let env_vars = Arc::new(workflow.with.clone().unwrap_or_default());
         let kv_store = Arc::new(create_kv_store());
 
         let dag_executor = executor
             .create_dag_executor(
-                expr_engine.clone(),
+                env_vars.clone(),
                 storage_resolver.clone(),
                 kv_store.clone(),
                 workflow,
@@ -101,7 +100,7 @@ impl Orchestrator {
         let runtime_clone = self.runtime.clone();
         let pipeline_future = self.runtime.spawn_blocking(move || {
             run_dag_executor(
-                expr_engine,
+                env_vars,
                 storage_resolver,
                 kv_store,
                 runtime_clone,
