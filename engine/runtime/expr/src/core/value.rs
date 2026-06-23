@@ -24,19 +24,49 @@ impl fmt::Debug for ClosureValue {
     }
 }
 
+/// A first-class type value: a comparable identity and an optional callable constructor.
+/// Identity is pointer-based (`Rc::ptr_eq`), not name-based, so two independently registered
+/// types with the same name remain distinct.
+#[derive(Debug, Clone)]
+pub struct TypeValue {
+    pub name: String,
+    pub constructor: Option<NativeFn>,
+}
+
+impl TypeValue {
+    pub fn new(name: impl Into<String>, constructor: Option<NativeFn>) -> Self {
+        Self {
+            name: name.into(),
+            constructor,
+        }
+    }
+
+    pub fn call_ctor(&self, args: &[Value]) -> Result<Value> {
+        match &self.constructor {
+            Some(f) => f.call(args),
+            None => Err(eval_error(format!(
+                "type '{}' is not constructible",
+                self.name
+            ))),
+        }
+    }
+}
+
 /// Trait for typed objects that can respond to method calls.
 ///
 /// All methods take `&self` — objects are immutable from the expression
 /// language's perspective. Implementations that need internal state must use
 /// their own `RefCell` internally.
 pub trait ImmutableObject: std::fmt::Debug {
-    fn type_name(&self) -> &'static str;
+    /// Return the canonical `Rc<TypeValue>` for this object's type.
+    /// Two objects of the same type must return `Rc`s that compare equal via `Rc::ptr_eq`.
+    fn type_object(&self) -> Rc<TypeValue>;
     fn call_method(&self, method: &str, args: &[Value]) -> Result<Value>;
     fn get_property(&self, _name: &str) -> Option<Result<Value>> {
         None
     }
     fn display(&self) -> String {
-        format!("<{}>", self.type_name())
+        format!("<{}>", self.type_object().name)
     }
     fn serialize(&self) -> Option<Value> {
         None
@@ -69,36 +99,6 @@ impl std::fmt::Debug for NativeFn {
     }
 }
 
-/// Built-in type tags, used by `type()` and as first-class type values.
-/// Binding `int` in the env to `Value::Type(TypeTag::Int)` makes `int` both a
-/// callable constructor and a comparable type identity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TypeTag {
-    Null,
-    Bool,
-    Int,
-    Float,
-    Str,
-    List,
-    Dict,
-    Fn,
-}
-
-impl std::fmt::Display for TypeTag {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TypeTag::Null => write!(f, "null"),
-            TypeTag::Bool => write!(f, "bool"),
-            TypeTag::Int => write!(f, "int"),
-            TypeTag::Float => write!(f, "float"),
-            TypeTag::Str => write!(f, "str"),
-            TypeTag::List => write!(f, "list"),
-            TypeTag::Dict => write!(f, "dict"),
-            TypeTag::Fn => write!(f, "function"),
-        }
-    }
-}
-
 /// Runtime value type for the expression evaluator.
 ///
 /// `Array` and `Map` use `Rc<RefCell<...>>` for reference semantics: cloning a
@@ -124,8 +124,8 @@ pub enum Value {
     /// A typed object that can respond to method calls via [`ImmutableObject`].
     Object(Rc<dyn ImmutableObject>),
     Module(Rc<Module>),
-    /// A first-class type value: both a callable constructor and a comparable identity.
-    Type(TypeTag),
+    /// A first-class type value: callable as a constructor, compared by pointer identity.
+    Type(Rc<TypeValue>),
 }
 
 impl Value {
@@ -144,19 +144,20 @@ impl Value {
         Value::Object(Rc::new(obj))
     }
 
-    pub fn type_name(&self) -> &str {
+    /// The kind of value this is, as a string. Used in error messages.
+    pub fn type_name(&self) -> String {
         match self {
-            Value::Null => "null",
-            Value::Bool(_) => "bool",
-            Value::Int(_) => "int",
-            Value::Float(_) => "float",
-            Value::String(_) => "str",
-            Value::Array(_) => "list",
-            Value::Map(_) => "dict",
-            Value::Fn(_) | Value::Closure(_) => "function",
-            Value::Object(rc) => rc.type_name(),
-            Value::Module(_) => "module",
-            Value::Type(_) => "type",
+            Value::Null => "null".into(),
+            Value::Bool(_) => "bool".into(),
+            Value::Int(_) => "int".into(),
+            Value::Float(_) => "float".into(),
+            Value::String(_) => "str".into(),
+            Value::Array(_) => "list".into(),
+            Value::Map(_) => "dict".into(),
+            Value::Fn(_) | Value::Closure(_) => "function".into(),
+            Value::Object(rc) => rc.type_object().name.clone(),
+            Value::Module(_) => "module".into(),
+            Value::Type(_) => "type".into(),
         }
     }
 
@@ -274,7 +275,7 @@ impl std::fmt::Display for Value {
             Value::Closure(c) => write!(f, "<fn({})>", c.params.join(", ")),
             Value::Object(rc) => write!(f, "{}", rc.display()),
             Value::Module(_) => write!(f, "<module>"),
-            Value::Type(t) => write!(f, "{t}"),
+            Value::Type(tv) => write!(f, "{}", tv.name),
         }
     }
 }

@@ -4,9 +4,11 @@ use nutype::nutype;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use std::rc::Rc;
+
 use reearth_flow_expr::{
     compile, eval, eval_error, expect_arity, Env as ExprEnv, Result as ExprResult,
-    Value as ExprValue,
+    TypeValue as ExprTypeValue, Value as ExprValue,
 };
 
 use crate::error::{Error as TypesError, Result as TypesResult};
@@ -359,8 +361,11 @@ impl AttributesObject {
 }
 
 impl reearth_flow_expr::ImmutableObject for AttributesObject {
-    fn type_name(&self) -> &'static str {
-        "Attributes"
+    fn type_object(&self) -> Rc<ExprTypeValue> {
+        thread_local! {
+            static TY: Rc<ExprTypeValue> = Rc::new(ExprTypeValue::new("Attributes", None));
+        }
+        TY.with(Rc::clone)
     }
 
     fn call_method(&self, method: &str, args: &[ExprValue]) -> ExprResult<ExprValue> {
@@ -420,8 +425,11 @@ impl EnvObject {
 }
 
 impl reearth_flow_expr::ImmutableObject for EnvObject {
-    fn type_name(&self) -> &'static str {
-        "Env"
+    fn type_object(&self) -> Rc<ExprTypeValue> {
+        thread_local! {
+            static TY: Rc<ExprTypeValue> = Rc::new(ExprTypeValue::new("Env", None));
+        }
+        TY.with(Rc::clone)
     }
 
     fn call_method(&self, method: &str, args: &[ExprValue]) -> ExprResult<ExprValue> {
@@ -506,13 +514,17 @@ fn attribute_value_from_eval(v: ExprValue) -> TypesResult<AttributeValue> {
             Err(err("function value cannot be stored as an attribute"))
         }
         ExprValue::Module(_) => Err(err("module value cannot be stored as an attribute")),
+        ExprValue::Type(tv) => Err(err(&format!(
+            "type '{}' cannot be stored as an attribute",
+            tv.name
+        ))),
         ExprValue::Object(rc) => {
             if let Some(v) = rc.serialize() {
                 attribute_value_from_eval(v)
             } else {
                 Err(err(&format!(
                     "{} object cannot be stored as an attribute",
-                    rc.type_name()
+                    rc.type_object().name
                 )))
             }
         }

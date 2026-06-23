@@ -5,10 +5,12 @@ use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
-use super::builtins::{builtin_itertools, builtin_json, builtin_math, builtin_regex, builtin_url};
+use super::builtins::{
+    builtin_itertools, builtin_json, builtin_math, regex_type_value, url_type_value,
+};
 use super::env::{new_frame, Env};
 use super::error::{eval_error, Error, Result, POS_UNSET};
-use super::value::{format_float, ClosureValue, NativeFn, TypeTag, Value};
+use super::value::{format_float, ClosureValue, NativeFn, TypeValue, Value};
 use crate::expect_arity;
 
 struct DepthCounter {
@@ -110,16 +112,29 @@ pub fn env_bind(env: &Env, name: impl Into<String>, val: Value) {
 }
 
 thread_local! {
+    static NULL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("null", None));
+    static BOOL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("bool", Some(NativeFn::new(builtin_bool))));
+    static INT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("int", Some(NativeFn::new(builtin_int))));
+    static FLOAT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("float", Some(NativeFn::new(builtin_float))));
+    static STR_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("str", Some(NativeFn::new(builtin_str))));
+    static LIST_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("list", Some(NativeFn::new(builtin_list))));
+    static DICT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("dict", Some(NativeFn::new(builtin_dict))));
+    static FN_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("function", None));
+    static MODULE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("module", None));
+    static TYPE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("type", None));
+}
+
+thread_local! {
     static BUILTIN_ENV: Env = {
         let env = new_frame(None);
-        env_bind(&env, "str", Value::Type(TypeTag::Str));
-        env_bind(&env, "int", Value::Type(TypeTag::Int));
-        env_bind(&env, "float", Value::Type(TypeTag::Float));
-        env_bind(&env, "bool", Value::Type(TypeTag::Bool));
-        env_bind(&env, "list", Value::Type(TypeTag::List));
-        env_bind(&env, "dict", Value::Type(TypeTag::Dict));
-        env_bind(&env, "Url", Value::Fn(NativeFn::new(builtin_url)));
-        env_bind(&env, "Regex", Value::Fn(NativeFn::new(builtin_regex)));
+        env_bind(&env, "str", Value::Type(STR_TYPE.with(Rc::clone)));
+        env_bind(&env, "int", Value::Type(INT_TYPE.with(Rc::clone)));
+        env_bind(&env, "float", Value::Type(FLOAT_TYPE.with(Rc::clone)));
+        env_bind(&env, "bool", Value::Type(BOOL_TYPE.with(Rc::clone)));
+        env_bind(&env, "list", Value::Type(LIST_TYPE.with(Rc::clone)));
+        env_bind(&env, "dict", Value::Type(DICT_TYPE.with(Rc::clone)));
+        env_bind(&env, "Url", Value::Type(url_type_value()));
+        env_bind(&env, "Regex", Value::Type(regex_type_value()));
         env_bind(&env, "math", builtin_math());
         env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
         env_bind(&env, "type", Value::Fn(NativeFn::new(builtin_type)));
@@ -142,33 +157,12 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Value> {
     }
 }
 
-fn call_type_constructor(tag: TypeTag, args: &[Value]) -> Result<Value> {
-    match tag {
-        TypeTag::Int => builtin_int(args),
-        TypeTag::Float => builtin_float(args),
-        TypeTag::Str => builtin_str(args),
-        TypeTag::Bool => builtin_bool(args),
-        TypeTag::List => builtin_list(args),
-        TypeTag::Dict => builtin_map(args),
-        TypeTag::Null => {
-            if !args.is_empty() {
-                return Err(eval_error(format!(
-                    "null() expects 0 arguments, got {}",
-                    args.len()
-                )));
-            }
-            Ok(Value::Null)
-        }
-        TypeTag::Fn => Err(eval_error("fn is not callable as a constructor")),
-    }
-}
-
 /// Unified callable dispatch: invokes a NativeFn, Type constructor, or Closure by value.
 pub(crate) fn call_value(f: Value, args: Vec<Value>) -> Result<Value> {
     let _guard = DepthGuard::enter(&CALL_DEPTH)?;
     match f {
         Value::Fn(native) => native.call(&args),
-        Value::Type(tag) => call_type_constructor(tag, &args),
+        Value::Type(tv) => tv.call_ctor(&args),
         Value::Closure(cl) => {
             if args.len() != cl.params.len() {
                 return Err(eval_error(format!(
@@ -1131,6 +1125,7 @@ fn primitive_eq(a: &Value, b: &Value) -> bool {
         (Value::Int(x), Value::Float(y)) => (*x as f64) == *y,
         (Value::Float(x), Value::Int(y)) => *x == (*y as f64),
         (Value::Fn(a), Value::Fn(b)) => a.ptr_eq(b),
+        (Value::Type(a), Value::Type(b)) => Rc::ptr_eq(a, b),
         _ => false,
     }
 }
@@ -1247,16 +1242,16 @@ fn builtin_list(args: &[Value]) -> Result<Value> {
     }
 }
 
-fn builtin_map(args: &[Value]) -> Result<Value> {
+fn builtin_dict(args: &[Value]) -> Result<Value> {
     if args.len() != 1 {
         return Err(eval_error(format!(
-            "map() expects 1 argument, got {}",
+            "dict() expects 1 argument, got {}",
             args.len()
         )));
     }
     let pairs = match args.first() {
         Some(Value::Array(a)) => a.borrow().clone(),
-        _ => return Err(eval_error("map() expects an array of [key, value] pairs")),
+        _ => return Err(eval_error("dict() expects an array of [key, value] pairs")),
     };
     let mut out = IndexMap::new();
     for (i, pair) in pairs.iter().enumerate() {
@@ -1265,14 +1260,14 @@ fn builtin_map(args: &[Value]) -> Result<Value> {
                 let kv = kv.borrow();
                 if kv.len() != 2 {
                     return Err(eval_error(format!(
-                        "map() entry at index {i} must be a 2-element array"
+                        "dict() entry at index {i} must be a 2-element array"
                     )));
                 }
                 let key = match &kv[0] {
                     Value::String(s) => s.clone(),
                     v => {
                         return Err(eval_error(format!(
-                            "map() key at index {i} must be a string, got {}",
+                            "dict() key at index {i} must be a string, got {}",
                             v.type_name()
                         )))
                     }
@@ -1281,7 +1276,7 @@ fn builtin_map(args: &[Value]) -> Result<Value> {
             }
             _ => {
                 return Err(eval_error(format!(
-                    "map() entry at index {i} must be a 2-element array"
+                    "dict() entry at index {i} must be a 2-element array"
                 )))
             }
         }
@@ -1289,9 +1284,25 @@ fn builtin_map(args: &[Value]) -> Result<Value> {
     Ok(Value::map(out))
 }
 
+fn type_of(v: &Value) -> Rc<TypeValue> {
+    match v {
+        Value::Null => NULL_TYPE.with(Rc::clone),
+        Value::Bool(_) => BOOL_TYPE.with(Rc::clone),
+        Value::Int(_) => INT_TYPE.with(Rc::clone),
+        Value::Float(_) => FLOAT_TYPE.with(Rc::clone),
+        Value::String(_) => STR_TYPE.with(Rc::clone),
+        Value::Array(_) => LIST_TYPE.with(Rc::clone),
+        Value::Map(_) => DICT_TYPE.with(Rc::clone),
+        Value::Fn(_) | Value::Closure(_) => FN_TYPE.with(Rc::clone),
+        Value::Module(_) => MODULE_TYPE.with(Rc::clone),
+        Value::Type(_) => TYPE_TYPE.with(Rc::clone),
+        Value::Object(rc) => rc.type_object(),
+    }
+}
+
 fn builtin_type(args: &[Value]) -> Result<Value> {
     expect_arity("type", args, 1, 1)?;
-    Ok(Value::String(args[0].type_name().to_string()))
+    Ok(Value::Type(type_of(&args[0])))
 }
 
 fn builtin_len(args: &[Value]) -> Result<Value> {
@@ -1753,8 +1764,12 @@ mod tests {
         struct Counter(i64);
 
         impl super::super::value::ImmutableObject for Counter {
-            fn type_name(&self) -> &'static str {
-                "Counter"
+            fn type_object(&self) -> Rc<super::super::value::TypeValue> {
+                thread_local! {
+                    static TY: Rc<super::super::value::TypeValue> =
+                        Rc::new(super::super::value::TypeValue::new("Counter", None));
+                }
+                TY.with(Rc::clone)
             }
             fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
                 match method {
@@ -1801,8 +1816,12 @@ mod tests {
         struct Bag(Vec<(String, i64)>);
 
         impl super::super::value::ImmutableObject for Bag {
-            fn type_name(&self) -> &'static str {
-                "Bag"
+            fn type_object(&self) -> Rc<super::super::value::TypeValue> {
+                thread_local! {
+                    static TY: Rc<super::super::value::TypeValue> =
+                        Rc::new(super::super::value::TypeValue::new("Bag", None));
+                }
+                TY.with(Rc::clone)
             }
             fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
                 match method {
@@ -1912,13 +1931,15 @@ mod tests {
 
     #[test]
     fn test_type_builtin() {
-        assert_eval("type(null)", &[], Value::from("null"));
-        assert_eval("type(true)", &[], Value::from("bool"));
-        assert_eval("type(42)", &[], Value::from("int"));
-        assert_eval("type(3.14)", &[], Value::from("float"));
-        assert_eval(r#"type("hello")"#, &[], Value::from("str"));
-        assert_eval("type([1, 2])", &[], Value::from("list"));
-        assert_eval(r#"type({"a": 1})"#, &[], Value::from("dict"));
+        assert_eval("type(42) == int", &[], Value::Bool(true));
+        assert_eval("type(3.14) == float", &[], Value::Bool(true));
+        assert_eval(r#"type("hello") == str"#, &[], Value::Bool(true));
+        assert_eval("type([1, 2]) == list", &[], Value::Bool(true));
+        assert_eval(r#"type({"a": 1}) == dict"#, &[], Value::Bool(true));
+        assert_eval("type(true) == bool", &[], Value::Bool(true));
+        assert_eval("type(42) != float", &[], Value::Bool(true));
+        assert_eval("int == int", &[], Value::Bool(true));
+        assert_eval("int == str", &[], Value::Bool(false));
     }
 
     #[test]

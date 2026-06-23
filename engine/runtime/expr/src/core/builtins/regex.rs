@@ -1,8 +1,21 @@
+use std::rc::Rc;
+
 use crate::core::error::{eval_error, Result};
-use crate::core::value::{ImmutableObject, Value};
+use crate::core::value::{ImmutableObject, NativeFn, TypeValue, Value};
 
 use crate::expect_arity;
 use regex::Regex;
+
+thread_local! {
+    static REGEX_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new(
+        "Regex",
+        Some(NativeFn::new(construct)),
+    ));
+}
+
+pub fn regex_type_value() -> Rc<TypeValue> {
+    REGEX_TYPE.with(Rc::clone)
+}
 
 #[derive(Debug, Clone)]
 pub struct RegexObject {
@@ -11,8 +24,8 @@ pub struct RegexObject {
 }
 
 impl ImmutableObject for RegexObject {
-    fn type_name(&self) -> &'static str {
-        "Regex"
+    fn type_object(&self) -> Rc<TypeValue> {
+        regex_type_value()
     }
 
     fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
@@ -88,7 +101,7 @@ fn regex_find_all(regex: &Regex, s: &str) -> Vec<Value> {
     }
 }
 
-pub fn builtin_regex(args: &[Value]) -> Result<Value> {
+pub fn construct(args: &[Value]) -> Result<Value> {
     if args.len() != 1 {
         return Err(eval_error(format!(
             "Regex() expected 1 argument, got {}",

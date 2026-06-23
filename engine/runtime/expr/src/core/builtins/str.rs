@@ -462,8 +462,12 @@ mod tests {
     }
 
     impl ImmutableObject for Point {
-        fn type_name(&self) -> &'static str {
-            "Point"
+        fn type_object(&self) -> Rc<crate::core::value::TypeValue> {
+            thread_local! {
+                static TY: Rc<crate::core::value::TypeValue> =
+                    Rc::new(crate::core::value::TypeValue::new("Point", None));
+            }
+            TY.with(Rc::clone)
         }
 
         fn call_method(&self, method: &str, args: &[Value]) -> EvalResult<Value> {
@@ -491,8 +495,12 @@ mod tests {
     struct Opaque;
 
     impl ImmutableObject for Opaque {
-        fn type_name(&self) -> &'static str {
-            "Opaque"
+        fn type_object(&self) -> Rc<crate::core::value::TypeValue> {
+            thread_local! {
+                static TY: Rc<crate::core::value::TypeValue> =
+                    Rc::new(crate::core::value::TypeValue::new("Opaque", None));
+            }
+            TY.with(Rc::clone)
         }
 
         fn call_method(&self, method: &str, _args: &[Value]) -> EvalResult<Value> {

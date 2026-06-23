@@ -38,7 +38,7 @@ fn value_to_json(v: &Value) -> Result<JsonValue> {
             Some(serializable) => value_to_json(&serializable),
             None => Err(eval_error(format!(
                 "json.dumps: {} does not support serialization",
-                rc.type_name()
+                rc.type_object().name
             ))),
         },
         other => Err(eval_error(format!(

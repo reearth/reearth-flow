@@ -3,7 +3,7 @@ mod core;
 pub use core::env::Env;
 pub use core::error::{eval_error, Error, Result};
 pub use core::eval::{default_env, env_bind};
-pub use core::value::{ClosureValue, ImmutableObject, NativeFn, Value};
+pub use core::value::{ClosureValue, ImmutableObject, NativeFn, TypeValue, Value};
 
 pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> Result<()> {
     let n = args.len();
