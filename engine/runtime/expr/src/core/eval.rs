@@ -1243,15 +1243,20 @@ fn builtin_list(args: &[Value]) -> Result<Value> {
 }
 
 fn builtin_dict(args: &[Value]) -> Result<Value> {
-    if args.len() != 1 {
+    if args.len() > 1 {
         return Err(eval_error(format!(
-            "dict() expects 1 argument, got {}",
+            "dict() expects at most 1 argument, got {}",
             args.len()
         )));
     }
+    match args.first() {
+        None => return Ok(Value::map(IndexMap::new())),
+        Some(Value::Map(m)) => return Ok(Value::map(m.borrow().clone())),
+        _ => {}
+    }
     let pairs = match args.first() {
         Some(Value::Array(a)) => a.borrow().clone(),
-        _ => return Err(eval_error("dict() expects an array of [key, value] pairs")),
+        _ => return Err(eval_error("dict() expects a dict, an array of [key, value] pairs, or no argument")),
     };
     let mut out = IndexMap::new();
     for (i, pair) in pairs.iter().enumerate() {

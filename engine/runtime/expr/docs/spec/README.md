@@ -5,12 +5,14 @@ This directory is the authoritative definition of the FlowExpr language.
 ## Stabilization Process
 
 Everything documented here is stable for the current language type (`flowExpr`).
-Breaking changes require a migration tool.
-Semantic breaking changes introduce a new language type (`flowExpr2`, …) rather than modifying existing behavior.
 
 Writing the spec is the stabilization decision.
-The implementation must be fully compatible with this spec.
+The implementation should be compatible with this spec.
 The implementation may contain unstabilized features not yet documented here.
+
+When one spec subsume another, the more general one wins.
+For example, if one spec says foo() takes int, and another says foo() takes int and string, the second spec wins.
+If two specs are not compatible, it is considered a bug.
 
 Spec should describe the language design as an interface defined by behavior, not its implementation.
 
