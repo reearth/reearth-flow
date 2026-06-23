@@ -1302,22 +1302,6 @@
       }
     },
     {
-      "name": "FlowExprTest",
-      "description": "Flow 表达式引擎的实验性测试平台",
-      "parameterI18n": {
-        "": {
-          "title": "FlowExprTest 参数"
-        },
-        "mappings": {}
-      },
-      "definitionI18n": {
-        "Mapping": {
-          "attribute": {},
-          "value": {}
-        }
-      }
-    },
-    {
       "name": "FootprintReplacer",
       "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）"
     },
@@ -2996,7 +2980,7 @@
         },
         "allowEmptyPath": {
           "title": "Allow Null Path",
-          "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
+          "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
         },
         "dataset": {
           "title": "File Path",

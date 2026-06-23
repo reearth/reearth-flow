@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
 use reearth_flow_sql::SqlAdapter;
-use reearth_flow_types::{Code, CompiledCode, Feature};
+use reearth_flow_types::{Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -44,7 +44,7 @@ impl SourceFactory for SqlReaderFactory {
     }
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -66,13 +66,28 @@ impl SourceFactory for SqlReaderFactory {
             .into());
         };
 
+        let vars = ctx.env_vars.clone();
         let compiled = SqlReaderCompiledParam {
-            sql: param.sql.compile().map_err(|e| {
-                SourceError::SqlReaderFactory(format!("Failed to compile sql: {e:?}"))
-            })?,
-            database_url: param.database_url.compile().map_err(|e| {
-                SourceError::SqlReaderFactory(format!("Failed to compile database_url: {e:?}"))
-            })?,
+            sql: param
+                .sql
+                .compile()
+                .map_err(|e| {
+                    SourceError::SqlReaderFactory(format!("Failed to compile sql: {e:?}"))
+                })?
+                .eval_string_env_only(vars.clone())
+                .map_err(|e| {
+                    SourceError::SqlReaderFactory(format!("Failed to evaluate sql: {e:?}"))
+                })?,
+            database_url: param
+                .database_url
+                .compile()
+                .map_err(|e| {
+                    SourceError::SqlReaderFactory(format!("Failed to compile database_url: {e:?}"))
+                })?
+                .eval_string_env_only(vars)
+                .map_err(|e| {
+                    SourceError::SqlReaderFactory(format!("Failed to evaluate database_url: {e:?}"))
+                })?,
         };
         Ok(Box::new(SqlReader { param: compiled }))
     }
@@ -93,8 +108,8 @@ pub struct SqlReaderParam {
 
 #[derive(Debug, Clone)]
 struct SqlReaderCompiledParam {
-    sql: CompiledCode,
-    database_url: CompiledCode,
+    sql: String,
+    database_url: String,
 }
 
 #[derive(Debug, Clone)]
@@ -116,28 +131,16 @@ impl Source for SqlReader {
 
     async fn start(
         &mut self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
-        let database_url = self
-            .param
-            .database_url
-            .eval_string_env_only(ctx.expr_engine.vars())
+        let adapter = SqlAdapter::new(self.param.database_url.clone(), 10)
+            .await
             .map_err(|e| {
-                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
+                crate::errors::SourceError::SqlReader(format!("Failed to create adapter: {e}"))
             })?;
-        let sql = self
-            .param
-            .sql
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(|e| {
-                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
-            })?;
-        let adapter = SqlAdapter::new(database_url, 10).await.map_err(|e| {
-            crate::errors::SourceError::SqlReader(format!("Failed to create adapter: {e}"))
-        })?;
         let result = adapter
-            .fetch_many(sql.as_str())
+            .fetch_many(self.param.sql.as_str())
             .await
             .map_err(|e| crate::errors::SourceError::SqlReader(format!("Failed to fetch: {e}")))?;
         let features = result

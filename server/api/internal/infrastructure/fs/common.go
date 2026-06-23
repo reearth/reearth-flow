@@ -4,4 +4,5 @@ const (
 	assetDir     = "assets"
 	workflowsDir = "workflows"
 	metadataDir  = "metadata"
+	actionsDir   = "actions"
 )

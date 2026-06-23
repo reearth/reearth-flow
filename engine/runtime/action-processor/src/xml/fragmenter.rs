@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -54,12 +54,12 @@ impl ProcessorFactory for XmlFragmenterFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: XmlFragmenterParam = if let Some(with) = with.clone() {
+        let params: XmlFragmenterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 XmlProcessorError::FragmenterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -77,23 +77,17 @@ impl ProcessorFactory for XmlFragmenterFactory {
             .into());
         };
         let XmlFragmenterParam::Url { property } = &params;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let elements_to_match_ast = expr_engine
-            .compile(property.elements_to_match.to_string().as_str())
-            .map_err(|e| {
-                XmlProcessorError::FragmenterFactory(format!(
-                    "Failed to comple expr engine with {e:?}"
-                ))
-            })?;
-        let elements_to_exclude_ast = expr_engine
-            .compile(property.elements_to_exclude.to_string().as_str())
-            .map_err(|e| {
-                XmlProcessorError::FragmenterFactory(format!(
-                    "Failed to comple expr engine with {e:?}"
-                ))
-            })?;
+        let elements_to_match_ast = property.elements_to_match.compile().map_err(|e| {
+            XmlProcessorError::FragmenterFactory(format!(
+                "Failed to compile elements_to_match expression: {e:?}"
+            ))
+        })?;
+        let elements_to_exclude_ast = property.elements_to_exclude.compile().map_err(|e| {
+            XmlProcessorError::FragmenterFactory(format!(
+                "Failed to compile elements_to_exclude expression: {e:?}"
+            ))
+        })?;
         let process = XmlFragmenter {
-            global_params: with,
             params,
             elements_to_match_ast,
             elements_to_exclude_ast,
@@ -104,17 +98,16 @@ impl ProcessorFactory for XmlFragmenterFactory {
 
 #[derive(Debug, Clone)]
 pub struct XmlFragmenter {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     params: XmlFragmenterParam,
-    elements_to_match_ast: rhai::AST,
-    elements_to_exclude_ast: rhai::AST,
+    elements_to_match_ast: CompiledCode,
+    elements_to_exclude_ast: CompiledCode,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertySchema {
-    pub(super) elements_to_match: Expr,
-    pub(super) elements_to_exclude: Expr,
+    pub(super) elements_to_match: Code<{ CodeType::FlowExpr as u32 }>,
+    pub(super) elements_to_exclude: Code<{ CodeType::FlowExpr as u32 }>,
     pub(super) attribute: Attribute,
 }
 
@@ -181,11 +174,11 @@ impl Processor for XmlFragmenter {
                 send_xml_fragment(
                     &ctx,
                     fw,
-                    &self.global_params,
                     &ctx.feature,
                     &property.attribute,
                     &self.elements_to_match_ast,
                     &self.elements_to_exclude_ast,
+                    ctx.env_vars.clone(),
                 )?;
             }
         }
@@ -208,40 +201,47 @@ impl Processor for XmlFragmenter {
 fn send_xml_fragment(
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
     feature: &Feature,
     attribute: &Attribute,
-    elements_to_match_ast: &rhai::AST,
-    elements_to_exclude_ast: &rhai::AST,
+    elements_to_match_ast: &CompiledCode,
+    elements_to_exclude_ast: &CompiledCode,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<()> {
     let t_total = Instant::now();
 
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
-    let expr_engine = Arc::clone(&ctx.expr_engine);
 
-    let scope = feature.new_scope(expr_engine.clone(), global_params);
-    let elements_to_match = scope
-        .eval_ast::<rhai::Array>(elements_to_match_ast)
+    let elements_to_match = match elements_to_match_ast
+        .eval(feature, env_vars.clone())
         .map_err(|e| {
             XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
-        })?;
-    let elements_to_match = elements_to_match
-        .iter()
-        .map(|v| v.clone().into_string().unwrap_or_default())
-        .collect::<Vec<String>>();
+        })? {
+        AttributeValue::Array(arr) => arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>(),
+        _ => {
+            return Err(XmlProcessorError::Fragmenter(
+                "elements_to_match must be an array".to_string(),
+            ))
+        }
+    };
     if elements_to_match.is_empty() {
         return Ok(());
     }
 
-    let elements_to_exclude = scope
-        .eval_ast::<rhai::Array>(elements_to_exclude_ast)
-        .map_err(|e| {
-            XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
-        })?;
-    let elements_to_exclude = elements_to_exclude
-        .iter()
-        .map(|v| v.clone().into_string().unwrap_or_default())
-        .collect::<Vec<String>>();
+    let elements_to_exclude =
+        match elements_to_exclude_ast
+            .eval(feature, env_vars)
+            .map_err(|e| {
+                XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
+            })? {
+            AttributeValue::Array(arr) => {
+                arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>()
+            }
+            _ => {
+                return Err(XmlProcessorError::Fragmenter(
+                    "elements_to_exclude must be an array".to_string(),
+                ))
+            }
+        };
 
     let url = match feature.get(attribute) {
         Some(AttributeValue::String(url)) => {

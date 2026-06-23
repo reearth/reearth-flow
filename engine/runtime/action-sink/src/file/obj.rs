@@ -5,7 +5,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, Code, CompiledCode, Feature, GeometryValue};
+use reearth_flow_types::{Attribute, Code, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -43,7 +43,7 @@ impl SinkFactory for ObjWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -64,7 +64,9 @@ impl SinkFactory for ObjWriterFactory {
         let output = params
             .output
             .compile()
-            .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?;
+            .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?
+            .eval_string_env_only(ctx.env_vars.clone())
+            .map_err(|e| SinkError::BuildFactory(format!("Failed to evaluate `output`: {e:?}")))?;
         let sink = ObjWriter {
             output,
             buffer: Vec::new(),
@@ -100,7 +102,7 @@ pub struct ObjWriterParam {
 
 #[derive(Debug, Clone)]
 pub struct ObjWriter {
-    output: CompiledCode,
+    output: String,
     buffer: Vec<Feature>,
     write_materials: bool,
     write_normals: bool,
@@ -120,14 +122,11 @@ impl Sink for ObjWriter {
 
     #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let path = self
-            .output
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
+        let path = self.output.as_str();
 
-        let (obj_content, mtl_content) = features_to_obj(&self.buffer, self, &path)?;
+        let (obj_content, mtl_content) = features_to_obj(&self.buffer, self, path)?;
 
-        let obj_out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
+        let obj_out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
             .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
         obj_out
             .write(Bytes::from(obj_content))
@@ -568,9 +567,7 @@ mod tests {
     use reearth_flow_geometry::types::{
         coordinate::Coordinate, geometry::Geometry3D, polygon::Polygon3D,
     };
-    use reearth_flow_types::{
-        Attribute, AttributeValue, Code, CodeType, Feature, Geometry, GeometryValue,
-    };
+    use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 
     #[cfg(not(feature = "new-geometry"))]
     #[test]
@@ -614,14 +611,8 @@ mod tests {
 
         features.push(feature);
 
-        let code: Code = Code {
-            ty: CodeType::String,
-            value: "/tmp/test.obj".to_string(),
-        };
-        let output = code.compile().unwrap();
-
         let writer = ObjWriter {
-            output,
+            output: "/tmp/test.obj".to_string(),
             buffer: Vec::new(),
             write_materials: true,
             write_normals: true,

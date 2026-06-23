@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{AttributeValue, Expr, Feature, GeometryValue};
+use reearth_flow_types::{AttributeValue, Code, CodeType, CompiledCode, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -47,7 +47,7 @@ pub struct PlanarityFilterParam {
     /// The threshold value for planarity check.
     /// For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix.
     /// For height mode: the maximum allowed convex hull minimum height.
-    pub threshold: Expr,
+    pub threshold: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -80,12 +80,12 @@ impl ProcessorFactory for PlanarityFilterFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: PlanarityFilterParam = if let Some(with) = with.clone() {
+        let params: PlanarityFilterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::PlanarityFilterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -103,29 +103,23 @@ impl ProcessorFactory for PlanarityFilterFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let threshold_ast = expr_engine
-            .compile(params.threshold.as_ref())
-            .map_err(|e| {
-                GeometryProcessorError::PlanarityFilterFactory(format!(
-                    "Failed to compile threshold expression: {e:?}"
-                ))
-            })?;
+        let threshold_ast = params.threshold.compile().map_err(|e| {
+            GeometryProcessorError::PlanarityFilterFactory(format!(
+                "Failed to compile threshold expression: {e:?}"
+            ))
+        })?;
 
-        let process = PlanarityFilter {
-            global_params: with,
+        Ok(Box::new(PlanarityFilter {
             filter_type: params.filter_type,
             threshold_ast,
-        };
-        Ok(Box::new(process))
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct PlanarityFilter {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     filter_type: PlanarityFilterType,
-    threshold_ast: rhai::AST,
+    threshold_ast: CompiledCode,
 }
 
 impl Processor for PlanarityFilter {
@@ -271,14 +265,14 @@ impl PlanarityFilter {
         feature: &Feature,
         ctx: &ExecutorContext,
     ) -> Result<f64, BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        scope.eval_ast::<f64>(&self.threshold_ast).map_err(|e| {
-            GeometryProcessorError::PlanarityFilterFactory(format!(
-                "Failed to evaluate threshold expression: {e:?}"
-            ))
-            .into()
-        })
+        self.threshold_ast
+            .eval_float(feature, ctx.env_vars.clone())
+            .map_err(|e| {
+                GeometryProcessorError::PlanarityFilterFactory(format!(
+                    "Failed to evaluate threshold expression: {e:?}"
+                ))
+                .into()
+            })
     }
 }
 
@@ -491,12 +485,12 @@ mod tests {
     use crate::tests::utils::create_default_execute_context;
 
     fn create_test_processor(filter_type: PlanarityFilterType, threshold: f64) -> PlanarityFilter {
-        // Create a simple AST that returns the threshold value
-        let engine = rhai::Engine::new();
-        let threshold_ast = engine.compile(format!("{}", threshold)).unwrap();
-
+        let threshold_ast: Code = Code {
+            ty: CodeType::FlowExpr,
+            value: format!("{threshold}"),
+        };
+        let threshold_ast = threshold_ast.compile().unwrap();
         PlanarityFilter {
-            global_params: None,
             filter_type,
             threshold_ast,
         }

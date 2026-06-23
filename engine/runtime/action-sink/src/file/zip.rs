@@ -9,7 +9,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{AttributeValue, Code, CompiledCode};
+use reearth_flow_types::{AttributeValue, Code};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,7 +50,7 @@ impl SinkFactory for ZipFileWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -72,9 +72,16 @@ impl SinkFactory for ZipFileWriterFactory {
             )
             .into());
         };
-        let output = params.output.compile().map_err(|e| {
-            SinkError::ZipFileWriterFactory(format!("Failed to compile `output`: {e:?}"))
-        })?;
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::ZipFileWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_env_only(ctx.env_vars.clone())
+            .map_err(|e| {
+                SinkError::ZipFileWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         let sink = ZipFileWriter {
             output,
             buffer: Default::default(),
@@ -85,7 +92,7 @@ impl SinkFactory for ZipFileWriterFactory {
 
 #[derive(Debug, Clone)]
 struct ZipFileWriter {
-    output: CompiledCode,
+    output: String,
     buffer: Vec<Uri>,
 }
 
@@ -117,11 +124,8 @@ impl Sink for ZipFileWriter {
         if self.buffer.is_empty() {
             return Ok(());
         }
-        let path = self
-            .output
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(|e| crate::errors::SinkError::ZipFileWriter(format!("{e:?}")))?;
-        let out = crate::SinkOutput::new(&ctx.sandbox_root, &path, &ctx.storage_resolver)
+        let path = self.output.as_str();
+        let out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
             .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
         dir::move_files_with_structure(&temp_dir_path, &self.buffer)?;

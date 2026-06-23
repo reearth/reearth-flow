@@ -1302,22 +1302,6 @@
       }
     },
     {
-      "name": "FlowExprTest",
-      "description": "Banco de pruebas experimental para el motor de expresiones Flow",
-      "parameterI18n": {
-        "": {
-          "title": "Parámetros de FlowExprTest"
-        },
-        "mappings": {}
-      },
-      "definitionI18n": {
-        "Mapping": {
-          "attribute": {},
-          "value": {}
-        }
-      }
-    },
-    {
       "name": "FootprintReplacer",
       "description": "Proyecta la geometría 3D al plano XY y calcula el polígono base unificado (compatible con sólidos, superficies y CityGML)"
     },
@@ -2996,7 +2980,7 @@
         },
         "allowEmptyPath": {
           "title": "Allow Null Path",
-          "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
+          "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
         },
         "dataset": {
           "title": "File Path",

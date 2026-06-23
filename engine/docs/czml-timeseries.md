@@ -163,7 +163,7 @@ with:
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `output` | Expr | Yes | — | Output file path (Rhai expression) |
+| `output` | Expr | Yes | — | Output file path (expression) |
 | `timeField` | String | No | — | Attribute containing the timestamp (Option A) |
 | `epoch` | String | No | auto | ISO 8601 epoch for numeric offsets (Option A) |
 | `interpolationAlgorithm` | Enum | No | `LINEAR` | `LINEAR`, `LAGRANGE`, or `HERMITE` (Option A) |

@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use reearth_flow_common::future::SharedFuture;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     event::EventHandler,
     executor::dag_executor::DagExecutor,
@@ -23,7 +22,7 @@ pub struct Executor;
 impl Executor {
     pub async fn create_dag_executor(
         self,
-        expr_engine: Arc<Engine>,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         workflow: Workflow,
@@ -33,7 +32,7 @@ impl Executor {
         let mut factories = factories.clone();
         factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let executor = DagExecutor::new(
-            expr_engine,
+            env_vars,
             storage_resolver,
             kv_store,
             workflow.entry_graph_id,
@@ -49,7 +48,7 @@ impl Executor {
 
 #[allow(clippy::too_many_arguments)]
 pub fn run_dag_executor(
-    expr_engine: Arc<Engine>,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     runtime: Arc<Handle>,
@@ -66,7 +65,7 @@ pub fn run_dag_executor(
     let mut join_handle = runtime.block_on(dag_executor.start(
         SharedFuture::new(Box::pin(shutdown_future)),
         runtime.clone(),
-        expr_engine,
+        env_vars,
         storage_resolver,
         kv_store,
         ingress_state,
