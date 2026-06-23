@@ -31,6 +31,7 @@ func (f *fakeFile) WriteCancelFlag(_ context.Context, jobID string) error {
 	return nil
 }
 func (f *fakeFile) ReadAsset(context.Context, string) (io.ReadCloser, error)         { panic("unused") }
+func (f *fakeFile) ReadActions(context.Context, string) (io.ReadCloser, error)       { panic("unused") }
 func (f *fakeFile) UploadAsset(context.Context, *file.File) (*url.URL, int64, error) { panic("unused") }
 func (f *fakeFile) DeleteAsset(context.Context, *url.URL) error                      { panic("unused") }
 func (f *fakeFile) ReadWorkflow(context.Context, string) (io.ReadCloser, error)      { panic("unused") }

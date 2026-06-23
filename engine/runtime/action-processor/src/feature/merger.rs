@@ -3,7 +3,6 @@ use std::{
     fs::File,
     io::{BufRead, BufReader, BufWriter, Write},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use once_cell::sync::Lazy;
@@ -15,7 +14,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, Expr, Feature};
+use reearth_flow_types::{fetch_attribute_value, Attribute, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -58,12 +57,12 @@ impl ProcessorFactory for FeatureMergerFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FeatureMergerParam = if let Some(with) = with.clone() {
+        let params: FeatureMergerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::MergerFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -80,33 +79,28 @@ impl ProcessorFactory for FeatureMergerFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let requestor_attribute_value =
-            if let Some(requestor_attribute_value) = params.requestor_attribute_value {
-                let result = expr_engine
-                    .compile(requestor_attribute_value.as_ref())
-                    .map_err(|e| {
-                        FeatureProcessorError::MergerFactory(format!(
-                            "Failed to compile requestor attribute value: {e}"
-                        ))
-                    })?;
-                Some(result)
-            } else {
-                None
-            };
-        let supplier_attribute_value =
-            if let Some(supplier_attribute_value) = params.supplier_attribute_value {
-                let result = expr_engine
-                    .compile(supplier_attribute_value.as_ref())
-                    .map_err(|e| {
-                        FeatureProcessorError::MergerFactory(format!(
-                            "Failed to compile supplier attribute value: {e}"
-                        ))
-                    })?;
-                Some(result)
-            } else {
-                None
-            };
+        let requestor_attribute_value = params
+            .requestor_attribute_value
+            .as_ref()
+            .map(|c| {
+                c.compile().map_err(|e| {
+                    FeatureProcessorError::MergerFactory(format!(
+                        "Failed to compile requestor attribute value: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
+        let supplier_attribute_value = params
+            .supplier_attribute_value
+            .as_ref()
+            .map(|c| {
+                c.compile().map_err(|e| {
+                    FeatureProcessorError::MergerFactory(format!(
+                        "Failed to compile supplier attribute value: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
         if requestor_attribute_value.is_none() && params.requestor_attribute.is_none() {
             return Err(FeatureProcessorError::MergerFactory(
                 "At least one of requestor_attribute_value or requestor_attribute must be provided"
@@ -122,7 +116,6 @@ impl ProcessorFactory for FeatureMergerFactory {
             .into());
         }
         let process = FeatureMerger {
-            global_params: with,
             params: CompiledParam {
                 requestor_attribute_value,
                 supplier_attribute_value,
@@ -159,15 +152,14 @@ pub struct FeatureMergerParam {
     /// Attributes from supplier features to use for matching (alternative to supplier_attribute_value)
     supplier_attribute: Option<Vec<Attribute>>,
     /// Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)
-    requestor_attribute_value: Option<Expr>,
+    requestor_attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)
-    supplier_attribute_value: Option<Expr>,
+    supplier_attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// Whether to complete grouped features before processing the next group
     complete_grouped: Option<bool>,
 }
 
 pub struct FeatureMerger {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledParam,
     // Disk-backed state
     requestor_key_map: HashMap<String, usize>,
@@ -199,7 +191,6 @@ impl std::fmt::Debug for FeatureMerger {
 impl Clone for FeatureMerger {
     fn clone(&self) -> Self {
         Self {
-            global_params: self.global_params.clone(),
             params: self.params.clone(),
             requestor_key_map: HashMap::new(),
             supplier_key_map: HashMap::new(),
@@ -230,8 +221,8 @@ impl Drop for FeatureMerger {
 struct CompiledParam {
     requestor_attribute: Option<Vec<Attribute>>,
     supplier_attribute: Option<Vec<Attribute>>,
-    requestor_attribute_value: Option<rhai::AST>,
-    supplier_attribute_value: Option<rhai::AST>,
+    requestor_attribute_value: Option<CompiledCode>,
+    supplier_attribute_value: Option<CompiledCode>,
     complete_grouped: bool,
 }
 
@@ -423,10 +414,9 @@ impl Processor for FeatureMerger {
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
                 let feature = &ctx.feature;
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let requestor_attribute_value = feature.fetch_attribute_value(
-                    expr_engine,
-                    &self.global_params,
+                let requestor_attribute_value = fetch_attribute_value(
+                    feature,
+                    ctx.env_vars.clone(),
                     &self.params.requestor_attribute,
                     &self.params.requestor_attribute_value,
                 );
@@ -449,7 +439,7 @@ impl Processor for FeatureMerger {
                             self.requestor_complete.insert(prev, true);
                             self.change_group(
                                 Context {
-                                    expr_engine: ctx.expr_engine.clone(),
+                                    env_vars: ctx.env_vars.clone(),
                                     storage_resolver: ctx.storage_resolver.clone(),
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),
@@ -466,10 +456,9 @@ impl Processor for FeatureMerger {
             }
             port if port == SUPPLIER_PORT.clone() => {
                 let feature = &ctx.feature;
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let supplier_attribute_value = feature.fetch_attribute_value(
-                    expr_engine,
-                    &self.global_params,
+                let supplier_attribute_value = fetch_attribute_value(
+                    feature,
+                    ctx.env_vars.clone(),
                     &self.params.supplier_attribute,
                     &self.params.supplier_attribute_value,
                 );
@@ -492,7 +481,7 @@ impl Processor for FeatureMerger {
                             self.supplier_complete.insert(prev, true);
                             self.change_group(
                                 Context {
-                                    expr_engine: ctx.expr_engine.clone(),
+                                    env_vars: ctx.env_vars.clone(),
                                     storage_resolver: ctx.storage_resolver.clone(),
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),

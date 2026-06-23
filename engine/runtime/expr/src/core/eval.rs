@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
 use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
-use super::builtins::{builtin_itertools, builtin_math, builtin_regex, builtin_url};
+use super::builtins::{builtin_itertools, builtin_json, builtin_math, builtin_regex, builtin_url};
 use super::env::{new_frame, Env};
 use super::error::{eval_error, Error, Result, POS_UNSET};
 use super::value::{format_float, ClosureValue, NativeFn, Value};
@@ -125,6 +125,7 @@ thread_local! {
         env_bind(&env, "type", Value::Fn(NativeFn::new(builtin_type)));
         env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
         env_bind(&env, "itertools", builtin_itertools());
+        env_bind(&env, "json", builtin_json());
         env_bind(&env, "range", Value::Fn(NativeFn::new(builtin_range)));
         env
     };
@@ -1067,6 +1068,7 @@ fn compare_values(
         Ok(_) => unreachable!(),
         Err(_) => match (&left, &right) {
             (Value::String(a), Value::String(b)) => a.as_str().cmp(b.as_str()),
+            (Value::Array(a), Value::Array(b)) => compare_arrays(&a.borrow(), &b.borrow())?,
             _ => {
                 return Err(eval_error(format!(
                     "cannot compare {} and {}",
@@ -1077,6 +1079,24 @@ fn compare_values(
         },
     };
     Ok(Value::Bool(pred(ord)))
+}
+
+fn compare_arrays(a: &[Value], b: &[Value]) -> Result<std::cmp::Ordering> {
+    for (x, y) in a.iter().zip(b.iter()) {
+        let ord = match compare_values(x.clone(), y.clone(), |o| o == std::cmp::Ordering::Less)? {
+            Value::Bool(true) => std::cmp::Ordering::Less,
+            _ => {
+                match compare_values(x.clone(), y.clone(), |o| o == std::cmp::Ordering::Greater)? {
+                    Value::Bool(true) => std::cmp::Ordering::Greater,
+                    _ => std::cmp::Ordering::Equal,
+                }
+            }
+        };
+        if ord != std::cmp::Ordering::Equal {
+            return Ok(ord);
+        }
+    }
+    Ok(a.len().cmp(&b.len()))
 }
 
 fn primitive_eq(a: &Value, b: &Value) -> bool {
@@ -1413,6 +1433,20 @@ mod tests {
         assert_eval("1 != 2", &[], Value::from(true));
         assert_eval("2 > 1", &[], Value::from(true));
         assert_eval("1 >= 1", &[], Value::from(true));
+    }
+
+    #[test]
+    // Arrays compare lexicographically: first differing element decides; shorter prefix is less.
+    fn test_array_comparison() {
+        assert_eval("[1, 2] < [1, 3]", &[], Value::from(true));
+        assert_eval("[1, 2] < [1, 2, 3]", &[], Value::from(true));
+        assert_eval("[] < [1]", &[], Value::from(true));
+    }
+
+    #[test]
+    // Unlike Python, ordering arrays of non-comparable elements errors rather than short-circuiting through equality.
+    fn test_array_comparison_non_orderable_errors() {
+        assert!(try_run(r#"[{"foo": "bar"}] <= [{"foo": "bar"}]"#, &[]).is_err());
     }
 
     #[test]

@@ -47,7 +47,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: "6677"
+      targetEpsgCode:
+        type: flowExpr
+        value: "6677"
 
   # Step 3: GeometryExtractor - extracts geometry to attribute
   - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8b

@@ -41,6 +41,25 @@ func TestFile_ReadAsset(t *testing.T) {
 	assert.Nil(t, r)
 }
 
+func TestFile_ReadActions(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	af, _ := fs.Create(filepath.Join(actionsDir, "actions.json"))
+	_, _ = af.WriteString(`{"actions":[]}`)
+	_ = af.Close()
+
+	f, _ := NewFile(fs, "", "")
+	r, err := f.ReadActions(context.Background(), "actions.json")
+	assert.NoError(t, err)
+	c, err := io.ReadAll(r)
+	assert.NoError(t, err)
+	assert.Equal(t, `{"actions":[]}`, string(c))
+	assert.NoError(t, r.Close())
+
+	r, err = f.ReadActions(context.Background(), "missing.json")
+	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	assert.Nil(t, r)
+}
+
 func TestFile_UploadAsset(t *testing.T) {
 	fs := mockFs()
 	f, _ := NewFile(fs, "https://example.com/assets", "https://example.com/workflows")

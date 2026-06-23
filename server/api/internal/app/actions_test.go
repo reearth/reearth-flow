@@ -1,17 +1,56 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
+const testActionsJSON = `{"actions":[{"name":"CsvReader","type":"source","description":"Reads features from a CSV file","inputPorts":[],"outputPorts":["output"],"categories":["File"],"tags":[],"parameter":{},"builtin":false}]}`
+
+// fakeActionsReader serves testActionsJSON, or err if set.
+type fakeActionsReader struct{ err error }
+
+func (r fakeActionsReader) ReadActions(context.Context, string) (io.ReadCloser, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	return io.NopCloser(strings.NewReader(testActionsJSON)), nil
+}
+
 func resetTestData() {
 	actionsDataMap = make(map[string]ActionsData)
+	actionsRepo = fakeActionsReader{}
+	actionsFallbackBaseURL = "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+}
+
+func TestLoadActionsData_FromBucket(t *testing.T) {
+	resetTestData()
+	data, err := loadActionsData("")
+	assert.NoError(t, err)
+	assert.Equal(t, "CsvReader", data.Actions[0].Name)
+}
+
+func TestLoadActionsData_FallbackToHTTP(t *testing.T) {
+	resetTestData()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(testActionsJSON))
+	}))
+	defer srv.Close()
+	actionsRepo = fakeActionsReader{err: errors.New("bucket down")}
+	actionsFallbackBaseURL = srv.URL + "/"
+
+	data, err := loadActionsData("en")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, data.Actions)
 }
 
 func TestLoadActionsData(t *testing.T) {

@@ -69,8 +69,9 @@ graphs:
         type: action
         action: FeatureFilePathExtractor
         with:
-          sourceDataset: |
-            env.get("__value")["cityGmlPath"]
+          sourceDataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
           extractArchive: true
           destPrefix: udx
 
@@ -98,10 +99,11 @@ graphs:
         type: action
         action: PLATEAU4.UDXFolderExtractor
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
-          codelistsPath: "codelists"
-          schemasPath: "schemas"
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
+          codelistsPath: codelists
+          schemasPath: schemas
 
       - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e41
         name: AttributeMapperGmlPathAndFilename
@@ -143,7 +145,9 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: env.get("prcs")
+          targetEpsgCode:
+            type: flowExpr
+            value: env["prcs"]
 
       - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7e
         name: FeatureSorter
@@ -245,15 +249,12 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttributeValue: |
-            let v = env.get("__value");
-            v.gmlFilename + "|" + v.featureTypeName + "|" + v.lod
-          supplierAttributeValue: |
-            let v = env.get("__value");
-            let fname = v.Filename ?? v.filename ?? "";
-            let ftype = v.FeatureType ?? v.feature_type ?? "";
-            let lod_val = v.LOD ?? v.lod ?? "";
-            fname + "|" + ftype + "|" + lod_val
+          requestorAttributeValue:
+            type: flowExpr
+            value: 'attributes["gmlFilename"] + "|" + attributes["featureTypeName"] + "|" + str(attributes["lod"])'
+          supplierAttributeValue:
+            type: flowExpr
+            value: '(attributes.get("Filename") or attributes.get("filename") or "") + "|" + (attributes.get("FeatureType") or attributes.get("feature_type") or "") + "|" + str(attributes.get("LOD") or attributes.get("lod") or "")'
 
       # Summary CSV output - per-file result
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d50

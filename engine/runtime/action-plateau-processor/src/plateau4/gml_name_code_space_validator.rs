@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -52,7 +52,7 @@ static UNCODED_GML_NAME_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy
 pub struct GmlNameCodeSpaceValidatorParam {
     /// Expression to get the path to the CityGML file
     #[serde(skip_serializing_if = "Option::is_none")]
-    city_gml_path: Option<Expr>,
+    city_gml_path: Option<Code>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -89,12 +89,11 @@ impl ProcessorFactory for GmlNameCodeSpaceValidatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let global_params = with.clone();
         let params: GmlNameCodeSpaceValidatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::GmlNameCodeSpaceValidator(format!(
@@ -110,20 +109,19 @@ impl ProcessorFactory for GmlNameCodeSpaceValidatorFactory {
             GmlNameCodeSpaceValidatorParam::default()
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let city_gml_path_expr = if let Some(expr) = params.city_gml_path {
-            Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
-                PlateauProcessorError::GmlNameCodeSpaceValidator(format!(
-                    "Failed to compile cityGmlPath expression: {e}"
-                ))
-            })?)
-        } else {
-            None
-        };
+        let city_gml_path_expr = params
+            .city_gml_path
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    PlateauProcessorError::GmlNameCodeSpaceValidator(format!(
+                        "Failed to compile cityGmlPath expression: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
 
         let process = GmlNameCodeSpaceValidator {
             city_gml_path_expr,
-            global_params,
             processed_files: HashMap::new(),
             processed_paths: HashSet::new(),
         };
@@ -147,8 +145,7 @@ struct FileStats {
 
 #[derive(Debug, Clone)]
 pub struct GmlNameCodeSpaceValidator {
-    city_gml_path_expr: Option<rhai::AST>,
-    global_params: Option<HashMap<String, serde_json::Value>>,
+    city_gml_path_expr: Option<CompiledCode>,
     /// Map from filename to error count for statistics output
     processed_files: HashMap<String, FileStats>,
     /// Tracks which file paths have already been validated to avoid duplicate processing
@@ -169,12 +166,12 @@ impl Processor for GmlNameCodeSpaceValidator {
 
         // Get city GML path from expression or attribute
         let city_gml_path = if let Some(expr) = &self.city_gml_path_expr {
-            let scope = feature.new_scope(Arc::clone(&ctx.expr_engine), &self.global_params);
-            scope.eval_ast::<String>(expr).map_err(|e| {
-                PlateauProcessorError::GmlNameCodeSpaceValidator(format!(
-                    "Failed to evaluate cityGmlPath expression: {e:?}"
-                ))
-            })?
+            expr.eval_string(feature, ctx.env_vars.clone())
+                .map_err(|e| {
+                    PlateauProcessorError::GmlNameCodeSpaceValidator(format!(
+                        "Failed to evaluate cityGmlPath expression: {e:?}"
+                    ))
+                })?
         } else {
             // Try to get from gmlPath attribute
             feature
@@ -380,7 +377,6 @@ mod tests {
     fn test_regex_detects_uncoded_gml_name() {
         let validator = GmlNameCodeSpaceValidator {
             city_gml_path_expr: None,
-            global_params: None,
             processed_files: HashMap::new(),
             processed_paths: HashSet::new(),
         };
@@ -402,7 +398,6 @@ mod tests {
     fn test_regex_ignores_coded_gml_name() {
         let validator = GmlNameCodeSpaceValidator {
             city_gml_path_expr: None,
-            global_params: None,
             processed_files: HashMap::new(),
             processed_paths: HashSet::new(),
         };
@@ -426,7 +421,6 @@ mod tests {
     fn test_regex_mixed_coded_and_uncoded() {
         let validator = GmlNameCodeSpaceValidator {
             city_gml_path_expr: None,
-            global_params: None,
             processed_files: HashMap::new(),
             processed_paths: HashSet::new(),
         };
