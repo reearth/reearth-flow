@@ -28,11 +28,10 @@
 //! Either way the rings are flattened into the leaf's CSR layout: exterior and
 //! interiors concatenated into one `coords` buffer, with `interior_offsets`
 //! recording each interior ring's start (the exterior is the prefix, so it carries
-//! no offset of its own). Each ring is closed on the way in — a closing vertex
-//! equal to the first is appended when the caller's ring is open — so the stored
-//! invariant (every ring closed, first == last) holds however the source delivered
-//! it; closing an already-closed ring is a no-op. Interior rings with no vertices
-//! carry no geometry and are dropped.
+//! no offset of its own). Rings are stored **verbatim** — a ring is *not* closed,
+//! so a malformed open ring (first != last) is preserved as-is for a later
+//! validation phase to flag, never silently repaired. Interior rings with no
+//! vertices carry no geometry and are dropped.
 //!
 //! [`Polygon2D::from_raw_parts`] / [`Polygon3D::from_raw_parts`] take pre-flattened
 //! CSR buffers directly and validate the layout invariants, returning [`Error`] on
@@ -78,8 +77,9 @@ impl Polygon2D {
     /// sequence of `[x, y]`. The result is pure 2D (no elevation, no allocation
     /// for `z`); for per-vertex elevation use [`Polygon2D::from_rings_with_elevation`].
     ///
-    /// Rings are concatenated exterior-first and each is closed; empty interior
-    /// rings are dropped.
+    /// Rings are concatenated exterior-first and stored verbatim — *not* closed, so
+    /// an open ring (first != last) is left as-is for later validation; empty
+    /// interior rings are dropped.
     pub fn from_rings<E, I, R>(coordinate: Coordinate, exterior: E, interiors: I) -> Self
     where
         E: IntoIterator<Item = [f64; 2]>,
@@ -166,8 +166,9 @@ impl Polygon3D {
     /// Build a 3D polygon from an exterior ring and interior holes, each a
     /// sequence of `[x, y, z]`.
     ///
-    /// Rings are concatenated exterior-first and each is closed; empty interior
-    /// rings are dropped.
+    /// Rings are concatenated exterior-first and stored verbatim — *not* closed, so
+    /// an open ring (first != last) is left as-is for later validation; empty
+    /// interior rings are dropped.
     pub fn from_rings<E, I, R>(coordinate: Coordinate, exterior: E, interiors: I) -> Self
     where
         E: IntoIterator<Item = [f64; 3]>,
@@ -251,18 +252,14 @@ impl PolygonBuilder2D<Empty> {
     }
 
     /// Set the exterior ring from a sequence of `[x, y]`, advancing the builder to
-    /// the `HasExterior` state. The ring is closed if open.
+    /// the `HasExterior` state. The ring is stored verbatim — not closed.
     pub fn set_exterior<R>(self, ring: R) -> PolygonBuilder2D<HasExterior>
     where
         R: IntoIterator<Item = [f64; 2]>,
     {
-        let mut coords: Vec<[f64; 2]> = ring.into_iter().collect();
-        if !coords.is_empty() {
-            close_ring(&mut coords, 0);
-        }
         PolygonBuilder2D {
             coordinate: self.coordinate,
-            coords,
+            coords: ring.into_iter().collect(),
             interior_offsets: Vec::new(),
             _state: PhantomData,
         }
@@ -281,7 +278,6 @@ impl PolygonBuilder2D<HasExterior> {
         if self.coords.len() == start {
             return self;
         }
-        close_ring(&mut self.coords, start);
         self.interior_offsets.push(start as u32);
         self
     }
@@ -321,18 +317,14 @@ impl PolygonBuilder3D<Empty> {
     }
 
     /// Set the exterior ring from a sequence of `[x, y, z]`, advancing the builder
-    /// to the `HasExterior` state. The ring is closed if open.
+    /// to the `HasExterior` state. The ring is stored verbatim — not closed.
     pub fn set_exterior<R>(self, ring: R) -> PolygonBuilder3D<HasExterior>
     where
         R: IntoIterator<Item = [f64; 3]>,
     {
-        let mut coords: Vec<[f64; 3]> = ring.into_iter().collect();
-        if !coords.is_empty() {
-            close_ring(&mut coords, 0);
-        }
         PolygonBuilder3D {
             coordinate: self.coordinate,
-            coords,
+            coords: ring.into_iter().collect(),
             interior_offsets: Vec::new(),
             _state: PhantomData,
         }
@@ -351,7 +343,6 @@ impl PolygonBuilder3D<HasExterior> {
         if self.coords.len() == start {
             return self;
         }
-        close_ring(&mut self.coords, start);
         self.interior_offsets.push(start as u32);
         self
     }
@@ -370,10 +361,11 @@ impl PolygonBuilder3D<HasExterior> {
 /// Flatten an exterior ring and interior holes into the CSR `(coords,
 /// interior_offsets)` pair shared by both polygon dimensions.
 ///
-/// The exterior fills the prefix of `coords` (and is closed); each non-empty
-/// interior ring is then appended, closed, and its start index recorded in
-/// `interior_offsets`. Empty interior rings are skipped so no offset ever points
-/// at a zero-length slice.
+/// The exterior fills the prefix of `coords`; each non-empty interior ring is then
+/// appended and its start index recorded in `interior_offsets`. Rings are stored
+/// verbatim — not closed — so a malformed open ring is preserved for later
+/// validation. Empty interior rings are skipped so no offset points at a
+/// zero-length slice.
 fn flatten_rings<const N: usize, E, I, R>(exterior: E, interiors: I) -> (Vec<[f64; N]>, Vec<u32>)
 where
     E: IntoIterator<Item = [f64; N]>,
@@ -387,7 +379,6 @@ where
         // the exterior) that `from_raw_parts`'s `1..coords.len()` check rejects.
         return (coords, Vec::new());
     }
-    close_ring(&mut coords, 0);
     let mut interior_offsets: Vec<u32> = Vec::new();
     for ring in interiors {
         let start = coords.len();
@@ -395,21 +386,9 @@ where
         if coords.len() == start {
             continue;
         }
-        close_ring(&mut coords, start);
         interior_offsets.push(start as u32);
     }
     (coords, interior_offsets)
-}
-
-/// Close the ring occupying `coords[start..]` by appending a copy of its first
-/// vertex when it does not already end where it began. `coords[start..]` must be
-/// non-empty.
-fn close_ring<const N: usize>(coords: &mut Vec<[f64; N]>, start: usize) {
-    let first = coords[start];
-    let last = coords[coords.len() - 1];
-    if first != last {
-        coords.push(first);
-    }
 }
 
 /// Validate `interior_offsets` against a `coords_len`-vertex buffer: strictly
@@ -432,15 +411,17 @@ fn check_offsets(offsets: &[u32], coords_len: usize) -> Result<(), Error> {
 mod tests {
     use super::*;
 
+    // The exterior is stored verbatim: an open ring is NOT auto-closed, so the
+    // first != last data bug survives for a later validation phase.
     #[test]
-    fn from_rings_closes_open_exterior() {
+    fn from_rings_stores_exterior_verbatim() {
         let p = Polygon2D::from_rings(
             Coordinate::Euclidean,
             [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
             Vec::<Vec<[f64; 2]>>::new(),
         );
-        assert_eq!(p.coords.len(), 4);
-        assert_eq!(p.coords[0], p.coords[3]);
+        assert_eq!(p.coords.len(), 3);
+        assert_ne!(p.coords[0], p.coords[p.coords.len() - 1]);
         assert!(p.interior_offsets.is_empty());
         assert!(p.z.is_none());
         assert_eq!(p.coordinate, Coordinate::Euclidean);
@@ -476,14 +457,13 @@ mod tests {
             [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]],
             vec![vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0]]],
         );
-        // exterior: 4 open -> closed to 5; hole: 3 open -> closed to 4.
-        assert_eq!(p.interior_offsets.as_ref(), &[5]);
-        assert_eq!(p.coords.len(), 9);
+        // Stored verbatim: exterior 4, hole 3 — no closing vertices appended.
+        assert_eq!(p.interior_offsets.as_ref(), &[4]);
+        assert_eq!(p.coords.len(), 7);
         let ext = &p.coords[..p.interior_offsets[0] as usize];
         let hole = &p.coords[p.interior_offsets[0] as usize..];
-        assert_eq!(ext.len(), 5);
-        assert_eq!(hole.len(), 4);
-        assert_eq!(hole[0], hole[hole.len() - 1]);
+        assert_eq!(ext.len(), 4);
+        assert_eq!(hole.len(), 3);
     }
 
     #[test]
@@ -494,7 +474,7 @@ mod tests {
             vec![Vec::<[f64; 2]>::new()],
         );
         assert!(p.interior_offsets.is_empty());
-        assert_eq!(p.coords.len(), 4);
+        assert_eq!(p.coords.len(), 3);
     }
 
     #[test]
@@ -505,11 +485,10 @@ mod tests {
             Vec::<Vec<[f64; 3]>>::new(),
         );
         let z = p.z.as_ref().expect("elevation present");
+        assert_eq!(p.coords.len(), 3);
         assert_eq!(z.len(), p.coords.len());
         assert_eq!(p.coords[1], [1.0, 0.0]);
         assert_eq!(z[1], 11.0);
-        // The appended closing vertex carries the first vertex's elevation.
-        assert_eq!(z[3], 10.0);
     }
 
     #[test]
@@ -519,8 +498,8 @@ mod tests {
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 1.0]],
             Vec::<Vec<[f64; 3]>>::new(),
         );
-        assert_eq!(p.coords.len(), 4);
-        assert_eq!(p.coords[0], p.coords[3]);
+        assert_eq!(p.coords.len(), 3);
+        assert_ne!(p.coords[0], p.coords[p.coords.len() - 1]);
         assert!(p.interior_offsets.is_empty());
     }
 
