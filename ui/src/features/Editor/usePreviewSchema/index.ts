@@ -17,10 +17,13 @@ const PROBE_DEBOUNCE_MS = 600;
 
 export default ({
   rawWorkflows,
+  openNodeId,
   onPersistSchema,
   sampleSize,
 }: {
   rawWorkflows: Workflow[];
+  /** The node whose params dialog is open — scopes attribute suggestions. */
+  openNodeId?: string;
   onPersistSchema: (nodeId: string, schema: NodeSchemaMeta | undefined) => void;
   sampleSize?: number;
 }) => {
@@ -176,8 +179,8 @@ export default ({
   );
 
   const readerAttributeSuggestions = useMemo(
-    () => buildReaderAttributeSuggestions(rawWorkflows),
-    [rawWorkflows],
+    () => buildReaderAttributeSuggestions(rawWorkflows, openNodeId),
+    [rawWorkflows, openNodeId],
   );
 
   return {

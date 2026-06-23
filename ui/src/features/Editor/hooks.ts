@@ -251,6 +251,7 @@ export default ({
     handleProbeError,
   } = usePreviewSchema({
     rawWorkflows,
+    openNodeId: openNode?.id,
     onPersistSchema: handleYNodeSchemaUpdate,
   });
 
