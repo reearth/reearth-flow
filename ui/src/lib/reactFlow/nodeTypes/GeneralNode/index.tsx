@@ -11,7 +11,6 @@ import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext"
 import type { Node } from "@flow/types";
 
 import { Handles } from "./components";
-import SchemaIndicator from "./components/SchemaIndicator";
 import useHooks from "./hooks";
 
 export type GeneralNodeProps = NodeProps<Node> & {
@@ -97,9 +96,6 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           onCollapsedToggle={handleCollapsedToggle}
         />
       </div>
-      {type === "reader" && (
-        <SchemaIndicator nodeId={id} schema={data.metadata?.schema} />
-      )}
     </div>
   );
 };

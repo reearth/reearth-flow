@@ -29,19 +29,12 @@ const collectReaderFields = (
 };
 
 /**
- * Build a reverse-adjacency map (node id -> ids of nodes feeding into it)
- * spanning every workflow graph, including across subworkflow boundaries.
- *
- * Subworkflow connectivity is expressed on the subworkflow node via
- * pseudoInputs / pseudoOutputs, which directly name the child graph's router
- * nodes — so no port matching is needed:
- *  - pseudoInputs:  an InputRouter inside the child exposes the subworkflow's
- *    input, so its upstream is whatever feeds the subworkflow node in the
- *    parent. We link the router straight to those parent feeders (bypassing the
- *    subworkflow node) so a reader on the subworkflow's OUTPUT side never leaks
- *    onto its INPUT side through the single shared boundary node.
- *  - pseudoOutputs: an OutputRouter inside the child feeds the subworkflow
- *    node's output, so the subworkflow node's upstream is that router.
+ * Reverse-adjacency map (node id -> ids of nodes feeding it) across every
+ * graph. Subworkflow boundaries are crossed via the subworkflow node's
+ * pseudoInputs/pseudoOutputs, which name the child's router nodes directly.
+ * Input routers are linked to the subworkflow node's parent feeders rather than
+ * the node itself, so an output-side reader can't leak onto the input side
+ * through the single shared boundary node.
  */
 const buildUpstreamMap = (workflows: Workflow[]): Map<string, Set<string>> => {
   const upstream = new Map<string, Set<string>>();
@@ -72,14 +65,9 @@ const buildUpstreamMap = (workflows: Workflow[]): Map<string, Set<string>> => {
 };
 
 /**
- * Build attribute-name autocomplete suggestions for a FlowExpr field on
- * `targetNodeId`, sourced from the probed schemas of the reader nodes UPSTREAM
- * of it — traversing edges back to their sources across subworkflow boundaries.
- * Reader attributes flow downstream, so only readers a node is actually
- * connected to below contribute, not every reader on the canvas.
- *
- * Without a target node id, returns no suggestions (a FlowExpr field is always
- * edited in the context of a node).
+ * Attribute-name suggestions for a FlowExpr field on `targetNodeId`: the union
+ * of probed schemas from readers upstream of it (so a node only sees readers it
+ * is connected to below, not every reader on the canvas).
  */
 export const buildReaderAttributeSuggestions = (
   workflows: Workflow[],
@@ -95,7 +83,6 @@ export const buildReaderAttributeSuggestions = (
 
   const upstream = buildUpstreamMap(workflows);
 
-  // Reverse BFS from the target (inclusive) across all graphs.
   const reachable = new Set<string>();
   const queue: string[] = [targetNodeId];
   while (queue.length > 0) {

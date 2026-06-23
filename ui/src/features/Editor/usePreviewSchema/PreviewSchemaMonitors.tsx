@@ -16,12 +16,8 @@ type MonitorProps = {
   onError: (nodeId: string) => void;
 };
 
-/**
- * Headless monitor for a single in-flight preview-schema job. It listens to the
- * `jobStatus` WebSocket subscription (same channel as a debug run) and, on a
- * terminal status, fetches the job once to pick up its `outputURLs`, then
- * reports completion or failure exactly once. No polling.
- */
+// Watches one in-flight probe job via the jobStatus subscription; on a terminal
+// status, fetches the job once for its outputURLs and reports it exactly once.
 const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
   probe,
   accessToken,

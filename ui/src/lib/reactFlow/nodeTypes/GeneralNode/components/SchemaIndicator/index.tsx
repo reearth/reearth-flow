@@ -20,7 +20,6 @@ type Props = {
   schema?: NodeSchemaMeta;
 };
 
-/** Flatten a node's ports into a deduped, ordered list of attribute fields. */
 const collectFields = (schema?: NodeSchemaMeta): FieldReport[] => {
   if (!schema) return [];
   const seen = new Set<string>();
@@ -35,11 +34,6 @@ const collectFields = (schema?: NodeSchemaMeta): FieldReport[] => {
   return fields;
 };
 
-/**
- * Bottom-left indicator on a (reader) node reflecting the attribute-schema
- * probe: a spinner while probing, a warning on failure, and an info icon that
- * reveals the probed attributes on hover once available.
- */
 const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
   const t = useT();
   const [probes] = useReaderSchemaProbes();
@@ -49,7 +43,7 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
 
   if (probe?.status === "running") {
     return (
-      <div className="absolute bottom-1 left-1 flex items-center justify-center">
+      <div className="flex translate-x-0.5 items-center">
         <CircleNotchIcon className="size-3 animate-spin text-muted-foreground" />
       </div>
     );
@@ -60,7 +54,7 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="absolute bottom-1 left-1 flex items-center justify-center">
+            <div className="flex translate-x-0.5 items-center">
               <WarningCircleIcon className="size-3 text-warning" />
             </div>
           </TooltipTrigger>
@@ -78,7 +72,7 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="absolute bottom-1 left-1 flex items-center justify-center">
+          <div className="flex translate-x-0.5 items-center">
             <InfoIcon className="size-3 text-muted-foreground hover:text-foreground" />
           </div>
         </TooltipTrigger>

@@ -16,7 +16,6 @@ export type AttrType =
   | "Null"
   | "Unknown";
 
-/** Whether a field is guaranteed present, or only conditionally produced. */
 export type AttrPresence = "always" | "maybe";
 
 export type FieldReport = {
@@ -38,26 +37,15 @@ export type NodeReport = {
   note?: string;
 };
 
-/**
- * Top-level JSON contract returned by the engine `probe-schema` command,
- * delivered as a GCS artifact (`schema-report.json`) on a completed
- * preview-schema Job. `nodes` is keyed by canvas node id.
- */
 export type SchemaReport = {
   version: number;
   sampleSize: number;
   nodes: Record<string, NodeReport>;
 };
 
-/**
- * Per-node schema persisted onto a (reader) node's Yjs metadata.
- * Holds the node's output ports as probed by the engine.
- */
 export type NodeSchemaMeta = {
   ports: Record<string, PortReport>;
-  /** Sample size the engine used for this probe. */
   sampleSize?: number;
-  /** ISO timestamp the schema was probed at. */
   sampledAt?: string;
   note?: string;
 };

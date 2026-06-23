@@ -11,6 +11,8 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { NodeData } from "@flow/types";
 
+import SchemaIndicator from "../SchemaIndicator";
+
 import CustomHandle from "./CustomHandle";
 import Port from "./Port";
 import { getBreakClass } from "./utils";
@@ -47,6 +49,9 @@ const Handles: React.FC<Props> = ({
   return (
     <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
+        {nodeType === "reader" && (
+          <SchemaIndicator nodeId={id} schema={nodeData.metadata?.schema} />
+        )}
         {nodeType !== "reader" &&
           hasMoreThanFiveInputHandles &&
           isCollapsed && (

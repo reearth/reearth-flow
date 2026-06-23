@@ -8,12 +8,9 @@ export const useCurrentProject = () => useAtom(currentProject);
 const currentWorkspace = atom<Workspace | undefined>(undefined);
 export const useCurrentWorkspace = () => useAtom(currentWorkspace);
 
-/**
- * Transient, in-session status of reader attribute-schema probes, keyed by
- * node id. Drives the on-node spinner / failure indicator. The probed schema
- * itself is persisted on the node's Yjs metadata (see NodeSchemaMeta), so this
- * only tracks in-flight / failed probes — completed probes are removed here.
- */
+// Transient (in-session) status of reader schema probes, keyed by node id —
+// drives the on-node spinner/failure indicator. The probed schema itself lives
+// on the node's Yjs metadata; only in-flight/failed probes are tracked here.
 export type ReaderSchemaProbeStatus = "running" | "failed";
 
 export type ReaderSchemaProbe = {

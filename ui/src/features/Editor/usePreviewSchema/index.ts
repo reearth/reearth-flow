@@ -12,7 +12,6 @@ import {
   toNodeSchemaMeta,
 } from "./schemaReport";
 
-/** Debounce window so a burst of saves on one reader triggers a single probe. */
 const PROBE_DEBOUNCE_MS = 600;
 
 export default ({
@@ -22,7 +21,6 @@ export default ({
   sampleSize,
 }: {
   rawWorkflows: Workflow[];
-  /** The node whose params dialog is open — scopes attribute suggestions. */
   openNodeId?: string;
   onPersistSchema: (nodeId: string, schema: NodeSchemaMeta | undefined) => void;
   sampleSize?: number;
@@ -36,9 +34,8 @@ export default ({
     currentProject?.id ?? "",
   );
 
-  // Keep the latest workflow/variables in refs so the debounced probe always
-  // builds the freshest engine-ready workflow (the Yjs save that triggers it
-  // lands a render before the timer fires).
+  // Refs so the debounced probe reads the freshest workflow/variables, not the
+  // values captured when the save fired.
   const rawWorkflowsRef = useRef(rawWorkflows);
   rawWorkflowsRef.current = rawWorkflows;
   const workflowVariablesRef = useRef(workflowVariables);
@@ -76,17 +73,13 @@ export default ({
 
   const runProbe = useCallback(
     async (nodeId: string) => {
-      if (!currentProject) {
-        return;
-      }
+      if (!currentProject) return;
       const engineReadyWorkflow = createEngineReadyWorkflow(
         currentProject.name,
         workflowVariablesRef.current,
         rawWorkflowsRef.current,
       );
-      if (!engineReadyWorkflow) {
-        return;
-      }
+      if (!engineReadyWorkflow) return;
 
       // Immediate feedback while the mutation is in flight (jobId filled in next).
       setProbeStatus(nodeId, "", "running");
@@ -107,15 +100,9 @@ export default ({
     [currentProject, previewSchema, sampleSize, setProbeStatus],
   );
 
-  /**
-   * Called when a node's params are saved. Only readers (with configured
-   * params) trigger a probe; the call is debounced per node.
-   */
   const handleNodeParamsSaved = useCallback(
     (node: Node) => {
-      if (node.type !== "reader") {
-        return;
-      }
+      if (node.type !== "reader") return;
       if (!node.data.params || Object.keys(node.data.params).length === 0) {
         return;
       }
@@ -153,12 +140,7 @@ export default ({
           );
         }
         clearProbe(nodeId);
-      } catch (err) {
-        console.debug("[previewSchema] failed to fetch/parse report", {
-          nodeId,
-          url,
-          err,
-        });
+      } catch {
         setProbeStatus(nodeId, job.id, "failed");
       }
     },
