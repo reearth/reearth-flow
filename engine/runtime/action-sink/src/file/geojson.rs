@@ -7,7 +7,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -48,7 +48,7 @@ impl SinkFactory for GeoJsonWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -71,9 +71,16 @@ impl SinkFactory for GeoJsonWriterFactory {
             .into());
         };
 
-        let output = params.output.compile().map_err(|e| {
-            SinkError::GeoJsonWriterFactory(format!("Failed to compile `output`: {e:?}"))
-        })?;
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::GeoJsonWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_env_only(ctx.env_vars.clone())
+            .map_err(|e| {
+                SinkError::GeoJsonWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         let sink = GeoJsonWriter {
             output,
             group_by: params.group_by,
@@ -85,7 +92,7 @@ impl SinkFactory for GeoJsonWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct GeoJsonWriter {
-    output: CompiledCode,
+    output: String,
     group_by: Option<Vec<Attribute>>,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
@@ -107,6 +114,7 @@ impl Sink for GeoJsonWriter {
         "GeoJsonWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
@@ -126,14 +134,12 @@ impl Sink for GeoJsonWriter {
         self.buffer.entry(key).or_default().push(feature.clone());
         Ok(())
     }
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let path = self
-            .output
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(crate::errors::SinkError::geojson_writer)?;
+        let path = self.output.as_str();
         for (key, features) in self.buffer.iter() {
             let out_path = if *key == AttributeValue::Null {
-                path.clone()
+                path.to_string()
             } else {
                 format!("{}/{}.geojson", path, to_hash(key.to_string().as_str()))
             };

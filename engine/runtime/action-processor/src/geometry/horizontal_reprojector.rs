@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap};
 
 use nusamai_projection::crs::EpsgCode;
 use proj::Proj;
@@ -26,7 +26,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Expr, GeometryValue};
+use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -308,12 +308,12 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
     }
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: HorizontalReprojectorParam = if let Some(with) = with.clone() {
+        let params: HorizontalReprojectorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::HorizontalReprojectorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -331,30 +331,24 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let source_epsg_ast = params
+            .source_epsg_code
+            .map(|c| {
+                c.compile().map_err(|e| {
+                    GeometryProcessorError::HorizontalReprojectorFactory(format!(
+                        "Failed to compile source EPSG expression: {e:?}"
+                    ))
+                })
+            })
+            .transpose()?;
 
-        // Compile source EPSG expression if provided
-        let source_epsg_ast = if let Some(ref source_expr) = params.source_epsg_code {
-            Some(expr_engine.compile(source_expr.as_ref()).map_err(|e| {
-                GeometryProcessorError::HorizontalReprojectorFactory(format!(
-                    "Failed to compile source EPSG expression: {e:?}"
-                ))
-            })?)
-        } else {
-            None
-        };
-
-        // Compile target EPSG expression
-        let target_epsg_ast = expr_engine
-            .compile(params.target_epsg_code.as_ref())
-            .map_err(|e| {
-                GeometryProcessorError::HorizontalReprojectorFactory(format!(
-                    "Failed to compile target EPSG expression: {e:?}"
-                ))
-            })?;
+        let target_epsg_ast = params.target_epsg_code.compile().map_err(|e| {
+            GeometryProcessorError::HorizontalReprojectorFactory(format!(
+                "Failed to compile target EPSG expression: {e:?}"
+            ))
+        })?;
 
         Ok(Box::new(HorizontalReprojector {
-            global_params: with,
             source_epsg_ast,
             target_epsg_ast,
         }))
@@ -371,20 +365,19 @@ pub struct HorizontalReprojectorParam {
     /// This is optional to maintain backward compatibility but recommended to be explicit.
     /// Can be a constant value (e.g., "4326") or an expression referencing feature attributes.
     #[serde(default)]
-    source_epsg_code: Option<Expr>,
+    source_epsg_code: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 
     /// # Target EPSG Code
     /// Target coordinate system EPSG code expression for the reprojection.
     /// Can be a constant value (e.g., "4326" for WGS84, "2193" for NZTM2000, "3857" for Web Mercator)
     /// or an expression referencing feature attributes.
-    target_epsg_code: Expr,
+    target_epsg_code: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 #[derive(Debug, Clone)]
 pub struct HorizontalReprojector {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    source_epsg_ast: Option<rhai::AST>,
-    target_epsg_ast: rhai::AST,
+    source_epsg_ast: Option<CompiledCode>,
+    target_epsg_ast: CompiledCode,
 }
 
 /// Helper function to get or create a cached Proj transformation.
@@ -421,19 +414,19 @@ where
 }
 
 impl Processor for HorizontalReprojector {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
+        let env_vars = ctx.env_vars.clone();
 
         // Evaluate source EPSG expression if provided
-        let source_epsg_from_expr: Option<EpsgCode> = if let Some(ref ast) = self.source_epsg_ast {
-            let value: i64 = scope.eval_ast(ast).map_err(|e| {
+        let source_epsg_from_expr: Option<EpsgCode> = if let Some(ref code) = self.source_epsg_ast {
+            let value = code.eval_int(feature, env_vars.clone()).map_err(|e| {
                 GeometryProcessorError::HorizontalReprojector(format!(
                     "Failed to evaluate source EPSG expression: {e}"
                 ))
@@ -453,12 +446,14 @@ impl Processor for HorizontalReprojector {
         })?;
 
         // Evaluate target EPSG expression
-        let target_epsg: i64 = scope.eval_ast(&self.target_epsg_ast).map_err(|e| {
-            GeometryProcessorError::HorizontalReprojector(format!(
-                "Failed to evaluate target EPSG expression: {e}"
-            ))
-        })?;
-        let target_epsg = target_epsg as EpsgCode;
+        let target_epsg = self
+            .target_epsg_ast
+            .eval_int(feature, env_vars)
+            .map_err(|e| {
+                GeometryProcessorError::HorizontalReprojector(format!(
+                    "Failed to evaluate target EPSG expression: {e}"
+                ))
+            })? as EpsgCode;
 
         // Get or create the projection in thread-local cache
         let from_crs = format!("EPSG:{source_epsg}");
@@ -505,6 +500,7 @@ impl Processor for HorizontalReprojector {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

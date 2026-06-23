@@ -135,7 +135,9 @@ nodes:
     - gmlFilename
     calculations:
     - newAttribute: _num_lod0_incorrect_orientation
-      expr: '1'
+      expr:
+        type: flowExpr
+        value: "1"
 - id: 22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
   name: ErrorCount-Lod0IncorrectOrientation
   type: action
@@ -170,7 +172,9 @@ nodes:
     - gmlFilename
     calculations:
     - newAttribute: _num_lod0_invalid_surface
-      expr: '1'
+      expr:
+        type: flowExpr
+        value: "1"
 - id: 44d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
   name: ErrorCount-Lod0InvalidSurface
   type: action
@@ -301,7 +305,9 @@ nodes:
     - gmlFilename
     calculations:
     - newAttribute: _num_lod1_invalid_surface
-      expr: '1'
+      expr:
+        type: flowExpr
+        value: "1"
 - id: 66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
   name: ErrorCount-Lod1InvalidSurface
   type: action
@@ -325,14 +331,17 @@ nodes:
     - gmlFilename
     calculations:
     - newAttribute: _num_lod2_invalid_surface
-      expr: |
-        if env.get("__value").lod == "2" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "2" { 1 } else { 0 }
     - newAttribute: _num_lod3_invalid_surface
-      expr: |
-        if env.get("__value").lod == "3" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "3" { 1 } else { 0 }
     - newAttribute: _num_lod4_invalid_surface
-      expr: |
-        if env.get("__value").lod == "4" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "4" { 1 } else { 0 }
 - id: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
   name: AttributeManagerLod2-4InvalidSurface
   type: action
@@ -516,7 +525,9 @@ nodes:
     - filename_a
     calculations:
     - newAttribute: _num_lod0_surface_intersection
-      expr: '1'
+      expr:
+        type: flowExpr
+        value: "1"
 - id: 00b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
   name: ErrorCount-Lod0SurfaceIntersection
   type: action
@@ -528,8 +539,9 @@ nodes:
   type: action
   action: SolidBoundaryValidator
   with:
-    tolerance: |
-      0.01
+    tolerance:
+      type: flowExpr
+      value: "0.01"
 - id: d0132191-a81f-4647-896d-5db49e3fb734
   name: FeatureFilterInvalidSolidBoundary
   type: action
@@ -643,17 +655,21 @@ nodes:
     - gmlFilename
     calculations:
     - newAttribute: _num_lod1_not_closed_solid
-      expr: |
-        if env.get("__value").lod == "1" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "1" { 1 } else { 0 }
     - newAttribute: _num_lod2_not_closed_solid
-      expr: |
-        if env.get("__value").lod == "2" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "2" { 1 } else { 0 }
     - newAttribute: _num_lod3_not_closed_solid
-      expr: |
-        if env.get("__value").lod == "3" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "3" { 1 } else { 0 }
     - newAttribute: _num_lod4_not_closed_solid
-      expr: |
-        if env.get("__value").lod == "4" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "4" { 1 } else { 0 }
 - id: 44f4a5b6-7c8d-9e0f-1a2b-3c4d5e6f7a8b
   name: ErrorCount-Lod1NotClosedSolid
   type: action
@@ -763,17 +779,21 @@ nodes:
     - gmlFilename
     calculations:
     - newAttribute: _num_lod1_solid_issues
-      expr: |
-        if env.get("__value").lod == "1" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "1" { 1 } else { 0 }
     - newAttribute: _num_lod2_solid_issues
-      expr: |
-        if env.get("__value").lod == "2" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "2" { 1 } else { 0 }
     - newAttribute: _num_lod3_solid_issues
-      expr: |
-        if env.get("__value").lod == "3" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "3" { 1 } else { 0 }
     - newAttribute: _num_lod4_solid_issues
-      expr: |
-        if env.get("__value").lod == "4" { 1 } else { 0 }
+      expr:
+        type: flowExpr
+        value: if attributes["lod"] == "4" { 1 } else { 0 }
 - id: 66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d
   name: ErrorCount-Lod1SolidIssues
   type: action
@@ -826,7 +846,9 @@ nodes:
     - filename
     calculations:
     - newAttribute: _num_lod1_not_closed_solid
-      expr: '1'
+      expr:
+        type: flowExpr
+        value: "1"
 - id: bc5638de-624d-46a2-a40b-59dde392ff97
   name: SolidBoundaryNotClosedIssueCountOutputRouter
   type: action
@@ -843,7 +865,9 @@ nodes:
     - filename
     calculations:
     - newAttribute: _num_lod1_solid_issues
-      expr: '1'
+      expr:
+        type: flowExpr
+        value: "1"
 - id: 26ad749b-0ee1-4f6e-b8e0-8f3ff2fe4056
   name: SolidBoundaryOtherIssueCountOutputRouter
   type: action

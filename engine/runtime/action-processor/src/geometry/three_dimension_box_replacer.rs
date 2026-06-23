@@ -100,6 +100,7 @@ pub struct ThreeDimensionBoxReplacer {
 }
 
 impl Processor for ThreeDimensionBoxReplacer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,

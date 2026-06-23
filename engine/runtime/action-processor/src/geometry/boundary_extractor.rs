@@ -94,6 +94,7 @@ struct BoundaryExtractor {
 }
 
 impl Processor for BoundaryExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -151,6 +152,7 @@ impl Processor for BoundaryExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

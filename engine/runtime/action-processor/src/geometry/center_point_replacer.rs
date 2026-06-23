@@ -98,6 +98,7 @@ struct CenterPointReplacer {
 }
 
 impl Processor for CenterPointReplacer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -174,6 +175,7 @@ impl CenterPointReplacer {
         )
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_2d_geometry(
         &self,
         geos: &Geometry2D,
@@ -249,6 +251,7 @@ impl CenterPointReplacer {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_3d_geometry(
         &self,
         geos: &Geometry3D,
@@ -322,6 +325,7 @@ impl CenterPointReplacer {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn handle_citygml_geometry(
         &self,
         city_gml: &CityGmlGeometry,
@@ -453,6 +457,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_citygml_feature(gml_geometries: Vec<GmlGeometry>) -> Feature {
         let city_gml = CityGmlGeometry {
             gml_geometries,
@@ -491,6 +496,7 @@ mod tests {
         run_processor_with_mode(feature, CenterPointMode::CenterOfGravity)
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_2d_polygon_feature(coords: &[(f64, f64)]) -> Feature {
         let line_coords: Vec<Coordinate<f64, _>> =
             coords.iter().map(|&(x, y)| (x, y).into()).collect();
@@ -506,6 +512,7 @@ mod tests {
     // Center of Gravity tests (existing behavior)
     // =========================================================================
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_2d_polygon_centroid() {
         let feature =
@@ -523,6 +530,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_3d_polygon_centroid() {
         let polygon = make_polygon_3d(&[
@@ -551,6 +559,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_citygml_single_polygon_centroid() {
         let polygon = make_polygon_3d(&[
@@ -580,6 +589,7 @@ mod tests {
     // CityGML multi-polygon now succeeds for centroid & bbox modes
     // =========================================================================
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_citygml_multiple_polygons_centroid() {
         let poly1 = make_polygon_3d(&[
@@ -617,6 +627,7 @@ mod tests {
     // Bounding Box Center tests
     // =========================================================================
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_2d_polygon_bbox_center() {
         let feature =
@@ -635,6 +646,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_3d_polygon_bbox_center() {
         let polygon = make_polygon_3d(&[
@@ -664,6 +676,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_citygml_bbox_center() {
         let poly1 = make_polygon_3d(&[
@@ -702,6 +715,7 @@ mod tests {
     // Any Inside Point tests
     // =========================================================================
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_any_inside_point_convex() {
         let feature =
@@ -720,6 +734,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_any_inside_point_concave() {
         // C-shaped polygon where centroid would be outside
@@ -752,6 +767,7 @@ mod tests {
     // Rejection tests
     // =========================================================================
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_any_inside_point_rejects_line() {
         use reearth_flow_geometry::types::line_string::LineString2D;
@@ -773,6 +789,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_any_inside_point_rejects_point() {
         let point = reearth_flow_geometry::types::point::Point2D::from((1.0, 2.0));
@@ -787,6 +804,7 @@ mod tests {
         assert_eq!(ports[0], REJECTED_PORT.clone());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_any_inside_point_rejects_citygml() {
         let polygon = make_polygon_3d(&[
@@ -809,6 +827,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_rejected_feature_has_rejection_code() {
         let geometry = Geometry {

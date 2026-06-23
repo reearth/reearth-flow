@@ -23,8 +23,10 @@ use reearth_flow_runtime::{
     node::DEFAULT_PORT,
 };
 use reearth_flow_types::{
-    conversion::nusamai::entity_to_geometry, geometry::Geometry, lod::LodMask, Attribute,
-    AttributeValue, CitygmlFeatureExt, CompiledCode, Feature,
+    conversion::nusamai::{entity_to_geometry, from_nusamai_citygml_value},
+    geometry::Geometry,
+    lod::LodMask,
+    Attribute, AttributeValue, CitygmlFeatureExt, CompiledCode, Feature,
 };
 use url::Url;
 
@@ -100,6 +102,7 @@ fn load_flat_map(
 /// Both the main emit loop and the cross-file feature-ref path call this so attribute keys
 /// only need to be maintained in one place.
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(feature = "new-geometry"))]
 fn emit_flat_entity(
     ctx: &Context,
     fw: &ProcessorChannelForwarder,
@@ -200,8 +203,7 @@ fn emit_flat_entity(
         }
     }
 
-    let citygml_attributes =
-        AttributeValue::Map(AttributeValue::from_nusamai_citygml_value(&ent.root));
+    let citygml_attributes = AttributeValue::Map(from_nusamai_citygml_value(&ent.root));
     let geometry: Geometry = entity_to_geometry(ent, root_needs_reconstruction)
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let mut feature: Feature = geometry.into();
@@ -257,7 +259,7 @@ pub(super) fn parse_and_register(
         nusamai_plateau::codelist::Resolver::new()
     };
     let city_gml_path = dataset
-        .eval_string(&feature, ctx.expr_engine.vars())
+        .eval_string(&feature, ctx.env_vars.clone())
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(city_gml_path.as_str())
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
@@ -428,6 +430,7 @@ fn collect_entities<R: BufRead>(
 /// Pass 2: stream entities from per-file JSONL caches and emit features.
 /// Cross-file xlink:href refs are resolved by lazily loading the referenced file's cache.
 #[allow(clippy::uninlined_format_args)]
+#[cfg(not(feature = "new-geometry"))]
 pub(super) fn emit_buffered(
     ctx: Context,
     fw: &ProcessorChannelForwarder,

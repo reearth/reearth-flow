@@ -45,7 +45,7 @@ impl SourceFactory for JsonReaderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -66,7 +66,7 @@ impl SourceFactory for JsonReaderFactory {
             )
             .into());
         };
-        let common = params.common_property.compile().map_err(|e| {
+        let common = params.common_property.compile(&ctx).map_err(|e| {
             SourceError::JsonReaderFactory(format!("Failed to compile params: {e:?}"))
         })?;
         Ok(Box::new(JsonReader { common }))
@@ -106,7 +106,7 @@ impl Source for JsonReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let content = get_content(&ctx, &self.common, storage_resolver).await?;
+        let content = get_content(&self.common, storage_resolver).await?;
         json::read_json(&content, sender)
             .await
             .map_err(Into::<BoxedError>::into)

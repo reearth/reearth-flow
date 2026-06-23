@@ -128,10 +128,11 @@ impl Sink for CsvWriter {
         "CsvWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let path = self
             .output
-            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .eval_string(&ctx.feature, ctx.env_vars.clone())
             .map_err(|e| SinkError::CsvWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
         let node_ctx: NodeContext = ctx.into();
@@ -153,6 +154,7 @@ impl Sink for CsvWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
         let delimiter = self.format.delimiter();
         for (out, features) in self.buffer.values() {
@@ -162,6 +164,7 @@ impl Sink for CsvWriter {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn write_csv(
     out: &SinkOutput,
     features: &[Feature],

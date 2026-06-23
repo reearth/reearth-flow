@@ -249,6 +249,7 @@ impl Dissolver {
         Ok(features)
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn dissolve_all_groups(&mut self) -> Result<Vec<Feature>, BoxedError> {
         // Flush buffer before reading files
         self.flush_buffer()?;
@@ -290,6 +291,7 @@ impl Processor for Dissolver {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -341,6 +343,7 @@ impl Processor for Dissolver {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -362,6 +365,7 @@ impl Processor for Dissolver {
 }
 
 impl Dissolver {
+    #[cfg(not(feature = "new-geometry"))]
     fn dissolve_2d(&self, buffered_features_2d: Vec<Feature>) -> Option<Feature> {
         // Start with an empty multi-polygon
         let mut multi_polygon_2d = MultiPolygon2D::new(vec![]);

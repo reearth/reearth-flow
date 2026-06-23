@@ -87,8 +87,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value").cityGmlPath
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
@@ -106,8 +107,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
@@ -227,8 +229,9 @@ graphs:
       - month
       calculations:
       - newAttribute: monthlyDayTimeSumInHours
-        expr: |
-          env.get("__value")["dayTime"]
+        expr:
+          type: flowExpr
+          value: attributes["dayTime"]
   - id: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
     name: MonthlyWeatherDataReader
     type: action
@@ -359,7 +362,9 @@ graphs:
       groupBy: []
       calculations:
       - newAttribute: totalBuildingCount
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 00000005-0000-0000-0000-000000000031
     name: AddBroadcastKey
     type: action
@@ -429,8 +434,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000007-0000-0000-0000-000000000004
     name: RestrictZone1SpatialFilter
     type: action
@@ -482,8 +488,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000007-0000-0000-0000-000000000014
     name: RestrictZone2SpatialFilter
     type: action
@@ -535,8 +542,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000007-0000-0000-0000-000000000024
     name: RestrictZone3SpatialFilter
     type: action
@@ -588,8 +596,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000007-0000-0000-0000-000000000033
     name: SnowSpatialFilter
     type: action
@@ -859,18 +868,25 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatch1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatch2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatch3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch3", 0)
   - id: 00000006-0000-0000-0000-000000000003
     name: LandJudgmentComputer
     type: action
@@ -1609,8 +1625,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 00000002-0000-0000-0000-000000000004
@@ -1628,8 +1645,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: 00000002-0000-0000-0000-000000000006
@@ -1638,8 +1656,9 @@ graphs:
     action: PLATEAU4.CityGmlMeshBuilder
     with:
       errorAttribute: _validation_error
-      epsgCode: |
-        env.get("prcs")
+      epsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000001-0000-0000-0000-000000000002
     name: CityGmlReader
     type: action
@@ -1700,8 +1719,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000004-0000-0000-0000-000000000001
     name: RoofFilterShapefileReader
     type: action
@@ -1717,10 +1737,12 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      sourceEpsgCode: |
-        env.get("roofFilterEpsgCode")
-      targetEpsgCode: |
-        env.get("prcs")
+      sourceEpsgCode:
+        type: flowExpr
+        value: env["roofFilterEpsgCode"]
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000004-0000-0000-0000-000000000003
     name: AreaSpatialFilter
     type: action
@@ -1777,14 +1799,19 @@ graphs:
     action: PLATEAU4.SolarPositionCalculator
     with:
       type: duration
-      start: |
-        env.get("startTime")
-      end: |
-        env.get("endTime")
-      step: '1'
+      start:
+        type: flowExpr
+        value: env["startTime"]
+      end:
+        type: flowExpr
+        value: env["endTime"]
+      step:
+        type: flowExpr
+        value: 1
       stepUnit: hour
-      sourceEpsg: |
-        env.get("prcs")
+      sourceEpsg:
+        type: flowExpr
+        value: env["prcs"]
       outputType: both
   - id: 00000001-0000-0000-0000-000000000040
     name: ConvertDateTimeToIntegers
@@ -1893,11 +1920,18 @@ graphs:
     type: action
     action: RayIntersector
     with:
-      pairId: |
-        "all"
-      closestIntersectionOnly: 'true'
-      includeRayOrigin: 'false'
-      tolerance: '0.01'
+      pairId:
+        type: flowExpr
+        value: '"all"'
+      closestIntersectionOnly:
+        type: flowExpr
+        value: 'true'
+      includeRayOrigin:
+        type: flowExpr
+        value: 'false'
+      tolerance:
+        type: flowExpr
+        value: '0.01'
       outputGeometryType: lineSegmentToIntersection
       ray:
         posX: rayOriginX
@@ -2044,11 +2078,13 @@ graphs:
       - _grid_row
       calculations:
       - newAttribute: radiationSunnySum
-        expr: |
-          env.get("__value")["radiationSunny"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationSunny"]
       - newAttribute: radiationCloudySum
-        expr: |
-          env.get("__value")["radiationCloudy"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationCloudy"]
   - id: 00000001-0000-0000-0000-000000000052
     name: CloudFactorDTMerger
     type: action
@@ -2089,12 +2125,13 @@ graphs:
       - _grid_row
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
   - id: 00000001-0000-0000-0000-000000000074
     name: SurfaceRadiationAggregator
     type: action
@@ -2105,18 +2142,25 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatch1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatch2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatch3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch3", 0)
   - id: 00000001-0000-0000-0000-000000000075
     name: SolarAttributeMerger
     type: action
@@ -2267,20 +2311,24 @@ graphs:
     action: ImageRasterizer
     with:
       imageWidth: 2048
-      saveTo: |
-        "roof_radiation_texture.png"
+      saveTo:
+        type: string
+        value: roof_radiation_texture.png
       onOverlap:
-        max: |
-          env.get("__value")["maxZ"]
+        max:
+          type: flowExpr
+          value: attributes["maxZ"]
   - id: 00000001-0000-0000-0000-000000000062
     name: TexturedHorizontalReprojector
     type: action
     action: HorizontalReprojector
     with:
-      sourceEpsgCode: |
-        env.get("prcs")
-      targetEpsgCode: |
-        6697
+      sourceEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
+      targetEpsgCode:
+        type: flowExpr
+        value: 6697
   - id: 00000001-0000-0000-0000-000000000063
     name: TexturedBoundsExtractor
     type: action
@@ -2366,13 +2414,21 @@ graphs:
     type: action
     action: RayIntersector
     with:
-      pairId: |
-        "all"
-      closestIntersectionOnly: 'true'
-      includeRayOrigin: 'false'
-      tolerance: '0.01'
-      geomId: |
-        env.get("__value")["gmlId"] ?? ""
+      pairId:
+        type: flowExpr
+        value: '"all"'
+      closestIntersectionOnly:
+        type: flowExpr
+        value: 'true'
+      includeRayOrigin:
+        type: flowExpr
+        value: 'false'
+      tolerance:
+        type: flowExpr
+        value: '0.01'
+      geomId:
+        type: flowExpr
+        value: attributes.get("gmlId", "")
       ray:
         posX: rayOriginX
         posY: rayOriginY
@@ -2418,8 +2474,9 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalSurfaceArea
-        expr: |
-          env.get("__value")["surfaceArea"]
+        expr:
+          type: flowExpr
+          value: attributes["surfaceArea"]
   - id: 00000001-0000-0000-0000-0000000000d2
     name: BuildingAreaAggregator
     type: action
@@ -2429,8 +2486,9 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalRoofArea
-        expr: |
-          env.get("__value")["totalSurfaceArea"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSurfaceArea"]
   - id: 00000001-0000-0000-0000-0000000000d3
     name: BuildingAreaMerger
     type: action
@@ -2458,18 +2516,25 @@ graphs:
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatchSum1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatchSum2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatchSum3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum3", 0)
   - id: 00000001-0000-0000-0000-0000000000c5
     name: BuildingPotentialMapper
     type: action
@@ -2572,17 +2637,21 @@ graphs:
       groupBy: []
       calculations:
       - newAttribute: buildingCount
-        expr: |
-          1
+        expr:
+          type: flowExpr
+          value: '1'
       - newAttribute: areaTotalSolarRadiation
-        expr: |
-          env.get("__value")["totalSolarRadiation"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarRadiation"]
       - newAttribute: areaTotalSolarPower
-        expr: |
-          env.get("__value")["totalSolarPower"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarPower"]
       - newAttribute: areaTotalRoofArea
-        expr: |
-          env.get("__value")["totalRoofArea"]
+        expr:
+          type: flowExpr
+          value: attributes["totalRoofArea"]
   - id: 00000001-0000-0000-0000-0000000000c8
     name: AreaAggregationMapper
     type: action
@@ -2760,8 +2829,9 @@ graphs:
     type: action
     action: PLATEAU4.SolarCityGmlAttributeInserter
     with:
-      outputDir: |
-        "citygml"
+      outputDir:
+        type: string
+        value: citygml
       pathAttribute: path
       gmlIdAttribute: gmlId
       measurements:
@@ -2771,10 +2841,12 @@ graphs:
       - name: 年間予測発電量
         attribute: totalSolarPower
         uom: kWh
-      textureImagePath: |
-        "roof_radiation_texture.png"
-      sourceEpsg: |
-        env.get("prcs")
+      textureImagePath:
+        type: string
+        value: roof_radiation_texture.png
+      sourceEpsg:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000001-0000-0000-0000-0000000000e1
     name: CityGmlZipFileWriter
     type: action
@@ -2884,8 +2956,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 00000005-0000-0000-0000-000000000020
     name: AzimuthDirectionFlags
     type: action
@@ -2987,11 +3060,13 @@ graphs:
       - featureType
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["totalSolarRadiation"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarRadiation"]
       - newAttribute: totalSolarPower
-        expr: |
-          env.get("__value")["totalSolarPower"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarPower"]
   - id: 00000002-0000-0000-0000-00000000000f
     name: GridCellTypeRouter
     type: action

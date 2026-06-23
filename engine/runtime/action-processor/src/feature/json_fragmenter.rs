@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr};
 
 use reearth_flow_common::{json::find_by_json_path, uri::Uri};
 use reearth_flow_runtime::{
@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -112,7 +112,7 @@ pub enum JSONFragmenterParam {
     #[serde(rename = "fileUrl")]
     FileUrl {
         /// Expression evaluating to the file path or URL containing JSON
-        path: Expr,
+        path: Code,
         #[serde(flatten)]
         options: JSONFragmenterOptions,
     },
@@ -169,20 +169,19 @@ impl Processor for JSONFragmenter {
                 }
             },
             JSONFragmenterParam::FileUrl { path, .. } => {
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let scope = feature.new_scope(expr_engine.clone(), &None);
-                let path_ast = expr_engine
-                    .compile(path.to_string().as_str())
+                let url_str = path
+                    .compile()
                     .map_err(|e| {
                         FeatureProcessorError::JSONFragmenter(format!(
                             "Failed to compile path expression: {e:?}"
                         ))
+                    })?
+                    .eval_string(feature, ctx.env_vars.clone())
+                    .map_err(|e| {
+                        FeatureProcessorError::JSONFragmenter(format!(
+                            "Failed to evaluate path expression: {e:?}"
+                        ))
                     })?;
-                let url_str: String = scope.eval_ast(&path_ast).map_err(|e| {
-                    FeatureProcessorError::JSONFragmenter(format!(
-                        "Failed to evaluate path expression: {e:?}"
-                    ))
-                })?;
                 let url = Uri::from_str(&url_str).map_err(|e| {
                     FeatureProcessorError::JSONFragmenter(format!("Invalid URL: {e:?}"))
                 })?;
@@ -552,6 +551,7 @@ mod tests {
         assert_eq!(ports[0], DEFAULT_PORT.clone());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_preserves_input_attributes() {
         let mut feature = make_feature_with_json(r#"[{"x": 1}]"#);
@@ -633,7 +633,7 @@ mod tests {
         // Build params via serde so the Expr nutype is constructed correctly
         let params: JSONFragmenterParam = serde_json::from_value(serde_json::json!({
             "inputSource": "fileUrl",
-            "path": format!("\"{}\"", file_uri),
+            "path": {"type": "flowExpr", "value": format!("\"{}\"", file_uri)},
             "jsonQuery": "$[*]",
             "flattenQueryResult": true
         }))
@@ -658,7 +658,7 @@ mod tests {
     fn test_file_url_missing_file_returns_error() {
         let params: JSONFragmenterParam = serde_json::from_value(serde_json::json!({
             "inputSource": "fileUrl",
-            "path": "\"file:///nonexistent/path/data.json\"",
+            "path": {"type": "flowExpr", "value": "\"file:///nonexistent/path/data.json\""},
             "jsonQuery": "$[*]"
         }))
         .unwrap();

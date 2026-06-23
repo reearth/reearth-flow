@@ -20,8 +20,9 @@ nodes:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
 
@@ -41,8 +42,9 @@ nodes:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: "codelists"
       schemasPath: "schemas"
 
@@ -52,10 +54,12 @@ nodes:
     action: XMLFragmenter
     with:
       source: url
-      elementsToMatch: |
-        env.get("__value").featureTypes[env.get("__value")["package"]]
-      elementsToExclude: |
-        []
+      elementsToMatch:
+        type: flowExpr
+        value: attributes["featureTypes"][attributes["package"]]
+      elementsToExclude:
+        type: flowExpr
+        value: "[]"
       attribute: path
 
   - id: 5490fef1-320b-4789-9f5b-5401a9b99e41
@@ -268,7 +272,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C05エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Per-file aggregation for C07 errors (data quality attributes)
   - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
@@ -280,7 +286,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C07エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Per-file aggregation for C08 errors (public survey quality attributes)
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
@@ -292,7 +300,9 @@ nodes:
         - filename
       calculations:
         - newAttribute: C08エラー
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: OutputRouterPerFile

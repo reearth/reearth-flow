@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Expr, GeometryValue};
+use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -52,12 +52,12 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ThreeDimensionForcerParam = if let Some(with) = with.clone() {
+        let params: ThreeDimensionForcerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ThreeDimensionForcerFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -72,22 +72,19 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
             ThreeDimensionForcerParam::default()
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let elevation_ast = if let Some(ref elevation_expr) = params.elevation {
-            Some(expr_engine.compile(elevation_expr.as_ref()).map_err(|e| {
-                GeometryProcessorError::ThreeDimensionForcerFactory(format!(
-                    "Failed to compile elevation expression '{}': {:?}",
-                    elevation_expr.as_ref(),
-                    e
-                ))
-            })?)
-        } else {
-            None
-        };
+        let elevation = params
+            .elevation
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    GeometryProcessorError::ThreeDimensionForcerFactory(format!(
+                        "Failed to compile elevation expression: {e:?}"
+                    ))
+                })
+            })
+            .transpose()?;
 
         Ok(Box::new(ThreeDimensionForcer {
-            global_params: with,
-            elevation: elevation_ast,
+            elevation,
             preserve_existing_z: params.preserve_existing_z,
         }))
     }
@@ -102,7 +99,7 @@ pub struct ThreeDimensionForcerParam {
     /// # Elevation
     /// The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub elevation: Option<Expr>,
+    pub elevation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Preserve Existing Z Values
     /// If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.
     #[serde(default)]
@@ -111,18 +108,17 @@ pub struct ThreeDimensionForcerParam {
 
 #[derive(Debug, Clone)]
 pub struct ThreeDimensionForcer {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    elevation: Option<rhai::AST>,
+    elevation: Option<CompiledCode>,
     preserve_existing_z: bool,
 }
 
 impl Processor for ThreeDimensionForcer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
@@ -131,24 +127,14 @@ impl Processor for ThreeDimensionForcer {
             return Ok(());
         }
 
-        // Calculate the elevation value to use
         let elevation_value = if let Some(ref elevation_ast) = self.elevation {
-            let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-            // Try to evaluate as f64 first, if that fails try i64 and convert
-            match scope.eval_ast::<f64>(elevation_ast) {
-                Ok(val) => val,
-                Err(_) => {
-                    // If f64 evaluation fails, try i64 and convert to f64
-                    scope
-                        .eval_ast::<i64>(elevation_ast)
-                        .map(|i| i as f64)
-                        .map_err(|e| {
-                            GeometryProcessorError::ThreeDimensionForcer(format!(
-                                "Failed to evaluate elevation expression: {e:?}"
-                            ))
-                        })?
-                }
-            }
+            elevation_ast
+                .eval_float(feature, ctx.env_vars.clone())
+                .map_err(|e| {
+                    GeometryProcessorError::ThreeDimensionForcer(format!(
+                        "Failed to evaluate elevation expression: {e:?}"
+                    ))
+                })?
         } else {
             0.0
         };
@@ -199,6 +185,7 @@ impl Processor for ThreeDimensionForcer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

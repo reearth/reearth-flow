@@ -65,8 +65,9 @@ graphs:
         type: action
         action: FeatureFilePathExtractor
         with:
-          sourceDataset: |
-            env.get("__value")["cityGmlPath"]
+          sourceDataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
           extractArchive: true
           destPrefix: udx
 
@@ -94,8 +95,9 @@ graphs:
         type: action
         action: PLATEAU4.UDXFolderExtractor
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
           codelistsPath: codelists
           schemasPath: schemas
 
@@ -138,7 +140,9 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: env.get("prcs")
+          targetEpsgCode:
+            type: flowExpr
+            value: env["prcs"]
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: PLATEAU3.LodSplitterWithDM
@@ -166,7 +170,9 @@ graphs:
             - udxDirs
           calculations:
             - newAttribute: _num_instances
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
       
       - id: 22641726-fc4a-4d8a-a375-91b5ac6aac28
         name: AttributeMapperForInstanceCount
@@ -257,7 +263,9 @@ graphs:
             - name
           calculations:
             - newAttribute: _num_incorrect_orientation
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
       - id: ba747af8-c4fb-4481-9406-e14f1d4c7f57
         name: AttributeMapperForSurfaceErrors
@@ -303,7 +311,9 @@ graphs:
             - name
           calculations:
             - newAttribute: _num_surface_issues
-              expr: "1"
+              expr:
+                type: flowExpr
+                value: "1"
 
 
       # FeatureMerger for aggregating error counts
@@ -312,10 +322,12 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttributeValue: |
-            env.get("__value").Filename
-          supplierAttributeValue: |
-            env.get("__value").name
+          requestorAttributeValue:
+            type: flowExpr
+            value: attributes["Filename"]
+          supplierAttributeValue:
+            type: flowExpr
+            value: attributes["name"]
 
       # AttributeMapper for CSV formatting
       - id: f58eeb2c-9187-4880-8c1f-7da2f9388069
@@ -356,19 +368,21 @@ graphs:
         with:
           calculations:
             - newAttribute: "面の向き不正"
-              expr: |
-                env.get("__value")["面の向き不正"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面の向き不正", 0)
             - newAttribute: "面のエラー"
-              expr: |
-                env.get("__value")["面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面のエラー", 0)
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["面の向き不正", "面のエラー"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("面の向き不正", 0),
+                    attributes.get("面のエラー", 0),
+                  ])
 
       # JSON output with converter
       - id: 4ed9ffc0-9509-4037-bcb6-117829aab7d5
@@ -400,8 +414,9 @@ graphs:
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       # Filter for no errors
       - id: 020bac31-10f6-4a00-8426-630d03970c0f

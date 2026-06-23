@@ -105,6 +105,7 @@ impl Processor for VerticalReprojector {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -134,6 +135,7 @@ impl Processor for VerticalReprojector {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

@@ -39,9 +39,18 @@ jobs:
       - uses: ./.github/actions/setup-engine-ci
         with:
           rust-components: clippy, rustfmt
+          tools: cargo-make,taplo-cli
       - name: Compare version with previous commit
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
+          # Only enforce an engine version bump when engine sources actually
+          # changed. ci-engine also runs for workflow-only changes (ci.yml,
+          # ci_engine.yml, build_docker_push_worker.yml are in its changed-files
+          # filter), which must not require a version bump.
+          if git diff --quiet HEAD~1 HEAD -- . ; then
+            echo "No engine changes between HEAD~1 and HEAD - skipping version check"
+            exit 0
+          fi
           # Try to get previous version, handle new files
           PREV_VERSION=$(git show "HEAD~1:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
           if [ -z "$PREV_VERSION" ]; then

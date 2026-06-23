@@ -39,12 +39,16 @@ export type ButtonProps = {
   VariantProps<typeof buttonVariants>;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, onClick, ...props }, ref) => {
+  (
+    { className, variant, size, asChild = false, onClick, type, ...props },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        type={asChild ? type : (type ?? "button")}
         onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
           if (!onClick) return;
           e.stopPropagation();

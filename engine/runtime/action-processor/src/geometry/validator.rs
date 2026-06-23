@@ -173,6 +173,7 @@ impl Processor for GeometryValidator {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -201,6 +202,7 @@ impl Processor for GeometryValidator {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

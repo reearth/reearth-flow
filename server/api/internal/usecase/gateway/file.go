@@ -53,6 +53,7 @@ func (p IssueUploadAssetParam) GetOrGuessContentType() string {
 
 type File interface {
 	ReadAsset(context.Context, string) (io.ReadCloser, error)
+	ReadActions(context.Context, string) (io.ReadCloser, error)
 	UploadAsset(context.Context, *file.File) (*url.URL, int64, error)
 	DeleteAsset(context.Context, *url.URL) error
 	ReadWorkflow(context.Context, string) (io.ReadCloser, error)
@@ -69,6 +70,14 @@ type File interface {
 	CheckJobWorkerLogExists(context.Context, string) (bool, error)
 	GetJobUserFacingLogURL(string) string
 	CheckJobUserFacingLogExists(context.Context, string) (bool, error)
+	// GetJobPreviewSchemaURL returns the GCS URL where the preview-schema probe
+	// writes its SchemaReport JSON for jobID.
+	GetJobPreviewSchemaURL(string) string
+	// GetJobPreviewSchemaUploadURI returns the gs://-style write URI the worker
+	// writes the SchemaReport to (distinct from the https read URL above).
+	GetJobPreviewSchemaUploadURI(string) string
+	// CheckJobPreviewSchemaExists reports whether the SchemaReport for jobID exists.
+	CheckJobPreviewSchemaExists(context.Context, string) (bool, error)
 	GetIntermediateDataURL(context.Context, string, string) string
 	CheckIntermediateDataExists(context.Context, string, string) (bool, error)
 	IssueUploadAssetLink(context.Context, IssueUploadAssetParam) (*UploadAssetLink, error)

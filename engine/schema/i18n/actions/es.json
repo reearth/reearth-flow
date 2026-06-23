@@ -1302,22 +1302,6 @@
       }
     },
     {
-      "name": "FlowExprTest",
-      "description": "Banco de pruebas experimental para el motor de expresiones Flow",
-      "parameterI18n": {
-        "": {
-          "title": "Parámetros de FlowExprTest"
-        },
-        "mappings": {}
-      },
-      "definitionI18n": {
-        "Mapping": {
-          "attribute": {},
-          "value": {}
-        }
-      }
-    },
-    {
       "name": "FootprintReplacer",
       "description": "Proyecta la geometría 3D al plano XY y calcula el polígono base unificado (compatible con sólidos, superficies y CityGML)"
     },
@@ -2973,22 +2957,6 @@
       "description": "Refina la geometría"
     },
     {
-      "name": "RhaiCaller",
-      "description": "Llama a un script Rhai",
-      "parameterI18n": {
-        "": {
-          "title": "RhaiCaller Parameters",
-          "description": "Configuration for executing Rhai scripts on features with conditional processing."
-        },
-        "isTarget": {
-          "description": "Rhai script expression to determine if the feature should be processed (returns boolean)"
-        },
-        "process": {
-          "description": "Rhai script expression to process and transform the feature when target condition is met"
-        }
-      }
-    },
-    {
       "name": "Rotator3D",
       "description": "Rota un polígono 3D usando vectores de origen/destino o especificación de eje-ángulo",
       "parameterI18n": {
@@ -3012,7 +2980,7 @@
         },
         "allowEmptyPath": {
           "title": "Allow Null Path",
-          "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
+          "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
         },
         "dataset": {
           "title": "File Path",

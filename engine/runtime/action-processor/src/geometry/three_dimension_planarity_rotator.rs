@@ -63,6 +63,7 @@ impl ProcessorFactory for ThreeDimensionPlanarityRotatorFactory {
 pub struct ThreeDimensionPlanarityRotator;
 
 impl Processor for ThreeDimensionPlanarityRotator {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,

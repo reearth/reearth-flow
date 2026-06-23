@@ -1,5 +1,6 @@
 import { IChangeEvent } from "@rjsf/core";
 import {
+  createSchemaUtils,
   GenericObjectType,
   RJSFSchema,
   RJSFValidationError,
@@ -183,8 +184,13 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   useEffect(() => {
     if (patchedSchema && defaultFormData) {
       try {
-        const validationResult = validator.validateFormData(
+        const schemaUtils = createSchemaUtils(validator, patchedSchema);
+        const formDataWithDefaults = schemaUtils.getDefaultFormState(
+          patchedSchema,
           defaultFormData,
+        );
+        const validationResult = validator.validateFormData(
+          formDataWithDefaults,
           patchedSchema,
         );
         const isValid =

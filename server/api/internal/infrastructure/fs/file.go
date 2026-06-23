@@ -157,6 +157,10 @@ func (f *fileRepo) ReadAsset(ctx context.Context, filename string) (io.ReadClose
 	return f.read(ctx, filepath.Join(assetDir, sanitize.Path(filename)))
 }
 
+func (f *fileRepo) ReadActions(ctx context.Context, filename string) (io.ReadCloser, error) {
+	return f.read(ctx, filepath.Join(actionsDir, sanitize.Path(filename)))
+}
+
 func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, int64, error) {
 	filename := sanitize.Path(newAssetID() + filepath.Ext(file.Path))
 	size, err := f.upload(ctx, filepath.Join(assetDir, filename), file.Content)
@@ -217,6 +221,24 @@ func (f *fileRepo) GetJobUserFacingLogURL(jobID string) string {
 func (f *fileRepo) CheckJobUserFacingLogExists(ctx context.Context, jobID string) (bool, error) {
 	logPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s-user-facing.log", jobID))
 	exists, err := afero.Exists(f.fs, logPath)
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return exists, nil
+}
+
+func (f *fileRepo) GetJobPreviewSchemaURL(jobID string) string {
+	return fmt.Sprintf("file://%s/job-%s-schema-report.json", metadataDir, jobID)
+}
+
+func (f *fileRepo) GetJobPreviewSchemaUploadURI(jobID string) string {
+	// Local dev: the worker writes and the server reads the same file:// path.
+	return f.GetJobPreviewSchemaURL(jobID)
+}
+
+func (f *fileRepo) CheckJobPreviewSchemaExists(ctx context.Context, jobID string) (bool, error) {
+	schemaPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s-schema-report.json", jobID))
+	exists, err := afero.Exists(f.fs, schemaPath)
 	if err != nil {
 		return false, rerror.ErrInternalByWithContext(ctx, err)
 	}

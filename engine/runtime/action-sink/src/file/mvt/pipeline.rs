@@ -23,6 +23,7 @@ use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
+#[cfg(not(feature = "new-geometry"))]
 use super::slice::slice_cityobj_geoms;
 use super::tags::convert_properties;
 use super::tileid::TileIdMethod;
@@ -41,6 +42,7 @@ pub(super) struct SortKey {
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(feature = "new-geometry"))]
 pub(super) fn geometry_slicing_stage(
     _ctx: Context,
     upstream: &[(Feature, String)],
@@ -54,7 +56,6 @@ pub(super) fn geometry_slicing_stage(
 ) -> crate::errors::Result<()> {
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let layer_names = Arc::new(Mutex::new(std::collections::HashSet::new()));
-
     // Convert CityObjects to sliced features
     upstream
         .iter()

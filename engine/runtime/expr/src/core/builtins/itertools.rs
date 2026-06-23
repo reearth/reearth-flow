@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::core::error::{eval_error, Error, Result};
-use crate::core::eval::{call_value, coerce_numeric, Numeric};
+use crate::core::eval::{call_value, coerce_numeric, value_add, Numeric};
 use crate::core::value::{Module, NativeFn, Value};
 use crate::expect_arity;
 
@@ -81,6 +81,40 @@ fn sorted(args: &[Value]) -> Result<Value> {
     }
 }
 
+fn filter(args: &[Value]) -> Result<Value> {
+    expect_arity("itertools.filter", args, 2, 2)?;
+    let items = match &args[0] {
+        Value::Array(rc) => rc.borrow().clone(),
+        other => {
+            return Err(eval_error(format!(
+                "itertools.filter() first argument must be a list, got {}",
+                other.type_name()
+            )))
+        }
+    };
+    let f = args[1].clone();
+    let result = items
+        .into_iter()
+        .filter_map(|item| match call_value(f.clone(), vec![item.clone()]) {
+            Ok(v) if v.is_truthy() => Some(Ok(item)),
+            Ok(_) => None,
+            Err(e) => Some(Err(e)),
+        })
+        .collect::<Result<Vec<_>>>()?;
+    Ok(Value::array(result))
+}
+
+fn count(args: &[Value]) -> Result<Value> {
+    expect_arity("itertools.count", args, 1, 1)?;
+    match &args[0] {
+        Value::Array(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
+        other => Err(eval_error(format!(
+            "itertools.count() argument must be a list, got {}",
+            other.type_name()
+        ))),
+    }
+}
+
 fn map(args: &[Value]) -> Result<Value> {
     expect_arity("itertools.map", args, 2, 2)?;
     let items = match &args[0] {
@@ -100,10 +134,32 @@ fn map(args: &[Value]) -> Result<Value> {
     Ok(Value::array(result))
 }
 
+fn sum(args: &[Value]) -> Result<Value> {
+    expect_arity("itertools.sum", args, 1, 1)?;
+    let items = match &args[0] {
+        Value::Array(rc) => rc.borrow().clone(),
+        other => {
+            return Err(eval_error(format!(
+                "itertools.sum() argument must be a list, got {}",
+                other.type_name()
+            )))
+        }
+    };
+    let mut iter = items.into_iter();
+    let init = match iter.next() {
+        Some(v) => v,
+        None => return Ok(Value::Int(0)),
+    };
+    iter.try_fold(init, value_add)
+}
+
 pub fn builtin_itertools() -> Value {
     let mut m = Module::new();
     m.insert("sorted".into(), Value::Fn(NativeFn::new(sorted)));
+    m.insert("filter".into(), Value::Fn(NativeFn::new(filter)));
     m.insert("map".into(), Value::Fn(NativeFn::new(map)));
+    m.insert("sum".into(), Value::Fn(NativeFn::new(sum)));
+    m.insert("count".into(), Value::Fn(NativeFn::new(count)));
     Value::module(m)
 }
 
@@ -143,6 +199,33 @@ mod tests {
     }
 
     #[test]
+    fn test_filter() {
+        assert_eval(
+            "itertools.filter([1, 2, 3, 4], fn(x) { x > 2 })",
+            &[],
+            Value::from(vec![3i64, 4i64]),
+        );
+        assert_eval(
+            "itertools.filter([0, 1, null, 2], fn(x) { x })",
+            &[],
+            Value::from(vec![1i64, 2i64]),
+        );
+        assert_eval(
+            "itertools.filter([], fn(x) { x })",
+            &[],
+            Value::from(vec![] as Vec<i64>),
+        );
+        assert!(try_run("itertools.filter(42, fn(x) { x })", &[]).is_err());
+    }
+
+    #[test]
+    fn test_count() {
+        assert_eval("itertools.count([1, 2, 3])", &[], Value::from(3i64));
+        assert_eval("itertools.count([])", &[], Value::from(0i64));
+        assert!(try_run("itertools.count(42)", &[]).is_err());
+    }
+
+    #[test]
     fn test_map() {
         assert_eval(
             "itertools.map([1, 2, 3], fn(x) { x * 2 })",
@@ -159,5 +242,14 @@ mod tests {
             &[],
             Value::from(vec![] as Vec<i64>),
         );
+    }
+
+    #[test]
+    fn test_sum() {
+        assert_eval("itertools.sum([1, 2, 3])", &[], Value::from(6i64));
+        assert_eval("itertools.sum([1, 2.5])", &[], Value::from(3.5f64));
+        assert_eval(r#"itertools.sum(["a", "b", "c"])"#, &[], Value::from("abc"));
+        assert_eval("itertools.sum([])", &[], Value::from(0i64));
+        assert!(try_run("itertools.sum([1, \"a\"])", &[]).is_err());
     }
 }

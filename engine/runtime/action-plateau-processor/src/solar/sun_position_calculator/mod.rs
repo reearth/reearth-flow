@@ -1,6 +1,6 @@
 mod calculator;
 
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap};
 
 use chrono::{DateTime, Duration, Utc};
 use proj::Proj;
@@ -12,8 +12,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{AttributeValue, Expr, Feature, GeometryValue};
-use rhai::AST;
+use reearth_flow_types::{AttributeValue, Code, CodeType, CompiledCode, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -69,7 +68,7 @@ impl ProcessorFactory for SolarPositionCalculatorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -87,31 +86,26 @@ impl ProcessorFactory for SolarPositionCalculatorFactory {
             );
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-
         // Compile source_epsg expression (required)
-        let source_epsg_ast = expr_engine
-            .compile(params.source_epsg().as_ref())
-            .map_err(|e| {
-                SolarPositionError::Factory(format!(
-                    "Failed to compile source_epsg expression: {e}"
-                ))
-            })?;
+        let source_epsg_ast = params.source_epsg().compile().map_err(|e| {
+            SolarPositionError::Factory(format!("Failed to compile source_epsg expression: {e}"))
+        })?;
 
         // Compile standard_meridian expression (optional)
-        let standard_meridian_ast = if let Some(ref expr) = params.standard_meridian() {
-            Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
-                SolarPositionError::Factory(format!(
-                    "Failed to compile standard_meridian expression: {e}"
-                ))
-            })?)
-        } else {
-            None
-        };
+        let standard_meridian_ast = params
+            .standard_meridian()
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    SolarPositionError::Factory(format!(
+                        "Failed to compile standard_meridian expression: {e}"
+                    ))
+                })
+            })
+            .transpose()?;
 
         let compiled_params = match &params {
             SolarPositionCalculatorParam::Time { time, .. } => {
-                let time_ast = expr_engine.compile(time.as_ref()).map_err(|e| {
+                let time_ast = time.compile().map_err(|e| {
                     SolarPositionError::Factory(format!("Failed to compile time expression: {e}"))
                 })?;
                 CompiledParams::Time { time_ast }
@@ -123,13 +117,13 @@ impl ProcessorFactory for SolarPositionCalculatorFactory {
                 step_unit,
                 ..
             } => {
-                let start_ast = expr_engine.compile(start.as_ref()).map_err(|e| {
+                let start_ast = start.compile().map_err(|e| {
                     SolarPositionError::Factory(format!("Failed to compile start expression: {e}"))
                 })?;
-                let end_ast = expr_engine.compile(end.as_ref()).map_err(|e| {
+                let end_ast = end.compile().map_err(|e| {
                     SolarPositionError::Factory(format!("Failed to compile end expression: {e}"))
                 })?;
-                let step_ast = expr_engine.compile(step.as_ref()).map_err(|e| {
+                let step_ast = step.compile().map_err(|e| {
                     SolarPositionError::Factory(format!("Failed to compile step expression: {e}"))
                 })?;
                 CompiledParams::Duration {
@@ -142,7 +136,6 @@ impl ProcessorFactory for SolarPositionCalculatorFactory {
         };
 
         Ok(Box::new(SolarPositionCalculator {
-            global_params: with,
             compiled_params,
             source_epsg_ast,
             standard_meridian_ast,
@@ -160,12 +153,12 @@ pub enum SolarPositionCalculatorParam {
         /// Time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z") or
         /// date-only format (e.g., "2025-01-11" or "2025-01-11+09:00"). When hours, minutes,
         /// and seconds are omitted they default to zero.
-        time: Expr,
+        time: Code,
         /// Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).
-        source_epsg: Expr,
+        source_epsg: Code<{ CodeType::FlowExpr as u32 }>,
         /// Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.
         #[serde(default)]
-        standard_meridian: Option<Expr>,
+        standard_meridian: Option<Code<{ CodeType::FlowExpr as u32 }>>,
         /// Output type: unit normal vector or altitude/azimuth angles
         #[serde(default)]
         output_type: OutputType,
@@ -178,20 +171,20 @@ pub enum SolarPositionCalculatorParam {
         /// Start time expression evaluating to RFC 3339 format (e.g., "2025-01-11T00:00:00Z") or
         /// date-only format (e.g., "2025-01-11" or "2025-01-11+09:00"). When hours, minutes,
         /// and seconds are omitted they default to zero.
-        start: Expr,
+        start: Code,
         /// End time expression evaluating to RFC 3339 format (e.g., "2025-01-12T00:00:00Z") or
         /// date-only format (e.g., "2025-01-12" or "2025-01-12+09:00"). When hours, minutes,
         /// and seconds are omitted they default to zero.
-        end: Expr,
+        end: Code,
         /// Step value expression evaluating to an integer
-        step: Expr,
+        step: Code<{ CodeType::FlowExpr as u32 }>,
         /// Unit for the step value
         step_unit: StepUnit,
         /// Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).
-        source_epsg: Expr,
+        source_epsg: Code<{ CodeType::FlowExpr as u32 }>,
         /// Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.
         #[serde(default)]
-        standard_meridian: Option<Expr>,
+        standard_meridian: Option<Code<{ CodeType::FlowExpr as u32 }>>,
         /// Output type: unit normal vector or altitude/azimuth angles
         #[serde(default)]
         output_type: OutputType,
@@ -202,14 +195,14 @@ pub enum SolarPositionCalculatorParam {
 }
 
 impl SolarPositionCalculatorParam {
-    fn source_epsg(&self) -> &Expr {
+    fn source_epsg(&self) -> &Code<{ CodeType::FlowExpr as u32 }> {
         match self {
             SolarPositionCalculatorParam::Time { source_epsg, .. } => source_epsg,
             SolarPositionCalculatorParam::Duration { source_epsg, .. } => source_epsg,
         }
     }
 
-    fn standard_meridian(&self) -> Option<&Expr> {
+    fn standard_meridian(&self) -> Option<&Code<{ CodeType::FlowExpr as u32 }>> {
         match self {
             SolarPositionCalculatorParam::Time {
                 standard_meridian, ..
@@ -277,27 +270,27 @@ impl StepUnit {
 #[derive(Debug, Clone)]
 enum CompiledParams {
     Time {
-        time_ast: AST,
+        time_ast: CompiledCode,
     },
     Duration {
-        start_ast: AST,
-        end_ast: AST,
-        step_ast: AST,
+        start_ast: CompiledCode,
+        end_ast: CompiledCode,
+        step_ast: CompiledCode,
         step_unit: StepUnit,
     },
 }
 
 #[derive(Debug, Clone)]
 pub struct SolarPositionCalculator {
-    global_params: Option<HashMap<String, Value>>,
     compiled_params: CompiledParams,
-    source_epsg_ast: AST,
-    standard_meridian_ast: Option<AST>,
+    source_epsg_ast: CompiledCode,
+    standard_meridian_ast: Option<CompiledCode>,
     output_type: OutputType,
     output_below_horizon: bool,
 }
 
 impl Processor for SolarPositionCalculator {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -415,6 +408,7 @@ impl Processor for SolarPositionCalculator {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -501,6 +495,7 @@ impl SolarPositionCalculator {
     }
 
     /// Extract 3D centroid from feature geometry (in source CRS coordinates).
+    #[cfg(not(feature = "new-geometry"))]
     fn extract_centroid_3d(feature: &Feature) -> Result<Centroid3D, SolarPositionError> {
         let geometry = &feature.geometry;
 
@@ -601,108 +596,71 @@ impl SolarPositionCalculator {
         &self,
         feature: &Feature,
         ctx: &ExecutorContext,
-        ast: &AST,
+        ast: &CompiledCode,
     ) -> Result<String, BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let result = scope.eval_ast::<rhai::Dynamic>(ast).map_err(|e| {
-            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}"))
-        })?;
-
-        if let Some(s) = result.clone().try_cast::<String>() {
-            Ok(s)
-        } else {
-            Err(
-                SolarPositionError::Process("Expression did not evaluate to a string".to_string())
-                    .into(),
-            )
-        }
+        ast.eval_string(feature, ctx.env_vars.clone()).map_err(|e| {
+            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
+        })
     }
 
     fn evaluate_int_expr(
         &self,
         feature: &Feature,
         ctx: &ExecutorContext,
-        ast: &AST,
+        ast: &CompiledCode,
     ) -> Result<i64, BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let result = scope.eval_ast::<rhai::Dynamic>(ast).map_err(|e| {
-            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}"))
-        })?;
-
-        if let Some(i) = result.clone().try_cast::<i64>() {
-            Ok(i)
-        } else if let Some(f) = result.clone().try_cast::<f64>() {
-            Ok(f as i64)
-        } else {
-            Err(SolarPositionError::Process(
-                "Expression did not evaluate to an integer".to_string(),
-            )
-            .into())
-        }
+        ast.eval_int(feature, ctx.env_vars.clone()).map_err(|e| {
+            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
+        })
     }
 
     fn evaluate_float_expr(
         &self,
         feature: &Feature,
         ctx: &ExecutorContext,
-        ast: &AST,
+        ast: &CompiledCode,
     ) -> Result<f64, BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let result = scope.eval_ast::<rhai::Dynamic>(ast).map_err(|e| {
-            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}"))
-        })?;
-
-        if let Some(f) = result.clone().try_cast::<f64>() {
-            Ok(f)
-        } else if let Some(i) = result.clone().try_cast::<i64>() {
-            Ok(i as f64)
-        } else {
-            Err(
-                SolarPositionError::Process("Expression did not evaluate to a float".to_string())
-                    .into(),
-            )
-        }
+        ast.eval_float(feature, ctx.env_vars.clone()).map_err(|e| {
+            SolarPositionError::Process(format!("Failed to evaluate expression: {e:?}")).into()
+        })
     }
 
     fn evaluate_epsg_expr(
         &self,
         feature: &Feature,
         ctx: &ExecutorContext,
-        ast: &AST,
+        ast: &CompiledCode,
     ) -> Result<u32, BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let result = scope.eval_ast::<rhai::Dynamic>(ast).map_err(|e| {
+        let result = ast.eval(feature, ctx.env_vars.clone()).map_err(|e| {
             SolarPositionError::Process(format!("Failed to evaluate source_epsg expression: {e:?}"))
         })?;
-
-        // Accept integer or string (e.g., "6677" or 6677)
-        if let Some(i) = result.clone().try_cast::<i64>() {
-            if i <= 0 {
-                return Err(SolarPositionError::Process(
-                    "EPSG code must be a positive integer".to_string(),
-                )
-                .into());
+        match result {
+            AttributeValue::Number(n) => {
+                let i = n.as_i64().ok_or_else(|| {
+                    SolarPositionError::Process("EPSG code must be a positive integer".to_string())
+                })?;
+                if i <= 0 {
+                    return Err(SolarPositionError::Process(
+                        "EPSG code must be a positive integer".to_string(),
+                    )
+                    .into());
+                }
+                Ok(i as u32)
             }
-            Ok(i as u32)
-        } else if let Some(s) = result.clone().try_cast::<String>() {
-            // Parse string, handling optional "EPSG:" prefix
-            let epsg_str = s.trim().strip_prefix("EPSG:").unwrap_or(s.trim());
-            epsg_str.parse::<u32>().map_err(|_| {
-                SolarPositionError::Process(format!(
-                    "Invalid EPSG code '{}': must be a positive integer",
-                    s
-                ))
-                .into()
-            })
-        } else {
-            Err(SolarPositionError::Process(
+            AttributeValue::String(s) => {
+                let epsg_str = s.trim().strip_prefix("EPSG:").unwrap_or(s.trim());
+                epsg_str.parse::<u32>().map_err(|_| {
+                    SolarPositionError::Process(format!(
+                        "Invalid EPSG code '{}': must be a positive integer",
+                        s
+                    ))
+                    .into()
+                })
+            }
+            _ => Err(SolarPositionError::Process(
                 "source_epsg expression must evaluate to an integer or string".to_string(),
             )
-            .into())
+            .into()),
         }
     }
 

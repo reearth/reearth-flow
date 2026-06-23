@@ -59,7 +59,9 @@ nodes:
       groupBy: []
       calculations:
         - newAttribute: totalBuildingCount
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 00000005-0000-0000-0000-000000000031
     name: AddBroadcastKey
@@ -145,8 +147,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
 
   - id: 00000007-0000-0000-0000-000000000004
     name: RestrictZone1SpatialFilter
@@ -205,8 +208,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
 
   - id: 00000007-0000-0000-0000-000000000014
     name: RestrictZone2SpatialFilter
@@ -265,8 +269,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
 
   - id: 00000007-0000-0000-0000-000000000024
     name: RestrictZone3SpatialFilter
@@ -325,8 +330,9 @@ nodes:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
 
   - id: 00000007-0000-0000-0000-000000000033
     name: SnowSpatialFilter
@@ -636,18 +642,25 @@ nodes:
         - gmlId
       calculations:
         - newAttribute: totalSolarRadiation
-          expr: |
-            env.get("__value")["radiationPerMonth"]
+          expr:
+            type: flowExpr
+            value: attributes["radiationPerMonth"]
         - newAttribute: totalSolarPower
-          expr: |
-            let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-            dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+          expr:
+            type: flowExpr
+            value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
         - newAttribute: dirMatchSum1
-          expr: env.get("__value")["dirMatch1"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("dirMatch1", 0)
         - newAttribute: dirMatchSum2
-          expr: env.get("__value")["dirMatch2"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("dirMatch2", 0)
         - newAttribute: dirMatchSum3
-          expr: env.get("__value")["dirMatch3"] ?? 0
+          expr:
+            type: flowExpr
+            value: attributes.get("dirMatch3", 0)
 
   # Compute land area judgment criteria (1_2 and 1_3 always "-" for land)
   - id: 00000006-0000-0000-0000-000000000003

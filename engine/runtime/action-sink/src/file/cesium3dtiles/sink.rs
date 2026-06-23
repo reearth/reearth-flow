@@ -168,6 +168,7 @@ impl Sink for Cesium3DTilesWriter {
         "Cesium3DTilesWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         match &ctx.port {
             port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
@@ -181,6 +182,7 @@ impl Sink for Cesium3DTilesWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context())?;
         Ok(())
@@ -188,6 +190,7 @@ impl Sink for Cesium3DTilesWriter {
 }
 
 impl Cesium3DTilesWriter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
@@ -209,7 +212,7 @@ impl Cesium3DTilesWriter {
             .as_ref()
             .and_then(|key| ctx.feature.get(key).and_then(|v| v.as_string()));
 
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         let output = self
             .params
             .output
@@ -282,6 +285,7 @@ impl Cesium3DTilesWriter {
         self.schema.types.insert(schema_type, typedef);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
         let mut features =
             HashMap::<(String, Option<String>), Vec<(Option<String>, Vec<Feature>)>>::new();
@@ -298,6 +302,7 @@ impl Cesium3DTilesWriter {
     }
 
     #[allow(clippy::type_complexity)]
+    #[cfg(not(feature = "new-geometry"))]
     pub(crate) fn write(
         &self,
         ctx: Context,

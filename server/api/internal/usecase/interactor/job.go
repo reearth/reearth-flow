@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/notification"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -94,12 +95,19 @@ func (i *Job) cleanupJobLock(jobID string) {
 	delete(i.jobLocks, jobID)
 }
 
-func (i *Job) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
+func (i *Job) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action, workspaceID...)
 }
 
 func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	target, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, target.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -181,6 +189,30 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 	}()
 }
 
+// PreviewSchemaCloudRunWorker executes a preview-schema probe on the Cloud Run
+// worker via its dedicated probe-schema route. Mirrors RunCloudRunWorker: the
+// worker publishes its result and the standard monitoring loop finalizes the
+// job; only an infra failure is finalized here.
+func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam) {
+	go func() {
+		ctx := context.Background()
+		defer func() {
+			if r := recover(); r != nil {
+				log.Errorfc(ctx, "job: preview-schema cloud run worker %s panicked: %v", j.ID(), r)
+			}
+		}()
+
+		status, err := i.cloudRunWorker.PreviewSchema(ctx, p)
+		if err != nil {
+			log.Errorfc(ctx, "job: preview-schema cloud run worker %s run error: %v", j.ID(), err)
+		}
+
+		if err != nil || status == gateway.JobStatusFailed {
+			i.failCloudRunJob(ctx, j.ID())
+		}
+	}()
+}
+
 // failCloudRunJob marks a debug job failed when the worker call fails. A
 // client-side error may still yield a result, so it waits a grace period and
 // bails if the loop already finalized or a worker event arrived; it sets the
@@ -222,19 +254,38 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := i.jobRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if j == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return nil, err
 	}
 
-	return i.jobRepo.FindByID(ctx, id)
+	return j, nil
 }
 
 func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.jobRepo.FindByIDs(ctx, ids)
+	if len(jobs) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+	} else {
+		// single-workspace batch assumption
+		if err := i.checkPermission(ctx, rbac.ActionAny, jobs[0].Workspace()); err != nil {
+			return nil, err
+		}
+	}
+
+	return jobs, nil
 }
 
 func (i *Job) FindByWorkspace(
@@ -243,7 +294,7 @@ func (i *Job) FindByWorkspace(
 	p *interfaces.PaginationParam,
 	keyword *string,
 ) ([]*job.Job, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
 		return nil, nil, err
 	}
 
@@ -251,12 +302,14 @@ func (i *Job) FindByWorkspace(
 }
 
 func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return "", err
-	}
-
 	j, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
+		return "", err
+	}
+	if j == nil {
+		return "", rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return "", err
 	}
 	return j.Status(), nil
@@ -503,6 +556,14 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 		j.SetUserFacingLogsURL(userFacingLogURL)
 	}
 
+	// A preview-schema job's only output is its SchemaReport; surface it via
+	// outputURLs (no dedicated Job field).
+	if j.Mode() == job.ModePreviewSchema {
+		if schemaURL := i.file.GetJobPreviewSchemaURL(jobID); schemaURL != "" {
+			j.SetOutputURLs([]string{schemaURL})
+		}
+	}
+
 	return nil
 }
 
@@ -577,7 +638,14 @@ func (i *Job) sendCompletionNotification(
 }
 
 func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if j == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return nil, err
 	}
 

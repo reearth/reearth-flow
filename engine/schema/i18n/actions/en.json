@@ -1289,21 +1289,6 @@
       }
     },
     {
-      "name": "FlowExprTest",
-      "parameterI18n": {
-        "": {
-          "title": "FlowExprTestParam"
-        },
-        "mappings": {}
-      },
-      "definitionI18n": {
-        "Mapping": {
-          "attribute": {},
-          "value": {}
-        }
-      }
-    },
-    {
       "name": "FootprintReplacer"
     },
     {
@@ -2926,22 +2911,6 @@
       "description": "Geometry Refiner"
     },
     {
-      "name": "RhaiCaller",
-      "description": "Calls Rhai script",
-      "parameterI18n": {
-        "": {
-          "title": "RhaiCaller Parameters",
-          "description": "Configuration for executing Rhai scripts on features with conditional processing."
-        },
-        "isTarget": {
-          "description": "Rhai script expression to determine if the feature should be processed (returns boolean)"
-        },
-        "process": {
-          "description": "Rhai script expression to process and transform the feature when target condition is met"
-        }
-      }
-    },
-    {
       "name": "Rotator3D",
       "parameterI18n": {
         "": {
@@ -2963,7 +2932,7 @@
         },
         "allowEmptyPath": {
           "title": "Allow Null Path",
-          "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
+          "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
         },
         "dataset": {
           "title": "File Path",

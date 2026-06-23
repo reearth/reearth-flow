@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -49,20 +50,31 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 	}
 }
 
-func (i *Trigger) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action)
+func (i *Trigger) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action, workspaceID...)
 }
 
 func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	triggers, err := i.triggerRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.triggerRepo.FindByIDs(ctx, ids)
+	if len(triggers) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := i.checkPermission(ctx, rbac.ActionAny, triggers[0].Workspace()); err != nil { // single-workspace batch assumption
+			return nil, err
+		}
+	}
+
+	return triggers, nil
 }
 
 func (i *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionAny, id); err != nil {
 		return nil, nil, err
 	}
 
@@ -70,15 +82,22 @@ func (i *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 }
 
 func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	t, err := i.triggerRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, t.Workspace()); err != nil {
 		return nil, err
 	}
 
-	return i.triggerRepo.FindByID(ctx, id)
+	return t, nil
 }
 
 func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate, param.WorkspaceID); err != nil {
 		return nil, err
 	}
 
@@ -167,7 +186,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 			return nil, fmt.Errorf("invalid auth token")
 		}
 	} else {
-		if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
 			return nil, err
 		}
 	}
@@ -263,7 +282,14 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 }
 
 func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.ExecuteTimeDrivenTriggerParam) (_ *job.Job, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+	trg, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
+	if err != nil {
+		return nil, err
+	}
+	if trg == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionCreate, trg.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -376,7 +402,14 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 }
 
 func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+	trg, err := i.triggerRepo.FindByID(ctx, param.ID)
+	if err != nil {
+		return nil, err
+	}
+	if trg == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionEdit, trg.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -453,7 +486,14 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 }
 
 func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
+	trg, err := i.triggerRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if trg == nil {
+		return rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionDelete, trg.Workspace()); err != nil {
 		return err
 	}
 

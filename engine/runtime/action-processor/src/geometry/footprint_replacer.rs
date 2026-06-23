@@ -70,6 +70,7 @@ impl ProcessorFactory for FootprintReplacerFactory {
 pub struct FootprintReplacer;
 
 impl Processor for FootprintReplacer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -106,6 +107,7 @@ impl Processor for FootprintReplacer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&mut self, _: NodeContext, _: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
@@ -154,6 +156,7 @@ fn extract_polygons_from_geometry3d(geom: &Geometry3D<f64>) -> Vec<Polygon3D<f64
 }
 
 /// Create footprint from FlowGeometry3D
+#[cfg(not(feature = "new-geometry"))]
 fn create_footprint_from_geometry3d(feature: &Feature, geom: &Geometry3D<f64>) -> Option<Feature> {
     let polygons = extract_polygons_from_geometry3d(geom);
 
@@ -165,6 +168,7 @@ fn create_footprint_from_geometry3d(feature: &Feature, geom: &Geometry3D<f64>) -
 }
 
 /// Create footprint from CityGML geometry
+#[cfg(not(feature = "new-geometry"))]
 fn create_footprint_from_citygml(feature: &Feature, citygml: &CityGmlGeometry) -> Option<Feature> {
     // Collect all polygons from all GML geometries
     let polygons: Vec<Polygon3D<f64>> = citygml
@@ -209,6 +213,7 @@ fn project_polygon_to_2d(polygon: &Polygon3D<f64>) -> Polygon2D<f64> {
 const MIN_PROJECTED_AREA: f64 = 1e-6;
 
 /// Create footprint from a collection of 3D polygons
+#[cfg(not(feature = "new-geometry"))]
 fn create_footprint_from_polygons(
     feature: &Feature,
     polygons: &[Polygon3D<f64>],

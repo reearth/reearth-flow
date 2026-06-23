@@ -47,7 +47,7 @@ impl SourceFactory for CityGmlReaderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -71,7 +71,7 @@ impl SourceFactory for CityGmlReaderFactory {
             .into());
         };
         let compiled_params = CityGmlReaderCompiledParam {
-            common: params.common_property.compile().map_err(|e| {
+            common: params.common_property.compile(&ctx).map_err(|e| {
                 SourceError::CityGmlReaderFactory(format!("Failed to compile params: {e:?}"))
             })?,
             property: params.property,
@@ -117,14 +117,15 @@ impl Source for CityGmlReader {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let input_path = get_input_path(&ctx, &self.params.common)?;
-        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
+        let input_path = get_input_path(&self.params.common)?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
         citygml::read_citygml(&content, input_path, &self.params.property, sender)
             .await
             .map_err(Into::<BoxedError>::into)

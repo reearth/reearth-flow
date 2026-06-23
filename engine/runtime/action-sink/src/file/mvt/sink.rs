@@ -183,6 +183,7 @@ impl Sink for MVTWriter {
         "MVTWriter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         if ctx.port == *SCHEMA_PORT {
             let Some(ref schema_key) = self.params.schema_key else {
@@ -209,7 +210,7 @@ impl Sink for MVTWriter {
         match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_)
             | geometry_types::GeometryValue::FlowGeometry2D(_) => {
-                let env_vars = ctx.expr_engine.vars();
+                let env_vars = ctx.env_vars.clone();
                 let eval = |c: &CompiledCode| {
                     c.eval_string(feature, Arc::clone(&env_vars))
                         .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))
@@ -243,6 +244,7 @@ impl Sink for MVTWriter {
 
         Ok(())
     }
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let result = self.flush_buffer(ctx.as_context())?;
         let mut join_handles = self.join_handles.clone();
@@ -276,6 +278,7 @@ impl Sink for MVTWriter {
 
 impl MVTWriter {
     #[allow(clippy::type_complexity)]
+    #[cfg(not(feature = "new-geometry"))]
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
         let mut result = Vec::new();
         let mut features = HashMap::<(String, Option<String>), BufferValue>::new();
@@ -315,6 +318,7 @@ impl MVTWriter {
         Ok(result)
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     pub fn write(
         &self,
         ctx: Context,

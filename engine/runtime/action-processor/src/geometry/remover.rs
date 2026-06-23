@@ -54,6 +54,7 @@ impl ProcessorFactory for GeometryRemoverFactory {
 pub struct GeometryRemover;
 
 impl Processor for GeometryRemover {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -65,6 +66,7 @@ impl Processor for GeometryRemover {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

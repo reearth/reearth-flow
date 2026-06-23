@@ -154,8 +154,9 @@ graphs:
     type: action
     action: PLATEAU4.DomainOfDefinitionValidator
     with:
-      codelistsPath: |
-        env.get("__value").dirCodelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["dirCodelists"]
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag
     type: action
@@ -333,8 +334,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
@@ -373,8 +375,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
@@ -478,19 +481,23 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").index.to_string()
-      supplierAttributeValue: |
-        env.get("__value").index.to_string()
+      requestorAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
+      supplierAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
   - id: d71b0796-97a2-4e65-92df-635fc3b0a92f
     name: FeatureMerger02
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").index.to_string()
-      supplierAttributeValue: |
-        env.get("__value").index.to_string()
+      requestorAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
+      supplierAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
   - id: f19638b9-679a-4dd9-9a39-3cf2a82c6ff5
     name: AttributeMapper
     type: action
@@ -602,42 +609,54 @@ graphs:
     with:
       calculations:
       - newAttribute: L01エラー
-        expr: |
-          env.get("__value")["L01エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L01エラー", 0)
       - newAttribute: L02エラー
-        expr: |
-          env.get("__value")["L02エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L02エラー", 0)
       - newAttribute: L04エラー
-        expr: |
-          env.get("__value")["L04エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L04エラー", 0)
       - newAttribute: 不正なcodeSpace数
-        expr: |
-          env.get("__value")["不正なcodeSpace数"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("不正なcodeSpace数", 0)
       - newAttribute: L05CRS識別子
-        expr: |
-          if env.get("__value")["L05CRS識別子"] == "Wrong" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes.get("L05CRS識別子") == "Wrong" {
+              1
+            } else {
+              0
+            }
       - newAttribute: L06エラー
-        expr: |
-          env.get("__value")["L06エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L06エラー", 0)
       - newAttribute: T03エラー
-        expr: |
-          env.get("__value")["T03エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("T03エラー", 0)
       - newAttribute: xlink参照先なし
-        expr: |
-          env.get("__value")["xlink参照先なし"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("xlink参照先なし", 0)
       - newAttribute: gml:id重複
-        expr: |
-          env.get("__value")["gml:id重複"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("gml:id重複", 0)
       - newAttribute: gml:id書式不正
-        expr: |
-          env.get("__value")["gml:id書式不正"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("gml:id書式不正", 0)
       - newAttribute: L-frn-01エラー
-        expr: |
-          env.get("__value")["L-frn-01エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L-frn-01エラー", 0)
   - id: 50de9474-378b-4878-b85d-516cf8a55547
     name: FeatureWriterJson
     type: action
@@ -935,10 +954,12 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").name
-      supplierAttributeValue: |
-        env.get("__value").filename
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["filename"]
   - id: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
     name: AttributeManagerTotalErrorCount
     type: action
@@ -1272,8 +1293,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
@@ -1291,8 +1313,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: e86300b4-59a7-4714-ad89-3aa18ef201d8
@@ -1301,10 +1324,12 @@ graphs:
     action: XMLFragmenter
     with:
       source: url
-      elementsToMatch: |
-        env.get("__value").featureTypes[env.get("__value")["package"]]
-      elementsToExclude: |
-        []
+      elementsToMatch:
+        type: flowExpr
+        value: attributes["featureTypes"][attributes["package"]]
+      elementsToExclude:
+        type: flowExpr
+        value: '[]'
       attribute: path
   - id: 5490fef1-320b-4789-9f5b-5401a9b99e41
     name: FeatureCounter
@@ -1501,7 +1526,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C05エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: StatisticsCalculatorC07PerFile
     type: action
@@ -1511,7 +1538,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C07エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     name: StatisticsCalculatorC08PerFile
     type: action
@@ -1521,7 +1550,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C08エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: OutputRouterPerFile
     type: action
@@ -1904,8 +1935,9 @@ graphs:
     action: PlanarityFilter
     with:
       filterType: height
-      threshold: |
-        0.03
+      threshold:
+        type: flowExpr
+        value: '0.03'
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     name: Rotator3D
     type: action
@@ -1913,18 +1945,24 @@ graphs:
     with:
       rotation:
         type: fromToVectors
-        fromX: |
-          env.get("__value").surfaceNormalX
-        fromY: |
-          env.get("__value").surfaceNormalY
-        fromZ: |
-          env.get("__value").surfaceNormalZ
-        toX: |
-          0.0
-        toY: |
-          0.0
-        toZ: |
-          1.0
+        fromX:
+          type: flowExpr
+          value: attributes["surfaceNormalX"]
+        fromY:
+          type: flowExpr
+          value: attributes["surfaceNormalY"]
+        fromZ:
+          type: flowExpr
+          value: attributes["surfaceNormalZ"]
+        toX:
+          type: flowExpr
+          value: '0.0'
+        toY:
+          type: flowExpr
+          value: '0.0'
+        toZ:
+          type: flowExpr
+          value: '1.0'
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
@@ -2390,7 +2428,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lod0_1_buildingpart
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 88d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: ErrorCount-Lod0Or1BuildingPart
     type: action
@@ -2429,7 +2469,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lbldg02_error
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e
     name: AttributeMapperLbldg02Output
     type: action
@@ -2592,141 +2634,73 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: Building
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:Building" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:Building" { 1 } else { 0 }
       - newAttribute: BuildingPart
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:BuildingPart" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:BuildingPart" { 1 } else { 0 }
       - newAttribute: RoofSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:RoofSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:RoofSurface" { 1 } else { 0 }
       - newAttribute: GroundSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:GroundSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:GroundSurface" { 1 } else { 0 }
       - newAttribute: WallSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:WallSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:WallSurface" { 1 } else { 0 }
       - newAttribute: ClosureSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:ClosureSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:ClosureSurface" { 1 } else { 0 }
       - newAttribute: OuterCeilingSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:OuterCeilingSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:OuterCeilingSurface" { 1 } else { 0 }
       - newAttribute: OuterFloorSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:OuterFloorSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:OuterFloorSurface" { 1 } else { 0 }
       - newAttribute: BuildingInstallation
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:BuildingInstallation" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:BuildingInstallation" { 1 } else { 0 }
       - newAttribute: Door
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:Door" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:Door" { 1 } else { 0 }
       - newAttribute: Window
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:Window" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:Window" { 1 } else { 0 }
       - newAttribute: Room
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:Room" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:Room" { 1 } else { 0 }
       - newAttribute: InteriorWallSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:InteriorWallSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:InteriorWallSurface" { 1 } else { 0 }
       - newAttribute: CeilingSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:CeilingSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:CeilingSurface" { 1 } else { 0 }
       - newAttribute: FloorSurface
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:FloorSurface" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:FloorSurface" { 1 } else { 0 }
       - newAttribute: IntBuildingInstallation
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:IntBuildingInstallation" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:IntBuildingInstallation" { 1 } else { 0 }
       - newAttribute: BuildingFurniture
-        expr: |
-          let feature_type = env.get("__value").featureType ?? "";
-          if feature_type == "bldg:BuildingFurniture" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("featureType") == "bldg:BuildingFurniture" { 1 } else { 0 }
   - id: 88e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeManagerC02
     type: action
@@ -2759,8 +2733,9 @@ graphs:
     type: action
     action: PLATEAU4.BuildingUsageAttributeValidator
     with:
-      codelistsPath: |
-        env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
   - id: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: AttributeMapper-l-bldg-04-05-transform
     type: action
@@ -2820,7 +2795,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_city_code
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 44d2b3c4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: ErrorCount-CityCode
     type: action
@@ -2836,7 +2813,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_usage_attribute
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 66f4d5e6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: ErrorCount-L0405Bldg
     type: action
@@ -2918,36 +2897,46 @@ graphs:
     with:
       aggregateAttributes:
       - newAttribute: uroBuildingId
-        attributeValue: |
-          let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-          building_id_attribute["uro:buildingID"] ?? ""
+        attributeValue:
+          type: flowExpr
+          value: |
+            attrs = attributes.get("cityGmlAttributes", {});
+            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+            building_id_attribute.get("uro:buildingID", "")
       - newAttribute: uroBranchId
-        attributeValue: |
-          let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-          building_id_attribute["uro:branchID"] ?? ""
+        attributeValue:
+          type: flowExpr
+          value: |
+            attrs = attributes.get("cityGmlAttributes", {});
+            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+            building_id_attribute.get("uro:branchID", "")
       - newAttribute: uroPartId
-        attributeValue: |
-          let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-          building_id_attribute["uro:partID"] ?? ""
-      calculation: |
-        1
-      calculationAttribute: |
-        uroBuildingIdCount
+        attributeValue:
+          type: flowExpr
+          value: |
+            attrs = attributes.get("cityGmlAttributes", {});
+            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+            building_id_attribute.get("uro:partID", "")
+      calculation:
+        type: flowExpr
+        value: '1'
+      calculationAttribute: uroBuildingIdCount
       method: count
   - id: 9feabfe5-44eb-43c9-a892-ca439a0c0562
     name: FeatureMerger-c-bldg-01
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        let attributes = env.get("__value").cityGmlAttributes ?? #{};
-        let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
-        (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
-      supplierAttributeValue: |
-        (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
+      requestorAttributeValue:
+        type: flowExpr
+        value: |
+          attrs = attributes.get("cityGmlAttributes", {});
+          building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+          building_id_attribute.get("uro:buildingID", "") + "-" + building_id_attribute.get("uro:branchID", "") + "-" + building_id_attribute.get("uro:partID", "")
+      supplierAttributeValue:
+        type: flowExpr
+        value: |
+          attributes.get("uroBuildingId", "") + "-" + attributes.get("uroBranchId", "") + "-" + attributes.get("uroPartId", "")
   - id: f003fa53-d8da-488b-9be2-9f871a7394b5
     name: FeatureFilterByMultipleBuildingId-c-bldg-01
     type: action
@@ -3011,7 +3000,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_duplicate_building_id
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: aa7d7462-2b7f-472f-a381-90bc3cdba432
     name: ErrorCount-C-BLDG-01
     type: action
@@ -3027,7 +3018,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_missing_building_id
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 88b6f7a8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     name: ErrorCount-MissingBuildingId
     type: action
@@ -3349,7 +3342,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lbldg06_error
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 88b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: ErrorCount-Lbldg06
     type: action
@@ -3406,13 +3401,9 @@ graphs:
       - cityGmlPath
       calculations:
       - newAttribute: instGmlIdTotalCount
-        expr: |
-          let gml_id = env.get("__value").instGmlId ?? "";
-          if gml_id != "" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: if attributes.get("instGmlId", "") != "" { 1 } else { 0 }
   - id: 630081e4-0ea1-4fd3-ba31-8154b2980258
     name: NoopT-bldg-02
     type: action
@@ -3426,7 +3417,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_invalid_bldginst_geom_type
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 88d2c3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
     name: ErrorCount-InvalidBldgInstGeomType
     type: action
@@ -3612,7 +3605,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lod0_incorrect_orientation
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: ErrorCount-Lod0IncorrectOrientation
     type: action
@@ -3637,7 +3632,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lod0_invalid_surface
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 44d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: ErrorCount-Lod0InvalidSurface
     type: action
@@ -3692,7 +3689,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lod1_invalid_surface
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     name: ErrorCount-Lod1InvalidSurface
     type: action
@@ -3718,14 +3717,17 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lod2_invalid_surface
-        expr: |
-          if env.get("__value").lod == "2" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "2" { 1 } else { 0 }
       - newAttribute: _num_lod3_invalid_surface
-        expr: |
-          if env.get("__value").lod == "3" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "3" { 1 } else { 0 }
       - newAttribute: _num_lod4_invalid_surface
-        expr: |
-          if env.get("__value").lod == "4" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "4" { 1 } else { 0 }
   - id: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
     name: AttributeMapperLod2-4InvalidSurface
     type: action
@@ -3869,7 +3871,9 @@ graphs:
       - filename_a
       calculations:
       - newAttribute: _num_lod0_surface_intersection
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 00b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     name: ErrorCount-Lod0SurfaceIntersection
     type: action
@@ -3882,8 +3886,9 @@ graphs:
     action: PLATEAU4.DestinationMeshCodeExtractor
     with:
       meshType: 3
-      epsgCode: |
-        env.get("prcs")
+      epsgCode:
+        type: flowExpr
+        value: env.get("prcs")
       meshcodeAttr: meshcode
   - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
     name: MeshCodeTester
@@ -3943,7 +3948,9 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_meshcode
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
     name: ErrorCount-IncorrectMeshCode
     type: action
@@ -3961,8 +3968,9 @@ graphs:
     type: action
     action: SolidBoundaryValidator
     with:
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: '0.01'
   - id: d0132191-a81f-4647-896d-5db49e3fb734
     name: FeatureFilterInvalidSolidBoundary
     type: action
@@ -4009,17 +4017,21 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lod1_not_closed_solid
-        expr: |
-          if env.get("__value").lod == "1" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "1" { 1 } else { 0 }
       - newAttribute: _num_lod2_not_closed_solid
-        expr: |
-          if env.get("__value").lod == "2" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "2" { 1 } else { 0 }
       - newAttribute: _num_lod3_not_closed_solid
-        expr: |
-          if env.get("__value").lod == "3" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "3" { 1 } else { 0 }
       - newAttribute: _num_lod4_not_closed_solid
-        expr: |
-          if env.get("__value").lod == "4" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "4" { 1 } else { 0 }
   - id: 44f4a5b6-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     name: ErrorCount-Lod1NotClosedSolid
     type: action
@@ -4062,17 +4074,21 @@ graphs:
       - gmlFilename
       calculations:
       - newAttribute: _num_lod1_solid_issues
-        expr: |
-          if env.get("__value").lod == "1" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "1" { 1 } else { 0 }
       - newAttribute: _num_lod2_solid_issues
-        expr: |
-          if env.get("__value").lod == "2" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "2" { 1 } else { 0 }
       - newAttribute: _num_lod3_solid_issues
-        expr: |
-          if env.get("__value").lod == "3" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "3" { 1 } else { 0 }
       - newAttribute: _num_lod4_solid_issues
-        expr: |
-          if env.get("__value").lod == "4" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lod"] == "4" { 1 } else { 0 }
   - id: 66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d
     name: ErrorCount-Lod1SolidIssues
     type: action
@@ -4125,7 +4141,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: _num_lod1_not_closed_solid
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: bc5638de-624d-46a2-a40b-59dde392ff97
     name: SolidBoundaryNotClosedIssueCountOutputRouter
     type: action
@@ -4142,7 +4160,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: _num_lod1_solid_issues
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 26ad749b-0ee1-4f6e-b8e0-8f3ff2fe4056
     name: SolidBoundaryOtherIssueCountOutputRouter
     type: action
@@ -4223,7 +4243,9 @@ graphs:
     type: action
     action: CSGBuilder
     with:
-      pairIdAttribute: env.get("__value").pair_id
+      pairIdAttribute:
+        type: flowExpr
+        value: attributes["pair_id"]
       createList: true
       listAttributeName: attrList
   - id: 155cb125-9e89-4825-b505-4b2f2b6dbe0d
@@ -4232,8 +4254,9 @@ graphs:
     action: CSGEvaluator
     with:
       operation: intersection
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: '0.01'
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperSolidIntersection
     type: action
@@ -4301,17 +4324,21 @@ graphs:
       - gmlFilenameA
       calculations:
       - newAttribute: _num_lod1_solid_intersection
-        expr: |
-          if env.get("__value").lodA == "1" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lodA"] == "1" { 1 } else { 0 }
       - newAttribute: _num_lod2_solid_intersection
-        expr: |
-          if env.get("__value").lodA == "2" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lodA"] == "2" { 1 } else { 0 }
       - newAttribute: _num_lod3_solid_intersection
-        expr: |
-          if env.get("__value").lodA == "3" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lodA"] == "3" { 1 } else { 0 }
       - newAttribute: _num_lod4_solid_intersection
-        expr: |
-          if env.get("__value").lodA == "4" { 1 } else { 0 }
+        expr:
+          type: flowExpr
+          value: if attributes["lodA"] == "4" { 1 } else { 0 }
   - id: 22e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6a
     name: ErrorCount-Lod1SolidIntersection
     type: action
@@ -4904,8 +4931,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
@@ -4930,8 +4958,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
@@ -5012,7 +5041,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
     name: FeatureFilterBuildingPart
     type: action
@@ -5058,10 +5089,12 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").filename
-      supplierAttributeValue: |
-        env.get("__value").gmlFilename
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["filename"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["gmlFilename"]
   - id: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
     name: SummaryAttributeMapper
     type: action
@@ -5200,101 +5233,147 @@ graphs:
     with:
       calculations:
       - newAttribute: C-bldg-01 エラー
-        expr: |
-          env.get("__value")["C-bldg-01 エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("C-bldg-01 エラー", 0)
       - newAttribute: 不正な建物ID
-        expr: |
-          env.get("__value")["不正な建物ID"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("不正な建物ID", 0)
       - newAttribute: 市区町村コードエラー
-        expr: |
-          env.get("__value")["市区町村コードエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("市区町村コードエラー", 0)
       - newAttribute: L-bldg-02 エラー
-        expr: |
-          env.get("__value")["L-bldg-02 エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L-bldg-02 エラー", 0)
       - newAttribute: L-bldg-04,05 エラー
-        expr: |
-          env.get("__value")["L-bldg-04,05 エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L-bldg-04,05 エラー", 0)
       - newAttribute: L-bldg-06 エラー
-        expr: |
-          env.get("__value")["L-bldg-06 エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L-bldg-06 エラー", 0)
       - newAttribute: LOD0 面のエラー
-        expr: |
-          env.get("__value")["LOD0 面のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD0 面のエラー", 0)
       - newAttribute: LOD0 面の向きエラー
-        expr: |
-          env.get("__value")["LOD0 面の向きエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD0 面の向きエラー", 0)
       - newAttribute: LOD0 面の交差
-        expr: |
-          env.get("__value")["LOD0 面の交差"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD0 面の交差", 0)
       - newAttribute: LOD1 境界面のエラー
-        expr: |
-          env.get("__value")["LOD1 境界面のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD1 境界面のエラー", 0)
       - newAttribute: LOD1 非水密立体
-        expr: |
-          env.get("__value")["LOD1 非水密立体"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD1 非水密立体", 0)
       - newAttribute: LOD1 立体のエラー
-        expr: |
-          env.get("__value")["LOD1 立体のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD1 立体のエラー", 0)
       - newAttribute: LOD1 立体の交差
-        expr: |
-          env.get("__value")["LOD1 立体の交差"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD1 立体の交差", 0)
       - newAttribute: LOD2 境界面のエラー
-        expr: |
-          env.get("__value")["LOD2 境界面のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD2 境界面のエラー", 0)
       - newAttribute: LOD2 非水密立体
-        expr: |
-          env.get("__value")["LOD2 非水密立体"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD2 非水密立体", 0)
       - newAttribute: LOD2 立体のエラー
-        expr: |
-          env.get("__value")["LOD2 立体のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD2 立体のエラー", 0)
       - newAttribute: LOD2 立体の交差
-        expr: |
-          env.get("__value")["LOD2 立体の交差"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD2 立体の交差", 0)
       - newAttribute: LOD3 境界面のエラー
-        expr: |
-          env.get("__value")["LOD3 境界面のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD3 境界面のエラー", 0)
       - newAttribute: LOD3 非水密立体
-        expr: |
-          env.get("__value")["LOD3 非水密立体"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD3 非水密立体", 0)
       - newAttribute: LOD3 立体のエラー
-        expr: |
-          env.get("__value")["LOD3 立体のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD3 立体のエラー", 0)
       - newAttribute: LOD3 立体の交差
-        expr: |
-          env.get("__value")["LOD3 立体の交差"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD3 立体の交差", 0)
       - newAttribute: LOD4 境界面のエラー
-        expr: |
-          env.get("__value")["LOD4 境界面のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD4 境界面のエラー", 0)
       - newAttribute: LOD4 非水密立体
-        expr: |
-          env.get("__value")["LOD4 非水密立体"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD4 非水密立体", 0)
       - newAttribute: LOD4 立体のエラー
-        expr: |
-          env.get("__value")["LOD4 立体のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD4 立体のエラー", 0)
       - newAttribute: LOD4 立体の交差
-        expr: |
-          env.get("__value")["LOD4 立体の交差"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD4 立体の交差", 0)
       - newAttribute: T-bldg-02エラー
-        expr: |
-          env.get("__value")["T-bldg-02エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("T-bldg-02エラー", 0)
       - newAttribute: LOD0-1のBuildingPart
-        expr: |
-          env.get("__value")["LOD0-1のBuildingPart"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("LOD0-1のBuildingPart", 0)
       - newAttribute: totalErrorCount
-        expr: |
-          let total = 0;
-          let keys = ["C-bldg-01 エラー", "不正な建物ID", "市区町村コードエラー",
-                      "L-bldg-02 エラー", "L-bldg-04,05 エラー", "L-bldg-06 エラー",
-                      "LOD0 面のエラー", "LOD0 面の向きエラー", "LOD0 面の交差",
-                      "LOD1 境界面のエラー", "LOD1 非水密立体", "LOD1 立体のエラー", "LOD1 立体の交差",
-                      "LOD2 境界面のエラー", "LOD2 非水密立体", "LOD2 立体のエラー", "LOD2 立体の交差",
-                      "LOD3 境界面のエラー", "LOD3 非水密立体", "LOD3 立体のエラー", "LOD3 立体の交差",
-                      "LOD4 境界面のエラー", "LOD4 非水密立体", "LOD4 立体のエラー", "LOD4 立体の交差",
-                      "T-bldg-02エラー", "LOD0-1のBuildingPart", "図郭不正"];
-          for key in keys {
-            total += env.get("__value")[key] ?? 0;
-          }
-          total
+        expr:
+          type: flowExpr
+          value: |
+            itertools.sum([
+              attributes.get("C-bldg-01 エラー", 0),
+              attributes.get("不正な建物ID", 0),
+              attributes.get("市区町村コードエラー", 0),
+              attributes.get("L-bldg-02 エラー", 0),
+              attributes.get("L-bldg-04,05 エラー", 0),
+              attributes.get("L-bldg-06 エラー", 0),
+              attributes.get("LOD0 面のエラー", 0),
+              attributes.get("LOD0 面の向きエラー", 0),
+              attributes.get("LOD0 面の交差", 0),
+              attributes.get("LOD1 境界面のエラー", 0),
+              attributes.get("LOD1 非水密立体", 0),
+              attributes.get("LOD1 立体のエラー", 0),
+              attributes.get("LOD1 立体の交差", 0),
+              attributes.get("LOD2 境界面のエラー", 0),
+              attributes.get("LOD2 非水密立体", 0),
+              attributes.get("LOD2 立体のエラー", 0),
+              attributes.get("LOD2 立体の交差", 0),
+              attributes.get("LOD3 境界面のエラー", 0),
+              attributes.get("LOD3 非水密立体", 0),
+              attributes.get("LOD3 立体のエラー", 0),
+              attributes.get("LOD3 立体の交差", 0),
+              attributes.get("LOD4 境界面のエラー", 0),
+              attributes.get("LOD4 非水密立体", 0),
+              attributes.get("LOD4 立体のエラー", 0),
+              attributes.get("LOD4 立体の交差", 0),
+              attributes.get("T-bldg-02エラー", 0),
+              attributes.get("LOD0-1のBuildingPart", 0),
+              attributes.get("図郭不正", 0),
+            ])
   - id: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
     name: JSONSummaryWriter
     type: action
@@ -5322,8 +5401,9 @@ graphs:
     with:
       calculations:
       - newAttribute: totalErrorCount
-        expr: |
-          env.get("__value")["totalErrorCount"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("totalErrorCount", 0)
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: FeatureFilterNoErrors
     type: action

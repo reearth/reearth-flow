@@ -1,8 +1,13 @@
+// TODO(new-geometry): remove after migration. Gating each ported action's
+// `process`/`finish`/`start` leaves geometry-only imports and helpers unused
+// under the flag; silence that noise (feature-scoped, so the default build keeps
+// full lint coverage).
+#![cfg_attr(feature = "new-geometry", allow(unused_imports, dead_code))]
+
 pub(crate) mod attribute;
 pub(crate) mod echo;
 pub(crate) mod feature;
 pub(crate) mod file;
-pub(crate) mod flow_expr_test;
 pub(crate) mod geometry;
 pub(crate) mod http;
 pub mod mapping;

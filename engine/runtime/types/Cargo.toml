@@ -10,9 +10,13 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = ["reearth-flow-geometry/new-geometry"]
+
 [dependencies]
 reearth-flow-common.workspace = true
-reearth-flow-eval-expr.workspace = true
 reearth-flow-expr.workspace = true
 reearth-flow-geometry.workspace = true
 
@@ -34,7 +38,6 @@ indexmap.workspace = true
 itertools.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
-rhai.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true

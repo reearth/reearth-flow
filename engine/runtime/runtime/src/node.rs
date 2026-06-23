@@ -277,11 +277,15 @@ pub trait Source: Send + Sync + Debug + SourceClone {
     fn name(&self) -> &str;
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError>;
 
+    // TODO(new-geometry): remove this temporary default after migration; restore
+    // `start` as a required method.
     async fn start(
         &mut self,
-        ctx: NodeContext,
-        sender: Sender<(Port, IngestionMessage)>,
-    ) -> Result<(), BoxedError>;
+        _ctx: NodeContext,
+        _sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -360,16 +364,24 @@ pub trait Processor: Send + Sync + Debug + ProcessorClone {
     fn num_threads(&self) -> usize {
         1
     }
+    // TODO(new-geometry): remove these temporary defaults after migration; restore
+    // `process`/`finish` as required methods.
+    // The loud default fires for actions not yet ported to the new geometry; it must
+    // never be a silent `Ok(())`, which would pass features through unchanged.
     fn process(
         &mut self,
-        ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError>;
+        _ctx: ExecutorContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
     fn finish(
         &mut self,
-        ctx: NodeContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError>;
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 
     fn name(&self) -> &str;
 }
@@ -435,8 +447,14 @@ pub trait Sink: Send + Debug + SinkClone {
     }
 
     fn name(&self) -> &str;
-    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError>;
+    // TODO(new-geometry): remove these temporary defaults after migration; restore
+    // `process`/`finish` as required methods.
+    fn process(&mut self, _ctx: ExecutorContext) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
+    fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 
     fn set_source_state(&mut self, _source_state: &[u8]) -> Result<(), BoxedError> {
         Ok(())
@@ -512,7 +530,7 @@ impl Processor for InputRouter {
         fw.send(ExecutorContext::new(
             feature,
             DEFAULT_PORT.clone(),
-            Arc::clone(&ctx.expr_engine),
+            Arc::clone(&ctx.env_vars),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
@@ -599,7 +617,7 @@ impl Processor for OutputRouter {
         fw.send(ExecutorContext::new(
             feature,
             Port::new(&self.routing_port),
-            Arc::clone(&ctx.expr_engine),
+            Arc::clone(&ctx.env_vars),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,

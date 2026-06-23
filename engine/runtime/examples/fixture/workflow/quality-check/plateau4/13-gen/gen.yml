@@ -112,7 +112,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_surface_errors
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
     name: OutputRouterSurfaceErrors
@@ -128,8 +130,9 @@ nodes:
     type: action
     action: SolidBoundaryValidator
     with:
-      tolerance: |
-        0.01
+      tolerance:
+        type: flowExpr
+        value: "0.01"
 
   # Filter for NotClosed errors (NotA2Manifold = non-watertight solid)
   - id: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
@@ -203,7 +206,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_not_closed_solid
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d90
     name: OutputRouterNotClosed
@@ -273,7 +278,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_solid_errors
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   # Orientation errors (面の向き不正) - LOD0 only
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
@@ -333,7 +340,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_orientation_errors
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c8
     name: OutputRouterOrientationErrors
@@ -364,8 +373,9 @@ nodes:
     type: action
     action: PLATEAU4.GmlNameCodeSpaceValidator
     with:
-      cityGmlPath: |
-        env.get("__value").gmlPath
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["gmlPath"]
 
   # CSV Writer for gml:name errors
   - id: 21a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d3
@@ -387,7 +397,9 @@ nodes:
         - Filename
       calculations:
         - newAttribute: _num_uncoded_gml_name
-          expr: "1"
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: 20a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d2
     name: OutputRouterUncodedGmlName

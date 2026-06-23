@@ -247,8 +247,9 @@ graphs:
     action: PlanarityFilter
     with:
       filterType: height
-      threshold: |
-        0.03
+      threshold:
+        type: flowExpr
+        value: '0.03'
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     name: Rotator3D
     type: action
@@ -256,18 +257,24 @@ graphs:
     with:
       rotation:
         type: fromToVectors
-        fromX: |
-          env.get("__value").surfaceNormalX
-        fromY: |
-          env.get("__value").surfaceNormalY
-        fromZ: |
-          env.get("__value").surfaceNormalZ
-        toX: |
-          0.0
-        toY: |
-          0.0
-        toZ: |
-          1.0
+        fromX:
+          type: flowExpr
+          value: attributes["surfaceNormalX"]
+        fromY:
+          type: flowExpr
+          value: attributes["surfaceNormalY"]
+        fromZ:
+          type: flowExpr
+          value: attributes["surfaceNormalZ"]
+        toX:
+          type: flowExpr
+          value: '0.0'
+        toY:
+          type: flowExpr
+          value: '0.0'
+        toZ:
+          type: flowExpr
+          value: '1.0'
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
@@ -827,8 +834,9 @@ graphs:
     type: action
     action: PLATEAU4.DomainOfDefinitionValidator
     with:
-      codelistsPath: |
-        env.get("__value").dirCodelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["dirCodelists"]
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag
     type: action
@@ -1006,8 +1014,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
@@ -1046,8 +1055,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
@@ -1151,19 +1161,23 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").index.to_string()
-      supplierAttributeValue: |
-        env.get("__value").index.to_string()
+      requestorAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
+      supplierAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
   - id: d71b0796-97a2-4e65-92df-635fc3b0a92f
     name: FeatureMerger02
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").index.to_string()
-      supplierAttributeValue: |
-        env.get("__value").index.to_string()
+      requestorAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
+      supplierAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
   - id: f19638b9-679a-4dd9-9a39-3cf2a82c6ff5
     name: AttributeMapper
     type: action
@@ -1275,42 +1289,54 @@ graphs:
     with:
       calculations:
       - newAttribute: L01エラー
-        expr: |
-          env.get("__value")["L01エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L01エラー", 0)
       - newAttribute: L02エラー
-        expr: |
-          env.get("__value")["L02エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L02エラー", 0)
       - newAttribute: L04エラー
-        expr: |
-          env.get("__value")["L04エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L04エラー", 0)
       - newAttribute: 不正なcodeSpace数
-        expr: |
-          env.get("__value")["不正なcodeSpace数"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("不正なcodeSpace数", 0)
       - newAttribute: L05CRS識別子
-        expr: |
-          if env.get("__value")["L05CRS識別子"] == "Wrong" {
-            1
-          } else {
-            0
-          }
+        expr:
+          type: flowExpr
+          value: |
+            if attributes.get("L05CRS識別子") == "Wrong" {
+              1
+            } else {
+              0
+            }
       - newAttribute: L06エラー
-        expr: |
-          env.get("__value")["L06エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L06エラー", 0)
       - newAttribute: T03エラー
-        expr: |
-          env.get("__value")["T03エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("T03エラー", 0)
       - newAttribute: xlink参照先なし
-        expr: |
-          env.get("__value")["xlink参照先なし"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("xlink参照先なし", 0)
       - newAttribute: gml:id重複
-        expr: |
-          env.get("__value")["gml:id重複"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("gml:id重複", 0)
       - newAttribute: gml:id書式不正
-        expr: |
-          env.get("__value")["gml:id書式不正"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("gml:id書式不正", 0)
       - newAttribute: L-frn-01エラー
-        expr: |
-          env.get("__value")["L-frn-01エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L-frn-01エラー", 0)
   - id: 50de9474-378b-4878-b85d-516cf8a55547
     name: FeatureWriterJson
     type: action
@@ -1608,10 +1634,12 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").name
-      supplierAttributeValue: |
-        env.get("__value").filename
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["filename"]
   - id: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
     name: AttributeManagerTotalErrorCount
     type: action
@@ -1945,8 +1973,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
@@ -1964,8 +1993,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: e86300b4-59a7-4714-ad89-3aa18ef201d8
@@ -1974,10 +2004,12 @@ graphs:
     action: XMLFragmenter
     with:
       source: url
-      elementsToMatch: |
-        env.get("__value").featureTypes[env.get("__value")["package"]]
-      elementsToExclude: |
-        []
+      elementsToMatch:
+        type: flowExpr
+        value: attributes["featureTypes"][attributes["package"]]
+      elementsToExclude:
+        type: flowExpr
+        value: '[]'
       attribute: path
   - id: 5490fef1-320b-4789-9f5b-5401a9b99e41
     name: FeatureCounter
@@ -2174,7 +2206,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C05エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: StatisticsCalculatorC07PerFile
     type: action
@@ -2184,7 +2218,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C07エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     name: StatisticsCalculatorC08PerFile
     type: action
@@ -2194,7 +2230,9 @@ graphs:
       - filename
       calculations:
       - newAttribute: C08エラー
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: OutputRouterPerFile
     type: action
@@ -2389,8 +2427,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
@@ -2415,8 +2454,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
@@ -2446,14 +2486,17 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 6f556405-1fdb-4807-8e3b-f18da79fbe1a
     name: TransportationXlinkDetector
     type: action
     action: PLATEAU4.TransportationXlinkDetector
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
   - id: 95a3af4f-4004-422b-bf86-d64181861bd5
     name: XlinkAttributeMapper
     type: action
@@ -2852,7 +2895,9 @@ graphs:
       - Filename
       calculations:
       - newAttribute: _num_unreferenced_surface
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: bb0de8b2-31f1-44ba-b996-0c8559deb61a
     name: OrientationErrorCounter
     type: action
@@ -2862,7 +2907,9 @@ graphs:
       - Filename
       calculations:
       - newAttribute: _num_incorrect_orientation
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 63c507b8-49e4-4e4c-a498-e997eba27e09
     name: OverlapErrorCounter
     type: action
@@ -2872,7 +2919,9 @@ graphs:
       - Filename
       calculations:
       - newAttribute: _num_overlaps
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 2ca88ff0-efc6-43ca-8c2b-f17606314754
     name: SurfaceValidationErrorCounter
     type: action
@@ -2882,16 +2931,20 @@ graphs:
       - Filename
       calculations:
       - newAttribute: _surface_issues
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 71fde7fe-d34a-4318-893a-4d648c09361d
     name: ErrorSummaryMerger
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").Filename
-      supplierAttributeValue: |
-        env.get("__value").Filename
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["Filename"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["Filename"]
   - id: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f
     name: SummaryAttributeMapper
     type: action
@@ -2934,19 +2987,21 @@ graphs:
     with:
       calculations:
       - newAttribute: L-TRAN-03 xlink参照エラー
-        expr: |
-          env.get("__value")["L-TRAN-03 xlink参照エラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("L-TRAN-03 xlink参照エラー", 0)
       - newAttribute: 面のエラー
-        expr: |
-          env.get("__value")["面のエラー"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("面のエラー", 0)
       - newAttribute: totalErrorCount
-        expr: |
-          let total = 0;
-          let keys = ["L-TRAN-03 xlink参照エラー", "面のエラー"];
-          for key in keys {
-            total += env.get("__value")[key] ?? 0;
-          }
-          total
+        expr:
+          type: flowExpr
+          value: |
+            itertools.sum([
+              attributes.get("L-TRAN-03 xlink参照エラー", 0),
+              attributes.get("面のエラー", 0),
+            ])
   - id: df88ca31-bbfd-4322-aff2-86990e91a694
     name: JSONSummaryWriter
     type: action
@@ -2974,8 +3029,9 @@ graphs:
     with:
       calculations:
       - newAttribute: totalErrorCount
-        expr: |
-          env.get("__value")["totalErrorCount"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("totalErrorCount", 0)
   - id: c105a305-322f-4710-b999-0c8c044f264a
     name: FeatureFilterNoErrors
     type: action
