@@ -322,6 +322,347 @@ nodes:
         type: string
         value: 02_建築物_LOD0面の向きエラー.csv
 
+  # --- LOD1 boundary-surface validation pipeline ---
+  # CityGML 3.0 buildings carry their LOD1 geometry as a `lod1Solid`; the
+  # LodSplitter routes the per-LOD surfaces to the `lod1` port. SurfaceValidator3D
+  # validates each boundary surface and emits the broken ones on `invalidSurface`.
+  - id: 3ace9872-a832-406a-8fdb-af97610dd86d
+    name: PLATEAU3.SurfaceValidator3D_LOD1
+    type: subGraph
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+  - id: afa5ac6e-0bf0-496c-91b5-a46058264ff6
+    name: Lod1InvalidSurfaceCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lod1_invalid_surface
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
+    name: AttributeMapperLod1InvalidSurface
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          valueAttribute: name
+        - attribute: feature_type
+          valueAttribute: __citygml_feature_type
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
+
+  - id: f8589886-0315-441c-bca5-a937f9137e6f
+    name: FeatureWriterLod1InvalidSurface
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_LOD1境界面のエラー.csv
+
+  # --- LOD1 solid-boundary validation pipeline (L14) ---
+  # SolidBoundaryValidator checks the lod1Solid shell. NotA2Manifold issues mean
+  # the surface is not closed (watertight); everything else is reported as a
+  # generic invalid solid boundary.
+  - id: 45007e89-4cd7-49aa-b145-a40d6539f83c
+    name: SolidBoundaryValidatorLod1
+    type: action
+    action: SolidBoundaryValidator
+    with:
+      tolerance:
+        type: flowExpr
+        value: "0.01"
+
+  - id: 9c9074a7-7977-443e-897e-883128733faf
+    name: FeatureFilterInvalidSolidBoundaryLod1
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["solid_boundary_issues"]["issue"] == "NotA2Manifold"
+          outputPort: notClosed
+
+  - id: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
+    name: Lod1NotClosedSolidCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lod1_not_closed_solid
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: 4941ec68-5567-41bd-a8a6-946c30343b26
+    name: AttributeMapperLod1NotClosedSolid
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          valueAttribute: name
+        - attribute: feature_type
+          valueAttribute: __citygml_feature_type
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: Surface Not Closed
+
+  - id: 4261177e-6f06-48cc-aa24-f0a10382b704
+    name: FeatureWriterLod1NotClosedSolid
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_非水密体.csv
+
+  - id: 19da512d-70c7-4461-824b-047919d0cd40
+    name: Lod1SolidIssuesCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lod1_solid_issues
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: 2173b3cb-18b8-43bf-a49e-cfe2f5fb1ff8
+    name: AttributeMapperLod1SolidIssues
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          valueAttribute: name
+        - attribute: feature_type
+          valueAttribute: __citygml_feature_type
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: InvalidSolidBoundaries
+
+  - id: 59b03bd3-9e44-453e-92fc-52cc14abcf25
+    name: FeatureWriterLod1SolidIssues
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_立体のエラー.csv
+
+  # --- LOD1 solid intersection pipeline (L-BLDG-01) ---
+  # Pre-filter candidate building pairs by overlapping their 2D footprints, then
+  # confirm a real 3D overlap with a CSG intersection on the original solids.
+  # SolidIntersectionTestPairCreator is a plateau4 action but is LOD-independent,
+  # so it is reused here.
+  # NOTE: plateau4 filters the lod1+ stream down to solids via
+  # `gmlPropertyName.ends_with("Solid")`, but the CityGML 3.0 reader does not
+  # populate `gmlPropertyName` (it stays "Unknown"). In CityGML 3.0 the LOD1
+  # geometry is always a `lod1Solid` (lod1MultiSurface was removed), so the
+  # LodSplitter `lod1` port already yields solids and no extra filter is needed.
+  - id: 6536f03a-91b4-44d2-9e9d-d7b3e8e91b6b
+    name: GeometryExtractorSolidIntersectionLod1
+    type: action
+    action: GeometryExtractor
+    with:
+      outputAttribute: _solid_geometry
+
+  - id: 3cc74f98-96bd-4585-801b-02bb11c434c8
+    name: FootprintReplacerSolidIntersectionLod1
+    type: action
+    action: FootprintReplacer
+
+  # IMPORTANT: Shrink the footprint by 0.005m to match the behavior of the FME
+  # PLATEAU workflow, which silently ignores small intersections caused by a few
+  # mm of coordinate precision artifacts at shared building boundaries. This is
+  # NOT part of the PLATEAU spec but is replicated for result comparability.
+  - id: e25d4514-3bcc-4d10-b31b-bf93a57f23b1
+    name: BuffererSolidIntersectionLod1
+    type: action
+    action: Bufferer
+    with:
+      bufferType: area2d
+      distance: -0.005
+      interpolationAngle: 0
+
+  - id: 3f676870-4b7c-46f0-925e-073c20429200
+    name: AreaOnAreaOverlayerSolidIntersectionLod1
+    type: action
+    action: AreaOnAreaOverlayer
+    with:
+      accumulationMode: dropIncomingAttributes
+      outputAttribute: overlap
+      generateList: list
+      groupBy:
+        - lod
+      tolerance: 0.01
+
+  - id: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
+    name: FeatureFilterSolidIntersectionOverlapLod1
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["overlap"] > 1
+          outputPort: overlapping
+
+  - id: 4c033bed-d29b-48f0-9226-bef423073e18
+    name: PLATEAU4.SolidIntersectionTestPairCreator
+    type: action
+    action: PLATEAU4.SolidIntersectionTestPairCreator
+    with:
+      listAttribute: list
+      gmlIdAttribute: __citygml_gml_id
+      pairIdAttribute: pair_id
+
+  - id: c56dec68-91f9-4d49-94d4-3e6142996735
+    name: GeometryReplacerSolidIntersectionLod1A
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: _solid_geometry
+
+  - id: 23e6f0c7-d4b2-4d1a-8287-a910a4f7dcc7
+    name: GeometryReplacerSolidIntersectionLod1B
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: _solid_geometry
+
+  - id: 585e54ec-2814-4e67-a5b2-33e16007110a
+    name: CSGBuilderLod1
+    type: action
+    action: CSGBuilder
+    with:
+      pairIdAttribute:
+        type: flowExpr
+        value: attributes["pair_id"]
+      createList: true
+      listAttributeName: attrList
+
+  - id: 8c37d786-50f7-4aba-8737-5422da3ba79b
+    name: CSGEvaluatorLod1
+    type: action
+    action: CSGEvaluator
+    with:
+      operation: intersection
+      tolerance:
+        type: flowExpr
+        value: "0.01"
+
+  - id: a08a7333-b223-41d2-aea1-24966c6349b1
+    name: AttributeMapperLod1SolidIntersection
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: intersection_id
+          expr:
+            type: flowExpr
+            value: |
+              item = attributes["attrList"][0];
+              "lod" + str(item["lod"]) + "_" + str(item["pair_id"])
+        - attribute: gmlFilenameA
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][0]["name"]
+        - attribute: gmlFilenameB
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][1]["name"]
+        - attribute: featureTypeA
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][0]["__citygml_feature_type"]
+        - attribute: featureTypeB
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][1]["__citygml_feature_type"]
+        - attribute: lodA
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][0]["lod"]
+        - attribute: lodB
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][1]["lod"]
+        - attribute: gmlIdA
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][0]["__citygml_gml_id"]
+        - attribute: gmlIdB
+          expr:
+            type: flowExpr
+            value: attributes["attrList"][1]["__citygml_gml_id"]
+        - attribute: issue
+          expr:
+            type: string
+            value: Solid Intersection
+
+  - id: 68871b39-bb4c-45a2-a328-3725ad947f0f
+    name: Lod1SolidIntersectionCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - gmlFilenameA
+      calculations:
+        - newAttribute: _num_lod1_solid_intersection
+          expr:
+            type: flowExpr
+            value: if attributes["lodA"] == "1" { 1 } else { 0 }
+
+  - id: 073a86d1-e1d0-497d-803f-6398518f0c1a
+    name: FeatureWriterLod1SolidIntersection
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_立体交差.csv
+
   # Join the per-file LOD0 error counts back onto each building GML file feature.
   - id: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
     name: ErrorSummaryMerger
@@ -360,6 +701,58 @@ nodes:
       supplierAttributeValue:
         type: flowExpr
         value: attributes["name"]
+
+  # Join the per-file LOD1 invalid-surface counts onto each file feature.
+  - id: a9806a8c-4796-42eb-a76e-960435492aaa
+    name: InvalidSurfaceLod1SummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
+  # Join the per-file LOD1 not-closed-solid counts onto each file feature.
+  - id: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
+    name: NotClosedSolidLod1SummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
+  # Join the per-file LOD1 invalid-solid counts onto each file feature.
+  - id: d2268a59-ec0c-42a7-953b-b55475d27b30
+    name: SolidIssuesLod1SummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
+  # Join the per-file LOD1 solid-intersection counts onto each file feature.
+  - id: c693f8b2-e6a9-4943-871d-f3ee950f75a0
+    name: SolidIntersectionLod1SummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["gmlFilenameA"]
 
   # Build one summary row per building GML file.
   - id: 428129b3-ad69-4a18-bf99-25492d41ba26
@@ -422,19 +815,19 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod0_surface_intersection", 0)
-        # TODO: wire to PLATEAU6 LOD1 surface/solid checks
+        # LOD1 boundary-surface / solid checks (SurfaceValidator3D + SolidBoundaryValidator)
         - attribute: "LOD1 境界面のエラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lod1_invalid_surface", 0)
         - attribute: "LOD1 非水密立体"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lod1_not_closed_solid", 0)
         - attribute: "LOD1 立体のエラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lod1_solid_issues", 0)
         # TODO: wire to PLATEAU6 LOD2 surface/solid checks
         - attribute: "LOD2 境界面のエラー"
           expr:
@@ -471,11 +864,11 @@ nodes:
           expr:
             type: flowExpr
             value: "0"
-        # TODO: wire to PLATEAU6 solid-intersection checks
+        # LOD1 solid intersection (SolidIntersectionTestPairCreator + CSG)
         - attribute: "LOD1 立体の交差"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lod1_solid_intersection", 0)
         - attribute: "LOD2 立体の交差"
           expr:
             type: flowExpr
@@ -867,14 +1260,62 @@ edges:
     to: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
     fromPort: unmerged
     toPort: requestor
-  # Orientation merger output -> per-file summary
+  # Orientation merger output -> LOD1 invalid-surface merger (requestor)
   - id: 7fcea7cb-1a55-4949-b9d0-f9a3b470922b
     from: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
+    to: a9806a8c-4796-42eb-a76e-960435492aaa
+    fromPort: merged
+    toPort: requestor
+  - id: 252cb692-e2d4-47fc-83d3-904d36a3e929
+    from: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
+    to: a9806a8c-4796-42eb-a76e-960435492aaa
+    fromPort: unmerged
+    toPort: requestor
+
+  # LOD1 invalid-surface merger output -> LOD1 not-closed-solid merger (requestor)
+  - id: ed93c602-0576-45b0-918d-39255491a07f
+    from: a9806a8c-4796-42eb-a76e-960435492aaa
+    to: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
+    fromPort: merged
+    toPort: requestor
+  - id: 763dee8e-8984-4183-803f-e3df753f89bf
+    from: a9806a8c-4796-42eb-a76e-960435492aaa
+    to: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
+    fromPort: unmerged
+    toPort: requestor
+
+  # LOD1 not-closed-solid merger output -> LOD1 invalid-solid merger (requestor)
+  - id: e8ed72ec-77f7-4448-a554-2033609d5d2f
+    from: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
+    to: d2268a59-ec0c-42a7-953b-b55475d27b30
+    fromPort: merged
+    toPort: requestor
+  - id: 826535c7-6b52-4145-bd1e-cbc8ac5d8d91
+    from: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
+    to: d2268a59-ec0c-42a7-953b-b55475d27b30
+    fromPort: unmerged
+    toPort: requestor
+
+  # LOD1 invalid-solid merger output -> LOD1 solid-intersection merger (requestor)
+  - id: fec1d2d8-b362-41ee-a941-5f7f6943acaa
+    from: d2268a59-ec0c-42a7-953b-b55475d27b30
+    to: c693f8b2-e6a9-4943-871d-f3ee950f75a0
+    fromPort: merged
+    toPort: requestor
+  - id: 7dcd0f00-83f6-4670-bcb2-f840efcf97fc
+    from: d2268a59-ec0c-42a7-953b-b55475d27b30
+    to: c693f8b2-e6a9-4943-871d-f3ee950f75a0
+    fromPort: unmerged
+    toPort: requestor
+
+  # LOD1 solid-intersection merger output -> per-file summary
+  - id: e1348942-edb7-4db2-9f82-02cc114e33fd
+    from: c693f8b2-e6a9-4943-871d-f3ee950f75a0
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: 252cb692-e2d4-47fc-83d3-904d36a3e929
-    from: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
+  - id: 1dc791d7-7a2d-4e78-bc54-ed5f2e23e221
+    from: c693f8b2-e6a9-4943-871d-f3ee950f75a0
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default
@@ -914,3 +1355,185 @@ edges:
     to: 20e962f2-e612-42c7-a107-8c0ff21a09af
     fromPort: default
     toPort: default
+
+  # --- LOD1 boundary-surface validation pipeline ---
+  - id: 0e4e4883-a619-4c98-96c9-5a70b1128a6c
+    from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
+    to: 3ace9872-a832-406a-8fdb-af97610dd86d
+    fromPort: lod1
+    toPort: default
+  - id: ce9cd4e9-ef55-457d-a0fb-6897c8e94dcd
+    from: 3ace9872-a832-406a-8fdb-af97610dd86d
+    to: afa5ac6e-0bf0-496c-91b5-a46058264ff6
+    fromPort: invalidSurface
+    toPort: default
+  # Counter.complete -> AttributeMapper -> CSV writer
+  - id: c4b8863e-2604-4077-bf1b-510067ef3e0c
+    from: afa5ac6e-0bf0-496c-91b5-a46058264ff6
+    to: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
+    fromPort: complete
+    toPort: default
+  - id: 9a7ce0f6-a47d-45b7-9c73-b3656bc93be7
+    from: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
+    to: f8589886-0315-441c-bca5-a937f9137e6f
+    fromPort: default
+    toPort: default
+  # Counter.default -> LOD1 invalid-surface summary merger (supplier)
+  - id: 6fb9c625-7d7a-49c6-b8c2-f4f547d5ba36
+    from: afa5ac6e-0bf0-496c-91b5-a46058264ff6
+    to: a9806a8c-4796-42eb-a76e-960435492aaa
+    fromPort: default
+    toPort: supplier
+  # Route the written LOD1 boundary-surface CSV into the result zip.
+  - id: 59cbd734-5b78-4863-8da2-ae674760b967
+    from: f8589886-0315-441c-bca5-a937f9137e6f
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+
+  # --- LOD1 solid-boundary validation pipeline (L14) ---
+  - id: c8e9a493-b108-4ec6-a177-e634cb6570f9
+    from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
+    to: 45007e89-4cd7-49aa-b145-a40d6539f83c
+    fromPort: lod1
+    toPort: default
+  - id: 9771ff12-a3f9-4585-95c1-e8dfa3cc7ddd
+    from: 45007e89-4cd7-49aa-b145-a40d6539f83c
+    to: 9c9074a7-7977-443e-897e-883128733faf
+    fromPort: failed
+    toPort: default
+  # Not-closed (NotA2Manifold) branch: Counter.complete -> AttributeMapper -> writer
+  - id: 43af48b8-4e4f-4a5f-bc89-c228a372e2cb
+    from: 9c9074a7-7977-443e-897e-883128733faf
+    to: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
+    fromPort: notClosed
+    toPort: default
+  - id: b8940748-8dac-4837-a7e1-f30e834833f4
+    from: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
+    to: 4941ec68-5567-41bd-a8a6-946c30343b26
+    fromPort: complete
+    toPort: default
+  - id: 857315f9-6f69-491e-b465-83c357f1ef78
+    from: 4941ec68-5567-41bd-a8a6-946c30343b26
+    to: 4261177e-6f06-48cc-aa24-f0a10382b704
+    fromPort: default
+    toPort: default
+  - id: 9e0a7430-10d7-4f06-85bb-37d4b653089e
+    from: 4261177e-6f06-48cc-aa24-f0a10382b704
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  - id: fd389054-a97e-47de-bdd2-d52582d4ff04
+    from: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
+    to: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
+    fromPort: default
+    toPort: supplier
+  # Other invalid-solid issues branch: Counter.complete -> AttributeMapper -> writer
+  - id: 05603c4a-5b38-475f-98a2-7a88ce6ca984
+    from: 9c9074a7-7977-443e-897e-883128733faf
+    to: 19da512d-70c7-4461-824b-047919d0cd40
+    fromPort: unfiltered
+    toPort: default
+  - id: 4fcf9cdb-3e9b-41d0-a196-ea7225e1e81d
+    from: 19da512d-70c7-4461-824b-047919d0cd40
+    to: 2173b3cb-18b8-43bf-a49e-cfe2f5fb1ff8
+    fromPort: complete
+    toPort: default
+  - id: 98a77aad-23b4-4354-9b5b-ca3fe962bcc6
+    from: 2173b3cb-18b8-43bf-a49e-cfe2f5fb1ff8
+    to: 59b03bd3-9e44-453e-92fc-52cc14abcf25
+    fromPort: default
+    toPort: default
+  - id: 1b05c79b-5462-4cf9-bf67-b5fbd8a11ee3
+    from: 59b03bd3-9e44-453e-92fc-52cc14abcf25
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  - id: 9fc602c2-838e-4b6e-87da-968044552cd4
+    from: 19da512d-70c7-4461-824b-047919d0cd40
+    to: d2268a59-ec0c-42a7-953b-b55475d27b30
+    fromPort: default
+    toPort: supplier
+
+  # --- LOD1 solid intersection pipeline (L-BLDG-01) ---
+  - id: 4918e7c2-f001-41d2-a132-8d6f3c9708de
+    from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
+    to: 6536f03a-91b4-44d2-9e9d-d7b3e8e91b6b
+    fromPort: lod1
+    toPort: default
+  - id: 1d8d2b66-2565-4829-acc8-36a15d01d3fa
+    from: 6536f03a-91b4-44d2-9e9d-d7b3e8e91b6b
+    to: 3cc74f98-96bd-4585-801b-02bb11c434c8
+    fromPort: default
+    toPort: default
+  - id: 69c2d6b9-2bfd-45b0-8be4-113a5afcda30
+    from: 3cc74f98-96bd-4585-801b-02bb11c434c8
+    to: e25d4514-3bcc-4d10-b31b-bf93a57f23b1
+    fromPort: footprint
+    toPort: default
+  - id: b471f058-ad04-4fed-ab23-d04c573ade59
+    from: e25d4514-3bcc-4d10-b31b-bf93a57f23b1
+    to: 3f676870-4b7c-46f0-925e-073c20429200
+    fromPort: default
+    toPort: default
+  - id: 1cf489a3-ff25-44d0-aad5-1069e3b730ad
+    from: 3f676870-4b7c-46f0-925e-073c20429200
+    to: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
+    fromPort: area
+    toPort: default
+  - id: 5aa9651c-7805-4b3f-a516-897159f1e164
+    from: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
+    to: 4c033bed-d29b-48f0-9226-bef423073e18
+    fromPort: overlapping
+    toPort: default
+  - id: 10a8770e-e894-499c-a31a-7f7c7cd4a79d
+    from: 4c033bed-d29b-48f0-9226-bef423073e18
+    to: c56dec68-91f9-4d49-94d4-3e6142996735
+    fromPort: A
+    toPort: default
+  - id: d9a0db8e-b856-452e-b521-c70f759027e8
+    from: 4c033bed-d29b-48f0-9226-bef423073e18
+    to: 23e6f0c7-d4b2-4d1a-8287-a910a4f7dcc7
+    fromPort: B
+    toPort: default
+  - id: 95560682-4ea9-4ed3-ac99-e1ca013d3132
+    from: c56dec68-91f9-4d49-94d4-3e6142996735
+    to: 585e54ec-2814-4e67-a5b2-33e16007110a
+    fromPort: default
+    toPort: left
+  - id: cab953fe-ad19-450f-be66-e08fe734cfa7
+    from: 23e6f0c7-d4b2-4d1a-8287-a910a4f7dcc7
+    to: 585e54ec-2814-4e67-a5b2-33e16007110a
+    fromPort: default
+    toPort: right
+  - id: 01b57095-206c-4a1d-9cc1-26e9d439887f
+    from: 585e54ec-2814-4e67-a5b2-33e16007110a
+    to: 8c37d786-50f7-4aba-8737-5422da3ba79b
+    fromPort: intersection
+    toPort: default
+  - id: 886dfb22-a1e4-4b03-b40e-8d7f8a060335
+    from: 8c37d786-50f7-4aba-8737-5422da3ba79b
+    to: a08a7333-b223-41d2-aea1-24966c6349b1
+    fromPort: default
+    toPort: default
+  # AttributeMapper -> Counter; Counter.complete -> writer, Counter.default -> merger
+  - id: cc03d04d-fb59-42b5-af57-1570683880b9
+    from: a08a7333-b223-41d2-aea1-24966c6349b1
+    to: 68871b39-bb4c-45a2-a328-3725ad947f0f
+    fromPort: default
+    toPort: default
+  - id: 6c30f0d2-8bef-4346-9d26-63c0b7f85894
+    from: 68871b39-bb4c-45a2-a328-3725ad947f0f
+    to: 073a86d1-e1d0-497d-803f-6398518f0c1a
+    fromPort: complete
+    toPort: default
+  - id: a3f1939c-0146-422f-8117-2bb66893c4f8
+    from: 073a86d1-e1d0-497d-803f-6398518f0c1a
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  - id: b01b26b7-0404-435b-9e37-838d1c707b2f
+    from: 68871b39-bb4c-45a2-a328-3725ad947f0f
+    to: c693f8b2-e6a9-4943-871d-f3ee950f75a0
+    fromPort: default
+    toPort: supplier
