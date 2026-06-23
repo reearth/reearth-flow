@@ -4,15 +4,9 @@ This directory is the authoritative definition of the FlowExpr language.
 
 ## Stabilization Process
 
-Everything documented here is stable for the current language type (`flowExpr`).
-
 Writing the spec is the stabilization decision.
 The implementation should be compatible with this spec.
-The implementation may contain unstabilized features not yet documented here.
-
-When one spec subsume another, the more general one wins.
-For example, if one spec says foo() takes int, and another says foo() takes int and string, the second spec wins.
-If two specs are not compatible, it is considered a bug.
+The implementation may contain unstabilized features.
 
 Spec should describe the language design as an interface defined by behavior, not its implementation.
 
@@ -30,3 +24,4 @@ Refer spec section from code with anchors following the GitHub convention: conve
 
 - Sections should be atomic and describe one point, not a group of points - use child sections for that.
 - Avoid duplicating existing points. Use cross-reference, especially when new spec extends previous spec's some section.
+- Though generally should be avoided, "must" indicates forward compatibility break.

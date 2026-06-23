@@ -129,7 +129,8 @@ Built-in type objects: `bool`, `int`, `float`, `str`, `list`, `dict`, `type`.
 ## operators
 
 Operators listed from lowest to highest precedence.
-`left` and `right` denote associativity; `prefix` denotes a unary operator with no left operand.
+`left` and `right` denote associativity of binary operators;
+`prefix` and `postfix` denote unary operators.
 
 - `or` (left)
 - `and` (left)
@@ -144,6 +145,7 @@ Operators listed from lowest to highest precedence.
 - `*` `/` `//` `%` (left)
 - unary `-` (prefix)
 - `**` (right)
+- index/slice `[...]`, attribute `.`, call `()` (postfix)
 
 ### integer and float division
 
@@ -205,6 +207,16 @@ Without an `else` branch, the result is `null` when the condition is false.
 ### while
 
 `while cond { ... }` loops while `cond` is truthy.
+
+## indexing
+
+`x[i]` accesses an element of `x`:
+
+- `list`: `i` is an integer index. Negative indices count from the end.
+- `str`: `i` is an integer index into the Unicode codepoints, returning a single-character string. Negative indices count from the end.
+- `dict`: `i` is a key.
+
+Index failure (missing key, out of scope, wrong type) should trigger evaluation error.
 
 ## scoping
 
