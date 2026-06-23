@@ -49,6 +49,26 @@ pub struct PhongMaterial {
     pub normal_map: Option<Texture>,
 }
 
+impl Material {
+    /// Whether this material has any textured map slot, and therefore samples a
+    /// UV set. A material with no maps (colour / factors only) needs no UV; one
+    /// with at least one map requires a UV set to sample.
+    pub fn has_texture(&self) -> bool {
+        match self {
+            Material::Phong(m) => {
+                m.diffuse_map.is_some() || m.emissive_map.is_some() || m.normal_map.is_some()
+            }
+            Material::Pbr(m) => {
+                m.base_color_map.is_some()
+                    || m.metallic_roughness_map.is_some()
+                    || m.normal_map.is_some()
+                    || m.occlusion_map.is_some()
+                    || m.emissive_map.is_some()
+            }
+        }
+    }
+}
+
 /// glTF metallic-roughness PBR material.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PbrMaterial {

@@ -24,13 +24,39 @@ impl From<TriangularMesh3DData> for Shell {
     }
 }
 
+impl Shell {
+    /// Drop back-side appearance from this shell's mesh, whichever kind it is.
+    /// A solid boundary's back face is never rendered (see
+    /// [`PolygonMesh3DData::make_front_only`](crate::polygon_mesh::PolygonMesh3DData)).
+    fn make_front_only(&mut self) {
+        match self {
+            Shell::PolygonMesh(mesh) => mesh.make_front_only(),
+            Shell::TriangularMesh(mesh) => mesh.make_front_only(),
+        }
+    }
+}
+
 impl Solid {
     /// A solid bounded by `exterior` with the given interior (void) shells, in
     /// `coordinate`.
-    pub fn new(coordinate: Coordinate, exterior: impl Into<Shell>, interiors: Vec<Shell>) -> Self {
+    ///
+    /// Every shell — exterior and interiors — is normalised to **front-side only**:
+    /// a solid's boundary faces are oriented outward (or inward for voids), so the
+    /// back of any boundary is the solid's interior and is never rendered. Any
+    /// back-side appearance a shell mesh carried is dropped here.
+    pub fn new(
+        coordinate: Coordinate,
+        exterior: impl Into<Shell>,
+        mut interiors: Vec<Shell>,
+    ) -> Self {
+        let mut exterior = exterior.into();
+        exterior.make_front_only();
+        for shell in &mut interiors {
+            shell.make_front_only();
+        }
         Self {
             coordinate,
-            exterior: exterior.into(),
+            exterior,
             interiors,
         }
     }
