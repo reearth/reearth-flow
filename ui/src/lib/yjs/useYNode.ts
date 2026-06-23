@@ -389,12 +389,13 @@ export default ({
         const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
         if (!yNodes) return;
         const yData = yNodes.get(nodeId)?.get("data") as
-          | Y.Map<YNodeValue>
+          | Y.Map<any>
           | undefined;
         if (!yData) return;
         const prevMetadata =
           (yData.get("metadata") as NodeMetadata | undefined) ?? {};
-        yData.set("metadata", { ...prevMetadata, schema } as any);
+        const metadata: NodeMetadata = { ...prevMetadata, schema };
+        yData.set("metadata", metadata);
       }, "schema-update"),
     [currentYWorkflow, undoTrackerActionWrapper],
   );

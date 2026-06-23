@@ -39,19 +39,21 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
     [],
   );
 
+  const disabled = !jobId || !accessToken || isTerminal;
+
   useSubscriptionSetup<OnJobStatusChangeSubscription>(
     "GetSubscribedJobStatus",
     accessToken,
     variables,
     jobId,
     jobStatusDataFormatter,
-    !jobId || isTerminal,
+    disabled,
   );
 
   const { data: realTimeJobStatus } = useSubscription(
     "GetSubscribedJobStatus",
     jobId,
-    !jobId || isTerminal,
+    disabled,
   );
 
   // The subscription only carries status; refetch once on a terminal event to
