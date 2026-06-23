@@ -1256,7 +1256,11 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
     }
     let pairs = match args.first() {
         Some(Value::Array(a)) => a.borrow().clone(),
-        _ => return Err(eval_error("dict() expects a dict, an array of [key, value] pairs, or no argument")),
+        _ => {
+            return Err(eval_error(
+                "dict() expects a dict, an array of [key, value] pairs, or no argument",
+            ))
+        }
     };
     let mut out = IndexMap::new();
     for (i, pair) in pairs.iter().enumerate() {
