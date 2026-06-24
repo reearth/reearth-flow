@@ -6,6 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "test": "playwright test",
+    "test:fast": "playwright test --project fast",
+    "test:pipeline": "playwright test --project pipeline",
+    "test:pipeline:serial": "playwright test --project pipeline --workers=1",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:smoke": "playwright test --grep @smoke",

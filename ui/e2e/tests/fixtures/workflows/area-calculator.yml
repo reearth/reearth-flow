@@ -5,8 +5,6 @@ id: 7efa24a6-19fa-4be1-8f5b-7e5e14b6e551
 name: "Area Calculator"
 entryGraphId: dfb479fd-caf1-48c6-beff-257262ebb59d
 with:
-  # Injected by the worker at runtime; points at the job's artifact sandbox.
-  workerArtifactPath: null
   parks: |
     {"type":"FeatureCollection","features":[
       {"type":"Feature","properties":{"name":"Imperial Palace East Gardens"},"geometry":{"type":"Polygon","coordinates":[[[139.7528,35.6838],[139.7628,35.6838],[139.7628,35.6919],[139.7528,35.6919],[139.7528,35.6838]]]}},
@@ -22,8 +20,9 @@ graphs:
         type: action
         action: GeoJsonReader
         with:
-          inline: |
-            env.get("parks")
+          inline:
+            type: flowExpr
+            value: env.get("parks")
 
       - id: 854740f8-8159-480c-80c1-b0b7596a03f2
         name: Calculate Area
@@ -42,8 +41,11 @@ graphs:
         type: action
         action: GeoJsonWriter
         with:
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "park-areas.geojson")
+          # Sink outputs must be relative paths; the engine resolves them
+          # against the job's artifact sandbox and rejects absolute URIs.
+          output:
+            type: string
+            value: park-areas.geojson
 
     edges:
       - id: f5fe8722-2c01-4227-a61a-5d5a91071fd2
