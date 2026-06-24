@@ -13,11 +13,23 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useReaderSchemaProbes } from "@flow/stores";
-import type { FieldReport, NodeSchemaMeta } from "@flow/types";
+import type { AttrType, FieldReport, NodeSchemaMeta } from "@flow/types";
 
 type Props = {
   nodeId: string;
   schema?: NodeSchemaMeta;
+};
+
+const TYPE_COLOR: Record<AttrType, string> = {
+  String: "text-blue-400",
+  Number: "text-green-400",
+  Bool: "text-violet-400",
+  DateTime: "text-amber-400",
+  Array: "text-teal-400",
+  Map: "text-pink-400",
+  Bytes: "text-orange-400",
+  Null: "text-muted-foreground",
+  Unknown: "text-muted-foreground",
 };
 
 const collectFields = (schema?: NodeSchemaMeta): FieldReport[] => {
@@ -76,25 +88,47 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
             <InfoIcon className="size-3 text-muted-foreground hover:text-foreground" />
           </div>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs">
-          <div className="flex flex-col gap-1">
-            <p className="font-medium">{t("Attributes")}</p>
-            {fields.length === 0 ? (
-              <p className="text-muted-foreground">
-                {t("No attributes detected.")}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-0.5">
-                {fields.map((field) => (
-                  <code key={field.name} className="text-xs">
-                    {field.name}
-                    {field.presence === "maybe" ? "?" : ""} :{" "}
-                    <span className="text-muted-foreground">{field.type}</span>
-                  </code>
-                ))}
-              </div>
+        <TooltipContent side="bottom" className="w-64 p-0">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+            <span className="text-xs font-medium">{t("Attributes")}</span>
+            {fields.length > 0 && (
+              <span className="rounded-full bg-muted px-1.5 py-px font-mono text-[10px] text-muted-foreground">
+                {fields.length}
+              </span>
             )}
           </div>
+          {fields.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+              {t("No attributes detected.")}
+            </p>
+          ) : (
+            <div className="flex max-h-56 flex-col overflow-y-auto p-1">
+              {fields.map((field) => {
+                const optional = field.presence === "maybe";
+                return (
+                  <div
+                    key={field.name}
+                    className="flex items-center gap-2 rounded px-2 py-1 hover:bg-accent">
+                    <code
+                      className={`flex-1 truncate font-mono text-xs ${
+                        optional ? "text-muted-foreground" : ""
+                      }`}>
+                      {field.name}
+                    </code>
+                    {optional && (
+                      <span className="rounded border border-border px-1 font-mono text-[9px] text-muted-foreground">
+                        {t("opt")}
+                      </span>
+                    )}
+                    <span
+                      className={`font-mono text-[10px] font-semibold ${TYPE_COLOR[field.type]}`}>
+                      {field.type}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
