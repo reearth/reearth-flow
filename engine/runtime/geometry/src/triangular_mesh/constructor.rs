@@ -25,6 +25,9 @@
 
 use std::collections::HashMap;
 
+use crate::appearance::{
+    Appearance, FaceBinding, Material, MaterialIndex, Side, ThemeBinding, ThemeId, UvSet, UvSource,
+};
 use crate::coordinate::Coordinate;
 use crate::error::Error;
 use crate::index::{IndexBuffer, IndexWidth};
@@ -86,6 +89,46 @@ impl TriangularMesh3DData {
             appearance: None,
         }
     }
+
+    /// Add a single-material, front-side appearance for one theme — a `Uniform`
+    /// binding, so the whole mesh uses `material` under that theme. **Additive**:
+    /// call once per theme to build a multi-theme mesh; the first theme added
+    /// becomes the default. `uv` is required iff `material` is textured (an
+    /// `Explicit` array must have `3 * triangle_count` entries — one per corner),
+    /// and forbidden otherwise. Errors (leaving the mesh unchanged) on a duplicate
+    /// theme or a material / UV / length violation.
+    pub fn set_appearance(
+        &mut self,
+        theme: ThemeId,
+        material: Material,
+        uv: Option<UvSource>,
+    ) -> Result<(), Error> {
+        let binding = FaceBinding::Uniform(MaterialIndex::new(0).expect("0 is not u32::MAX"));
+        self.set_appearance_with_binding(theme, vec![material], binding, uv)
+    }
+
+    /// Add a multi-material, front-side appearance for one theme with an explicit
+    /// per-triangle `binding`. `binding` indexes `materials` locally
+    /// (`0..materials.len()`); those indices are offset into the accumulated
+    /// palette. A `PerFace` binding's length must equal the triangle count.
+    /// Additive and validated like [`set_appearance`](Self::set_appearance).
+    pub fn set_appearance_with_binding(
+        &mut self,
+        theme: ThemeId,
+        materials: Vec<Material>,
+        binding: FaceBinding,
+        uv: Option<UvSource>,
+    ) -> Result<(), Error> {
+        add_theme(
+            self.indices.len(),
+            &mut self.appearance,
+            &mut self.uv_sets,
+            theme,
+            materials,
+            binding,
+            uv,
+        )
+    }
 }
 
 impl TriangularMesh3D {
@@ -128,6 +171,30 @@ impl TriangularMesh3D {
     /// Build from a triangle soup; see [`TriangularMesh3DData::from_soup`].
     pub fn from_soup(coordinate: Coordinate, iter: impl IntoIterator<Item = [f64; 3]>) -> Self {
         Self::new(coordinate, TriangularMesh3DData::from_soup(iter))
+    }
+
+    /// Add a single-material appearance for one theme; see
+    /// [`TriangularMesh3DData::set_appearance`].
+    pub fn set_appearance(
+        &mut self,
+        theme: ThemeId,
+        material: Material,
+        uv: Option<UvSource>,
+    ) -> Result<(), Error> {
+        self.data.set_appearance(theme, material, uv)
+    }
+
+    /// Add a multi-material appearance for one theme; see
+    /// [`TriangularMesh3DData::set_appearance_with_binding`].
+    pub fn set_appearance_with_binding(
+        &mut self,
+        theme: ThemeId,
+        materials: Vec<Material>,
+        binding: FaceBinding,
+        uv: Option<UvSource>,
+    ) -> Result<(), Error> {
+        self.data
+            .set_appearance_with_binding(theme, materials, binding, uv)
     }
 }
 
@@ -209,6 +276,180 @@ impl TriangularMesh2D {
             appearance: None,
         }
     }
+
+    /// Add a single-material appearance for one theme; see
+    /// [`TriangularMesh3DData::set_appearance`].
+    pub fn set_appearance(
+        &mut self,
+        theme: ThemeId,
+        material: Material,
+        uv: Option<UvSource>,
+    ) -> Result<(), Error> {
+        let binding = FaceBinding::Uniform(MaterialIndex::new(0).expect("0 is not u32::MAX"));
+        self.set_appearance_with_binding(theme, vec![material], binding, uv)
+    }
+
+    /// Add a multi-material appearance for one theme; see
+    /// [`TriangularMesh3DData::set_appearance_with_binding`].
+    pub fn set_appearance_with_binding(
+        &mut self,
+        theme: ThemeId,
+        materials: Vec<Material>,
+        binding: FaceBinding,
+        uv: Option<UvSource>,
+    ) -> Result<(), Error> {
+        add_theme(
+            self.indices.len(),
+            &mut self.appearance,
+            &mut self.uv_sets,
+            theme,
+            materials,
+            binding,
+            uv,
+        )
+    }
+}
+
+// ─── Appearance ──────────────────────────────────────────────────────────────
+//
+// One theme is added per call (shared by the 2D and 3D setters). UV is per-corner
+// — `3 * triangle_count` entries — and the binding is genuinely multi-face, so a
+// `PerFace` binding carries one material per triangle.
+
+/// Add one theme's appearance to a triangle mesh's `appearance` / `uv_sets`.
+/// `binding` indexes `materials` locally; its indices are offset into the
+/// accumulated palette. Validates the binding shape, the material/UV coupling and
+/// (for `Explicit`) the UV length against `3 * triangle_count`. On any error the
+/// mesh is left unchanged; on success the first theme added becomes the default.
+fn add_theme(
+    triangle_count: usize,
+    appearance: &mut Option<Appearance>,
+    uv_sets: &mut Vec<UvSet>,
+    theme: ThemeId,
+    materials: Vec<Material>,
+    binding: FaceBinding,
+    uv: Option<UvSource>,
+) -> Result<(), Error> {
+    if let Some(app) = appearance.as_ref() {
+        if app.themes.iter().any(|b| b.theme == theme) {
+            return Err(Error::invalid_appearance(format!(
+                "theme `{}` is already set",
+                theme.0
+            )));
+        }
+    }
+    validate_binding(&binding, materials.len(), triangle_count)?;
+
+    // A textured face needs UV; a colour-only theme must not carry an orphan set.
+    match (references_texture(&binding, &materials), &uv) {
+        (true, None) => {
+            return Err(Error::invalid_appearance(
+                "a bound material is textured but no UV was supplied",
+            ));
+        }
+        (false, Some(_)) => {
+            return Err(Error::invalid_appearance(
+                "no bound material is textured but a UV was supplied (orphan UV)",
+            ));
+        }
+        _ => {}
+    }
+    if let Some(UvSource::Explicit(coords)) = &uv {
+        let corners = triangle_count * 3;
+        if coords.len() != corners {
+            return Err(Error::invalid_appearance(format!(
+                "UV length {} does not match the corner count {corners}",
+                coords.len()
+            )));
+        }
+    }
+
+    let app = appearance.get_or_insert_with(|| Appearance {
+        materials: Vec::new(),
+        themes: Vec::new(),
+        default_theme: theme.clone(),
+    });
+    let offset = app.materials.len() as u32;
+    app.materials.extend(materials);
+    let front = offset_binding(binding, offset)?;
+    app.themes.push(ThemeBinding {
+        theme: theme.clone(),
+        front,
+        back: None,
+    });
+    if let Some(uv) = uv {
+        uv_sets.push(UvSet {
+            theme: Some(theme),
+            side: Side::Front,
+            channel: None,
+            uv,
+        });
+    }
+    Ok(())
+}
+
+/// Check a binding references only `0..palette_len` and, when `PerFace`, has one
+/// entry per triangle.
+fn validate_binding(
+    binding: &FaceBinding,
+    palette_len: usize,
+    triangle_count: usize,
+) -> Result<(), Error> {
+    let in_range = |index: MaterialIndex| (index.get() as usize) < palette_len;
+    match binding {
+        FaceBinding::Uniform(index) => {
+            if !in_range(*index) {
+                return Err(Error::invalid_appearance(format!(
+                    "material index {} is out of range for {palette_len} materials",
+                    index.get()
+                )));
+            }
+        }
+        FaceBinding::PerFace(faces) => {
+            if faces.len() != triangle_count {
+                return Err(Error::invalid_appearance(format!(
+                    "per-face binding length {} does not match the triangle count {triangle_count}",
+                    faces.len()
+                )));
+            }
+            if faces.iter().flatten().any(|index| !in_range(*index)) {
+                return Err(Error::invalid_appearance(format!(
+                    "a per-face material index is out of range for {palette_len} materials"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Whether any material the binding references carries a texture (and so needs UV).
+fn references_texture(binding: &FaceBinding, materials: &[Material]) -> bool {
+    let textured = |index: MaterialIndex| {
+        materials
+            .get(index.get() as usize)
+            .is_some_and(Material::has_texture)
+    };
+    match binding {
+        FaceBinding::Uniform(index) => textured(*index),
+        FaceBinding::PerFace(faces) => faces.iter().flatten().copied().any(textured),
+    }
+}
+
+/// Shift a binding's local material indices into the merged palette by `offset`.
+fn offset_binding(binding: FaceBinding, offset: u32) -> Result<FaceBinding, Error> {
+    let shift = |index: MaterialIndex| {
+        MaterialIndex::new(index.get() + offset)
+            .ok_or_else(|| Error::invalid_appearance("material palette too large"))
+    };
+    Ok(match binding {
+        FaceBinding::Uniform(index) => FaceBinding::Uniform(shift(index)?),
+        FaceBinding::PerFace(faces) => FaceBinding::PerFace(
+            faces
+                .into_iter()
+                .map(|opt| opt.map(shift).transpose())
+                .collect::<Result<_, _>>()?,
+        ),
+    })
 }
 
 /// Narrowest index width that can address `vertex_count` vertices (largest index
@@ -309,7 +550,15 @@ fn split_elevation(vertices: Vec<[f64; 3]>) -> (Vec<[f64; 2]>, Box<[f64]>) {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use bytes::Bytes;
+    use reearth_flow_common::image::MimeType;
+
     use super::*;
+    use crate::appearance::{
+        Filter, PhongMaterial, Raster, RasterData, Sampler, Texture, WrapMode,
+    };
 
     fn triples(buf: &IndexBuffer<3>) -> Vec<[u32; 3]> {
         match buf {
@@ -393,5 +642,194 @@ mod tests {
         let unchecked =
             unsafe { TriangularMesh3DData::from_parts_unchecked(verts, 1, [0u32, 1, 2]) };
         assert_eq!(checked, unchecked);
+    }
+
+    // ── Appearance setters ──
+
+    fn theme(name: &str) -> ThemeId {
+        ThemeId(Arc::from(name))
+    }
+
+    fn texture() -> Texture {
+        Texture {
+            raster: Arc::new(Raster::InMemory(RasterData {
+                mime_type: MimeType::ImagePng,
+                bytes: Bytes::from_static(&[0u8]),
+            })),
+            sampler: Sampler {
+                wrap_s: WrapMode::Repeat,
+                wrap_t: WrapMode::Repeat,
+                mag_filter: Filter::Linear,
+                min_filter: Filter::LinearMipmap,
+            },
+            transform: None,
+            uv_channel: Default::default(),
+        }
+    }
+
+    fn phong(map: Option<Texture>) -> Material {
+        Material::Phong(PhongMaterial {
+            diffuse: [1.0, 1.0, 1.0],
+            specular: [0.0; 3],
+            emissive: [0.0; 3],
+            ambient_intensity: 0.0,
+            shininess: 0.0,
+            transparency: 0.0,
+            diffuse_map: map,
+            emissive_map: None,
+            normal_map: None,
+        })
+    }
+
+    fn textured() -> Material {
+        phong(Some(texture()))
+    }
+
+    fn bare() -> Material {
+        phong(None)
+    }
+
+    fn uv(n: usize) -> UvSource {
+        UvSource::Explicit(vec![[0.0, 0.0]; n].into_boxed_slice())
+    }
+
+    /// One triangle (3 corners).
+    fn one_triangle() -> TriangularMesh3DData {
+        TriangularMesh3DData::from_parts(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap()
+    }
+
+    /// Two triangles (6 corners) over a quad.
+    fn two_triangles() -> TriangularMesh3DData {
+        TriangularMesh3DData::from_parts(
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            [0u32, 1, 2, 0, 2, 3],
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn set_appearance_uniform_textured() {
+        let mut m = one_triangle();
+        m.set_appearance(theme("rgb"), textured(), Some(uv(3)))
+            .unwrap();
+        let app = m.appearance.as_ref().unwrap();
+        assert_eq!(app.materials.len(), 1);
+        assert_eq!(app.default_theme, theme("rgb"));
+        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
+        assert!(app.themes[0].back.is_none());
+        assert_eq!(m.uv_sets.len(), 1);
+        assert_eq!(m.uv_sets[0].side, Side::Front);
+    }
+
+    #[test]
+    fn set_appearance_uniform_bare_has_no_uv() {
+        let mut m = one_triangle();
+        m.set_appearance(theme("rgb"), bare(), None).unwrap();
+        assert_eq!(m.appearance.as_ref().unwrap().materials.len(), 1);
+        assert!(m.uv_sets.is_empty());
+    }
+
+    #[test]
+    fn set_appearance_textured_without_uv_is_rejected() {
+        let mut m = one_triangle();
+        let err = m
+            .set_appearance(theme("rgb"), textured(), None)
+            .unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+        assert!(m.appearance.is_none(), "left unchanged");
+    }
+
+    #[test]
+    fn set_appearance_uv_length_must_match_corner_count() {
+        let mut m = one_triangle();
+        // 3 corners expected, 4 supplied.
+        let err = m
+            .set_appearance(theme("rgb"), textured(), Some(uv(4)))
+            .unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+    }
+
+    #[test]
+    fn set_appearance_with_per_face_binding() {
+        let mut m = two_triangles();
+        let binding = FaceBinding::PerFace(vec![MaterialIndex::new(0), MaterialIndex::new(1)]);
+        m.set_appearance_with_binding(theme("rgb"), vec![textured(), bare()], binding, Some(uv(6)))
+            .unwrap();
+        let app = m.appearance.as_ref().unwrap();
+        assert_eq!(app.materials.len(), 2);
+        let FaceBinding::PerFace(faces) = &app.themes[0].front else {
+            panic!("expected PerFace");
+        };
+        assert_eq!(faces, &[MaterialIndex::new(0), MaterialIndex::new(1)]);
+        let UvSource::Explicit(coords) = &m.uv_sets[0].uv else {
+            panic!("expected Explicit");
+        };
+        assert_eq!(coords.len(), 6);
+    }
+
+    #[test]
+    fn per_face_binding_length_must_match_triangle_count() {
+        let mut m = two_triangles(); // 2 triangles
+        let binding = FaceBinding::PerFace(vec![MaterialIndex::new(0)]); // only 1 entry
+        let err = m
+            .set_appearance_with_binding(theme("rgb"), vec![textured()], binding, Some(uv(6)))
+            .unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+    }
+
+    #[test]
+    fn binding_index_out_of_range_is_rejected() {
+        let mut m = one_triangle();
+        let binding = FaceBinding::Uniform(MaterialIndex::new(5).unwrap()); // no such material
+        let err = m
+            .set_appearance_with_binding(theme("rgb"), vec![textured()], binding, Some(uv(3)))
+            .unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+    }
+
+    #[test]
+    fn themes_accumulate_one_at_a_time() {
+        let mut m = two_triangles();
+        m.set_appearance(theme("rgb"), textured(), Some(uv(6)))
+            .unwrap();
+        m.set_appearance(theme("infrared"), bare(), None).unwrap();
+
+        let app = m.appearance.as_ref().unwrap();
+        assert_eq!(app.themes.len(), 2);
+        assert_eq!(
+            app.default_theme,
+            theme("rgb"),
+            "first theme is the default"
+        );
+        assert_eq!(app.materials.len(), 2);
+        // The second theme's local index 0 is offset to palette slot 1.
+        let FaceBinding::Uniform(rgb) = app.themes[0].front else {
+            panic!();
+        };
+        let FaceBinding::Uniform(infrared) = app.themes[1].front else {
+            panic!();
+        };
+        assert_eq!(rgb.get(), 0);
+        assert_eq!(infrared.get(), 1);
+        // Only the textured theme contributes a UV set.
+        assert_eq!(m.uv_sets.len(), 1);
+        assert_eq!(m.uv_sets[0].theme.as_ref(), Some(&theme("rgb")));
+    }
+
+    #[test]
+    fn duplicate_theme_is_rejected() {
+        let mut m = one_triangle();
+        m.set_appearance(theme("rgb"), bare(), None).unwrap();
+        let err = m.set_appearance(theme("rgb"), bare(), None).unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
     }
 }
