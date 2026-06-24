@@ -9,8 +9,8 @@ import {
 
 import { TextArea } from "@flow/components";
 
-import { type AutocompleteSuggestion } from "./constants";
 import FlowExprAutocomplete from "./FlowExprAutocomplete";
+import { type AutocompleteSuggestion } from "./flowExprConstants";
 import FlowExprSyntaxHighlighter from "./FlowExprSyntaxHighlighter";
 import {
   validateFlowExprCode,

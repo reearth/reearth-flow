@@ -52,7 +52,7 @@ const BaseInputTemplate = <
   } = formContext || {};
 
   // Check if this field is marked as an Expr type in the UI schema
-  let isExprField = uiSchema?.["ui:exprType"] === "rhai";
+  let isExprField = uiSchema?.["ui:exprType"] === "flowExpr";
   let isPythonField = uiSchema?.["ui:exprType"] === "python";
 
   // Fallback: detect expression types from schema or originalSchema (for dynamic array items)
