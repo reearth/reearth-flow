@@ -1,6 +1,6 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import { Position, useUpdateNodeInternals } from "@xyflow/react";
-import { memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 
 import {
   Collapsible,
@@ -44,13 +44,26 @@ const Handles: React.FC<Props> = ({
   const hasMoreThanFiveOutputHandles =
     outputs && outputs.length >= MIN_HANDLES_FOR_COLLAPSE;
 
+  /** React Flow caches handle positions and only re-measures when a node's size
+   * changes — not when a handle's id changes in place (e.g. a subworkflow
+   * pseudoport renamed by a collaborator). Without a nudge, edges to the
+   * changed handle can't resolve and drop until the canvas remounts. Re-measure
+   * whenever the handle set changes; skip the first render since mount is already measured.
+   */
+
   const updateNodeInternals = useUpdateNodeInternals();
   const handleSignature = useMemo(
     () =>
       `${inputs?.join(",") ?? ""}|${outputs?.join(",") ?? ""}|${nodeData.isCollapsed ? 1 : 0}`,
     [inputs, outputs, nodeData.isCollapsed],
   );
+
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     updateNodeInternals(id);
   }, [id, handleSignature, updateNodeInternals]);
 
