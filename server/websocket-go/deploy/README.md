@@ -53,10 +53,14 @@ the live Rust vars (`internal/config/config.go`):
    needed here; this step is kept only to record that the precondition the draft
    workflow assumes is already satisfied.
 
-1. **Activate the workflows.** Rename `build_deploy_websocket.go.yml.draft` →
-   `.github/workflows/build_deploy_websocket.yml` and `ci_websocket.go.yml.draft`
-   → `.github/workflows/ci_websocket.yml`, replacing the Rust versions. Wire the
-   new `vars.WS_*` / `secrets.WS_*` referenced in the deploy step.
+1. **Activate the deploy workflow + retire Rust CI.** CI for the Go server is
+   already wired additively as `.github/workflows/ci_websocket_go.yml` (runs on
+   `server/websocket-go/**`), so no CI activation is needed here. At cutover:
+   rename `build_deploy_websocket.go.yml.draft` →
+   `.github/workflows/build_deploy_websocket.yml` (replacing the Rust deploy) and
+   wire the new `vars.WS_*` / `secrets.WS_*`; then remove the Rust
+   `.github/workflows/ci_websocket.yml` and its `server/websocket/**` filter in
+   `ci.yml`.
 
 2. **Deploy green at 0% traffic.** The deploy job runs
    `gcloud run deploy … --no-traffic --tag green --port 8000 --set-env-vars … --set-secrets …`.
