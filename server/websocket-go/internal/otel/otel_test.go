@@ -81,7 +81,7 @@ func TestNoSecretLeakInSpanAttributes(t *testing.T) {
 	for _, sp := range spans {
 		hay := sp.Name()
 		for _, kv := range sp.Attributes() {
-			hay += " " + string(kv.Key) + "=" + kv.Value.Emit()
+			hay += " " + string(kv.Key) + "=" + kv.Value.String()
 		}
 		for _, canary := range []string{secret, token} {
 			if strings.Contains(hay, canary) {

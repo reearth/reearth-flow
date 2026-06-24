@@ -129,7 +129,7 @@ func (a *Adapter) Load(ctx context.Context, room string) (persistence.LoadResult
 		return persistence.LoadResult{}, err
 	}
 	merged := base
-	var head uint32 = cp
+	head := cp
 	parts := [][]byte{}
 	if len(merged) > 0 {
 		parts = append(parts, merged)
