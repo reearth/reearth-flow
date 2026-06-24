@@ -1,14 +1,15 @@
-// import { Viewer as CesiumViewerType } from "cesium";
 import {
-  BoundingSphere,
-  createWorldTerrainAsync,
-  defined,
+  CesiumTerrainProvider,
   EllipsoidTerrainProvider,
+  UrlTemplateImageryProvider,
+  BoundingSphere,
+  defined,
   SceneMode,
   ScreenSpaceEventType,
 } from "cesium";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ImageryLayer,
   ScreenSpaceEvent,
   ScreenSpaceEventHandler,
   useCesium,
@@ -20,6 +21,11 @@ import useDoubleClick from "@flow/hooks/useDoubleClick";
 
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
+
+const REEARTH_TERRAIN_URL =
+  "https://terrain.reearth.land/cesium-mesh/ellipsoid";
+const ESRI_WORLD_IMAGERY_URL =
+  "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 const defaultCesiumProps: Partial<ViewerProps> = {
   timeline: false,
@@ -33,6 +39,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   requestRenderMode: true,
   maximumRenderTimeChange: Infinity,
   navigationHelpButton: false,
+  baseLayer: false,
 };
 
 const TerrainController: React.FC<{ show3DTerrain: boolean }> = ({
@@ -45,13 +52,21 @@ const TerrainController: React.FC<{ show3DTerrain: boolean }> = ({
     let cancelled = false;
 
     if (show3DTerrain) {
-      createWorldTerrainAsync()
+      CesiumTerrainProvider.fromUrl(REEARTH_TERRAIN_URL, {
+        requestVertexNormals: true,
+        requestWaterMask: false,
+      })
         .then((terrainProvider) => {
           if (cancelled || viewer.isDestroyed()) return;
           viewer.terrainProvider = terrainProvider;
           viewer.scene.requestRender();
         })
-        .catch((e) => console.error("Failed to load world terrain:", e));
+        .catch((e) => {
+          console.error("Failed to load Re:Earth terrain:", e);
+          if (cancelled || viewer.isDestroyed()) return;
+          viewer.terrainProvider = new EllipsoidTerrainProvider();
+          viewer.scene.requestRender();
+        });
     } else {
       viewer.terrainProvider = new EllipsoidTerrainProvider();
       viewer.scene.requestRender();
@@ -155,6 +170,17 @@ const CesiumViewer: React.FC<Props> = ({
     onDoubleClick,
   );
 
+  const esriImageryProvider = useMemo(
+    () =>
+      new UrlTemplateImageryProvider({
+        url: ESRI_WORLD_IMAGERY_URL,
+        maximumLevel: 19,
+        credit:
+          "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+      }),
+    [],
+  );
+
   // Separate features by geometry type
   const { geoJsonData, cityGmlData } = useMemo(() => {
     const features = fileContent?.features || [];
@@ -190,7 +216,10 @@ const CesiumViewer: React.FC<Props> = ({
       }
       full
       {...defaultCesiumProps}>
-      <TerrainController show3DTerrain={visualizerType === "3d-map"} />
+      <ImageryLayer imageryProvider={esriImageryProvider} />
+      <TerrainController
+        show3DTerrain={visualizerType === "3d-map" && !cityGmlData}
+      />
       {onSelectedFeature && (
         <ScreenSpaceEventHandler>
           <ScreenSpaceEvent
