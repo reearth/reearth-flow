@@ -357,7 +357,7 @@ pub trait FromValue: Sized {
     fn from_string(s: String) -> std::result::Result<Self, Self::Error>;
     fn from_list(items: Vec<Self>) -> std::result::Result<Self, Self::Error>;
     fn from_dict(map: IndexMap<String, Self>) -> std::result::Result<Self, Self::Error>;
-    /// Called when a cycle is detected in List or Dict. Panic is the expected default.
+    /// Called when a cycle is detected in List or Dict.
     fn on_cycle() -> std::result::Result<Self, Self::Error>;
     /// Called for Value variants that cannot be represented (Fn, Closure, Module, Type,
     /// or a non-serializable Object).
