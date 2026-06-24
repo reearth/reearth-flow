@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::{Rc, Weak};
 
@@ -10,6 +10,87 @@ use super::ast::Expr;
 use super::env::Frame;
 use super::eval::type_of;
 use crate::core::error::{eval_error, Result};
+
+thread_local! {
+    pub(crate) static LIVE_ALLOC: Cell<usize> = const { Cell::new(0) };
+}
+
+pub struct TrackedRc<T: ?Sized>(Rc<T>);
+
+impl<T> TrackedRc<T> {
+    pub fn new(val: T) -> Self {
+        LIVE_ALLOC.with(|c| c.set(c.get() + 1));
+        TrackedRc(Rc::new(val))
+    }
+}
+
+impl<T: ?Sized> TrackedRc<T> {
+    pub fn from_rc(rc: Rc<T>) -> Self {
+        LIVE_ALLOC.with(|c| c.set(c.get() + 1));
+        TrackedRc(rc)
+    }
+
+    pub fn ptr_eq(a: &Self, b: &Self) -> bool {
+        Rc::ptr_eq(&a.0, &b.0)
+    }
+}
+
+impl<T: ?Sized> Clone for TrackedRc<T> {
+    fn clone(&self) -> Self {
+        TrackedRc(Rc::clone(&self.0))
+    }
+}
+
+impl<T: ?Sized> Drop for TrackedRc<T> {
+    fn drop(&mut self) {
+        if Rc::strong_count(&self.0) == 1 {
+            LIVE_ALLOC.with(|c| c.set(c.get() - 1));
+        }
+    }
+}
+
+impl<T: ?Sized> std::ops::Deref for TrackedRc<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
+impl<T: ?Sized + fmt::Debug> fmt::Debug for TrackedRc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+pub struct LeakGuard;
+
+impl LeakGuard {
+    pub fn enter() -> Self {
+        let current = LIVE_ALLOC.with(|c| c.get());
+        if current != 0 {
+            panic!(
+                "expr LeakGuard::enter: {} allocation(s) already live on this thread; nested eval is not supported",
+                current
+            );
+        }
+        LeakGuard
+    }
+}
+
+impl Drop for LeakGuard {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            return;
+        }
+        let current = LIVE_ALLOC.with(|c| c.get());
+        if current != 0 {
+            panic!(
+                "expr: {} Rc allocation(s) leaked; cyclic List, Dict, Object, or Module reference detected",
+                current
+            );
+        }
+    }
+}
 
 /// A user-defined closure: parameter names, body AST, and the lexical env captured at definition.
 #[derive(Clone)]
@@ -116,31 +197,31 @@ pub enum Value {
     Int(i64),
     Float(f64),
     String(String),
-    List(Rc<RefCell<Vec<Value>>>),
-    Dict(Rc<RefCell<IndexMap<String, Value>>>),
+    List(TrackedRc<RefCell<Vec<Value>>>),
+    Dict(TrackedRc<RefCell<IndexMap<String, Value>>>),
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
     /// A user-defined closure capturing a lexical env frame.
     Closure(ClosureValue),
     /// A typed object that can respond to method calls via [`ImmutableObject`].
-    Object(Rc<dyn ImmutableObject>),
-    Module(Rc<Module>),
+    Object(TrackedRc<dyn ImmutableObject>),
+    Module(TrackedRc<Module>),
     /// A first-class type value: callable as a constructor, compared by pointer identity.
     Type(Rc<TypeValue>),
 }
 
 impl Value {
     pub fn list(items: Vec<Value>) -> Self {
-        Value::List(Rc::new(RefCell::new(items)))
+        Value::List(TrackedRc::new(RefCell::new(items)))
     }
 
     pub fn dict(entries: IndexMap<String, Value>) -> Self {
-        Value::Dict(Rc::new(RefCell::new(entries)))
+        Value::Dict(TrackedRc::new(RefCell::new(entries)))
     }
 
     /// Construct an object value, wrapping `obj` in a fresh shared allocation.
     pub fn object(obj: impl ImmutableObject + 'static) -> Self {
-        Value::Object(Rc::new(obj))
+        Value::Object(TrackedRc::from_rc(Rc::new(obj)))
     }
 
     /// The kind of value this is, as a string. Used in error messages.
@@ -149,7 +230,7 @@ impl Value {
     }
 
     pub fn module(m: Module) -> Self {
-        Value::Module(Rc::new(m))
+        Value::Module(TrackedRc::new(m))
     }
 
     pub fn as_str(&self) -> Result<&str> {

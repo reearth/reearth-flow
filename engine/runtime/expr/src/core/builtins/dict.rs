@@ -1,13 +1,12 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::LazyLock;
 
 use indexmap::IndexMap;
 
 use crate::core::error::{eval_error, Result};
 use crate::core::eval::eval_eq;
-use crate::core::value::{NativeFn, Value};
+use crate::core::value::{NativeFn, TrackedRc, Value};
 use crate::expect_arity;
 
 use super::MethodFn;
@@ -82,10 +81,10 @@ fn get(args: &[Value]) -> Result<Value> {
 }
 
 pub fn eq_inner(
-    a: &Rc<RefCell<IndexMap<String, Value>>>,
-    b: &Rc<RefCell<IndexMap<String, Value>>>,
+    a: &TrackedRc<RefCell<IndexMap<String, Value>>>,
+    b: &TrackedRc<RefCell<IndexMap<String, Value>>>,
 ) -> Result<bool> {
-    if Rc::ptr_eq(a, b) {
+    if TrackedRc::ptr_eq(a, b) {
         return Ok(true);
     }
     let a = a.borrow();

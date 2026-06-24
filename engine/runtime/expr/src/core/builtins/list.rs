@@ -1,11 +1,10 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::LazyLock;
 
 use crate::core::error::{eval_error, Result};
 use crate::core::eval::eval_eq;
-use crate::core::value::{NativeFn, Value};
+use crate::core::value::{NativeFn, TrackedRc, Value};
 
 use crate::expect_arity;
 
@@ -57,8 +56,11 @@ fn append(args: &[Value]) -> Result<Value> {
     Ok(Value::Null)
 }
 
-pub fn eq_inner(a: &Rc<RefCell<Vec<Value>>>, b: &Rc<RefCell<Vec<Value>>>) -> Result<bool> {
-    if Rc::ptr_eq(a, b) {
+pub fn eq_inner(
+    a: &TrackedRc<RefCell<Vec<Value>>>,
+    b: &TrackedRc<RefCell<Vec<Value>>>,
+) -> Result<bool> {
+    if TrackedRc::ptr_eq(a, b) {
         return Ok(true);
     }
     let a = a.borrow();

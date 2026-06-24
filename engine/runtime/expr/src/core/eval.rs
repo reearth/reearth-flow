@@ -1697,7 +1697,10 @@ mod tests {
         // dict(d) produces a shallow copy
         assert_eval(
             r#"let b = dict(a); b["x"] = 9; a"#,
-            &[("a", Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) }))],
+            &[(
+                "a",
+                Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) }),
+            )],
             Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) }),
         );
     }
