@@ -36,11 +36,11 @@ where
     drop(child);
     let after = core::value::LIVE_ALLOC.with(|c| c.get());
     if after != before {
-        panic!(
+        return Err(T::Error::from(core::error::eval_error(format!(
             "expr: {} TrackedRc allocation(s) still live after eval; \
              intermediate cyclic reference detected",
             after.wrapping_sub(before)
-        );
+        ))));
     }
     Ok(result)
 }
