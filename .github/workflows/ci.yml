@@ -26,6 +26,7 @@ jobs:
       subscriber: ${{ steps.subscriber.outputs.any_changed }}
       ui: ${{ steps.ui.outputs.any_changed }}
       websocket: ${{ steps.websocket.outputs.any_changed }}
+      websocket_go: ${{ steps.websocket_go.outputs.any_changed }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
@@ -89,6 +90,14 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_websocket.yml
             .github/workflows/build_deploy_websocket.yml
+      - name: changed files for websocket-go
+        id: websocket_go
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
+        with:
+          files: |
+            server/websocket-go/**
+            .github/workflows/ci.yml
+            .github/workflows/ci_websocket_go.yml
 
   ci-api:
     needs: prepare
@@ -114,6 +123,10 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.websocket == 'true'
     uses: ./.github/workflows/ci_websocket.yml
+  ci-websocket-go:
+    needs: prepare
+    if: needs.prepare.outputs.websocket_go == 'true'
+    uses: ./.github/workflows/ci_websocket_go.yml
 
   ci:
     runs-on: ubuntu-latest
@@ -124,6 +137,7 @@ jobs:
       - ci-subscriber
       - ci-ui
       - ci-websocket
+      - ci-websocket-go
     if: "!failure()"
     steps:
       - name: Harden Runner

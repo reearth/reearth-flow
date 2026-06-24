@@ -1,11 +1,9 @@
-# DRAFT — DO NOT ACTIVATE.
-#
-# Proposed Go replacement for .github/workflows/ci_websocket.yml. Kept separate so
-# the live Rust CI stays untouched until cutover. Swaps the Rust toolchain
-# (cargo-make, protobuf/thrift compilers, rust-cache) for Go: vet + gofmt +
-# golangci-lint + race tests + govulncheck.
+# CI for the Go Y-WebSocket server (server/websocket-go). Runs additively
+# alongside the Rust ci_websocket.yml during the blue-green coexistence; the
+# cutover later replaces the Rust workflow with this one (deploy/README.md).
+# Go toolchain: vet + gofmt + golangci-lint + race tests + govulncheck.
 
-name: ci-websocket
+name: ci-websocket-go
 
 on:
   workflow_call:
