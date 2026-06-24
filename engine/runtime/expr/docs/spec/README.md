@@ -17,8 +17,8 @@ They are ordered by the time the decision was proposed, not by topic.
 
 Other documentation structured by topic can be generated from these files.
 
-Code should refer spec only, not user-facing documentation.
-Refer spec section from code with anchors following the GitHub convention: convert section title to lowercase, spaces replaced with `-`.
+Code should refer to the spec only, not user-facing documentation.
+Refer to spec sections from code with anchors following the GitHub convention: convert section title to lowercase, spaces replaced with `-`.
 
 ## Writing Style Guideline
 

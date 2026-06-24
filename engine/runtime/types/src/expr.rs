@@ -341,7 +341,7 @@ pub fn json_to_value(v: serde_json::Value) -> ExprValue {
         serde_json::Value::Array(arr) => {
             ExprValue::array(arr.into_iter().map(json_to_value).collect())
         }
-        serde_json::Value::Object(map) => ExprValue::map(
+        serde_json::Value::Object(map) => ExprValue::dict(
             map.into_iter()
                 .map(|(k, v)| (k, json_to_value(v)))
                 .collect(),
@@ -504,7 +504,7 @@ fn attribute_value_from_eval(v: ExprValue) -> TypesResult<AttributeValue> {
                 .map(|v| attribute_value_from_eval(v.clone()))
                 .collect::<TypesResult<Vec<_>>>()?,
         )),
-        ExprValue::Map(map) => Ok(AttributeValue::Map(
+        ExprValue::Dict(map) => Ok(AttributeValue::Map(
             map.borrow()
                 .iter()
                 .map(|(k, v)| attribute_value_from_eval(v.clone()).map(|v| (k.clone(), v)))

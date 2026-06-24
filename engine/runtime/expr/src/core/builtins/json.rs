@@ -26,7 +26,7 @@ fn value_to_json(v: &Value) -> Result<JsonValue> {
                 .collect::<Result<Vec<_>>>()?;
             Ok(JsonValue::Array(items))
         }
-        Value::Map(rc) => {
+        Value::Dict(rc) => {
             let obj = rc
                 .borrow()
                 .iter()
@@ -74,7 +74,7 @@ fn json_to_value(j: JsonValue) -> Result<Value> {
                 .into_iter()
                 .map(|(k, v)| json_to_value(v).map(|val| (k, val)))
                 .collect::<Result<IndexMap<_, _>>>()?;
-            Ok(Value::map(map))
+            Ok(Value::dict(map))
         }
     }
 }

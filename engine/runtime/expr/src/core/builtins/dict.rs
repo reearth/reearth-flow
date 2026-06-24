@@ -35,7 +35,7 @@ pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
 
 fn keys(args: &[Value]) -> Result<Value> {
     expect_arity("map.keys", &args[1..], 0, 0)?;
-    let Value::Map(rc) = &args[0] else {
+    let Value::Dict(rc) = &args[0] else {
         return Err(eval_error("expected map receiver"));
     };
     Ok(Value::array(
@@ -48,7 +48,7 @@ fn keys(args: &[Value]) -> Result<Value> {
 
 fn values(args: &[Value]) -> Result<Value> {
     expect_arity("map.values", &args[1..], 0, 0)?;
-    let Value::Map(rc) = &args[0] else {
+    let Value::Dict(rc) = &args[0] else {
         return Err(eval_error("expected map receiver"));
     };
     Ok(Value::array(rc.borrow().values().cloned().collect()))
@@ -56,7 +56,7 @@ fn values(args: &[Value]) -> Result<Value> {
 
 fn items(args: &[Value]) -> Result<Value> {
     expect_arity("map.items", &args[1..], 0, 0)?;
-    let Value::Map(rc) = &args[0] else {
+    let Value::Dict(rc) = &args[0] else {
         return Err(eval_error("expected map receiver"));
     };
     Ok(Value::array(
@@ -69,7 +69,7 @@ fn items(args: &[Value]) -> Result<Value> {
 
 fn get(args: &[Value]) -> Result<Value> {
     expect_arity("map.get", &args[1..], 1, 2)?;
-    let Value::Map(rc) = &args[0] else {
+    let Value::Dict(rc) = &args[0] else {
         return Err(eval_error("expected map receiver"));
     };
     let k = args[1].as_str()?;
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_keys() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_values() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
         });
         assert_eval("m.get(\"x\")", &[("m", m.clone())], Value::from(1i64));
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_items() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });

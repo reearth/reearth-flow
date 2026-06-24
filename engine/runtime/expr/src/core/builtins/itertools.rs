@@ -189,9 +189,9 @@ mod tests {
             r#"itertools.sorted([{"k": 3}, {"k": 1}, {"k": 2}], fn(x) { x["k"] })"#,
             &[],
             Value::from(vec![
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(1i64) }),
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(2i64) }),
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(3i64) }),
+                Value::dict(indexmap::indexmap! { "k".into() => Value::from(1i64) }),
+                Value::dict(indexmap::indexmap! { "k".into() => Value::from(2i64) }),
+                Value::dict(indexmap::indexmap! { "k".into() => Value::from(3i64) }),
             ]),
         );
         assert_eval("itertools.sorted([])", &[], Value::from(vec![] as Vec<i64>));

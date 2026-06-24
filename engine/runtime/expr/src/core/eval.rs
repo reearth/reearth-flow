@@ -4,7 +4,7 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
-use super::builtins::{array as array_methods, map as map_methods, str as str_methods};
+use super::builtins::{array as array_methods, dict as dict_methods, str as str_methods};
 use super::builtins::{
     builtin_itertools, builtin_json, builtin_math, regex_type_value, url_type_value,
 };
@@ -207,7 +207,7 @@ fn eq_op(args: &[Value]) -> Result<Value> {
     }
     match (a, b) {
         (Value::Array(a), Value::Array(b)) => array_methods::eq_inner(a, b).map(Value::Bool),
-        (Value::Map(a), Value::Map(b)) => map_methods::eq_inner(a, b).map(Value::Bool),
+        (Value::Dict(a), Value::Dict(b)) => dict_methods::eq_inner(a, b).map(Value::Bool),
         _ => Ok(Value::Bool(primitive_eq(a, b))),
     }
 }
@@ -232,7 +232,7 @@ fn resolve_attr(recv: Value, attr: &str) -> Result<Value> {
         },
         recv @ Value::String(_) => str_methods::resolve_method(recv, attr).map(Value::Fn),
         recv @ Value::Array(_) => array_methods::resolve_method(recv, attr).map(Value::Fn),
-        recv @ Value::Map(_) => map_methods::resolve_method(recv, attr).map(Value::Fn),
+        recv @ Value::Dict(_) => dict_methods::resolve_method(recv, attr).map(Value::Fn),
         Value::Object(rc) => {
             if let Some(result) = rc.get_property(attr) {
                 return result;
@@ -530,10 +530,10 @@ fn contains_inner(left: Value, right: Value) -> Result<bool> {
                 l.type_name()
             ))),
         },
-        Value::Map(map) => match left {
+        Value::Dict(map) => match left {
             Value::String(key) => Ok(map.borrow().contains_key(&key)),
             l => Err(eval_error(format!(
-                "'in' not supported between {} and map",
+                "'in' not supported between {} and dict",
                 l.type_name()
             ))),
         },
@@ -637,13 +637,13 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
                     other => {
                         return Err(Error::Eval {
                             pos,
-                            msg: format!("map key must be a string, got {}", other.type_name()),
+                            msg: format!("dict key must be a string, got {}", other.type_name()),
                         })
                     }
                 };
                 map.insert(key_str, eval_inner(v, env)?);
             }
-            Ok(Value::map(map))
+            Ok(Value::dict(map))
         }
         ExprKind::Var(name) => env_get(env, name.as_str()).ok_or_else(|| Error::Eval {
             pos,
@@ -778,7 +778,7 @@ fn collect_iterable(value: Value, pos: usize) -> Result<Vec<Value>> {
     match value {
         Value::Array(rc) => Ok(rc.borrow().clone()),
         Value::String(s) => Ok(s.chars().map(|c| Value::String(c.to_string())).collect()),
-        Value::Map(rc) => Ok(rc
+        Value::Dict(rc) => Ok(rc
             .borrow()
             .keys()
             .map(|k| Value::String(k.clone()))
@@ -823,7 +823,7 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &Env, local: bool) -> Re
                     })?;
                     rc.borrow_mut()[idx] = value;
                 }
-                (Value::Map(rc), Value::String(k)) => {
+                (Value::Dict(rc), Value::String(k)) => {
                     rc.borrow_mut().insert(k.clone(), value);
                 }
                 (c, k) => {
@@ -897,7 +897,7 @@ fn eval_compound_assign(
                     rc.borrow_mut()[idx] = new_val.clone();
                     Ok(new_val)
                 }
-                (Value::Map(rc), Value::String(k)) => {
+                (Value::Dict(rc), Value::String(k)) => {
                     let current = rc.borrow().get(k.as_str()).cloned().unwrap_or(Value::Null);
                     let new_val = call_value(Value::Fn(f.clone()), vec![current, rhs_val])?;
                     rc.borrow_mut().insert(k.clone(), new_val.clone());
@@ -922,11 +922,11 @@ fn eval_compound_assign(
 
 fn eval_index(target: Value, key: Value) -> Result<Value> {
     match (target, key) {
-        (Value::Map(map), Value::String(k)) => map
+        (Value::Dict(map), Value::String(k)) => map
             .borrow()
             .get(&k)
             .cloned()
-            .ok_or_else(|| eval_error(format!("map key '{k}' not found"))),
+            .ok_or_else(|| eval_error(format!("dict key '{k}' not found"))),
         (Value::Array(arr), Value::Int(i)) => {
             let arr = arr.borrow();
             let len = arr.len();
@@ -1228,7 +1228,7 @@ fn builtin_list(args: &[Value]) -> Result<Value> {
         Some(Value::String(s)) => Ok(Value::array(
             s.chars().map(|c| Value::String(c.to_string())).collect(),
         )),
-        Some(Value::Map(m)) => Ok(Value::array(
+        Some(Value::Dict(m)) => Ok(Value::array(
             m.borrow()
                 .keys()
                 .map(|k| Value::String(k.clone()))
@@ -1250,8 +1250,8 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
         )));
     }
     match args.first() {
-        None => return Ok(Value::map(IndexMap::new())),
-        Some(Value::Map(m)) => return Ok(Value::map(m.borrow().clone())),
+        None => return Ok(Value::dict(IndexMap::new())),
+        Some(Value::Dict(m)) => return Ok(Value::dict(m.borrow().clone())),
         _ => {}
     }
     let pairs = match args.first() {
@@ -1290,10 +1290,10 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
             }
         }
     }
-    Ok(Value::map(out))
+    Ok(Value::dict(out))
 }
 
-fn type_of(v: &Value) -> Rc<TypeValue> {
+pub(crate) fn type_of(v: &Value) -> Rc<TypeValue> {
     match v {
         Value::Null => NULL_TYPE.with(Rc::clone),
         Value::Bool(_) => BOOL_TYPE.with(Rc::clone),
@@ -1301,7 +1301,7 @@ fn type_of(v: &Value) -> Rc<TypeValue> {
         Value::Float(_) => FLOAT_TYPE.with(Rc::clone),
         Value::String(_) => STR_TYPE.with(Rc::clone),
         Value::Array(_) => LIST_TYPE.with(Rc::clone),
-        Value::Map(_) => DICT_TYPE.with(Rc::clone),
+        Value::Dict(_) => DICT_TYPE.with(Rc::clone),
         Value::Fn(_) | Value::Closure(_) => FN_TYPE.with(Rc::clone),
         Value::Module(_) => MODULE_TYPE.with(Rc::clone),
         Value::Type(_) => TYPE_TYPE.with(Rc::clone),
@@ -1319,7 +1319,7 @@ fn builtin_len(args: &[Value]) -> Result<Value> {
     match &args[0] {
         Value::String(s) => Ok(Value::Int(s.chars().count() as i64)),
         Value::Array(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
-        Value::Map(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
+        Value::Dict(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
         other => Err(eval_error(format!(
             "len() not supported for {}",
             other.type_name()
@@ -1510,7 +1510,7 @@ mod tests {
 
     #[test]
     fn test_index() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "name".into() => Value::from("alice"),
         });
         assert_eval(r#"m["name"]"#, &[("m", m.clone())], Value::from("alice"));
@@ -1577,7 +1577,7 @@ mod tests {
         assert_eval(r#""xyz" in "hello world""#, &[], Value::from(false));
         assert_eval(r#""xyz" not in "hello world""#, &[], Value::from(true));
         assert_eval(r#""" in "hello""#, &[], Value::from(true));
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "a".into() => Value::from(1i64),
             "b".into() => Value::from(2i64),
         });
@@ -1655,11 +1655,11 @@ mod tests {
     }
 
     #[test]
-    fn test_map() {
+    fn test_dict() {
         assert_eval(
             r#"dict([["a", 1], ["b", 2]])"#,
             &[],
-            Value::map(indexmap::indexmap! {
+            Value::dict(indexmap::indexmap! {
                 "a".into() => Value::from(1i64),
                 "b".into() => Value::from(2i64),
             }),
@@ -1667,7 +1667,7 @@ mod tests {
         assert_eval(
             r#"{"a": 1, "b": 2}"#,
             &[],
-            Value::map(indexmap::indexmap! {
+            Value::dict(indexmap::indexmap! {
                 "a".into() => Value::from(1i64),
                 "b".into() => Value::from(2i64),
             }),
@@ -1675,15 +1675,15 @@ mod tests {
         assert_eval(
             r#"{"x": true,}"#,
             &[],
-            Value::map(indexmap::indexmap! { "x".into() => Value::Bool(true) }),
+            Value::dict(indexmap::indexmap! { "x".into() => Value::Bool(true) }),
         );
-        assert_eval("{}", &[], Value::map(indexmap::indexmap! {}));
+        assert_eval("{}", &[], Value::dict(indexmap::indexmap! {}));
         assert_eval(r#"{"pre" + "fix": 9}["prefix"]"#, &[], Value::from(9i64));
         assert_eval(
             r#"{"a": {"b": 2}}"#,
             &[],
-            Value::map(indexmap::indexmap! {
-                "a".into() => Value::map(indexmap::indexmap! { "b".into() => Value::from(2i64) }),
+            Value::dict(indexmap::indexmap! {
+                "a".into() => Value::dict(indexmap::indexmap! { "b".into() => Value::from(2i64) }),
             }),
         );
         // insertion order must not affect equality
@@ -1740,7 +1740,7 @@ mod tests {
         assert_eval(r#"list("abc")"#, &[], Value::from(vec!["a", "b", "c"]));
         let arr = Value::from(vec![1i64, 2i64]);
         assert_eval("list(arr)", &[("arr", arr.clone())], arr);
-        let m = Value::map(
+        let m = Value::dict(
             indexmap::indexmap! { "x".into() => Value::from(1i64), "y".into() => Value::from(2i64) },
         );
         assert_eval("list(m)", &[("m", m)], Value::from(vec!["x", "y"]));
@@ -1930,7 +1930,7 @@ mod tests {
         assert_eval(r#"len("")"#, &[], Value::from(0i64));
         let arr = Value::from(vec![1i64, 2i64, 3i64]);
         assert_eval("len(arr)", &[("arr", arr)], Value::from(3i64));
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
@@ -1956,7 +1956,7 @@ mod tests {
 
     #[test]
     fn test_complex_expr() {
-        let obj = Value::map(indexmap::indexmap! {
+        let obj = Value::dict(indexmap::indexmap! {
             "type".into() => Value::from("json"),
             "name".into() => Value::from("foo"),
         });
@@ -2037,7 +2037,7 @@ mod tests {
     }
 
     #[test]
-    fn test_map_index_assign() {
+    fn test_dict_index_assign() {
         assert_eval(
             r#"m = {"a": 1}; m["b"] = 2; m["b"]"#,
             &[],
@@ -2112,7 +2112,7 @@ mod tests {
 
     #[test]
     fn test_for_in_map_keys() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "a".into() => Value::from(1i64),
             "b".into() => Value::from(2i64),
         });
@@ -2213,7 +2213,7 @@ mod tests {
 
     #[test]
     fn test_for_in_map_items() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "a".into() => Value::from(10i64),
             "b".into() => Value::from(20i64),
         });

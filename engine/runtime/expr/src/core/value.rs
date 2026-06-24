@@ -8,6 +8,7 @@ pub type Module = IndexMap<String, Value>;
 
 use super::ast::Expr;
 use super::env::Frame;
+use super::eval::type_of;
 use crate::core::error::{eval_error, Result};
 
 /// A user-defined closure: parameter names, body AST, and the lexical env captured at definition.
@@ -101,7 +102,7 @@ impl std::fmt::Debug for NativeFn {
 
 /// Runtime value type for the expression evaluator.
 ///
-/// `Array` and `Map` use `Rc<RefCell<...>>` for reference semantics: cloning a
+/// `Array` and `Dict` use `Rc<RefCell<...>>` for reference semantics: cloning a
 /// value shares the same backing allocation, so mutations through one alias are
 /// visible through all others (Python-style). Circular references are the
 /// caller's responsibility and are not detected.
@@ -116,7 +117,7 @@ pub enum Value {
     Float(f64),
     String(String),
     Array(Rc<RefCell<Vec<Value>>>),
-    Map(Rc<RefCell<IndexMap<String, Value>>>),
+    Dict(Rc<RefCell<IndexMap<String, Value>>>),
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
     /// A user-defined closure capturing a lexical env frame.
@@ -134,9 +135,8 @@ impl Value {
         Value::Array(Rc::new(RefCell::new(items)))
     }
 
-    /// Construct a map value, wrapping `entries` in a fresh shared allocation.
-    pub fn map(entries: IndexMap<String, Value>) -> Self {
-        Value::Map(Rc::new(RefCell::new(entries)))
+    pub fn dict(entries: IndexMap<String, Value>) -> Self {
+        Value::Dict(Rc::new(RefCell::new(entries)))
     }
 
     /// Construct an object value, wrapping `obj` in a fresh shared allocation.
@@ -146,19 +146,7 @@ impl Value {
 
     /// The kind of value this is, as a string. Used in error messages.
     pub fn type_name(&self) -> String {
-        match self {
-            Value::Null => "null".into(),
-            Value::Bool(_) => "bool".into(),
-            Value::Int(_) => "int".into(),
-            Value::Float(_) => "float".into(),
-            Value::String(_) => "str".into(),
-            Value::Array(_) => "list".into(),
-            Value::Map(_) => "dict".into(),
-            Value::Fn(_) | Value::Closure(_) => "function".into(),
-            Value::Object(rc) => rc.type_object().name.clone(),
-            Value::Module(_) => "module".into(),
-            Value::Type(_) => "type".into(),
-        }
+        type_of(self).name.clone()
     }
 
     pub fn module(m: Module) -> Self {
@@ -204,7 +192,7 @@ impl Value {
             Value::Float(f) => *f != 0.0,
             Value::String(s) => !s.is_empty(),
             Value::Array(a) => !a.borrow().is_empty(),
-            Value::Map(o) => !o.borrow().is_empty(),
+            Value::Dict(o) => !o.borrow().is_empty(),
             Value::Fn(_)
             | Value::Closure(_)
             | Value::Object(_)
@@ -260,7 +248,7 @@ impl std::fmt::Display for Value {
                 }
                 write!(f, "]")
             }
-            Value::Map(map) => {
+            Value::Dict(map) => {
                 let map = map.borrow();
                 write!(f, "{{")?;
                 for (i, (k, v)) in map.iter().enumerate() {

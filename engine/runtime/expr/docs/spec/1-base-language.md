@@ -216,7 +216,7 @@ Without an `else` branch, the result is `null` when the condition is false.
 - `str`: `i` is an integer index into the Unicode codepoints, returning a single-character string. Negative indices count from the end.
 - `dict`: `i` is a key.
 
-Index failure (missing key, out of scope, wrong type) should trigger evaluation error.
+Index failure (missing key, out of bounds, wrong type) should trigger an evaluation error.
 
 ## scoping
 
