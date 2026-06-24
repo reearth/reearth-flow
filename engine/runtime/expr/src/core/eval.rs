@@ -4,10 +4,10 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
-use super::builtins::{list as list_methods, dict as dict_methods, str as str_methods};
 use super::builtins::{
     builtin_itertools, builtin_json, builtin_math, regex_type_value, url_type_value,
 };
+use super::builtins::{dict as dict_methods, list as list_methods, str as str_methods};
 use super::env::{new_frame, Env};
 use super::error::{eval_error, Error, Result, POS_UNSET};
 use super::value::{format_float, ClosureValue, NativeFn, TypeValue, Value};
@@ -1691,6 +1691,14 @@ mod tests {
             r#"{"a": 1, "b": 2} == {"b": 2, "a": 1}"#,
             &[],
             Value::Bool(true),
+        );
+        // dict() with no args produces empty dict
+        assert_eval("dict()", &[], Value::dict(indexmap::indexmap! {}));
+        // dict(d) produces a shallow copy
+        assert_eval(
+            r#"let b = dict(a); b["x"] = 9; a"#,
+            &[("a", Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) }))],
+            Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) }),
         );
     }
 

@@ -1,7 +1,7 @@
-pub mod list;
 pub mod dict;
 mod itertools;
 mod json;
+pub mod list;
 pub mod math;
 mod regex;
 pub mod str;
