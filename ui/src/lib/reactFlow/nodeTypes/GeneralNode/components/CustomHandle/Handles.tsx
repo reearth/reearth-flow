@@ -1,6 +1,6 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
-import { Position } from "@xyflow/react";
-import { memo } from "react";
+import { Position, useUpdateNodeInternals } from "@xyflow/react";
+import { memo, useEffect, useMemo } from "react";
 
 import {
   Collapsible,
@@ -43,6 +43,16 @@ const Handles: React.FC<Props> = ({
     inputs && inputs.length >= MIN_HANDLES_FOR_COLLAPSE;
   const hasMoreThanFiveOutputHandles =
     outputs && outputs.length >= MIN_HANDLES_FOR_COLLAPSE;
+
+  const updateNodeInternals = useUpdateNodeInternals();
+  const handleSignature = useMemo(
+    () =>
+      `${inputs?.join(",") ?? ""}|${outputs?.join(",") ?? ""}|${nodeData.isCollapsed ? 1 : 0}`,
+    [inputs, outputs, nodeData.isCollapsed],
+  );
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, handleSignature, updateNodeInternals]);
 
   return (
     <Collapsible className="flex flex-col" open={!isCollapsed}>

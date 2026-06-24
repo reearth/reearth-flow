@@ -4,8 +4,8 @@ import {
   GraphIcon,
   LightningIcon,
 } from "@phosphor-icons/react";
-import { NodeProps, useUpdateNodeInternals } from "@xyflow/react";
-import { memo, useEffect, useMemo } from "react";
+import { NodeProps } from "@xyflow/react";
+import { memo, useMemo } from "react";
 
 import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
 import type { Node } from "@flow/types";
@@ -39,16 +39,6 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     selectedBackgroundColor,
     handleCollapsedToggle,
   } = useHooks({ data, type, nodeId: id });
-
-  const updateNodeInternals = useUpdateNodeInternals();
-  const handleSignature = useMemo(
-    () =>
-      `${inputs?.join(",") ?? ""}|${outputs?.join(",") ?? ""}|${data.isCollapsed ? 1 : 0}`,
-    [inputs, outputs, data.isCollapsed],
-  );
-  useEffect(() => {
-    updateNodeInternals(id);
-  }, [id, handleSignature, updateNodeInternals]);
 
   const awarenessSelections = useAwarenessNodeSelections(id);
   const remoteColor = awarenessSelections[0]?.color;
