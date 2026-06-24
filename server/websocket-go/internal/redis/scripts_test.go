@@ -125,7 +125,7 @@ func TestSafeDeleteStream(t *testing.T) {
 	t.Run("bails when read lock present", func(t *testing.T) {
 		c, mr := newTestClient(t)
 		_ = publishEmptyMarker(ctx, c, doc, 1)
-		mr.Set(readLockKey(doc), "held")
+		_ = mr.Set(readLockKey(doc), "held")
 		if err := safeDeleteStream(ctx, c, doc, "instance-1"); err != nil {
 			t.Fatalf("safeDeleteStream: %v", err)
 		}
