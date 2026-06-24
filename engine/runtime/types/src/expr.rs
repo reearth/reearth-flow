@@ -65,7 +65,9 @@ impl FromValue for FlowValue {
         )))
     }
     fn on_cycle() -> TypesResult<Self> {
-        panic!("expr: cyclic reference detected in eval return value")
+        Err(TypesError::Conversion(
+            "cyclic reference detected in eval return value".into(),
+        ))
     }
     fn on_unconvertible(msg: String) -> TypesResult<Self> {
         Err(TypesError::Conversion(msg))

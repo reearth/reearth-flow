@@ -24,10 +24,6 @@ pub fn compile(input: &str) -> Result<CompiledExpr> {
 }
 
 /// Evaluate a compiled expression, converting the result to `T` via [`FromValue`].
-///
-/// Cycle detection is fully encapsulated:
-/// - Cyclic values in the **return** tree are caught by [`FromValue::on_cycle`] during conversion.
-/// - Intermediate cyclic allocations that do not surface in the return value cause a panic.
 pub fn eval<T>(expr: &CompiledExpr, env: &Env) -> std::result::Result<T, T::Error>
 where
     T: FromValue,
