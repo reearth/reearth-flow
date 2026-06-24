@@ -54,6 +54,11 @@ impl PolygonMesh3DData {
     /// corners, and zero-filling faces a theme does not cover (their binding is
     /// `None`, so the filler is never sampled). Bare input (no appearance on any
     /// polygon) yields a bare mesh.
+    ///
+    /// A welded multi-face mesh's faces carry *different* `WorldToTexture` matrices
+    /// and cannot share one, so any matrix UV is baked to per-corner `Explicit` here
+    /// (a single-surface triangulation keeps its one matrix instead — see
+    /// [`UvSource`]).
     pub fn from_polygons<'a>(polygons: impl IntoIterator<Item = &'a Polygon3D>) -> Self {
         let polygons: Vec<&Polygon3D> = polygons.into_iter().collect();
         let faces = polygons

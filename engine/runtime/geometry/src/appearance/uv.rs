@@ -37,6 +37,16 @@ pub struct UvSet {
 /// An affine georeferenced map is baked to `Explicit` on read; a projective
 /// world-to-texture matrix is retained, and collapsed to `Explicit` at any
 /// non-affine operation or per-vertex-only sink.
+///
+/// There is deliberately **no per-vertex variant**. A surface's UV is assumed
+/// *affine* in position (a photographic / orthophoto projection onto a planar
+/// face), so it reduces to one `WorldToTexture` matrix — and `Explicit` per-corner
+/// UV is an exact sampling of that matrix, recoverable from 3 `(position, UV)`
+/// pairs. So triangulating a face (earcut / spade) carries the single matrix
+/// instead of a per-vertex array: a Delaunay re-ordering is irrelevant (UV is
+/// positional) and inserted (Steiner) vertices get exact UV by evaluating it.
+/// `Explicit` ⊕ `WorldToTexture` therefore suffices; a *welded multi-face* mesh,
+/// whose faces carry different matrices, bakes them to per-corner `Explicit`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum UvSource {
     /// Flat UV array parallel to the host geometry's corner buffer.
