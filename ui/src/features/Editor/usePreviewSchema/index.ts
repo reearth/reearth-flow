@@ -47,6 +47,8 @@ export default ({
     new Map(),
   );
 
+  const lastProbedParams = useRef<Map<string, string>>(new Map());
+
   useEffect(() => {
     const timers = debounceTimers.current;
     return () => {
@@ -55,9 +57,19 @@ export default ({
     };
   }, []);
 
+  const projectId = currentProject?.id;
+  useEffect(() => {
+    debounceTimers.current.forEach((timer) => clearTimeout(timer));
+    debounceTimers.current.clear();
+    lastProbedParams.current.clear();
+    setProbes({});
+  }, [projectId, setProbes]);
+
   const setProbeStatus = useCallback(
-    (nodeId: string, jobId: string, status: "running" | "failed") =>
-      setProbes((prev) => ({ ...prev, [nodeId]: { nodeId, jobId, status } })),
+    (nodeId: string, jobId: string, status: "running" | "failed") => {
+      if (status === "failed") lastProbedParams.current.delete(nodeId);
+      setProbes((prev) => ({ ...prev, [nodeId]: { nodeId, jobId, status } }));
+    },
     [setProbes],
   );
 
@@ -106,6 +118,11 @@ export default ({
       if (!node.data.params || Object.keys(node.data.params).length === 0) {
         return;
       }
+
+      const signature = JSON.stringify(node.data.params);
+      if (lastProbedParams.current.get(node.id) === signature) return;
+      lastProbedParams.current.set(node.id, signature);
+
       const existing = debounceTimers.current.get(node.id);
       if (existing) clearTimeout(existing);
       debounceTimers.current.set(
@@ -149,6 +166,7 @@ export default ({
 
   const handleProbeError = useCallback(
     (nodeId: string) => {
+      lastProbedParams.current.delete(nodeId);
       setProbes((prev) => {
         const existing = prev[nodeId];
         return {
