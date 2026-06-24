@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	crand "crypto/rand"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -152,6 +153,19 @@ func run() error {
 
 // buildPersistence constructs the GCS adapter, the persistence-wired Server, and
 // the last-instance Flusher, returning a cleanup that closes the GCS + Redis
+// newInstanceOwner returns a per-process lock-owner token unique across
+// instances even when they share a PID (e.g. PID 1 in separate containers).
+// The crypto/rand suffix guarantees uniqueness; the hostname prefix is only for
+// operator-facing readability of lock values.
+func newInstanceOwner() (string, error) {
+	var b [8]byte
+	if _, err := crand.Read(b[:]); err != nil {
+		return "", fmt.Errorf("generate instance owner: %w", err)
+	}
+	host, _ := os.Hostname()
+	return fmt.Sprintf("instance-%s-%x", host, b[:]), nil
+}
+
 // clients. Phase-2 is opt-in via REEARTH_FLOW_GCS_PHASE2 (default OFF).
 func buildPersistence(ctx context.Context, cfg *config.Config, log *slog.Logger) (*server.Server, *gcs.Adapter, *gcs.Flusher, func(), error) {
 	// GCS client (anonymous against fake-gcs when REEARTH_FLOW_GCS_ENDPOINT is set).
@@ -172,7 +186,12 @@ func buildPersistence(ctx context.Context, cfg *config.Config, log *slog.Logger)
 	}
 	rc := goredis.NewClient(ropt)
 
-	owner := fmt.Sprintf("instance-%d", os.Getpid())
+	owner, err := newInstanceOwner()
+	if err != nil {
+		_ = stClient.Close()
+		_ = rc.Close()
+		return nil, nil, nil, nil, fmt.Errorf("instance owner: %w", err)
+	}
 	adapter, err := gcs.New(gcs.Options{
 		Client: stClient,
 		Bucket: cfg.GCSBucketName,
