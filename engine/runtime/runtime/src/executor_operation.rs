@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
 use tracing::{error_span, info_span};
@@ -31,7 +30,7 @@ pub enum ExecutorOperation {
 
 #[derive(Debug, Clone)]
 pub struct Context {
-    pub expr_engine: Arc<Engine>,
+    pub env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
@@ -46,7 +45,7 @@ pub struct Context {
 impl From<ExecutorContext> for Context {
     fn from(ctx: ExecutorContext) -> Self {
         Self {
-            expr_engine: ctx.expr_engine,
+            env_vars: ctx.env_vars,
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
@@ -58,7 +57,7 @@ impl From<ExecutorContext> for Context {
 impl From<NodeContext> for Context {
     fn from(ctx: NodeContext) -> Self {
         Self {
-            expr_engine: ctx.expr_engine,
+            env_vars: ctx.env_vars,
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
@@ -69,14 +68,14 @@ impl From<NodeContext> for Context {
 
 impl Context {
     pub fn new(
-        expr_engine: Arc<Engine>,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
         sandbox_root: Uri,
     ) -> Self {
         Self {
-            expr_engine,
+            env_vars,
             storage_resolver,
             kv_store,
             event_hub,
@@ -88,7 +87,7 @@ impl Context {
         ExecutorContext {
             feature,
             port,
-            expr_engine: self.expr_engine.clone(),
+            env_vars: self.env_vars.clone(),
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
@@ -101,7 +100,7 @@ impl Context {
 pub struct ExecutorContext {
     pub feature: Feature,
     pub port: Port,
-    pub expr_engine: Arc<Engine>,
+    pub env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
@@ -117,7 +116,7 @@ impl ExecutorContext {
     pub fn new(
         feature: Feature,
         port: Port,
-        expr_engine: Arc<Engine>,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
@@ -126,7 +125,7 @@ impl ExecutorContext {
         Self {
             feature,
             port,
-            expr_engine,
+            env_vars,
             storage_resolver,
             kv_store,
             event_hub,
@@ -136,7 +135,7 @@ impl ExecutorContext {
 
     pub fn as_context(&self) -> Context {
         Context {
-            expr_engine: self.expr_engine.clone(),
+            env_vars: self.env_vars.clone(),
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
@@ -148,7 +147,7 @@ impl ExecutorContext {
         Self {
             feature,
             port,
-            expr_engine: Arc::clone(&self.expr_engine),
+            env_vars: Arc::clone(&self.env_vars),
             storage_resolver: Arc::clone(&self.storage_resolver),
             kv_store: Arc::clone(&self.kv_store),
             event_hub: self.event_hub.clone(),
@@ -164,7 +163,7 @@ impl ExecutorContext {
         Self {
             feature,
             port,
-            expr_engine: Arc::clone(&ctx.expr_engine),
+            env_vars: Arc::clone(&ctx.env_vars),
             storage_resolver: Arc::clone(&ctx.storage_resolver),
             kv_store: Arc::clone(&ctx.kv_store),
             event_hub: ctx.event_hub.clone(),
@@ -176,7 +175,7 @@ impl ExecutorContext {
         Self {
             feature,
             port,
-            expr_engine: Arc::clone(&ctx.expr_engine),
+            env_vars: Arc::clone(&ctx.env_vars),
             storage_resolver: Arc::clone(&ctx.storage_resolver),
             kv_store: Arc::clone(&ctx.kv_store),
             event_hub: ctx.event_hub.clone(),
@@ -186,7 +185,7 @@ impl ExecutorContext {
 
     pub fn new_with_default_port(
         feature: Feature,
-        expr_engine: Arc<Engine>,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
@@ -195,7 +194,7 @@ impl ExecutorContext {
         Self {
             feature,
             port: DEFAULT_PORT.clone(),
-            expr_engine,
+            env_vars,
             storage_resolver,
             kv_store,
             event_hub,
@@ -214,7 +213,7 @@ impl ExecutorContext {
 
 #[derive(Debug, Clone)]
 pub struct NodeContext {
-    pub expr_engine: Arc<Engine>,
+    pub env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
@@ -229,7 +228,7 @@ pub struct NodeContext {
 impl From<Context> for NodeContext {
     fn from(ctx: Context) -> Self {
         Self {
-            expr_engine: ctx.expr_engine,
+            env_vars: ctx.env_vars,
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
@@ -241,7 +240,7 @@ impl From<Context> for NodeContext {
 impl From<ExecutorContext> for NodeContext {
     fn from(ctx: ExecutorContext) -> Self {
         Self {
-            expr_engine: ctx.expr_engine,
+            env_vars: ctx.env_vars,
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
@@ -253,7 +252,7 @@ impl From<ExecutorContext> for NodeContext {
 impl Default for NodeContext {
     fn default() -> Self {
         Self {
-            expr_engine: Arc::new(Engine::new()),
+            env_vars: Arc::new(serde_json::Map::new()),
             storage_resolver: Arc::new(StorageResolver::new()),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
             event_hub: EventHub::new(30),
@@ -269,14 +268,14 @@ impl Default for NodeContext {
 
 impl NodeContext {
     pub fn new(
-        expr_engine: Arc<Engine>,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
         sandbox_root: Uri,
     ) -> Self {
         Self {
-            expr_engine,
+            env_vars,
             storage_resolver,
             kv_store,
             event_hub,
@@ -294,7 +293,7 @@ impl NodeContext {
 
     pub fn as_context(&self) -> Context {
         Context {
-            expr_engine: self.expr_engine.clone(),
+            env_vars: self.env_vars.clone(),
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),

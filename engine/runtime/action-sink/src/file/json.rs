@@ -6,7 +6,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{create_batch_feature, Code, CompiledCode, Feature};
+use reearth_flow_types::{create_batch_feature, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -102,7 +102,7 @@ pub(super) struct JsonWriterParam {
     /// Output path or expression for the JSON file to create
     pub(super) output: Code,
     /// Optional converter expression to transform features before writing
-    pub(super) converter: Option<Code>,
+    pub(super) converter: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 impl Sink for JsonWriter {
@@ -113,7 +113,7 @@ impl Sink for JsonWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let path = self
             .output
-            .eval_string(&ctx.feature, ctx.expr_engine.vars())
+            .eval_string(&ctx.feature, ctx.env_vars.clone())
             .map_err(|e| SinkError::JsonWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
         let node_ctx: NodeContext = ctx.into();
@@ -133,7 +133,7 @@ impl Sink for JsonWriter {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         for (out, features) in self.buffer.values() {
             write_json(
                 out,

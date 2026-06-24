@@ -245,8 +245,9 @@ graphs:
     action: PlanarityFilter
     with:
       filterType: height
-      threshold: |
-        0.03
+      threshold:
+        type: flowExpr
+        value: '0.03'
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     name: Rotator3D
     type: action
@@ -254,18 +255,24 @@ graphs:
     with:
       rotation:
         type: fromToVectors
-        fromX: |
-          env.get("__value").surfaceNormalX
-        fromY: |
-          env.get("__value").surfaceNormalY
-        fromZ: |
-          env.get("__value").surfaceNormalZ
-        toX: |
-          0.0
-        toY: |
-          0.0
-        toZ: |
-          1.0
+        fromX:
+          type: flowExpr
+          value: attributes["surfaceNormalX"]
+        fromY:
+          type: flowExpr
+          value: attributes["surfaceNormalY"]
+        fromZ:
+          type: flowExpr
+          value: attributes["surfaceNormalZ"]
+        toX:
+          type: flowExpr
+          value: '0.0'
+        toY:
+          type: flowExpr
+          value: '0.0'
+        toZ:
+          type: flowExpr
+          value: '1.0'
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
@@ -825,8 +832,9 @@ graphs:
     type: action
     action: PLATEAU4.DomainOfDefinitionValidator
     with:
-      codelistsPath: |
-        env.get("__value").dirCodelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["dirCodelists"]
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag
     type: action
@@ -1004,8 +1012,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
@@ -1044,8 +1053,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
@@ -1149,19 +1159,23 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").index.to_string()
-      supplierAttributeValue: |
-        env.get("__value").index.to_string()
+      requestorAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
+      supplierAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
   - id: d71b0796-97a2-4e65-92df-635fc3b0a92f
     name: FeatureMerger02
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").index.to_string()
-      supplierAttributeValue: |
-        env.get("__value").index.to_string()
+      requestorAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
+      supplierAttributeValue:
+        type: flowExpr
+        value: str(attributes["index"])
   - id: f19638b9-679a-4dd9-9a39-3cf2a82c6ff5
     name: AttributeMapper
     type: action
@@ -1618,10 +1632,12 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").name
-      supplierAttributeValue: |
-        env.get("__value").filename
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["filename"]
   - id: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
     name: AttributeManagerTotalErrorCount
     type: action
@@ -1955,8 +1971,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
@@ -1974,8 +1991,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: e86300b4-59a7-4714-ad89-3aa18ef201d8
@@ -1984,10 +2002,12 @@ graphs:
     action: XMLFragmenter
     with:
       source: url
-      elementsToMatch: |
-        env.get("__value").featureTypes[env.get("__value")["package"]]
-      elementsToExclude: |
-        []
+      elementsToMatch:
+        type: flowExpr
+        value: attributes["featureTypes"][attributes["package"]]
+      elementsToExclude:
+        type: flowExpr
+        value: '[]'
       attribute: path
   - id: 5490fef1-320b-4789-9f5b-5401a9b99e41
     name: FeatureCounter
@@ -2405,8 +2425,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 151fa081-4606-4493-8808-35d75f063159
@@ -2431,8 +2452,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
@@ -2472,7 +2494,9 @@ graphs:
     type: action
     action: HorizontalReprojector
     with:
-      targetEpsgCode: env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: env["prcs"]
   - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
     name: PLATEAU3.LodSplitterWithDM
     type: subGraph
@@ -2697,10 +2721,12 @@ graphs:
     type: action
     action: FeatureMerger
     with:
-      requestorAttributeValue: |
-        env.get("__value").Filename
-      supplierAttributeValue: |
-        env.get("__value").name
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["Filename"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
   - id: f58eeb2c-9187-4880-8c1f-7da2f9388069
     name: SummaryAttributeMapper
     type: action

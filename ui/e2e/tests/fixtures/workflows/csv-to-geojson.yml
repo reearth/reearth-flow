@@ -19,8 +19,9 @@ graphs:
         action: CsvReader
         with:
           format: csv
-          inline: |
-            env.get("stations")
+          inline:
+            type: flowExpr
+            value: env.get("stations")
           # lon/lat columns become Point geometry and are dropped from attributes.
           geometry:
             xColumn: lon

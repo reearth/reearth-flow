@@ -14,16 +14,14 @@ use std::io::Write;
 use std::sync::Arc;
 
 use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::node::NodeKind;
 use reearth_flow_runtime::schema_sample::sample_source;
 use reearth_flow_types::attr_schema::AttrType;
 use reearth_flow_types::attribute::Attribute;
 use serde_json::json;
 
-/// An engine with no variables — for `dataset` literals that need no resolution.
-fn empty_engine() -> Arc<Engine> {
-    Arc::new(Engine::new())
+fn empty_env() -> Arc<serde_json::Map<String, serde_json::Value>> {
+    Arc::new(serde_json::Map::new())
 }
 
 const FIXTURE_GEOJSON: &str = r#"{
@@ -84,7 +82,7 @@ fn samples_geojson_real_attributes() {
         geojson_factory(),
         &Some(with_dataset(&uri)),
         10,
-        empty_engine(),
+        empty_env(),
     );
 
     assert!(
@@ -113,7 +111,7 @@ fn samples_geojson_real_attributes() {
 #[test]
 fn unresolved_source_falls_back_to_open_with_note() {
     let with = with_dataset("file:///nonexistent/path/does_not_exist_xyz.geojson");
-    let outcome = sample_source(geojson_factory(), &Some(with), 10, empty_engine());
+    let outcome = sample_source(geojson_factory(), &Some(with), 10, empty_env());
 
     assert!(outcome.schema.open, "schema should be open on failure");
     assert!(outcome.note.is_some(), "a note should explain the failure");
@@ -143,9 +141,9 @@ fn samples_geojson_dataset_resolved_from_engine_var() {
 
     let mut vars = serde_json::Map::new();
     vars.insert("datasetPath".to_string(), json!(uri));
-    let engine = Arc::new(Engine::with_vars(vars));
+    let env_vars = Arc::new(vars);
 
-    let outcome = sample_source(geojson_factory(), &Some(with), 10, engine);
+    let outcome = sample_source(geojson_factory(), &Some(with), 10, env_vars);
 
     assert!(
         outcome.note.is_none(),

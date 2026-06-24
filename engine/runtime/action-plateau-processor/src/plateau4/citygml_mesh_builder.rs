@@ -18,9 +18,9 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{
-    Attribute, AttributeValue, Expr, Feature, Geometry as FlowGeometry, GeometryValue,
+    Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature, Geometry as FlowGeometry,
+    GeometryValue,
 };
-use rhai::AST;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -65,12 +65,12 @@ impl ProcessorFactory for CityGmlMeshBuilderFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: CityGmlMeshBuilderParam = if let Some(with) = with.as_ref() {
+        let params: CityGmlMeshBuilderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -88,20 +88,15 @@ impl ProcessorFactory for CityGmlMeshBuilderFactory {
             .into());
         };
 
-        // Compile EPSG code expression for runtime evaluation
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let epsg_code_ast = expr_engine
-            .compile(params.epsg_code.as_ref())
-            .map_err(|e| {
-                PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
-                    "Failed to compile epsg_code expression: {e}"
-                ))
-            })?;
+        let epsg_code_ast = params.epsg_code.compile().map_err(|e| {
+            PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
+                "Failed to compile epsg_code expression: {e}"
+            ))
+        })?;
 
         Ok(Box::new(CityGmlMeshBuilder {
             params,
             relief_feature_counter: 0,
-            global_params: with,
             epsg_code_ast,
         }))
     }
@@ -119,7 +114,7 @@ pub struct CityGmlMeshBuilderParam {
 
     /// # Target EPSG Code
     /// EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.
-    pub epsg_code: Expr,
+    pub epsg_code: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 fn default_error_attr() -> Attribute {
@@ -130,8 +125,7 @@ fn default_error_attr() -> Attribute {
 pub struct CityGmlMeshBuilder {
     params: CityGmlMeshBuilderParam,
     relief_feature_counter: u64,
-    global_params: Option<HashMap<String, Value>>,
-    epsg_code_ast: AST,
+    epsg_code_ast: CompiledCode,
 }
 
 impl Processor for CityGmlMeshBuilder {
@@ -293,27 +287,23 @@ impl CityGmlMeshBuilder {
         feature: &Feature,
         ctx: &ExecutorContext,
     ) -> Result<String, BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let epsg_code = scope
-            .eval_ast::<rhai::Dynamic>(&self.epsg_code_ast)
+        let epsg_code = self
+            .epsg_code_ast
+            .eval(feature, ctx.env_vars.clone())
             .map_err(|e| {
                 PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
                     "Failed to evaluate epsg_code expression: {e:?}"
                 ))
             })?;
 
-        // Handle both string and integer EPSG codes
-        if let Some(s) = epsg_code.clone().try_cast::<String>() {
-            Ok(s)
-        } else if let Some(i) = epsg_code.clone().try_cast::<i64>() {
-            Ok(i.to_string())
-        } else {
-            Err(PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
+        match epsg_code {
+            AttributeValue::String(s) => Ok(s),
+            AttributeValue::Number(n) => Ok(n.to_string()),
+            other => Err(PlateauProcessorError::CityGmlMeshBuilderFactory(format!(
                 "epsg_code expression ({:?}) did not evaluate to a string or integer",
-                epsg_code
+                other
             ))
-            .into())
+            .into()),
         }
     }
 

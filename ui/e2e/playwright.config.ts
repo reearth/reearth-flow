@@ -7,6 +7,13 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 export const STORAGE_STATE = path.join(__dirname, ".auth/user.json");
 
+const chromiumUse = {
+  ...devices["Desktop Chrome"],
+  launchOptions: {
+    slowMo: process.env.CI ? 0 : 10,
+  },
+};
+
 export default defineConfig({
   testDir: "./tests",
   globalSetup: process.env.SKIP_STORAGE_STATE
@@ -17,7 +24,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 5 : undefined,
+  workers: 5,
   reporter: process.env.CI
     ? [["html", { open: "never" }], ["list"]]
     : [["html"], ["list"]],
@@ -33,14 +40,22 @@ export default defineConfig({
     locale: "en-US",
   },
   projects: [
+    // Fast UI tests (@smoke/@regression) — safe to run in parallel.
     {
-      name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        launchOptions: {
-          slowMo: process.env.CI ? 0 : 10,
-        },
-      },
+      name: "fast",
+      grepInvert: /@pipeline/,
+      fullyParallel: true,
+      use: chromiumUse,
+    },
+    // Pipeline tests (@pipeline) deploy and run real engine jobs. They run at
+    // the default 5 workers (steps within a serial spec stay ordered via
+    // fullyParallel:false). If a loaded dev engine starts flaking concurrent
+    // jobs, fall back to the serial `test:pipeline:serial` script (--workers=1).
+    {
+      name: "pipeline",
+      grep: /@pipeline/,
+      fullyParallel: false,
+      use: chromiumUse,
     },
   ],
 });

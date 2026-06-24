@@ -23,7 +23,6 @@ new-geometry = [
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
-reearth-flow-eval-expr.workspace = true
 reearth-flow-geometry.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-state.workspace = true
@@ -52,7 +51,6 @@ proj.workspace = true
 quick-xml.workspace = true
 rayon.workspace = true
 regex.workspace = true
-rhai.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true

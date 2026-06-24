@@ -42,7 +42,7 @@ pub(crate) fn read_csv(
     let storage_resolver = &ctx.storage_resolver;
     let csv_path = params
         .dataset
-        .eval_string(feature, ctx.expr_engine.vars())
+        .eval_string(feature, ctx.env_vars.clone())
         .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(csv_path.as_str())
         .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;

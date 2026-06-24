@@ -1,5 +1,6 @@
 import { IChangeEvent } from "@rjsf/core";
 import {
+  createSchemaUtils,
   GenericObjectType,
   RJSFSchema,
   RJSFValidationError,
@@ -67,7 +68,7 @@ const buildExprUiSchema = (
     const fieldName = path.split(".").pop() || "";
     const isPythonScript =
       actionName === "PythonScriptProcessor" && fieldName === "script";
-    return { "ui:exprType": isPythonScript ? "python" : "rhai" };
+    return { "ui:exprType": isPythonScript ? "python" : "flowExpr" };
   }
 
   // Resolve a plain $ref to its definition and recurse into it.
@@ -183,8 +184,13 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   useEffect(() => {
     if (patchedSchema && defaultFormData) {
       try {
-        const validationResult = validator.validateFormData(
+        const schemaUtils = createSchemaUtils(validator, patchedSchema);
+        const formDataWithDefaults = schemaUtils.getDefaultFormState(
+          patchedSchema,
           defaultFormData,
+        );
+        const validationResult = validator.validateFormData(
+          formDataWithDefaults,
           patchedSchema,
         );
         const isValid =

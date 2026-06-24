@@ -72,8 +72,9 @@ graphs:
         type: action
         action: FeatureFilePathExtractor
         with:
-          sourceDataset: |
-            env.get("__value")["cityGmlPath"]
+          sourceDataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
           extractArchive: true
           destPrefix: udx
 
@@ -101,10 +102,11 @@ graphs:
         type: action
         action: PLATEAU4.UDXFolderExtractor
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
-          codelistsPath: "codelists"
-          schemasPath: "schemas"
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
+          codelistsPath: codelists
+          schemasPath: schemas
 
       - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         name: FeatureFilterByPackage
@@ -190,7 +192,9 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: env.get("prcs")
+          targetEpsgCode:
+            type: flowExpr
+            value: env["prcs"]
 
       - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         name: FeatureFilterBuildingPart
@@ -246,10 +250,12 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttributeValue: |
-            env.get("__value").filename
-          supplierAttributeValue: |
-            env.get("__value").gmlFilename
+          requestorAttributeValue:
+            type: flowExpr
+            value: attributes["filename"]
+          supplierAttributeValue:
+            type: flowExpr
+            value: attributes["gmlFilename"]
 
       # Phase 3: AttributeMapper for CSV formatting
       - id: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a

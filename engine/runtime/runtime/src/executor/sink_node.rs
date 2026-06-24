@@ -10,7 +10,6 @@ use std::{
 use crossbeam::channel::Receiver;
 use futures::Future;
 use petgraph::graph::NodeIndex;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
@@ -53,7 +52,7 @@ pub struct SinkNode<F> {
     runtime: Arc<Handle>,
     span: tracing::Span,
     features_written: Arc<AtomicU64>,
-    expr_engine: Arc<Engine>,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     sandbox_root: Uri,
@@ -109,7 +108,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             runtime,
             span,
             features_written: Arc::new(AtomicU64::new(0)),
-            expr_engine: ctx.expr_engine.clone(),
+            env_vars: ctx.env_vars.clone(),
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
             sandbox_root: ctx.sandbox_root.clone(),
@@ -162,7 +161,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         let init_result = self
             .sink
             .initialize(NodeContext {
-                expr_engine: self.expr_engine.clone(),
+                env_vars: self.env_vars.clone(),
                 kv_store: self.kv_store.clone(),
                 storage_resolver: self.storage_resolver.clone(),
                 event_hub: self.event_hub.clone(),
