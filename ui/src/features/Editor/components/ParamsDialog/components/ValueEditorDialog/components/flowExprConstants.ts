@@ -1,4 +1,10 @@
-import { type AutocompleteSuggestion } from "./constants";
+export type AutocompleteSuggestion = {
+  label: string;
+  insertText: string;
+  type: "keyword" | "function" | "namespace" | "variable" | "operator";
+  description?: string;
+  detail?: string;
+};
 
 export const FLOWEXPR_KEYWORDS = [
   "if",
