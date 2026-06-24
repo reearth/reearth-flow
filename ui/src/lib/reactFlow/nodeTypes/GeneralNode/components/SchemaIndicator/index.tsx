@@ -11,25 +11,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@flow/components";
+import { TYPE_COLOR } from "@flow/features/Editor/components/ParamsDialog/components/ValueEditorDialog/components/flowExprConstants";
 import { useT } from "@flow/lib/i18n";
 import { useReaderSchemaProbes } from "@flow/stores";
-import type { AttrType, FieldReport, NodeSchemaMeta } from "@flow/types";
+import type { FieldReport, NodeSchemaMeta } from "@flow/types";
 
 type Props = {
   nodeId: string;
   schema?: NodeSchemaMeta;
-};
-
-const TYPE_COLOR: Record<AttrType, string> = {
-  String: "text-blue-400",
-  Number: "text-green-400",
-  Bool: "text-violet-400",
-  DateTime: "text-amber-400",
-  Array: "text-teal-400",
-  Map: "text-pink-400",
-  Bytes: "text-orange-400",
-  Null: "text-muted-foreground",
-  Unknown: "text-muted-foreground",
 };
 
 const collectFields = (schema?: NodeSchemaMeta): FieldReport[] => {

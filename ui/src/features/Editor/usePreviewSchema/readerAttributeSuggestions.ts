@@ -8,7 +8,7 @@ const toSuggestion = (field: {
 }): AutocompleteSuggestion => ({
   label: field.name,
   insertText: field.name,
-  type: "variable",
+  type: "attribute",
   detail: field.type,
 });
 

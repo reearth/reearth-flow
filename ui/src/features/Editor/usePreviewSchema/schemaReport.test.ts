@@ -34,7 +34,7 @@ describe("toNodeSchemaMeta", () => {
       ports: {
         default: {
           open: false,
-          fields: [{ name: "id", type: "String", presence: "always" }],
+          fields: [{ name: "id", type: "String" }],
         },
       },
     };
@@ -60,7 +60,7 @@ describe("fetchSchemaReport", () => {
         ports: {
           default: {
             open: false,
-            fields: [{ name: "id", type: "String", presence: "always" }],
+            fields: [{ name: "id", type: "String" }],
           },
         },
       },

@@ -17,7 +17,6 @@ const readerNode = (id: string, fields: string[]): Node =>
               fields: fields.map((name) => ({
                 name,
                 type: "String",
-                presence: "always",
               })),
             },
           },
