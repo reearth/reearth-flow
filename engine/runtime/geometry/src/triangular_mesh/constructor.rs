@@ -26,7 +26,7 @@
 use std::collections::HashMap;
 
 use crate::appearance::{
-    validate_uv_coupling, Appearance, FaceBinding, Material, MaterialIndex, Side, ThemeBinding,
+    append_theme, validate_uv_coupling, Appearance, FaceBinding, Material, MaterialIndex, Side,
     ThemeId, UvSet, UvSource,
 };
 use crate::coordinate::Coordinate;
@@ -229,11 +229,17 @@ impl TriangularMesh2D {
     ) -> Result<Self, Error> {
         let width = index_width_for(vertices.len());
         let triangles = triangles_checked(indices, vertices.len())?;
-        let (xy, z) = split_elevation(vertices);
+        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
+        let mut xy = Vec::with_capacity(vertices.len());
+        let mut z = Vec::with_capacity(vertices.len());
+        for [x, y, elevation] in vertices {
+            xy.push([x, y]);
+            z.push(elevation);
+        }
         Ok(Self {
             coordinate,
             vertices: xy,
-            z: Some(z),
+            z: Some(z.into_boxed_slice()),
             indices: pack_checked(width, triangles),
             uv_sets: Vec::new(),
             appearance: None,
@@ -331,14 +337,6 @@ fn add_theme(
     binding: FaceBinding,
     uv: Option<UvSource>,
 ) -> Result<(), Error> {
-    if let Some(app) = appearance.as_ref() {
-        if app.themes.iter().any(|b| b.theme == theme) {
-            return Err(Error::invalid_appearance(format!(
-                "theme `{}` is already set",
-                theme.0
-            )));
-        }
-    }
     validate_binding(&binding, materials.len(), triangle_count)?;
     validate_uv_coupling(
         references_texture(&binding, &materials),
@@ -346,28 +344,24 @@ fn add_theme(
         triangle_count * 3,
     )?;
 
-    let app = appearance.get_or_insert_with(|| Appearance {
-        materials: Vec::new(),
-        themes: Vec::new(),
-        default_theme: theme.clone(),
-    });
-    let offset = app.materials.len() as u32;
-    app.materials.extend(materials);
-    let front = offset_binding(binding, offset)?;
-    app.themes.push(ThemeBinding {
-        theme: theme.clone(),
-        front,
-        back: None,
-    });
-    if let Some(uv) = uv {
-        uv_sets.push(UvSet {
-            theme: Some(theme),
+    let new_uv_sets = uv
+        .map(|uv| UvSet {
+            theme: Some(theme.clone()),
             side: Side::Front,
             channel: None,
             uv,
-        });
-    }
-    Ok(())
+        })
+        .into_iter()
+        .collect();
+    append_theme(
+        appearance,
+        uv_sets,
+        theme,
+        materials,
+        binding,
+        None,
+        new_uv_sets,
+    )
 }
 
 /// Check a binding references only `0..palette_len` and, when `PerFace`, has one
@@ -417,23 +411,6 @@ fn references_texture(binding: &FaceBinding, materials: &[Material]) -> bool {
     }
 }
 
-/// Shift a binding's local material indices into the merged palette by `offset`.
-fn offset_binding(binding: FaceBinding, offset: u32) -> Result<FaceBinding, Error> {
-    let shift = |index: MaterialIndex| {
-        MaterialIndex::new(index.get() + offset)
-            .ok_or_else(|| Error::invalid_appearance("material palette too large"))
-    };
-    Ok(match binding {
-        FaceBinding::Uniform(index) => FaceBinding::Uniform(shift(index)?),
-        FaceBinding::PerFace(faces) => FaceBinding::PerFace(
-            faces
-                .into_iter()
-                .map(|opt| opt.map(shift).transpose())
-                .collect::<Result<_, _>>()?,
-        ),
-    })
-}
-
 /// Narrowest index width that can address `vertex_count` vertices (largest index
 /// `vertex_count - 1`); `IndexWidth::U8` for the empty mesh.
 fn index_width_for(vertex_count: usize) -> IndexWidth {
@@ -480,20 +457,6 @@ fn pack_checked(width: IndexWidth, triangles: Vec<[u32; 3]>) -> IndexBuffer<3> {
     IndexBuffer::with_exact_width(width, Some(triangles.len()), triangles)
 }
 
-/// Index of `coord` in `vertices`, inserting it (and assigning the next index) on
-/// first sight. Dedup is on exact `f64` bits.
-fn dedup_index<const N: usize>(
-    vertices: &mut Vec<[f64; N]>,
-    seen: &mut HashMap<[u64; N], u32>,
-    coord: [f64; N],
-) -> u32 {
-    *seen.entry(coord.map(f64::to_bits)).or_insert_with(|| {
-        let index = vertices.len() as u32;
-        vertices.push(coord);
-        index
-    })
-}
-
 /// Deduplicate a flat triangle-corner stream into a vertex pool and a grown index
 /// buffer, shared by the 2D and 3D soup constructors. A trailing partial triangle
 /// is dropped.
@@ -505,29 +468,23 @@ fn soup_buffers<const N: usize>(
     let mut src = iter.into_iter();
     let vertices_ref = &mut vertices;
     let seen_ref = &mut seen;
+    // Index of `coord` in the pool, inserting it on first sight; dedup is on exact
+    // `f64` bits.
+    let mut dedup = move |coord: [f64; N]| {
+        *seen_ref.entry(coord.map(f64::to_bits)).or_insert_with(|| {
+            let index = vertices_ref.len() as u32;
+            vertices_ref.push(coord);
+            index
+        })
+    };
     let triangles = std::iter::from_fn(move || {
         let a = src.next()?;
         let b = src.next()?;
         let c = src.next()?;
-        Some([
-            dedup_index(vertices_ref, seen_ref, a),
-            dedup_index(vertices_ref, seen_ref, b),
-            dedup_index(vertices_ref, seen_ref, c),
-        ])
+        Some([dedup(a), dedup(b), dedup(c)])
     });
     let indices = IndexBuffer::from_indices(triangles);
     (vertices, indices)
-}
-
-/// Split a 3D vertex buffer into its 2D footprint and a parallel elevation buffer.
-fn split_elevation(vertices: Vec<[f64; 3]>) -> (Vec<[f64; 2]>, Box<[f64]>) {
-    let mut xy = Vec::with_capacity(vertices.len());
-    let mut z = Vec::with_capacity(vertices.len());
-    for [x, y, elevation] in vertices {
-        xy.push([x, y]);
-        z.push(elevation);
-    }
-    (xy, z.into_boxed_slice())
 }
 
 #[cfg(test)]

@@ -137,23 +137,55 @@ pub enum FaceBinding {
 }
 
 impl FaceBinding {
+    /// Shift every material index by `offset` into a merged palette, consuming the
+    /// binding. Errors (`"material palette too large"`) if any index overflows
+    /// `u32`. Handles both `Uniform` and `PerFace`, so it is the single offset
+    /// routine the polygon, triangular-mesh and weld paths share.
+    pub(crate) fn offset(self, offset: u32) -> Result<FaceBinding, Error> {
+        let shift = |index: MaterialIndex| {
+            index
+                .get()
+                .checked_add(offset)
+                .and_then(MaterialIndex::new)
+                .ok_or_else(|| Error::invalid_appearance("material palette too large"))
+        };
+        Ok(match self {
+            FaceBinding::Uniform(index) => FaceBinding::Uniform(shift(index)?),
+            FaceBinding::PerFace(faces) => FaceBinding::PerFace(
+                faces
+                    .into_iter()
+                    .map(|opt| opt.map(shift).transpose())
+                    .collect::<Result<_, _>>()?,
+            ),
+        })
+    }
+
     /// Mark every palette index this binding references in `referenced`.
+    ///
+    /// An index past the palette can only arrive from an appearance installed
+    /// through the unvalidated `appearance_mut` escape hatch; it references no
+    /// real material, so it is skipped rather than indexed (which would panic).
     fn mark_referenced(&self, referenced: &mut [bool]) {
-        match self {
-            FaceBinding::Uniform(index) => referenced[index.get() as usize] = true,
-            FaceBinding::PerFace(faces) => {
-                for index in faces.iter().flatten() {
-                    referenced[index.get() as usize] = true;
-                }
+        let mut mark = |index: &MaterialIndex| {
+            if let Some(slot) = referenced.get_mut(index.get() as usize) {
+                *slot = true;
             }
+        };
+        match self {
+            FaceBinding::Uniform(index) => mark(index),
+            FaceBinding::PerFace(faces) => faces.iter().flatten().for_each(mark),
         }
     }
 
     /// Reindex every palette index through `remap` (old index → compacted index).
     /// Only indices previously marked by [`mark_referenced`] are looked up.
     fn reindex(&mut self, remap: &[Option<MaterialIndex>]) {
-        let map = |index: MaterialIndex| {
-            remap[index.get() as usize].expect("a referenced material survives compaction")
+        let map = |index: MaterialIndex| match remap.get(index.get() as usize) {
+            // In range: it was marked referenced, so it has a compacted slot.
+            Some(slot) => slot.expect("a referenced material survives compaction"),
+            // Out of range (malformed appearance, see `mark_referenced`): nothing
+            // to remap to, so leave the dangling index untouched rather than panic.
+            None => index,
         };
         match self {
             FaceBinding::Uniform(index) => *index = map(*index),
@@ -198,6 +230,51 @@ impl Appearance {
             }
         }
     }
+}
+
+/// Append one theme's already-validated appearance to a geometry's accumulated
+/// `appearance` / `uv_sets`. `front` / `back` index `materials` locally; they are
+/// offset into the running palette here. Shared by the polygon and triangular-mesh
+/// setters so the palette bookkeeping lives in one place.
+///
+/// Additive and atomic: errors — leaving both `appearance` and `uv_sets` untouched
+/// — if `theme` is already set or a local index overflows the merged palette. The
+/// first theme appended becomes the default. The caller validates the bindings and
+/// UV before calling (the two setters validate in different ways).
+pub(crate) fn append_theme(
+    appearance: &mut Option<Appearance>,
+    uv_sets: &mut Vec<UvSet>,
+    theme: ThemeId,
+    materials: Vec<Material>,
+    front: FaceBinding,
+    back: Option<FaceBinding>,
+    new_uv_sets: Vec<UvSet>,
+) -> Result<(), Error> {
+    if let Some(app) = appearance.as_ref() {
+        if app.themes.iter().any(|b| b.theme == theme) {
+            return Err(Error::invalid_appearance(format!(
+                "theme `{}` is already set",
+                theme.0
+            )));
+        }
+    }
+
+    // Offset before mutating anything, so an overflow leaves the geometry unchanged.
+    let offset = appearance
+        .as_ref()
+        .map_or(0, |app| app.materials.len() as u32);
+    let front = front.offset(offset)?;
+    let back = back.map(|binding| binding.offset(offset)).transpose()?;
+
+    let app = appearance.get_or_insert_with(|| Appearance {
+        materials: Vec::new(),
+        themes: Vec::new(),
+        default_theme: theme.clone(),
+    });
+    app.materials.extend(materials);
+    app.themes.push(ThemeBinding { theme, front, back });
+    uv_sets.extend(new_uv_sets);
+    Ok(())
 }
 
 /// Validate the texture/UV coupling and, for an `Explicit` source, the UV length —
@@ -366,5 +443,39 @@ mod tests {
         assert_eq!(faces[0].map(|i| i.get()), Some(0));
         assert_eq!(faces[1], None);
         assert_eq!(faces[2].map(|i| i.get()), Some(1));
+    }
+
+    #[test]
+    fn offset_overflow_is_rejected_not_panicked() {
+        // A local index shifted by a near-`u32::MAX` palette offset overflows; the
+        // shift must surface "material palette too large", not wrap (release) or
+        // panic (debug) on a bare `index.get() + offset` add.
+        let binding = FaceBinding::Uniform(MaterialIndex::new(2).unwrap());
+        let err = binding.offset(u32::MAX - 1).unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+    }
+
+    #[test]
+    fn compact_materials_tolerates_out_of_range_binding() {
+        let theme = ThemeId(Arc::from("rgb"));
+        // A binding index past the palette can only arrive via the unvalidated
+        // `appearance_mut` escape hatch. Compaction (now run on every `Solid`
+        // shell) must not panic on it.
+        let mut app = Appearance {
+            materials: vec![phong(0.0)],
+            themes: vec![ThemeBinding {
+                theme: theme.clone(),
+                front: FaceBinding::Uniform(MaterialIndex::new(5).unwrap()),
+                back: None,
+            }],
+            default_theme: theme,
+        };
+
+        app.compact_materials();
+
+        // Nothing is referenced in range, so the palette empties; the dangling
+        // index is left untouched rather than remapped or panicked on.
+        assert!(app.materials.is_empty());
+        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(i) if i.get() == 5));
     }
 }

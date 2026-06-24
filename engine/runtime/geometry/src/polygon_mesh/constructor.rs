@@ -60,12 +60,23 @@ impl PolygonMesh3DData {
     /// (a single-surface triangulation keeps its one matrix instead — see
     /// [`UvSource`]).
     pub fn from_polygons<'a>(polygons: impl IntoIterator<Item = &'a Polygon3D>) -> Self {
+        Self::from_polygons_with_default_theme(polygons, None)
+    }
+
+    /// As [`from_polygons`](Self::from_polygons), but pins the merged mesh's active
+    /// default theme. `default_theme` should name one of the welded themes; `None`
+    /// keeps the auto rule (the shared default when every appearance-carrying face
+    /// agrees on one, otherwise the first kept face's default).
+    pub fn from_polygons_with_default_theme<'a>(
+        polygons: impl IntoIterator<Item = &'a Polygon3D>,
+        default_theme: Option<ThemeId>,
+    ) -> Self {
         let polygons: Vec<&Polygon3D> = polygons.into_iter().collect();
         let faces = polygons
             .iter()
             .map(|p| std::iter::once(p.exterior()).chain(p.interiors()));
         let (vertices, face_indices, face_offsets, interior_offsets) = dedup_faces(faces);
-        let (uv_sets, appearance) = merge_appearance(&polygons);
+        let (uv_sets, appearance) = merge_appearance(&polygons, default_theme);
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(vertices.len(), face_indices, face_offsets, interior_offsets);
         Self {
@@ -136,6 +147,17 @@ impl PolygonMesh3D {
         coordinate: Coordinate,
         polygons: impl IntoIterator<Item = &'a Polygon3D>,
     ) -> Result<Self, Error> {
+        Self::from_polygons_with_default_theme(coordinate, polygons, None)
+    }
+
+    /// As [`from_polygons`](Self::from_polygons), but pins the merged mesh's active
+    /// default theme; see
+    /// [`PolygonMesh3DData::from_polygons_with_default_theme`].
+    pub fn from_polygons_with_default_theme<'a>(
+        coordinate: Coordinate,
+        polygons: impl IntoIterator<Item = &'a Polygon3D>,
+        default_theme: Option<ThemeId>,
+    ) -> Result<Self, Error> {
         let polygons: Vec<&Polygon3D> = polygons.into_iter().collect();
         for p in &polygons {
             if p.coordinate() != &coordinate {
@@ -146,7 +168,7 @@ impl PolygonMesh3D {
         }
         Ok(Self::new(
             coordinate,
-            PolygonMesh3DData::from_polygons(polygons),
+            PolygonMesh3DData::from_polygons_with_default_theme(polygons, default_theme),
         ))
     }
 
@@ -213,7 +235,14 @@ impl PolygonMesh2D {
         faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
     ) -> Result<Self, Error> {
         let (face_indices, face_offsets) = index_faces(vertices.len(), faces)?;
-        let (xy, z) = split_elevation(vertices);
+        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
+        let mut xy = Vec::with_capacity(vertices.len());
+        let mut z = Vec::with_capacity(vertices.len());
+        for [x, y, elevation] in vertices {
+            xy.push([x, y]);
+            z.push(elevation);
+        }
+        let z = z.into_boxed_slice();
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(xy.len(), face_indices, face_offsets, Vec::new());
         Ok(Self {
@@ -257,20 +286,6 @@ impl PolygonMesh2D {
     }
 }
 
-/// Index of `coord` in `vertices`, inserting it (and assigning the next index) on
-/// first sight. Dedup is on exact `f64` bits.
-fn dedup_index<const N: usize>(
-    vertices: &mut Vec<[f64; N]>,
-    seen: &mut HashMap<[u64; N], u32>,
-    coord: [f64; N],
-) -> u32 {
-    *seen.entry(coord.map(f64::to_bits)).or_insert_with(|| {
-        let index = vertices.len() as u32;
-        vertices.push(coord);
-        index
-    })
-}
-
 /// Drop a ring's closing vertex when it duplicates the first, yielding the open
 /// ring (closure is implied by the face / hole boundary in the mesh).
 fn open_ring<const N: usize>(ring: &[[f64; N]]) -> &[[f64; N]] {
@@ -305,7 +320,14 @@ where
             }
             is_exterior = false;
             for &coord in open_ring(ring) {
-                face_indices.push(dedup_index(&mut vertices, &mut seen, coord));
+                // Index of `coord` in the pool, inserting it on first sight; dedup
+                // is on exact `f64` bits.
+                let index = *seen.entry(coord.map(f64::to_bits)).or_insert_with(|| {
+                    let next = vertices.len() as u32;
+                    vertices.push(coord);
+                    next
+                });
+                face_indices.push(index);
             }
         }
         if face_indices.len() == index_start {
@@ -428,17 +450,6 @@ fn pack_csr(
     )
 }
 
-/// Split a 3D vertex buffer into its 2D footprint and a parallel elevation buffer.
-fn split_elevation(vertices: Vec<[f64; 3]>) -> (Vec<[f64; 2]>, Box<[f64]>) {
-    let mut xy = Vec::with_capacity(vertices.len());
-    let mut z = Vec::with_capacity(vertices.len());
-    for [x, y, elevation] in vertices {
-        xy.push([x, y]);
-        z.push(elevation);
-    }
-    (xy, z.into_boxed_slice())
-}
-
 // ─── Appearance merge ─────────────────────────────────────────────────────────
 //
 // `from_polygons` welds each face's per-polygon appearance and UV into the one
@@ -539,7 +550,14 @@ fn build_binding(
 
 /// Weld the per-polygon appearance and UV of the kept faces into the mesh-wide
 /// `(uv_sets, appearance)`. Returns `(empty, None)` if no face carries appearance.
-fn merge_appearance(polygons: &[&Polygon3D]) -> (Vec<UvSet>, Option<Appearance>) {
+///
+/// `default_override` pins the merged mesh's active default theme; `None` keeps
+/// the auto rule (the shared default when every appearance-carrying face agrees,
+/// otherwise the first kept face's default).
+fn merge_appearance(
+    polygons: &[&Polygon3D],
+    default_override: Option<ThemeId>,
+) -> (Vec<UvSet>, Option<Appearance>) {
     let kept: Vec<&Polygon3D> = polygons
         .iter()
         .copied()
@@ -572,10 +590,14 @@ fn merge_appearance(polygons: &[&Polygon3D]) -> (Vec<UvSet>, Option<Appearance>)
             }
         }
     }
-    let default_theme = kept
-        .iter()
-        .find_map(|p| p.appearance().as_ref().map(|app| app.default_theme.clone()))
-        .expect("a kept face carries appearance");
+    // An explicit override wins; otherwise take the first kept face's default,
+    // which equals the shared default when every face agrees on one (rule 1) and
+    // is the documented fallback when they diverge (rule 2).
+    let default_theme = default_override.unwrap_or_else(|| {
+        kept.iter()
+            .find_map(|p| p.appearance().as_ref().map(|app| app.default_theme.clone()))
+            .expect("a kept face carries appearance")
+    });
 
     let themes: Vec<ThemeBinding> = theme_order
         .iter()
@@ -856,6 +878,31 @@ mod tests {
             panic!("expected Explicit");
         };
         assert_eq!(uv.len(), 8);
+    }
+
+    #[test]
+    fn from_polygons_resolves_default_theme() {
+        // `a` defaults to "rgb", `b` to "infrared" — the faces diverge.
+        let mut a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
+        a.set_appearance(theme("rgb"), bare(), None).unwrap();
+        let mut b = quad([[2., 0., 0.], [3., 0., 0.], [3., 1., 0.], [2., 1., 0.]]);
+        b.set_appearance(theme("infrared"), bare(), None).unwrap();
+
+        // Auto, diverging: falls back to the first kept face's default (rule 2).
+        let m = PolygonMesh3DData::from_polygons([&a, &b]);
+        assert_eq!(m.appearance.as_ref().unwrap().default_theme, theme("rgb"));
+
+        // Auto, uniform: every face agrees, so that shared default is chosen (rule 1).
+        let m = PolygonMesh3DData::from_polygons([&a, &a]);
+        assert_eq!(m.appearance.as_ref().unwrap().default_theme, theme("rgb"));
+
+        // Explicit override pins the active theme regardless of the faces.
+        let m =
+            PolygonMesh3DData::from_polygons_with_default_theme([&a, &b], Some(theme("infrared")));
+        assert_eq!(
+            m.appearance.as_ref().unwrap().default_theme,
+            theme("infrared")
+        );
     }
 
     #[test]

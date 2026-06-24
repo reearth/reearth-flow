@@ -46,7 +46,7 @@
 use std::marker::PhantomData;
 
 use crate::appearance::{
-    validate_uv_coupling, Appearance, FaceBinding, Material, MaterialIndex, Side, ThemeBinding,
+    append_theme, validate_uv_coupling, Appearance, FaceBinding, Material, MaterialIndex, Side,
     ThemeId, UvSet, UvSource,
 };
 use crate::coordinate::Coordinate;
@@ -533,15 +533,6 @@ fn add_polygon_theme(
     front: PolygonFace,
     back: Option<PolygonFace>,
 ) -> Result<(), Error> {
-    if let Some(app) = appearance.as_ref() {
-        if app.themes.iter().any(|b| b.theme == theme) {
-            return Err(Error::invalid_appearance(format!(
-                "theme `{}` is already set",
-                theme.0
-            )));
-        }
-    }
-
     // Validate both faces into scratch buffers first, so an invalid back face
     // leaves the polygon untouched (`push_face` mutates as it validates).
     let mut materials: Vec<Material> = Vec::new();
@@ -566,36 +557,15 @@ fn add_polygon_theme(
         None => None,
     };
 
-    // Commit: append into the accumulated palette, offsetting the scratch indices.
-    let app = appearance.get_or_insert_with(|| Appearance {
-        materials: Vec::new(),
-        themes: Vec::new(),
-        default_theme: theme.clone(),
-    });
-    let offset = app.materials.len() as u32;
-    app.materials.extend(materials);
-    let front = offset_uniform(front_binding, offset)?;
-    let back = back_binding
-        .map(|binding| offset_uniform(binding, offset))
-        .transpose()?;
-    app.themes.push(ThemeBinding { theme, front, back });
-    uv_sets.extend(new_uv_sets);
-    Ok(())
-}
-
-/// Shift a single-face polygon's `Uniform` binding by `offset` into the merged
-/// palette. `push_face` only ever yields `Uniform`, so other shapes are
-/// unreachable here.
-fn offset_uniform(binding: FaceBinding, offset: u32) -> Result<FaceBinding, Error> {
-    let FaceBinding::Uniform(index) = binding else {
-        unreachable!("push_face returns a Uniform binding for a single-face polygon");
-    };
-    index
-        .get()
-        .checked_add(offset)
-        .and_then(MaterialIndex::new)
-        .map(FaceBinding::Uniform)
-        .ok_or_else(|| Error::invalid_appearance("material palette too large"))
+    append_theme(
+        appearance,
+        uv_sets,
+        theme,
+        materials,
+        front_binding,
+        back_binding,
+        new_uv_sets,
+    )
 }
 
 /// Validate one face, push its material into the palette and (if any) its UV set,
