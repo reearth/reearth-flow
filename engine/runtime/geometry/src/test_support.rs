@@ -11,8 +11,8 @@ use bytes::Bytes;
 use reearth_flow_common::image::MimeType;
 
 use crate::appearance::{
-    Filter, Material, PhongMaterial, Raster, RasterData, Sampler, Texture, ThemeId, UvSource,
-    WrapMode,
+    ChannelId, Filter, Material, PhongMaterial, Raster, RasterData, Sampler, Texture, ThemeId,
+    UvSource, WrapMode,
 };
 
 /// A theme named `name`.
@@ -61,6 +61,21 @@ pub(crate) fn phong(map: Option<Texture>) -> Material {
 /// A textured material (diffuse map set), which requires a UV set.
 pub(crate) fn textured() -> Material {
     phong(Some(texture()))
+}
+
+/// A genuine multi-UV-channel material: diffuse map on channel `a`, normal map on
+/// channel `b` — so it references two channels and needs a UV set for each.
+pub(crate) fn two_channel(a: u32, b: u32) -> Material {
+    let on = |channel: u32| {
+        let mut t = texture();
+        t.uv_channel = ChannelId(channel);
+        t
+    };
+    let Material::Phong(mut m) = phong(Some(on(a))) else {
+        unreachable!("phong builds a Phong material");
+    };
+    m.normal_map = Some(on(b));
+    Material::Phong(m)
 }
 
 /// A colour-only material (no maps), which must not carry a UV set.

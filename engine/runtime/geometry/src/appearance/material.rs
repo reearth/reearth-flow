@@ -12,9 +12,12 @@
 //! here), and each map's `Texture` names the UV channel it samples, so a
 //! material may be reused under several themes.
 
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 
 use super::texture::Texture;
+use super::ChannelId;
 
 /// One self-contained shading description: exactly one of the two shading
 /// models.
@@ -66,6 +69,33 @@ impl Material {
                     || m.emissive_map.is_some()
             }
         }
+    }
+
+    /// The distinct UV channels this material's textured maps sample (empty if
+    /// colour-only). A UV set must be supplied for each when attaching appearance;
+    /// several maps sharing a channel collapse to one entry.
+    pub fn referenced_channels(&self) -> BTreeSet<ChannelId> {
+        let mut channels = BTreeSet::new();
+        let mut add = |map: &Option<Texture>| {
+            if let Some(texture) = map {
+                channels.insert(texture.uv_channel);
+            }
+        };
+        match self {
+            Material::Phong(m) => {
+                add(&m.diffuse_map);
+                add(&m.emissive_map);
+                add(&m.normal_map);
+            }
+            Material::Pbr(m) => {
+                add(&m.base_color_map);
+                add(&m.metallic_roughness_map);
+                add(&m.normal_map);
+                add(&m.occlusion_map);
+                add(&m.emissive_map);
+            }
+        }
+        channels
     }
 }
 

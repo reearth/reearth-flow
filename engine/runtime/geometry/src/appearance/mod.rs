@@ -19,6 +19,7 @@ pub use material::{AlphaMode, Material, PbrMaterial, PhongMaterial};
 pub use texture::{Filter, Raster, RasterData, Sampler, Texture, TextureTransform, WrapMode};
 pub use uv::{TexMatrix, UvSet, UvSource};
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
@@ -34,7 +35,9 @@ pub struct ThemeId(pub Arc<str>);
 
 /// A material-local UV channel index. Carries no cross-theme meaning: channel 0
 /// under one theme and channel 0 under another are different UV sets.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 pub struct ChannelId(pub u32);
 
 /// An index into [`Appearance::materials`].
@@ -277,35 +280,49 @@ pub(crate) fn append_theme(
     Ok(())
 }
 
-/// Validate the texture/UV coupling and, for an `Explicit` source, the UV length —
-/// the invariant every appearance setter shares. `references_texture` is whether
-/// any bound material samples a texture: a textured binding requires exactly one UV
-/// set, a colour-only one must not carry an orphan. `corner_count` is the number of
-/// corners an `Explicit` UV must match.
+/// Wrap an optional single UV as the default-channel entry of a channel map — the
+/// single-`ParameterizedTexture` convenience the simple setters share. `None`
+/// yields an empty map (a colour-only material).
+pub(crate) fn single_channel_uv(uv: Option<UvSource>) -> BTreeMap<ChannelId, UvSource> {
+    uv.into_iter()
+        .map(|uv| (ChannelId::default(), uv))
+        .collect()
+}
+
+/// Validate the texture/UV channel coupling and, for `Explicit` sources, the UV
+/// length — the invariant every appearance setter shares. `referenced_channels`
+/// is the set of UV channels the bound materials' textured maps sample; `uvs` must
+/// supply exactly those channels — each textured channel needs a UV, and a channel
+/// no material samples must not carry an orphan UV — and each `Explicit` UV must
+/// have `corner_count` entries.
 pub(crate) fn validate_uv_coupling(
-    references_texture: bool,
-    uv: &Option<UvSource>,
+    referenced_channels: &BTreeSet<ChannelId>,
+    uvs: &BTreeMap<ChannelId, UvSource>,
     corner_count: usize,
 ) -> Result<(), Error> {
-    match (references_texture, uv) {
-        (true, None) => {
-            return Err(Error::invalid_appearance(
-                "a textured material requires a UV set, but none was supplied",
-            ));
-        }
-        (false, Some(_)) => {
-            return Err(Error::invalid_appearance(
-                "a UV set was supplied but no material is textured (orphan UV)",
-            ));
-        }
-        _ => {}
-    }
-    if let Some(UvSource::Explicit(coords)) = uv {
-        if coords.len() != corner_count {
+    for channel in referenced_channels {
+        if !uvs.contains_key(channel) {
             return Err(Error::invalid_appearance(format!(
-                "UV length {} does not match the corner count {corner_count}",
-                coords.len()
+                "a textured material samples UV channel {} but no UV set was supplied for it",
+                channel.0
             )));
+        }
+    }
+    for (channel, uv) in uvs {
+        if !referenced_channels.contains(channel) {
+            return Err(Error::invalid_appearance(format!(
+                "a UV set was supplied for channel {} but no material samples it (orphan UV)",
+                channel.0
+            )));
+        }
+        if let UvSource::Explicit(coords) = uv {
+            if coords.len() != corner_count {
+                return Err(Error::invalid_appearance(format!(
+                    "UV length {} for channel {} does not match the corner count {corner_count}",
+                    coords.len(),
+                    channel.0
+                )));
+            }
         }
     }
     Ok(())
@@ -397,7 +414,7 @@ mod tests {
         let uv = |side| UvSet {
             theme: Some(theme.clone()),
             side,
-            channel: None,
+            channel: ChannelId::default(),
             uv: UvSource::Explicit(Box::new([])),
         };
         let mut uv_sets = vec![uv(Side::Front), uv(Side::Back)];

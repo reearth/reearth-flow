@@ -128,14 +128,16 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::appearance::{FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSource};
+    use crate::appearance::{
+        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSource,
+    };
     use crate::test_support::bare;
 
     fn uv(side: Side) -> UvSet {
         UvSet {
             theme: Some(ThemeId(Arc::from("t"))),
             side,
-            channel: None,
+            channel: ChannelId::default(),
             uv: UvSource::Explicit(Box::new([])),
         }
     }

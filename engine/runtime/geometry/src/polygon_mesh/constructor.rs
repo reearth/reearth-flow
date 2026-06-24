@@ -467,12 +467,12 @@ fn corner_count(polygon: &Polygon3D) -> usize {
         .sum()
 }
 
-/// One polygon's UV reduced to mesh-corner order for a single `UvSource`:
-/// rings concatenated (exterior then interiors), each closing duplicate dropped.
-/// `Explicit` slices the parallel array; `WorldToTexture` bakes the matrix at
-/// each corner vertex.
-fn polygon_uv_corners(polygon: &Polygon3D, source: &UvSource) -> Vec<[f64; 2]> {
-    let mut out = Vec::new();
+/// Append one polygon's UV in mesh-corner order for a single `UvSource` directly
+/// onto `out`: rings concatenated (exterior then interiors), each closing
+/// duplicate dropped. `Explicit` slices the parallel array; `WorldToTexture` bakes
+/// the matrix at each corner vertex. Writes straight into the caller's reserved
+/// buffer — no per-face temporary.
+fn extend_polygon_uv(out: &mut Vec<[f64; 2]>, polygon: &Polygon3D, source: &UvSource) {
     let mut pos = 0usize;
     for ring in std::iter::once(polygon.exterior()).chain(polygon.interiors()) {
         let open = open_ring(ring);
@@ -484,7 +484,6 @@ fn polygon_uv_corners(polygon: &Polygon3D, source: &UvSource) -> Vec<[f64; 2]> {
         }
         pos += ring.len();
     }
-    out
 }
 
 /// Bake a `WorldToTexture` projective matrix at a vertex: `(s, t) = (s'/q', t'/q')`.
@@ -618,7 +617,7 @@ fn merge_appearance(
     // Index each face's UV sets by key once (so the per-key build is a map lookup,
     // not a linear scan) and precompute each face's corner count (recomputing it
     // per key would re-walk every ring).
-    type UvKey = (Option<ThemeId>, Side, Option<ChannelId>);
+    type UvKey = (Option<ThemeId>, Side, ChannelId);
     let corner_counts: Vec<usize> = kept.iter().map(|p| corner_count(p)).collect();
     let total_corners: usize = corner_counts.iter().sum();
     let per_face_uv: Vec<HashMap<UvKey, &UvSource>> = kept
@@ -652,7 +651,7 @@ fn merge_appearance(
             let mut data: Vec<[f64; 2]> = Vec::with_capacity(total_corners);
             for (i, polygon) in kept.iter().enumerate() {
                 match per_face_uv[i].get(&key).copied() {
-                    Some(uv) => data.extend(polygon_uv_corners(polygon, uv)),
+                    Some(uv) => extend_polygon_uv(&mut data, polygon, uv),
                     None => data.resize(data.len() + corner_counts[i], [0.0, 0.0]),
                 }
             }

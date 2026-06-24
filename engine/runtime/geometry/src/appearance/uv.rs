@@ -25,9 +25,10 @@ pub struct UvSet {
     /// Which surface side these coordinates parameterise. `Front` for the
     /// common single-sided case.
     pub side: Side,
-    /// Material-local UV channel; `None` when a theme makes no channel
-    /// distinction (then the theme/side holds exactly one UV set).
-    pub channel: Option<ChannelId>,
+    /// Material-local UV channel a textured map samples (the glTF `texCoord`
+    /// index); `ChannelId(0)` in the common single-map case. A `(theme, side)`
+    /// holds one UV set per distinct channel its materials reference.
+    pub channel: ChannelId,
     pub uv: UvSource,
 }
 

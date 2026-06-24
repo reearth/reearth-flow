@@ -45,9 +45,11 @@
 
 use std::marker::PhantomData;
 
+use std::collections::BTreeMap;
+
 use crate::appearance::{
-    append_theme, validate_uv_coupling, Appearance, FaceBinding, Material, MaterialIndex, Side,
-    ThemeId, UvSet, UvSource,
+    append_theme, single_channel_uv, validate_uv_coupling, Appearance, ChannelId, FaceBinding,
+    Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
 };
 use crate::coordinate::Coordinate;
 use crate::error::Error;
@@ -423,13 +425,24 @@ fn check_offsets(offsets: &[u32], coords_len: usize) -> Result<(), Error> {
 // expressed.
 
 /// One side's shading for a polygon: a single material and the UV its textured
-/// maps sample. `uv` is `None` for a colour-only material (no maps), `Some` for
-/// a textured one — either an `Explicit` array parallel to the polygon's
-/// `coords`, or a retained `WorldToTexture` matrix.
+/// maps sample, one entry per UV channel the material references. `uv` is empty
+/// for a colour-only material (no maps); each entry is an `Explicit` array
+/// parallel to the polygon's `coords`, or a retained `WorldToTexture` matrix.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PolygonFace {
     pub material: Material,
-    pub uv: Option<UvSource>,
+    pub uv: BTreeMap<ChannelId, UvSource>,
+}
+
+impl PolygonFace {
+    /// A face whose textured map (if any) samples the default UV channel — the
+    /// dominant single-`ParameterizedTexture` case.
+    pub fn single(material: Material, uv: Option<UvSource>) -> Self {
+        Self {
+            material,
+            uv: single_channel_uv(uv),
+        }
+    }
 }
 
 impl Polygon2D {
@@ -454,7 +467,7 @@ impl Polygon2D {
             &mut self.appearance,
             &mut self.uv_sets,
             theme,
-            PolygonFace { material, uv },
+            PolygonFace::single(material, uv),
             None,
         )
     }
@@ -493,7 +506,7 @@ impl Polygon3D {
             &mut self.appearance,
             &mut self.uv_sets,
             theme,
-            PolygonFace { material, uv },
+            PolygonFace::single(material, uv),
             None,
         )
     }
@@ -578,13 +591,13 @@ fn push_face(
     side: Side,
     face: PolygonFace,
 ) -> Result<FaceBinding, Error> {
-    validate_uv_coupling(face.material.has_texture(), &face.uv, corner_count)?;
+    validate_uv_coupling(&face.material.referenced_channels(), &face.uv, corner_count)?;
 
-    if let Some(uv) = face.uv {
+    for (channel, uv) in face.uv {
         uv_sets.push(UvSet {
-            theme: Some(theme),
+            theme: Some(theme.clone()),
             side,
-            channel: None,
+            channel,
             uv,
         });
     }
@@ -888,10 +901,7 @@ mod tests {
     #[test]
     fn two_sided_theme_binds_both_faces() {
         let mut p = triangle();
-        let face = || PolygonFace {
-            material: textured(),
-            uv: Some(uv(3)),
-        };
+        let face = || PolygonFace::single(textured(), Some(uv(3)));
         p.set_two_sided_appearance(theme("rgb"), face(), face())
             .unwrap();
 
