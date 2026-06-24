@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use super::solid::Solid;
 
+mod constructor;
+
 /// Volumetric, closed 3D geometries that `Csg` boolean operations are defined
 /// over.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

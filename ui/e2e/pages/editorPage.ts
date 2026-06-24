@@ -352,19 +352,39 @@ export class EditorPage {
       .click();
   }
 
+  private async fillFlowExprDialog(
+    tab: "Expression" | "Literal string",
+    value: string,
+  ) {
+    await expect(this.flowExprDialog).toBeVisible();
+
+    const tabTrigger = this.flowExprDialog.getByRole("tab", { name: tab });
+    const hasTab = await tabTrigger
+      .waitFor({ state: "visible", timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+    if (hasTab) await tabTrigger.click();
+
+    const textarea = this.flowExprDialog.locator("textarea");
+    await textarea.waitFor({ state: "visible" });
+    await textarea.fill(value);
+
+    await this.flowExprDialog.getByRole("button", { name: "Apply" }).click();
+    await expect(this.flowExprDialog).toBeHidden();
+  }
+
   async setParamFlowExpr(label: string, expression: string, nth = 0) {
     await this.paramFieldRow(label)
       .nth(nth)
       .getByRole("button")
       .first()
       .click();
-    await expect(this.flowExprDialog).toBeVisible();
+    await this.fillFlowExprDialog("Expression", expression);
+  }
 
-    await this.flowExprDialog.getByRole("tab", { name: "Expression" }).click();
-    await this.flowExprDialog.locator("textarea").fill(expression);
-
-    await this.flowExprDialog.getByRole("button", { name: "Apply" }).click();
-    await expect(this.flowExprDialog).toBeHidden();
+  async setParamLiteralString(fieldLabel: string, value: string) {
+    await this.paramFieldRow(fieldLabel).getByRole("button").first().click();
+    await this.fillFlowExprDialog("Literal string", value);
   }
 
   async setParamCheckbox(fieldId: string, checked: boolean) {
@@ -384,22 +404,10 @@ export class EditorPage {
     await this.paramsDialog.getByRole("button", { name: "Add item" }).click();
   }
 
-  async setParamViaValueEditor(fieldLabel: string, value: string) {
-    await this.paramFieldRow(fieldLabel).getByRole("button").first().click();
-    const dialog = this.page
-      .getByRole("dialog")
-      .filter({ hasText: "Value Editor" });
-    const textarea = dialog.getByTestId("value-editor-textarea");
-    await textarea.waitFor({ state: "visible" });
-    await textarea.fill(value);
-    await dialog.getByRole("button", { name: "Submit", exact: true }).click();
-    await expect(dialog).toBeHidden();
-  }
-
   async setCsvCoordinateGeometry(
     xColumn: string,
     yColumn: string,
-    epsg: number,
+    epsg?: number,
   ) {
     await this.paramsDialog
       .getByRole("button")
@@ -411,7 +419,9 @@ export class EditorPage {
       .click();
     await this.setParamText("root_geometry_xColumn", xColumn);
     await this.setParamText("root_geometry_yColumn", yColumn);
-    await this.setParamText("root_geometry_epsg", String(epsg));
+    if (epsg !== undefined) {
+      await this.setParamText("root_geometry_epsg", String(epsg));
+    }
   }
 
   async submitParams() {
@@ -441,8 +451,16 @@ export class EditorPage {
     await this.page.keyboard.press("ControlOrMeta+Shift+z");
   }
 
-  async selectAll() {
-    await this.page.keyboard.press("ControlOrMeta+a");
+  async boxSelect(from: Point, to: Point) {
+    await this.page.keyboard.down("Shift");
+    await this.page.mouse.move(from.x, from.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, {
+      steps: 8,
+    });
+    await this.page.mouse.move(to.x, to.y, { steps: 8 });
+    await this.page.mouse.up();
+    await this.page.keyboard.up("Shift");
   }
 
   async copySelected() {

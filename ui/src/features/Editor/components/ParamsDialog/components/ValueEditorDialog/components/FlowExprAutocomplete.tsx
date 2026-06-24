@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 
 import { useT } from "@flow/lib/i18n";
 
-import { type AutocompleteSuggestion } from "./constants";
-import { getFlowExprAutocompleteSuggestions } from "./flowExprConstants";
+import {
+  type AutocompleteSuggestion,
+  getFlowExprAutocompleteSuggestions,
+} from "./flowExprConstants";
 
 type Props = {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;

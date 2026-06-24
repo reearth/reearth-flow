@@ -1,18 +1,17 @@
-import {
-  expect,
-  test,
-  type BrowserContext,
-  type Locator,
-  type Page,
-} from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import {
+  type EditorSession,
+  newEditorSession,
+  teardownSession,
+} from "../fixtures/session";
+import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
 import {
   DeploymentsPage,
   uniqueDeploymentDescription,
 } from "../pages/deploymentsPage";
 import { EditorPage } from "../pages/editorPage";
 import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
-import { STORAGE_STATE } from "../playwright.config";
 
 const CITYGML_URL =
   "https://assets.cms.plateau.reearth.io/assets/45/40a1ee-1e80-4d69-bc6d-d75b77033151/13362_toshima-mura_pref_2024_citygml_1_op.zip";
@@ -27,7 +26,7 @@ test.describe.serial(
     const deploymentDescription =
       uniqueDeploymentDescription("plateau-citygml-ui");
 
-    let context: BrowserContext;
+    let session: EditorSession;
     let page: Page;
     let projects: ProjectsPage;
     let editor: EditorPage;
@@ -41,30 +40,12 @@ test.describe.serial(
     let geoJsonWriter: Locator;
 
     test.beforeAll(async ({ browser }) => {
-      context = await browser.newContext({
-        storageState: STORAGE_STATE,
-        baseURL: process.env.FLOW_DASHBOARD_E2E_BASEURL,
-        viewport: { width: 1920, height: 1080 },
-        locale: "en-US",
-      });
-      page = await context.newPage();
-      projects = new ProjectsPage(page);
-      editor = new EditorPage(page);
-      deployments = new DeploymentsPage(page);
+      session = await newEditorSession(browser);
+      ({ page, projects, editor, deployments } = session);
     });
 
     test.afterAll(async () => {
-      if (!context) return;
-      try {
-        await deployments.goto();
-        await deployments
-          .deleteDeploymentIfExists(deploymentDescription)
-          .catch(() => {});
-        await projects.goto();
-        await projects.deleteProjectIfExists(projectName).catch(() => {});
-      } finally {
-        await context.close();
-      }
+      await teardownSession(session, { projectName, deploymentDescription });
     });
 
     test("creates a new project and opens the editor", async () => {
@@ -114,7 +95,7 @@ test.describe.serial(
       await expect(editor.nodes).toHaveCount(6);
 
       await editor.openNodeParamsForm(fileExtractor);
-      await editor.setParamText("root_sourceDataset", `"${CITYGML_URL}"`);
+      await editor.setParamCodeString("Source Dataset", CITYGML_URL);
       await editor.setParamCheckbox("root_extractArchive", true);
       await editor.submitParams();
 
@@ -137,7 +118,7 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(cityGmlReader);
-      await editor.setParamText("root_dataset", 'env.get("__value")["path"]');
+      await editor.setParamFlowExpr("Dataset", 'env.get("__value")["path"]');
       await editor.submitParams();
 
       await editor.openNodeParamsForm(attributeMapper);
@@ -218,13 +199,9 @@ test.describe.serial(
         .info()
         .annotations.push({ type: "job-url", description: page.url() });
 
-      const terminalStatus = page
-        .getByText(/^(completed|failed|cancelled)$/)
-        .first();
-      await expect(terminalStatus).toBeVisible({ timeout: 1_380_000 });
-      await expect(terminalStatus).toHaveText("completed");
+      await expectJobSucceeded(page, 1_380_000);
 
-      const outputUrl = page.getByText(/toshima-buildings\.geojson/).first();
+      const outputUrl = jobDetailsArtifact(page, "toshima-buildings.geojson");
       await expect(outputUrl).toBeVisible({ timeout: 90_000 });
       const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
       test.info().annotations.push({
