@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -31,6 +32,13 @@ type tokenVerifyResponse struct {
 	Authorized bool `json:"authorized"`
 }
 
+// verifyEndpoint joins the AuthURL base with verifyPath, trimming any trailing
+// slash on the base so a configured "https://auth/" cannot produce a
+// double-slash path that some routers 404.
+func verifyEndpoint(authURL string) string {
+	return strings.TrimRight(authURL, "/") + verifyPath
+}
+
 // NewAuthFunc returns the WS provider's AuthFunc, run before the upgrade.
 // Fail-closed: when enabled, the only accept path is a 2xx {"authorized":true};
 // every other outcome (empty token, transport error, timeout, non-2xx, decode
@@ -48,7 +56,7 @@ func NewAuthFunc(cfg Config) func(*http.Request) bool {
 	if client == nil {
 		client = &http.Client{Timeout: timeout}
 	}
-	endpoint := cfg.AuthURL + verifyPath
+	endpoint := verifyEndpoint(cfg.AuthURL)
 
 	return func(r *http.Request) bool {
 		token := r.URL.Query().Get("token")
