@@ -47,13 +47,11 @@ the live Rust vars (`internal/config/config.go`):
 > future versions (none survive rollback), position drift (no cursor jump under
 > cross-instance load).
 
-0. **Push + pin ygo, drop the `replace`.** In `/Users/dexter/active/ygo`, push the
-   `feat/cluster-and-versioned-persistence` branch, open + merge the ygo PR, tag a
-   release (e.g. `v1.20.0`). Then in `server/websocket-go/go.mod`: **remove** the
-   `replace github.com/reearth/ygo => /Users/dexter/active/ygo` directive and set
-   `require github.com/reearth/ygo v1.20.0`; `go mod tidy`; commit. The Docker
-   build resolves ygo from the proxy only after this — the draft workflow assumes
-   it. *(Out of scope for the code workstream; this is the first human step.)*
+0. **ygo is already pinned (done).** `server/websocket-go/go.mod` requires
+   `github.com/reearth/ygo v1.22.0` from the module proxy, with no local-path
+   `replace`, so the Docker build resolves ygo from the proxy. No action is
+   needed here; this step is kept only to record that the precondition the draft
+   workflow assumes is already satisfied.
 
 1. **Activate the workflows.** Rename `build_deploy_websocket.go.yml.draft` →
    `.github/workflows/build_deploy_websocket.yml` and `ci_websocket.go.yml.draft`

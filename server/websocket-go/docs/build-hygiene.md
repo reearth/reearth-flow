@@ -2,7 +2,9 @@
 
 ## 1. golangci-lint for a go1.25 target
 
-The repo `go.work` declares `go 1.25.0` and includes `server/websocket-go`. A
+`server/websocket-go` is a standalone `go 1.25` module, deliberately not in the
+repo root `go.work` (which is `go 1.24.10` and lists only the other server
+modules). It still targets go1.25, so the lint constraint below applies. A
 golangci-lint binary *built with go1.24* refuses to analyze a go1.25 target —
 golangci-lint can only lint Go versions **≤** the Go it was compiled with.
 

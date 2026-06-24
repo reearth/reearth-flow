@@ -16,13 +16,9 @@ FROM golang:1.25 AS builder
 
 WORKDIR /src
 
-# PRECONDITION (do NOT build this image before it holds): go.mod currently has
-# `replace github.com/reearth/ygo => /Users/dexter/active/ygo`, an ABSOLUTE local
-# path that does NOT exist in any Docker build context — so this image will fail
-# to build until that directive is REMOVED and ygo is pinned to its released tag
-# (`require github.com/reearth/ygo vX.Y.Z`, e.g. v1.20.0). That is runbook step 0
-# (deploy/README.md). Once pinned, ygo resolves from the module proxy and the
-# `go mod download` cache layer below is the right first step.
+# ygo is pinned to a released tag in go.mod (require github.com/reearth/ygo
+# v1.22.0) with no local-path `replace`, so it resolves from the module proxy and
+# the `go mod download` cache layer below is the right first step.
 COPY go.mod go.sum ./
 RUN go mod download
 
