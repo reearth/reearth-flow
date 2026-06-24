@@ -113,7 +113,7 @@ fn join(args: &[Value]) -> Result<Value> {
     let sep = args[0].as_str()?;
     let Value::List(list) = &args[1] else {
         return Err(eval_error(format!(
-            "join() argument must be an array, got {}",
+            "join() argument must be a list, got {}",
             args[1].type_name()
         )));
     };
@@ -123,7 +123,7 @@ fn join(args: &[Value]) -> Result<Value> {
         .map(|v| match v {
             Value::String(s) => Ok(s.clone()),
             other => Err(eval_error(format!(
-                "join() array elements must be strings, got {}",
+                "join() list elements must be strings, got {}",
                 other.type_name()
             ))),
         })

@@ -153,14 +153,6 @@ impl std::fmt::Debug for NativeFn {
 }
 
 /// Runtime value type for the expression evaluator.
-///
-/// `List` and `Dict` use `Rc<RefCell<...>>` for reference semantics: cloning a
-/// value shares the same backing allocation, so mutations through one alias are
-/// visible through all others (Python-style). Circular references are the
-/// caller's responsibility and are not detected.
-///
-/// `Object` uses `Rc<dyn ImmutableObject>` without `RefCell` — objects are
-/// immutable from the expression language's perspective.
 #[derive(Debug, Clone)]
 pub enum Value {
     Null,
@@ -170,14 +162,10 @@ pub enum Value {
     String(String),
     List(TrackedRc<RefCell<Vec<Value>>>),
     Dict(TrackedRc<RefCell<IndexMap<String, Value>>>),
-    /// A native Rust function seeded into the environment.
     Fn(NativeFn),
-    /// A user-defined closure capturing a lexical env frame.
     Closure(ClosureValue),
-    /// A typed object that can respond to method calls via [`ImmutableObject`].
     Object(TrackedRc<dyn ImmutableObject>),
     Module(Rc<Module>),
-    /// A first-class type value: callable as a constructor, compared by pointer identity.
     Type(Rc<TypeValue>),
 }
 

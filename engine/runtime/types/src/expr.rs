@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 use reearth_flow_expr::{
-    compile, eval_error, expect_arity, Env as ExprEnv, FromValue, Result as ExprResult,
-    TypeValue as ExprTypeValue, Value as ExprValue,
+    compile, env_bind, env_remove, eval_error, expect_arity, Env as ExprEnv, FromValue,
+    Result as ExprResult, TypeValue as ExprTypeValue, Value as ExprValue,
 };
 
 use crate::error::{Error as TypesError, Result as TypesResult};
@@ -72,8 +72,43 @@ impl FromValue for FlowValue {
     }
 }
 
-fn eval_attr(expr: &reearth_flow_expr::CompiledExpr, env: &ExprEnv) -> TypesResult<AttributeValue> {
-    reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
+thread_local! {
+    static EVAL_ENV: ExprEnv = reearth_flow_expr::default_env();
+}
+
+fn eval_with_feature(
+    expr: &reearth_flow_expr::CompiledExpr,
+    feature: &Feature,
+    env_vars: &Arc<serde_json::Map<String, serde_json::Value>>,
+) -> TypesResult<AttributeValue> {
+    EVAL_ENV.with(|env| {
+        env_bind(
+            env,
+            "attributes",
+            ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
+        );
+        env_bind(
+            env,
+            "env",
+            ExprValue::object(EnvObject(Arc::clone(env_vars))),
+        );
+        reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
+    })
+}
+
+fn eval_with_vars(
+    expr: &reearth_flow_expr::CompiledExpr,
+    env_vars: &Arc<serde_json::Map<String, serde_json::Value>>,
+) -> TypesResult<AttributeValue> {
+    EVAL_ENV.with(|env| {
+        env_remove(env, "attributes");
+        env_bind(
+            env,
+            "env",
+            ExprValue::object(EnvObject(Arc::clone(env_vars))),
+        );
+        reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
+    })
 }
 
 #[nutype(
@@ -243,7 +278,7 @@ impl CompiledCode {
     ) -> TypesResult<AttributeValue> {
         match self {
             CompiledCode::Literal(s) => Ok(AttributeValue::String(s.clone())),
-            CompiledCode::Expr(e) => eval_attr(e, &env_from_feature(feature, env_vars)),
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars),
         }
     }
 
@@ -254,7 +289,7 @@ impl CompiledCode {
     ) -> TypesResult<bool> {
         match self {
             CompiledCode::Literal(s) => Ok(!s.is_empty()),
-            CompiledCode::Expr(e) => eval_attr(e, &env_from_feature(feature, env_vars))?
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
                 .as_bool()
                 .ok_or_else(|| TypesError::Conversion("eval result is not a bool".into())),
         }
@@ -270,7 +305,7 @@ impl CompiledCode {
                 .trim()
                 .parse::<f64>()
                 .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not a number"))),
-            CompiledCode::Expr(e) => eval_attr(e, &env_from_feature(feature, env_vars))?
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
                 .as_f64()
                 .ok_or_else(|| TypesError::Conversion("expected number".into())),
         }
@@ -286,7 +321,7 @@ impl CompiledCode {
                 .trim()
                 .parse::<i64>()
                 .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not an integer"))),
-            CompiledCode::Expr(e) => eval_attr(e, &env_from_feature(feature, env_vars))?
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
                 .as_i64()
                 .ok_or_else(|| TypesError::Conversion("expected integer".into())),
         }
@@ -299,7 +334,7 @@ impl CompiledCode {
     ) -> TypesResult<String> {
         match self {
             CompiledCode::Literal(s) => Ok(s.clone()),
-            CompiledCode::Expr(e) => eval_attr(e, &env_from_feature(feature, env_vars))?
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
                 .as_string()
                 .ok_or_else(|| TypesError::Conversion("eval result is not a string".into())),
         }
@@ -312,7 +347,7 @@ impl CompiledCode {
     ) -> TypesResult<AttributeValue> {
         match self {
             CompiledCode::Literal(s) => Ok(AttributeValue::String(s.clone())),
-            CompiledCode::Expr(e) => eval_attr(e, &env_from_vars_only(env_vars)),
+            CompiledCode::Expr(e) => eval_with_vars(e, &env_vars),
         }
     }
 
@@ -324,7 +359,7 @@ impl CompiledCode {
     ) -> TypesResult<String> {
         match self {
             CompiledCode::Literal(s) => Ok(s.clone()),
-            CompiledCode::Expr(e) => eval_attr(e, &env_from_vars_only(env_vars))?
+            CompiledCode::Expr(e) => eval_with_vars(e, &env_vars)?
                 .as_string()
                 .ok_or_else(|| TypesError::Conversion("eval result is not a string".into())),
         }
@@ -492,26 +527,6 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
             m => Err(eval_error(format!("Env has no method '{m}'"))),
         }
     }
-}
-
-fn env_from_feature(
-    feature: &Feature,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
-) -> ExprEnv {
-    let env = reearth_flow_expr::default_env();
-    reearth_flow_expr::env_bind(
-        &env,
-        "attributes",
-        ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
-    );
-    reearth_flow_expr::env_bind(&env, "env", ExprValue::object(EnvObject(env_vars)));
-    env
-}
-
-fn env_from_vars_only(env_vars: Arc<serde_json::Map<String, serde_json::Value>>) -> ExprEnv {
-    let env = reearth_flow_expr::default_env();
-    reearth_flow_expr::env_bind(&env, "env", ExprValue::object(EnvObject(env_vars)));
-    env
 }
 
 #[cfg(test)]

@@ -111,6 +111,11 @@ pub fn env_bind(env: &Env, name: impl Into<String>, val: Value) {
     env.borrow_mut().bindings.insert(name.into(), val);
 }
 
+/// Remove a binding from the innermost frame.
+pub fn env_remove(env: &Env, name: &str) {
+    env.borrow_mut().bindings.remove(name);
+}
+
 thread_local! {
     static NULL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("nullType", None));
     static BOOL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("bool", Some(NativeFn::new(builtin_bool))));
@@ -819,7 +824,7 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &Env, local: bool) -> Re
                     let len = rc.borrow().len();
                     let idx = list_methods::resolve_index(*i, len).ok_or_else(|| Error::Eval {
                         pos,
-                        msg: format!("array index {} out of range (len {})", i, len),
+                        msg: format!("list index {} out of range (len {})", i, len),
                     })?;
                     rc.borrow_mut()[idx] = value;
                 }
@@ -890,7 +895,7 @@ fn eval_compound_assign(
                     let len = rc.borrow().len();
                     let idx = list_methods::resolve_index(*i, len).ok_or_else(|| Error::Eval {
                         pos,
-                        msg: format!("array index {} out of range (len {})", i, len),
+                        msg: format!("list index {} out of range (len {})", i, len),
                     })?;
                     let current = rc.borrow()[idx].clone();
                     let new_val = call_value(Value::Fn(f.clone()), vec![current, rhs_val])?;
@@ -932,7 +937,7 @@ fn eval_index(target: Value, key: Value) -> Result<Value> {
             let len = arr.len();
             list_methods::resolve_index(i, len)
                 .map(|pos| arr[pos].clone())
-                .ok_or_else(|| eval_error(format!("array index {i} out of range (len {len})")))
+                .ok_or_else(|| eval_error(format!("list index {i} out of range (len {len})")))
         }
         (Value::String(s), Value::Int(i)) => {
             let chars: Vec<char> = s.chars().collect();
