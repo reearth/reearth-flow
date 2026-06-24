@@ -2298,4 +2298,16 @@ mod tests {
         )
         .is_err());
     }
+
+    #[test]
+    fn test_cyclic_list_increases_live_alloc() {
+        let env = default_env();
+        let before = crate::core::value::LIVE_ALLOC.with(|c| c.get());
+        let expr = parse("let a = []; a.append(a); a").unwrap();
+        let v = eval(&expr, &env).unwrap();
+        let after = crate::core::value::LIVE_ALLOC.with(|c| c.get());
+        // Cyclic list keeps a TrackedRc alive; the guard in `crate::eval::<T>` detects this.
+        assert!(after > before, "expected live TrackedRc for cyclic list");
+        drop(v);
+    }
 }

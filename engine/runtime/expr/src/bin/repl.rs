@@ -1,6 +1,6 @@
 use std::io::{self, BufRead, Write};
 
-use reearth_flow_expr::{compile, default_env, eval};
+use reearth_flow_expr::{compile, default_env, eval_unsafe as eval};
 
 fn main() {
     let env = default_env();

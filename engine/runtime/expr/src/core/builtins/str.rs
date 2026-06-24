@@ -548,14 +548,14 @@ mod tests {
         assert_eval(r#""{:5}".format("hi")"#, &[], Value::from("hi   "));
         assert_eval(r#""{:5}".format(7)"#, &[], Value::from("    7"));
 
-        let p = Value::Object(Rc::new(Point { x: 1.0, y: 2.0 }));
+        let p = Value::object(Point { x: 1.0, y: 2.0 });
         assert_eval(
             r#""{:compact}".format(p)"#,
             &[("p", p.clone())],
             Value::from("1,2"),
         );
         assert_eval(r#""{}".format(p)"#, &[("p", p)], Value::from("(1, 2)"));
-        let o = Value::Object(Rc::new(Opaque));
+        let o = Value::object(Opaque);
         assert_eval(r#""{}".format(o)"#, &[("o", o)], Value::from("opaque"));
     }
 

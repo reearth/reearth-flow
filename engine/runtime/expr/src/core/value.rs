@@ -1,4 +1,5 @@
 use std::cell::{Cell, RefCell};
+use std::collections::HashSet;
 use std::fmt;
 use std::rc::{Rc, Weak};
 
@@ -59,36 +60,6 @@ impl<T: ?Sized> std::ops::Deref for TrackedRc<T> {
 impl<T: ?Sized + fmt::Debug> fmt::Debug for TrackedRc<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-pub struct LeakGuard;
-
-impl LeakGuard {
-    pub fn enter() -> Self {
-        let current = LIVE_ALLOC.with(|c| c.get());
-        if current != 0 {
-            panic!(
-                "expr LeakGuard::enter: {} allocation(s) already live on this thread; nested eval is not supported",
-                current
-            );
-        }
-        LeakGuard
-    }
-}
-
-impl Drop for LeakGuard {
-    fn drop(&mut self) {
-        if std::thread::panicking() {
-            return;
-        }
-        let current = LIVE_ALLOC.with(|c| c.get());
-        if current != 0 {
-            panic!(
-                "expr: {} Rc allocation(s) leaked; cyclic List, Dict, Object, or Module reference detected",
-                current
-            );
-        }
     }
 }
 
@@ -205,7 +176,7 @@ pub enum Value {
     Closure(ClosureValue),
     /// A typed object that can respond to method calls via [`ImmutableObject`].
     Object(TrackedRc<dyn ImmutableObject>),
-    Module(TrackedRc<Module>),
+    Module(Rc<Module>),
     /// A first-class type value: callable as a constructor, compared by pointer identity.
     Type(Rc<TypeValue>),
 }
@@ -230,7 +201,7 @@ impl Value {
     }
 
     pub fn module(m: Module) -> Self {
-        Value::Module(TrackedRc::new(m))
+        Value::Module(Rc::new(m))
     }
 
     pub fn as_str(&self) -> Result<&str> {
@@ -381,5 +352,77 @@ impl From<String> for Value {
 impl<T: Into<Value>> From<Vec<T>> for Value {
     fn from(v: Vec<T>) -> Self {
         Value::list(v.into_iter().map(Into::into).collect())
+    }
+}
+
+/// Convert a [`Value`] produced by the evaluator into a caller-defined type.
+///
+/// Implement this trait on your output type and pass it as `T` to [`crate::eval`].
+/// Cycle detection and the LIVE_ALLOC guard are handled by the evaluator — the
+/// trait only needs to describe how to fold each `Value` variant into `T`.
+pub trait FromValue: Sized {
+    type Error;
+    fn from_null() -> std::result::Result<Self, Self::Error>;
+    fn from_bool(b: bool) -> std::result::Result<Self, Self::Error>;
+    fn from_int(n: i64) -> std::result::Result<Self, Self::Error>;
+    fn from_float(f: f64) -> std::result::Result<Self, Self::Error>;
+    fn from_string(s: String) -> std::result::Result<Self, Self::Error>;
+    fn from_list(items: Vec<Self>) -> std::result::Result<Self, Self::Error>;
+    fn from_dict(map: IndexMap<String, Self>) -> std::result::Result<Self, Self::Error>;
+    /// Called when a cycle is detected in List or Dict. Panic is the expected default.
+    fn on_cycle() -> std::result::Result<Self, Self::Error>;
+    /// Called for Value variants that cannot be represented (Fn, Closure, Module, Type,
+    /// or a non-serializable Object).
+    fn on_unconvertible(msg: String) -> std::result::Result<Self, Self::Error>;
+}
+
+pub(crate) fn convert_value<T: FromValue>(v: Value) -> std::result::Result<T, T::Error> {
+    convert_inner(v, &mut HashSet::new())
+}
+
+fn convert_inner<T: FromValue>(
+    v: Value,
+    seen: &mut HashSet<usize>,
+) -> std::result::Result<T, T::Error> {
+    match v {
+        Value::Null => T::from_null(),
+        Value::Bool(b) => T::from_bool(b),
+        Value::Int(n) => T::from_int(n),
+        Value::Float(f) => T::from_float(f),
+        Value::String(s) => T::from_string(s),
+        Value::List(arr) => {
+            let ptr = &*arr as *const _ as usize;
+            if !seen.insert(ptr) {
+                return T::on_cycle();
+            }
+            let items = arr
+                .borrow()
+                .iter()
+                .map(|v| convert_inner(v.clone(), seen))
+                .collect::<std::result::Result<Vec<_>, _>>()?;
+            seen.remove(&ptr);
+            T::from_list(items)
+        }
+        Value::Dict(map) => {
+            let ptr = &*map as *const _ as usize;
+            if !seen.insert(ptr) {
+                return T::on_cycle();
+            }
+            let entries = map
+                .borrow()
+                .iter()
+                .map(|(k, v)| convert_inner(v.clone(), seen).map(|v| (k.clone(), v)))
+                .collect::<std::result::Result<IndexMap<_, _>, _>>()?;
+            seen.remove(&ptr);
+            T::from_dict(entries)
+        }
+        Value::Object(rc) => match rc.serialize() {
+            Some(v) => convert_inner(v, seen),
+            None => T::on_unconvertible(format!("{} cannot be converted", rc.type_object().name)),
+        },
+        Value::Fn(_) => T::on_unconvertible("function cannot be converted".into()),
+        Value::Closure(_) => T::on_unconvertible("closure cannot be converted".into()),
+        Value::Module(_) => T::on_unconvertible("module cannot be converted".into()),
+        Value::Type(tv) => T::on_unconvertible(format!("type '{}' cannot be converted", tv.name)),
     }
 }
