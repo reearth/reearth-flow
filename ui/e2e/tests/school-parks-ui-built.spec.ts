@@ -1,14 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import {
-  expect,
-  test,
-  type BrowserContext,
-  type Locator,
-  type Page,
-} from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import {
+  type EditorSession,
+  newEditorSession,
+  teardownSession,
+} from "../fixtures/session";
+import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
 import { AssetsPage } from "../pages/assetsPage";
 import {
   DeploymentsPage,
@@ -16,7 +16,6 @@ import {
 } from "../pages/deploymentsPage";
 import { EditorPage } from "../pages/editorPage";
 import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
-import { STORAGE_STATE } from "../playwright.config";
 
 const SCHOOLS_ZIP = path.resolve(
   __dirname,
@@ -56,7 +55,7 @@ test.describe.serial(
     const projectName = uniqueProjectName("school-parks");
     const deploymentDescription = uniqueDeploymentDescription("school-parks");
 
-    let context: BrowserContext;
+    let session: EditorSession;
     let page: Page;
     let assets: AssetsPage;
     let projects: ProjectsPage;
@@ -77,36 +76,16 @@ test.describe.serial(
     let geojson: any;
 
     test.beforeAll(async ({ browser }) => {
-      context = await browser.newContext({
-        storageState: STORAGE_STATE,
-        baseURL: process.env.FLOW_DASHBOARD_E2E_BASEURL,
-        viewport: { width: 1920, height: 1080 },
-        locale: "en-US",
-      });
-      page = await context.newPage();
-      assets = new AssetsPage(page);
-      projects = new ProjectsPage(page);
-      editor = new EditorPage(page);
-      deployments = new DeploymentsPage(page);
+      session = await newEditorSession(browser);
+      ({ page, assets, projects, editor, deployments } = session);
     });
 
     test.afterAll(async () => {
-      if (!context) return;
-      try {
-        await deployments.goto();
-        await deployments
-          .deleteDeploymentIfExists(deploymentDescription)
-          .catch(() => {});
-        await projects.goto();
-        await projects.deleteProjectIfExists(projectName).catch(() => {});
-        await assets.goto();
-        if (schoolsAssetName)
-          await assets.deleteAssetIfExists(schoolsAssetName).catch(() => {});
-        if (parksAssetName)
-          await assets.deleteAssetIfExists(parksAssetName).catch(() => {});
-      } finally {
-        await context.close();
-      }
+      await teardownSession(session, {
+        projectName,
+        deploymentDescription,
+        assetNames: [schoolsAssetName, parksAssetName],
+      });
     });
 
     test("uploads the schools and parks datasets to the workspace", async () => {
@@ -235,29 +214,11 @@ test.describe.serial(
         .info()
         .annotations.push({ type: "job-url", description: page.url() });
 
-      // Job-level status only: the dot in the Job Details box tracks the
-      // overall job status, so it can't be tripped early by a per-node line in
-      // the log console below it. Wait until it leaves running/queued, then
-      // require success.
-      const statusDot = page
-        .locator("div.rounded-md.border")
-        .filter({ hasText: "Job Details" })
-        .locator(".size-4.rounded-full");
-      await expect(statusDot).toHaveClass(
-        /bg-success|bg-destructive|bg-warning/,
-        { timeout: 600_000 },
-      );
-      await expect(statusDot).toHaveClass(/bg-success/);
+      await expectJobSucceeded(page);
     });
 
     test("filters parks down to those within a school buffer, with valid NZ geometry", async () => {
-      // Read the artifact URL from the Job Details box, not arbitrary page text,
-      // so a log line naming the file can't be mistaken for the output link.
-      const outputUrl = page
-        .locator("div.rounded-md.border")
-        .filter({ hasText: "Job Details" })
-        .getByText(/parks-near-schools\.geojson/)
-        .first();
+      const outputUrl = jobDetailsArtifact(page, OUTPUT_FILE);
       await expect(outputUrl).toBeVisible({ timeout: 90_000 });
       const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
       test.info().annotations.push({

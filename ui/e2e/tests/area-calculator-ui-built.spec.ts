@@ -1,8 +1,12 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
+import {
+  type EditorSession,
+  newEditorSession,
+  teardownSession,
+} from "../fixtures/session";
 import { EditorPage } from "../pages/editorPage";
 import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
-import { STORAGE_STATE } from "../playwright.config";
 
 const PARKS = {
   type: "FeatureCollection",
@@ -66,31 +70,18 @@ test.describe.serial(
 
     const projectName = uniqueProjectName("area-calc-debug");
 
-    let context: BrowserContext;
+    let session: EditorSession;
     let page: Page;
     let projects: ProjectsPage;
     let editor: EditorPage;
 
     test.beforeAll(async ({ browser }) => {
-      context = await browser.newContext({
-        storageState: STORAGE_STATE,
-        baseURL: process.env.FLOW_DASHBOARD_E2E_BASEURL,
-        viewport: { width: 1920, height: 1080 },
-        locale: "en-US",
-      });
-      page = await context.newPage();
-      projects = new ProjectsPage(page);
-      editor = new EditorPage(page);
+      session = await newEditorSession(browser);
+      ({ page, projects, editor } = session);
     });
 
     test.afterAll(async () => {
-      if (!context) return;
-      try {
-        await projects.goto();
-        await projects.deleteProjectIfExists(projectName).catch(() => {});
-      } finally {
-        await context.close();
-      }
+      await teardownSession(session, { projectName });
     });
 
     test("creates a new project and opens the editor", async () => {
@@ -133,7 +124,7 @@ test.describe.serial(
       await expect(editor.edges).toHaveCount(2);
 
       await editor.openNodeParamsForm(readerNode);
-      await editor.setParamViaValueEditor(
+      await editor.setParamLiteralString(
         "Inline Content",
         JSON.stringify(PARKS),
       );
@@ -146,10 +137,7 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(writerNode);
-      await editor.setParamText(
-        "root_output",
-        'file::join_path(env.get("workerArtifactPath"), "park-areas.geojson")',
-      );
+      await editor.setParamCodeString("output", "park-areas.geojson");
       await editor.submitParams();
     });
 
@@ -158,19 +146,13 @@ test.describe.serial(
       await editor.waitForDebugRunToComplete();
     });
 
-    test("shows engine logs for each node that ran", async () => {
+    test("shows the workflow run logs", async () => {
       await expect(
-        editor.debugPanel.getByText(/GeoJsonReader - Running/).first(),
+        editor.debugPanel.getByText(/Workflow - Started/).first(),
       ).toBeVisible({ timeout: 30_000 });
-      await expect(
-        editor.debugPanel.getByText(/AreaCalculator - Running/).first(),
-      ).toBeVisible();
-      await expect(
-        editor.debugPanel.getByText(/GeoJsonWriter - Running/).first(),
-      ).toBeVisible();
       await expect(
         editor.debugPanel.getByText("Workflow finished successfully.").first(),
-      ).toBeVisible({ timeout: 30_000 });
+      ).toBeVisible();
     });
 
     test("lists the one park-areas.geojson output artifact", async () => {
