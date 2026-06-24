@@ -16,12 +16,9 @@ export type AttrType =
   | "Null"
   | "Unknown";
 
-export type AttrPresence = "always" | "maybe";
-
 export type FieldReport = {
   name: string;
   type: AttrType;
-  presence: AttrPresence;
 };
 
 export type PortReport = {

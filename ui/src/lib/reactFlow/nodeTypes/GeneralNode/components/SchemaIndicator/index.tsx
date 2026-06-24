@@ -104,22 +104,13 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
           ) : (
             <div className="flex max-h-56 flex-col overflow-y-auto p-1">
               {fields.map((field) => {
-                const optional = field.presence === "maybe";
                 return (
                   <div
                     key={field.name}
                     className="flex items-center gap-2 rounded px-2 py-1 hover:bg-accent">
-                    <code
-                      className={`flex-1 truncate font-mono text-xs ${
-                        optional ? "text-muted-foreground" : ""
-                      }`}>
+                    <code className="flex-1 truncate font-mono text-xs">
                       {field.name}
                     </code>
-                    {optional && (
-                      <span className="rounded border border-border px-1 font-mono text-[9px] text-muted-foreground">
-                        {t("opt")}
-                      </span>
-                    )}
                     <span
                       className={`font-mono text-[10px] font-semibold ${TYPE_COLOR[field.type]}`}>
                       {field.type}

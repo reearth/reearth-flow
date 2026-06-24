@@ -5,12 +5,11 @@ import { AutocompleteSuggestion } from "../components/ParamsDialog/components/Va
 const toSuggestion = (field: {
   name: string;
   type: string;
-  presence: string;
 }): AutocompleteSuggestion => ({
   label: field.name,
   insertText: field.name,
   type: "variable",
-  detail: field.presence === "maybe" ? `${field.type} (optional)` : field.type,
+  detail: field.type,
 });
 
 const collectReaderFields = (
