@@ -450,13 +450,6 @@ fn pack_csr(
     )
 }
 
-// ─── Appearance merge ─────────────────────────────────────────────────────────
-//
-// `from_polygons` welds each face's per-polygon appearance and UV into the one
-// mesh-wide form. The faces are walked in the same order `dedup_faces` keeps
-// them (input order, empty faces skipped), so the per-corner UV lands 1:1 on the
-// corner buffer.
-
 /// The number of mesh corners a polygon contributes — its rings with each
 /// closing duplicate dropped, matching `dedup_faces` / [`open_ring`]. A face
 /// with zero corners is skipped by `dedup_faces`, so it is dropped here too.

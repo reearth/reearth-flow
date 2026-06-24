@@ -415,15 +415,6 @@ fn check_offsets(offsets: &[u32], coords_len: usize) -> Result<(), Error> {
     Ok(())
 }
 
-// ─── Appearance ──────────────────────────────────────────────────────────────
-//
-// Set after construction, not in the builder: CityGML binds appearance by
-// `gml:id` in a later pass than the geometry. The input types encode the
-// polygon's single-face nature — one material per (theme, side) — so the general
-// `FaceBinding` / `MaterialIndex` machinery never reaches the call site, and
-// illegal shapes (several materials on one face, a `PerFace` array) cannot be
-// expressed.
-
 /// One side's shading for a polygon: a single material and the UV its textured
 /// maps sample, one entry per UV channel the material references. `uv` is empty
 /// for a colour-only material (no maps); each entry is an `Explicit` array

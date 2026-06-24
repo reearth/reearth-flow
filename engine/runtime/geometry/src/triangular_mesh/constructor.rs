@@ -318,12 +318,6 @@ impl TriangularMesh2D {
     }
 }
 
-// ─── Appearance ──────────────────────────────────────────────────────────────
-//
-// One theme is added per call (shared by the 2D and 3D setters). UV is per-corner
-// — `3 * triangle_count` entries — and the binding is genuinely multi-face, so a
-// `PerFace` binding carries one material per triangle.
-
 /// Add one theme's appearance to a triangle mesh's `appearance` / `uv_sets`.
 /// `binding` indexes `materials` locally; its indices are offset into the
 /// accumulated palette. Validates the binding shape, the material/UV coupling and
