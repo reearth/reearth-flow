@@ -6,9 +6,13 @@ function jobDetailsBox(page: Page): Locator {
     .filter({ hasText: "Job Details" });
 }
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function jobDetailsArtifact(page: Page, fileName: string): Locator {
   return jobDetailsBox(page)
-    .getByText(new RegExp(fileName.replace(".", "\\.")))
+    .getByText(new RegExp(escapeRegExp(fileName)))
     .first();
 }
 

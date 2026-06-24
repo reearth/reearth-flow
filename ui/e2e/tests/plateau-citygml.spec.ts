@@ -24,7 +24,7 @@ test.describe("PLATEAU CityGML pipeline", { tag: "@pipeline" }, () => {
 
   test.afterEach(async () => {
     await deployments.goto();
-    await deployments.deleteDeploymentIfExists(description).catch(() => { });
+    await deployments.deleteDeploymentIfExists(description).catch(() => {});
   });
 
   // fixme: this workflow uses PLATEAU4.UDXFolderExtractor, which is not yet in

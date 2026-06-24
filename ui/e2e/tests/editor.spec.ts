@@ -22,7 +22,7 @@ test.describe.serial("Editor canvas", { tag: "@regression" }, () => {
 
   test.afterEach(async () => {
     await projects.goto();
-    await projects.deleteProjectIfExists(projectName).catch(() => { });
+    await projects.deleteProjectIfExists(projectName).catch(() => {});
   });
 
   test("adds Reader, Transformer and Writer nodes from the palette", async ({
