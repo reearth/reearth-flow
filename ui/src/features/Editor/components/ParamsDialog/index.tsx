@@ -23,7 +23,7 @@ import {
   FlowExprEditorDialog,
   type CodeValue,
 } from "./components";
-import type { AutocompleteSuggestion } from "./components/ValueEditorDialog/components/constants";
+import { AutocompleteSuggestion } from "./components/ValueEditorDialog/components/flowExprConstants";
 import { FieldContext, getValueAtPath } from "./utils/fieldUtils";
 import {
   applyMergedPatch,

@@ -1,6 +1,6 @@
 import type { Node, Workflow } from "@flow/types";
 
-import type { AutocompleteSuggestion } from "../components/ParamsDialog/components/ValueEditorDialog/components/constants";
+import { AutocompleteSuggestion } from "../components/ParamsDialog/components/ValueEditorDialog/components/flowExprConstants";
 
 const toSuggestion = (field: {
   name: string;
