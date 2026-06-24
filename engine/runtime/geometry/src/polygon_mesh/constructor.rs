@@ -28,7 +28,7 @@
 //! bare (attach appearance later via `appearance_mut`); `from_polygons` welds
 //! the constituent polygons' appearance and UV across into the mesh.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::appearance::{
     Appearance, ChannelId, FaceBinding, Material, MaterialIndex, Side, TexMatrix, ThemeBinding,
@@ -477,12 +477,22 @@ fn polygon_uv_corners(polygon: &Polygon3D, source: &UvSource) -> Vec<[f64; 2]> {
 }
 
 /// Bake a `WorldToTexture` projective matrix at a vertex: `(s, t) = (s'/q', t'/q')`.
+///
+/// A vertex on the matrix's vanishing line makes `q` zero (or the products
+/// non-finite), which would otherwise bake `inf`/`NaN` UVs that corrupt texture
+/// sampling and break downstream tile encoders. Such degenerate corners have no
+/// meaningful UV, so they fall back to the texture origin.
 fn bake(matrix: &TexMatrix, [x, y, z]: [f64; 3]) -> [f64; 2] {
     let apply = |row: [f64; 4]| row[0] * x + row[1] * y + row[2] * z + row[3];
     let s = apply(matrix.0[0]);
     let t = apply(matrix.0[1]);
     let q = apply(matrix.0[2]);
-    [s / q, t / q]
+    let (u, v) = (s / q, t / q);
+    if u.is_finite() && v.is_finite() {
+        [u, v]
+    } else {
+        [0.0, 0.0]
+    }
 }
 
 /// The single material a polygon's (single-face) binding resolves to, if bound.
@@ -583,30 +593,48 @@ fn merge_appearance(polygons: &[&Polygon3D]) -> (Vec<UvSet>, Option<Appearance>)
         })
         .collect();
 
-    // UV-set key union (first-seen), then one mesh-wide array per key.
-    let mut keys: Vec<(Option<ThemeId>, Side, Option<ChannelId>)> = Vec::new();
+    // Index each face's UV sets by key once (so the per-key build is a map lookup,
+    // not a linear scan) and precompute each face's corner count (recomputing it
+    // per key would re-walk every ring).
+    type UvKey = (Option<ThemeId>, Side, Option<ChannelId>);
+    let corner_counts: Vec<usize> = kept.iter().map(|p| corner_count(p)).collect();
+    let total_corners: usize = corner_counts.iter().sum();
+    let per_face_uv: Vec<HashMap<UvKey, &UvSource>> = kept
+        .iter()
+        .map(|polygon| {
+            polygon
+                .uv_sets()
+                .iter()
+                .map(|set| ((set.theme.clone(), set.side, set.channel), &set.uv))
+                .collect()
+        })
+        .collect();
+
+    // UV-set key union, in first-seen order.
+    let mut keys: Vec<UvKey> = Vec::new();
+    let mut seen: HashSet<UvKey> = HashSet::new();
     for polygon in &kept {
         for set in polygon.uv_sets() {
             let key = (set.theme.clone(), set.side, set.channel);
-            if !keys.contains(&key) {
+            if seen.insert(key.clone()) {
                 keys.push(key);
             }
         }
     }
+
+    // One mesh-wide UV array per key: each face contributes its corners, or a
+    // zero-filled run where it lacks that key. Reserved to the total up front.
     let uv_sets = keys
         .into_iter()
-        .map(|(theme, side, channel)| {
-            let mut data: Vec<[f64; 2]> = Vec::new();
-            for polygon in &kept {
-                match polygon
-                    .uv_sets()
-                    .iter()
-                    .find(|s| s.theme == theme && s.side == side && s.channel == channel)
-                {
-                    Some(set) => data.extend(polygon_uv_corners(polygon, &set.uv)),
-                    None => data.resize(data.len() + corner_count(polygon), [0.0, 0.0]),
+        .map(|key| {
+            let mut data: Vec<[f64; 2]> = Vec::with_capacity(total_corners);
+            for (i, polygon) in kept.iter().enumerate() {
+                match per_face_uv[i].get(&key).copied() {
+                    Some(uv) => data.extend(polygon_uv_corners(polygon, uv)),
+                    None => data.resize(data.len() + corner_counts[i], [0.0, 0.0]),
                 }
             }
+            let (theme, side, channel) = key;
             UvSet {
                 theme,
                 side,
@@ -628,15 +656,8 @@ fn merge_appearance(polygons: &[&Polygon3D]) -> (Vec<UvSet>, Option<Appearance>)
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use bytes::Bytes;
-    use reearth_flow_common::image::MimeType;
-
     use super::*;
-    use crate::appearance::{
-        Filter, PhongMaterial, Raster, RasterData, Sampler, Texture, WrapMode,
-    };
+    use crate::test_support::*;
 
     fn ones(buf: &IndexBuffer<1>) -> Vec<u32> {
         match buf {
@@ -794,49 +815,6 @@ mod tests {
 
     // ── from_polygons appearance / UV merge ──
 
-    fn theme(name: &str) -> ThemeId {
-        ThemeId(Arc::from(name))
-    }
-
-    fn texture() -> Texture {
-        Texture {
-            raster: Arc::new(Raster::InMemory(RasterData {
-                mime_type: MimeType::ImagePng,
-                bytes: Bytes::from_static(&[0u8]),
-            })),
-            sampler: Sampler {
-                wrap_s: WrapMode::Repeat,
-                wrap_t: WrapMode::Repeat,
-                mag_filter: Filter::Linear,
-                min_filter: Filter::LinearMipmap,
-            },
-            transform: None,
-            uv_channel: Default::default(),
-        }
-    }
-
-    fn textured() -> Material {
-        Material::Phong(PhongMaterial {
-            diffuse: [1.0, 1.0, 1.0],
-            specular: [0.0; 3],
-            emissive: [0.0; 3],
-            ambient_intensity: 0.0,
-            shininess: 0.0,
-            transparency: 0.0,
-            diffuse_map: Some(texture()),
-            emissive_map: None,
-            normal_map: None,
-        })
-    }
-
-    fn explicit(uv: &[[f64; 2]]) -> UvSource {
-        UvSource::Explicit(uv.to_vec().into_boxed_slice())
-    }
-
-    fn unit_quad_uv() -> UvSource {
-        explicit(&[[0., 0.], [1., 0.], [1., 1.], [0., 1.]])
-    }
-
     #[test]
     fn from_polygons_welds_single_textured_face() {
         let mut p = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
@@ -886,7 +864,12 @@ mod tests {
         a.set_appearance(
             theme("rgb"),
             textured(),
-            Some(explicit(&[[0.2, 0.2], [0.4, 0.2], [0.4, 0.4], [0.2, 0.4]])),
+            Some(explicit_uv(&[
+                [0.2, 0.2],
+                [0.4, 0.2],
+                [0.4, 0.4],
+                [0.2, 0.4],
+            ])),
         )
         .unwrap();
         // `b` carries no appearance at all.
@@ -918,7 +901,7 @@ mod tests {
         p.set_appearance(
             theme("rgb"),
             textured(),
-            Some(explicit(&[[0., 0.], [1., 0.], [0., 1.], [0., 0.]])),
+            Some(explicit_uv(&[[0., 0.], [1., 0.], [0., 1.], [0., 0.]])),
         )
         .unwrap();
 

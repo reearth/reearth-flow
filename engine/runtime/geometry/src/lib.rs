@@ -39,6 +39,9 @@ pub mod polygon_mesh;
 pub mod solid;
 pub mod triangular_mesh;
 
+#[cfg(test)]
+mod test_support;
+
 use reearth_flow_common::attribute::Attributes;
 use serde::{Deserialize, Serialize};
 

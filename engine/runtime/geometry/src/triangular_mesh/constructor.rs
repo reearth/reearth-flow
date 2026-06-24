@@ -26,7 +26,8 @@
 use std::collections::HashMap;
 
 use crate::appearance::{
-    Appearance, FaceBinding, Material, MaterialIndex, Side, ThemeBinding, ThemeId, UvSet, UvSource,
+    validate_uv_coupling, Appearance, FaceBinding, Material, MaterialIndex, Side, ThemeBinding,
+    ThemeId, UvSet, UvSource,
 };
 use crate::coordinate::Coordinate;
 use crate::error::Error;
@@ -339,30 +340,11 @@ fn add_theme(
         }
     }
     validate_binding(&binding, materials.len(), triangle_count)?;
-
-    // A textured face needs UV; a colour-only theme must not carry an orphan set.
-    match (references_texture(&binding, &materials), &uv) {
-        (true, None) => {
-            return Err(Error::invalid_appearance(
-                "a bound material is textured but no UV was supplied",
-            ));
-        }
-        (false, Some(_)) => {
-            return Err(Error::invalid_appearance(
-                "no bound material is textured but a UV was supplied (orphan UV)",
-            ));
-        }
-        _ => {}
-    }
-    if let Some(UvSource::Explicit(coords)) = &uv {
-        let corners = triangle_count * 3;
-        if coords.len() != corners {
-            return Err(Error::invalid_appearance(format!(
-                "UV length {} does not match the corner count {corners}",
-                coords.len()
-            )));
-        }
-    }
+    validate_uv_coupling(
+        references_texture(&binding, &materials),
+        &uv,
+        triangle_count * 3,
+    )?;
 
     let app = appearance.get_or_insert_with(|| Appearance {
         materials: Vec::new(),
@@ -550,15 +532,8 @@ fn split_elevation(vertices: Vec<[f64; 3]>) -> (Vec<[f64; 2]>, Box<[f64]>) {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use bytes::Bytes;
-    use reearth_flow_common::image::MimeType;
-
     use super::*;
-    use crate::appearance::{
-        Filter, PhongMaterial, Raster, RasterData, Sampler, Texture, WrapMode,
-    };
+    use crate::test_support::*;
 
     fn triples(buf: &IndexBuffer<3>) -> Vec<[u32; 3]> {
         match buf {
@@ -645,53 +620,6 @@ mod tests {
     }
 
     // ── Appearance setters ──
-
-    fn theme(name: &str) -> ThemeId {
-        ThemeId(Arc::from(name))
-    }
-
-    fn texture() -> Texture {
-        Texture {
-            raster: Arc::new(Raster::InMemory(RasterData {
-                mime_type: MimeType::ImagePng,
-                bytes: Bytes::from_static(&[0u8]),
-            })),
-            sampler: Sampler {
-                wrap_s: WrapMode::Repeat,
-                wrap_t: WrapMode::Repeat,
-                mag_filter: Filter::Linear,
-                min_filter: Filter::LinearMipmap,
-            },
-            transform: None,
-            uv_channel: Default::default(),
-        }
-    }
-
-    fn phong(map: Option<Texture>) -> Material {
-        Material::Phong(PhongMaterial {
-            diffuse: [1.0, 1.0, 1.0],
-            specular: [0.0; 3],
-            emissive: [0.0; 3],
-            ambient_intensity: 0.0,
-            shininess: 0.0,
-            transparency: 0.0,
-            diffuse_map: map,
-            emissive_map: None,
-            normal_map: None,
-        })
-    }
-
-    fn textured() -> Material {
-        phong(Some(texture()))
-    }
-
-    fn bare() -> Material {
-        phong(None)
-    }
-
-    fn uv(n: usize) -> UvSource {
-        UvSource::Explicit(vec![[0.0, 0.0]; n].into_boxed_slice())
-    }
 
     /// One triangle (3 corners).
     fn one_triangle() -> TriangularMesh3DData {

@@ -12,7 +12,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::appearance::{Appearance, Side, UvSet};
+use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
 use crate::index::IndexBuffer;
 
@@ -116,18 +116,10 @@ impl PolygonMesh3D {
 }
 
 impl PolygonMesh3DData {
-    /// Drop all back-side appearance — back face→material bindings and any
-    /// `Side::Back` UV sets — keeping only the front. A [`Solid`](crate::solid::Solid)
-    /// shell's back face is the solid's interior (or the inside of a void), which
-    /// is never rendered, so back textures are meaningless there; `Solid`
-    /// construction calls this on every shell.
+    /// Drop all back-side appearance, keeping only the front; see
+    /// [`crate::appearance::make_front_only`].
     pub(crate) fn make_front_only(&mut self) {
-        if let Some(appearance) = &mut self.appearance {
-            for binding in &mut appearance.themes {
-                binding.back = None;
-            }
-        }
-        self.uv_sets.retain(|uv| uv.side != Side::Back);
+        crate::appearance::make_front_only(&mut self.appearance, &mut self.uv_sets);
     }
 }
 
@@ -136,23 +128,8 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::appearance::{
-        FaceBinding, Material, MaterialIndex, PhongMaterial, ThemeBinding, ThemeId, UvSource,
-    };
-
-    fn bare_phong() -> Material {
-        Material::Phong(PhongMaterial {
-            diffuse: [1.0, 1.0, 1.0],
-            specular: [0.0, 0.0, 0.0],
-            emissive: [0.0, 0.0, 0.0],
-            ambient_intensity: 0.0,
-            shininess: 0.0,
-            transparency: 0.0,
-            diffuse_map: None,
-            emissive_map: None,
-            normal_map: None,
-        })
-    }
+    use crate::appearance::{FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSource};
+    use crate::test_support::bare;
 
     fn uv(side: Side) -> UvSet {
         UvSet {
@@ -171,7 +148,7 @@ mod tests {
         )
         .unwrap();
         m.appearance = Some(Appearance {
-            materials: vec![bare_phong(), bare_phong()],
+            materials: vec![bare(), bare()],
             themes: vec![ThemeBinding {
                 theme: ThemeId(Arc::from("t")),
                 front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),

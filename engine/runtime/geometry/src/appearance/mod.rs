@@ -24,6 +24,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::error::Error;
+
 /// A dataset-global, stable theme name. Switching to a theme selects the same
 /// theme across every feature, so this is an identity (a name), not a per-mesh
 /// index (contrast [`ChannelId`]).
@@ -134,6 +136,121 @@ pub enum FaceBinding {
     PerFace(Vec<Option<MaterialIndex>>),
 }
 
+impl FaceBinding {
+    /// Mark every palette index this binding references in `referenced`.
+    fn mark_referenced(&self, referenced: &mut [bool]) {
+        match self {
+            FaceBinding::Uniform(index) => referenced[index.get() as usize] = true,
+            FaceBinding::PerFace(faces) => {
+                for index in faces.iter().flatten() {
+                    referenced[index.get() as usize] = true;
+                }
+            }
+        }
+    }
+
+    /// Reindex every palette index through `remap` (old index → compacted index).
+    /// Only indices previously marked by [`mark_referenced`] are looked up.
+    fn reindex(&mut self, remap: &[Option<MaterialIndex>]) {
+        let map = |index: MaterialIndex| {
+            remap[index.get() as usize].expect("a referenced material survives compaction")
+        };
+        match self {
+            FaceBinding::Uniform(index) => *index = map(*index),
+            FaceBinding::PerFace(faces) => {
+                for slot in faces.iter_mut().flatten() {
+                    *slot = map(*slot);
+                }
+            }
+        }
+    }
+}
+
+impl Appearance {
+    /// Remove palette entries unreferenced by any binding and reindex the
+    /// survivors. Kept materials retain their relative order, so the compacted
+    /// palette is a stable subsequence of the original.
+    fn compact_materials(&mut self) {
+        let mut referenced = vec![false; self.materials.len()];
+        for binding in &self.themes {
+            binding.front.mark_referenced(&mut referenced);
+            if let Some(back) = &binding.back {
+                back.mark_referenced(&mut referenced);
+            }
+        }
+
+        let mut remap: Vec<Option<MaterialIndex>> = vec![None; self.materials.len()];
+        let mut kept: Vec<Material> = Vec::new();
+        for (old, material) in self.materials.iter().enumerate() {
+            if referenced[old] {
+                let new = MaterialIndex::new(kept.len() as u32)
+                    .expect("a compacted palette is no larger than the original");
+                remap[old] = Some(new);
+                kept.push(material.clone());
+            }
+        }
+        self.materials = kept;
+
+        for binding in &mut self.themes {
+            binding.front.reindex(&remap);
+            if let Some(back) = &mut binding.back {
+                back.reindex(&remap);
+            }
+        }
+    }
+}
+
+/// Validate the texture/UV coupling and, for an `Explicit` source, the UV length —
+/// the invariant every appearance setter shares. `references_texture` is whether
+/// any bound material samples a texture: a textured binding requires exactly one UV
+/// set, a colour-only one must not carry an orphan. `corner_count` is the number of
+/// corners an `Explicit` UV must match.
+pub(crate) fn validate_uv_coupling(
+    references_texture: bool,
+    uv: &Option<UvSource>,
+    corner_count: usize,
+) -> Result<(), Error> {
+    match (references_texture, uv) {
+        (true, None) => {
+            return Err(Error::invalid_appearance(
+                "a textured material requires a UV set, but none was supplied",
+            ));
+        }
+        (false, Some(_)) => {
+            return Err(Error::invalid_appearance(
+                "a UV set was supplied but no material is textured (orphan UV)",
+            ));
+        }
+        _ => {}
+    }
+    if let Some(UvSource::Explicit(coords)) = uv {
+        if coords.len() != corner_count {
+            return Err(Error::invalid_appearance(format!(
+                "UV length {} does not match the corner count {corner_count}",
+                coords.len()
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Strip all back-side appearance from a mesh's `(appearance, uv_sets)`: drop each
+/// theme's back binding, remove every `Side::Back` UV set, and compact the palette
+/// so now-orphaned back-only materials are dropped. Shared by the polygon-mesh and
+/// triangular-mesh `make_front_only` shells — a [`Solid`](crate::solid::Solid)'s
+/// back face is its interior (or the inside of a void), which is never rendered, so
+/// back appearance is meaningless there; `Solid` construction calls this on every
+/// shell.
+pub(crate) fn make_front_only(appearance: &mut Option<Appearance>, uv_sets: &mut Vec<UvSet>) {
+    uv_sets.retain(|uv| uv.side != Side::Back);
+    if let Some(app) = appearance {
+        for binding in &mut app.themes {
+            binding.back = None;
+        }
+        app.compact_materials();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,5 +288,83 @@ mod tests {
 
         // the reserved sentinel is rejected on the wire, not silently accepted
         assert!(serde_json::from_str::<MaterialIndex>("4294967295").is_err());
+    }
+
+    fn phong(diffuse: f32) -> Material {
+        Material::Phong(PhongMaterial {
+            diffuse: [diffuse, diffuse, diffuse],
+            specular: [0.0; 3],
+            emissive: [0.0; 3],
+            ambient_intensity: 0.0,
+            shininess: 0.0,
+            transparency: 0.0,
+            diffuse_map: None,
+            emissive_map: None,
+            normal_map: None,
+        })
+    }
+
+    #[test]
+    fn make_front_only_drops_back_and_compacts_palette() {
+        let theme = ThemeId(Arc::from("rgb"));
+        // Material 0 is front-only, material 1 is back-only.
+        let mut appearance = Some(Appearance {
+            materials: vec![phong(1.0), phong(2.0)],
+            themes: vec![ThemeBinding {
+                theme: theme.clone(),
+                front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+                back: Some(FaceBinding::Uniform(MaterialIndex::new(1).unwrap())),
+            }],
+            default_theme: theme.clone(),
+        });
+        let uv = |side| UvSet {
+            theme: Some(theme.clone()),
+            side,
+            channel: None,
+            uv: UvSource::Explicit(Box::new([])),
+        };
+        let mut uv_sets = vec![uv(Side::Front), uv(Side::Back)];
+
+        make_front_only(&mut appearance, &mut uv_sets);
+
+        let app = appearance.unwrap();
+        // The back binding is gone and its now-orphaned material dropped, leaving
+        // only the front material (still reachable at the compacted index 0).
+        assert_eq!(app.materials, vec![phong(1.0)]);
+        assert!(app.themes[0].back.is_none());
+        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(i) if i.get() == 0));
+        // The back UV set is stripped; only the front survives.
+        assert_eq!(uv_sets.len(), 1);
+        assert_eq!(uv_sets[0].side, Side::Front);
+    }
+
+    #[test]
+    fn compact_materials_reindexes_perface_binding() {
+        let theme = ThemeId(Arc::from("rgb"));
+        // Palette entry 0 is unreferenced; faces bind 1 and 3, with a bare slot.
+        let mut app = Appearance {
+            materials: vec![phong(0.0), phong(1.0), phong(2.0), phong(3.0)],
+            themes: vec![ThemeBinding {
+                theme: theme.clone(),
+                front: FaceBinding::PerFace(vec![
+                    Some(MaterialIndex::new(1).unwrap()),
+                    None,
+                    Some(MaterialIndex::new(3).unwrap()),
+                ]),
+                back: None,
+            }],
+            default_theme: theme,
+        };
+
+        app.compact_materials();
+
+        // Only the referenced materials survive, in their original relative order.
+        assert_eq!(app.materials, vec![phong(1.0), phong(3.0)]);
+        let FaceBinding::PerFace(faces) = &app.themes[0].front else {
+            panic!("front binding should stay PerFace");
+        };
+        assert_eq!(faces[0].map(|i| i.get()), Some(0));
+        assert_eq!(faces[1], None);
+        assert_eq!(faces[2].map(|i| i.get()), Some(1));
     }
 }

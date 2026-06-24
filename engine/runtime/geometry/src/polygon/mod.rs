@@ -16,7 +16,7 @@ use crate::coordinate::Coordinate;
 
 mod constructor;
 
-pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace, PolygonTheme};
+pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 
 /// A planar polygon face in 2D space, with optional per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
