@@ -128,12 +128,12 @@ test.describe.serial("Editor canvas", { tag: "@regression" }, () => {
 
     await editor.connectNodes(editor.nodes.nth(0), editor.nodes.nth(1));
     await expect(editor.edges).toHaveCount(1);
-
-    await editor.clickPane();
-    await editor.selectAll();
+    await editor.boxSelect(
+      await editor.canvasPoint(0.15, 0.2),
+      await editor.canvasPoint(0.95, 0.8),
+    );
     await editor.copySelected();
-
-    await editor.pasteAtPane(await editor.canvasPoint(0.5, 0.75));
+    await editor.pasteAtPane(await editor.canvasPoint(0.5, 0.9));
 
     await expect(editor.nodes).toHaveCount(4);
     await expect(editor.edges).toHaveCount(2);
