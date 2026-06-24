@@ -206,6 +206,11 @@ impl Appearance {
     /// survivors. Kept materials retain their relative order, so the compacted
     /// palette is a stable subsequence of the original.
     fn compact_materials(&mut self) {
+        // A palette this large (only via `appearance_mut`) can't be reindexed
+        // without truncating `kept.len() as u32`; leave the valid indices as-is.
+        if self.materials.len() > u32::MAX as usize {
+            return;
+        }
         let mut referenced = vec![false; self.materials.len()];
         for binding in &self.themes {
             binding.front.mark_referenced(&mut referenced);
@@ -263,9 +268,11 @@ pub(crate) fn append_theme(
     }
 
     // Offset before mutating anything, so an overflow leaves the geometry unchanged.
-    let offset = appearance
-        .as_ref()
-        .map_or(0, |app| app.materials.len() as u32);
+    let offset = match appearance.as_ref() {
+        Some(app) => u32::try_from(app.materials.len())
+            .map_err(|_| Error::invalid_appearance("material palette too large"))?,
+        None => 0,
+    };
     let front = front.offset(offset)?;
     let back = back.map(|binding| binding.offset(offset)).transpose()?;
 

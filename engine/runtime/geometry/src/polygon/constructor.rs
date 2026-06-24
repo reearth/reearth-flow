@@ -602,7 +602,9 @@ fn push_face(
         });
     }
 
-    let index = MaterialIndex::new(materials.len() as u32)
+    let index = u32::try_from(materials.len())
+        .ok()
+        .and_then(MaterialIndex::new)
         .ok_or_else(|| Error::invalid_appearance("material palette too large"))?;
     materials.push(face.material);
     Ok(FaceBinding::Uniform(index))

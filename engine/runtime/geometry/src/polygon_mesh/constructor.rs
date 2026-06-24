@@ -541,7 +541,9 @@ fn build_binding(
                 Side::Back => binding.back.as_ref()?,
             };
             let local = single_face_index(face)?;
-            MaterialIndex::new(offset[i] as u32 + local)
+            // Overflow (only from an oversized palette) falls through to an unbound face.
+            let merged = u32::try_from(offset[i]).ok()?.checked_add(local)?;
+            MaterialIndex::new(merged)
         })
         .collect();
     FaceBinding::PerFace(per_face)
