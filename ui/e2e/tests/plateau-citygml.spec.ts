@@ -27,7 +27,11 @@ test.describe("PLATEAU CityGML pipeline", { tag: "@pipeline" }, () => {
     await deployments.deleteDeploymentIfExists(description).catch(() => {});
   });
 
-  test("deploys, processes the Toshima-mura city model, and produces the buildings artifact", async ({
+  // fixme: this workflow uses PLATEAU4.UDXFolderExtractor, which is not yet in
+  // the dev engine catalog (the UI-built sibling asserts its absence and skips
+  // the UDX chain for the same reason). Re-enable once UDXFolderExtractor ships
+  // to the dev worker.
+  test.fixme("deploys, processes the Toshima-mura city model, and produces the buildings artifact", async ({
     page,
   }) => {
     test.setTimeout(1_500_000);
