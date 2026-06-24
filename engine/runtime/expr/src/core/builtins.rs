@@ -1,4 +1,4 @@
-pub mod array;
+pub mod list;
 pub mod dict;
 mod itertools;
 mod json;

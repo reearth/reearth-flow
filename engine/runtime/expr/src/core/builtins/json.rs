@@ -18,7 +18,7 @@ fn value_to_json(v: &Value) -> Result<JsonValue> {
                 ))
             }),
         Value::String(s) => Ok(JsonValue::String(s.clone())),
-        Value::Array(rc) => {
+        Value::List(rc) => {
             let items = rc
                 .borrow()
                 .iter()
@@ -67,7 +67,7 @@ fn json_to_value(j: JsonValue) -> Result<Value> {
                 .into_iter()
                 .map(json_to_value)
                 .collect::<Result<Vec<_>>>()?;
-            Ok(Value::array(values))
+            Ok(Value::list(values))
         }
         JsonValue::Object(obj) => {
             let map = obj

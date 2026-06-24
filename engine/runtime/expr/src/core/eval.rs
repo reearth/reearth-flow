@@ -4,7 +4,7 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
-use super::builtins::{array as array_methods, dict as dict_methods, str as str_methods};
+use super::builtins::{list as list_methods, dict as dict_methods, str as str_methods};
 use super::builtins::{
     builtin_itertools, builtin_json, builtin_math, regex_type_value, url_type_value,
 };
@@ -206,7 +206,7 @@ fn eq_op(args: &[Value]) -> Result<Value> {
         return rc.call_method("__eq__", std::slice::from_ref(b));
     }
     match (a, b) {
-        (Value::Array(a), Value::Array(b)) => array_methods::eq_inner(a, b).map(Value::Bool),
+        (Value::List(a), Value::List(b)) => list_methods::eq_inner(a, b).map(Value::Bool),
         (Value::Dict(a), Value::Dict(b)) => dict_methods::eq_inner(a, b).map(Value::Bool),
         _ => Ok(Value::Bool(primitive_eq(a, b))),
     }
@@ -231,7 +231,7 @@ fn resolve_attr(recv: Value, attr: &str) -> Result<Value> {
             _ => Err(eval_error(format!("int has no attribute '{attr}'"))),
         },
         recv @ Value::String(_) => str_methods::resolve_method(recv, attr).map(Value::Fn),
-        recv @ Value::Array(_) => array_methods::resolve_method(recv, attr).map(Value::Fn),
+        recv @ Value::List(_) => list_methods::resolve_method(recv, attr).map(Value::Fn),
         recv @ Value::Dict(_) => dict_methods::resolve_method(recv, attr).map(Value::Fn),
         Value::Object(rc) => {
             if let Some(result) = rc.get_property(attr) {
@@ -255,10 +255,10 @@ pub(super) fn value_add(left: Value, right: Value) -> Result<Value> {
     }
     match (left, right) {
         (Value::String(a), Value::String(b)) => Ok(Value::String(a + b.as_str())),
-        (Value::Array(a), Value::Array(b)) => {
+        (Value::List(a), Value::List(b)) => {
             let mut new_vec = a.borrow().clone();
             new_vec.extend(b.borrow().iter().cloned());
-            Ok(Value::array(new_vec))
+            Ok(Value::list(new_vec))
         }
         (a, b) => match coerce_numeric(&a, &b) {
             Ok((Numeric::Int(a), Numeric::Int(b))) => {
@@ -514,7 +514,7 @@ fn resolve_op(op: &BinOp) -> NativeFn {
 
 fn contains_inner(left: Value, right: Value) -> Result<bool> {
     match right {
-        Value::Array(arr) => {
+        Value::List(arr) => {
             let arr = arr.borrow();
             for v in arr.iter() {
                 if eval_eq(v.clone(), left.clone())? {
@@ -626,7 +626,7 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
             for e in items {
                 values.push(eval_inner(e, env)?);
             }
-            Ok(Value::array(values))
+            Ok(Value::list(values))
         }
         ExprKind::Map(entries) => {
             let mut map = IndexMap::new();
@@ -776,7 +776,7 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
 
 fn collect_iterable(value: Value, pos: usize) -> Result<Vec<Value>> {
     match value {
-        Value::Array(rc) => Ok(rc.borrow().clone()),
+        Value::List(rc) => Ok(rc.borrow().clone()),
         Value::String(s) => Ok(s.chars().map(|c| Value::String(c.to_string())).collect()),
         Value::Dict(rc) => Ok(rc
             .borrow()
@@ -784,7 +784,7 @@ fn collect_iterable(value: Value, pos: usize) -> Result<Vec<Value>> {
             .map(|k| Value::String(k.clone()))
             .collect()),
         Value::Object(rc) => match rc.call_method("__iter__", &[])? {
-            Value::Array(arr) => Ok(arr.borrow().clone()),
+            Value::List(arr) => Ok(arr.borrow().clone()),
             v => Err(Error::Eval {
                 pos,
                 msg: format!("__iter__ must return a list, got {}", v.type_name()),
@@ -815,9 +815,9 @@ fn eval_assign_lvalue(lvalue: &Expr, value: Value, env: &Env, local: bool) -> Re
             let container = eval_inner(target, env)?;
             let key_val = eval_inner(key, env)?;
             match (container, &key_val) {
-                (Value::Array(rc), Value::Int(i)) => {
+                (Value::List(rc), Value::Int(i)) => {
                     let len = rc.borrow().len();
-                    let idx = array_methods::resolve_index(*i, len).ok_or_else(|| Error::Eval {
+                    let idx = list_methods::resolve_index(*i, len).ok_or_else(|| Error::Eval {
                         pos,
                         msg: format!("array index {} out of range (len {})", i, len),
                     })?;
@@ -886,9 +886,9 @@ fn eval_compound_assign(
             let container = eval_inner(target, env)?;
             let key_val = eval_inner(key, env)?;
             match (container, &key_val) {
-                (Value::Array(rc), Value::Int(i)) => {
+                (Value::List(rc), Value::Int(i)) => {
                     let len = rc.borrow().len();
-                    let idx = array_methods::resolve_index(*i, len).ok_or_else(|| Error::Eval {
+                    let idx = list_methods::resolve_index(*i, len).ok_or_else(|| Error::Eval {
                         pos,
                         msg: format!("array index {} out of range (len {})", i, len),
                     })?;
@@ -927,17 +927,17 @@ fn eval_index(target: Value, key: Value) -> Result<Value> {
             .get(&k)
             .cloned()
             .ok_or_else(|| eval_error(format!("dict key '{k}' not found"))),
-        (Value::Array(arr), Value::Int(i)) => {
+        (Value::List(arr), Value::Int(i)) => {
             let arr = arr.borrow();
             let len = arr.len();
-            array_methods::resolve_index(i, len)
+            list_methods::resolve_index(i, len)
                 .map(|pos| arr[pos].clone())
                 .ok_or_else(|| eval_error(format!("array index {i} out of range (len {len})")))
         }
         (Value::String(s), Value::Int(i)) => {
             let chars: Vec<char> = s.chars().collect();
             let len = chars.len();
-            array_methods::resolve_index(i, len)
+            list_methods::resolve_index(i, len)
                 .map(|pos| Value::String(chars[pos].to_string()))
                 .ok_or_else(|| eval_error(format!("string index {i} out of range (len {len})")))
         }
@@ -1008,10 +1008,10 @@ fn eval_slice(
     let stop = stop.map(|v| as_slice_index(v, "stop")).transpose()?;
 
     match target {
-        Value::Array(arr) => {
+        Value::List(arr) => {
             let arr = arr.borrow();
             let indices = slice_indices(arr.len(), start, stop, step);
-            Ok(Value::array(
+            Ok(Value::list(
                 indices.into_iter().map(|i| arr[i].clone()).collect(),
             ))
         }
@@ -1084,7 +1084,7 @@ fn compare_values(
         Ok(_) => unreachable!(),
         Err(_) => match (&left, &right) {
             (Value::String(a), Value::String(b)) => a.as_str().cmp(b.as_str()),
-            (Value::Array(a), Value::Array(b)) => compare_arrays(&a.borrow(), &b.borrow())?,
+            (Value::List(a), Value::List(b)) => compare_arrays(&a.borrow(), &b.borrow())?,
             _ => {
                 return Err(eval_error(format!(
                     "cannot compare {} and {}",
@@ -1224,11 +1224,11 @@ fn builtin_list(args: &[Value]) -> Result<Value> {
         )));
     }
     match args.first() {
-        Some(Value::Array(a)) => Ok(Value::array(a.borrow().clone())),
-        Some(Value::String(s)) => Ok(Value::array(
+        Some(Value::List(a)) => Ok(Value::list(a.borrow().clone())),
+        Some(Value::String(s)) => Ok(Value::list(
             s.chars().map(|c| Value::String(c.to_string())).collect(),
         )),
-        Some(Value::Dict(m)) => Ok(Value::array(
+        Some(Value::Dict(m)) => Ok(Value::list(
             m.borrow()
                 .keys()
                 .map(|k| Value::String(k.clone()))
@@ -1238,7 +1238,7 @@ fn builtin_list(args: &[Value]) -> Result<Value> {
             "list() not supported for {}",
             v.type_name()
         ))),
-        None => Ok(Value::array(vec![])),
+        None => Ok(Value::list(vec![])),
     }
 }
 
@@ -1255,7 +1255,7 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
         _ => {}
     }
     let pairs = match args.first() {
-        Some(Value::Array(a)) => a.borrow().clone(),
+        Some(Value::List(a)) => a.borrow().clone(),
         _ => {
             return Err(eval_error(
                 "dict() expects a dict, a list of [key, value] pairs, or no argument",
@@ -1265,7 +1265,7 @@ fn builtin_dict(args: &[Value]) -> Result<Value> {
     let mut out = IndexMap::new();
     for (i, pair) in pairs.iter().enumerate() {
         match pair {
-            Value::Array(kv) => {
+            Value::List(kv) => {
                 let kv = kv.borrow();
                 if kv.len() != 2 {
                     return Err(eval_error(format!(
@@ -1300,7 +1300,7 @@ pub(crate) fn type_of(v: &Value) -> Rc<TypeValue> {
         Value::Int(_) => INT_TYPE.with(Rc::clone),
         Value::Float(_) => FLOAT_TYPE.with(Rc::clone),
         Value::String(_) => STR_TYPE.with(Rc::clone),
-        Value::Array(_) => LIST_TYPE.with(Rc::clone),
+        Value::List(_) => LIST_TYPE.with(Rc::clone),
         Value::Dict(_) => DICT_TYPE.with(Rc::clone),
         Value::Fn(_) | Value::Closure(_) => FN_TYPE.with(Rc::clone),
         Value::Module(_) => MODULE_TYPE.with(Rc::clone),
@@ -1318,7 +1318,7 @@ fn builtin_len(args: &[Value]) -> Result<Value> {
     expect_arity("len", args, 1, 1)?;
     match &args[0] {
         Value::String(s) => Ok(Value::Int(s.chars().count() as i64)),
-        Value::Array(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
+        Value::List(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
         Value::Dict(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
         other => Err(eval_error(format!(
             "len() not supported for {}",
@@ -1338,12 +1338,12 @@ fn builtin_range(args: &[Value]) -> Result<Value> {
     match args.len() {
         1 => {
             let end = to_int(&args[0], "end")?;
-            Ok(Value::array((0..end).map(Value::Int).collect()))
+            Ok(Value::list((0..end).map(Value::Int).collect()))
         }
         2 => {
             let start = to_int(&args[0], "start")?;
             let end = to_int(&args[1], "end")?;
-            Ok(Value::array((start..end).map(Value::Int).collect()))
+            Ok(Value::list((start..end).map(Value::Int).collect()))
         }
         3 => {
             let start = to_int(&args[0], "start")?;
@@ -1369,7 +1369,7 @@ fn builtin_range(args: &[Value]) -> Result<Value> {
                         .ok_or_else(|| eval_error("range() step caused integer overflow"))?;
                 }
             }
-            Ok(Value::array(result))
+            Ok(Value::list(result))
         }
         n => Err(eval_error(format!(
             "range() expects 1-3 arguments, got {n}"
@@ -1533,7 +1533,7 @@ mod tests {
         assert_eval(r#""abcde"[::-1]"#, &[], Value::from("edcba"));
         assert_eval(r#""abcde"[-1::-2]"#, &[], Value::from("eca"));
         assert_eval(r#""abcde"[::2]"#, &[], Value::from("ace"));
-        let arr = Value::array((0i64..5).map(Value::from).collect());
+        let arr = Value::list((0i64..5).map(Value::from).collect());
         assert_eval(
             "arr[1:3]",
             &[("arr", arr.clone())],
@@ -1547,7 +1547,7 @@ mod tests {
         assert_eval(
             "arr[::-1]",
             &[("arr", arr.clone())],
-            Value::array((0i64..5).rev().map(Value::from).collect()),
+            Value::list((0i64..5).rev().map(Value::from).collect()),
         );
         assert!(try_run("arr[s:]", &[("arr", arr.clone()), ("s", Value::Float(1.0))]).is_err());
         assert!(try_run("arr[:s]", &[("arr", arr.clone()), ("s", Value::Float(3.0))]).is_err());
@@ -1843,7 +1843,7 @@ mod tests {
                             .ok_or_else(|| eval_error(format!("key '{k}' not found"))),
                         _ => Err(eval_error("__getitem__ expects a string")),
                     },
-                    "__iter__" => Ok(Value::array(
+                    "__iter__" => Ok(Value::list(
                         self.0
                             .iter()
                             .map(|(k, _)| Value::String(k.clone()))
@@ -1987,11 +1987,11 @@ mod tests {
     #[test]
     // This tests if stack overflow is captured as error instead of crashing the engine
     fn test_deep_list_eq_depth_limit() {
-        let mut a = Value::array(vec![Value::Int(1)]);
-        let mut b = Value::array(vec![Value::Int(1)]);
+        let mut a = Value::list(vec![Value::Int(1)]);
+        let mut b = Value::list(vec![Value::Int(1)]);
         for _ in 0..CALL_DEPTH.with(|c| c.limit) {
-            a = Value::array(vec![a]);
-            b = Value::array(vec![b]);
+            a = Value::list(vec![a]);
+            b = Value::list(vec![b]);
         }
         assert!(try_run("a == b", &[("a", a), ("b", b)]).is_err());
     }

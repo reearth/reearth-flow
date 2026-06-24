@@ -59,7 +59,7 @@ fn split(args: &[Value]) -> Result<Value> {
             .collect(),
         None => s.split(sep).map(|p| Value::String(p.to_string())).collect(),
     };
-    Ok(Value::array(parts))
+    Ok(Value::list(parts))
 }
 
 fn rsplit(args: &[Value]) -> Result<Value> {
@@ -77,7 +77,7 @@ fn rsplit(args: &[Value]) -> Result<Value> {
     if n.is_some() {
         parts.reverse();
     }
-    Ok(Value::array(parts))
+    Ok(Value::list(parts))
 }
 
 fn starts_with(args: &[Value]) -> Result<Value> {
@@ -111,7 +111,7 @@ fn replace(args: &[Value]) -> Result<Value> {
 fn join(args: &[Value]) -> Result<Value> {
     expect_arity("str.join", &args[1..], 1, 1)?;
     let sep = args[0].as_str()?;
-    let Value::Array(list) = &args[1] else {
+    let Value::List(list) = &args[1] else {
         return Err(eval_error(format!(
             "join() argument must be an array, got {}",
             args[1].type_name()

@@ -25,7 +25,7 @@ pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
     let f = METHODS
         .get(method)
         .copied()
-        .ok_or_else(|| eval_error(format!("Map has no method '{method}'")))?;
+        .ok_or_else(|| eval_error(format!("dict has no method '{method}'")))?;
     Ok(NativeFn::new(move |args| {
         let mut a = vec![recv.clone()];
         a.extend_from_slice(args);
@@ -34,11 +34,11 @@ pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
 }
 
 fn keys(args: &[Value]) -> Result<Value> {
-    expect_arity("map.keys", &args[1..], 0, 0)?;
+    expect_arity("dict.keys", &args[1..], 0, 0)?;
     let Value::Dict(rc) = &args[0] else {
-        return Err(eval_error("expected map receiver"));
+        return Err(eval_error("expected dict receiver"));
     };
-    Ok(Value::array(
+    Ok(Value::list(
         rc.borrow()
             .keys()
             .map(|k| Value::String(k.clone()))
@@ -47,30 +47,30 @@ fn keys(args: &[Value]) -> Result<Value> {
 }
 
 fn values(args: &[Value]) -> Result<Value> {
-    expect_arity("map.values", &args[1..], 0, 0)?;
+    expect_arity("dict.values", &args[1..], 0, 0)?;
     let Value::Dict(rc) = &args[0] else {
-        return Err(eval_error("expected map receiver"));
+        return Err(eval_error("expected dict receiver"));
     };
-    Ok(Value::array(rc.borrow().values().cloned().collect()))
+    Ok(Value::list(rc.borrow().values().cloned().collect()))
 }
 
 fn items(args: &[Value]) -> Result<Value> {
-    expect_arity("map.items", &args[1..], 0, 0)?;
+    expect_arity("dict.items", &args[1..], 0, 0)?;
     let Value::Dict(rc) = &args[0] else {
-        return Err(eval_error("expected map receiver"));
+        return Err(eval_error("expected dict receiver"));
     };
-    Ok(Value::array(
+    Ok(Value::list(
         rc.borrow()
             .iter()
-            .map(|(k, v)| Value::array(vec![Value::String(k.clone()), v.clone()]))
+            .map(|(k, v)| Value::list(vec![Value::String(k.clone()), v.clone()]))
             .collect(),
     ))
 }
 
 fn get(args: &[Value]) -> Result<Value> {
-    expect_arity("map.get", &args[1..], 1, 2)?;
+    expect_arity("dict.get", &args[1..], 1, 2)?;
     let Value::Dict(rc) = &args[0] else {
-        return Err(eval_error("expected map receiver"));
+        return Err(eval_error("expected dict receiver"));
     };
     let k = args[1].as_str()?;
     let fallback = args.get(2);

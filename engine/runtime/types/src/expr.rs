@@ -339,7 +339,7 @@ pub fn json_to_value(v: serde_json::Value) -> ExprValue {
         }
         serde_json::Value::String(s) => ExprValue::String(s),
         serde_json::Value::Array(arr) => {
-            ExprValue::array(arr.into_iter().map(json_to_value).collect())
+            ExprValue::list(arr.into_iter().map(json_to_value).collect())
         }
         serde_json::Value::Object(map) => ExprValue::dict(
             map.into_iter()
@@ -394,7 +394,7 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
                     .get_value(name)
                     .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))
             }
-            "__iter__" => Ok(ExprValue::array(
+            "__iter__" => Ok(ExprValue::list(
                 self.0
                     .keys()
                     .map(|k| ExprValue::String(k.as_ref().to_string()))
@@ -498,7 +498,7 @@ fn attribute_value_from_eval(v: ExprValue) -> TypesResult<AttributeValue> {
                 ))
             }),
         ExprValue::String(s) => Ok(AttributeValue::String(s)),
-        ExprValue::Array(arr) => Ok(AttributeValue::Array(
+        ExprValue::List(arr) => Ok(AttributeValue::Array(
             arr.borrow()
                 .iter()
                 .map(|v| attribute_value_from_eval(v.clone()))

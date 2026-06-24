@@ -102,7 +102,7 @@ impl std::fmt::Debug for NativeFn {
 
 /// Runtime value type for the expression evaluator.
 ///
-/// `Array` and `Dict` use `Rc<RefCell<...>>` for reference semantics: cloning a
+/// `List` and `Dict` use `Rc<RefCell<...>>` for reference semantics: cloning a
 /// value shares the same backing allocation, so mutations through one alias are
 /// visible through all others (Python-style). Circular references are the
 /// caller's responsibility and are not detected.
@@ -116,7 +116,7 @@ pub enum Value {
     Int(i64),
     Float(f64),
     String(String),
-    Array(Rc<RefCell<Vec<Value>>>),
+    List(Rc<RefCell<Vec<Value>>>),
     Dict(Rc<RefCell<IndexMap<String, Value>>>),
     /// A native Rust function seeded into the environment.
     Fn(NativeFn),
@@ -130,9 +130,8 @@ pub enum Value {
 }
 
 impl Value {
-    /// Construct an array value, wrapping `items` in a fresh shared allocation.
-    pub fn array(items: Vec<Value>) -> Self {
-        Value::Array(Rc::new(RefCell::new(items)))
+    pub fn list(items: Vec<Value>) -> Self {
+        Value::List(Rc::new(RefCell::new(items)))
     }
 
     pub fn dict(entries: IndexMap<String, Value>) -> Self {
@@ -191,7 +190,7 @@ impl Value {
             Value::Int(n) => *n != 0,
             Value::Float(f) => *f != 0.0,
             Value::String(s) => !s.is_empty(),
-            Value::Array(a) => !a.borrow().is_empty(),
+            Value::List(a) => !a.borrow().is_empty(),
             Value::Dict(o) => !o.borrow().is_empty(),
             Value::Fn(_)
             | Value::Closure(_)
@@ -237,7 +236,7 @@ impl std::fmt::Display for Value {
             Value::Int(n) => write!(f, "{n}"),
             Value::Float(n) => write!(f, "{}", format_float(*n)),
             Value::String(s) => write!(f, "{s:?}"),
-            Value::Array(arr) => {
+            Value::List(arr) => {
                 let arr = arr.borrow();
                 write!(f, "[")?;
                 for (i, v) in arr.iter().enumerate() {
@@ -300,6 +299,6 @@ impl From<String> for Value {
 
 impl<T: Into<Value>> From<Vec<T>> for Value {
     fn from(v: Vec<T>) -> Self {
-        Value::array(v.into_iter().map(Into::into).collect())
+        Value::list(v.into_iter().map(Into::into).collect())
     }
 }
