@@ -1,6 +1,7 @@
 package http
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
 	"fmt"
 	"net/http"
@@ -26,6 +27,16 @@ func isDevEnv(env string) bool {
 	default:
 		return false
 	}
+}
+
+// constantTimeMatch reports whether got equals want without leaking length via
+// timing. subtle.ConstantTimeCompare returns early when the slice lengths
+// differ, so a wrong-length secret is distinguishable by timing; comparing
+// fixed-length SHA-256 digests of both sides removes that oracle.
+func constantTimeMatch(got, want []byte) bool {
+	g := sha256.Sum256(got)
+	w := sha256.Sum256(want)
+	return subtle.ConstantTimeCompare(g[:], w[:]) == 1
 }
 
 // RequireAPISecret builds middleware enforcing X-API-Secret on the wrapped
@@ -54,8 +65,8 @@ func RequireAPISecret(cfg APISecretConfig) (func(http.Handler) http.Handler, err
 	mw := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			got := r.Header.Get(apiSecretHeader)
-			// Constant-time compare: no timing oracle.
-			if subtle.ConstantTimeCompare([]byte(got), want) != 1 {
+			// Constant-time, length-independent compare: no timing oracle.
+			if !constantTimeMatch([]byte(got), want) {
 				writeErr(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}

@@ -43,7 +43,9 @@ type GCSLister struct {
 func NewGCSLister(ctx context.Context, bucket, endpoint string) (*GCSLister, error) {
 	var opts []option.ClientOption
 	if endpoint != "" {
-		opts = append(opts, option.WithEndpoint(endpoint))
+		// Mirror cmd/websocket: a custom endpoint (fake-gcs in dev/test) has no
+		// credentials, so disable auth to avoid ADC lookups failing the probe.
+		opts = append(opts, option.WithEndpoint(endpoint), option.WithoutAuthentication())
 	}
 	client, err := storage.NewClient(ctx, opts...)
 	if err != nil {
