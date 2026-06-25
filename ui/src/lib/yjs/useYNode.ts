@@ -48,14 +48,10 @@ export default ({
         }
 
         newNodes.forEach((newNode) => {
-          // For routers without routingPort, generate unique port name
           const isRouterInput = newNode.data.officialName === "InputRouter";
           const isRouterOutput = newNode.data.officialName === "OutputRouter";
 
-          if (
-            (isRouterInput || isRouterOutput) &&
-            !newNode.data.params?.routingPort
-          ) {
+          if (isRouterInput || isRouterOutput) {
             const currentWorkflowId = currentYWorkflow
               ?.get("id")
               ?.toJSON() as string;
@@ -66,7 +62,9 @@ export default ({
               );
             });
 
-            let uniquePortName = DEFAULT_ROUTING_PORT;
+            const basePortName =
+              newNode.data.params?.routingPort || DEFAULT_ROUTING_PORT;
+            let uniquePortName = basePortName;
 
             if (parentWorkflow) {
               const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
@@ -90,7 +88,7 @@ export default ({
 
                   let counter = 1;
                   while (existingPortNames.has(uniquePortName)) {
-                    uniquePortName = `${DEFAULT_ROUTING_PORT}-${counter}`;
+                    uniquePortName = `${basePortName}-${counter}`;
                     counter++;
                   }
                 }
