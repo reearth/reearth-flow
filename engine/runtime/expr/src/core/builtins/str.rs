@@ -59,7 +59,7 @@ fn split(args: &[Value]) -> Result<Value> {
             .collect(),
         None => s.split(sep).map(|p| Value::String(p.to_string())).collect(),
     };
-    Ok(Value::array(parts))
+    Ok(Value::list(parts))
 }
 
 fn rsplit(args: &[Value]) -> Result<Value> {
@@ -77,7 +77,7 @@ fn rsplit(args: &[Value]) -> Result<Value> {
     if n.is_some() {
         parts.reverse();
     }
-    Ok(Value::array(parts))
+    Ok(Value::list(parts))
 }
 
 fn starts_with(args: &[Value]) -> Result<Value> {
@@ -111,9 +111,9 @@ fn replace(args: &[Value]) -> Result<Value> {
 fn join(args: &[Value]) -> Result<Value> {
     expect_arity("str.join", &args[1..], 1, 1)?;
     let sep = args[0].as_str()?;
-    let Value::Array(list) = &args[1] else {
+    let Value::List(list) = &args[1] else {
         return Err(eval_error(format!(
-            "join() argument must be an array, got {}",
+            "join() argument must be a list, got {}",
             args[1].type_name()
         )));
     };
@@ -123,7 +123,7 @@ fn join(args: &[Value]) -> Result<Value> {
         .map(|v| match v {
             Value::String(s) => Ok(s.clone()),
             other => Err(eval_error(format!(
-                "join() array elements must be strings, got {}",
+                "join() list elements must be strings, got {}",
                 other.type_name()
             ))),
         })
@@ -462,8 +462,12 @@ mod tests {
     }
 
     impl ImmutableObject for Point {
-        fn type_name(&self) -> &'static str {
-            "Point"
+        fn type_object(&self) -> Rc<crate::core::value::TypeValue> {
+            thread_local! {
+                static TY: Rc<crate::core::value::TypeValue> =
+                    Rc::new(crate::core::value::TypeValue::new("Point", None));
+            }
+            TY.with(Rc::clone)
         }
 
         fn call_method(&self, method: &str, args: &[Value]) -> EvalResult<Value> {
@@ -491,8 +495,12 @@ mod tests {
     struct Opaque;
 
     impl ImmutableObject for Opaque {
-        fn type_name(&self) -> &'static str {
-            "Opaque"
+        fn type_object(&self) -> Rc<crate::core::value::TypeValue> {
+            thread_local! {
+                static TY: Rc<crate::core::value::TypeValue> =
+                    Rc::new(crate::core::value::TypeValue::new("Opaque", None));
+            }
+            TY.with(Rc::clone)
         }
 
         fn call_method(&self, method: &str, _args: &[Value]) -> EvalResult<Value> {
@@ -540,14 +548,14 @@ mod tests {
         assert_eval(r#""{:5}".format("hi")"#, &[], Value::from("hi   "));
         assert_eval(r#""{:5}".format(7)"#, &[], Value::from("    7"));
 
-        let p = Value::Object(Rc::new(Point { x: 1.0, y: 2.0 }));
+        let p = Value::object(Point { x: 1.0, y: 2.0 });
         assert_eval(
             r#""{:compact}".format(p)"#,
             &[("p", p.clone())],
             Value::from("1,2"),
         );
         assert_eval(r#""{}".format(p)"#, &[("p", p)], Value::from("(1, 2)"));
-        let o = Value::Object(Rc::new(Opaque));
+        let o = Value::object(Opaque);
         assert_eval(r#""{}".format(o)"#, &[("o", o)], Value::from("opaque"));
     }
 

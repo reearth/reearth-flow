@@ -1,10 +1,23 @@
+use std::rc::Rc;
+
 use crate::core::error::{eval_error, Result};
-use crate::core::value::{ImmutableObject, Value};
+use crate::core::value::{ImmutableObject, NativeFn, TypeValue, Value};
 
 use crate::expect_arity;
 use url::Url;
 
-fn parse_url(s: &str) -> Result<UrlObject> {
+thread_local! {
+    static URL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new(
+        "Url",
+        Some(NativeFn::new(construct)),
+    ));
+}
+
+pub fn url_type_value() -> Rc<TypeValue> {
+    URL_TYPE.with(Rc::clone)
+}
+
+fn parse_url(s: &str) -> Result<Value> {
     let url = if s.contains("://") {
         Url::parse(s).map_err(|e| eval_error(format!("not a valid URI: {e}")))?
     } else if s.starts_with('/') {
@@ -13,7 +26,7 @@ fn parse_url(s: &str) -> Result<UrlObject> {
     } else {
         return Err(eval_error(format!("not a valid URI: {s}")));
     };
-    Ok(UrlObject { url })
+    Ok(Value::object(UrlObject { url }))
 }
 
 #[derive(Debug, Clone)]
@@ -52,8 +65,8 @@ impl UrlObject {
 }
 
 impl ImmutableObject for UrlObject {
-    fn type_name(&self) -> &'static str {
-        "Url"
+    fn type_object(&self) -> Rc<TypeValue> {
+        url_type_value()
     }
 
     fn get_property(&self, name: &str) -> Option<Result<Value>> {
@@ -76,7 +89,7 @@ impl ImmutableObject for UrlObject {
             "__eq__" => {
                 expect_arity("Url.__eq__", args, 1, 1)?;
                 match &args[0] {
-                    Value::Object(obj) if obj.type_name() == "Url" => {
+                    Value::Object(obj) if Rc::ptr_eq(&obj.type_object(), &url_type_value()) => {
                         Ok(Value::Bool(self.url.as_str() == obj.display()))
                     }
                     _ => Ok(Value::Bool(false)),
@@ -107,7 +120,7 @@ impl ImmutableObject for UrlObject {
     }
 }
 
-pub fn builtin_url(args: &[Value]) -> Result<Value> {
+pub fn construct(args: &[Value]) -> Result<Value> {
     if args.len() > 1 {
         return Err(eval_error(format!(
             "Url() expected at most 1 argument, got {}",
@@ -117,7 +130,9 @@ pub fn builtin_url(args: &[Value]) -> Result<Value> {
     let s = match args.first() {
         None => return Err(eval_error("Url() requires a string argument")),
         Some(Value::String(s)) => s.clone(),
-        Some(Value::Object(obj)) if obj.type_name() == "Url" => obj.display(),
+        Some(Value::Object(obj)) if Rc::ptr_eq(&obj.type_object(), &url_type_value()) => {
+            obj.display()
+        }
         Some(v) => {
             return Err(eval_error(format!(
                 "Url() expects a string, got {}",
@@ -125,7 +140,7 @@ pub fn builtin_url(args: &[Value]) -> Result<Value> {
             )))
         }
     };
-    parse_url(&s).map(Value::object)
+    parse_url(&s)
 }
 
 #[cfg(test)]

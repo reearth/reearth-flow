@@ -1,18 +1,117 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use nutype::nutype;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use std::rc::Rc;
+
 use reearth_flow_expr::{
-    compile, eval, eval_error, expect_arity, Env as ExprEnv, Result as ExprResult,
-    Value as ExprValue,
+    compile, env_bind, env_remove, eval_error, expect_arity, Env as ExprEnv, FromValue,
+    Result as ExprResult, TypeValue as ExprTypeValue, Value as ExprValue,
 };
 
 use crate::error::{Error as TypesError, Result as TypesResult};
 
 use crate::attribute::{Attribute, AttributeValue};
 use crate::feature::Feature;
+
+impl From<reearth_flow_expr::Error> for TypesError {
+    fn from(e: reearth_flow_expr::Error) -> Self {
+        TypesError::InternalRuntime(e.to_string())
+    }
+}
+
+/// Newtype bridging `FromValue` (from `reearth_flow_expr`) and `AttributeValue`
+/// (from `reearth_flow_common`); required by the orphan rule since both are foreign to this crate.
+struct FlowValue(AttributeValue);
+
+impl FromValue for FlowValue {
+    type Error = TypesError;
+
+    fn from_null() -> TypesResult<Self> {
+        Ok(FlowValue(AttributeValue::Null))
+    }
+    fn from_bool(b: bool) -> TypesResult<Self> {
+        Ok(FlowValue(AttributeValue::Bool(b)))
+    }
+    fn from_int(n: i64) -> TypesResult<Self> {
+        Ok(FlowValue(AttributeValue::Number(n.into())))
+    }
+    fn from_float(f: f64) -> TypesResult<Self> {
+        serde_json::Number::from_f64(f)
+            .map(|n| FlowValue(AttributeValue::Number(n)))
+            .ok_or_else(|| {
+                TypesError::Conversion(format!(
+                    "float value {f} is not representable as an attribute (nan/inf)"
+                ))
+            })
+    }
+    fn from_string(s: String) -> TypesResult<Self> {
+        Ok(FlowValue(AttributeValue::String(s)))
+    }
+    fn from_list(items: Vec<Self>) -> TypesResult<Self> {
+        Ok(FlowValue(AttributeValue::Array(
+            items.into_iter().map(|FlowValue(v)| v).collect(),
+        )))
+    }
+    fn from_dict(map: IndexMap<String, Self>) -> TypesResult<Self> {
+        Ok(FlowValue(AttributeValue::Map(
+            map.into_iter()
+                .map(|(k, FlowValue(v))| (k, v))
+                .collect::<HashMap<_, _>>(),
+        )))
+    }
+    fn on_cycle() -> TypesResult<Self> {
+        Err(TypesError::Conversion(
+            "cyclic reference detected in eval return value".into(),
+        ))
+    }
+    fn on_unconvertible(msg: String) -> TypesResult<Self> {
+        Err(TypesError::Conversion(msg))
+    }
+}
+
+thread_local! {
+    static EVAL_ENV: ExprEnv = reearth_flow_expr::default_env();
+}
+
+fn eval_with_feature(
+    expr: &reearth_flow_expr::CompiledExpr,
+    feature: &Feature,
+    env_vars: &Arc<serde_json::Map<String, serde_json::Value>>,
+) -> TypesResult<AttributeValue> {
+    EVAL_ENV.with(|env| {
+        env_bind(
+            env,
+            "attributes",
+            ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
+        );
+        env_bind(
+            env,
+            "env",
+            ExprValue::object(EnvObject(Arc::clone(env_vars))),
+        );
+        reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
+    })
+}
+
+fn eval_with_vars(
+    expr: &reearth_flow_expr::CompiledExpr,
+    env_vars: &Arc<serde_json::Map<String, serde_json::Value>>,
+) -> TypesResult<AttributeValue> {
+    EVAL_ENV.with(|env| {
+        env_remove(env, "attributes");
+        env_bind(
+            env,
+            "env",
+            ExprValue::object(EnvObject(Arc::clone(env_vars))),
+        );
+        reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
+    })
+}
 
 #[nutype(
     sanitize(trim),
@@ -179,12 +278,10 @@ impl CompiledCode {
         feature: &Feature,
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<AttributeValue> {
-        let v = match self {
-            CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars))
-                .map_err(|e| TypesError::InternalRuntime(e.to_string()))?,
-            CompiledCode::Literal(s) => ExprValue::String(s.clone()),
-        };
-        attribute_value_from_eval(v)
+        match self {
+            CompiledCode::Literal(s) => Ok(AttributeValue::String(s.clone())),
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars),
+        }
     }
 
     pub fn eval_bool(
@@ -193,14 +290,10 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<bool> {
         match self {
-            CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars))
-                .map_err(|e| TypesError::InternalRuntime(e.to_string()))
-                .and_then(attribute_value_from_eval)
-                .and_then(|av| {
-                    av.as_bool()
-                        .ok_or_else(|| TypesError::Conversion("eval result is not a bool".into()))
-                }),
             CompiledCode::Literal(s) => Ok(!s.is_empty()),
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
+                .as_bool()
+                .ok_or_else(|| TypesError::Conversion("eval result is not a bool".into())),
         }
     }
 
@@ -210,20 +303,13 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<f64> {
         match self {
-            CompiledCode::Expr(e) => match eval(e, &env_from_feature(feature, env_vars))
-                .map_err(|e| TypesError::InternalRuntime(e.to_string()))?
-            {
-                ExprValue::Float(f) => Ok(f),
-                ExprValue::Int(n) => Ok(n as f64),
-                other => Err(TypesError::Conversion(format!(
-                    "expected number, got {}",
-                    other.type_name()
-                ))),
-            },
             CompiledCode::Literal(s) => s
                 .trim()
                 .parse::<f64>()
                 .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not a number"))),
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
+                .as_f64()
+                .ok_or_else(|| TypesError::Conversion("expected number".into())),
         }
     }
 
@@ -233,19 +319,13 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<i64> {
         match self {
-            CompiledCode::Expr(e) => match eval(e, &env_from_feature(feature, env_vars))
-                .map_err(|e| TypesError::InternalRuntime(e.to_string()))?
-            {
-                ExprValue::Int(n) => Ok(n),
-                other => Err(TypesError::Conversion(format!(
-                    "expected integer, got {}",
-                    other.type_name()
-                ))),
-            },
             CompiledCode::Literal(s) => s
                 .trim()
                 .parse::<i64>()
                 .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not an integer"))),
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
+                .as_i64()
+                .ok_or_else(|| TypesError::Conversion("expected integer".into())),
         }
     }
 
@@ -255,14 +335,10 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<String> {
         match self {
-            CompiledCode::Expr(e) => eval(e, &env_from_feature(feature, env_vars))
-                .map_err(|e| TypesError::InternalRuntime(e.to_string()))
-                .and_then(attribute_value_from_eval)
-                .and_then(|av| {
-                    av.as_string()
-                        .ok_or_else(|| TypesError::Conversion("eval result is not a string".into()))
-                }),
             CompiledCode::Literal(s) => Ok(s.clone()),
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
+                .as_string()
+                .ok_or_else(|| TypesError::Conversion("eval result is not a string".into())),
         }
     }
 
@@ -272,10 +348,8 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<AttributeValue> {
         match self {
-            CompiledCode::Expr(e) => eval(e, &env_from_vars_only(env_vars))
-                .map_err(|e| TypesError::InternalRuntime(e.to_string()))
-                .and_then(attribute_value_from_eval),
             CompiledCode::Literal(s) => Ok(AttributeValue::String(s.clone())),
+            CompiledCode::Expr(e) => eval_with_vars(e, &env_vars),
         }
     }
 
@@ -286,14 +360,10 @@ impl CompiledCode {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<String> {
         match self {
-            CompiledCode::Expr(e) => eval(e, &env_from_vars_only(env_vars))
-                .map_err(|e| TypesError::InternalRuntime(e.to_string()))
-                .and_then(attribute_value_from_eval)
-                .and_then(|av| {
-                    av.as_string()
-                        .ok_or_else(|| TypesError::Conversion("eval result is not a string".into()))
-                }),
             CompiledCode::Literal(s) => Ok(s.clone()),
+            CompiledCode::Expr(e) => eval_with_vars(e, &env_vars)?
+                .as_string()
+                .ok_or_else(|| TypesError::Conversion("eval result is not a string".into())),
         }
     }
 }
@@ -337,9 +407,9 @@ pub fn json_to_value(v: serde_json::Value) -> ExprValue {
         }
         serde_json::Value::String(s) => ExprValue::String(s),
         serde_json::Value::Array(arr) => {
-            ExprValue::array(arr.into_iter().map(json_to_value).collect())
+            ExprValue::list(arr.into_iter().map(json_to_value).collect())
         }
-        serde_json::Value::Object(map) => ExprValue::map(
+        serde_json::Value::Object(map) => ExprValue::dict(
             map.into_iter()
                 .map(|(k, v)| (k, json_to_value(v)))
                 .collect(),
@@ -359,8 +429,11 @@ impl AttributesObject {
 }
 
 impl reearth_flow_expr::ImmutableObject for AttributesObject {
-    fn type_name(&self) -> &'static str {
-        "Attributes"
+    fn type_object(&self) -> Rc<ExprTypeValue> {
+        thread_local! {
+            static TY: Rc<ExprTypeValue> = Rc::new(ExprTypeValue::new("Attributes", None));
+        }
+        TY.with(Rc::clone)
     }
 
     fn call_method(&self, method: &str, args: &[ExprValue]) -> ExprResult<ExprValue> {
@@ -389,7 +462,7 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
                     .get_value(name)
                     .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))
             }
-            "__iter__" => Ok(ExprValue::array(
+            "__iter__" => Ok(ExprValue::list(
                 self.0
                     .keys()
                     .map(|k| ExprValue::String(k.as_ref().to_string()))
@@ -420,8 +493,11 @@ impl EnvObject {
 }
 
 impl reearth_flow_expr::ImmutableObject for EnvObject {
-    fn type_name(&self) -> &'static str {
-        "Env"
+    fn type_object(&self) -> Rc<ExprTypeValue> {
+        thread_local! {
+            static TY: Rc<ExprTypeValue> = Rc::new(ExprTypeValue::new("Env", None));
+        }
+        TY.with(Rc::clone)
     }
 
     fn call_method(&self, method: &str, args: &[ExprValue]) -> ExprResult<ExprValue> {
@@ -451,70 +527,6 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
                     .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))
             }
             m => Err(eval_error(format!("Env has no method '{m}'"))),
-        }
-    }
-}
-
-fn env_from_feature(
-    feature: &Feature,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
-) -> ExprEnv {
-    let env = reearth_flow_expr::default_env();
-    reearth_flow_expr::env_bind(
-        &env,
-        "attributes",
-        ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
-    );
-    reearth_flow_expr::env_bind(&env, "env", ExprValue::object(EnvObject(env_vars)));
-    env
-}
-
-fn env_from_vars_only(env_vars: Arc<serde_json::Map<String, serde_json::Value>>) -> ExprEnv {
-    let env = reearth_flow_expr::default_env();
-    reearth_flow_expr::env_bind(&env, "env", ExprValue::object(EnvObject(env_vars)));
-    env
-}
-
-/// Cyclic values are unsupported — see expr/docs/design.md#no-cycle-detection
-fn attribute_value_from_eval(v: ExprValue) -> TypesResult<AttributeValue> {
-    let err = |msg: &str| TypesError::Conversion(msg.into());
-    match v {
-        ExprValue::Null => Ok(AttributeValue::Null),
-        ExprValue::Bool(b) => Ok(AttributeValue::Bool(b)),
-        ExprValue::Int(n) => Ok(AttributeValue::Number(n.into())),
-        ExprValue::Float(f) => serde_json::Number::from_f64(f)
-            .map(AttributeValue::Number)
-            .ok_or_else(|| {
-                err(&format!(
-                    "float value {f} is not representable as an attribute (nan/inf)"
-                ))
-            }),
-        ExprValue::String(s) => Ok(AttributeValue::String(s)),
-        ExprValue::Array(arr) => Ok(AttributeValue::Array(
-            arr.borrow()
-                .iter()
-                .map(|v| attribute_value_from_eval(v.clone()))
-                .collect::<TypesResult<Vec<_>>>()?,
-        )),
-        ExprValue::Map(map) => Ok(AttributeValue::Map(
-            map.borrow()
-                .iter()
-                .map(|(k, v)| attribute_value_from_eval(v.clone()).map(|v| (k.clone(), v)))
-                .collect::<TypesResult<_>>()?,
-        )),
-        ExprValue::Fn(_) | ExprValue::Closure(_) => {
-            Err(err("function value cannot be stored as an attribute"))
-        }
-        ExprValue::Module(_) => Err(err("module value cannot be stored as an attribute")),
-        ExprValue::Object(rc) => {
-            if let Some(v) = rc.serialize() {
-                attribute_value_from_eval(v)
-            } else {
-                Err(err(&format!(
-                    "{} object cannot be stored as an attribute",
-                    rc.type_name()
-                )))
-            }
         }
     }
 }

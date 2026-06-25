@@ -1,13 +1,12 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::LazyLock;
 
 use indexmap::IndexMap;
 
 use crate::core::error::{eval_error, Result};
 use crate::core::eval::eval_eq;
-use crate::core::value::{NativeFn, Value};
+use crate::core::value::{NativeFn, TrackedRc, Value};
 use crate::expect_arity;
 
 use super::MethodFn;
@@ -25,7 +24,7 @@ pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
     let f = METHODS
         .get(method)
         .copied()
-        .ok_or_else(|| eval_error(format!("Map has no method '{method}'")))?;
+        .ok_or_else(|| eval_error(format!("dict has no method '{method}'")))?;
     Ok(NativeFn::new(move |args| {
         let mut a = vec![recv.clone()];
         a.extend_from_slice(args);
@@ -34,11 +33,11 @@ pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
 }
 
 fn keys(args: &[Value]) -> Result<Value> {
-    expect_arity("map.keys", &args[1..], 0, 0)?;
-    let Value::Map(rc) = &args[0] else {
-        return Err(eval_error("expected map receiver"));
+    expect_arity("dict.keys", &args[1..], 0, 0)?;
+    let Value::Dict(rc) = &args[0] else {
+        return Err(eval_error("expected dict receiver"));
     };
-    Ok(Value::array(
+    Ok(Value::list(
         rc.borrow()
             .keys()
             .map(|k| Value::String(k.clone()))
@@ -47,30 +46,30 @@ fn keys(args: &[Value]) -> Result<Value> {
 }
 
 fn values(args: &[Value]) -> Result<Value> {
-    expect_arity("map.values", &args[1..], 0, 0)?;
-    let Value::Map(rc) = &args[0] else {
-        return Err(eval_error("expected map receiver"));
+    expect_arity("dict.values", &args[1..], 0, 0)?;
+    let Value::Dict(rc) = &args[0] else {
+        return Err(eval_error("expected dict receiver"));
     };
-    Ok(Value::array(rc.borrow().values().cloned().collect()))
+    Ok(Value::list(rc.borrow().values().cloned().collect()))
 }
 
 fn items(args: &[Value]) -> Result<Value> {
-    expect_arity("map.items", &args[1..], 0, 0)?;
-    let Value::Map(rc) = &args[0] else {
-        return Err(eval_error("expected map receiver"));
+    expect_arity("dict.items", &args[1..], 0, 0)?;
+    let Value::Dict(rc) = &args[0] else {
+        return Err(eval_error("expected dict receiver"));
     };
-    Ok(Value::array(
+    Ok(Value::list(
         rc.borrow()
             .iter()
-            .map(|(k, v)| Value::array(vec![Value::String(k.clone()), v.clone()]))
+            .map(|(k, v)| Value::list(vec![Value::String(k.clone()), v.clone()]))
             .collect(),
     ))
 }
 
 fn get(args: &[Value]) -> Result<Value> {
-    expect_arity("map.get", &args[1..], 1, 2)?;
-    let Value::Map(rc) = &args[0] else {
-        return Err(eval_error("expected map receiver"));
+    expect_arity("dict.get", &args[1..], 1, 2)?;
+    let Value::Dict(rc) = &args[0] else {
+        return Err(eval_error("expected dict receiver"));
     };
     let k = args[1].as_str()?;
     let fallback = args.get(2);
@@ -82,10 +81,10 @@ fn get(args: &[Value]) -> Result<Value> {
 }
 
 pub fn eq_inner(
-    a: &Rc<RefCell<IndexMap<String, Value>>>,
-    b: &Rc<RefCell<IndexMap<String, Value>>>,
+    a: &TrackedRc<RefCell<IndexMap<String, Value>>>,
+    b: &TrackedRc<RefCell<IndexMap<String, Value>>>,
 ) -> Result<bool> {
-    if Rc::ptr_eq(a, b) {
+    if TrackedRc::ptr_eq(a, b) {
         return Ok(true);
     }
     let a = a.borrow();
@@ -113,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
@@ -122,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_keys() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
@@ -131,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_values() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
@@ -140,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
         });
         assert_eval("m.get(\"x\")", &[("m", m.clone())], Value::from(1i64));
@@ -151,7 +150,7 @@ mod tests {
 
     #[test]
     fn test_items() {
-        let m = Value::map(indexmap::indexmap! {
+        let m = Value::dict(indexmap::indexmap! {
             "x".into() => Value::from(1i64),
             "y".into() => Value::from(2i64),
         });
