@@ -15,6 +15,7 @@ use crate::coordinate::Coordinate;
 use crate::index::IndexBuffer;
 
 mod constructor;
+mod geom;
 
 /// A triangle mesh in 2D space, with optional per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -64,7 +65,22 @@ pub struct TriangularMesh3D {
     data: TriangularMesh3DData,
 }
 
+impl TriangularMesh3DData {
+    /// The vertex pool. Crate-internal: lets a [`Solid`](crate::solid::Solid)
+    /// shell bound itself without exposing the raw layout.
+    #[inline]
+    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+        &self.vertices
+    }
+}
+
 impl TriangularMesh2D {
+    /// The number of triangles in the mesh.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.indices.len()
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -79,6 +95,12 @@ impl TriangularMesh2D {
 }
 
 impl TriangularMesh3D {
+    /// The number of triangles in the mesh.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.data.indices.len()
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -99,6 +121,10 @@ impl TriangularMesh3DData {
         crate::appearance::make_front_only(&mut self.appearance, &mut self.uv_sets);
     }
 }
+
+// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
+crate::unsupported!(TriangularMesh2D: Triangulate);
+crate::unsupported!(TriangularMesh3D: Triangulate);
 
 #[cfg(test)]
 mod tests {

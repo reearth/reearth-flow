@@ -15,6 +15,7 @@ use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
 
 mod constructor;
+mod geom;
 
 pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 

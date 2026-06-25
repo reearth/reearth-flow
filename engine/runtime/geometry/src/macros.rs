@@ -1,3 +1,17 @@
+/// Stamp the mandatory empty `impl Trait for Type {}` blocks for operations a
+/// leaf does not support, so the default `UnsupportedOperation` body fires
+/// through `enum_dispatch` (§4.1.2).
+///
+/// ```ignore
+/// unsupported!(Csg: Reproject, WriteGltf);
+/// ```
+#[macro_export]
+macro_rules! unsupported {
+    ($ty:ty : $($tr:ident),+ $(,)?) => {
+        $( impl $crate::ops::$tr for $ty {} )+
+    };
+}
+
 #[macro_export]
 macro_rules! point {
     ( $($tag:tt : $val:expr),* $(,)? ) => {

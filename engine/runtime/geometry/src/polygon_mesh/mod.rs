@@ -17,6 +17,7 @@ use crate::coordinate::Coordinate;
 use crate::index::IndexBuffer;
 
 mod constructor;
+mod geom;
 
 /// A connected, vertex-sharing polygon mesh in 2D space, with optional
 /// per-vertex elevation.
@@ -85,6 +86,15 @@ pub struct PolygonMesh3D {
     /// Coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid)
     /// shell stores directly.
     data: PolygonMesh3DData,
+}
+
+impl PolygonMesh3DData {
+    /// The vertex pool. Crate-internal: lets a [`Solid`](crate::solid::Solid)
+    /// shell bound itself without exposing the raw layout.
+    #[inline]
+    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+        &self.vertices
+    }
 }
 
 impl PolygonMesh2D {

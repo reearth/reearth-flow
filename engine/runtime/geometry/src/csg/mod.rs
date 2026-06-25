@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::solid::Solid;
 
 mod constructor;
+mod geom;
 
 /// Volumetric, closed 3D geometries that `Csg` boolean operations are defined
 /// over.
@@ -28,3 +29,6 @@ pub enum Csg {
     Intersection(Box<ThreeDimensional>, Box<ThreeDimensional>),
     Difference(Box<ThreeDimensional>, Box<ThreeDimensional>),
 }
+
+// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
+crate::unsupported!(Csg: Triangulate);

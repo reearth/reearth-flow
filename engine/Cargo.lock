@@ -5027,6 +5027,7 @@ dependencies = [
  "bytes",
  "clipper-sys",
  "earcut",
+ "enum_dispatch",
  "flatgeom",
  "float_next_after",
  "geo-buffer",

@@ -11,6 +11,8 @@ use reearth_flow_common::attribute::Attributes;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
+use crate::ops::union_results;
+use crate::ops::{Aabb, BoundingBox, UnsupportedOperation};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
@@ -83,6 +85,32 @@ impl Collection3D {
     }
 }
 
+// Hand-written, like `GeometryCollection`: a `Collection` recurses over its
+// members (each a dispatched embedding enum) and merges their boxes. All members
+// share the embedding, so the merge stays in that dimension.
+
+impl BoundingBox for Collection2D {
+    fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
+        union_results(self.members.iter().map(|m| m.bounding_box())).ok_or(UnsupportedOperation {
+            geometry: "Collection2D",
+            operation: "bounding_box",
+        })
+    }
+}
+
+impl BoundingBox for Collection3D {
+    fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
+        union_results(self.members.iter().map(|m| m.bounding_box())).ok_or(UnsupportedOperation {
+            geometry: "Collection3D",
+            operation: "bounding_box",
+        })
+    }
+}
+
+// Tessellation is defined per-primitive (§4.2), not over a collection.
+crate::unsupported!(Collection2D: Triangulate);
+crate::unsupported!(Collection3D: Triangulate);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,5 +134,41 @@ mod tests {
             [0.0, 0.0, 0.0],
         ))];
         assert!(Collection3D::with_attributes(members, vec![Attributes::default(); 2]).is_err());
+    }
+
+    #[test]
+    fn collection2d_box_merges_members() {
+        let c = Collection2D::new([
+            Euclidean2DGeometry::Point(Point2D::new(Coordinate::Euclidean, [0.0, 3.0])),
+            Euclidean2DGeometry::Point(Point2D::new(Coordinate::Euclidean, [4.0, -1.0])),
+        ]);
+        assert_eq!(
+            c.bounding_box().unwrap(),
+            Aabb::D2 {
+                min: [0.0, -1.0],
+                max: [4.0, 3.0]
+            }
+        );
+    }
+
+    #[test]
+    fn collection3d_box_merges_members() {
+        let c = Collection3D::new([
+            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Euclidean, [0.0, 3.0, 1.0])),
+            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Euclidean, [4.0, -1.0, 7.0])),
+        ]);
+        assert_eq!(
+            c.bounding_box().unwrap(),
+            Aabb::D3 {
+                min: [0.0, -1.0, 1.0],
+                max: [4.0, 3.0, 7.0]
+            }
+        );
+    }
+
+    #[test]
+    fn empty_collection_has_no_box() {
+        let c = Collection2D::new(std::iter::empty());
+        assert!(c.bounding_box().is_err());
     }
 }

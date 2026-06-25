@@ -112,6 +112,7 @@ directories = "6.0.0"
 draco-oxide = { version = "0.1.0-alpha.7", default-features = false }
 earcut = "0.4.5"
 encoding_rs = "0.8"
+enum_dispatch = "0.3.13"
 flate2 = "1.1.9"
 flatgeom = "0.0.2"
 float_next_after = "1.0.0"

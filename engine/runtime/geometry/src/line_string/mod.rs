@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::coordinate::Coordinate;
 
 mod constructor;
+mod geom;
 
 /// A polyline in 2D space, with optional per-vertex elevation (2.5D).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -30,3 +31,7 @@ pub struct LineString3D {
     coordinate: Coordinate,
     coords: Box<[[f64; 3]]>,
 }
+
+// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
+crate::unsupported!(LineString2D: Triangulate);
+crate::unsupported!(LineString3D: Triangulate);

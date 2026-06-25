@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::coordinate::Coordinate;
 
 mod constructor;
+mod geom;
 
 /// A single position in 2D space.
 /// Used for CityGML `gml:Point` and 2D point features.
@@ -23,3 +24,7 @@ pub struct Point3D {
     coordinate: Coordinate,
     position: [f64; 3],
 }
+
+// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
+crate::unsupported!(Point2D: Triangulate);
+crate::unsupported!(Point3D: Triangulate);
