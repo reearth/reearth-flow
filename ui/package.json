@@ -62,6 +62,7 @@
     "@radix-ui/react-tooltip": "1.2.8",
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.6.1",
+    "@reearth/sentinel": "0.1.2",
     "@rjsf/core": "6.5.2",
     "@rjsf/utils": "6.5.2",
     "@rjsf/validator-ajv8": "6.5.2",

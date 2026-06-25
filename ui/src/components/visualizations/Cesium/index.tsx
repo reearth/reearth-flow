@@ -17,6 +17,7 @@ import {
   ViewerProps,
 } from "resium";
 
+import { config } from "@flow/config";
 import useDoubleClick from "@flow/hooks/useDoubleClick";
 
 import CityGmlData from "./CityGmlData";
@@ -170,16 +171,22 @@ const CesiumViewer: React.FC<Props> = ({
     onDoubleClick,
   );
 
-  const esriImageryProvider = useMemo(
-    () =>
-      new UrlTemplateImageryProvider({
+  const baseImageryProvider = useMemo(() => {
+    const tileServerBaseUrl = config().tileServerBaseUrl;
+    if (tileServerBaseUrl) {
+      return new UrlTemplateImageryProvider({
+        url: `${tileServerBaseUrl.replace(/\/$/, "")}/imagery/{z}/{x}/{y}.webp`,
+        minimumLevel: 0,
+        maximumLevel: 19,
+        credit: "© Google",
+      });
+    } else {
+      return new UrlTemplateImageryProvider({
         url: ESRI_WORLD_IMAGERY_URL,
         maximumLevel: 19,
-        credit:
-          "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
-      }),
-    [],
-  );
+      });
+    }
+  }, []);
 
   // Separate features by geometry type
   const { geoJsonData, cityGmlData } = useMemo(() => {
@@ -216,7 +223,7 @@ const CesiumViewer: React.FC<Props> = ({
       }
       full
       {...defaultCesiumProps}>
-      <ImageryLayer imageryProvider={esriImageryProvider} />
+      <ImageryLayer imageryProvider={baseImageryProvider} />
       <TerrainController
         show3DTerrain={visualizerType === "3d-map" && !cityGmlData}
       />
