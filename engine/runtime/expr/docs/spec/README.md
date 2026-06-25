@@ -1,6 +1,7 @@
 # FlowExpr Language Specification
 
 This directory is the authoritative definition of the FlowExpr language.
+Do not include downstream documentation (like reearth-flow's injected attributes/env) here.
 
 ## Stabilization Process
 

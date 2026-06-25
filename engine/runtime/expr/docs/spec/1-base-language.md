@@ -238,7 +238,6 @@ Iteration by type:
 
 > Note: Implementation of `range` can eagerly evaluate to list, so passing a very large `stop` value may exhaust memory.
 
-
 ## indexing
 
 `x[i]` accesses an element of `x`:
