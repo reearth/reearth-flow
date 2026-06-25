@@ -1,4 +1,4 @@
-import yaml from "js-yaml";
+import { load } from "js-yaml";
 import { ChangeEvent, useCallback, useRef, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -184,7 +184,7 @@ export default () => {
             validateWorkflowYaml(results).isValid
           ) {
             setInvalidFile(false);
-            resultsObject = yaml.load(results);
+            resultsObject = load(results);
           } else {
             setInvalidFile(true);
           }
