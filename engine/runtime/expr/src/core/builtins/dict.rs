@@ -204,15 +204,9 @@ mod tests {
         );
         assert_eval(
             "m.update({\"y\": 2}); m.keys()",
-            &[("m", m)],
+            &[("m", m.clone())],
             Value::from(vec!["x", "y"]),
         );
-    }
-
-    #[test]
-    fn test_update_self() {
-        // d.update(d) must not panic; it is a no-op.
-        let m = Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) });
         assert_eval(
             "m.update(m); m.get(\"x\")",
             &[("m", m)],

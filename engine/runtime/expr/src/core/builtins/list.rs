@@ -225,6 +225,11 @@ mod tests {
             &[("arr", Value::from(vec![1i64, 2i64]))],
             Value::from(vec![1i64, 2i64, 3i64, 4i64]),
         );
+        assert_eval(
+            "arr.extend(arr); arr",
+            &[("arr", Value::from(vec![1i64, 2i64]))],
+            Value::from(vec![1i64, 2i64, 1i64, 2i64]),
+        );
     }
 
     #[test]
@@ -234,16 +239,6 @@ mod tests {
         assert_eval("arr.index(99)", &[("arr", arr())], Value::Null);
         assert_eval("arr.rindex(20)", &[("arr", arr())], Value::from(3i64));
         assert_eval("arr.rindex(99)", &[("arr", arr())], Value::Null);
-    }
-
-    #[test]
-    fn test_extend_self() {
-        // a.extend(a) must not panic: receiver and argument alias the same RefCell.
-        assert_eval(
-            "arr.extend(arr); arr",
-            &[("arr", Value::from(vec![1i64, 2i64]))],
-            Value::from(vec![1i64, 2i64, 1i64, 2i64]),
-        );
     }
 
     #[test]
