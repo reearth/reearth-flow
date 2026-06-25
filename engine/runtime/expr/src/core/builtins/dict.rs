@@ -99,6 +99,9 @@ fn update(args: &[Value]) -> Result<Value> {
     let Value::Dict(other) = &args[1] else {
         return Err(eval_error("update() argument must be a dict"));
     };
+    if TrackedRc::ptr_eq(rc, other) {
+        return Ok(Value::Null);
+    }
     let mut dst = rc.borrow_mut();
     for (k, v) in other.borrow().iter() {
         dst.insert(k.clone(), v.clone());
@@ -203,6 +206,17 @@ mod tests {
             "m.update({\"y\": 2}); m.keys()",
             &[("m", m)],
             Value::from(vec!["x", "y"]),
+        );
+    }
+
+    #[test]
+    fn test_update_self() {
+        // d.update(d) must not panic; it is a no-op.
+        let m = Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) });
+        assert_eval(
+            "m.update(m); m.get(\"x\")",
+            &[("m", m)],
+            Value::from(1i64),
         );
     }
 

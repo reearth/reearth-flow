@@ -90,7 +90,13 @@ fn extend(args: &[Value]) -> Result<Value> {
     let Value::List(other) = &args[1] else {
         return Err(eval_error("extend() argument must be a list"));
     };
-    rc.borrow_mut().extend(other.borrow().iter().cloned());
+    // If receiver and argument alias the same RefCell, snapshot first
+    if TrackedRc::ptr_eq(rc, other) {
+        let snapshot: Vec<Value> = rc.borrow().clone();
+        rc.borrow_mut().extend(snapshot);
+    } else {
+        rc.borrow_mut().extend(other.borrow().iter().cloned());
+    }
     Ok(Value::Null)
 }
 
@@ -228,6 +234,16 @@ mod tests {
         assert_eval("arr.index(99)", &[("arr", arr())], Value::Null);
         assert_eval("arr.rindex(20)", &[("arr", arr())], Value::from(3i64));
         assert_eval("arr.rindex(99)", &[("arr", arr())], Value::Null);
+    }
+
+    #[test]
+    fn test_extend_self() {
+        // a.extend(a) must not panic: receiver and argument alias the same RefCell.
+        assert_eval(
+            "arr.extend(arr); arr",
+            &[("arr", Value::from(vec![1i64, 2i64]))],
+            Value::from(vec![1i64, 2i64, 1i64, 2i64]),
+        );
     }
 
     #[test]
