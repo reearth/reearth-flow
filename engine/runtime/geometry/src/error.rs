@@ -14,6 +14,9 @@ pub enum Error {
 
     #[error("Invalid geometry construction: {0}")]
     InvalidGeometry(String),
+
+    #[error("Invalid appearance: {0}")]
+    InvalidAppearance(String),
 }
 
 impl Error {
@@ -28,6 +31,10 @@ impl Error {
     pub fn invalid_geometry<T: ToString>(message: T) -> Self {
         Self::InvalidGeometry(message.to_string())
     }
+
+    pub fn invalid_appearance<T: ToString>(message: T) -> Self {
+        Self::InvalidAppearance(message.to_string())
+    }
 }
 
 // implement Eq and PartialEq for Error so that we can compare errors in tests
@@ -37,6 +44,7 @@ impl PartialEq for Error {
             (Self::MismatchedGeometry(a), Self::MismatchedGeometry(b)) => a == b,
             (Self::Projection(a), Self::Projection(b)) => a == b,
             (Self::InvalidGeometry(a), Self::InvalidGeometry(b)) => a == b,
+            (Self::InvalidAppearance(a), Self::InvalidAppearance(b)) => a == b,
             _ => false,
         }
     }

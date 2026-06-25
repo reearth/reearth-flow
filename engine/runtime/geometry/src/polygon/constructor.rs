@@ -37,12 +37,20 @@
 //! CSR buffers directly and validate the layout invariants, returning [`Error`] on
 //! violation rather than panicking.
 //!
-//! Constructed polygons are *bare*: no UV sets and no appearance. Attach an
-//! appearance afterwards via [`Polygon2D::appearance_mut`] /
-//! [`Polygon3D::appearance_mut`].
+//! Constructed polygons are *bare*: no UV sets and no appearance. Appearance is
+//! attached afterwards (CityGML binds it by `gml:id` in a later pass than the
+//! geometry) via the validated [`Polygon2D::set_appearance`] /
+//! [`Polygon2D::set_two_sided_appearance`] setters below — or the raw
+//! [`Polygon2D::appearance_mut`] escape hatch.
 
 use std::marker::PhantomData;
 
+use std::collections::BTreeMap;
+
+use crate::appearance::{
+    append_theme, single_channel_uv, validate_uv_coupling, Appearance, ChannelId, FaceBinding,
+    Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
+};
 use crate::coordinate::Coordinate;
 use crate::error::Error;
 
@@ -407,9 +415,196 @@ fn check_offsets(offsets: &[u32], coords_len: usize) -> Result<(), Error> {
     Ok(())
 }
 
+/// One side's shading for a polygon: a single material and the UV its textured
+/// maps sample, one entry per UV channel the material references. `uv` is empty
+/// for a colour-only material (no maps); each entry is an `Explicit` array
+/// parallel to the polygon's `coords`, or a retained `WorldToTexture` matrix.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PolygonFace {
+    pub material: Material,
+    pub uv: BTreeMap<ChannelId, UvSource>,
+}
+
+impl PolygonFace {
+    /// A face whose textured map (if any) samples the default UV channel — the
+    /// dominant single-`ParameterizedTexture` case.
+    pub fn single(material: Material, uv: Option<UvSource>) -> Self {
+        Self {
+            material,
+            uv: single_channel_uv(uv),
+        }
+    }
+}
+
+impl Polygon2D {
+    /// Attach a single-theme, single-material, front-only appearance — the
+    /// dominant CityGML case (one `ParameterizedTexture` / `X3DMaterial` per
+    /// surface). See [`PolygonFace`] for the `uv` contract.
+    ///
+    /// Additive: call once per theme to build a multi-theme appearance; the first
+    /// theme added becomes the default. For a distinct back side use
+    /// [`set_two_sided_appearance`](Self::set_two_sided_appearance).
+    ///
+    /// Returns `Err` (leaving the polygon unchanged) if the theme is already set
+    /// or any invariant is breached.
+    pub fn set_appearance(
+        &mut self,
+        theme: ThemeId,
+        material: Material,
+        uv: Option<UvSource>,
+    ) -> Result<(), Error> {
+        add_polygon_theme(
+            self.coords.len(),
+            &mut self.appearance,
+            &mut self.uv_sets,
+            theme,
+            PolygonFace::single(material, uv),
+            None,
+        )
+    }
+
+    /// Attach a two-sided appearance for one theme: a distinct `front` and `back`
+    /// face (CityGML `side="+"` / `side="-"`). Each face is still a single
+    /// material. Additive like [`set_appearance`](Self::set_appearance).
+    pub fn set_two_sided_appearance(
+        &mut self,
+        theme: ThemeId,
+        front: PolygonFace,
+        back: PolygonFace,
+    ) -> Result<(), Error> {
+        add_polygon_theme(
+            self.coords.len(),
+            &mut self.appearance,
+            &mut self.uv_sets,
+            theme,
+            front,
+            Some(back),
+        )
+    }
+}
+
+impl Polygon3D {
+    /// Attach a single-theme, single-material, front-only appearance. See
+    /// [`Polygon2D::set_appearance`].
+    pub fn set_appearance(
+        &mut self,
+        theme: ThemeId,
+        material: Material,
+        uv: Option<UvSource>,
+    ) -> Result<(), Error> {
+        add_polygon_theme(
+            self.coords.len(),
+            &mut self.appearance,
+            &mut self.uv_sets,
+            theme,
+            PolygonFace::single(material, uv),
+            None,
+        )
+    }
+
+    /// Attach a two-sided appearance for one theme. See
+    /// [`Polygon2D::set_two_sided_appearance`].
+    pub fn set_two_sided_appearance(
+        &mut self,
+        theme: ThemeId,
+        front: PolygonFace,
+        back: PolygonFace,
+    ) -> Result<(), Error> {
+        add_polygon_theme(
+            self.coords.len(),
+            &mut self.appearance,
+            &mut self.uv_sets,
+            theme,
+            front,
+            Some(back),
+        )
+    }
+}
+
+/// Add one theme's appearance to a single-face polygon's `appearance` / `uv_sets`.
+/// `corner_count` is the polygon's coordinate count. The `front` face is required;
+/// `back` adds a distinct back-side material/UV. Shared by the 2D and 3D setters
+/// so the invariants live in one place.
+///
+/// Additive: errors (leaving the polygon unchanged) if `theme` is already set or
+/// any face breaches the material/UV-coupling or UV-length invariants. The first
+/// theme added becomes the default.
+fn add_polygon_theme(
+    corner_count: usize,
+    appearance: &mut Option<Appearance>,
+    uv_sets: &mut Vec<UvSet>,
+    theme: ThemeId,
+    front: PolygonFace,
+    back: Option<PolygonFace>,
+) -> Result<(), Error> {
+    // Validate both faces into scratch buffers first, so an invalid back face
+    // leaves the polygon untouched (`push_face` mutates as it validates).
+    let mut materials: Vec<Material> = Vec::new();
+    let mut new_uv_sets: Vec<UvSet> = Vec::new();
+    let front_binding = push_face(
+        &mut materials,
+        &mut new_uv_sets,
+        corner_count,
+        theme.clone(),
+        Side::Front,
+        front,
+    )?;
+    let back_binding = match back {
+        Some(face) => Some(push_face(
+            &mut materials,
+            &mut new_uv_sets,
+            corner_count,
+            theme.clone(),
+            Side::Back,
+            face,
+        )?),
+        None => None,
+    };
+
+    append_theme(
+        appearance,
+        uv_sets,
+        theme,
+        materials,
+        front_binding,
+        back_binding,
+        new_uv_sets,
+    )
+}
+
+/// Validate one face, push its material into the palette and (if any) its UV set,
+/// and return the `Uniform` binding pointing at the just-added material.
+fn push_face(
+    materials: &mut Vec<Material>,
+    uv_sets: &mut Vec<UvSet>,
+    corner_count: usize,
+    theme: ThemeId,
+    side: Side,
+    face: PolygonFace,
+) -> Result<FaceBinding, Error> {
+    validate_uv_coupling(&face.material.referenced_channels(), &face.uv, corner_count)?;
+
+    for (channel, uv) in face.uv {
+        uv_sets.push(UvSet {
+            theme: Some(theme.clone()),
+            side,
+            channel,
+            uv,
+        });
+    }
+
+    let index = u32::try_from(materials.len())
+        .ok()
+        .and_then(MaterialIndex::new)
+        .ok_or_else(|| Error::invalid_appearance("material palette too large"))?;
+    materials.push(face.material);
+    Ok(FaceBinding::Uniform(index))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::*;
 
     // The exterior is stored verbatim: an open ring is NOT auto-closed, so the
     // first != last data bug survives for a later validation phase.
@@ -586,5 +781,128 @@ mod tests {
             Vec::<Vec<[f64; 3]>>::new(),
         );
         assert_eq!(built, batch);
+    }
+
+    // ── Appearance setters ──
+
+    /// A 3-corner triangle polygon (open ring), so `coords.len() == 3`.
+    fn triangle() -> Polygon3D {
+        Polygon3D::from_rings(
+            Coordinate::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            Vec::<Vec<[f64; 3]>>::new(),
+        )
+    }
+
+    #[test]
+    fn textured_material_with_matching_uv_is_accepted() {
+        let mut p = triangle();
+        p.set_appearance(theme("rgb"), textured(), Some(uv(3)))
+            .unwrap();
+
+        let app = p.appearance().as_ref().unwrap();
+        assert_eq!(app.materials.len(), 1);
+        assert_eq!(app.themes.len(), 1);
+        assert_eq!(app.default_theme, theme("rgb"));
+        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
+        assert!(app.themes[0].back.is_none());
+        assert_eq!(p.uv_sets.len(), 1);
+        assert_eq!(p.uv_sets[0].theme.as_ref(), Some(&theme("rgb")));
+        assert_eq!(p.uv_sets[0].side, Side::Front);
+    }
+
+    #[test]
+    fn bare_material_with_no_uv_is_accepted() {
+        let mut p = triangle();
+        p.set_appearance(theme("rgb"), bare(), None).unwrap();
+        assert_eq!(p.appearance().as_ref().unwrap().materials.len(), 1);
+        assert!(p.uv_sets.is_empty());
+    }
+
+    #[test]
+    fn textured_material_without_uv_is_rejected() {
+        let mut p = triangle();
+        let err = p
+            .set_appearance(theme("rgb"), textured(), None)
+            .unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+        assert!(p.appearance().is_none(), "left unchanged on error");
+    }
+
+    #[test]
+    fn bare_material_with_uv_is_rejected() {
+        let mut p = triangle();
+        let err = p
+            .set_appearance(theme("rgb"), bare(), Some(uv(3)))
+            .unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+    }
+
+    #[test]
+    fn uv_length_mismatch_is_rejected() {
+        let mut p = triangle();
+        // 4 UVs against a 3-corner polygon.
+        let err = p
+            .set_appearance(theme("rgb"), textured(), Some(uv(4)))
+            .unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+    }
+
+    #[test]
+    fn world_to_texture_uv_skips_length_check() {
+        use crate::appearance::TexMatrix;
+        let mut p = triangle();
+        let m = UvSource::WorldToTexture(TexMatrix([[0.0; 4]; 3]));
+        p.set_appearance(theme("rgb"), textured(), Some(m)).unwrap();
+        assert_eq!(p.uv_sets.len(), 1);
+    }
+
+    #[test]
+    fn first_theme_added_becomes_default() {
+        let mut p = triangle();
+        p.set_appearance(theme("infrared"), bare(), None).unwrap();
+        p.set_appearance(theme("rgb"), bare(), None).unwrap();
+
+        let app = p.appearance().as_ref().unwrap();
+        assert_eq!(app.default_theme, theme("infrared"));
+        assert_eq!(app.themes.len(), 2);
+    }
+
+    #[test]
+    fn duplicate_theme_is_rejected() {
+        let mut p = triangle();
+        p.set_appearance(theme("rgb"), bare(), None).unwrap();
+        let err = p.set_appearance(theme("rgb"), bare(), None).unwrap_err();
+        assert!(matches!(err, Error::InvalidAppearance(_)));
+    }
+
+    #[test]
+    fn two_themes_build_a_two_entry_palette() {
+        let mut p = triangle();
+        p.set_appearance(theme("rgb"), textured(), Some(uv(3)))
+            .unwrap();
+        p.set_appearance(theme("infrared"), bare(), None).unwrap();
+
+        let app = p.appearance().as_ref().unwrap();
+        assert_eq!(app.materials.len(), 2);
+        assert_eq!(app.themes.len(), 2);
+        // Only the textured theme contributes a UV set.
+        assert_eq!(p.uv_sets.len(), 1);
+        assert_eq!(p.uv_sets[0].theme.as_ref(), Some(&theme("rgb")));
+    }
+
+    #[test]
+    fn two_sided_theme_binds_both_faces() {
+        let mut p = triangle();
+        let face = || PolygonFace::single(textured(), Some(uv(3)));
+        p.set_two_sided_appearance(theme("rgb"), face(), face())
+            .unwrap();
+
+        let app = p.appearance().as_ref().unwrap();
+        assert_eq!(app.materials.len(), 2);
+        assert!(app.themes[0].back.is_some());
+        assert_eq!(p.uv_sets.len(), 2);
+        let sides: Vec<Side> = p.uv_sets.iter().map(|u| u.side).collect();
+        assert!(sides.contains(&Side::Front) && sides.contains(&Side::Back));
     }
 }

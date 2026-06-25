@@ -16,7 +16,7 @@ use crate::coordinate::Coordinate;
 
 mod constructor;
 
-pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D};
+pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 
 /// A planar polygon face in 2D space, with optional per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -97,6 +97,13 @@ impl Polygon2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
+
+    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
+    /// parallel to `coords` (exterior then interiors, closed).
+    #[inline]
+    pub fn uv_sets(&self) -> &[UvSet] {
+        &self.uv_sets
+    }
 }
 
 impl Polygon3D {
@@ -138,5 +145,12 @@ impl Polygon3D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
+    }
+
+    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
+    /// parallel to `coords` (exterior then interiors, closed).
+    #[inline]
+    pub fn uv_sets(&self) -> &[UvSet] {
+        &self.uv_sets
     }
 }

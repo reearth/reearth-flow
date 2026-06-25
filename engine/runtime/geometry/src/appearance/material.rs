@@ -12,9 +12,12 @@
 //! here), and each map's `Texture` names the UV channel it samples, so a
 //! material may be reused under several themes.
 
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 
 use super::texture::Texture;
+use super::ChannelId;
 
 /// One self-contained shading description: exactly one of the two shading
 /// models.
@@ -47,6 +50,53 @@ pub struct PhongMaterial {
     pub emissive_map: Option<Texture>,
     /// OBJ norm / map_bump (CityGML carries none).
     pub normal_map: Option<Texture>,
+}
+
+impl Material {
+    /// Whether this material has any textured map slot, and therefore samples a
+    /// UV set. A material with no maps (colour / factors only) needs no UV; one
+    /// with at least one map requires a UV set to sample.
+    pub fn has_texture(&self) -> bool {
+        match self {
+            Material::Phong(m) => {
+                m.diffuse_map.is_some() || m.emissive_map.is_some() || m.normal_map.is_some()
+            }
+            Material::Pbr(m) => {
+                m.base_color_map.is_some()
+                    || m.metallic_roughness_map.is_some()
+                    || m.normal_map.is_some()
+                    || m.occlusion_map.is_some()
+                    || m.emissive_map.is_some()
+            }
+        }
+    }
+
+    /// The distinct UV channels this material's textured maps sample (empty if
+    /// colour-only). A UV set must be supplied for each when attaching appearance;
+    /// several maps sharing a channel collapse to one entry.
+    pub fn referenced_channels(&self) -> BTreeSet<ChannelId> {
+        let mut channels = BTreeSet::new();
+        let mut add = |map: &Option<Texture>| {
+            if let Some(texture) = map {
+                channels.insert(texture.uv_channel);
+            }
+        };
+        match self {
+            Material::Phong(m) => {
+                add(&m.diffuse_map);
+                add(&m.emissive_map);
+                add(&m.normal_map);
+            }
+            Material::Pbr(m) => {
+                add(&m.base_color_map);
+                add(&m.metallic_roughness_map);
+                add(&m.normal_map);
+                add(&m.occlusion_map);
+                add(&m.emissive_map);
+            }
+        }
+        channels
+    }
 }
 
 /// glTF metallic-roughness PBR material.

@@ -164,6 +164,16 @@ impl<const N: usize> IndexBuffer<N> {
         }
     }
 
+    /// The number of `N`-tuples stored (e.g. triangle count for `IndexBuffer<3>`,
+    /// corner count for `IndexBuffer<1>`).
+    pub(crate) fn len(&self) -> usize {
+        match self {
+            IndexBuffer::U8(v) => v.len(),
+            IndexBuffer::U16(v) => v.len(),
+            IndexBuffer::U32(v) => v.len(),
+        }
+    }
+
     /// Build from index elements, choosing the narrowest width that fits them all.
     ///
     /// Width-agnostic: storage starts at `u8` and fattens to `u16` then `u32` only
