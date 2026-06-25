@@ -232,6 +232,11 @@ Iteration by type:
 - `list`: each element in order
 - `str`: each Unicode codepoint as a single-character string, in order
 - `dict`: each key as a string, in insertion order
+- `range(stop)`: integers `0, 1, ..., stop - 1` in order
+- `range(start, stop)`: integers `start, start + 1, ..., stop - 1` in order
+- `range(start, stop, step)`: integers `start, start + step, start + 2*step, ...`, stopping before `stop`
+
+> Note: Implementation of `range` can eagerly evaluate to list, so passing a very large `stop` value may exhaust memory.
 
 
 ## indexing
@@ -278,5 +283,5 @@ Whether a type is effectively mutable depends solely on whether it exposes any m
 
 Cyclic references (e.g. a list that contains itself) are undefined behavior.
 
-Notes: An implication is that FlowExpr may be implemented with reference counting memory management.
-However, silent memory leak is usually unwanted in most embedded evaluation environments that need to be handled or at least detected.
+> Note: An implication is that FlowExpr may be implemented with reference counting memory management.
+> However, silent memory leak is usually unwanted in most embedded evaluation environments that need to be handled or at least detected.
