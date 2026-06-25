@@ -178,7 +178,7 @@ Right shift with an amount at or beyond the positive range of the integer type r
 `v in x` tests whether `v` is contained in `x`:
 
 - `list`: `v` equals any element
-- `str`: `v` is a substring (must be a `str`)
+- `str`: `v` is a substring
 - `dict`: `v` is a key
 
 `v not in x` is the negation of `v in x`.

@@ -1456,6 +1456,7 @@ mod tests {
             &[("a", a), ("b", b)],
             Value::from(vec![1i64, 2i64, 3i64, 4i64]),
         );
+        assert!(try_run("1 // 0", &[]).is_err());
     }
 
     #[test]
@@ -1514,6 +1515,11 @@ mod tests {
         assert_eval("1 != 2", &[], Value::from(true));
         assert_eval("2 > 1", &[], Value::from(true));
         assert_eval("1 >= 1", &[], Value::from(true));
+        assert_eval(r#""a" < "b""#, &[], Value::from(true));
+        assert_eval(r#""b" > "a""#, &[], Value::from(true));
+        assert_eval(r#""abc" > "ab""#, &[], Value::from(true));
+        assert_eval(r#""abc" == "abc""#, &[], Value::from(true));
+        assert_eval(r#""abc" <= "abc""#, &[], Value::from(true));
     }
 
     #[test]
@@ -1545,6 +1551,9 @@ mod tests {
         // `or` returns the left operand when truthy, else the right operand
         assert_eval("1 or 2", &[], Value::from(1i64));
         assert_eval("0 or 2", &[], Value::from(2i64));
+        // short-circuit: RHS must not be evaluated when result is already determined
+        assert_eval("false and missing_var", &[], Value::from(false));
+        assert_eval("true or missing_var", &[], Value::from(true));
     }
 
     #[test]
@@ -1591,6 +1600,7 @@ mod tests {
         assert!(try_run("arr[s:]", &[("arr", arr.clone()), ("s", Value::Float(1.0))]).is_err());
         assert!(try_run("arr[:s]", &[("arr", arr.clone()), ("s", Value::Float(3.0))]).is_err());
         assert!(try_run("arr[::s]", &[("arr", arr), ("s", Value::Float(2.0))]).is_err());
+        assert!(try_run(r#""abc"[::0]"#, &[]).is_err());
     }
 
     #[test]
@@ -1651,6 +1661,8 @@ mod tests {
         assert!(try_run("[a, b] = [1, 2, 3]", &[]).is_err());
         assert!(try_run("[a, b, c] = [1, 2]", &[]).is_err());
         assert!(try_run("[a, b] = 42", &[]).is_err());
+        // RHS fully evaluated before any binding: swap works correctly
+        assert_eval("a = 1; b = 2; [a, b] = [b, a]; [a, b]", &[], Value::from(vec![2i64, 1i64]));
     }
 
     #[test]
@@ -1745,7 +1757,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cast() {
+    fn test_constructor() {
         assert_eval(r#"str("hello")"#, &[], Value::from("hello"));
         assert_eval(r#"str(42)"#, &[], Value::from("42"));
         assert_eval(r#"str(true)"#, &[], Value::from("true"));
@@ -1794,6 +1806,17 @@ mod tests {
             indexmap::indexmap! { "x".into() => Value::from(1i64), "y".into() => Value::from(2i64) },
         );
         assert_eval("list(m)", &[("m", m)], Value::from(vec!["x", "y"]));
+        assert_eval("bool()", &[], Value::from(false));
+        assert_eval("int()", &[], Value::from(0i64));
+        assert_eval("float()", &[], Value::from(0.0f64));
+        assert_eval("str()", &[], Value::from(""));
+        assert_eval("list()", &[], Value::list(vec![]));
+        assert_eval("bool(0.0)", &[], Value::from(false));
+        assert_eval("bool(1.0)", &[], Value::from(true));
+        assert_eval("bool([])", &[], Value::from(false));
+        assert_eval("bool([0])", &[], Value::from(true));
+        assert_eval("bool({})", &[], Value::from(false));
+        assert_eval(r#"bool({"a": 1})"#, &[], Value::from(true));
     }
 
     #[test]
