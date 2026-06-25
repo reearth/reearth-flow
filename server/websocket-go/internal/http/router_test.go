@@ -1,9 +1,12 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -29,10 +32,14 @@ type fakeStore struct {
 	deleted               bool
 	cleanupAll            bool
 	notFound              bool
+	loadErr               error
 	onPrune               func()
 }
 
 func (f *fakeStore) Load(ctx context.Context, room string) (LoadResult, error) {
+	if f.loadErr != nil {
+		return LoadResult{}, f.loadErr
+	}
 	if f.notFound {
 		return LoadResult{}, ErrNotFound
 	}
@@ -111,6 +118,31 @@ func TestGetLatest(t *testing.T) {
 	}
 	if rec.Body.String() == "" || !strings.Contains(rec.Body.String(), "[1,2,3]") {
 		t.Fatalf("updates not int-array: %s", rec.Body.String())
+	}
+}
+
+// TestServerErrorIsLogged: a 500 from the store must log the underlying error
+// (with the doc id) at ERROR, not just return a generic message. This is the
+// regression guard for "500 with nothing in the logs".
+func TestServerErrorIsLogged(t *testing.T) {
+	var buf bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	store := &fakeStore{loadErr: errors.New("gcs permission denied")}
+	h := NewRouter(Deps{Store: store, Logger: log})
+
+	rec := do(t, h, "GET", "/api/document/proj1", "")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "gcs permission denied") {
+		t.Fatalf("underlying error not logged:\n%s", out)
+	}
+	if !strings.Contains(out, "proj1") {
+		t.Fatalf("doc id not logged:\n%s", out)
+	}
+	if !strings.Contains(out, `"level":"ERROR"`) {
+		t.Fatalf("500 not logged at ERROR level:\n%s", out)
 	}
 }
 

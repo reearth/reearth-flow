@@ -109,6 +109,14 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, errorResponse{Error: msg})
 }
 
+// fail logs the underlying cause of a 500 at ERROR (so it is never lost behind
+// the generic client message) and writes the response. args are extra slog
+// key/value context, e.g. "doc", id.
+func (r *router) fail(w http.ResponseWriter, msg string, err error, args ...any) {
+	r.log.Error(msg, append(args, "err", err)...)
+	writeErr(w, http.StatusInternalServerError, msg)
+}
+
 func (r *router) getLatest(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	res, err := r.store.Load(req.Context(), id)
@@ -117,7 +125,7 @@ func (r *router) getLatest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "load failed")
+		r.fail(w, "load failed", err, "doc", id)
 		return
 	}
 	writeJSON(w, http.StatusOK, DocumentResponse{
@@ -132,14 +140,14 @@ func (r *router) getHistory(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	versions, err := r.store.ListVersions(req.Context(), id)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "history failed")
+		r.fail(w, "history failed", err, "doc", id)
 		return
 	}
 	items := make([]DocumentResponse, 0, len(versions))
 	for _, v := range versions {
 		b, meta, ok, err := r.store.GetUpdate(req.Context(), id, v.Version)
 		if err != nil {
-			writeErr(w, http.StatusInternalServerError, "history failed")
+			r.fail(w, "history failed", err, "doc", id)
 			return
 		}
 		if !ok {
@@ -159,7 +167,7 @@ func (r *router) getHistoryMetadata(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	versions, err := r.store.ListVersions(req.Context(), id)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "history metadata failed")
+		r.fail(w, "history metadata failed", err, "doc", id)
 		return
 	}
 	items := make([]HistoryMetadataItem, 0, len(versions))
@@ -181,7 +189,7 @@ func (r *router) getHistoryByVersion(w http.ResponseWriter, req *http.Request) {
 	}
 	b, meta, ok, err := r.store.GetUpdate(req.Context(), id, v)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "history version failed")
+		r.fail(w, "history version failed", err, "doc", id, "version", v)
 		return
 	}
 	if !ok {
@@ -209,7 +217,7 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	rolledBack, err := r.store.MaterializeAt(ctx, id, body.Version)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "rollback materialize failed")
+		r.fail(w, "rollback materialize failed", err, "doc", id, "version", body.Version)
 		return
 	}
 	r.signal(ctx, id, true)
@@ -219,7 +227,7 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 	clearCtx := context.WithoutCancel(ctx)
 	defer r.signal(clearCtx, id, false)
 	if err := r.store.PruneAfter(ctx, id, body.Version, rolledBack); err != nil {
-		writeErr(w, http.StatusInternalServerError, "rollback prune failed")
+		r.fail(w, "rollback prune failed", err, "doc", id, "version", body.Version)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "version": body.Version})
@@ -239,7 +247,7 @@ func (r *router) signal(ctx context.Context, room string, inProgress bool) {
 func (r *router) flush(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	if err := r.store.Flush(req.Context(), id); err != nil {
-		writeErr(w, http.StatusInternalServerError, "flush failed")
+		r.fail(w, "flush failed", err, "doc", id)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -259,7 +267,7 @@ func (r *router) createSnapshot(w http.ResponseWriter, req *http.Request) {
 	}
 	state, err := r.store.MaterializeAt(req.Context(), body.DocID, body.Version)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "snapshot materialize failed")
+		r.fail(w, "snapshot materialize failed", err, "doc", body.DocID, "version", body.Version)
 		return
 	}
 	writeJSON(w, http.StatusOK, DocumentResponse{
@@ -274,7 +282,7 @@ func (r *router) copyDocument(w http.ResponseWriter, req *http.Request) {
 	dst := req.PathValue("id")
 	src := req.PathValue("source")
 	if err := r.store.Copy(req.Context(), dst, src); err != nil {
-		writeErr(w, http.StatusInternalServerError, "copy failed")
+		r.fail(w, "copy failed", err, "dst", dst, "src", src)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -289,7 +297,7 @@ func (r *router) importDocument(w http.ResponseWriter, req *http.Request) {
 	}
 	version, err := r.store.Import(req.Context(), id, body.Data)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "import failed")
+		r.fail(w, "import failed", err, "doc", id)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "version": version})
@@ -299,7 +307,7 @@ func (r *router) cleanupUpdates(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	deleted, err := r.store.Compact(req.Context(), id, keepUpdates)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "cleanup failed")
+		r.fail(w, "cleanup failed", err, "doc", id)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "deleted": deleted})
@@ -308,7 +316,7 @@ func (r *router) cleanupUpdates(w http.ResponseWriter, req *http.Request) {
 func (r *router) deleteDocument(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	if err := r.store.Delete(req.Context(), id); err != nil {
-		writeErr(w, http.StatusInternalServerError, "delete failed")
+		r.fail(w, "delete failed", err, "doc", id)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -317,7 +325,7 @@ func (r *router) deleteDocument(w http.ResponseWriter, req *http.Request) {
 func (r *router) adminCleanup(w http.ResponseWriter, req *http.Request) {
 	deleted, err := r.store.CleanupAll(req.Context(), keepUpdates)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "admin cleanup failed")
+		r.fail(w, "admin cleanup failed", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "deleted": deleted})

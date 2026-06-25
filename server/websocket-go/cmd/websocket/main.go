@@ -26,6 +26,7 @@ import (
 	"github.com/reearth/reearth-flow/websocket-go/internal/gcs"
 	"github.com/reearth/reearth-flow/websocket-go/internal/health"
 	flowhttp "github.com/reearth/reearth-flow/websocket-go/internal/http"
+	"github.com/reearth/reearth-flow/websocket-go/internal/logging"
 	flowotel "github.com/reearth/reearth-flow/websocket-go/internal/otel"
 	redisrelay "github.com/reearth/reearth-flow/websocket-go/internal/redis"
 	"github.com/reearth/reearth-flow/websocket-go/internal/server"
@@ -40,7 +41,11 @@ func main() {
 
 func run() error {
 	cfg := config.Load()
-	log := slog.Default()
+	// Build the configured logger and make it the process default so even
+	// components that fall back to slog.Default() honor the level/format.
+	log := logging.New(cfg.LogLevel, cfg.LogFormat, os.Stderr)
+	slog.SetDefault(log)
+	log.Info("logger configured", "level", cfg.LogLevel, "format", cfg.LogFormat)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -119,6 +124,9 @@ func run() error {
 		TracerProvider: tp,
 		SpanName:       "ws.http",
 	})
+	// Outermost: structured access logging + panic recovery across every route
+	// (WS upgrade, /api/*, /health), so no request failure is silent. WS-safe.
+	handler = flowhttp.ObserveRequests(log)(handler)
 
 	// Bind the configured WS port (8000), not $PORT.
 	addr := net.JoinHostPort("0.0.0.0", fmt.Sprintf("%d", cfg.WSPort))
