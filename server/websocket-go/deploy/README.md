@@ -29,10 +29,12 @@ the live Rust vars (`internal/config/config.go`):
   `_GCS_BUCKET_NAME`, `_GCS_ENDPOINT` (empty ⇒ real GCS), `_THRIFT_AUTH_URL`,
   `_ORIGINS` (incl. prod `*.netlify.app` allow-list — use the `^@@^` delimiter so
   commas in the list aren't split), `_WS_PROTECTED=false`, `_GCS_PHASE2=false`,
-  the `_MAX_CONNECTIONS`/`_MAX_PEERS_PER_ROOM`/`_MAX_ROOMS` DoS caps, and the OTEL
-  knobs (`_ENABLE_OTLP`, `_OTLP_ENDPOINT`, `_GCP_PROJECT_ID`, `_SERVICE_NAME`,
-  `_OTEL_EXPORTER_TYPE`, `_OTEL_SAMPLING_RATIO`, `_OTEL_BATCH_TIMEOUT`,
-  `_OTEL_MAX_EXPORT_BATCH_SIZE`, `_OTEL_MAX_QUEUE_SIZE`).
+  the `_MAX_CONNECTIONS`/`_MAX_PEERS_PER_ROOM`/`_MAX_ROOMS` DoS caps, the logging
+  knobs (`_LOG_LEVEL` default `info`, `_LOG_FORMAT` default `json` in a non-dev
+  `_APP_ENV` else `text`; set `_LOG_LEVEL=debug` to surface ygo and relay detail),
+  and the OTEL knobs (`_ENABLE_OTLP`, `_OTLP_ENDPOINT`, `_GCP_PROJECT_ID`,
+  `_SERVICE_NAME`, `_OTEL_EXPORTER_TYPE`, `_OTEL_SAMPLING_RATIO`,
+  `_OTEL_BATCH_TIMEOUT`, `_OTEL_MAX_EXPORT_BATCH_SIZE`, `_OTEL_MAX_QUEUE_SIZE`).
 - **Container port:** `--port 8000` (the Go binary binds `REEARTH_FLOW_WS_PORT`,
   not `$PORT`). **Confirm the live service's configured container port before
   cutover** — if it's already 8000, this is a no-op; if not, this aligns it.

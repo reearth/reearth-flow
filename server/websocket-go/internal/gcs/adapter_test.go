@@ -1,8 +1,11 @@
 package gcs
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -10,6 +13,32 @@ import (
 	"github.com/reearth/ygo/crdt"
 	"github.com/reearth/ygo/persistence"
 )
+
+// TestLoadLogsErrorWithRoom: when a room load fails, the cause is logged at
+// ERROR with the room id. The WebSocket upgrade path (ygo getOrCreateRoom →
+// LoadDoc) discards this error behind a bare "500 room unavailable", so logging
+// it at the source is the only way to see why a connect 500s.
+func TestLoadLogsErrorWithRoom(t *testing.T) {
+	client, bucket := newFakeGCS(t)
+	var buf bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock(), Phase2: true, Logger: log})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	// A '/' in the doc id fails ValidateDocIDForPrefix in Phase 2: a deterministic
+	// Load error that does not need a broken GCS backend.
+	if _, err := a.Load(context.Background(), "bad/id"); err == nil {
+		t.Fatal("expected error for unsafe doc id")
+	}
+	out := buf.String()
+	if !strings.Contains(out, "bad/id") {
+		t.Fatalf("room id not logged:\n%s", out)
+	}
+	if !strings.Contains(out, `"level":"ERROR"`) {
+		t.Fatalf("load failure not logged at ERROR:\n%s", out)
+	}
+}
 
 // TestBrotliRoundTrip proves the v2 snapshot survives a brotli
 // compress → decompress → V2-decode cycle.

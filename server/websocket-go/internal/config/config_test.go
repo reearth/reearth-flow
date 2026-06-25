@@ -229,10 +229,45 @@ func TestOTLPAndAuthOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadLoggingDefaults(t *testing.T) {
+	clearEnv(t) // app env unset ⇒ development ⇒ text
+	c := Load()
+	if c.LogLevel != "info" {
+		t.Errorf("LogLevel = %q, want info", c.LogLevel)
+	}
+	if c.LogFormat != "text" {
+		t.Errorf("LogFormat = %q, want text (dev default)", c.LogFormat)
+	}
+}
+
+func TestLoadLoggingProductionDefaultsToJSON(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("REEARTH_FLOW_APP_ENV", "production")
+	if got := Load().LogFormat; got != "json" {
+		t.Errorf("LogFormat = %q, want json for a non-dev environment", got)
+	}
+}
+
+func TestLoadLoggingOverrides(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("REEARTH_FLOW_LOG_LEVEL", "debug")
+	t.Setenv("REEARTH_FLOW_LOG_FORMAT", "text")
+	t.Setenv("REEARTH_FLOW_APP_ENV", "production")
+	c := Load()
+	if c.LogLevel != "debug" {
+		t.Errorf("LogLevel = %q, want debug", c.LogLevel)
+	}
+	if c.LogFormat != "text" {
+		t.Errorf("LogFormat = %q, want explicit text override even in production", c.LogFormat)
+	}
+}
+
 // clearEnv unsets every env var Load reads so a test starts from a clean slate.
 func clearEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
+		"REEARTH_FLOW_LOG_LEVEL",
+		"REEARTH_FLOW_LOG_FORMAT",
 		"REEARTH_FLOW_REDIS_URL",
 		"REEARTH_FLOW_GCS_BUCKET_NAME",
 		"REEARTH_FLOW_GCS_ENDPOINT",

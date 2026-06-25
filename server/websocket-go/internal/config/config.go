@@ -21,6 +21,11 @@ type Config struct {
 	ThriftAuthURL string
 	// AppEnv is the environment label (development/production).
 	AppEnv string
+	// LogLevel is the slog verbosity: debug/info/warn/error. Default info.
+	LogLevel string
+	// LogFormat is the slog handler format: json or text. Defaults to json in a
+	// non-dev environment (for Cloud Run log ingestion) and text in development.
+	LogFormat string
 	// Origins is the CORS / WebSocket allow-list (comma-split, trimmed).
 	Origins []string
 	// WSPort is the listen port (default 8000), not Cloud Run's $PORT.
@@ -59,6 +64,7 @@ const (
 	defaultGCSBucketName = "yrs-dev"
 	defaultThriftAuthURL = "http://localhost:8080"
 	defaultAppEnv        = "development"
+	defaultLogLevel      = "info"
 	defaultWSPort        = 8000
 
 	defaultMaxConnections  = 10000
@@ -85,12 +91,15 @@ var defaultOrigins = []string{
 // Load reads configuration from the environment, applying defaults for any
 // unset (or empty) variable.
 func Load() *Config {
+	appEnv := envOr("REEARTH_FLOW_APP_ENV", defaultAppEnv)
 	return &Config{
 		RedisURL:      envOr("REEARTH_FLOW_REDIS_URL", defaultRedisURL),
 		GCSBucketName: envOr("REEARTH_FLOW_GCS_BUCKET_NAME", defaultGCSBucketName),
 		GCSEndpoint:   os.Getenv("REEARTH_FLOW_GCS_ENDPOINT"),
 		ThriftAuthURL: envOr("REEARTH_FLOW_THRIFT_AUTH_URL", defaultThriftAuthURL),
-		AppEnv:        envOr("REEARTH_FLOW_APP_ENV", defaultAppEnv),
+		AppEnv:        appEnv,
+		LogLevel:      envOr("REEARTH_FLOW_LOG_LEVEL", defaultLogLevel),
+		LogFormat:     envOr("REEARTH_FLOW_LOG_FORMAT", defaultLogFormat(appEnv)),
 		Origins:       origins(os.Getenv("REEARTH_FLOW_ORIGINS")),
 		WSPort:        envPort("REEARTH_FLOW_WS_PORT", defaultWSPort),
 		APISecret:     os.Getenv("REEARTH_FLOW_API_SECRET"),
@@ -110,6 +119,25 @@ func Load() *Config {
 		OTLPBatchTimeout:       envDuration("REEARTH_FLOW_OTEL_BATCH_TIMEOUT", defaultOTLPBatchTimeout),
 		OTLPMaxExportBatchSize: envPositive("REEARTH_FLOW_OTEL_MAX_EXPORT_BATCH_SIZE", defaultOTLPMaxExportBatchSize),
 		OTLPMaxQueueSize:       envPositive("REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE", defaultOTLPMaxQueueSize),
+	}
+}
+
+// defaultLogFormat chooses structured JSON for non-dev environments (so Cloud
+// Run ingests structured logs) and human-readable text for local development.
+func defaultLogFormat(appEnv string) string {
+	if isDevEnv(appEnv) {
+		return "text"
+	}
+	return "json"
+}
+
+// isDevEnv reports whether appEnv names a development-like environment.
+func isDevEnv(appEnv string) bool {
+	switch strings.ToLower(strings.TrimSpace(appEnv)) {
+	case "", "development", "dev", "local", "test":
+		return true
+	default:
+		return false
 	}
 }
 

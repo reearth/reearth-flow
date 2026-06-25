@@ -75,7 +75,16 @@ func (a *Adapter) snapshotPrefix(room DocID) string {
 
 // Load returns the latest merged state for room (v2-first → v1 fallback), folding
 // any tail update objects on top.
-func (a *Adapter) Load(ctx context.Context, room string) (persistence.LoadResult, error) {
+//
+// Errors are logged at ERROR here (with the room) because the WebSocket upgrade
+// path discards the cause behind a bare "500 room unavailable": this is the only
+// place the real reason a connect failed is recorded.
+func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadResult, err error) {
+	defer func() {
+		if err != nil {
+			a.log.Error("gcs load failed", "room", room, "err", err)
+		}
+	}()
 	if err := a.validate(room); err != nil {
 		return persistence.LoadResult{}, err
 	}
