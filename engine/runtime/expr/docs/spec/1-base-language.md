@@ -249,6 +249,22 @@ Iteration by type:
 
 Index failure (missing key, out of bounds, wrong type) should trigger an evaluation error.
 
+## slicing
+
+`x[start:stop]` or `x[start:stop:step]` returns a subsequence of `x` of the same type.
+Slicing is supported for `list` and `str`.
+
+`start`, `stop`, and `step` are all optional integers.
+`step` defaults to `1` and must not be `0`.
+Negative `start` and `stop` count from the end.
+Out-of-range `start` and `stop` values are clamped to the valid range.
+
+For positive `step`, elements at indices `start` (inclusive) up to `stop` (exclusive) are selected.
+`start` defaults to `0`; `stop` defaults to the length.
+
+For negative `step`, elements at indices `start` (inclusive) down to `stop` (exclusive) are selected.
+`start` defaults to the last index; `stop` defaults to before the first index.
+
 ## scoping
 
 Variables are scoped to the whole program.
