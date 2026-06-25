@@ -84,7 +84,7 @@ impl fmt::Debug for ClosureValue {
 pub struct TypeValue {
     pub name: String,
     pub constructor: Option<NativeFn>,
-    pub resolve_method: Option<fn(Value, &str) -> Result<Value>>,
+    pub resolve_method: Option<fn(Value, &str) -> Result<NativeFn>>,
 }
 
 impl TypeValue {
@@ -96,7 +96,7 @@ impl TypeValue {
         }
     }
 
-    pub fn with_method_resolver(mut self, f: fn(Value, &str) -> Result<Value>) -> Self {
+    pub fn with_method_resolver(mut self, f: fn(Value, &str) -> Result<NativeFn>) -> Self {
         self.resolve_method = Some(f);
         self
     }

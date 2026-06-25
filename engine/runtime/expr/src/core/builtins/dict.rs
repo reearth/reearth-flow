@@ -99,8 +99,9 @@ fn update(args: &[Value]) -> Result<Value> {
     let Value::Dict(other) = &args[1] else {
         return Err(eval_error("update() argument must be a dict"));
     };
+    let mut dst = rc.borrow_mut();
     for (k, v) in other.borrow().iter() {
-        rc.borrow_mut().insert(k.clone(), v.clone());
+        dst.insert(k.clone(), v.clone());
     }
     Ok(Value::Null)
 }

@@ -26,7 +26,9 @@ For string `s`, `s.lower()` returns a copy of `s` converted to lowercase.
 
 ### `split`
 
-For string `s`, `s.split(sep)` splits `s` on `sep` from left to right, returning a list of parts.
+For string `s`, `s.split()` splits `s` on any whitespace, returning a list of non-empty parts.
+
+`s.split(sep)` splits `s` on `sep` from left to right, returning a list of parts.
 
 `s.split(sep, limit)` splits at most `limit` times, producing at most `limit + 1` parts.
 

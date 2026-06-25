@@ -32,7 +32,7 @@ pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
     let f = METHODS
         .get(method)
         .copied()
-        .ok_or_else(|| eval_error(format!("String has no method '{method}'")))?;
+        .ok_or_else(|| eval_error(format!("str has no method '{method}'")))?;
     Ok(NativeFn::new(move |args| {
         let mut a = vec![recv.clone()];
         a.extend_from_slice(args);
