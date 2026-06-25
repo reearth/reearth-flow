@@ -1662,7 +1662,11 @@ mod tests {
         assert!(try_run("[a, b, c] = [1, 2]", &[]).is_err());
         assert!(try_run("[a, b] = 42", &[]).is_err());
         // RHS fully evaluated before any binding: swap works correctly
-        assert_eval("a = 1; b = 2; [a, b] = [b, a]; [a, b]", &[], Value::from(vec![2i64, 1i64]));
+        assert_eval(
+            "a = 1; b = 2; [a, b] = [b, a]; [a, b]",
+            &[],
+            Value::from(vec![2i64, 1i64]),
+        );
     }
 
     #[test]
