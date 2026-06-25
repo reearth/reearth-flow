@@ -8,7 +8,7 @@ use super::value::Value;
 /// A single scope frame in the environment chain.
 pub struct Frame {
     pub bindings: HashMap<String, Value>,
-    /// Parent frame — None for the root (default env) frame.
+    /// Parent frame. Root frames are immutable.
     pub parent: Option<Env>,
 }
 
