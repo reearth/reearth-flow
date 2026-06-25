@@ -4,9 +4,7 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
-use super::builtins::{
-    builtin_itertools, builtin_json, builtin_math, regex_type_value, url_type_value,
-};
+use super::builtins::{builtin_itertools, builtin_json, builtin_math, regex_type_value};
 use super::builtins::{dict as dict_methods, list as list_methods, str as str_methods};
 use super::env::{new_frame, Env};
 use super::error::{eval_error, Error, Result, POS_UNSET};
@@ -166,7 +164,6 @@ thread_local! {
         env_bind(&env, "bool", Value::Type(BOOL_TYPE.with(Rc::clone)));
         env_bind(&env, "list", Value::Type(LIST_TYPE.with(Rc::clone)));
         env_bind(&env, "dict", Value::Type(DICT_TYPE.with(Rc::clone)));
-        env_bind(&env, "Url", Value::Type(url_type_value()));
         env_bind(&env, "Regex", Value::Type(regex_type_value()));
         env_bind(&env, "math", builtin_math());
         env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
