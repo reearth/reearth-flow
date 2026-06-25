@@ -22,6 +22,9 @@ Refer to spec sections from code with anchors following the GitHub convention: c
 
 ## Writing Style Guideline
 
-- Sections should be atomic and describe one point, not a group of points - use child sections for that.
-- Avoid duplicating existing points. Use cross-reference, especially when new spec extends previous spec's some section.
-- Though generally should be avoided, "must" indicates forward compatibility break.
+- Do not mix multiple language features into one section. For multiple related features, use subsections.
+- Each section should be self-contained. Rationale, exceptions, and history belong in the section body, not as subsections.
+- Avoid rewording existing points. Use cross-reference, especially when new spec extends some previous spec's section.
+- Do not over-specify. Simply do not mention a behavior if it is undefined. For example:
+    "`+` adds two numerical values, and errors on other types" is bad since it breaks extensibility forever.
+    The better style is to simply not mention the error behavior, or specify the exact types that should error.

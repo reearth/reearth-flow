@@ -116,14 +116,42 @@ pub fn env_remove(env: &Env, name: &str) {
     env.borrow_mut().bindings.remove(name);
 }
 
+fn str_resolve_method(recv: Value, attr: &str) -> Result<Value> {
+    str_methods::resolve_method(recv, attr).map(Value::Fn)
+}
+
+fn list_resolve_method(recv: Value, attr: &str) -> Result<Value> {
+    list_methods::resolve_method(recv, attr).map(Value::Fn)
+}
+
+fn dict_resolve_method(recv: Value, attr: &str) -> Result<Value> {
+    dict_methods::resolve_method(recv, attr).map(Value::Fn)
+}
+
+fn int_resolve_method(recv: Value, attr: &str) -> Result<Value> {
+    let Value::Int(n) = recv else { unreachable!() };
+    match attr {
+        "bit_length" => Ok(Value::Fn(NativeFn::new(move |args| {
+            expect_arity("int.bit_length", args, 0, 0)?;
+            if n < 0 {
+                return Err(eval_error(
+                    "bit_length() not supported for negative integers",
+                ));
+            }
+            Ok(Value::Int((i64::BITS - n.leading_zeros()) as i64))
+        }))),
+        _ => Err(eval_error(format!("int has no attribute '{attr}'"))),
+    }
+}
+
 thread_local! {
     static NULL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("nullType", None));
     static BOOL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("bool", Some(NativeFn::new(builtin_bool))));
-    static INT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("int", Some(NativeFn::new(builtin_int))));
+    static INT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("int", Some(NativeFn::new(builtin_int))).with_method_resolver(int_resolve_method));
     static FLOAT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("float", Some(NativeFn::new(builtin_float))));
-    static STR_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("str", Some(NativeFn::new(builtin_str))));
-    static LIST_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("list", Some(NativeFn::new(builtin_list))));
-    static DICT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("dict", Some(NativeFn::new(builtin_dict))));
+    static STR_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("str", Some(NativeFn::new(builtin_str))).with_method_resolver(str_resolve_method));
+    static LIST_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("list", Some(NativeFn::new(builtin_list))).with_method_resolver(list_resolve_method));
+    static DICT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("dict", Some(NativeFn::new(builtin_dict))).with_method_resolver(dict_resolve_method));
     static FN_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("function", None));
     static MODULE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("module", None));
     static TYPE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("type", Some(NativeFn::new(builtin_type))));
@@ -223,21 +251,27 @@ fn resolve_attr(recv: Value, attr: &str) -> Result<Value> {
             .get(attr)
             .cloned()
             .ok_or_else(|| eval_error(format!("module has no attribute '{attr}'"))),
-        Value::Int(n) => match attr {
-            "bit_length" => Ok(Value::Fn(NativeFn::new(move |args| {
-                expect_arity("int.bit_length", args, 0, 0)?;
-                if n < 0 {
-                    return Err(eval_error(
-                        "bit_length() not supported for negative integers",
-                    ));
-                }
-                Ok(Value::Int((i64::BITS - n.leading_zeros()) as i64))
-            }))),
-            _ => Err(eval_error(format!("int has no attribute '{attr}'"))),
+        Value::Type(tv) => match tv.resolve_method {
+            Some(f) => {
+                let attr = attr.to_string();
+                Ok(Value::Fn(NativeFn::new(move |args| {
+                    let [recv, rest @ ..] = args else {
+                        return Err(eval_error(format!(
+                            "unbound method '{attr}' requires an instance as first argument"
+                        )));
+                    };
+                    let bound = f(recv.clone(), &attr)?;
+                    match bound {
+                        Value::Fn(native) => native.call(rest),
+                        _ => unreachable!(),
+                    }
+                })))
+            }
+            None => Err(eval_error(format!(
+                "type '{}' has no attribute '{attr}'",
+                tv.name
+            ))),
         },
-        recv @ Value::String(_) => str_methods::resolve_method(recv, attr).map(Value::Fn),
-        recv @ Value::List(_) => list_methods::resolve_method(recv, attr).map(Value::Fn),
-        recv @ Value::Dict(_) => dict_methods::resolve_method(recv, attr).map(Value::Fn),
         Value::Object(rc) => {
             if let Some(result) = rc.get_property(attr) {
                 return result;
@@ -247,10 +281,13 @@ fn resolve_attr(recv: Value, attr: &str) -> Result<Value> {
                 rc.call_method(&attr, args)
             })))
         }
-        v => Err(eval_error(format!(
-            "{} has no attribute '{attr}'",
-            v.type_name()
-        ))),
+        recv => {
+            let tv = type_of(&recv);
+            match tv.resolve_method {
+                Some(f) => f(recv, attr),
+                None => Err(eval_error(format!("{} has no attribute '{attr}'", tv.name))),
+            }
+        }
     }
 }
 

@@ -132,6 +132,7 @@ Operators listed from lowest to highest precedence.
 `left` and `right` denote associativity of binary operators;
 `prefix` and `postfix` denote unary operators.
 
+- `=` `+=` `-=` `*=` `/=` `//=` `%=` `**=` `&=` `|=` `^=` `<<=` `>>=` (right)
 - `or` (left)
 - `and` (left)
 - `not` (prefix)
@@ -182,6 +183,19 @@ Right shift with an amount at or beyond the positive range of the integer type r
 
 `v not in x` is the negation of `v in x`.
 
+### string and list concatenation
+
+`a + b` concatenates two strings or two lists. For lists, the result is a new concatenated list; neither operand is modified.
+
+### ordering
+
+`str` values are ordered lexicographically by Unicode codepoint.
+`list` values are ordered lexicographically element-by-element; a shorter list is less than a longer one if all shared elements are equal.
+
+### equality
+
+`list` equality is element-by-element recursive. `dict` equality is key-value recursive.
+
 ## block
 
 A block is a sequence of expressions separated by `;`. It evaluates to its last expression.
@@ -195,6 +209,7 @@ A program is a block.
 ## return
 
 `return v` exits early, producing `v` as the result of the program.
+`return` with no value produces `null`.
 
 ## control flow
 
@@ -207,6 +222,17 @@ Without an `else` branch, the result is `null` when the condition is false.
 ### while
 
 `while cond { ... }` loops while `cond` is truthy.
+
+### for
+
+`for var in expr { ... }` iterates over `expr` and binds each item to `var` for the body.
+
+Iteration by type:
+
+- `list`: each element in order
+- `str`: each Unicode codepoint as a single-character string, in order
+- `dict`: each key as a string, in insertion order
+
 
 ## indexing
 
@@ -228,6 +254,14 @@ A variable bound by `=` is accessible from that point to the end of the program.
 `=` is the assignment operator. It overwrites the existing binding of a name or creates a new one.
 
 `a[i] = v` assigns to an element: an integer index into a list, or a string key into a dict.
+
+## len
+
+`len(x)` returns the number of elements in `x`:
+
+- `str`: number of Unicode codepoints
+- `list`: number of elements
+- `dict`: number of entries
 
 ## numeric coercion
 

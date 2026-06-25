@@ -9,7 +9,13 @@ use super::MethodFn;
 
 static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
     HashMap::from([
-        ("trim", trim as MethodFn),
+        ("strip", strip as MethodFn),
+        ("lstrip", lstrip as MethodFn),
+        ("rstrip", rstrip as MethodFn),
+        ("upper", upper as MethodFn),
+        ("lower", lower as MethodFn),
+        ("find", find as MethodFn),
+        ("rfind", rfind as MethodFn),
         ("split", split as MethodFn),
         ("rsplit", rsplit as MethodFn),
         ("starts_with", starts_with as MethodFn),
@@ -34,9 +40,49 @@ pub fn resolve_method(recv: Value, method: &str) -> Result<NativeFn> {
     }))
 }
 
-fn trim(args: &[Value]) -> Result<Value> {
-    expect_arity("str.trim", &args[1..], 0, 0)?;
+fn strip(args: &[Value]) -> Result<Value> {
+    expect_arity("str.strip", &args[1..], 0, 0)?;
     Ok(Value::String(args[0].as_str()?.trim().to_string()))
+}
+
+fn lstrip(args: &[Value]) -> Result<Value> {
+    expect_arity("str.lstrip", &args[1..], 0, 0)?;
+    Ok(Value::String(args[0].as_str()?.trim_start().to_string()))
+}
+
+fn rstrip(args: &[Value]) -> Result<Value> {
+    expect_arity("str.rstrip", &args[1..], 0, 0)?;
+    Ok(Value::String(args[0].as_str()?.trim_end().to_string()))
+}
+
+fn upper(args: &[Value]) -> Result<Value> {
+    expect_arity("str.upper", &args[1..], 0, 0)?;
+    Ok(Value::String(args[0].as_str()?.to_uppercase()))
+}
+
+fn lower(args: &[Value]) -> Result<Value> {
+    expect_arity("str.lower", &args[1..], 0, 0)?;
+    Ok(Value::String(args[0].as_str()?.to_lowercase()))
+}
+
+fn find(args: &[Value]) -> Result<Value> {
+    expect_arity("str.find", &args[1..], 1, 1)?;
+    let s = args[0].as_str()?;
+    let sub = args[1].as_str()?;
+    Ok(match s.find(sub) {
+        Some(byte_pos) => Value::Int(s[..byte_pos].chars().count() as i64),
+        None => Value::Null,
+    })
+}
+
+fn rfind(args: &[Value]) -> Result<Value> {
+    expect_arity("str.rfind", &args[1..], 1, 1)?;
+    let s = args[0].as_str()?;
+    let sub = args[1].as_str()?;
+    Ok(match s.rfind(sub) {
+        Some(byte_pos) => Value::Int(s[..byte_pos].chars().count() as i64),
+        None => Value::Null,
+    })
 }
 
 fn split_limit(v: &Value) -> Result<usize> {
@@ -48,8 +94,15 @@ fn split_limit(v: &Value) -> Result<usize> {
 }
 
 fn split(args: &[Value]) -> Result<Value> {
-    expect_arity("str.split", &args[1..], 1, 2)?;
+    expect_arity("str.split", &args[1..], 0, 2)?;
     let s = args[0].as_str()?;
+    if args.len() == 1 {
+        let parts: Vec<Value> = s
+            .split_whitespace()
+            .map(|p| Value::String(p.to_string()))
+            .collect();
+        return Ok(Value::list(parts));
+    }
     let sep = args[1].as_str()?;
     let n = args.get(2).map(split_limit).transpose()?;
     let parts: Vec<Value> = match n {
@@ -415,21 +468,45 @@ mod tests {
 
     #[test]
     fn test_split() {
-        assert_eval(r#""foo:bar".split(":")[0]"#, &[], Value::from("foo"));
-        assert_eval(r#""foo:bar".split(":")[-1]"#, &[], Value::from("bar"));
-        assert_eval(r#""a/b/c".split("/", 1)[0]"#, &[], Value::from("a"));
-        assert_eval(r#""a/b/c".split("/", 1)[1]"#, &[], Value::from("b/c"));
+        assert_eval(
+            r#""foo:bar".split(":")"#,
+            &[],
+            Value::from(vec!["foo", "bar"]),
+        );
+        assert_eval(
+            r#""a/b/c".split("/", 1)"#,
+            &[],
+            Value::from(vec!["a", "b/c"]),
+        );
+        // no separator: split on whitespace runs, strip leading/trailing
+        assert_eval(
+            r#""  foo   bar  ".split()"#,
+            &[],
+            Value::from(vec!["foo", "bar"]),
+        );
+        assert_eval(
+            r#""hello\tworld\n".split()"#,
+            &[],
+            Value::from(vec!["hello", "world"]),
+        );
     }
 
     #[test]
     fn test_rsplit() {
-        assert_eval(r#""a/b/c".rsplit("/")[-1]"#, &[], Value::from("c"));
-        assert_eval(r#""a/b/c".rsplit("/", 1)[-1]"#, &[], Value::from("c"));
-        assert_eval(r#""a/b/c".rsplit("/", 1)[0]"#, &[], Value::from("a/b"));
         assert_eval(
-            r#""path/to/file.txt".rsplit("/", 1)[-1]"#,
+            r#""a/b/c".rsplit("/")"#,
             &[],
-            Value::from("file.txt"),
+            Value::from(vec!["a", "b", "c"]),
+        );
+        assert_eval(
+            r#""a/b/c".rsplit("/", 1)"#,
+            &[],
+            Value::from(vec!["a/b", "c"]),
+        );
+        assert_eval(
+            r#""path/to/file.txt".rsplit("/", 1)"#,
+            &[],
+            Value::from(vec!["path/to", "file.txt"]),
         );
     }
 
@@ -560,8 +637,24 @@ mod tests {
     }
 
     #[test]
-    fn test_trim() {
-        assert_eval(r#""  hello  ".trim()"#, &[], Value::from("hello"));
+    fn test_find() {
+        assert_eval(r#""foobar".find("bar")"#, &[], Value::from(3i64));
+        assert_eval(r#""foobar".find("baz")"#, &[], Value::Null);
+        assert_eval(r#""abcabc".rfind("b")"#, &[], Value::from(4i64));
+        assert_eval(r#""foobar".rfind("baz")"#, &[], Value::Null);
+    }
+
+    #[test]
+    fn test_strip() {
+        assert_eval(r#""  hello  ".strip()"#, &[], Value::from("hello"));
+        assert_eval(r#""  hello  ".lstrip()"#, &[], Value::from("hello  "));
+        assert_eval(r#""  hello  ".rstrip()"#, &[], Value::from("  hello"));
+    }
+
+    #[test]
+    fn test_upper_lower() {
+        assert_eval(r#""Hello World".upper()"#, &[], Value::from("HELLO WORLD"));
+        assert_eval(r#""Hello World".lower()"#, &[], Value::from("hello world"));
     }
 
     #[test]
