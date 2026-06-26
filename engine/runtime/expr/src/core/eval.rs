@@ -4,9 +4,7 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
-use super::builtins::{
-    builtin_itertools, builtin_json, builtin_math, regex_type_value, url_type_value,
-};
+use super::builtins::{builtin_itertools, builtin_json, builtin_math, regex_type_value};
 use super::builtins::{dict as dict_methods, list as list_methods, str as str_methods};
 use super::env::{new_frame, Env};
 use super::error::{eval_error, Error, Result, POS_UNSET};
@@ -116,14 +114,32 @@ pub fn env_remove(env: &Env, name: &str) {
     env.borrow_mut().bindings.remove(name);
 }
 
+fn int_resolve_method(recv: Value, attr: &str) -> Result<NativeFn> {
+    let Value::Int(n) = recv else {
+        return Err(eval_error("int method called on non-int receiver"));
+    };
+    match attr {
+        "bit_length" => Ok(NativeFn::new(move |args| {
+            expect_arity("int.bit_length", args, 0, 0)?;
+            if n < 0 {
+                return Err(eval_error(
+                    "bit_length() not supported for negative integers",
+                ));
+            }
+            Ok(Value::Int((i64::BITS - n.leading_zeros()) as i64))
+        })),
+        _ => Err(eval_error(format!("int has no attribute '{attr}'"))),
+    }
+}
+
 thread_local! {
     static NULL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("nullType", None));
     static BOOL_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("bool", Some(NativeFn::new(builtin_bool))));
-    static INT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("int", Some(NativeFn::new(builtin_int))));
+    static INT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("int", Some(NativeFn::new(builtin_int))).with_method_resolver(int_resolve_method));
     static FLOAT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("float", Some(NativeFn::new(builtin_float))));
-    static STR_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("str", Some(NativeFn::new(builtin_str))));
-    static LIST_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("list", Some(NativeFn::new(builtin_list))));
-    static DICT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("dict", Some(NativeFn::new(builtin_dict))));
+    static STR_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("str", Some(NativeFn::new(builtin_str))).with_method_resolver(str_methods::resolve_method));
+    static LIST_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("list", Some(NativeFn::new(builtin_list))).with_method_resolver(list_methods::resolve_method));
+    static DICT_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("dict", Some(NativeFn::new(builtin_dict))).with_method_resolver(dict_methods::resolve_method));
     static FN_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("function", None));
     static MODULE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("module", None));
     static TYPE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("type", Some(NativeFn::new(builtin_type))));
@@ -138,7 +154,6 @@ thread_local! {
         env_bind(&env, "bool", Value::Type(BOOL_TYPE.with(Rc::clone)));
         env_bind(&env, "list", Value::Type(LIST_TYPE.with(Rc::clone)));
         env_bind(&env, "dict", Value::Type(DICT_TYPE.with(Rc::clone)));
-        env_bind(&env, "Url", Value::Type(url_type_value()));
         env_bind(&env, "Regex", Value::Type(regex_type_value()));
         env_bind(&env, "math", builtin_math());
         env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
@@ -223,21 +238,23 @@ fn resolve_attr(recv: Value, attr: &str) -> Result<Value> {
             .get(attr)
             .cloned()
             .ok_or_else(|| eval_error(format!("module has no attribute '{attr}'"))),
-        Value::Int(n) => match attr {
-            "bit_length" => Ok(Value::Fn(NativeFn::new(move |args| {
-                expect_arity("int.bit_length", args, 0, 0)?;
-                if n < 0 {
-                    return Err(eval_error(
-                        "bit_length() not supported for negative integers",
-                    ));
-                }
-                Ok(Value::Int((i64::BITS - n.leading_zeros()) as i64))
-            }))),
-            _ => Err(eval_error(format!("int has no attribute '{attr}'"))),
+        Value::Type(tv) => match tv.resolve_method {
+            Some(f) => {
+                let attr = attr.to_string();
+                Ok(Value::Fn(NativeFn::new(move |args| {
+                    let [recv, rest @ ..] = args else {
+                        return Err(eval_error(format!(
+                            "unbound method '{attr}' requires an instance as first argument"
+                        )));
+                    };
+                    f(recv.clone(), &attr)?.call(rest)
+                })))
+            }
+            None => Err(eval_error(format!(
+                "type '{}' has no attribute '{attr}'",
+                tv.name
+            ))),
         },
-        recv @ Value::String(_) => str_methods::resolve_method(recv, attr).map(Value::Fn),
-        recv @ Value::List(_) => list_methods::resolve_method(recv, attr).map(Value::Fn),
-        recv @ Value::Dict(_) => dict_methods::resolve_method(recv, attr).map(Value::Fn),
         Value::Object(rc) => {
             if let Some(result) = rc.get_property(attr) {
                 return result;
@@ -247,10 +264,13 @@ fn resolve_attr(recv: Value, attr: &str) -> Result<Value> {
                 rc.call_method(&attr, args)
             })))
         }
-        v => Err(eval_error(format!(
-            "{} has no attribute '{attr}'",
-            v.type_name()
-        ))),
+        recv => {
+            let tv = type_of(&recv);
+            match tv.resolve_method {
+                Some(f) => f(recv, attr).map(Value::Fn),
+                None => Err(eval_error(format!("{} has no attribute '{attr}'", tv.name))),
+            }
+        }
     }
 }
 
@@ -1422,6 +1442,7 @@ mod tests {
             &[("a", a), ("b", b)],
             Value::from(vec![1i64, 2i64, 3i64, 4i64]),
         );
+        assert!(try_run("1 // 0", &[]).is_err());
     }
 
     #[test]
@@ -1480,6 +1501,11 @@ mod tests {
         assert_eval("1 != 2", &[], Value::from(true));
         assert_eval("2 > 1", &[], Value::from(true));
         assert_eval("1 >= 1", &[], Value::from(true));
+        assert_eval(r#""a" < "b""#, &[], Value::from(true));
+        assert_eval(r#""b" > "a""#, &[], Value::from(true));
+        assert_eval(r#""abc" > "ab""#, &[], Value::from(true));
+        assert_eval(r#""abc" == "abc""#, &[], Value::from(true));
+        assert_eval(r#""abc" <= "abc""#, &[], Value::from(true));
     }
 
     #[test]
@@ -1511,6 +1537,9 @@ mod tests {
         // `or` returns the left operand when truthy, else the right operand
         assert_eval("1 or 2", &[], Value::from(1i64));
         assert_eval("0 or 2", &[], Value::from(2i64));
+        // short-circuit: RHS must not be evaluated when result is already determined
+        assert_eval("false and missing_var", &[], Value::from(false));
+        assert_eval("true or missing_var", &[], Value::from(true));
     }
 
     #[test]
@@ -1557,6 +1586,7 @@ mod tests {
         assert!(try_run("arr[s:]", &[("arr", arr.clone()), ("s", Value::Float(1.0))]).is_err());
         assert!(try_run("arr[:s]", &[("arr", arr.clone()), ("s", Value::Float(3.0))]).is_err());
         assert!(try_run("arr[::s]", &[("arr", arr), ("s", Value::Float(2.0))]).is_err());
+        assert!(try_run(r#""abc"[::0]"#, &[]).is_err());
     }
 
     #[test]
@@ -1617,6 +1647,12 @@ mod tests {
         assert!(try_run("[a, b] = [1, 2, 3]", &[]).is_err());
         assert!(try_run("[a, b, c] = [1, 2]", &[]).is_err());
         assert!(try_run("[a, b] = 42", &[]).is_err());
+        // RHS fully evaluated before any binding: swap works correctly
+        assert_eval(
+            "a = 1; b = 2; [a, b] = [b, a]; [a, b]",
+            &[],
+            Value::from(vec![2i64, 1i64]),
+        );
     }
 
     #[test]
@@ -1711,7 +1747,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cast() {
+    fn test_constructor() {
         assert_eval(r#"str("hello")"#, &[], Value::from("hello"));
         assert_eval(r#"str(42)"#, &[], Value::from("42"));
         assert_eval(r#"str(true)"#, &[], Value::from("true"));
@@ -1760,6 +1796,17 @@ mod tests {
             indexmap::indexmap! { "x".into() => Value::from(1i64), "y".into() => Value::from(2i64) },
         );
         assert_eval("list(m)", &[("m", m)], Value::from(vec!["x", "y"]));
+        assert_eval("bool()", &[], Value::from(false));
+        assert_eval("int()", &[], Value::from(0i64));
+        assert_eval("float()", &[], Value::from(0.0f64));
+        assert_eval("str()", &[], Value::from(""));
+        assert_eval("list()", &[], Value::list(vec![]));
+        assert_eval("bool(0.0)", &[], Value::from(false));
+        assert_eval("bool(1.0)", &[], Value::from(true));
+        assert_eval("bool([])", &[], Value::from(false));
+        assert_eval("bool([0])", &[], Value::from(true));
+        assert_eval("bool({})", &[], Value::from(false));
+        assert_eval(r#"bool({"a": 1})"#, &[], Value::from(true));
     }
 
     #[test]
@@ -1904,8 +1951,7 @@ mod tests {
 
     #[test]
     fn test_var() {
-        let env = default_env();
-        assert!(eval(&parse("missing").unwrap(), &env).is_err());
+        assert!(try_run("missing", &[]).is_err());
     }
 
     #[test]

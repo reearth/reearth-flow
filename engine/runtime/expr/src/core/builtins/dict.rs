@@ -17,6 +17,8 @@ static METHODS: LazyLock<HashMap<&'static str, MethodFn>> = LazyLock::new(|| {
         ("values", values as MethodFn),
         ("items", items as MethodFn),
         ("get", get as MethodFn),
+        ("pop", pop as MethodFn),
+        ("update", update as MethodFn),
     ])
 });
 
@@ -78,6 +80,33 @@ fn get(args: &[Value]) -> Result<Value> {
         .get(k)
         .cloned()
         .unwrap_or_else(|| fallback.cloned().unwrap_or(Value::Null)))
+}
+
+fn pop(args: &[Value]) -> Result<Value> {
+    expect_arity("dict.pop", &args[1..], 1, 1)?;
+    let Value::Dict(rc) = &args[0] else {
+        return Err(eval_error("expected dict receiver"));
+    };
+    let k = args[1].as_str()?;
+    Ok(rc.borrow_mut().shift_remove(k).unwrap_or(Value::Null))
+}
+
+fn update(args: &[Value]) -> Result<Value> {
+    expect_arity("dict.update", &args[1..], 1, 1)?;
+    let Value::Dict(rc) = &args[0] else {
+        return Err(eval_error("expected dict receiver"));
+    };
+    let Value::Dict(other) = &args[1] else {
+        return Err(eval_error("update() argument must be a dict"));
+    };
+    if TrackedRc::ptr_eq(rc, other) {
+        return Ok(Value::Null);
+    }
+    let mut dst = rc.borrow_mut();
+    for (k, v) in other.borrow().iter() {
+        dst.insert(k.clone(), v.clone());
+    }
+    Ok(Value::Null)
 }
 
 pub fn eq_inner(
@@ -146,6 +175,46 @@ mod tests {
         assert_eval("m.get(\"z\")", &[("m", m.clone())], Value::Null);
         assert_eval("m.get(\"z\", 42)", &[("m", m.clone())], Value::from(42i64));
         assert_eval("m.get(\"x\", 99)", &[("m", m)], Value::from(1i64));
+    }
+
+    #[test]
+    fn test_pop() {
+        let m = Value::dict(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+            "y".into() => Value::from(2i64),
+        });
+        assert_eval("m.pop(\"x\")", &[("m", m.clone())], Value::from(1i64));
+        assert_eval("m.pop(\"z\")", &[("m", m.clone())], Value::Null);
+        assert_eval(
+            "m.pop(\"x\"); m.keys()",
+            &[("m", m)],
+            Value::from(vec!["y"]),
+        );
+    }
+
+    #[test]
+    fn test_update() {
+        let m = Value::dict(indexmap::indexmap! {
+            "x".into() => Value::from(1i64),
+        });
+        assert_eval(
+            "m.update({\"y\": 2, \"x\": 99}); m.get(\"x\")",
+            &[("m", m.clone())],
+            Value::from(99i64),
+        );
+        assert_eval(
+            "m.update({\"y\": 2}); m.keys()",
+            &[("m", m)],
+            Value::from(vec!["x", "y"]),
+        );
+        assert_eval(
+            "m.update(m); m.get(\"x\")",
+            &[(
+                "m",
+                Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) }),
+            )],
+            Value::from(1i64),
+        );
     }
 
     #[test]

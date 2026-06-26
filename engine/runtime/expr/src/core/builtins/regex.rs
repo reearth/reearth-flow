@@ -70,7 +70,6 @@ fn capture_to_value(cap: &regex::Captures, num_groups: usize) -> Value {
     }
 }
 
-// null-as-falsy is intentional — see docs/design.md#regex-find-null-falsy
 fn regex_find(regex: &Regex, s: &str) -> Value {
     let num_groups = regex.captures_len() - 1;
     if num_groups == 0 {
