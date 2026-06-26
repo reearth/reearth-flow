@@ -1951,8 +1951,7 @@ mod tests {
 
     #[test]
     fn test_var() {
-        let env = default_env();
-        assert!(eval(&parse("missing").unwrap(), &env).is_err());
+        assert!(try_run("missing", &[]).is_err());
     }
 
     #[test]
