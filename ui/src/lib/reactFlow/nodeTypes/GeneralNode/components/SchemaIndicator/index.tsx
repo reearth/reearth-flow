@@ -11,9 +11,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@flow/components";
-import { TYPE_COLOR } from "@flow/features/Editor/components/ParamsDialog/components/ValueEditorDialog/components/flowExprConstants";
 import { useT } from "@flow/lib/i18n";
-import { useReaderSchemaProbes } from "@flow/stores";
+import { useIndexedDB } from "@flow/lib/indexedDB";
+import { useCurrentProject } from "@flow/stores";
 import type { FieldReport, NodeSchemaMeta } from "@flow/types";
 
 type Props = {
@@ -37,8 +37,11 @@ const collectFields = (schema?: NodeSchemaMeta): FieldReport[] => {
 
 const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
   const t = useT();
-  const [probes] = useReaderSchemaProbes();
-  const probe = probes[nodeId];
+  const [currentProject] = useCurrentProject();
+  const { value: previewSchemaState } = useIndexedDB("previewSchema");
+  const probe = previewSchemaState?.probes?.find(
+    (p) => p.nodeId === nodeId && p.projectId === currentProject?.id,
+  );
 
   const fields = useMemo(() => collectFields(schema), [schema]);
 
@@ -100,8 +103,7 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
                     <code className="flex-1 truncate font-mono text-xs">
                       {field.name}
                     </code>
-                    <span
-                      className={`font-mono text-[10px] font-semibold ${TYPE_COLOR[field.type]}`}>
+                    <span className="font-mono text-[10px] font-semibold">
                       {field.type}
                     </span>
                   </div>

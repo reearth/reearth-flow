@@ -10,8 +10,8 @@ export type ApiDriverInput = {
 
 export type AddMemberToWorkspaceInput = {
   role: Role;
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type ArchiveExtractionStatus =
@@ -49,14 +49,14 @@ export type CmsVisibility =
   | 'PUBLIC';
 
 export type CancelJobInput = {
-  jobId: string;
+  jobId: string | number;
 };
 
 export type CreateAssetInput = {
   file?: any;
   name?: string | null | undefined;
   token?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateAssetUploadInput = {
@@ -64,31 +64,31 @@ export type CreateAssetUploadInput = {
   contentLength?: number | null | undefined;
   cursor?: string | null | undefined;
   filename?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateDeploymentInput = {
   description: string;
   file: any;
-  projectId?: string | null | undefined;
-  workspaceId: string;
+  projectId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type CreateProjectInput = {
   archived?: boolean | null | undefined;
   description?: string | null | undefined;
   name?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateTriggerInput = {
   apiDriverInput?: ApiDriverInput | null | undefined;
-  deploymentId: string;
+  deploymentId: string | number;
   description: string;
   enabled: boolean;
   timeDriverInput?: TimeDriverInput | null | undefined;
   variables?: Array<VariableInput> | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateWorkspaceInput = {
@@ -106,19 +106,19 @@ export type DeclareParameterInput = {
 };
 
 export type DeleteAssetInput = {
-  assetId: string;
+  assetId: string | number;
 };
 
 export type DeleteDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
 };
 
 export type DeleteProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type DeleteWorkspaceInput = {
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type EventSourceType =
@@ -126,12 +126,12 @@ export type EventSourceType =
   | 'TIME_DRIVEN';
 
 export type ExecuteDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
 };
 
 export type GetHeadInput = {
-  projectId?: string | null | undefined;
-  workspaceId: string;
+  projectId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type JobStatus =
@@ -161,8 +161,8 @@ export type PageBasedPagination = {
 
 export type ParameterBatchInput = {
   creates?: Array<DeclareParameterInput> | null | undefined;
-  deletes?: Array<string> | null | undefined;
-  projectId: string;
+  deletes?: Array<string | number> | null | undefined;
+  projectId: string | number;
   reorders?: Array<UpdateParameterOrderInput> | null | undefined;
   updates?: Array<ParameterUpdateItem> | null | undefined;
 };
@@ -181,7 +181,7 @@ export type ParameterUpdateItem = {
   config?: any;
   defaultValue?: any;
   name: string;
-  paramId: string;
+  paramId: string | number;
   public: boolean;
   required: boolean;
   type: ParameterType;
@@ -196,16 +196,16 @@ export type PreviewSchemaInput = {
 };
 
 export type RemoveMemberFromWorkspaceInput = {
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type RemoveParameterInput = {
-  paramId: string;
+  paramId: string | number;
 };
 
 export type RemoveParametersInput = {
-  paramIds: Array<string>;
+  paramIds: Array<string | number>;
 };
 
 export type Role =
@@ -216,7 +216,7 @@ export type Role =
 
 export type RunParameterInput = {
   config?: any;
-  id: string;
+  id: string | number;
   index: number;
   name: string;
   public: boolean;
@@ -228,14 +228,14 @@ export type RunParameterInput = {
 export type RunProjectInput = {
   file: any;
   parameters?: Array<RunParameterInput> | null | undefined;
-  previousJobId?: string | null | undefined;
-  projectId: string;
-  startNodeId?: string | null | undefined;
-  workspaceId: string;
+  previousJobId?: string | number | null | undefined;
+  projectId: string | number;
+  startNodeId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type ShareProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type TimeDriverInput = {
@@ -249,16 +249,16 @@ export type TimeInterval =
   | 'EVERY_WEEK';
 
 export type UnshareProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type UpdateAssetInput = {
-  assetId: string;
+  assetId: string | number;
   name?: string | null | undefined;
 };
 
 export type UpdateDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
   description?: string | null | undefined;
   file?: any;
 };
@@ -273,8 +273,8 @@ export type UpdateMeInput = {
 
 export type UpdateMemberOfWorkspaceInput = {
   role: Role;
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type UpdateParameterInput = {
@@ -288,7 +288,7 @@ export type UpdateParameterInput = {
 
 export type UpdateParameterOrderInput = {
   newIndex: number;
-  paramId: string;
+  paramId: string | number;
 };
 
 export type UpdateProjectInput = {
@@ -299,16 +299,16 @@ export type UpdateProjectInput = {
   isBasicAuthActive?: boolean | null | undefined;
   isLocked?: boolean | null | undefined;
   name?: string | null | undefined;
-  projectId: string;
+  projectId: string | number;
 };
 
 export type UpdateTriggerInput = {
   apiDriverInput?: ApiDriverInput | null | undefined;
-  deploymentId?: string | null | undefined;
+  deploymentId?: string | number | null | undefined;
   description?: string | null | undefined;
   enabled?: boolean | null | undefined;
   timeDriverInput?: TimeDriverInput | null | undefined;
-  triggerId: string;
+  triggerId: string | number;
   variables?: Array<VariableInput> | null | undefined;
 };
 
@@ -327,7 +327,7 @@ export type UpdateWorkerConfigInput = {
 
 export type UpdateWorkspaceInput = {
   name: string;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type UserFacingLogLevel =

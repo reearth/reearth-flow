@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 
 import { useT } from "@flow/lib/i18n";
-import { AttrType } from "@flow/types/schemaPreview";
 
 import { isInsideAttributeAccessor } from "./flowExprAttributeContext";
 import {
   AutocompleteSuggestion,
   getFlowExprAutocompleteSuggestions,
-  TYPE_COLOR,
 } from "./flowExprConstants";
 
 type Props = {
@@ -289,7 +287,7 @@ const FlowExprAutocomplete: React.FC<Props> = ({
         return "text-gray-600 dark:text-gray-400";
     }
   };
-  console.log("suggestions", suggestions);
+
   return (
     <div
       ref={containerRef}
@@ -319,10 +317,7 @@ const FlowExprAutocomplete: React.FC<Props> = ({
             </div>
           )}
           {suggestion.detail && (
-            <div
-              className={`mt-1 font-mono text-xs ${TYPE_COLOR[suggestion.detail as AttrType]}`}>
-              {suggestion.detail}
-            </div>
+            <div className="mt-1 font-mono text-xs">{suggestion.detail}</div>
           )}
         </div>
       ))}

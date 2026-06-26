@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
-import { useCurrentProject, useReaderSchemaProbes } from "@flow/stores";
+import { useIndexedDB } from "@flow/lib/indexedDB";
+import { useCurrentProject } from "@flow/stores";
+import type { ReaderSchemaProbeStatus } from "@flow/stores";
 import type { Job, Node, NodeSchemaMeta, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
@@ -26,13 +28,14 @@ export default ({
   sampleSize?: number;
 }) => {
   const [currentProject] = useCurrentProject();
+  const projectId = currentProject?.id;
   const { previewSchema } = useProject();
-  const [probes, setProbes] = useReaderSchemaProbes();
+
+  const { value: previewSchemaState, updateValue } =
+    useIndexedDB("previewSchema");
 
   const { useGetWorkflowVariables } = useWorkflowVariables();
-  const { workflowVariables } = useGetWorkflowVariables(
-    currentProject?.id ?? "",
-  );
+  const { workflowVariables } = useGetWorkflowVariables(projectId ?? "");
 
   // Refs so the debounced probe reads the freshest workflow/variables, not the
   // values captured when the save fired.
@@ -57,30 +60,41 @@ export default ({
     };
   }, []);
 
-  const projectId = currentProject?.id;
+  // In-memory bookkeeping is per-project; clear it when the project changes.
+  // (Persisted probes are project-scoped, so they don't need clearing here.)
   useEffect(() => {
     debounceTimers.current.forEach((timer) => clearTimeout(timer));
     debounceTimers.current.clear();
     lastProbedParams.current.clear();
-    setProbes({});
-  }, [projectId, setProbes]);
+  }, [projectId]);
 
-  const setProbeStatus = useCallback(
-    (nodeId: string, jobId: string, status: "running" | "failed") => {
+  const writeProbe = useCallback(
+    (nodeId: string, jobId: string, status: ReaderSchemaProbeStatus) => {
+      if (!projectId) return;
       if (status === "failed") lastProbedParams.current.delete(nodeId);
-      setProbes((prev) => ({ ...prev, [nodeId]: { nodeId, jobId, status } }));
+      void updateValue((prev) => {
+        const probes = (prev.probes ?? []).filter(
+          (probe) =>
+            !(probe.projectId === projectId && probe.nodeId === nodeId),
+        );
+        probes.push({ projectId, nodeId, jobId, status });
+        return { probes };
+      });
     },
-    [setProbes],
+    [projectId, updateValue],
   );
 
   const clearProbe = useCallback(
-    (nodeId: string) =>
-      setProbes((prev) => {
-        if (!prev[nodeId]) return prev;
-        const { [nodeId]: _removed, ...rest } = prev;
-        return rest;
-      }),
-    [setProbes],
+    (nodeId: string) => {
+      if (!projectId) return;
+      void updateValue((prev) => ({
+        probes: (prev.probes ?? []).filter(
+          (probe) =>
+            !(probe.projectId === projectId && probe.nodeId === nodeId),
+        ),
+      }));
+    },
+    [projectId, updateValue],
   );
 
   const runProbe = useCallback(
@@ -93,9 +107,6 @@ export default ({
       );
       if (!engineReadyWorkflow) return;
 
-      // Immediate feedback while the mutation is in flight (jobId filled in next).
-      setProbeStatus(nodeId, "", "running");
-
       const data = await previewSchema(
         currentProject.id,
         currentProject.workspaceId,
@@ -104,12 +115,12 @@ export default ({
       );
 
       if (!data.job?.id) {
-        setProbeStatus(nodeId, "", "failed");
+        writeProbe(nodeId, "", "failed");
         return;
       }
-      setProbeStatus(nodeId, data.job.id, "running");
+      writeProbe(nodeId, data.job.id, "running");
     },
-    [currentProject, previewSchema, sampleSize, setProbeStatus],
+    [currentProject, previewSchema, sampleSize, writeProbe],
   );
 
   const handleNodeParamsSaved = useCallback(
@@ -140,7 +151,7 @@ export default ({
     async (nodeId: string, job: Job) => {
       const url = findSchemaReportUrl(job.outputURLs);
       if (!url) {
-        setProbeStatus(nodeId, job.id, "failed");
+        writeProbe(nodeId, job.id, "failed");
         return;
       }
       try {
@@ -158,24 +169,23 @@ export default ({
         }
         clearProbe(nodeId);
       } catch {
-        setProbeStatus(nodeId, job.id, "failed");
+        writeProbe(nodeId, job.id, "failed");
       }
     },
-    [clearProbe, setProbeStatus],
+    [clearProbe, writeProbe],
   );
 
   const handleProbeError = useCallback(
-    (nodeId: string) => {
-      lastProbedParams.current.delete(nodeId);
-      setProbes((prev) => {
-        const existing = prev[nodeId];
-        return {
-          ...prev,
-          [nodeId]: { nodeId, jobId: existing?.jobId ?? "", status: "failed" },
-        };
-      });
-    },
-    [setProbes],
+    (nodeId: string) => writeProbe(nodeId, "", "failed"),
+    [writeProbe],
+  );
+
+  const schemaProbes = useMemo(
+    () =>
+      (previewSchemaState?.probes ?? []).filter(
+        (probe) => probe.projectId === projectId,
+      ),
+    [previewSchemaState, projectId],
   );
 
   const readerAttributeSuggestions = useMemo(
@@ -184,7 +194,7 @@ export default ({
   );
 
   return {
-    schemaProbes: probes,
+    schemaProbes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
     handleProbeComplete,

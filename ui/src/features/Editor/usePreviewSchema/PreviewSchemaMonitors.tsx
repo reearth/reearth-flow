@@ -26,7 +26,7 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
 }) => {
   const { nodeId, jobId } = probe;
   const { useGetJob } = useJob();
-  const { job, refetch } = useGetJob(jobId);
+  const { job, refetch, isFetched } = useGetJob(jobId);
 
   const isTerminal =
     job?.status === "completed" ||
@@ -71,7 +71,15 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
   const settledRef = useRef(false);
 
   useEffect(() => {
-    if (settledRef.current || !job) return;
+    if (settledRef.current) return;
+    // A resumed probe whose job no longer exists (fetched, but no job) is
+    // stale — fail it rather than spin forever.
+    if (isFetched && !job) {
+      settledRef.current = true;
+      onError(nodeId);
+      return;
+    }
+    if (!job) return;
     if (job.status === "completed") {
       settledRef.current = true;
       onComplete(nodeId, job);
@@ -79,7 +87,7 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
       settledRef.current = true;
       onError(nodeId);
     }
-  }, [job, nodeId, onComplete, onError]);
+  }, [job, isFetched, nodeId, onComplete, onError]);
 
   return null;
 };

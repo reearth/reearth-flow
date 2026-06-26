@@ -253,7 +253,7 @@ export default function Editor({
             />
           )}
           <PreviewSchemaMonitors
-            probes={Object.values(schemaProbes)}
+            probes={schemaProbes}
             onComplete={handleProbeComplete}
             onError={handleProbeError}
           />
