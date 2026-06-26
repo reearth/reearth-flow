@@ -1,7 +1,6 @@
 # (DRAFT) Math Module
 
 The `math` module provides mathematical functions and constants.
-All functions accept both `int` and `float` for numeric arguments and return `float`.
 
 ## math.pi
 
@@ -26,7 +25,6 @@ The mathematical constant e ≈ 2.71828182845905.
 ## math.round
 
 `math.round(x)` returns `x` rounded to the nearest integer, as a float.
-Ties are rounded away from zero.
 
 ## math.sqrt
 
