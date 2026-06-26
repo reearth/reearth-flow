@@ -204,12 +204,15 @@ mod tests {
         );
         assert_eval(
             "m.update({\"y\": 2}); m.keys()",
-            &[("m", m.clone())],
+            &[("m", m)],
             Value::from(vec!["x", "y"]),
         );
         assert_eval(
             "m.update(m); m.get(\"x\")",
-            &[("m", m)],
+            &[(
+                "m",
+                Value::dict(indexmap::indexmap! { "x".into() => Value::from(1i64) }),
+            )],
             Value::from(1i64),
         );
     }
