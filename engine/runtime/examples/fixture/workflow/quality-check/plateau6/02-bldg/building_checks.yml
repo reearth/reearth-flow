@@ -780,11 +780,11 @@ nodes:
           expr:
             type: flowExpr
             value: "0"
-        # TODO: wire to a PLATEAU6 duplicate-building-id check (C-bldg-01)
+        # C-bldg-01 duplicate building-id count (DuplicateBuildingIdCounter)
         - attribute: "C-bldg-01 エラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_duplicate_building_id", 0)
         # TODO: wire to a PLATEAU6 building-id format check
         - attribute: "不正な建物ID"
           expr:
@@ -1733,6 +1733,198 @@ nodes:
         type: flowExpr
         value: attributes["gmlFilenameA"]
 
+  # --- C-bldg-01 duplicate building-id pipeline ---
+  # Detect bldg:Building features that share the same composite key
+  # (uro:buildingID + uro:branchID + uro:partID). In CityGML 3.0 the building id
+  # lives under bldg:adeOfAbstractBuilding > uro:BuildingIDAttribute > uro:buildingID;
+  # the reader keeps a single ADE as a map and multiple ADEs as a list.
+  - id: c1b00001-0000-4000-8000-000000000001
+    name: FeatureFilterBuildingForDuplicateId
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["__citygml_feature_type"] == "bldg:Building"
+          outputPort: default
+
+  # Flatten the building id parts into plain attributes for keying/counting.
+  - id: c1b00002-0000-4000-8000-000000000002
+    name: AttributeManagerBuildingId
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: uroBuildingId
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              ade = attributes.get("bldg:adeOfAbstractBuilding");
+              id_attr = {};
+              if type(ade) == "map" {
+                id_attr = ade.get("uro:BuildingIDAttribute", {});
+              } else if type(ade) == "list" {
+                for item in ade {
+                  if type(item) == "map" and "uro:BuildingIDAttribute" in item {
+                    id_attr = item["uro:BuildingIDAttribute"];
+                  }
+                }
+              }
+              id_attr.get("uro:buildingID", "")
+        - attribute: uroBranchId
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              ade = attributes.get("bldg:adeOfAbstractBuilding");
+              id_attr = {};
+              if type(ade) == "map" {
+                id_attr = ade.get("uro:BuildingIDAttribute", {});
+              } else if type(ade) == "list" {
+                for item in ade {
+                  if type(item) == "map" and "uro:BuildingIDAttribute" in item {
+                    id_attr = item["uro:BuildingIDAttribute"];
+                  }
+                }
+              }
+              id_attr.get("uro:branchID", "")
+        - attribute: uroPartId
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              ade = attributes.get("bldg:adeOfAbstractBuilding");
+              id_attr = {};
+              if type(ade) == "map" {
+                id_attr = ade.get("uro:BuildingIDAttribute", {});
+              } else if type(ade) == "list" {
+                for item in ade {
+                  if type(item) == "map" and "uro:BuildingIDAttribute" in item {
+                    id_attr = item["uro:BuildingIDAttribute"];
+                  }
+                }
+              }
+              id_attr.get("uro:partID", "")
+
+  # Count how many buildings share each composite id key.
+  - id: c1b00003-0000-4000-8000-000000000003
+    name: AttributeAggregatorDuplicateBuildingId
+    type: action
+    action: AttributeAggregator
+    with:
+      aggregateAttributes:
+        - newAttribute: uroBuildingId
+          attributeValue:
+            type: flowExpr
+            value: attributes.get("uroBuildingId", "")
+        - newAttribute: uroBranchId
+          attributeValue:
+            type: flowExpr
+            value: attributes.get("uroBranchId", "")
+        - newAttribute: uroPartId
+          attributeValue:
+            type: flowExpr
+            value: attributes.get("uroPartId", "")
+      calculation:
+        type: flowExpr
+        value: "1"
+      calculationAttribute: uroBuildingIdCount
+      method: count
+
+  # Join the per-key count back onto each building feature.
+  - id: c1b00004-0000-4000-8000-000000000004
+    name: FeatureMergerDuplicateBuildingId
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: |
+          attributes.get("uroBuildingId", "") + "-" + attributes.get("uroBranchId", "") + "-" + attributes.get("uroPartId", "")
+      supplierAttributeValue:
+        type: flowExpr
+        value: |
+          attributes.get("uroBuildingId", "") + "-" + attributes.get("uroBranchId", "") + "-" + attributes.get("uroPartId", "")
+
+  # Keep only buildings whose id key occurs more than once.
+  - id: c1b00005-0000-4000-8000-000000000005
+    name: FeatureFilterMultipleBuildingId
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["uroBuildingIdCount"] > 1
+          outputPort: multipleBuildingId
+
+  # One CSV row per duplicate building.
+  - id: c1b00006-0000-4000-8000-000000000006
+    name: AttributeMapperDuplicateBuildingId
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: GmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: Index
+          valueAttribute: index
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: UroBranchId
+          expr:
+            type: flowExpr
+            value: |
+              branch_id = attributes.get("uroBranchId", "");
+              if branch_id == "" { "（なし）" } else { branch_id }
+        - attribute: UroPartId
+          expr:
+            type: flowExpr
+            value: |
+              part_id = attributes.get("uroPartId", "");
+              if part_id == "" { "（なし）" } else { part_id }
+        - attribute: UroBuildingId
+          valueAttribute: uroBuildingId
+
+  - id: c1b00007-0000-4000-8000-000000000007
+    name: FeatureWriterDuplicateBuildingId
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_C-bldg-01エラー.csv
+
+  # Count duplicate buildings per file for the summary column.
+  - id: c1b00008-0000-4000-8000-000000000008
+    name: DuplicateBuildingIdCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_duplicate_building_id
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file duplicate count onto each file feature.
+  - id: c1b00009-0000-4000-8000-000000000009
+    name: DuplicateBuildingIdSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
 edges:
   - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
     from: 63341eb4-409d-4668-b338-2d1e5ab003fd
@@ -2288,13 +2480,25 @@ edges:
     to: 87eee007-3e1a-41c8-a8ab-90e57e18166f
     fromPort: unmerged
     toPort: requestor
+  # Solid-intersection LOD3 merger output -> C-bldg-01 duplicate-id merger (requestor)
   - id: 916faa7d-9549-4842-a43e-cc9f54c6c738
     from: 87eee007-3e1a-41c8-a8ab-90e57e18166f
+    to: c1b00009-0000-4000-8000-000000000009
+    fromPort: merged
+    toPort: requestor
+  - id: 41106f2f-24c7-48bc-8e0b-69a88efc3749
+    from: 87eee007-3e1a-41c8-a8ab-90e57e18166f
+    to: c1b00009-0000-4000-8000-000000000009
+    fromPort: unmerged
+    toPort: requestor
+  # C-bldg-01 duplicate-id merger output -> building summary mapper
+  - id: c1b0e012-0000-4000-8000-000000000012
+    from: c1b00009-0000-4000-8000-000000000009
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: 41106f2f-24c7-48bc-8e0b-69a88efc3749
-    from: 87eee007-3e1a-41c8-a8ab-90e57e18166f
+  - id: c1b0e013-0000-4000-8000-000000000013
+    from: c1b00009-0000-4000-8000-000000000009
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default
@@ -2614,5 +2818,67 @@ edges:
   - id: e9ca3570-6db5-49ad-a838-72715bf600f4
     from: f6cae627-8915-43b0-8781-65956bb6c1ef
     to: 87eee007-3e1a-41c8-a8ab-90e57e18166f
+    fromPort: default
+    toPort: supplier
+
+  # --- C-bldg-01 duplicate building-id pipeline edges ---
+  # Tap building features straight from the reader (no geometry needed).
+  - id: c1b0e001-0000-4000-8000-000000000001
+    from: d9349887-1920-44a6-93c9-182c8484d1a2
+    to: c1b00001-0000-4000-8000-000000000001
+    fromPort: default
+    toPort: default
+  - id: c1b0e002-0000-4000-8000-000000000002
+    from: c1b00001-0000-4000-8000-000000000001
+    to: c1b00002-0000-4000-8000-000000000002
+    fromPort: default
+    toPort: default
+  # Flattened building features -> aggregator (count) and merger (requestor).
+  - id: c1b0e003-0000-4000-8000-000000000003
+    from: c1b00002-0000-4000-8000-000000000002
+    to: c1b00003-0000-4000-8000-000000000003
+    fromPort: default
+    toPort: default
+  - id: c1b0e004-0000-4000-8000-000000000004
+    from: c1b00002-0000-4000-8000-000000000002
+    to: c1b00004-0000-4000-8000-000000000004
+    fromPort: default
+    toPort: requestor
+  - id: c1b0e005-0000-4000-8000-000000000005
+    from: c1b00003-0000-4000-8000-000000000003
+    to: c1b00004-0000-4000-8000-000000000004
+    fromPort: default
+    toPort: supplier
+  - id: c1b0e006-0000-4000-8000-000000000006
+    from: c1b00004-0000-4000-8000-000000000004
+    to: c1b00005-0000-4000-8000-000000000005
+    fromPort: merged
+    toPort: default
+  # Duplicate buildings -> CSV writer and per-file counter.
+  - id: c1b0e007-0000-4000-8000-000000000007
+    from: c1b00005-0000-4000-8000-000000000005
+    to: c1b00006-0000-4000-8000-000000000006
+    fromPort: multipleBuildingId
+    toPort: default
+  - id: c1b0e008-0000-4000-8000-000000000008
+    from: c1b00005-0000-4000-8000-000000000005
+    to: c1b00008-0000-4000-8000-000000000008
+    fromPort: multipleBuildingId
+    toPort: default
+  - id: c1b0e009-0000-4000-8000-000000000009
+    from: c1b00006-0000-4000-8000-000000000006
+    to: c1b00007-0000-4000-8000-000000000007
+    fromPort: default
+    toPort: default
+  # Route the written C-bldg-01 CSV into the result zip.
+  - id: c1b0e010-0000-4000-8000-000000000010
+    from: c1b00007-0000-4000-8000-000000000007
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Counter.default -> duplicate-id summary merger (supplier).
+  - id: c1b0e011-0000-4000-8000-000000000011
+    from: c1b00008-0000-4000-8000-000000000008
+    to: c1b00009-0000-4000-8000-000000000009
     fromPort: default
     toPort: supplier
