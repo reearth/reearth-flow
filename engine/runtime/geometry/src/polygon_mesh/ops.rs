@@ -154,10 +154,7 @@ impl PolygonMesh3DData {
 
 impl Triangulate for PolygonMesh3D {
     fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        let mesh = TriangularMesh3D::new(
-            self.coordinate.clone(),
-            self.data.triangulate(cache),
-        );
+        let mesh = TriangularMesh3D::new(self.coordinate.clone(), self.data.triangulate(cache));
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
