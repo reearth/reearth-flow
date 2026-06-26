@@ -35,6 +35,7 @@ impl Triangulate for Polygon2D {
             &mut buffers.holes,
         );
         buffers.out.clear();
+        // 3V slightly over-reserves with no holes (by 6) and is exact at one hole, but under-reserves by 6(H−1) once there are ≥2 holes.
         buffers.out.reserve(3 * buffers.positions.len());
 
         // earcut emits triangle corner indices into the gathered ring vertices

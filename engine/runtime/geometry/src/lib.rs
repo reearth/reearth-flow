@@ -294,7 +294,119 @@ mod triangulate_tests {
     use super::*;
     use coordinate::Coordinate;
     use point::Point2D;
-    use polygon::Polygon2D;
+    use polygon::{Polygon2D, Polygon3D};
+    use polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
+
+    /// A spread of supported inputs covering both embeddings, holes, elevation,
+    /// multi-face meshes, and a degenerate face.
+    fn sample_geometries() -> Vec<Geometry> {
+        let e = Coordinate::Euclidean;
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+        let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
+
+        let poly2d = Polygon2D::from_rings(e.clone(), square, Vec::<Vec<[f64; 2]>>::new());
+        let poly2d_hole = Polygon2D::from_rings(e.clone(), square, vec![hole]);
+        let poly2d_elev = Polygon2D::from_rings_with_elevation(
+            e.clone(),
+            [
+                [0.0, 0.0, 1.0],
+                [4.0, 0.0, 2.0],
+                [4.0, 4.0, 3.0],
+                [0.0, 0.0, 1.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let poly3d = Polygon3D::from_rings(
+            e.clone(),
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [0.0, 4.0, 4.0],
+                [0.0, 0.0, 4.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let poly3d_degenerate = Polygon3D::from_rings(
+            e.clone(),
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [2.0, 2.0, 2.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let mesh2d = PolygonMesh2D::from_parts(
+            e.clone(),
+            vec![
+                [0.0, 0.0],
+                [2.0, 0.0],
+                [2.0, 2.0],
+                [0.0, 2.0],
+                [4.0, 0.0],
+                [4.0, 2.0],
+            ],
+            vec![vec![0u32, 1, 2, 3], vec![1, 4, 5, 2]],
+        )
+        .unwrap();
+        let mesh3d = PolygonMesh3D::from_parts(
+            e.clone(),
+            vec![
+                [0.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [2.0, 2.0, 0.0],
+                [0.0, 2.0, 0.0],
+            ],
+            vec![vec![0u32, 1, 2, 3]],
+        )
+        .unwrap();
+
+        vec![
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(poly2d))),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(poly2d_hole))),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(poly2d_elev))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(poly3d))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(poly3d_degenerate))),
+            Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh2d))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh3d))),
+        ]
+    }
+
+    #[test]
+    fn cache_state_does_not_affect_output() {
+        let geoms = sample_geometries();
+        for target in &geoms {
+            // The reference result, from a pristine cache.
+            let expected = target.triangulate(&mut Cache::new());
+
+            // (a) A cache dirtied by every other input in turn.
+            for dirty in &geoms {
+                let mut cache = Cache::new();
+                let _ = dirty.triangulate(&mut cache);
+                assert!(
+                    target.triangulate(&mut cache) == expected,
+                    "result changed after dirtying the cache with {dirty:?}",
+                );
+            }
+
+            // (b) A cache dirtied by the whole sequence (buffers grown + filled).
+            let mut cache = Cache::new();
+            for g in &geoms {
+                let _ = g.triangulate(&mut cache);
+            }
+            assert!(
+                target.triangulate(&mut cache) == expected,
+                "result changed after running the full sequence through the cache",
+            );
+
+            // (c) The same target twice through one cache is idempotent.
+            let mut cache = Cache::new();
+            let first = target.triangulate(&mut cache);
+            let second = target.triangulate(&mut cache);
+            assert!(first == expected && second == expected);
+        }
+    }
 
     #[test]
     fn triangulate_dispatches_through_geometry_to_polygon() {

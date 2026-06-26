@@ -2,16 +2,7 @@
 //! [`Cache`] that lets repeated triangulations amortize their allocations.
 //!
 //! `Polygon` and `PolygonMesh` both tessellate planar faces with earcut
-//! (ear-clipping). A 3D face is first projected onto its best-fit plane; because
-//! the projection preserves vertex order, earcut's triangle indices map straight
-//! back to the original vertices. Holes are passed to earcut as ring-start
-//! offsets into the vertex list. Each face's vertices are the exterior ring then
-//! its hole rings, every ring stored *open* (no closing duplicate) — earcut
-//! closes rings implicitly.
-//!
-//! The 3D projection is applied *lazily* (mapped straight into earcut's own
-//! input buffer) rather than through `earcut::utils3d::project3d_to_2d`, which
-//! would materialize an intermediate `Vec<[f64; 2]>`.
+//! (ear-clipping).
 
 use earcut::Earcut;
 
