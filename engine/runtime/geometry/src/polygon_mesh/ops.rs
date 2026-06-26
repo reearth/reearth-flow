@@ -1,8 +1,8 @@
-use super::{PolygonMesh2D, PolygonMesh3D};
+use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
 use crate::index::IndexBuffer;
 use crate::ops::triangulation::{triangulate_2d, triangulate_3d, Cache};
 use crate::ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
-use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
+use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 impl BoundingBox for PolygonMesh2D {
@@ -95,13 +95,14 @@ impl Triangulate for PolygonMesh2D {
     }
 }
 
-impl Triangulate for PolygonMesh3D {
-    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        let data = &self.data;
+impl PolygonMesh3DData {
+    /// Triangulate every face into coordinate-free triangle-mesh data, reusing
+    /// this mesh's vertex pool.
+    pub(crate) fn triangulate(&self, cache: &mut Cache) -> TriangularMesh3DData {
         let Cache { earcut, buffers } = cache;
-        decode_into(&data.face_indices, &mut buffers.face_indices);
-        decode_into(&data.face_offsets, &mut buffers.face_offsets);
-        decode_into(&data.interior_offsets, &mut buffers.interior_offsets);
+        decode_into(&self.face_indices, &mut buffers.face_indices);
+        decode_into(&self.face_offsets, &mut buffers.face_offsets);
+        decode_into(&self.interior_offsets, &mut buffers.interior_offsets);
 
         buffers.tris.clear();
         buffers.tris.reserve(3 * buffers.face_indices.len());
@@ -119,7 +120,7 @@ impl Triangulate for PolygonMesh3D {
                 // SAFETY: face indices are validated `< vertices.len()` at construction.
                 buffers.verts3.extend(
                     face.iter()
-                        .map(|&gi| unsafe { *data.vertices.get_unchecked(gi as usize) }),
+                        .map(|&gi| unsafe { *self.vertices.get_unchecked(gi as usize) }),
                 );
                 if triangulate_3d(
                     earcut,
@@ -140,15 +141,23 @@ impl Triangulate for PolygonMesh3D {
             }
         }
 
-        // SAFETY: `tris` index `data.vertices` (`< len`); count is a multiple of 3.
-        let mesh = unsafe {
-            TriangularMesh3D::from_parts_unchecked(
-                self.coordinate.clone(),
-                data.vertices.clone(),
+        // SAFETY: `tris` index `self.vertices` (`< len`); count is a multiple of 3.
+        unsafe {
+            TriangularMesh3DData::from_parts_unchecked(
+                self.vertices.clone(),
                 buffers.tris.len() / 3,
                 buffers.tris.iter().copied(),
             )
-        };
+        }
+    }
+}
+
+impl Triangulate for PolygonMesh3D {
+    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        let mesh = TriangularMesh3D::new(
+            self.coordinate.clone(),
+            self.data.triangulate(cache),
+        );
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))

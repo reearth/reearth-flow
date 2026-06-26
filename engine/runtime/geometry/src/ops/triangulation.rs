@@ -149,9 +149,10 @@ impl Projector {
 /// Newell's-method normal of a planar ring; `None` if degenerate (fewer than 3
 /// vertices, or a near-zero normal). Ported from `earcut::utils3d`.
 fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
-    let Some((&last, _)) = vertices.split_last() else {
-        return None;
-    };
+    // `split_last` seeds `prev` with the last vertex (the ring's closing edge,
+    // last -> first) and is bounds-check-free; the `len < 3` guard then rejects
+    // degenerate rings.
+    let (&last, _) = vertices.split_last()?;
     if vertices.len() < 3 {
         return None;
     }

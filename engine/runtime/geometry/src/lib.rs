@@ -295,7 +295,9 @@ mod triangulate_tests {
     use coordinate::Coordinate;
     use point::Point2D;
     use polygon::{Polygon2D, Polygon3D};
-    use polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
+    use polygon_mesh::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
+    use solid::Solid;
+    use triangular_mesh::TriangularMesh3DData;
 
     /// A spread of supported inputs covering both embeddings, holes, elevation,
     /// multi-face meshes, and a degenerate face.
@@ -361,6 +363,26 @@ mod triangulate_tests {
             vec![vec![0u32, 1, 2, 3]],
         )
         .unwrap();
+        // A solid: a quad polygon-mesh exterior shell + a triangle-mesh void.
+        let solid = Solid::new(
+            e.clone(),
+            PolygonMesh3DData::from_parts(
+                vec![
+                    [0.0, 0.0, 0.0],
+                    [2.0, 0.0, 0.0],
+                    [2.0, 2.0, 0.0],
+                    [0.0, 2.0, 0.0],
+                ],
+                vec![vec![0u32, 1, 2, 3]],
+            )
+            .unwrap(),
+            vec![TriangularMesh3DData::from_parts(
+                vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]],
+                [0u32, 1, 2],
+            )
+            .unwrap()
+            .into()],
+        );
 
         vec![
             Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(poly2d))),
@@ -370,6 +392,7 @@ mod triangulate_tests {
             Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(poly3d_degenerate))),
             Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh2d))),
             Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh3d))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid))),
         ]
     }
 

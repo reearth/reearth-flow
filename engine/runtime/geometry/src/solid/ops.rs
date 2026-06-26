@@ -1,5 +1,7 @@
-use super::Solid;
-use crate::ops::{Aabb, BoundingBox, UnsupportedOperation};
+use super::{Shell, Solid};
+use crate::ops::triangulation::Cache;
+use crate::ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
+use crate::{Euclidean3DGeometry, Geometry};
 
 impl BoundingBox for Solid {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
@@ -13,6 +15,36 @@ impl BoundingBox for Solid {
             geometry: "Solid",
             operation: "bounding_box",
         })
+    }
+}
+
+impl Triangulate for Solid {
+    /// Triangulate the solid's boundary in place: each `PolygonMesh` shell is
+    /// tessellated into a `TriangularMesh` shell; `TriangularMesh` shells pass
+    /// through unchanged. The result is a `Solid` with the same frame and an
+    /// all-triangle boundary.
+    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        let exterior = self.exterior.triangulated(cache);
+        let interiors = self
+            .interiors
+            .iter()
+            .map(|shell| shell.triangulated(cache))
+            .collect();
+        let solid = Solid::new(self.coordinate.clone(), exterior, interiors);
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(
+            solid,
+        ))))
+    }
+}
+
+impl Shell {
+    /// This shell with its surface triangulated: a `PolygonMesh` shell becomes a
+    /// `TriangularMesh` shell; a `TriangularMesh` shell is returned unchanged.
+    fn triangulated(&self, cache: &mut Cache) -> Shell {
+        match self {
+            Shell::PolygonMesh(d) => Shell::TriangularMesh(d.triangulate(cache)),
+            Shell::TriangularMesh(d) => Shell::TriangularMesh(d.clone()),
+        }
     }
 }
 
@@ -60,5 +92,43 @@ mod tests {
                 max: [6.0, 6.0, 5.0]
             }
         );
+    }
+
+    #[test]
+    fn solid_triangulation_yields_a_solid_with_triangulated_shells() {
+        use crate::polygon_mesh::PolygonMesh3DData;
+        use crate::triangular_mesh::TriangularMesh3D;
+
+        // Exterior: a quad polygon-mesh shell -> becomes a 2-triangle mesh shell.
+        let quad = PolygonMesh3DData::from_parts(
+            vec![
+                [0.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [2.0, 2.0, 0.0],
+                [0.0, 2.0, 0.0],
+            ],
+            vec![vec![0u32, 1, 2, 3]],
+        )
+        .unwrap();
+        // Interior void: already a triangle-mesh shell -> passes through unchanged.
+        let void = shell(vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]]);
+        let solid = Solid::new(Coordinate::Euclidean, quad, vec![Shell::from(void)]);
+
+        let out = match solid.triangulate(&mut Cache::new()).unwrap() {
+            // The output is a Solid, not a bare mesh.
+            Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) => s,
+            other => panic!("expected a solid, got {other:?}"),
+        };
+        // The polygon-mesh exterior is now a 2-triangle triangular-mesh shell.
+        match &out.exterior {
+            Shell::TriangularMesh(d) => {
+                let tris = TriangularMesh3D::new(Coordinate::Euclidean, d.clone());
+                assert_eq!(tris.num_triangles(), 2);
+            }
+            Shell::PolygonMesh(_) => panic!("exterior polygon-mesh shell should be triangulated"),
+        }
+        // The already-triangular interior shell stays a triangular mesh.
+        assert_eq!(out.interiors.len(), 1);
+        assert!(matches!(out.interiors[0], Shell::TriangularMesh(_)));
     }
 }

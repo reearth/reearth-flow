@@ -48,6 +48,3 @@ pub struct Solid {
     /// Hollow voids.
     interiors: Vec<Shell>,
 }
-
-// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
-crate::unsupported!(Solid: Triangulate);
