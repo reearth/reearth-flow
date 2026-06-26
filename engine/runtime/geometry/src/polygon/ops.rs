@@ -1,9 +1,7 @@
-use earcut::Earcut;
-
 use super::{Polygon2D, Polygon3D};
+use crate::ops::triangulation::{triangulate_2d, triangulate_3d, Cache};
 use crate::ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
-use crate::triangulation::{triangulate_2d, triangulate_3d};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 impl BoundingBox for Polygon2D {
@@ -28,34 +26,66 @@ impl BoundingBox for Polygon3D {
 }
 
 impl Triangulate for Polygon2D {
-    fn triangulate(&self) -> Result<Geometry, UnsupportedOperation> {
-        let (positions, hole_indices, _num_outer) =
-            open_ring_positions(&self.coords, &self.interior_offsets);
-        let verts: Vec<[f64; 2]> = positions.iter().map(|&i| self.coords[i as usize]).collect();
-        let mut earcut = Earcut::new();
-        let mut indices = Vec::new();
-        triangulate_2d(&mut earcut, &verts, &hole_indices, &mut indices);
+    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        let Cache { earcut, buffers } = cache;
+        open_ring_positions(
+            &self.coords,
+            &self.interior_offsets,
+            &mut buffers.positions,
+            &mut buffers.holes,
+        );
+        buffers.out.clear();
+        buffers.out.reserve(3 * buffers.positions.len());
 
-        // earcut emits triangle corner indices into `verts` (3 per triangle, all
-        // in range), so assembling the mesh from them cannot fail.
+        // earcut emits triangle corner indices into the gathered ring vertices
+        // (3 per triangle, each < the vertex count), so the unchecked assembly is
+        // sound. The gathered `verts` is the output mesh's own pool (not scratch).
         let mesh = match &self.z {
-            Some(z) => {
-                let verts3: Vec<[f64; 3]> = positions
-                    .iter()
-                    .map(|&i| {
-                        let [x, y] = self.coords[i as usize];
-                        [x, y, z[i as usize]]
-                    })
-                    .collect();
-                TriangularMesh2D::from_parts_with_elevation(
-                    self.coordinate.clone(),
-                    verts3,
-                    indices,
-                )
+            None => {
+                let mut verts: Vec<[f64; 2]> = Vec::with_capacity(buffers.positions.len());
+                // SAFETY: `positions` are in-range indices into `coords`.
+                verts.extend(
+                    buffers
+                        .positions
+                        .iter()
+                        .map(|&i| unsafe { *self.coords.get_unchecked(i as usize) }),
+                );
+                triangulate_2d(earcut, &verts, &buffers.holes, &mut buffers.out);
+                // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
+                unsafe {
+                    TriangularMesh2D::from_parts_unchecked(
+                        self.coordinate.clone(),
+                        verts,
+                        buffers.out.len() / 3,
+                        buffers.out.iter().copied(),
+                    )
+                }
             }
-            None => TriangularMesh2D::from_parts(self.coordinate.clone(), verts, indices),
-        }
-        .expect("earcut indices are in range and a multiple of three");
+            Some(z) => {
+                let mut verts: Vec<[f64; 3]> = Vec::with_capacity(buffers.positions.len());
+                verts.extend(buffers.positions.iter().map(|&i| {
+                    let i = i as usize;
+                    // SAFETY: `positions` index `coords`, and `z` is parallel to `coords`.
+                    let [x, y] = unsafe { *self.coords.get_unchecked(i) };
+                    [x, y, unsafe { *z.get_unchecked(i) }]
+                }));
+                // Triangulate the planar (x, y) footprint; elevation rides along.
+                earcut.earcut(
+                    verts.iter().map(|&[x, y, _]| [x, y]),
+                    &buffers.holes,
+                    &mut buffers.out,
+                );
+                // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
+                unsafe {
+                    TriangularMesh2D::from_parts_with_elevation_unchecked(
+                        self.coordinate.clone(),
+                        verts,
+                        buffers.out.len() / 3,
+                        buffers.out.iter().copied(),
+                    )
+                }
+            }
+        };
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -63,23 +93,34 @@ impl Triangulate for Polygon2D {
 }
 
 impl Triangulate for Polygon3D {
-    fn triangulate(&self) -> Result<Geometry, UnsupportedOperation> {
-        let (positions, hole_indices, num_outer) =
-            open_ring_positions(&self.coords, &self.interior_offsets);
-        let verts: Vec<[f64; 3]> = positions.iter().map(|&i| self.coords[i as usize]).collect();
-        let mut earcut = Earcut::new();
-        let mut buf2d = Vec::new();
-        let mut indices = Vec::new();
-        triangulate_3d(
-            &mut earcut,
-            &verts,
-            num_outer,
-            &hole_indices,
-            &mut buf2d,
-            &mut indices,
+    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        let Cache { earcut, buffers } = cache;
+        let num_outer = open_ring_positions(
+            &self.coords,
+            &self.interior_offsets,
+            &mut buffers.positions,
+            &mut buffers.holes,
         );
-        let mesh = TriangularMesh3D::from_parts(self.coordinate.clone(), verts, indices)
-            .expect("earcut indices are in range and a multiple of three");
+        let mut verts: Vec<[f64; 3]> = Vec::with_capacity(buffers.positions.len());
+        // SAFETY: `positions` are in-range indices into `coords`.
+        verts.extend(
+            buffers
+                .positions
+                .iter()
+                .map(|&i| unsafe { *self.coords.get_unchecked(i as usize) }),
+        );
+        buffers.out.clear();
+        buffers.out.reserve(3 * verts.len());
+        triangulate_3d(earcut, &verts, num_outer, &buffers.holes, &mut buffers.out);
+        // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
+        let mesh = unsafe {
+            TriangularMesh3D::from_parts_unchecked(
+                self.coordinate.clone(),
+                verts,
+                buffers.out.len() / 3,
+                buffers.out.iter().copied(),
+            )
+        };
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -87,15 +128,20 @@ impl Triangulate for Polygon3D {
 }
 
 /// Walk a polygon's rings (exterior, then holes) over its flat `coords` /
-/// `interior_offsets` layout, dropping each ring's closing duplicate, and return:
-/// the positions into `coords` that make up the open rings (exterior first), the
-/// start offset of each hole within that position list, and the exterior vertex
-/// count. earcut closes rings implicitly, so the stored closing vertex is
-/// stripped here.
+/// `interior_offsets` layout, dropping each ring's closing duplicate, into the
+/// reused `positions` (the open rings' positions into `coords`, exterior first)
+/// and `holes` (each hole's start offset within `positions`) buffers; returns
+/// the exterior vertex count. earcut closes rings implicitly, so the stored
+/// closing vertex is stripped here.
 fn open_ring_positions<const N: usize>(
     coords: &[[f64; N]],
     interior_offsets: &[u32],
-) -> (Vec<u32>, Vec<u32>, usize) {
+    positions: &mut Vec<u32>,
+    holes: &mut Vec<u32>,
+) -> usize {
+    positions.clear();
+    holes.clear();
+
     // Strip a ring's closing duplicate, yielding the half-open `[start, end)` of
     // its distinct vertices.
     let open = |start: usize, end: usize| -> std::ops::Range<usize> {
@@ -105,9 +151,6 @@ fn open_ring_positions<const N: usize>(
             start..end
         }
     };
-
-    let mut positions: Vec<u32> = Vec::with_capacity(coords.len());
-    let mut hole_indices: Vec<u32> = Vec::new();
 
     let first_hole = interior_offsets
         .first()
@@ -120,11 +163,11 @@ fn open_ring_positions<const N: usize>(
         let end = interior_offsets
             .get(j + 1)
             .map_or(coords.len(), |&o| o as usize);
-        hole_indices.push(positions.len() as u32);
+        holes.push(positions.len() as u32);
         positions.extend(open(start, end).map(|i| i as u32));
     }
 
-    (positions, hole_indices, num_outer)
+    num_outer
 }
 
 #[cfg(test)]
@@ -166,7 +209,7 @@ mod tests {
     fn polygon2d_square_triangulates_to_two_triangles() {
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let p = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
-        let g = p.triangulate().unwrap();
+        let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
         assert_eq!(m.num_triangles(), 2);
         // The mesh covers the same extent as the polygon.
@@ -179,7 +222,7 @@ mod tests {
         let exterior = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
         let p = Polygon2D::from_rings(Coordinate::Euclidean, exterior, vec![hole]);
-        let g = p.triangulate().unwrap();
+        let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
         assert_eq!(m.num_triangles(), 8);
     }
@@ -196,7 +239,7 @@ mod tests {
             ],
             Vec::<Vec<[f64; 3]>>::new(),
         )
-        .triangulate()
+        .triangulate(&mut Cache::new())
         .unwrap();
         // A 2.5D polygon stays a 2D mesh (the elevation rides along in the z buffer).
         assert!(matches!(g, Geometry::Euclidean2D(_)));
@@ -214,10 +257,41 @@ mod tests {
             [0.0, 0.0, 0.0],
         ];
         let p = Polygon3D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 3]>>::new());
-        let g = p.triangulate().unwrap();
+        let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_3d(&g);
         assert_eq!(m.num_triangles(), 2);
         assert_eq!(g.bounding_box().unwrap(), p.bounding_box().unwrap());
+    }
+
+    #[test]
+    fn one_cache_reused_across_calls_stays_correct() {
+        // Reuse a single cache across a square, a square-with-hole, and a 3D
+        // face — each must reset its scratch and produce the right result.
+        let mut cache = Cache::new();
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+
+        let a = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new())
+            .triangulate(&mut cache)
+            .unwrap();
+        assert_eq!(tri_mesh_2d(&a).num_triangles(), 2);
+
+        let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
+        let b = Polygon2D::from_rings(Coordinate::Euclidean, square, vec![hole])
+            .triangulate(&mut cache)
+            .unwrap();
+        assert_eq!(tri_mesh_2d(&b).num_triangles(), 8);
+
+        let face3d = [
+            [0.0, 0.0, 0.0],
+            [0.0, 4.0, 0.0],
+            [0.0, 4.0, 4.0],
+            [0.0, 0.0, 4.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let c = Polygon3D::from_rings(Coordinate::Euclidean, face3d, Vec::<Vec<[f64; 3]>>::new())
+            .triangulate(&mut cache)
+            .unwrap();
+        assert_eq!(tri_mesh_3d(&c).num_triangles(), 2);
     }
 
     #[test]
@@ -230,7 +304,7 @@ mod tests {
             [0.0, 0.0, 0.0],
         ];
         let p = Polygon3D::from_rings(Coordinate::Euclidean, line, Vec::<Vec<[f64; 3]>>::new());
-        let g = p.triangulate().unwrap();
+        let g = p.triangulate(&mut Cache::new()).unwrap();
         assert_eq!(tri_mesh_3d(&g).num_triangles(), 0);
     }
 

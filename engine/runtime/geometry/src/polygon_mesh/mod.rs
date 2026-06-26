@@ -17,7 +17,7 @@ use crate::coordinate::Coordinate;
 use crate::index::IndexBuffer;
 
 mod constructor;
-mod geom;
+mod ops;
 
 /// A connected, vertex-sharing polygon mesh in 2D space, with optional
 /// per-vertex elevation.

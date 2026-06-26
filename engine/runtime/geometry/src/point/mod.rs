@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::coordinate::Coordinate;
 
 mod constructor;
-mod geom;
+mod ops;
 
 /// A single position in 2D space.
 /// Used for CityGML `gml:Point` and 2D point features.

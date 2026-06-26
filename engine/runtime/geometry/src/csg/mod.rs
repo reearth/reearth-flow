@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::solid::Solid;
 
 mod constructor;
-mod geom;
+mod ops;
 
 /// Volumetric, closed 3D geometries that `Csg` boolean operations are defined
 /// over.

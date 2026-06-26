@@ -43,12 +43,11 @@ pub mod triangular_mesh;
 #[cfg(test)]
 mod test_support;
 
-mod triangulation;
-
 use enum_dispatch::enum_dispatch;
 use reearth_flow_common::attribute::Attributes;
 use serde::{Deserialize, Serialize};
 
+use ops::triangulation::Cache;
 use ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
 
 use collection::{Collection2D, Collection3D};
@@ -192,21 +191,21 @@ impl BoundingBox for GeometryCollection {
 }
 
 impl Triangulate for Geometry {
-    fn triangulate(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
         match self {
             Geometry::None => Err(UnsupportedOperation {
                 geometry: "Geometry::None",
                 operation: "triangulate",
             }),
-            Geometry::Euclidean2D(g) => g.triangulate(),
-            Geometry::Euclidean3D(g) => g.triangulate(),
-            Geometry::GeometryCollection(c) => c.triangulate(),
+            Geometry::Euclidean2D(g) => g.triangulate(cache),
+            Geometry::Euclidean3D(g) => g.triangulate(cache),
+            Geometry::GeometryCollection(c) => c.triangulate(cache),
         }
     }
 }
 
 impl Triangulate for GeometryCollection {
-    fn triangulate(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn triangulate(&self, _cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
         // Tessellation is defined per-primitive (Polygon / PolygonMesh, §4.2),
         // not over a collection; a caller triangulates members individually.
         Err(UnsupportedOperation {
@@ -302,7 +301,7 @@ mod triangulate_tests {
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let p = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
         let g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(p)));
-        let out = g.triangulate().unwrap();
+        let out = g.triangulate(&mut Cache::new()).unwrap();
         match out {
             Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(m)) => {
                 assert_eq!(m.num_triangles(), 2);
@@ -317,10 +316,10 @@ mod triangulate_tests {
             Coordinate::Euclidean,
             [0.0, 0.0],
         )));
-        assert!(point.triangulate().is_err());
-        assert!(Geometry::None.triangulate().is_err());
+        assert!(point.triangulate(&mut Cache::new()).is_err());
+        assert!(Geometry::None.triangulate(&mut Cache::new()).is_err());
 
         let collection = Geometry::GeometryCollection(GeometryCollection::new([]));
-        assert!(collection.triangulate().is_err());
+        assert!(collection.triangulate(&mut Cache::new()).is_err());
     }
 }

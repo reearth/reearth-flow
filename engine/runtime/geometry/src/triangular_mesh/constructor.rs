@@ -247,6 +247,38 @@ impl TriangularMesh2D {
         })
     }
 
+    /// Build a 2.5D mesh from `[x, y, z]` vertices without validating indices.
+    ///
+    /// # Safety
+    /// Same contract as [`TriangularMesh3DData::from_parts_unchecked`].
+    pub unsafe fn from_parts_with_elevation_unchecked(
+        coordinate: Coordinate,
+        vertices: Vec<[f64; 3]>,
+        triangle_count: usize,
+        indices: impl IntoIterator<Item = u32>,
+    ) -> Self {
+        let width = index_width_for(vertices.len());
+        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
+        let mut xy = Vec::with_capacity(vertices.len());
+        let mut z = Vec::with_capacity(vertices.len());
+        for [x, y, elevation] in vertices {
+            xy.push([x, y]);
+            z.push(elevation);
+        }
+        Self {
+            coordinate,
+            indices: IndexBuffer::from_exact_unchecked(
+                width,
+                triangle_count,
+                group_triples(indices),
+            ),
+            vertices: xy,
+            z: Some(z.into_boxed_slice()),
+            uv_sets: Vec::new(),
+            appearance: None,
+        }
+    }
+
     /// Build a pure-2D mesh without validating indices.
     ///
     /// # Safety

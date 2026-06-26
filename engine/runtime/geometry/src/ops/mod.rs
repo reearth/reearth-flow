@@ -2,15 +2,16 @@
 //!
 //! Each operation is a separate trait carrying a default method that returns
 //! [`UnsupportedOperation`]. A leaf opts *in* by overriding the method (in its
-//! `{type}/geom.rs`), and opts *out* with an empty `impl` block — stamped by the
+//! `{type}/ops.rs`), and opts *out* with an empty `impl` block — stamped by the
 //! [`unsupported!`](crate::unsupported) macro (§4.1.2). The traits are
 //! `#[enum_dispatch]`, so a call on `Geometry` / `Euclidean{2,3}DGeometry`
 //! chains through to the concrete leaf; `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
 //!
-//! While there is only one operation (`BoundingBox`) this module is a single
-//! file; it splits into an `ops/` directory (one file per operation) once more
-//! land (§4.1.1).
+//! Supporting machinery shared by the operations (e.g. earcut triangulation)
+//! lives in submodules such as [`triangulation`].
+
+pub mod triangulation;
 
 /// Returned by an operation a given geometry type does not support. Carries the
 /// concrete type name (via [`type_name`](core::any::type_name)) and the
@@ -202,8 +203,14 @@ impl<T: BoundingBox + ?Sized> BoundingBox for Box<T> {
 #[enum_dispatch::enum_dispatch]
 pub trait Triangulate {
     /// Triangulate into a `TriangularMesh`-bearing [`Geometry`](crate::Geometry),
-    /// or [`UnsupportedOperation`] for a type that does not tessellate.
-    fn triangulate(&self) -> Result<crate::Geometry, UnsupportedOperation> {
+    /// or [`UnsupportedOperation`] for a type that does not tessellate. `cache`
+    /// holds the reused earcut state and scratch buffers — pass the same one
+    /// across many calls to amortize allocation on the hot path.
+    fn triangulate(
+        &self,
+        cache: &mut crate::ops::triangulation::Cache,
+    ) -> Result<crate::Geometry, UnsupportedOperation> {
+        let _ = cache;
         Err(UnsupportedOperation {
             geometry: core::any::type_name::<Self>(),
             operation: "triangulate",
@@ -212,8 +219,11 @@ pub trait Triangulate {
 }
 
 impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
-    fn triangulate(&self) -> Result<crate::Geometry, UnsupportedOperation> {
-        (**self).triangulate()
+    fn triangulate(
+        &self,
+        cache: &mut crate::ops::triangulation::Cache,
+    ) -> Result<crate::Geometry, UnsupportedOperation> {
+        (**self).triangulate(cache)
     }
 }
 
