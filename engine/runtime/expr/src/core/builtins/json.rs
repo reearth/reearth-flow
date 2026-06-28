@@ -18,7 +18,7 @@ fn value_to_json(v: &Value) -> Result<JsonValue> {
                 ))
             }),
         Value::String(s) => Ok(JsonValue::String(s.clone())),
-        Value::Array(rc) => {
+        Value::List(rc) => {
             let items = rc
                 .borrow()
                 .iter()
@@ -26,7 +26,7 @@ fn value_to_json(v: &Value) -> Result<JsonValue> {
                 .collect::<Result<Vec<_>>>()?;
             Ok(JsonValue::Array(items))
         }
-        Value::Map(rc) => {
+        Value::Dict(rc) => {
             let obj = rc
                 .borrow()
                 .iter()
@@ -38,7 +38,7 @@ fn value_to_json(v: &Value) -> Result<JsonValue> {
             Some(serializable) => value_to_json(&serializable),
             None => Err(eval_error(format!(
                 "json.dumps: {} does not support serialization",
-                rc.type_name()
+                rc.type_object().name
             ))),
         },
         other => Err(eval_error(format!(
@@ -67,14 +67,14 @@ fn json_to_value(j: JsonValue) -> Result<Value> {
                 .into_iter()
                 .map(json_to_value)
                 .collect::<Result<Vec<_>>>()?;
-            Ok(Value::array(values))
+            Ok(Value::list(values))
         }
         JsonValue::Object(obj) => {
             let map = obj
                 .into_iter()
                 .map(|(k, v)| json_to_value(v).map(|val| (k, val)))
                 .collect::<Result<IndexMap<_, _>>>()?;
-            Ok(Value::map(map))
+            Ok(Value::dict(map))
         }
     }
 }
