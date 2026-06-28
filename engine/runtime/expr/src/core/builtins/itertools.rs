@@ -26,7 +26,7 @@ fn value_cmp(a: &Value, b: &Value) -> Result<Ordering> {
 fn sorted(args: &[Value]) -> Result<Value> {
     expect_arity("itertools.sorted", args, 1, 2)?;
     let items = match &args[0] {
-        Value::Array(rc) => rc.borrow().clone(),
+        Value::List(rc) => rc.borrow().clone(),
         other => {
             return Err(eval_error(format!(
                 "itertools.sorted() first argument must be a list, got {}",
@@ -50,7 +50,7 @@ fn sorted(args: &[Value]) -> Result<Value> {
             if let Some(e) = sort_err {
                 return Err(e);
             }
-            Ok(Value::array(out))
+            Ok(Value::list(out))
         }
         Some(key_fn) => {
             let keyed = items
@@ -74,7 +74,7 @@ fn sorted(args: &[Value]) -> Result<Value> {
             if let Some(e) = sort_err {
                 return Err(e);
             }
-            Ok(Value::array(
+            Ok(Value::list(
                 keyed.into_iter().map(|(item, _)| item).collect(),
             ))
         }
@@ -84,7 +84,7 @@ fn sorted(args: &[Value]) -> Result<Value> {
 fn filter(args: &[Value]) -> Result<Value> {
     expect_arity("itertools.filter", args, 2, 2)?;
     let items = match &args[0] {
-        Value::Array(rc) => rc.borrow().clone(),
+        Value::List(rc) => rc.borrow().clone(),
         other => {
             return Err(eval_error(format!(
                 "itertools.filter() first argument must be a list, got {}",
@@ -101,13 +101,13 @@ fn filter(args: &[Value]) -> Result<Value> {
             Err(e) => Some(Err(e)),
         })
         .collect::<Result<Vec<_>>>()?;
-    Ok(Value::array(result))
+    Ok(Value::list(result))
 }
 
 fn count(args: &[Value]) -> Result<Value> {
     expect_arity("itertools.count", args, 1, 1)?;
     match &args[0] {
-        Value::Array(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
+        Value::List(rc) => Ok(Value::Int(rc.borrow().len() as i64)),
         other => Err(eval_error(format!(
             "itertools.count() argument must be a list, got {}",
             other.type_name()
@@ -118,7 +118,7 @@ fn count(args: &[Value]) -> Result<Value> {
 fn map(args: &[Value]) -> Result<Value> {
     expect_arity("itertools.map", args, 2, 2)?;
     let items = match &args[0] {
-        Value::Array(rc) => rc.borrow().clone(),
+        Value::List(rc) => rc.borrow().clone(),
         other => {
             return Err(eval_error(format!(
                 "itertools.map() first argument must be a list, got {}",
@@ -131,13 +131,13 @@ fn map(args: &[Value]) -> Result<Value> {
         .into_iter()
         .map(|item| call_value(f.clone(), vec![item]))
         .collect::<Result<Vec<_>>>()?;
-    Ok(Value::array(result))
+    Ok(Value::list(result))
 }
 
 fn sum(args: &[Value]) -> Result<Value> {
     expect_arity("itertools.sum", args, 1, 1)?;
     let items = match &args[0] {
-        Value::Array(rc) => rc.borrow().clone(),
+        Value::List(rc) => rc.borrow().clone(),
         other => {
             return Err(eval_error(format!(
                 "itertools.sum() argument must be a list, got {}",
@@ -189,9 +189,9 @@ mod tests {
             r#"itertools.sorted([{"k": 3}, {"k": 1}, {"k": 2}], fn(x) { x["k"] })"#,
             &[],
             Value::from(vec![
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(1i64) }),
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(2i64) }),
-                Value::map(indexmap::indexmap! { "k".into() => Value::from(3i64) }),
+                Value::dict(indexmap::indexmap! { "k".into() => Value::from(1i64) }),
+                Value::dict(indexmap::indexmap! { "k".into() => Value::from(2i64) }),
+                Value::dict(indexmap::indexmap! { "k".into() => Value::from(3i64) }),
             ]),
         );
         assert_eval("itertools.sorted([])", &[], Value::from(vec![] as Vec<i64>));

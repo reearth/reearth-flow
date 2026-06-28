@@ -258,11 +258,11 @@ nodes:
               part_id = building_id_attr.get("uro:partID", "");
               gml_name = attributes.get("gmlName", "");
               building_id_valid = Regex(r"^\d{5}-bldg-\d+$").find(building_id) != null;
-              branch_id_valid = branch_id == "" or type(branch_id) == "int";
+              branch_id_valid = branch_id == "" or type(branch_id) == int;
               if gml_name == "bldg:Building" {
                 part_id_valid = part_id == "";
               } else if gml_name == "bldg:BuildingPart" {
-                part_id_valid = type(part_id) == "int";
+                part_id_valid = type(part_id) == int;
               } else {
                 part_id_valid = false;
               }

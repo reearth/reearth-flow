@@ -114,3 +114,69 @@ impl PolygonMesh3D {
         &mut self.data.appearance
     }
 }
+
+impl PolygonMesh3DData {
+    /// Drop all back-side appearance, keeping only the front; see
+    /// [`crate::appearance::make_front_only`].
+    pub(crate) fn make_front_only(&mut self) {
+        crate::appearance::make_front_only(&mut self.appearance, &mut self.uv_sets);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::appearance::{
+        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSource,
+    };
+    use crate::test_support::bare;
+
+    fn uv(side: Side) -> UvSet {
+        UvSet {
+            theme: Some(ThemeId(Arc::from("t"))),
+            side,
+            channel: ChannelId::default(),
+            uv: UvSource::Explicit(Box::new([])),
+        }
+    }
+
+    #[test]
+    fn make_front_only_drops_back_binding_and_uv() {
+        let mut m = PolygonMesh3DData::from_parts(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[0u32, 1, 2]],
+        )
+        .unwrap();
+        m.appearance = Some(Appearance {
+            materials: vec![bare(), bare()],
+            themes: vec![ThemeBinding {
+                theme: ThemeId(Arc::from("t")),
+                front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+                back: Some(FaceBinding::Uniform(MaterialIndex::new(1).unwrap())),
+            }],
+            default_theme: ThemeId(Arc::from("t")),
+        });
+        m.uv_sets = vec![uv(Side::Front), uv(Side::Back)];
+
+        m.make_front_only();
+
+        assert!(m.appearance.as_ref().unwrap().themes[0].back.is_none());
+        assert_eq!(m.uv_sets.len(), 1);
+        assert_eq!(m.uv_sets[0].side, Side::Front);
+    }
+
+    #[test]
+    fn make_front_only_is_a_noop_when_already_front() {
+        let mut m = PolygonMesh3DData::from_parts(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [[0u32, 1, 2]],
+        )
+        .unwrap();
+        m.uv_sets = vec![uv(Side::Front)];
+        m.make_front_only();
+        assert_eq!(m.uv_sets.len(), 1);
+        assert!(m.appearance.is_none());
+    }
+}

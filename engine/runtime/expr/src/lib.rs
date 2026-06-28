@@ -2,8 +2,8 @@ mod core;
 
 pub use core::env::Env;
 pub use core::error::{eval_error, Error, Result};
-pub use core::eval::{default_env, env_bind};
-pub use core::value::{ClosureValue, ImmutableObject, NativeFn, Value};
+pub use core::eval::{default_env, env_bind, env_remove};
+pub use core::value::{ClosureValue, FromValue, ImmutableObject, NativeFn, TypeValue, Value};
 
 pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> Result<()> {
     let n = args.len();
@@ -23,8 +23,30 @@ pub fn compile(input: &str) -> Result<CompiledExpr> {
     core::parser::parse(input).map(CompiledExpr)
 }
 
-/// Evaluate a compiled expression against an [`Env`].
-pub fn eval(expr: &CompiledExpr, env: &Env) -> Result<Value> {
+/// Evaluate a compiled expression, converting the result to `T` via [`FromValue`].
+pub fn eval<T>(expr: &CompiledExpr, env: &Env) -> std::result::Result<T, T::Error>
+where
+    T: FromValue,
+    T::Error: From<Error>,
+{
+    let child = core::env::new_frame(Some(env.clone()));
+    let before = core::value::LIVE_ALLOC.with(|c| c.get());
+    let v = core::eval::eval(&expr.0, &child).map_err(T::Error::from)?;
+    let result = core::value::convert_value::<T>(v)?;
+    drop(child);
+    let after = core::value::LIVE_ALLOC.with(|c| c.get());
+    if after != before {
+        return Err(T::Error::from(core::error::eval_error(format!(
+            "expr: {} TrackedRc allocation(s) still live after eval; \
+             intermediate cyclic reference detected",
+            after.wrapping_sub(before)
+        ))));
+    }
+    Ok(result)
+}
+
+/// Evaluate a compiled expression, returning the raw [`Value`].
+pub fn eval_unsafe(expr: &CompiledExpr, env: &Env) -> Result<Value> {
     core::eval::eval(&expr.0, env)
 }
 

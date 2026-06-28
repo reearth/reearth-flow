@@ -653,7 +653,7 @@ graphs:
               any_active = m.get("木造・土蔵造") or m.get("鉄骨鉄筋コンクリート造") or m.get("鉄筋コンクリート造") or m.get("鉄骨造") or m.get("軽量鉄骨造") or m.get("レンガ造等") or m.get("非木造") or m.get("不明");
               if not any_active { "-" } else {
                 st_raw = attributes.get("structureType", "-1");
-                if type(st_raw) == "string" { st = int(st_raw); } else { st = st_raw; }
+                if type(st_raw) == str { st = int(st_raw); } else { st = st_raw; }
                 if st == 601 { excluded = m.get("木造・土蔵造"); }
                 else if st == 602 { excluded = m.get("鉄骨鉄筋コンクリート造"); }
                 else if st == 603 { excluded = m.get("鉄筋コンクリート造"); }
