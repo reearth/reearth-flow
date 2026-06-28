@@ -132,6 +132,7 @@ Operators listed from lowest to highest precedence.
 `left` and `right` denote associativity of binary operators;
 `prefix` and `postfix` denote unary operators.
 
+- `=` `+=` `-=` `*=` `/=` `//=` `%=` `**=` `&=` `|=` `^=` `<<=` `>>=` (right)
 - `or` (left)
 - `and` (left)
 - `not` (prefix)
@@ -177,10 +178,23 @@ Right shift with an amount at or beyond the positive range of the integer type r
 `v in x` tests whether `v` is contained in `x`:
 
 - `list`: `v` equals any element
-- `str`: `v` is a substring (must be a `str`)
+- `str`: `v` is a substring
 - `dict`: `v` is a key
 
 `v not in x` is the negation of `v in x`.
+
+### string and list concatenation
+
+`a + b` concatenates two strings or two lists. For lists, the result is a new concatenated list; neither operand is modified.
+
+### ordering
+
+`str` values are ordered lexicographically by Unicode codepoint.
+`list` values are ordered lexicographically element-by-element; a shorter list is less than a longer one if all shared elements are equal.
+
+### equality
+
+`list` equality is element-by-element recursive. `dict` equality is key-value recursive.
 
 ## block
 
@@ -195,6 +209,7 @@ A program is a block.
 ## return
 
 `return v` exits early, producing `v` as the result of the program.
+`return` with no value produces `null`.
 
 ## control flow
 
@@ -208,6 +223,21 @@ Without an `else` branch, the result is `null` when the condition is false.
 
 `while cond { ... }` loops while `cond` is truthy.
 
+### for
+
+`for var in expr { ... }` iterates over `expr` and binds each item to `var` for the body.
+
+Iteration by type:
+
+- `list`: each element in order
+- `str`: each Unicode codepoint as a single-character string, in order
+- `dict`: each key as a string, in insertion order
+- `range(stop)`: integers `0, 1, ..., stop - 1` in order
+- `range(start, stop)`: integers `start, start + 1, ..., stop - 1` in order
+- `range(start, stop, step)`: integers `start, start + step, start + 2*step, ...`, stopping before `stop`
+
+> Note: Implementation of `range` can eagerly evaluate to list, so passing a very large `stop` value may exhaust memory.
+
 ## indexing
 
 `x[i]` accesses an element of `x`:
@@ -217,6 +247,22 @@ Without an `else` branch, the result is `null` when the condition is false.
 - `dict`: `i` is a key.
 
 Index failure (missing key, out of bounds, wrong type) should trigger an evaluation error.
+
+## slicing
+
+`x[start:stop]` or `x[start:stop:step]` returns a subsequence of `x` of the same type.
+Slicing is supported for `list` and `str`.
+
+`start`, `stop`, and `step` are all optional integers.
+`step` defaults to `1` and must not be `0`.
+Negative `start` and `stop` count from the end.
+Out-of-range `start` and `stop` values are clamped to the valid range.
+
+For positive `step`, elements at indices `start` (inclusive) up to `stop` (exclusive) are selected.
+`start` defaults to `0`; `stop` defaults to the length.
+
+For negative `step`, elements at indices `start` (inclusive) down to `stop` (exclusive) are selected.
+`start` defaults to the last index; `stop` defaults to before the first index.
 
 ## scoping
 
@@ -228,6 +274,14 @@ A variable bound by `=` is accessible from that point to the end of the program.
 `=` is the assignment operator. It overwrites the existing binding of a name or creates a new one.
 
 `a[i] = v` assigns to an element: an integer index into a list, or a string key into a dict.
+
+## len
+
+`len(x)` returns the number of elements in `x`:
+
+- `str`: number of Unicode codepoints
+- `list`: number of elements
+- `dict`: number of entries
 
 ## numeric coercion
 
@@ -244,5 +298,5 @@ Whether a type is effectively mutable depends solely on whether it exposes any m
 
 Cyclic references (e.g. a list that contains itself) are undefined behavior.
 
-Notes: An implication is that FlowExpr may be implemented with reference counting memory management.
-However, silent memory leak is usually unwanted in most embedded evaluation environments that need to be handled or at least detected.
+> Note: An implication is that FlowExpr may be implemented with reference counting memory management.
+> However, silent memory leak is usually unwanted in most embedded evaluation environments that need to be handled or at least detected.
