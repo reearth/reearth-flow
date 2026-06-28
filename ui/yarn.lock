@@ -5599,6 +5599,7 @@ __metadata:
     "@radix-ui/react-tooltip": "npm:1.2.10"
     "@react-three/drei": "npm:10.7.7"
     "@react-three/fiber": "npm:9.6.1"
+    "@reearth/sentinel": "npm:0.1.2"
     "@rjsf/core": "npm:6.6.2"
     "@rjsf/utils": "npm:6.6.2"
     "@rjsf/validator-ajv8": "npm:6.6.2"
