@@ -29,14 +29,12 @@ func TestCatchUpDrainOrdering(t *testing.T) {
 	defer relay.Close()
 	_ = relay.Start(ctx, sink)
 
-	// RoomActivated runs catch-up synchronously before spawning the live reader,
-	// so on return all three pre-existing updates are injected, in order.
+	// Catch-up runs on the reader goroutine (deferred off the activation callback
+	// to avoid the ygo#133 re-entrant deadlock), so wait for the replay to land.
 	relay.RoomActivated(room)
+	waitFor(t, 3*time.Second, func() bool { return sink.count() >= 3 })
 
 	got := sink.snapshot()
-	if len(got) < 3 {
-		t.Fatalf("catch-up injected %d, want >=3", len(got))
-	}
 	for i, want := range [][]byte{{1}, {2}, {3}} {
 		if string(got[i].Data) != string(want) {
 			t.Fatalf("entry[%d] = %v, want %v (drain order broken)", i, got[i].Data, want)
