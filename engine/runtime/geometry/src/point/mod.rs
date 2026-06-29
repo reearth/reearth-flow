@@ -25,6 +25,5 @@ pub struct Point3D {
     position: [f64; 3],
 }
 
-// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
 crate::unsupported!(Point2D: Triangulate);
 crate::unsupported!(Point3D: Triangulate);

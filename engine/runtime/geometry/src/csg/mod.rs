@@ -30,5 +30,5 @@ pub enum Csg {
     Difference(Box<ThreeDimensional>, Box<ThreeDimensional>),
 }
 
-// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
+// Tessellation is defined only for `Polygon` / `PolygonMesh`.
 crate::unsupported!(Csg: Triangulate);

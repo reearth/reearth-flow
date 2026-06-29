@@ -136,7 +136,7 @@ impl TriangularMesh3DData {
     }
 }
 
-// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
+// Tessellation is defined only for `Polygon` / `PolygonMesh`.
 crate::unsupported!(TriangularMesh2D: Triangulate);
 crate::unsupported!(TriangularMesh3D: Triangulate);
 

@@ -1,6 +1,6 @@
 /// Stamp the mandatory empty `impl Trait for Type {}` blocks for operations a
 /// leaf does not support, so the default `UnsupportedOperation` body fires
-/// through `enum_dispatch` (§4.1.2).
+/// through `enum_dispatch`.
 ///
 /// ```ignore
 /// unsupported!(Csg: Reproject, WriteGltf);

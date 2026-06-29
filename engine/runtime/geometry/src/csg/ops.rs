@@ -6,10 +6,6 @@ impl BoundingBox for Csg {
         let (left, right) = match self {
             Csg::Union(a, b) | Csg::Intersection(a, b) | Csg::Difference(a, b) => (a, b),
         };
-        // A boolean result is always contained in the union of its operands'
-        // extents, so the union of the two operand boxes is a valid bound for
-        // every operator — loose for intersection/difference, exact for union.
-        // Evaluating the tree for a tighter box is out of scope here.
         union_results([operand_box(left), operand_box(right)]).ok_or(UnsupportedOperation {
             geometry: "Csg",
             operation: "bounding_box",

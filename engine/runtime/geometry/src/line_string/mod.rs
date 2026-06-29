@@ -32,6 +32,6 @@ pub struct LineString3D {
     coords: Box<[[f64; 3]]>,
 }
 
-// Tessellation is defined only for `Polygon` / `PolygonMesh` (§4.2).
+// Tessellation is defined only for `Polygon` / `PolygonMesh`.
 crate::unsupported!(LineString2D: Triangulate);
 crate::unsupported!(LineString3D: Triangulate);

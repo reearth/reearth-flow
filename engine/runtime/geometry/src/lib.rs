@@ -158,12 +158,6 @@ pub enum Euclidean3DGeometry {
     Collection(Collection3D),
 }
 
-// `Geometry` and `GeometryCollection` are dispatched by hand rather than by
-// `enum_dispatch`: `Geometry::None` is a unit variant (nothing to dispatch to)
-// and a `GeometryCollection` holds a `Vec<Geometry>` (not a leaf). Both recurse
-// over their children, mirroring the design's "GeometryCollection is the
-// exception" note (§4.1).
-
 impl BoundingBox for Geometry {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
         match self {
@@ -206,8 +200,6 @@ impl Triangulate for Geometry {
 
 impl Triangulate for GeometryCollection {
     fn triangulate(&mut self, _cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        // Tessellation is defined per-primitive (Polygon / PolygonMesh, §4.2),
-        // not over a collection; a caller triangulates members individually.
         Err(UnsupportedOperation {
             geometry: "GeometryCollection",
             operation: "triangulate",

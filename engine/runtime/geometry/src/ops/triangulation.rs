@@ -1,8 +1,5 @@
 //! Shared earcut-based polygon triangulation primitives, plus the reusable
 //! [`Cache`] that lets repeated triangulations amortize their allocations.
-//!
-//! `Polygon` and `PolygonMesh` both tessellate planar faces with earcut
-//! (ear-clipping).
 
 use earcut::Earcut;
 
@@ -130,11 +127,10 @@ fn expand_binding(binding: FaceBinding, face_tris: &[u32]) -> FaceBinding {
 ///
 /// `src_corner[j]` is the source corner-buffer position output triangle-corner
 /// `j` draws its UV from (`positions[out[j]]` for a `Polygon`, `start + l` for a
-/// `PolygonMesh` face — see the leaf `triangulate` impls). An `Explicit` set is
-/// re-gathered into a fresh `3 * triangle_count`-long array; a `WorldToTexture`
-/// matrix is *positional*, so it moves over verbatim (triangulation preserves
-/// world positions). Only the `uv` payload changes — `theme` / `side` / `channel`
-/// carry through.
+/// `PolygonMesh` face. An `Explicit` set is re-gathered into a fresh 
+/// `3 * triangle_count`-long array; a `WorldToTexture` matrix is *positional*, 
+/// so it moves over verbatim (triangulation preserves world positions). 
+/// Only the `uv` payload changes; `theme` / `side` / `channel` carry through.
 pub(crate) fn retarget_uv(uv: UvSet, src_corner: &[u32]) -> UvSet {
     let mapped = match uv.uv {
         UvSource::Explicit(coords) => {
@@ -215,9 +211,6 @@ impl Projector {
 /// Newell's-method normal of a planar ring; `None` if degenerate (fewer than 3
 /// vertices, or a near-zero normal). Ported from `earcut::utils3d`.
 fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
-    // `split_last` seeds `prev` with the last vertex (the ring's closing edge,
-    // last -> first) and is bounds-check-free; the `len < 3` guard then rejects
-    // degenerate rings.
     let (&last, _) = vertices.split_last()?;
     if vertices.len() < 3 {
         return None;

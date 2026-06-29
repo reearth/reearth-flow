@@ -5,9 +5,6 @@ use crate::{Euclidean3DGeometry, Geometry};
 
 impl BoundingBox for Solid {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
-        // The exterior shell encloses the interior (void) shells, so the box
-        // over the exterior alone already bounds the solid; iterating the
-        // interiors too costs nothing and stays correct for ill-formed solids.
         let verts = std::iter::once(&self.exterior)
             .chain(self.interiors.iter())
             .flat_map(|s| s.vertices().iter().copied());

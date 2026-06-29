@@ -85,10 +85,6 @@ impl Collection3D {
     }
 }
 
-// Hand-written, like `GeometryCollection`: a `Collection` recurses over its
-// members (each a dispatched embedding enum) and merges their boxes. All members
-// share the embedding, so the merge stays in that dimension.
-
 impl BoundingBox for Collection2D {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
         union_results(self.members.iter().map(|m| m.bounding_box())).ok_or(UnsupportedOperation {
@@ -107,7 +103,7 @@ impl BoundingBox for Collection3D {
     }
 }
 
-// Tessellation is defined per-primitive (§4.2), not over a collection.
+// Tessellation is defined per-primitive, not over a collection.
 crate::unsupported!(Collection2D: Triangulate);
 crate::unsupported!(Collection3D: Triangulate);
 

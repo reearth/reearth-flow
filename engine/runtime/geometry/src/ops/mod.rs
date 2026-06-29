@@ -1,15 +1,12 @@
 //! Operation traits for the geometry types.
 //!
 //! Each operation is a separate trait carrying a default method that returns
-//! [`UnsupportedOperation`]. A leaf opts *in* by overriding the method (in its
-//! `{type}/ops.rs`), and opts *out* with an empty `impl` block — stamped by the
-//! [`unsupported!`](crate::unsupported) macro (§4.1.2). The traits are
+//! [`UnsupportedOperation`]. A leaf opts in by overriding the method (in its
+//! `{type}/ops.rs`), and opts out with an empty `impl` block, stamped by the
+//! [`unsupported!`](crate::unsupported) macro. The traits are
 //! `#[enum_dispatch]`, so a call on `Geometry` / `Euclidean{2,3}DGeometry`
-//! chains through to the concrete leaf; `GeometryCollection` and the per-frame
+//! chains through to the concrete leaf. `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
-//!
-//! Supporting machinery shared by the operations (e.g. earcut triangulation)
-//! lives in submodules such as [`triangulation`].
 
 pub mod triangulation;
 
@@ -41,14 +38,8 @@ impl std::error::Error for UnsupportedOperation {}
 ///
 /// The variant mirrors the geometry's embedding: a 2D-embedded geometry yields
 /// [`Aabb::D2`], a 3D-embedded one yields [`Aabb::D3`]. The optional 2.5D
-/// elevation a 2D leaf may carry is *not* folded into the box — the box stays
-/// planar, matching the 2D embedding (and `Centroid`, which returns a 2D point
-/// for a 2D leaf).
-///
-/// No frame normalization is performed: the box is built from the raw stored
-/// coordinates. A collection whose members are in different frames therefore
-/// produces a box in mixed units, which is the caller's responsibility to
-/// avoid (reproject first).
+/// elevation a 2D leaf may carry is not folded into the box. The box stays
+/// planar, matching the 2D embedding.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Aabb {
     /// Box of a 2D-embedded geometry.
@@ -191,14 +182,13 @@ impl<T: BoundingBox + ?Sized> BoundingBox for Box<T> {
     }
 }
 
-/// Tessellation: re-represent a polygonal geometry as a triangle mesh
-/// (§4.2 "Tessellation"). Defined for `Polygon` and `PolygonMesh`; every other
+/// Tessellation: re-represent a polygonal geometry as a triangle mesh.
+/// Defined for `Polygon` and `PolygonMesh`; every other
 /// leaf opts out via [`unsupported!`](crate::unsupported).
 ///
 /// The result is a [`Geometry`](crate::Geometry) wrapping a `TriangularMesh` in
 /// the input's embedding (2D in, 2D out; 3D in, 3D out) and frame. A degenerate
-/// face — fewer than three distinct vertices, or a 3D ring with no usable
-/// projection plane — simply contributes no triangles, so a fully-degenerate
+/// face simply contributes no triangles, so a fully-degenerate
 /// input yields a mesh with vertices but no faces rather than an error.
 ///
 /// Tessellation takes `&mut self` and **consumes** the geometry's buffers (vertex
@@ -206,11 +196,6 @@ impl<T: BoundingBox + ?Sized> BoundingBox for Box<T> {
 /// moved-from and must be discarded or overwritten. On error `self` is untouched.
 #[enum_dispatch::enum_dispatch]
 pub trait Triangulate {
-    /// Triangulate into a `TriangularMesh`-bearing [`Geometry`](crate::Geometry),
-    /// or [`UnsupportedOperation`] for a type that does not tessellate. Consumes
-    /// `self`'s buffers in place (see the trait docs). `cache` holds the reused
-    /// earcut state and scratch buffers — pass the same one across many calls to
-    /// amortize allocation on the hot path.
     fn triangulate(
         &mut self,
         cache: &mut crate::ops::triangulation::Cache,
