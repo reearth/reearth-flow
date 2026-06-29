@@ -1,6 +1,7 @@
-import { withAuthenticationRequired } from "@auth0/auth0-react";
 import { ReactNode } from "react";
 
+import { LoadingSplashscreen } from "@flow/components";
+import ErrorPage from "@flow/components/errors/ErrorPage";
 import { useAuthenticationRequired } from "@flow/lib/auth";
 
 type Props = {
@@ -8,16 +9,21 @@ type Props = {
 };
 
 const AuthenticationWrapper: React.FC<Props> = ({ children }) => {
-  const [isAuthenticated] = useAuthenticationRequired(); // TODO: show error
-  return isAuthenticated && children ? children : null;
+  const { isAuthenticated, isLoading, error } = useAuthenticationRequired();
+
+  if (isAuthenticated) {
+    return children ? children : null;
+  }
+
+  if (isLoading) {
+    return <LoadingSplashscreen />;
+  }
+
+  if (error) {
+    return <ErrorPage errorMessage={error} />;
+  }
+
+  return null;
 };
 
-const withAuthorization = (): ((
-  component: React.FC<Props>,
-) => React.FC<Props>) => {
-  return withAuthenticationRequired as unknown as (
-    component: React.FC<Props>,
-  ) => React.FC<Props>;
-};
-
-export default withAuthorization()(AuthenticationWrapper);
+export default AuthenticationWrapper;
