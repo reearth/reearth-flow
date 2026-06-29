@@ -16,7 +16,7 @@ on:
           - smoke # @smoke-tagged sanity check only
 
 concurrency:
-  group: reearth-flow-e2e-ui
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
