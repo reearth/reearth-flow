@@ -11,6 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@flow/components";
+import { TYPE_COLOR } from "@flow/features/Editor/components/ParamsDialog/components/ValueEditorDialog/components/flowExprConstants";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
@@ -103,7 +104,8 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
                     <code className="flex-1 truncate font-mono text-xs">
                       {field.name}
                     </code>
-                    <span className="font-mono text-[10px] font-semibold">
+                    <span
+                      className={`font-mono text-[10px] font-semibold ${TYPE_COLOR[field.type]}`}>
                       {field.type}
                     </span>
                   </div>
