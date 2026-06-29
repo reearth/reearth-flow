@@ -20,7 +20,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 	</gml:boundedBy>
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l09a0001-02e4-11f0-a3af-18ece7a5509a">
-			<gml:name>16211-bldg-L09</gml:name>
+			<gml:name>16211-bldg-9</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
 			<bldg:class>3003</bldg:class>
 			<bldg:usage>411</bldg:usage>
@@ -126,7 +126,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 			</core:lod1Solid>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
-					<uro:buildingID>16211-bldg-L09</uro:buildingID>
+					<uro:buildingID>16211-bldg-9</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
 					<uro:city>16211</uro:city>
 				</uro:BuildingIDAttribute>
