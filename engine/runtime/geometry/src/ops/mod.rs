@@ -200,14 +200,19 @@ impl<T: BoundingBox + ?Sized> BoundingBox for Box<T> {
 /// face — fewer than three distinct vertices, or a 3D ring with no usable
 /// projection plane — simply contributes no triangles, so a fully-degenerate
 /// input yields a mesh with vertices but no faces rather than an error.
+///
+/// Tessellation takes `&mut self` and **consumes** the geometry's buffers (vertex
+/// pool, appearance, UV are moved into the new mesh), so on success `self` is left
+/// moved-from and must be discarded or overwritten. On error `self` is untouched.
 #[enum_dispatch::enum_dispatch]
 pub trait Triangulate {
     /// Triangulate into a `TriangularMesh`-bearing [`Geometry`](crate::Geometry),
-    /// or [`UnsupportedOperation`] for a type that does not tessellate. `cache`
-    /// holds the reused earcut state and scratch buffers — pass the same one
-    /// across many calls to amortize allocation on the hot path.
+    /// or [`UnsupportedOperation`] for a type that does not tessellate. Consumes
+    /// `self`'s buffers in place (see the trait docs). `cache` holds the reused
+    /// earcut state and scratch buffers — pass the same one across many calls to
+    /// amortize allocation on the hot path.
     fn triangulate(
-        &self,
+        &mut self,
         cache: &mut crate::ops::triangulation::Cache,
     ) -> Result<crate::Geometry, UnsupportedOperation> {
         let _ = cache;
@@ -220,7 +225,7 @@ pub trait Triangulate {
 
 impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
     fn triangulate(
-        &self,
+        &mut self,
         cache: &mut crate::ops::triangulation::Cache,
     ) -> Result<crate::Geometry, UnsupportedOperation> {
         (**self).triangulate(cache)

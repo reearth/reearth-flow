@@ -79,6 +79,18 @@ impl TriangularMesh3DData {
         }
     }
 
+    /// Install an already-built `appearance` and `uv_sets` directly, **unvalidated**
+    /// (the caller owns the invariants). Used by tessellation, whose appearance is
+    /// consistent by construction.
+    pub(crate) fn set_raw_appearance(
+        &mut self,
+        uv_sets: Vec<UvSet>,
+        appearance: Option<Appearance>,
+    ) {
+        self.uv_sets = uv_sets;
+        self.appearance = appearance;
+    }
+
     /// Build mesh data from a triangle soup: a flat stream of corner coordinates,
     /// three per triangle, deduplicated into a shared vertex pool.
     pub fn from_soup(iter: impl IntoIterator<Item = [f64; 3]>) -> Self {
@@ -173,6 +185,16 @@ impl TriangularMesh3D {
     /// Build from a triangle soup; see [`TriangularMesh3DData::from_soup`].
     pub fn from_soup(coordinate: Coordinate, iter: impl IntoIterator<Item = [f64; 3]>) -> Self {
         Self::new(coordinate, TriangularMesh3DData::from_soup(iter))
+    }
+
+    /// Install raw `appearance` / `uv_sets`; see
+    /// [`TriangularMesh3DData::set_raw_appearance`].
+    pub(crate) fn set_raw_appearance(
+        &mut self,
+        uv_sets: Vec<UvSet>,
+        appearance: Option<Appearance>,
+    ) {
+        self.data.set_raw_appearance(uv_sets, appearance);
     }
 
     /// Add a single-material appearance for one theme; see
@@ -302,6 +324,17 @@ impl TriangularMesh2D {
             uv_sets: Vec::new(),
             appearance: None,
         }
+    }
+
+    /// Install raw `appearance` / `uv_sets`; see
+    /// [`TriangularMesh3DData::set_raw_appearance`].
+    pub(crate) fn set_raw_appearance(
+        &mut self,
+        uv_sets: Vec<UvSet>,
+        appearance: Option<Appearance>,
+    ) {
+        self.uv_sets = uv_sets;
+        self.appearance = appearance;
     }
 
     /// Build a pure-2D mesh from a triangle soup of `[x, y]` corners.

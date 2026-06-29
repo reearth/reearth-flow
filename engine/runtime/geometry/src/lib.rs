@@ -191,7 +191,7 @@ impl BoundingBox for GeometryCollection {
 }
 
 impl Triangulate for Geometry {
-    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+    fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
         match self {
             Geometry::None => Err(UnsupportedOperation {
                 geometry: "Geometry::None",
@@ -205,7 +205,7 @@ impl Triangulate for Geometry {
 }
 
 impl Triangulate for GeometryCollection {
-    fn triangulate(&self, _cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+    fn triangulate(&mut self, _cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
         // Tessellation is defined per-primitive (Polygon / PolygonMesh, §4.2),
         // not over a collection; a caller triangulates members individually.
         Err(UnsupportedOperation {
@@ -399,16 +399,17 @@ mod triangulate_tests {
     #[test]
     fn cache_state_does_not_affect_output() {
         let geoms = sample_geometries();
+        // Tessellation consumes its input, so every call works on a fresh clone.
         for target in &geoms {
             // The reference result, from a pristine cache.
-            let expected = target.triangulate(&mut Cache::new());
+            let expected = target.clone().triangulate(&mut Cache::new());
 
             // (a) A cache dirtied by every other input in turn.
             for dirty in &geoms {
                 let mut cache = Cache::new();
-                let _ = dirty.triangulate(&mut cache);
+                let _ = dirty.clone().triangulate(&mut cache);
                 assert!(
-                    target.triangulate(&mut cache) == expected,
+                    target.clone().triangulate(&mut cache) == expected,
                     "result changed after dirtying the cache with {dirty:?}",
                 );
             }
@@ -416,17 +417,17 @@ mod triangulate_tests {
             // (b) A cache dirtied by the whole sequence (buffers grown + filled).
             let mut cache = Cache::new();
             for g in &geoms {
-                let _ = g.triangulate(&mut cache);
+                let _ = g.clone().triangulate(&mut cache);
             }
             assert!(
-                target.triangulate(&mut cache) == expected,
+                target.clone().triangulate(&mut cache) == expected,
                 "result changed after running the full sequence through the cache",
             );
 
             // (c) The same target twice through one cache is idempotent.
             let mut cache = Cache::new();
-            let first = target.triangulate(&mut cache);
-            let second = target.triangulate(&mut cache);
+            let first = target.clone().triangulate(&mut cache);
+            let second = target.clone().triangulate(&mut cache);
             assert!(first == expected && second == expected);
         }
     }
@@ -435,7 +436,7 @@ mod triangulate_tests {
     fn triangulate_dispatches_through_geometry_to_polygon() {
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let p = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
-        let g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(p)));
+        let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(p)));
         let out = g.triangulate(&mut Cache::new()).unwrap();
         match out {
             Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(m)) => {
@@ -447,14 +448,14 @@ mod triangulate_tests {
 
     #[test]
     fn triangulate_is_unsupported_for_non_polygonal_types() {
-        let point = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+        let mut point = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
             Coordinate::Euclidean,
             [0.0, 0.0],
         )));
         assert!(point.triangulate(&mut Cache::new()).is_err());
         assert!(Geometry::None.triangulate(&mut Cache::new()).is_err());
 
-        let collection = Geometry::GeometryCollection(GeometryCollection::new([]));
+        let mut collection = Geometry::GeometryCollection(GeometryCollection::new([]));
         assert!(collection.triangulate(&mut Cache::new()).is_err());
     }
 }

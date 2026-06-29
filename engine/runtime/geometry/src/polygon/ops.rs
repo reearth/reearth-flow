@@ -1,5 +1,7 @@
 use super::{Polygon2D, Polygon3D};
-use crate::ops::triangulation::{triangulate_2d, triangulate_3d, Cache};
+use crate::ops::triangulation::{
+    require_uniform_bindings, retarget_uv, triangulate_2d, triangulate_3d, Cache,
+};
 use crate::ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -26,7 +28,9 @@ impl BoundingBox for Polygon3D {
 }
 
 impl Triangulate for Polygon2D {
-    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+    fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        require_uniform_bindings(self.appearance(), "Polygon2D")?;
+
         let Cache { earcut, buffers } = cache;
         open_ring_positions(
             &self.coords,
@@ -41,7 +45,7 @@ impl Triangulate for Polygon2D {
         // earcut emits triangle corner indices into the gathered ring vertices
         // (3 per triangle, each < the vertex count), so the unchecked assembly is
         // sound. The gathered `verts` is the output mesh's own pool (not scratch).
-        let mesh = match &self.z {
+        let mut mesh = match &self.z {
             None => {
                 let mut verts: Vec<[f64; 2]> = Vec::with_capacity(buffers.positions.len());
                 // SAFETY: `positions` are in-range indices into `coords`.
@@ -87,6 +91,16 @@ impl Triangulate for Polygon2D {
                 }
             }
         };
+        let src_corner: Vec<u32> = buffers
+            .out
+            .iter()
+            .map(|&c| buffers.positions[c as usize])
+            .collect();
+        let uv_sets = std::mem::take(&mut self.uv_sets)
+            .into_iter()
+            .map(|uv| retarget_uv(uv, &src_corner))
+            .collect();
+        mesh.set_raw_appearance(uv_sets, std::mem::take(&mut self.appearance));
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -94,7 +108,9 @@ impl Triangulate for Polygon2D {
 }
 
 impl Triangulate for Polygon3D {
-    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+    fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        require_uniform_bindings(self.appearance(), "Polygon3D")?;
+
         let Cache { earcut, buffers } = cache;
         let num_outer = open_ring_positions(
             &self.coords,
@@ -114,7 +130,7 @@ impl Triangulate for Polygon3D {
         buffers.out.reserve(3 * verts.len());
         triangulate_3d(earcut, &verts, num_outer, &buffers.holes, &mut buffers.out);
         // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
-        let mesh = unsafe {
+        let mut mesh = unsafe {
             TriangularMesh3D::from_parts_unchecked(
                 self.coordinate.clone(),
                 verts,
@@ -122,6 +138,16 @@ impl Triangulate for Polygon3D {
                 buffers.out.iter().copied(),
             )
         };
+        let src_corner: Vec<u32> = buffers
+            .out
+            .iter()
+            .map(|&c| buffers.positions[c as usize])
+            .collect();
+        let uv_sets = std::mem::take(&mut self.uv_sets)
+            .into_iter()
+            .map(|uv| retarget_uv(uv, &src_corner))
+            .collect();
+        mesh.set_raw_appearance(uv_sets, std::mem::take(&mut self.appearance));
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -209,7 +235,8 @@ mod tests {
     #[test]
     fn polygon2d_square_triangulates_to_two_triangles() {
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let p = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let mut p =
+            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
         assert_eq!(m.num_triangles(), 2);
@@ -222,7 +249,7 @@ mod tests {
         // A 4-vertex square with a 4-vertex square hole: earcut yields 8 triangles.
         let exterior = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
-        let p = Polygon2D::from_rings(Coordinate::Euclidean, exterior, vec![hole]);
+        let mut p = Polygon2D::from_rings(Coordinate::Euclidean, exterior, vec![hole]);
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
         assert_eq!(m.num_triangles(), 8);
@@ -257,7 +284,8 @@ mod tests {
             [0.0, 0.0, 4.0],
             [0.0, 0.0, 0.0],
         ];
-        let p = Polygon3D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 3]>>::new());
+        let mut p =
+            Polygon3D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 3]>>::new());
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_3d(&g);
         assert_eq!(m.num_triangles(), 2);
@@ -304,9 +332,76 @@ mod tests {
             [2.0, 2.0, 2.0],
             [0.0, 0.0, 0.0],
         ];
-        let p = Polygon3D::from_rings(Coordinate::Euclidean, line, Vec::<Vec<[f64; 3]>>::new());
+        let mut p = Polygon3D::from_rings(Coordinate::Euclidean, line, Vec::<Vec<[f64; 3]>>::new());
         let g = p.triangulate(&mut Cache::new()).unwrap();
         assert_eq!(tri_mesh_3d(&g).num_triangles(), 0);
+    }
+
+    #[test]
+    fn triangulation_carries_uniform_appearance_and_regathers_uv() {
+        use crate::appearance::{FaceBinding, UvSource};
+        use crate::test_support::{textured, theme};
+
+        // UV is parallel to `coords` (5 entries, last = closing dup), distinct per
+        // real corner so the gather is checkable.
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+        let mut p =
+            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let src_uv = UvSource::Explicit(Box::new([
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [1.0, 1.0],
+            [0.0, 1.0],
+            [0.0, 0.0], // closing duplicate — never gathered
+        ]));
+        p.set_appearance(theme("rgb"), textured(), Some(src_uv))
+            .unwrap();
+
+        let g = p.triangulate(&mut Cache::new()).unwrap();
+        let m = tri_mesh_2d(&g);
+        assert_eq!(m.num_triangles(), 2);
+
+        let app = m.appearance().as_ref().expect("appearance carried over");
+        assert_eq!(app.materials.len(), 1);
+        assert_eq!(app.default_theme, theme("rgb"));
+        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
+
+        // Every output UV is one of the real source-corner UVs (gathered, not
+        // interpolated; the closing-duplicate slot is never referenced).
+        let UvSource::Explicit(out_uv) = &m.uv_sets()[0].uv else {
+            panic!("expected an explicit output UV set");
+        };
+        assert_eq!(out_uv.len(), 6);
+        let corners = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+        assert!(out_uv.iter().all(|uv| corners.contains(uv)));
+    }
+
+    #[test]
+    fn triangulation_passes_through_world_to_texture_uv() {
+        use crate::appearance::{TexMatrix, UvSource};
+        use crate::test_support::{textured, theme};
+
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+        let mut p =
+            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let matrix = TexMatrix([
+            [0.25, 0.0, 0.0, 0.0],
+            [0.0, 0.25, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]);
+        p.set_appearance(
+            theme("rgb"),
+            textured(),
+            Some(UvSource::WorldToTexture(matrix)),
+        )
+        .unwrap();
+
+        let g = p.triangulate(&mut Cache::new()).unwrap();
+        let m = tri_mesh_2d(&g);
+        assert!(matches!(
+            m.uv_sets()[0].uv,
+            UvSource::WorldToTexture(out) if out == matrix
+        ));
     }
 
     #[test]

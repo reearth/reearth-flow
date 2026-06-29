@@ -23,13 +23,13 @@ impl Triangulate for Solid {
     /// tessellated into a `TriangularMesh` shell; `TriangularMesh` shells pass
     /// through unchanged. The result is a `Solid` with the same frame and an
     /// all-triangle boundary.
-    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        let exterior = self.exterior.triangulated(cache);
+    fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        let exterior = self.exterior.triangulated(cache)?;
         let interiors = self
             .interiors
-            .iter()
+            .iter_mut()
             .map(|shell| shell.triangulated(cache))
-            .collect();
+            .collect::<Result<_, _>>()?;
         let solid = Solid::new(self.coordinate.clone(), exterior, interiors);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(
             solid,
@@ -39,12 +39,13 @@ impl Triangulate for Solid {
 
 impl Shell {
     /// This shell with its surface triangulated: a `PolygonMesh` shell becomes a
-    /// `TriangularMesh` shell; a `TriangularMesh` shell is returned unchanged.
-    fn triangulated(&self, cache: &mut Cache) -> Shell {
-        match self {
-            Shell::PolygonMesh(d) => Shell::TriangularMesh(d.triangulate(cache)),
+    /// `TriangularMesh` shell (stealing its buffers); an already-`TriangularMesh`
+    /// shell is cloned through unchanged.
+    fn triangulated(&mut self, cache: &mut Cache) -> Result<Shell, UnsupportedOperation> {
+        Ok(match self {
+            Shell::PolygonMesh(d) => Shell::TriangularMesh(d.triangulate(cache)?),
             Shell::TriangularMesh(d) => Shell::TriangularMesh(d.clone()),
-        }
+        })
     }
 }
 
@@ -112,7 +113,7 @@ mod tests {
         .unwrap();
         // Interior void: already a triangle-mesh shell -> passes through unchanged.
         let void = shell(vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]]);
-        let solid = Solid::new(Coordinate::Euclidean, quad, vec![Shell::from(void)]);
+        let mut solid = Solid::new(Coordinate::Euclidean, quad, vec![Shell::from(void)]);
 
         let out = match solid.triangulate(&mut Cache::new()).unwrap() {
             // The output is a Solid, not a bare mesh.

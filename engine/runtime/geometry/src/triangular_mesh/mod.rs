@@ -92,6 +92,13 @@ impl TriangularMesh2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
+
+    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
+    /// parallel to the corner buffer (`3 * num_triangles`).
+    #[inline]
+    pub fn uv_sets(&self) -> &[UvSet] {
+        &self.uv_sets
+    }
 }
 
 impl TriangularMesh3D {
@@ -111,6 +118,13 @@ impl TriangularMesh3D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.data.appearance
+    }
+
+    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
+    /// parallel to the corner buffer (`3 * num_triangles`).
+    #[inline]
+    pub fn uv_sets(&self) -> &[UvSet] {
+        &self.data.uv_sets
     }
 }
 

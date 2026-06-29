@@ -6,6 +6,9 @@
 
 use earcut::Earcut;
 
+use crate::appearance::{Appearance, FaceBinding, UvSet, UvSource};
+use crate::ops::UnsupportedOperation;
+
 /// Reusable scratch for triangulation, threaded through
 /// [`Triangulate`](crate::ops::Triangulate) so a caller tessellating many
 /// features pays the allocation cost (earcut's node arenas and the index/vertex
@@ -35,6 +38,9 @@ pub(crate) struct Buffers {
     pub(crate) out: Vec<u32>,
     /// Accumulated global triangle indices (mesh).
     pub(crate) tris: Vec<u32>,
+    /// Per-output-corner source `face_indices` position, parallel to `tris`
+    /// (mesh); the index [`retarget_uv`] re-gathers each corner's UV from.
+    pub(crate) corner_src: Vec<u32>,
     /// Decoded CSR buffers (mesh).
     pub(crate) face_indices: Vec<u32>,
     pub(crate) face_offsets: Vec<u32>,
@@ -77,6 +83,53 @@ pub(crate) fn triangulate_3d(
     };
     earcut.earcut(verts.iter().map(|&v| projector.project(v)), holes, out);
     true
+}
+
+/// Reject a geometry that binds any face `PerFace` (front or back of any theme):
+/// tessellation moves the appearance over verbatim, which is only correct while
+/// every binding is `Uniform`. `geometry` names the leaf for the error.
+///
+/// TEMP: drop this guard once tessellation expands per-face bindings.
+pub(crate) fn require_uniform_bindings(
+    appearance: &Option<Appearance>,
+    geometry: &'static str,
+) -> Result<(), UnsupportedOperation> {
+    let uniform = appearance.as_ref().is_none_or(|app| {
+        app.themes.iter().all(|theme| {
+            matches!(theme.front, FaceBinding::Uniform(_))
+                && theme
+                    .back
+                    .as_ref()
+                    .is_none_or(|back| matches!(back, FaceBinding::Uniform(_)))
+        })
+    });
+    if uniform {
+        Ok(())
+    } else {
+        Err(UnsupportedOperation {
+            geometry,
+            operation: "triangulate (only uniform material bindings are supported yet)",
+        })
+    }
+}
+
+/// Re-target one source UV set onto a triangulated corner buffer, consuming it.
+///
+/// `src_corner[j]` is the source corner-buffer position output triangle-corner
+/// `j` draws its UV from (`positions[out[j]]` for a `Polygon`, `start + l` for a
+/// `PolygonMesh` face — see the leaf `triangulate` impls). An `Explicit` set is
+/// re-gathered into a fresh `3 * triangle_count`-long array; a `WorldToTexture`
+/// matrix is *positional*, so it moves over verbatim (triangulation preserves
+/// world positions). Only the `uv` payload changes — `theme` / `side` / `channel`
+/// carry through.
+pub(crate) fn retarget_uv(uv: UvSet, src_corner: &[u32]) -> UvSet {
+    let mapped = match uv.uv {
+        UvSource::Explicit(coords) => {
+            UvSource::Explicit(src_corner.iter().map(|&i| coords[i as usize]).collect())
+        }
+        matrix @ UvSource::WorldToTexture(_) => matrix,
+    };
+    UvSet { uv: mapped, ..uv }
 }
 
 /// Tolerance for trianglation related algorithms.

@@ -1,6 +1,8 @@
 use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
 use crate::index::IndexBuffer;
-use crate::ops::triangulation::{triangulate_2d, triangulate_3d, Cache};
+use crate::ops::triangulation::{
+    require_uniform_bindings, retarget_uv, triangulate_2d, triangulate_3d, Cache,
+};
 use crate::ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -24,13 +26,16 @@ impl BoundingBox for PolygonMesh3D {
 }
 
 impl Triangulate for PolygonMesh2D {
-    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+    fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        require_uniform_bindings(self.appearance(), "PolygonMesh2D")?;
+
         let Cache { earcut, buffers } = cache;
         decode_into(&self.face_indices, &mut buffers.face_indices);
         decode_into(&self.face_offsets, &mut buffers.face_offsets);
         decode_into(&self.interior_offsets, &mut buffers.interior_offsets);
 
         buffers.tris.clear();
+        buffers.corner_src.clear();
         buffers.tris.reserve(3 * buffers.face_indices.len());
 
         let n = buffers.face_indices.len();
@@ -56,25 +61,33 @@ impl Triangulate for PolygonMesh2D {
                         .iter()
                         .map(|&l| unsafe { *face.get_unchecked(l as usize) }),
                 );
+                buffers
+                    .corner_src
+                    .extend(buffers.out.iter().map(|&l| start as u32 + l));
                 start = end;
             }
         }
 
+        let uv_sets = std::mem::take(&mut self.uv_sets)
+            .into_iter()
+            .map(|uv| retarget_uv(uv, &buffers.corner_src))
+            .collect();
+        let appearance = std::mem::take(&mut self.appearance);
+        let triangle_count = buffers.tris.len() / 3;
         // `tris` index the existing pool (each `< vertices.len()`) in triples.
-        let mesh = match &self.z {
+        let mut mesh = match std::mem::take(&mut self.z) {
             Some(z) => {
-                let verts3: Vec<[f64; 3]> = self
-                    .vertices
-                    .iter()
-                    .zip(z.iter())
-                    .map(|(&[x, y], &zz)| [x, y, zz])
+                let verts3: Vec<[f64; 3]> = std::mem::take(&mut self.vertices)
+                    .into_iter()
+                    .zip(z)
+                    .map(|([x, y], zz)| [x, y, zz])
                     .collect();
                 // SAFETY: every index is `< verts3.len()`; count is a multiple of 3.
                 unsafe {
                     TriangularMesh2D::from_parts_with_elevation_unchecked(
                         self.coordinate.clone(),
                         verts3,
-                        buffers.tris.len() / 3,
+                        triangle_count,
                         buffers.tris.iter().copied(),
                     )
                 }
@@ -83,12 +96,13 @@ impl Triangulate for PolygonMesh2D {
             None => unsafe {
                 TriangularMesh2D::from_parts_unchecked(
                     self.coordinate.clone(),
-                    self.vertices.clone(),
-                    buffers.tris.len() / 3,
+                    std::mem::take(&mut self.vertices),
+                    triangle_count,
                     buffers.tris.iter().copied(),
                 )
             },
         };
+        mesh.set_raw_appearance(uv_sets, appearance);
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -96,15 +110,22 @@ impl Triangulate for PolygonMesh2D {
 }
 
 impl PolygonMesh3DData {
-    /// Triangulate every face into coordinate-free triangle-mesh data, reusing
-    /// this mesh's vertex pool.
-    pub(crate) fn triangulate(&self, cache: &mut Cache) -> TriangularMesh3DData {
+    /// Triangulate every face into coordinate-free triangle-mesh data, **stealing**
+    /// this mesh's vertex pool, appearance and UV (see [`Triangulate`]). Fails
+    /// (leaving `self` untouched) if any binding is non-uniform.
+    pub(crate) fn triangulate(
+        &mut self,
+        cache: &mut Cache,
+    ) -> Result<TriangularMesh3DData, UnsupportedOperation> {
+        require_uniform_bindings(&self.appearance, "PolygonMesh3D")?;
+
         let Cache { earcut, buffers } = cache;
         decode_into(&self.face_indices, &mut buffers.face_indices);
         decode_into(&self.face_offsets, &mut buffers.face_offsets);
         decode_into(&self.interior_offsets, &mut buffers.interior_offsets);
 
         buffers.tris.clear();
+        buffers.corner_src.clear();
         buffers.tris.reserve(3 * buffers.face_indices.len());
 
         let n = buffers.face_indices.len();
@@ -136,25 +157,36 @@ impl PolygonMesh3DData {
                             .iter()
                             .map(|&l| unsafe { *face.get_unchecked(l as usize) }),
                     );
+                    buffers
+                        .corner_src
+                        .extend(buffers.out.iter().map(|&l| start as u32 + l));
                 }
                 start = end;
             }
         }
 
+        let uv_sets = std::mem::take(&mut self.uv_sets)
+            .into_iter()
+            .map(|uv| retarget_uv(uv, &buffers.corner_src))
+            .collect();
+        let appearance = std::mem::take(&mut self.appearance);
         // SAFETY: `tris` index `self.vertices` (`< len`); count is a multiple of 3.
-        unsafe {
+        let mut data = unsafe {
             TriangularMesh3DData::from_parts_unchecked(
-                self.vertices.clone(),
+                std::mem::take(&mut self.vertices),
                 buffers.tris.len() / 3,
                 buffers.tris.iter().copied(),
             )
-        }
+        };
+        data.set_raw_appearance(uv_sets, appearance);
+        Ok(data)
     }
 }
 
 impl Triangulate for PolygonMesh3D {
-    fn triangulate(&self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        let mesh = TriangularMesh3D::new(self.coordinate.clone(), self.data.triangulate(cache));
+    fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        let data = self.data.triangulate(cache)?;
+        let mesh = TriangularMesh3D::new(self.coordinate.clone(), data);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -235,24 +267,25 @@ mod tests {
             [4.0, 0.0],
             [4.0, 2.0],
         ];
-        let mesh = PolygonMesh2D::from_parts(
+        let mut mesh = PolygonMesh2D::from_parts(
             Coordinate::Euclidean,
             vertices,
             vec![vec![0u32, 1, 2, 3], vec![1, 4, 5, 2]],
         )
         .unwrap();
+        let mesh_box = mesh.bounding_box().unwrap();
         let g = mesh.triangulate(&mut Cache::new()).unwrap();
         let tm = match &g {
             Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(m)) => m,
             _ => panic!("expected a 2D triangular mesh"),
         };
         assert_eq!(tm.num_triangles(), 4);
-        assert_eq!(g.bounding_box().unwrap(), mesh.bounding_box().unwrap());
+        assert_eq!(g.bounding_box().unwrap(), mesh_box);
     }
 
     #[test]
     fn polygon_mesh3d_triangulates_quad_in_plane() {
-        let mesh = PolygonMesh3D::from_parts(
+        let mut mesh = PolygonMesh3D::from_parts(
             Coordinate::Euclidean,
             vec![
                 [0.0, 0.0, 0.0],
@@ -263,13 +296,14 @@ mod tests {
             vec![vec![0u32, 1, 2, 3]],
         )
         .unwrap();
+        let mesh_box = mesh.bounding_box().unwrap();
         let g = mesh.triangulate(&mut Cache::new()).unwrap();
         let tm = match &g {
             Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => m,
             _ => panic!("expected a 3D triangular mesh"),
         };
         assert_eq!(tm.num_triangles(), 2);
-        assert_eq!(g.bounding_box().unwrap(), mesh.bounding_box().unwrap());
+        assert_eq!(g.bounding_box().unwrap(), mesh_box);
     }
 
     #[test]
@@ -286,7 +320,7 @@ mod tests {
             [3.0, 3.0, 0.0],
             [1.0, 3.0, 0.0],
         ];
-        let mesh = PolygonMesh3D::from_raw_parts(
+        let mut mesh = PolygonMesh3D::from_raw_parts(
             Coordinate::Euclidean,
             vertices,
             vec![0, 1, 2, 3, 4, 5, 6, 7], // face_indices: exterior then hole
@@ -301,5 +335,89 @@ mod tests {
         };
         // A square ring with a square hole tessellates into 8 triangles.
         assert_eq!(tm.num_triangles(), 8);
+    }
+
+    #[test]
+    fn triangulation_rejects_non_uniform_binding() {
+        use crate::appearance::FaceBinding;
+        use crate::polygon::Polygon3D;
+        use crate::test_support::{textured, theme, uv};
+
+        // Welding appearance-carrying polygons yields a `PerFace` binding (one
+        // entry per face), which tessellation does not support yet.
+        let ring = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let mut a = Polygon3D::from_rings(Coordinate::Euclidean, ring, Vec::<Vec<[f64; 3]>>::new());
+        a.set_appearance(theme("rgb"), textured(), Some(uv(5)))
+            .unwrap();
+        let mut b = Polygon3D::from_rings(Coordinate::Euclidean, ring, Vec::<Vec<[f64; 3]>>::new());
+        b.set_appearance(theme("rgb"), textured(), Some(uv(5)))
+            .unwrap();
+
+        let mut mesh = PolygonMesh3D::from_polygons(Coordinate::Euclidean, [&a, &b]).unwrap();
+        assert!(matches!(
+            mesh.appearance().as_ref().unwrap().themes[0].front,
+            FaceBinding::PerFace(_)
+        ));
+        let err = mesh.triangulate(&mut Cache::new()).unwrap_err();
+        assert!(err.operation.contains("uniform"));
+        // `self` is left intact on the error path.
+        assert!(mesh.bounding_box().is_ok());
+    }
+
+    #[test]
+    fn triangulation_regathers_uv_per_corner_for_uniform_mesh() {
+        use crate::appearance::{
+            Appearance, FaceBinding, MaterialIndex, Side, ThemeBinding, UvSet, UvSource,
+        };
+        use crate::test_support::{textured, theme};
+
+        // A uniform-bound mesh is only reachable by direct construction (welding
+        // always yields PerFace).
+        let mut data = PolygonMesh3DData::from_parts(
+            vec![
+                [0.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [2.0, 2.0, 0.0],
+                [0.0, 2.0, 0.0],
+            ],
+            vec![vec![0u32, 1, 2, 3]],
+        )
+        .unwrap();
+        let src = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+        data.uv_sets = vec![UvSet {
+            theme: Some(theme("rgb")),
+            side: Side::Front,
+            channel: Default::default(),
+            uv: UvSource::Explicit(Box::new(src)),
+        }];
+        data.appearance = Some(Appearance {
+            materials: vec![textured()],
+            themes: vec![ThemeBinding {
+                theme: theme("rgb"),
+                front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+                back: None,
+            }],
+            default_theme: theme("rgb"),
+        });
+
+        let out = data.triangulate(&mut Cache::new()).unwrap();
+        let mesh = TriangularMesh3D::new(Coordinate::Euclidean, out);
+        assert_eq!(mesh.num_triangles(), 2);
+
+        let UvSource::Explicit(out_uv) = &mesh.uv_sets()[0].uv else {
+            panic!("expected an explicit output UV set");
+        };
+        assert_eq!(out_uv.len(), 6);
+        assert!(out_uv.iter().all(|uv| src.contains(uv)));
+        assert!(matches!(
+            mesh.appearance().as_ref().unwrap().themes[0].front,
+            FaceBinding::Uniform(_)
+        ));
     }
 }
