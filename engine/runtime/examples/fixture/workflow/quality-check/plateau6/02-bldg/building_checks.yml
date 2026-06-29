@@ -785,11 +785,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_duplicate_building_id", 0)
-        # TODO: wire to a PLATEAU6 building-id format check
+        # Invalid building-id format count (InvalidBuildingIdFormatCounter)
         - attribute: "不正な建物ID"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_invalid_building_id_format", 0)
         # TODO: wire to a PLATEAU6 L-bldg-02 check
         - attribute: "L-bldg-02 エラー"
           expr:
@@ -1925,6 +1925,102 @@ nodes:
         type: flowExpr
         value: attributes["name"]
 
+  # --- Invalid building-id format pipeline (不正な建物ID / Z-bldg-01_URO) ---
+  # Sibling of the C-bldg-01 duplicate check: it reuses the flattened building-id
+  # attributes produced by AttributeManagerBuildingId. A building is "good" only
+  # when its uro:buildingID matches the required format and its branch/part ids are
+  # well-formed; everything else falls through to the `unfiltered` port and is
+  # reported as 不正な建物ID. Mirrors plateau4 FeatureFilterValidBuildingIds.
+  - id: c1b00010-0000-4000-8000-000000000010
+    name: FeatureFilterValidBuildingIdFormat
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              building_id = attributes.get("uroBuildingId", "");
+              branch_id = attributes.get("uroBranchId", "");
+              part_id = attributes.get("uroPartId", "");
+              feature_type = attributes.get("__citygml_feature_type", "");
+              building_id_valid = Regex(r"^\d{5}-bldg-\d+$").find(building_id) != null;
+              branch_id_valid = branch_id == "" or type(branch_id) == "int";
+              if feature_type == "bldg:Building" {
+                part_id_valid = part_id == "";
+              } else if feature_type == "bldg:BuildingPart" {
+                part_id_valid = type(part_id) == "int";
+              } else {
+                part_id_valid = false;
+              }
+              building_id_valid and branch_id_valid and part_id_valid
+          outputPort: goodUroFormatting
+
+  # One CSV row per building with an invalid id format.
+  - id: c1b00011-0000-4000-8000-000000000011
+    name: AttributeMapperInvalidBuildingIdFormat
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: index
+        - attribute: "uro:buildingID"
+          valueAttribute: uroBuildingId
+        - attribute: "uro:branchID"
+          expr:
+            type: flowExpr
+            value: |
+              branch_id = attributes.get("uroBranchId", "");
+              if branch_id == "" { "（なし）" } else { branch_id }
+        - attribute: "uro:partID"
+          expr:
+            type: flowExpr
+            value: |
+              part_id = attributes.get("uroPartId", "");
+              if part_id == "" { "（なし）" } else { part_id }
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          valueAttribute: __citygml_feature_type
+
+  - id: c1b00012-0000-4000-8000-000000000012
+    name: FeatureWriterInvalidBuildingIdFormat
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_建物ID書式不正.csv
+
+  # Count invalid-format buildings per file for the summary column.
+  - id: c1b00013-0000-4000-8000-000000000013
+    name: InvalidBuildingIdFormatCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_invalid_building_id_format
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file invalid-format count onto each file feature.
+  - id: c1b00014-0000-4000-8000-000000000014
+    name: InvalidBuildingIdFormatSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
 edges:
   - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
     from: 63341eb4-409d-4668-b338-2d1e5ab003fd
@@ -2491,14 +2587,25 @@ edges:
     to: c1b00009-0000-4000-8000-000000000009
     fromPort: unmerged
     toPort: requestor
-  # C-bldg-01 duplicate-id merger output -> building summary mapper
+  # C-bldg-01 duplicate-id merger output -> invalid-format summary merger (requestor)
   - id: c1b0e012-0000-4000-8000-000000000012
     from: c1b00009-0000-4000-8000-000000000009
+    to: c1b00014-0000-4000-8000-000000000014
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e013-0000-4000-8000-000000000013
+    from: c1b00009-0000-4000-8000-000000000009
+    to: c1b00014-0000-4000-8000-000000000014
+    fromPort: unmerged
+    toPort: requestor
+  # Invalid-format summary merger output -> building summary mapper
+  - id: c1b0e020-0000-4000-8000-000000000020
+    from: c1b00014-0000-4000-8000-000000000014
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: c1b0e013-0000-4000-8000-000000000013
-    from: c1b00009-0000-4000-8000-000000000009
+  - id: c1b0e021-0000-4000-8000-000000000021
+    from: c1b00014-0000-4000-8000-000000000014
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default
@@ -2880,5 +2987,41 @@ edges:
   - id: c1b0e011-0000-4000-8000-000000000011
     from: c1b00008-0000-4000-8000-000000000008
     to: c1b00009-0000-4000-8000-000000000009
+    fromPort: default
+    toPort: supplier
+
+  # --- Invalid building-id format pipeline edges ---
+  # Reuse the flattened building features from AttributeManagerBuildingId.
+  - id: c1b0e014-0000-4000-8000-000000000014
+    from: c1b00002-0000-4000-8000-000000000002
+    to: c1b00010-0000-4000-8000-000000000010
+    fromPort: default
+    toPort: default
+  # Buildings failing the format check -> CSV mapper and per-file counter.
+  - id: c1b0e015-0000-4000-8000-000000000015
+    from: c1b00010-0000-4000-8000-000000000010
+    to: c1b00011-0000-4000-8000-000000000011
+    fromPort: unfiltered
+    toPort: default
+  - id: c1b0e016-0000-4000-8000-000000000016
+    from: c1b00010-0000-4000-8000-000000000010
+    to: c1b00013-0000-4000-8000-000000000013
+    fromPort: unfiltered
+    toPort: default
+  - id: c1b0e017-0000-4000-8000-000000000017
+    from: c1b00011-0000-4000-8000-000000000011
+    to: c1b00012-0000-4000-8000-000000000012
+    fromPort: default
+    toPort: default
+  # Route the written invalid-format CSV into the result zip.
+  - id: c1b0e018-0000-4000-8000-000000000018
+    from: c1b00012-0000-4000-8000-000000000012
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Counter.default -> invalid-format summary merger (supplier).
+  - id: c1b0e019-0000-4000-8000-000000000019
+    from: c1b00013-0000-4000-8000-000000000013
+    to: c1b00014-0000-4000-8000-000000000014
     fromPort: default
     toPort: supplier
