@@ -6,8 +6,7 @@
 
 use earcut::Earcut;
 
-use crate::appearance::{Appearance, FaceBinding, UvSet, UvSource};
-use crate::ops::UnsupportedOperation;
+use crate::appearance::{Appearance, FaceBinding, ThemeBinding, UvSet, UvSource};
 
 /// Reusable scratch for triangulation, threaded through
 /// [`Triangulate`](crate::ops::Triangulate) so a caller tessellating many
@@ -41,6 +40,9 @@ pub(crate) struct Buffers {
     /// Per-output-corner source `face_indices` position, parallel to `tris`
     /// (mesh); the index [`retarget_uv`] re-gathers each corner's UV from.
     pub(crate) corner_src: Vec<u32>,
+    /// Triangle count per source face, in face order (mesh); the per-face counts
+    /// [`expand_appearance`] repeats each `PerFace` binding entry by.
+    pub(crate) face_tris: Vec<u32>,
     /// Decoded CSR buffers (mesh).
     pub(crate) face_indices: Vec<u32>,
     pub(crate) face_offsets: Vec<u32>,
@@ -85,31 +87,42 @@ pub(crate) fn triangulate_3d(
     true
 }
 
-/// Reject a geometry that binds any face `PerFace` (front or back of any theme):
-/// tessellation moves the appearance over verbatim, which is only correct while
-/// every binding is `Uniform`. `geometry` names the leaf for the error.
-///
-/// TEMP: drop this guard once tessellation expands per-face bindings.
-pub(crate) fn require_uniform_bindings(
-    appearance: &Option<Appearance>,
-    geometry: &'static str,
-) -> Result<(), UnsupportedOperation> {
-    let uniform = appearance.as_ref().is_none_or(|app| {
-        app.themes.iter().all(|theme| {
-            matches!(theme.front, FaceBinding::Uniform(_))
-                && theme
-                    .back
-                    .as_ref()
-                    .is_none_or(|back| matches!(back, FaceBinding::Uniform(_)))
-        })
-    });
-    if uniform {
-        Ok(())
-    } else {
-        Err(UnsupportedOperation {
-            geometry,
-            operation: "triangulate (only uniform material bindings are supported yet)",
-        })
+/// Expand a source geometry's appearance onto its triangulated mesh, consuming it.
+/// `face_tris[i]` is the triangle count of source face `i`. Only the per-face
+/// bindings are expanded (see [`expand_binding`]); palette and themes are unchanged.
+pub(crate) fn expand_appearance(
+    appearance: Option<Appearance>,
+    face_tris: &[u32],
+) -> Option<Appearance> {
+    appearance.map(|app| Appearance {
+        materials: app.materials,
+        default_theme: app.default_theme,
+        themes: app
+            .themes
+            .into_iter()
+            .map(|theme| ThemeBinding {
+                theme: theme.theme,
+                front: expand_binding(theme.front, face_tris),
+                back: theme.back.map(|back| expand_binding(back, face_tris)),
+            })
+            .collect(),
+    })
+}
+
+/// Expand one source-face binding to one entry per output triangle. `Uniform` is
+/// unchanged; `PerFace` repeats each source face's entry `face_tris[i]` times.
+fn expand_binding(binding: FaceBinding, face_tris: &[u32]) -> FaceBinding {
+    match binding {
+        FaceBinding::Uniform(index) => FaceBinding::Uniform(index),
+        FaceBinding::PerFace(faces) => {
+            debug_assert_eq!(faces.len(), face_tris.len());
+            let total = face_tris.iter().map(|&c| c as usize).sum();
+            let mut per_triangle = Vec::with_capacity(total);
+            for (material, &count) in faces.into_iter().zip(face_tris) {
+                per_triangle.extend(std::iter::repeat_n(material, count as usize));
+            }
+            FaceBinding::PerFace(per_triangle)
+        }
     }
 }
 

@@ -24,12 +24,12 @@ impl Triangulate for Solid {
     /// through unchanged. The result is a `Solid` with the same frame and an
     /// all-triangle boundary.
     fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        let exterior = self.exterior.triangulated(cache)?;
+        let exterior = self.exterior.triangulated(cache);
         let interiors = self
             .interiors
             .iter_mut()
             .map(|shell| shell.triangulated(cache))
-            .collect::<Result<_, _>>()?;
+            .collect();
         let solid = Solid::new(self.coordinate.clone(), exterior, interiors);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(
             solid,
@@ -41,11 +41,11 @@ impl Shell {
     /// This shell with its surface triangulated: a `PolygonMesh` shell becomes a
     /// `TriangularMesh` shell (stealing its buffers); an already-`TriangularMesh`
     /// shell is cloned through unchanged.
-    fn triangulated(&mut self, cache: &mut Cache) -> Result<Shell, UnsupportedOperation> {
-        Ok(match self {
-            Shell::PolygonMesh(d) => Shell::TriangularMesh(d.triangulate(cache)?),
+    fn triangulated(&mut self, cache: &mut Cache) -> Shell {
+        match self {
+            Shell::PolygonMesh(d) => Shell::TriangularMesh(d.triangulate(cache)),
             Shell::TriangularMesh(d) => Shell::TriangularMesh(d.clone()),
-        })
+        }
     }
 }
 

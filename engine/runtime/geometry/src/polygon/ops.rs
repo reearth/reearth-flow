@@ -1,6 +1,6 @@
 use super::{Polygon2D, Polygon3D};
 use crate::ops::triangulation::{
-    require_uniform_bindings, retarget_uv, triangulate_2d, triangulate_3d, Cache,
+    expand_appearance, retarget_uv, triangulate_2d, triangulate_3d, Cache,
 };
 use crate::ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
@@ -29,8 +29,6 @@ impl BoundingBox for Polygon3D {
 
 impl Triangulate for Polygon2D {
     fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        require_uniform_bindings(self.appearance(), "Polygon2D")?;
-
         let Cache { earcut, buffers } = cache;
         open_ring_positions(
             &self.coords,
@@ -100,7 +98,11 @@ impl Triangulate for Polygon2D {
             .into_iter()
             .map(|uv| retarget_uv(uv, &src_corner))
             .collect();
-        mesh.set_raw_appearance(uv_sets, std::mem::take(&mut self.appearance));
+        let appearance = expand_appearance(
+            std::mem::take(&mut self.appearance),
+            &[(buffers.out.len() / 3) as u32],
+        );
+        mesh.set_raw_appearance(uv_sets, appearance);
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -109,8 +111,6 @@ impl Triangulate for Polygon2D {
 
 impl Triangulate for Polygon3D {
     fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        require_uniform_bindings(self.appearance(), "Polygon3D")?;
-
         let Cache { earcut, buffers } = cache;
         let num_outer = open_ring_positions(
             &self.coords,
@@ -147,7 +147,11 @@ impl Triangulate for Polygon3D {
             .into_iter()
             .map(|uv| retarget_uv(uv, &src_corner))
             .collect();
-        mesh.set_raw_appearance(uv_sets, std::mem::take(&mut self.appearance));
+        let appearance = expand_appearance(
+            std::mem::take(&mut self.appearance),
+            &[(buffers.out.len() / 3) as u32],
+        );
+        mesh.set_raw_appearance(uv_sets, appearance);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
