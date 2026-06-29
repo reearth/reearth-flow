@@ -9,7 +9,7 @@ const readerNode = (id: string, fields: string[]): Node =>
     position: { x: 0, y: 0 },
     data: {
       officialName: "Reader",
-      metadata: {
+      nodeMetadata: {
         schema: {
           ports: {
             default: {

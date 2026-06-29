@@ -34,7 +34,7 @@ export type NodeData = {
   params?: NodeParams;
   paramsSchema?: RJSFSchema;
   customizations?: NodeCustomizations;
-  metadata?: NodeMetadata;
+  nodeMetadata?: NodeMetadata;
   workflowPath?: string;
   isCollapsed?: boolean;
   isDisabled?: boolean;

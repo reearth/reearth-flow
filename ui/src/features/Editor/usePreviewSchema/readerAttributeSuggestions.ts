@@ -17,7 +17,7 @@ const collectReaderFields = (
   seen: Map<string, AutocompleteSuggestion>,
 ) => {
   if (node.type !== "reader") return;
-  const ports = node.data.metadata?.schema?.ports;
+  const ports = node.data.nodeMetadata?.schema?.ports;
   if (!ports) return;
   Object.values(ports).forEach((port) =>
     port.fields.forEach((field) => {

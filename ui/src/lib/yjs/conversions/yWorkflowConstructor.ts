@@ -39,7 +39,7 @@ export const yNodeConstructor = (node: Node): YNode => {
       ),
       params: node.data.params,
       customizations: node.data.customizations,
-      metadata: node.data.metadata,
+      nodeMetadata: node.data.nodeMetadata,
       isCollapsed: node.data.isCollapsed ?? false,
       workflowPath: toYjsText(node.data.workflowPath),
       isDisabled: node.data.isDisabled ?? false,

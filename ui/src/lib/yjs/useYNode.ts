@@ -389,9 +389,9 @@ export default ({
         const yData = yNodes.get(nodeId)?.get("data") as Y.Map<any> | undefined;
         if (!yData) return;
         const prevMetadata =
-          (yData.get("metadata") as NodeMetadata | undefined) ?? {};
-        const metadata: NodeMetadata = { ...prevMetadata, schema };
-        yData.set("metadata", metadata);
+          (yData.get("nodeMetadata") as NodeMetadata | undefined) ?? {};
+        const nodeMetadata: NodeMetadata = { ...prevMetadata, schema };
+        yData.set("nodeMetadata", nodeMetadata);
       }, "schema-update"),
     [currentYWorkflow, undoTrackerActionWrapper],
   );
