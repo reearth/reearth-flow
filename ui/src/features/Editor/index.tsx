@@ -8,6 +8,7 @@ import { YWorkflow } from "@flow/lib/yjs/types";
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
+import PreviewSchemaMonitors from "./usePreviewSchema/PreviewSchemaMonitors";
 
 type Props = {
   yWorkflows: YMap<YWorkflow>;
@@ -81,6 +82,11 @@ export default function Editor({
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    schemaProbes,
+    readerAttributeSuggestions,
+    handleNodeParamsSaved,
+    handleProbeComplete,
+    handleProbeError,
     handleLayoutChange,
     handleCopy,
     handleCut,
@@ -240,10 +246,17 @@ export default function Editor({
               openNode={openNode}
               onOpenNode={handleOpenNode}
               onDataSubmit={handleNodesDataUpdate}
+              onNodeParamsSaved={handleNodeParamsSaved}
+              attributeSuggestions={readerAttributeSuggestions}
               onWorkflowRename={handleWorkflowRename}
               onParamFieldFocus={handleParamFieldFocus}
             />
           )}
+          <PreviewSchemaMonitors
+            probes={schemaProbes}
+            onComplete={handleProbeComplete}
+            onError={handleProbeError}
+          />
           {showBeforeDeleteDialog && (
             <NodeDeletionDialog
               showBeforeDeleteDialog={showBeforeDeleteDialog}

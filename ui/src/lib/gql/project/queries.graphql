@@ -56,6 +56,14 @@ mutation RunProject($input: RunProjectInput!) {
   }
 }
 
+mutation PreviewSchema($input: PreviewSchemaInput!) {
+  previewSchema(input: $input) {
+    job {
+      ...Job
+    }
+  }
+}
+
 mutation CopyProject($projectId: ID!, $source: ID!) {
   copyProject(projectId: $projectId, source: $source)
 }

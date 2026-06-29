@@ -51,6 +51,9 @@ export const reassembleNode = (yNode: YNode): Node => {
       "customizations",
     );
   }
+  if ((yNode.get("data") as Y.Map<any>)?.get("nodeMetadata") !== undefined) {
+    data.nodeMetadata = (yNode.get("data") as Y.Map<any>)?.get("nodeMetadata");
+  }
   if ((yNode.get("data") as Y.Map<any>)?.get("isCollapsed") !== undefined) {
     data.isCollapsed = (yNode.get("data") as Y.Map<any>)?.get("isCollapsed");
   }

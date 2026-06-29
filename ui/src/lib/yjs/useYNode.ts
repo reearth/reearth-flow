@@ -2,7 +2,13 @@ import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import * as Y from "yjs";
 
 import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";
-import type { Node, NodeChange, Workflow } from "@flow/types";
+import type {
+  Node,
+  NodeChange,
+  NodeMetadata,
+  NodeSchemaMeta,
+  Workflow,
+} from "@flow/types";
 
 import { yNodeConstructor } from "./conversions";
 import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
@@ -372,9 +378,28 @@ export default ({
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
+  // Persist a node's probed attribute schema onto its metadata. This is
+  // derived data (not a user edit), so it is written with a distinct origin
+  // that the UndoManager does not track — undo/redo should not touch it.
+  const handleYNodeSchemaUpdate = useCallback(
+    (nodeId: string, schema: NodeSchemaMeta | undefined) =>
+      undoTrackerActionWrapper(() => {
+        const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+        if (!yNodes) return;
+        const yData = yNodes.get(nodeId)?.get("data") as Y.Map<any> | undefined;
+        if (!yData) return;
+        const prevMetadata =
+          (yData.get("nodeMetadata") as NodeMetadata | undefined) ?? {};
+        const nodeMetadata: NodeMetadata = { ...prevMetadata, schema };
+        yData.set("nodeMetadata", nodeMetadata);
+      }, "schema-update"),
+    [currentYWorkflow, undoTrackerActionWrapper],
+  );
+
   return {
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodesDataUpdate,
+    handleYNodeSchemaUpdate,
   };
 };
