@@ -159,6 +159,79 @@ func TestCatchUpReplaysExistingStream(t *testing.T) {
 	})
 }
 
+// blockingSink models ygo's Server during RoomActivated: ygo invokes the
+// callback while holding its rooms lock, and Inject (the catch-up replay target)
+// re-enters ygo and needs that same lock. The mutex held by the test stands in
+// for ygo's rooms lock; if RoomActivated injects inline it blocks here, exactly
+// as it deadlocks in production.
+type blockingSink struct {
+	lock     *sync.Mutex
+	injected chan struct{}
+}
+
+func (s *blockingSink) Inject(_ context.Context, _ cluster.Inbound) error {
+	s.lock.Lock()
+	s.lock.Unlock() //nolint:staticcheck // intentional: model a re-entrant lock the caller holds
+	select {
+	case s.injected <- struct{}{}:
+	default:
+	}
+	return nil
+}
+func (s *blockingSink) Rooms() []string                                  { return nil }
+func (s *blockingSink) GetAwareness(string) (*awareness.Awareness, bool) { return nil, false }
+func (s *blockingSink) GetDoc(string) *crdt.Doc                          { return nil }
+
+// TestRoomActivatedDoesNotInjectWhileCallerHoldsLock reproduces the cross-instance
+// re-entrant deadlock (ygo#133): ygo calls RoomActivated under its rooms lock, so
+// a synchronous catch-up inject re-enters ygo -> getOrCreateRoom -> the same lock.
+// RoomActivated must return without performing the catch-up inject inline; the
+// replay belongs on the per-room reader goroutine, after the callback returns.
+func TestRoomActivatedDoesNotInjectWhileCallerHoldsLock(t *testing.T) {
+	c, mr := newTestClient(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const room = "proj1"
+
+	// A remote entry (clientId differs) so catch-up has something to inject.
+	if err := xaddEntry(ctx, c, streamKey(room), msgTypeSync, []byte{7, 7}, 424242); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	var held sync.Mutex
+	injected := make(chan struct{}, 1)
+	sink := &blockingSink{lock: &held, injected: injected}
+
+	relay := mustRelay(t, mr.Addr())
+	defer relay.Close()
+	if err := relay.Start(ctx, sink); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	// Stand in for ygo holding its rooms lock across the RoomActivated callback.
+	held.Lock()
+
+	done := make(chan struct{})
+	go func() { relay.RoomActivated(room); close(done) }()
+
+	select {
+	case <-done:
+		// Returned without waiting on the inject -- correct.
+	case <-time.After(2 * time.Second):
+		held.Unlock() // let the blocked goroutine unwind
+		t.Fatal("RoomActivated blocked on a synchronous catch-up inject while the " +
+			"caller held a lock: cross-instance re-entrant deadlock (ygo#133)")
+	}
+
+	// Catch-up must still happen, just off the activation path.
+	held.Unlock()
+	select {
+	case <-injected:
+	case <-time.After(2 * time.Second):
+		t.Fatal("catch-up never injected the pre-existing stream entry")
+	}
+}
+
 // TestRoomActivatedWritesMarkerAndHeartbeat asserts RoomActivated sets the stream
 // EXPIRE and registers a heartbeat.
 func TestRoomActivatedWritesMarkerAndHeartbeat(t *testing.T) {

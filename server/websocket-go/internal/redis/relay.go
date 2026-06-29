@@ -178,10 +178,13 @@ func (r *Relay) Publish(_ context.Context, out cluster.Outbound) error {
 // write queue.
 func (r *Relay) DroppedWrites() uint64 { return r.droppedWrites.Load() }
 
-// RoomActivated starts the per-room subscriber + heartbeat, refreshes the stream
-// EXPIRE, then replays the existing stream into the sink. Idempotent. The
-// heartbeat is registered before catch-up so a concurrent evictor sees this node
-// active.
+// RoomActivated starts the per-room subscriber + heartbeat and refreshes the
+// stream EXPIRE. Catch-up replay of the existing stream is performed by the
+// reader goroutine (NOT inline here): ygo invokes RoomActivated while holding its
+// rooms lock, so injecting during the callback re-enters the Server
+// (Sink.Inject -> getOrCreateRoom) and deadlocks on that non-reentrant lock
+// (ygo#133). Idempotent. The heartbeat is registered before the reader starts so
+// a concurrent evictor sees this node active.
 func (r *Relay) RoomActivated(room string) {
 	r.mu.Lock()
 	if r.closed || r.sink == nil {
@@ -209,11 +212,6 @@ func (r *Relay) RoomActivated(room string) {
 	if err := publishEmptyMarker(ctx, r.client, room, r.clientID); err != nil {
 		r.log.Debug("relay empty marker failed", "room", room, "err", err)
 	}
-	lastID := r.catchUp(ctx, room, sink)
-
-	r.mu.Lock()
-	rs.lastID = lastID
-	r.mu.Unlock()
 
 	rs.wg.Add(3)
 	go r.readLoop(ctx, room, rs, sink)
@@ -246,6 +244,18 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) str
 // route sync/awareness to the sink, and advance last-id past filtered entries too.
 func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink cluster.Sink) {
 	defer rs.wg.Done()
+
+	// Replay the existing stream history BEFORE the live loop. This runs on the
+	// reader goroutine, not in RoomActivated, because ygo calls RoomActivated
+	// under its rooms lock and a catch-up inject re-enters the Server
+	// (Sink.Inject -> getOrCreateRoom), deadlocking on that non-reentrant lock
+	// (ygo#133). Running it here preserves catch-up-before-live ordering and the
+	// self-filter cursor while keeping the activation callback re-entrancy-free.
+	lastID := r.catchUp(ctx, room, sink)
+	r.mu.Lock()
+	rs.lastID = lastID
+	r.mu.Unlock()
+
 	for {
 		if ctx.Err() != nil {
 			return
