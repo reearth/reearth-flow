@@ -145,7 +145,7 @@ pub(crate) fn retarget_uv(uv: UvSet, src_corner: &[u32]) -> UvSet {
     UvSet { uv: mapped, ..uv }
 }
 
-/// Tolerance for trianglation related algorithms.
+/// Tolerance for triangulation related algorithms.
 const EPSILON: f64 = 1e-10;
 
 /// Maps a planar 3D ring onto the xy-plane. Ported from

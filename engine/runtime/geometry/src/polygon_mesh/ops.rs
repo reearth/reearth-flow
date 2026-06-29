@@ -51,6 +51,9 @@ impl Triangulate for PolygonMesh2D {
                     face.iter()
                         .map(|&gi| unsafe { *self.vertices.get_unchecked(gi as usize) }),
                 );
+                // earcut clears `out` itself, but reset explicitly so the per-face
+                // count below stays correct without relying on that internal.
+                buffers.out.clear();
                 triangulate_2d(earcut, &buffers.verts2, &buffers.holes, &mut buffers.out);
                 // Map face-local corner indices back to the shared vertex pool.
                 // SAFETY: each earcut index is `< face.len()`.
@@ -139,6 +142,10 @@ impl PolygonMesh3DData {
                     face.iter()
                         .map(|&gi| unsafe { *self.vertices.get_unchecked(gi as usize) }),
                 );
+                // `triangulate_3d` clears `out` on its degenerate paths and earcut
+                // clears it on success; reset explicitly so the per-face count
+                // below holds without relying on either internal.
+                buffers.out.clear();
                 if triangulate_3d(
                     earcut,
                     &buffers.verts3,
