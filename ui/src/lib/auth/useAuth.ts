@@ -43,7 +43,11 @@ export const useAuth = () => {
   return auth;
 };
 
-export function useAuthenticationRequired(): [boolean, string | undefined] {
+export function useAuthenticationRequired(): {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | undefined;
+} {
   const {
     isAuthenticated,
     isLoading,
@@ -71,5 +75,5 @@ export function useAuthenticationRequired(): [boolean, string | undefined] {
     login();
   }, [authError, isAuthenticated, isLoading, login, logout, error, done]);
 
-  return [isAuthenticated, error];
+  return { isAuthenticated, isLoading, error };
 }
