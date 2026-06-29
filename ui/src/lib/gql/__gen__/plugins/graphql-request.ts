@@ -2,7 +2,7 @@
 type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
-import { GraphQLClient, type RequestOptions } from 'graphql-request';
+import { GraphQLClient, RequestOptions } from 'graphql-request';
 import gql from 'graphql-tag';
 type GraphQLClientRequestHeaders = RequestOptions['requestHeaders'];
 export type ApiDriverInput = {
@@ -11,8 +11,8 @@ export type ApiDriverInput = {
 
 export type AddMemberToWorkspaceInput = {
   role: Role;
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type ArchiveExtractionStatus =
@@ -50,14 +50,14 @@ export type CmsVisibility =
   | 'PUBLIC';
 
 export type CancelJobInput = {
-  jobId: string;
+  jobId: string | number;
 };
 
 export type CreateAssetInput = {
   file?: any;
   name?: string | null | undefined;
   token?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateAssetUploadInput = {
@@ -65,31 +65,31 @@ export type CreateAssetUploadInput = {
   contentLength?: number | null | undefined;
   cursor?: string | null | undefined;
   filename?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateDeploymentInput = {
   description: string;
   file: any;
-  projectId?: string | null | undefined;
-  workspaceId: string;
+  projectId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type CreateProjectInput = {
   archived?: boolean | null | undefined;
   description?: string | null | undefined;
   name?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateTriggerInput = {
   apiDriverInput?: ApiDriverInput | null | undefined;
-  deploymentId: string;
+  deploymentId: string | number;
   description: string;
   enabled: boolean;
   timeDriverInput?: TimeDriverInput | null | undefined;
   variables?: Array<VariableInput> | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateWorkspaceInput = {
@@ -107,19 +107,19 @@ export type DeclareParameterInput = {
 };
 
 export type DeleteAssetInput = {
-  assetId: string;
+  assetId: string | number;
 };
 
 export type DeleteDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
 };
 
 export type DeleteProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type DeleteWorkspaceInput = {
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type EventSourceType =
@@ -127,12 +127,12 @@ export type EventSourceType =
   | 'TIME_DRIVEN';
 
 export type ExecuteDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
 };
 
 export type GetHeadInput = {
-  projectId?: string | null | undefined;
-  workspaceId: string;
+  projectId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type JobStatus =
@@ -162,8 +162,8 @@ export type PageBasedPagination = {
 
 export type ParameterBatchInput = {
   creates?: Array<DeclareParameterInput> | null | undefined;
-  deletes?: Array<string> | null | undefined;
-  projectId: string;
+  deletes?: Array<string | number> | null | undefined;
+  projectId: string | number;
   reorders?: Array<UpdateParameterOrderInput> | null | undefined;
   updates?: Array<ParameterUpdateItem> | null | undefined;
 };
@@ -182,23 +182,31 @@ export type ParameterUpdateItem = {
   config?: any;
   defaultValue?: any;
   name: string;
-  paramId: string;
+  paramId: string | number;
   public: boolean;
   required: boolean;
   type: ParameterType;
 };
 
+export type PreviewSchemaInput = {
+  file: any;
+  parameters?: Array<RunParameterInput> | null | undefined;
+  projectId: string | number;
+  sampleSize?: number | null | undefined;
+  workspaceId: string | number;
+};
+
 export type RemoveMemberFromWorkspaceInput = {
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type RemoveParameterInput = {
-  paramId: string;
+  paramId: string | number;
 };
 
 export type RemoveParametersInput = {
-  paramIds: Array<string>;
+  paramIds: Array<string | number>;
 };
 
 export type Role =
@@ -209,7 +217,7 @@ export type Role =
 
 export type RunParameterInput = {
   config?: any;
-  id: string;
+  id: string | number;
   index: number;
   name: string;
   public: boolean;
@@ -221,14 +229,14 @@ export type RunParameterInput = {
 export type RunProjectInput = {
   file: any;
   parameters?: Array<RunParameterInput> | null | undefined;
-  previousJobId?: string | null | undefined;
-  projectId: string;
-  startNodeId?: string | null | undefined;
-  workspaceId: string;
+  previousJobId?: string | number | null | undefined;
+  projectId: string | number;
+  startNodeId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type ShareProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type TimeDriverInput = {
@@ -242,16 +250,16 @@ export type TimeInterval =
   | 'EVERY_WEEK';
 
 export type UnshareProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type UpdateAssetInput = {
-  assetId: string;
+  assetId: string | number;
   name?: string | null | undefined;
 };
 
 export type UpdateDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
   description?: string | null | undefined;
   file?: any;
 };
@@ -266,8 +274,8 @@ export type UpdateMeInput = {
 
 export type UpdateMemberOfWorkspaceInput = {
   role: Role;
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type UpdateParameterInput = {
@@ -281,7 +289,7 @@ export type UpdateParameterInput = {
 
 export type UpdateParameterOrderInput = {
   newIndex: number;
-  paramId: string;
+  paramId: string | number;
 };
 
 export type UpdateProjectInput = {
@@ -292,16 +300,16 @@ export type UpdateProjectInput = {
   isBasicAuthActive?: boolean | null | undefined;
   isLocked?: boolean | null | undefined;
   name?: string | null | undefined;
-  projectId: string;
+  projectId: string | number;
 };
 
 export type UpdateTriggerInput = {
   apiDriverInput?: ApiDriverInput | null | undefined;
-  deploymentId?: string | null | undefined;
+  deploymentId?: string | number | null | undefined;
   description?: string | null | undefined;
   enabled?: boolean | null | undefined;
   timeDriverInput?: TimeDriverInput | null | undefined;
-  triggerId: string;
+  triggerId: string | number;
   variables?: Array<VariableInput> | null | undefined;
 };
 
@@ -320,7 +328,7 @@ export type UpdateWorkerConfigInput = {
 
 export type UpdateWorkspaceInput = {
   name: string;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type UserFacingLogLevel =
@@ -634,6 +642,13 @@ export type RunProjectMutationVariables = Exact<{
 
 
 export type RunProjectMutation = { runProject: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } | null };
+
+export type PreviewSchemaMutationVariables = Exact<{
+  input: PreviewSchemaInput;
+}>;
+
+
+export type PreviewSchemaMutation = { previewSchema: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } };
 
 export type CopyProjectMutationVariables = Exact<{
   projectId: string;
@@ -1443,6 +1458,15 @@ export const RunProjectDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const PreviewSchemaDocument = gql`
+    mutation PreviewSchema($input: PreviewSchemaInput!) {
+  previewSchema(input: $input) {
+    job {
+      ...Job
+    }
+  }
+}
+    ${JobFragmentDoc}`;
 export const CopyProjectDocument = gql`
     mutation CopyProject($projectId: ID!, $source: ID!) {
   copyProject(projectId: $projectId, source: $source)
@@ -1824,6 +1848,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     RunProject(variables: RunProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RunProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<RunProjectMutation>({ document: RunProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RunProject', 'mutation', variables);
+    },
+    PreviewSchema(variables: PreviewSchemaMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<PreviewSchemaMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<PreviewSchemaMutation>({ document: PreviewSchemaDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'PreviewSchema', 'mutation', variables);
     },
     CopyProject(variables: CopyProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CopyProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CopyProjectMutation>({ document: CopyProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CopyProject', 'mutation', variables);

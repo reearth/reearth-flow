@@ -4,8 +4,9 @@ import { Doc, Map as YMap } from "yjs";
 
 import { useSharedProject } from "@flow/lib/gql";
 import { Project } from "@flow/types";
+import type { YDocMetadataValue } from "@flow/types";
 
-const emptyMetadata = new YMap();
+const emptyMetadata = new YMap<YDocMetadataValue>();
 
 export default ({
   currentProject,
@@ -16,7 +17,10 @@ export default ({
 }) => {
   const { shareProject, unshareProject } = useSharedProject();
 
-  const yMetadata = useMemo(() => yDoc?.getMap<any>("metadata"), [yDoc]);
+  const yMetadata = useMemo(
+    () => yDoc?.getMap<YDocMetadataValue>("metadata"),
+    [yDoc],
+  );
   const metadata = useY(yMetadata ?? emptyMetadata);
 
   // Keep ydoc in sync with server

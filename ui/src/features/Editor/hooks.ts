@@ -36,6 +36,7 @@ import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
+import usePreviewSchema from "./usePreviewSchema";
 import useUIState from "./useUIState";
 
 export default ({
@@ -81,6 +82,7 @@ export default ({
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodesDataUpdate,
+    handleYNodeSchemaUpdate,
     handleYEdgesAdd,
     handleYEdgesChange,
     handleYWorkflowUndo,
@@ -243,6 +245,17 @@ export default ({
   });
 
   const { staleNodeIds } = useGraphStaleness({ yWorkflows, undoManager });
+  const {
+    schemaProbes,
+    readerAttributeSuggestions,
+    handleNodeParamsSaved,
+    handleProbeComplete,
+    handleProbeError,
+  } = usePreviewSchema({
+    rawWorkflows,
+    openNodeId: openNode?.id,
+    onPersistSchema: handleYNodeSchemaUpdate,
+  });
 
   const handleBeforeDeleteNodes = useCallback(
     ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
@@ -500,6 +513,11 @@ export default ({
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    schemaProbes,
+    readerAttributeSuggestions,
+    handleNodeParamsSaved,
+    handleProbeComplete,
+    handleProbeError,
     handleCopy,
     handleCut,
     handlePaste,

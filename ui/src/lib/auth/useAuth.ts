@@ -43,7 +43,11 @@ export const useAuth = () => {
   return auth;
 };
 
-export function useAuthenticationRequired(): [boolean, string | undefined] {
+export function useAuthenticationRequired(): {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | undefined;
+} {
   const {
     isAuthenticated,
     isLoading,
@@ -52,8 +56,10 @@ export function useAuthenticationRequired(): [boolean, string | undefined] {
     logout,
   } = useAuth();
 
+  const [error, done] = useCleanUrl();
+
   useEffect(() => {
-    if (isLoading || isAuthenticated) {
+    if (isLoading || isAuthenticated || !done) {
       return;
     }
 
@@ -62,10 +68,12 @@ export function useAuthenticationRequired(): [boolean, string | undefined] {
       return;
     }
 
+    if (error) {
+      return;
+    }
+
     login();
-  }, [authError, isAuthenticated, isLoading, login, logout]);
+  }, [authError, isAuthenticated, isLoading, login, logout, error, done]);
 
-  const [error] = useCleanUrl();
-
-  return [isAuthenticated, error];
+  return { isAuthenticated, isLoading, error };
 }
