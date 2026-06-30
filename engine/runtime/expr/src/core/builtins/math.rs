@@ -132,7 +132,7 @@ pub fn builtin_math() -> Value {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::test_utils::{assert_eval, try_run};
+    use crate::core::test_utils::assert_eval;
     use crate::core::value::Value;
 
     #[test]
