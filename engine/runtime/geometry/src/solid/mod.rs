@@ -8,9 +8,12 @@
 //! CityGML `Surface` name.) Solids are 3D only; their shells are coordless
 //! raw meshes and the one frame lives on the `Solid`.
 
+use nusamai_projection::crs::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::Coordinate;
+use crate::error::Result;
+use crate::ops::reproject::{transform_coords_3d, Transformer};
 use crate::polygon_mesh::PolygonMesh3DData;
 use crate::triangular_mesh::TriangularMesh3DData;
 
@@ -47,4 +50,33 @@ pub struct Solid {
     exterior: Shell,
     /// Hollow voids.
     interiors: Vec<Shell>,
+}
+
+impl Solid {
+    /// Reproject all shell vertices to `target` (EPSG), reading the source CRS
+    /// from the one frame on the solid. Shells are frameless raw meshes.
+    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            reproject_shell(&mut self.exterior, from, target, cache)?;
+            for shell in &mut self.interiors {
+                reproject_shell(shell, from, target, cache)?;
+            }
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}
+
+fn reproject_shell(
+    shell: &mut Shell,
+    from: EpsgCode,
+    target: EpsgCode,
+    cache: &mut Transformer,
+) -> Result<()> {
+    let vertices = match shell {
+        Shell::PolygonMesh(data) => data.vertices_mut(),
+        Shell::TriangularMesh(data) => data.vertices_mut(),
+    };
+    transform_coords_3d(cache, from, target, vertices)
 }

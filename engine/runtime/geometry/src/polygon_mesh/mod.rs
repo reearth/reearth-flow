@@ -10,11 +10,14 @@
 //! plus an optional per-vertex elevation buffer parallel to `vertices`, matching
 //! the 2D leaf convention.
 
+use nusamai_projection::crs::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
+use crate::error::Result;
 use crate::index::IndexBuffer;
+use crate::ops::reproject::{transform_coords_2d, transform_coords_3d, Transformer};
 
 mod constructor;
 mod ops;
@@ -109,6 +112,30 @@ impl PolygonMesh2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
+
+    /// Reproject the vertex pool to `target` (EPSG), reading the source CRS from
+    /// the frame. Indices are unaffected; elevation, when present, is transformed.
+    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_2d(
+                cache,
+                from,
+                target,
+                &mut self.vertices,
+                self.z.as_deref_mut(),
+            )?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}
+
+impl PolygonMesh3DData {
+    /// The vertex pool, mutable. Frameless mesh data shared with `Solid` shells.
+    pub(crate) fn vertices_mut(&mut self) -> &mut [[f64; 3]] {
+        &mut self.vertices
+    }
 }
 
 impl PolygonMesh3D {
@@ -122,6 +149,17 @@ impl PolygonMesh3D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.data.appearance
+    }
+
+    /// Reproject the vertex pool to `target` (EPSG), reading the source CRS from
+    /// the frame. Indices are unaffected.
+    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
     }
 }
 

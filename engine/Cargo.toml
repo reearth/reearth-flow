@@ -181,6 +181,7 @@ parking_lot = "0.12.5"
 petgraph = "0.8.3"
 pretty_assertions = "1.4.1"
 proj = { version = "0.31.0" }
+proj-sys = "0.27.0"
 prost = "0.13.5"
 quick-xml = { version = "0.37.5", features = ["serialize"] }
 rand = "0.10.0"

@@ -63,6 +63,11 @@ impl Collection2D {
         check_attrs(&members, &attrs)?;
         Ok(Self { members, attrs })
     }
+
+    /// The members, mutable.
+    pub(crate) fn members_mut(&mut self) -> &mut [Euclidean2DGeometry] {
+        &mut self.members
+    }
 }
 
 impl Collection3D {
@@ -82,6 +87,11 @@ impl Collection3D {
     ) -> Result<Self, Error> {
         check_attrs(&members, &attrs)?;
         Ok(Self { members, attrs })
+    }
+
+    /// The members, mutable.
+    pub(crate) fn members_mut(&mut self) -> &mut [Euclidean3DGeometry] {
+        &mut self.members
     }
 }
 

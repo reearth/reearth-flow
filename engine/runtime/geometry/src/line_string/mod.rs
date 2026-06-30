@@ -6,9 +6,12 @@
 //! form carrying optional per-vertex elevation parallel to `coords`. Lines carry
 //! no appearance.
 
+use nusamai_projection::crs::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::Coordinate;
+use crate::error::Result;
+use crate::ops::reproject::{transform_coords_2d, transform_coords_3d, Transformer};
 
 mod constructor;
 mod ops;
@@ -34,3 +37,28 @@ pub struct LineString3D {
 
 crate::unsupported!(LineString2D: Triangulate);
 crate::unsupported!(LineString3D: Triangulate);
+impl LineString2D {
+    /// Reproject these coords to `target` (EPSG), reading the source CRS from
+    /// the frame. The per-vertex elevation, when present, is transformed too.
+    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_deref_mut())?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}
+
+impl LineString3D {
+    /// Reproject these coords to `target` (EPSG), reading the source CRS from
+    /// the frame.
+    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_3d(cache, from, target, &mut self.coords)?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}

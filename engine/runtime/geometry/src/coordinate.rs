@@ -3,6 +3,8 @@
 use nusamai_projection::crs::EpsgCode;
 use serde::{Deserialize, Serialize};
 
+use crate::error::{Error, Result};
+
 /// The coordinate frame a geometry leaf is expressed in.
 ///
 /// Every coordinate-bearing leaf carries its own `coordinate: Coordinate`, so an
@@ -20,6 +22,25 @@ pub enum Coordinate {
     /// is the rare frame, so boxing it keeps `Coordinate` — embedded in every
     /// geometry leaf — pointer-sized for the common `Crs` / `Euclidean` cases.
     Tangent(Box<TangentPlane>),
+}
+
+impl Coordinate {
+    /// The EPSG code of this frame, or an error if it is not a CRS frame.
+    ///
+    /// Reprojection is only defined for georeferenced (`Crs`) frames; a bare
+    /// `Euclidean` space or a local `Tangent` plane cannot be reprojected to an
+    /// EPSG CRS.
+    pub(crate) fn require_crs(&self) -> Result<EpsgCode> {
+        match self {
+            Coordinate::Crs(epsg) => Ok(*epsg),
+            Coordinate::Euclidean => Err(Error::projection(
+                "cannot reproject a Euclidean (non-georeferenced) geometry",
+            )),
+            Coordinate::Tangent(_) => Err(Error::projection(
+                "cannot reproject a Tangent-plane geometry",
+            )),
+        }
+    }
 }
 
 /// The absolute frame a [`TangentPlane`] is anchored in: exactly the non-tangent

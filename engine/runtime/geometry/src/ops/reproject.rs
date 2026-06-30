@@ -1,0 +1,277 @@
+//! Reproject new-geometry types between coordinate reference systems.
+//!
+//! A [`Reproject`] implementor moves every coordinate of a geometry from its own
+//! source CRS (read from each leaf's `coordinate` frame) to a `target` EPSG
+//! code, doing the full **3D** transform (horizontal and vertical at once) via
+//! the [`Transformer`] wrapper over PROJ. The source CRS is never passed in — it
+//! comes from the data — so a heterogeneous collection whose members sit in
+//! different frames reprojects correctly, the cache rebuilding when a member's
+//! frame differs.
+//!
+//! Leaves are reprojected by `pub(crate)` hooks in their own modules (which can
+//! reach their private position buffers); this module holds the trait, the
+//! shared coordinate-buffer helpers, the [`Transformer`] cache, and the
+//! enum/collection dispatch.
+
+use nusamai_projection::crs::EpsgCode;
+
+use crate::collection::{Collection2D, Collection3D};
+use crate::error::{Error, Result};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
+
+mod ffi;
+
+pub use ffi::Transformer;
+
+/// Reproject a geometry's coordinates from their own source CRS to `target`.
+pub trait Reproject {
+    /// Reproject every coordinate to `target` (an EPSG code), reading each
+    /// leaf's source CRS from its own frame. `cache` is reused across calls and
+    /// across the leaves of one geometry.
+    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()>;
+}
+
+/// Transform a 3D coordinate buffer in place from `from` to `target`.
+pub(crate) fn transform_coords_3d(
+    cache: &mut Transformer,
+    from: EpsgCode,
+    target: EpsgCode,
+    coords: &mut [[f64; 3]],
+) -> Result<()> {
+    for c in coords.iter_mut() {
+        *c = cache.transform(from, target, *c)?;
+    }
+    Ok(())
+}
+
+/// Transform a 2D coordinate buffer in place from `from` to `target`. When a
+/// parallel elevation buffer is present (2.5D) it is fed in as `z` and the
+/// transformed `z` written back; otherwise `z = 0` is used and dropped.
+pub(crate) fn transform_coords_2d(
+    cache: &mut Transformer,
+    from: EpsgCode,
+    target: EpsgCode,
+    coords: &mut [[f64; 2]],
+    z: Option<&mut [f64]>,
+) -> Result<()> {
+    if let Some(elevations) = z {
+        for (c, elevation) in coords.iter_mut().zip(elevations.iter_mut()) {
+            let [x, y, new_z] = cache.transform(from, target, [c[0], c[1], *elevation])?;
+            *c = [x, y];
+            *elevation = new_z;
+        }
+    } else {
+        for c in coords.iter_mut() {
+            let [x, y, _] = cache.transform(from, target, [c[0], c[1], 0.0])?;
+            *c = [x, y];
+        }
+    }
+    Ok(())
+}
+
+impl Reproject for Geometry {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.reproject(target, cache),
+            Geometry::Euclidean3D(g) => g.reproject(target, cache),
+            Geometry::GeometryCollection(c) => c.reproject(target, cache),
+        }
+    }
+}
+
+impl Reproject for GeometryCollection {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        for member in self.members_mut() {
+            member.reproject(target, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl Reproject for Euclidean2DGeometry {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        match self {
+            Euclidean2DGeometry::Point(p) => p.reproject(target, cache),
+            Euclidean2DGeometry::LineString(l) => l.reproject(target, cache),
+            Euclidean2DGeometry::Polygon(p) => p.reproject(target, cache),
+            Euclidean2DGeometry::PolygonMesh(m) => m.reproject(target, cache),
+            Euclidean2DGeometry::TriangularMesh(m) => m.reproject(target, cache),
+            Euclidean2DGeometry::Collection(c) => c.reproject(target, cache),
+        }
+    }
+}
+
+impl Reproject for Collection2D {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        for member in self.members_mut() {
+            member.reproject(target, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl Reproject for Euclidean3DGeometry {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        match self {
+            Euclidean3DGeometry::Point(p) => p.reproject(target, cache),
+            Euclidean3DGeometry::LineString(l) => l.reproject(target, cache),
+            Euclidean3DGeometry::Polygon(p) => p.reproject(target, cache),
+            Euclidean3DGeometry::PolygonMesh(m) => m.reproject(target, cache),
+            Euclidean3DGeometry::TriangularMesh(m) => m.reproject(target, cache),
+            Euclidean3DGeometry::Solid(s) => s.reproject(target, cache),
+            Euclidean3DGeometry::Collection(c) => c.reproject(target, cache),
+            Euclidean3DGeometry::PointCloud(_) => Err(Error::projection(
+                "reproject not yet supported for PointCloud",
+            )),
+            Euclidean3DGeometry::Csg(_) => {
+                Err(Error::projection("reproject not yet supported for Csg"))
+            }
+        }
+    }
+}
+
+impl Reproject for Collection3D {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        for member in self.members_mut() {
+            member.reproject(target, cache)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+
+    use super::*;
+    use crate::coordinate::Coordinate;
+    use crate::line_string::LineString2D;
+    use crate::point::{Point2D, Point3D};
+    use crate::point_cloud::PointCloud;
+
+    // EPSG codes used below:
+    //   4326 = WGS84 geographic 2D (lon/lat after normalization)
+    //   3857 = Web Mercator (metres)
+    //   4979 = WGS84 geographic 3D (lon/lat/ellipsoidal height)
+    //   4978 = WGS84 geocentric (ECEF X/Y/Z, metres)
+
+    #[test]
+    fn transform_round_trip_3d() {
+        let mut cache = Transformer::new();
+        let p = [139.767, 35.681, 100.0];
+        let ecef = cache.transform(4979, 4978, p).unwrap();
+        let back = cache.transform(4978, 4979, ecef).unwrap();
+        assert_relative_eq!(back[0], p[0], epsilon = 1e-7);
+        assert_relative_eq!(back[1], p[1], epsilon = 1e-7);
+        assert_relative_eq!(back[2], p[2], epsilon = 1e-3);
+    }
+
+    #[test]
+    fn transform_axis_order_is_lon_lat() {
+        // Tokyo lon=139.767, lat=35.681 in 4326 -> 3857.
+        let mut cache = Transformer::new();
+        let out = cache.transform(4326, 3857, [139.767, 35.681, 0.0]).unwrap();
+        assert_relative_eq!(out[0], 1.5558e7, epsilon = 1e4);
+        assert_relative_eq!(out[1], 4.2575e6, epsilon = 1e4);
+    }
+
+    #[test]
+    fn transform_is_true_3d_z_changes() {
+        // 4979 (lon/lat/height) -> 4978 (ECEF) genuinely uses and changes z.
+        let mut cache = Transformer::new();
+        let out = cache.transform(4979, 4978, [0.0, 0.0, 0.0]).unwrap();
+        // On the equator/prime meridian, ECEF x ≈ Earth radius, y ≈ z ≈ 0.
+        assert_relative_eq!(out[0], 6_378_137.0, epsilon = 1.0);
+        assert!(out[0].is_finite() && out[1].abs() < 1.0 && out[2].abs() < 1.0);
+    }
+
+    #[test]
+    fn point3d_reproject_updates_position_and_frame() {
+        let mut cache = Transformer::new();
+        let start = [139.767, 35.681, 100.0];
+        let expected = cache.transform(4979, 4978, start).unwrap();
+
+        let mut p = Point3D::new(Coordinate::Crs(4979), start);
+        p.reproject(4978, &mut cache).unwrap();
+        assert_eq!(p, Point3D::new(Coordinate::Crs(4978), expected));
+    }
+
+    #[test]
+    fn point2d_reproject_drops_z() {
+        let mut cache = Transformer::new();
+        let [x, y, _] = cache.transform(4326, 3857, [139.767, 35.681, 0.0]).unwrap();
+
+        let mut p = Point2D::new(Coordinate::Crs(4326), [139.767, 35.681]);
+        p.reproject(3857, &mut cache).unwrap();
+        assert_eq!(p, Point2D::new(Coordinate::Crs(3857), [x, y]));
+    }
+
+    #[test]
+    fn linestring2d_reproject_carries_elevation() {
+        let mut cache = Transformer::new();
+        let raw = [[139.7, 35.6, 10.0], [139.8, 35.7, 20.0]];
+        let expected: Vec<[f64; 3]> = raw
+            .iter()
+            .map(|&[x, y, z]| cache.transform(4326, 3857, [x, y, z]).unwrap())
+            .collect();
+
+        let mut ls = LineString2D::from_coords_with_elevation(Coordinate::Crs(4326), raw);
+        ls.reproject(3857, &mut cache).unwrap();
+        assert_eq!(
+            ls,
+            LineString2D::from_coords_with_elevation(Coordinate::Crs(3857), expected)
+        );
+    }
+
+    #[test]
+    fn collection_reproject_dispatches_to_each_member() {
+        let mut cache = Transformer::new();
+        let a = [139.7, 35.6, 1.0];
+        let b = [140.0, 35.9, 2.0];
+        let ea = cache.transform(4979, 4978, a).unwrap();
+        let eb = cache.transform(4979, 4978, b).unwrap();
+
+        let mut col = Collection3D::new([
+            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(4979), a)),
+            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(4979), b)),
+        ]);
+        col.reproject(4978, &mut cache).unwrap();
+        assert_eq!(
+            col,
+            Collection3D::new([
+                Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(4978), ea)),
+                Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(4978), eb)),
+            ])
+        );
+    }
+
+    #[test]
+    fn reproject_same_crs_is_noop() {
+        let mut cache = Transformer::new();
+        let mut p = Point3D::new(Coordinate::Crs(4979), [139.7, 35.6, 50.0]);
+        p.reproject(4979, &mut cache).unwrap();
+        assert_eq!(p, Point3D::new(Coordinate::Crs(4979), [139.7, 35.6, 50.0]));
+    }
+
+    #[test]
+    fn non_crs_frame_is_error() {
+        let mut cache = Transformer::new();
+        let mut p = Point3D::new(Coordinate::Euclidean, [1.0, 2.0, 3.0]);
+        assert!(matches!(
+            p.reproject(4326, &mut cache),
+            Err(Error::Projection(_))
+        ));
+    }
+
+    #[test]
+    fn unsupported_leaf_is_error() {
+        let mut cache = Transformer::new();
+        let pc = PointCloud::from_positions(Coordinate::Crs(4979), [[139.7, 35.6, 1.0]]);
+        let mut geom = Euclidean3DGeometry::PointCloud(Box::new(pc));
+        assert!(matches!(
+            geom.reproject(4978, &mut cache),
+            Err(Error::Projection(_))
+        ));
+    }
+}

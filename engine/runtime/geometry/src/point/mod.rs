@@ -1,8 +1,11 @@
 //! Point leaves.
 
+use nusamai_projection::crs::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use super::coordinate::Coordinate;
+use crate::error::Result;
+use crate::ops::reproject::Transformer;
 
 mod constructor;
 mod ops;
@@ -27,3 +30,30 @@ pub struct Point3D {
 
 crate::unsupported!(Point2D: Triangulate);
 crate::unsupported!(Point3D: Triangulate);
+impl Point2D {
+    /// Reproject this point's position to `target` (EPSG), reading the source
+    /// CRS from its own frame. The optional `z` of a 2D point is fixed at 0.
+    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            let [x, y] = self.position;
+            let [nx, ny, _] = cache.transform(from, target, [x, y, 0.0])?;
+            self.position = [nx, ny];
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}
+
+impl Point3D {
+    /// Reproject this point's position to `target` (EPSG), reading the source
+    /// CRS from its own frame.
+    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            self.position = cache.transform(from, target, self.position)?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}

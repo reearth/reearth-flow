@@ -5040,6 +5040,7 @@ dependencies = [
  "num-traits",
  "nusamai-projection",
  "parking_lot",
+ "proj-sys",
  "rayon",
  "reearth-flow-common",
  "robust 1.2.0",
