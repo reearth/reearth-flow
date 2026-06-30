@@ -28,7 +28,10 @@ export default ({
 }: {
   rawWorkflows: Workflow[];
   openNodeId?: string;
-  onPersistSchema: (nodeId: string, schema: NodeSchemaMeta | undefined) => void;
+  onPersistSchema: (
+    nodeId: string,
+    patch: Partial<NodeSchemaMeta> | undefined,
+  ) => void;
   sampleSize?: number;
 }) => {
   const [currentProject] = useCurrentProject();
@@ -61,52 +64,11 @@ export default ({
     };
   }, []);
 
-  // In-memory bookkeeping is per-project; clear it when the project changes.
-  useEffect(() => {
-    debounceTimers.current.forEach((timer) => clearTimeout(timer));
-    debounceTimers.current.clear();
-    lastProbedParams.current.clear();
-  }, [projectId]);
-
-  const getNodeSchema = useCallback(
-    (nodeId: string): NodeSchemaMeta | undefined => {
-      for (const workflow of rawWorkflowsRef.current) {
-        const node = workflow.nodes?.find((n) => n.id === nodeId);
-        if (node) return node.data?.nodeMetadata?.schema;
-      }
-      return undefined;
-    },
-    [],
-  );
-
-  const persistStatus = useCallback(
-    (
-      nodeId: string,
-      status: "running" | "failed",
-      extra?: { jobId?: string; note?: string },
-    ) => {
-      const existing = getNodeSchema(nodeId);
-      onPersistSchemaRef.current(nodeId, {
-        ports: existing?.ports ?? {},
-        sampleSize: existing?.sampleSize,
-        sampledAt: existing?.sampledAt,
-        // On failure surface the engine's reason (for debugging); while running
-        // keep whatever note was previously shown.
-        note: status === "failed" ? extra?.note : existing?.note,
-        status,
-        ...(extra?.jobId ? { jobId: extra.jobId } : {}),
-      });
-    },
-    [getNodeSchema],
-  );
-
-  const markFailed = useCallback(
-    (nodeId: string, note?: string) => {
-      lastProbedParams.current.delete(nodeId);
-      persistStatus(nodeId, "failed", { note });
-    },
-    [persistStatus],
-  );
+  const markFailed = useCallback((nodeId: string, note?: string) => {
+    // Allow an identical re-save to retry a failed probe.
+    lastProbedParams.current.delete(nodeId);
+    onPersistSchemaRef.current(nodeId, { status: "failed", note });
+  }, []);
 
   const runProbe = useCallback(
     async (nodeId: string) => {
@@ -129,9 +91,12 @@ export default ({
         markFailed(nodeId);
         return;
       }
-      persistStatus(nodeId, "running", { jobId: data.job.id });
+      onPersistSchemaRef.current(nodeId, {
+        status: "running",
+        jobId: data.job.id,
+      });
     },
-    [currentProject, previewSchema, sampleSize, persistStatus, markFailed],
+    [currentProject, previewSchema, sampleSize, markFailed],
   );
 
   const handleNodeParamsSaved = useCallback(
