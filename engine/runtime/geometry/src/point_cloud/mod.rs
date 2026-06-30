@@ -21,6 +21,7 @@ use smallvec::SmallVec;
 use crate::coordinate::Coordinate;
 
 mod constructor;
+mod ops;
 
 /// Bit positions of the optional primary fields within a [`Segment`]'s
 /// [`FieldMask`]. Private to this module: the full field-bit layout, not all of
@@ -146,3 +147,5 @@ impl fmt::Debug for PointCloud {
             .finish()
     }
 }
+
+crate::unsupported!(PointCloud: Triangulate);
