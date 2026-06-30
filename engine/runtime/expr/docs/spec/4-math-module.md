@@ -24,7 +24,7 @@ The mathematical constant e.
 
 ## math.round
 
-`math.round(x)` returns `x` rounded to the nearest integer, as a float.
+`math.round(x)` returns `x` rounded to the nearest integer.
 
 > Note: round behavior (away-from-zero or banker's round) is not stabilized by this spec.
 
@@ -78,11 +78,6 @@ The mathematical constant e.
 
 `math.atan2(y, x)` returns the angle in radians between the positive x-axis and the point `(x, y)`.
 The return value is in the range `[-pi, pi]`.
-
-## math.hypot
-
-`math.hypot(x, ...)` returns the Euclidean norm of the given coordinates, `sqrt(x1*x1 + x2*x2 + ...)`.
-With no arguments, returns `0.0`.
 
 ## math.radians
 
