@@ -4,7 +4,7 @@
 
 ## pattern language
 
-The escape character within a pattern is `\`. A literal `(` is written `\(`.
+Patterns should support POSIX Extended Regular Expression (ERE) syntax, excluding locale-specific bracket constructs: collating symbols (`[.ch.]`) and equivalence classes (`[=a=]`).
 
 A capture group is a sub-expression enclosed in parentheses `(...)`.
 
