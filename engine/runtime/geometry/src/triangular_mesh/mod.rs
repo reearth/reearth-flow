@@ -8,14 +8,11 @@
 //! plus an optional per-vertex elevation buffer parallel to `vertices`, matching
 //! the 2D leaf convention.
 
-use crate::coordinate::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
-use crate::error::Result;
 use crate::index::IndexBuffer;
-use crate::ops::reproject::{transform_coords_2d, transform_coords_3d, ReprojectionCache};
 
 mod constructor;
 mod ops;
@@ -102,26 +99,6 @@ impl TriangularMesh2D {
     pub fn uv_sets(&self) -> &[UvSet] {
         &self.uv_sets
     }
-
-    /// Reproject the vertex pool to `target` (EPSG).
-    pub(crate) fn reproject(
-        &mut self,
-        target: EpsgCode,
-        cache: &mut ReprojectionCache,
-    ) -> Result<()> {
-        let from = self.coordinate.require_crs()?;
-        if from != target {
-            transform_coords_2d(
-                cache,
-                from,
-                target,
-                &mut self.vertices,
-                self.z.as_deref_mut(),
-            )?;
-            self.coordinate = Coordinate::Crs(target);
-        }
-        Ok(())
-    }
 }
 
 impl TriangularMesh3DData {
@@ -155,20 +132,6 @@ impl TriangularMesh3D {
     #[inline]
     pub fn uv_sets(&self) -> &[UvSet] {
         &self.data.uv_sets
-    }
-
-    /// Reproject the vertex pool to `target` (EPSG).
-    pub(crate) fn reproject(
-        &mut self,
-        target: EpsgCode,
-        cache: &mut ReprojectionCache,
-    ) -> Result<()> {
-        let from = self.coordinate.require_crs()?;
-        if from != target {
-            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
-            self.coordinate = Coordinate::Crs(target);
-        }
-        Ok(())
     }
 }
 

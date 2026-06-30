@@ -10,14 +10,11 @@
 //! plus an optional per-vertex elevation buffer parallel to `vertices`, matching
 //! the 2D leaf convention.
 
-use crate::coordinate::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
-use crate::error::Result;
 use crate::index::IndexBuffer;
-use crate::ops::reproject::{transform_coords_2d, transform_coords_3d, ReprojectionCache};
 
 mod constructor;
 mod ops;
@@ -112,26 +109,6 @@ impl PolygonMesh2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
-
-    /// Reproject the vertex pool to `target` (EPSG).
-    pub(crate) fn reproject(
-        &mut self,
-        target: EpsgCode,
-        cache: &mut ReprojectionCache,
-    ) -> Result<()> {
-        let from = self.coordinate.require_crs()?;
-        if from != target {
-            transform_coords_2d(
-                cache,
-                from,
-                target,
-                &mut self.vertices,
-                self.z.as_deref_mut(),
-            )?;
-            self.coordinate = Coordinate::Crs(target);
-        }
-        Ok(())
-    }
 }
 
 impl PolygonMesh3DData {
@@ -152,20 +129,6 @@ impl PolygonMesh3D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.data.appearance
-    }
-
-    /// Reproject the vertex pool to `target` (EPSG).
-    pub(crate) fn reproject(
-        &mut self,
-        target: EpsgCode,
-        cache: &mut ReprojectionCache,
-    ) -> Result<()> {
-        let from = self.coordinate.require_crs()?;
-        if from != target {
-            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
-            self.coordinate = Coordinate::Crs(target);
-        }
-        Ok(())
     }
 }
 

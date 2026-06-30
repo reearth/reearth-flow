@@ -9,13 +9,10 @@
 //! recording where each interior ring starts (the exterior is the prefix up to
 //! the first hole, so it carries no offset of its own).
 
-use crate::coordinate::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
-use crate::error::Result;
-use crate::ops::reproject::{transform_coords_2d, transform_coords_3d, ReprojectionCache};
 
 mod constructor;
 mod ops;
@@ -108,20 +105,6 @@ impl Polygon2D {
     pub fn uv_sets(&self) -> &[UvSet] {
         &self.uv_sets
     }
-
-    /// Reproject all rings to `target` (EPSG).
-    pub(crate) fn reproject(
-        &mut self,
-        target: EpsgCode,
-        cache: &mut ReprojectionCache,
-    ) -> Result<()> {
-        let from = self.coordinate.require_crs()?;
-        if from != target {
-            transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_deref_mut())?;
-            self.coordinate = Coordinate::Crs(target);
-        }
-        Ok(())
-    }
 }
 
 impl Polygon3D {
@@ -170,19 +153,5 @@ impl Polygon3D {
     #[inline]
     pub fn uv_sets(&self) -> &[UvSet] {
         &self.uv_sets
-    }
-
-    /// Reproject all rings to `target` (EPSG).
-    pub(crate) fn reproject(
-        &mut self,
-        target: EpsgCode,
-        cache: &mut ReprojectionCache,
-    ) -> Result<()> {
-        let from = self.coordinate.require_crs()?;
-        if from != target {
-            transform_coords_3d(cache, from, target, &mut self.coords)?;
-            self.coordinate = Coordinate::Crs(target);
-        }
-        Ok(())
     }
 }

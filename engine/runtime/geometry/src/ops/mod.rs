@@ -11,6 +11,8 @@
 pub mod reproject;
 pub mod triangulation;
 
+pub use reproject::{Reproject, ReprojectionCache};
+
 /// Returned by an operation a given geometry type does not support. Carries the
 /// concrete type name (via [`type_name`](core::any::type_name)) and the
 /// operation name for diagnostics.

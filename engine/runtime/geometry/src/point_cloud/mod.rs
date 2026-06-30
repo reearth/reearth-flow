@@ -148,4 +148,4 @@ impl fmt::Debug for PointCloud {
     }
 }
 
-crate::unsupported!(PointCloud: Triangulate);
+crate::unsupported!(PointCloud: Triangulate, Reproject);

@@ -1,19 +1,36 @@
 //! Reproject geometry types between coordinate reference systems.
 
 use crate::coordinate::EpsgCode;
-
-use crate::collection::{Collection2D, Collection3D};
 use crate::error::{Error, Result};
-use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
 
 mod ffi;
 
 pub use ffi::ReprojectionCache;
 
 /// Reproject a geometry's coordinates to a target CRS.
+#[enum_dispatch::enum_dispatch]
 pub trait Reproject {
-    /// Reproject every coordinate to `target` (an EPSG code).
-    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()>;
+    /// Reproject every coordinate to `target` (an EPSG code). The default body
+    /// reports the type as unsupported; a leaf opts in by overriding it.
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        let _ = (target, cache);
+        Err(Error::projection(format!(
+            "reproject is not supported by `{}`",
+            core::any::type_name::<Self>()
+        )))
+    }
+}
+
+// The boxed enum variants (`Box<Polygon2D>`, `Box<Solid>`, …) need the trait on
+// the `Box` itself: `enum_dispatch` forwards by UFCS, not auto-deref.
+impl<T: Reproject + ?Sized> Reproject for Box<T> {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
+        (**self).reproject(target, cache)
+    }
 }
 
 /// Reproject a 3D coordinate buffer in place from `from` to `target` (EPSG).
@@ -60,86 +77,17 @@ pub(crate) fn transform_coords_2d(
     Ok(())
 }
 
-impl Reproject for Geometry {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
-        match self {
-            Geometry::None => Ok(()),
-            Geometry::Euclidean2D(g) => g.reproject(target, cache),
-            Geometry::Euclidean3D(g) => g.reproject(target, cache),
-            Geometry::GeometryCollection(c) => c.reproject(target, cache),
-        }
-    }
-}
-
-impl Reproject for GeometryCollection {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
-        }
-        Ok(())
-    }
-}
-
-impl Reproject for Euclidean2DGeometry {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
-        match self {
-            Euclidean2DGeometry::Point(p) => p.reproject(target, cache),
-            Euclidean2DGeometry::LineString(l) => l.reproject(target, cache),
-            Euclidean2DGeometry::Polygon(p) => p.reproject(target, cache),
-            Euclidean2DGeometry::PolygonMesh(m) => m.reproject(target, cache),
-            Euclidean2DGeometry::TriangularMesh(m) => m.reproject(target, cache),
-            Euclidean2DGeometry::Collection(c) => c.reproject(target, cache),
-        }
-    }
-}
-
-impl Reproject for Collection2D {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
-        }
-        Ok(())
-    }
-}
-
-impl Reproject for Euclidean3DGeometry {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
-        match self {
-            Euclidean3DGeometry::Point(p) => p.reproject(target, cache),
-            Euclidean3DGeometry::LineString(l) => l.reproject(target, cache),
-            Euclidean3DGeometry::Polygon(p) => p.reproject(target, cache),
-            Euclidean3DGeometry::PolygonMesh(m) => m.reproject(target, cache),
-            Euclidean3DGeometry::TriangularMesh(m) => m.reproject(target, cache),
-            Euclidean3DGeometry::Solid(s) => s.reproject(target, cache),
-            Euclidean3DGeometry::Collection(c) => c.reproject(target, cache),
-            Euclidean3DGeometry::PointCloud(_) => Err(Error::projection(
-                "reproject not yet supported for PointCloud",
-            )),
-            Euclidean3DGeometry::Csg(_) => {
-                Err(Error::projection("reproject not yet supported for Csg"))
-            }
-        }
-    }
-}
-
-impl Reproject for Collection3D {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
-        }
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
+    use crate::collection::Collection3D;
     use crate::coordinate::Coordinate;
     use crate::line_string::LineString2D;
     use crate::point::{Point2D, Point3D};
     use crate::point_cloud::PointCloud;
+    use crate::Euclidean3DGeometry;
 
     #[test]
     fn transform_round_trip_3d() {
