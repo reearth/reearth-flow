@@ -8,7 +8,7 @@
 //! plus an optional per-vertex elevation buffer parallel to `vertices`, matching
 //! the 2D leaf convention.
 
-use nusamai_projection::crs::EpsgCode;
+use crate::coordinate::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::{Appearance, UvSet};

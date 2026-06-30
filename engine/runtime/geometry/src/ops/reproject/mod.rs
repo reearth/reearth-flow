@@ -1,6 +1,6 @@
 //! Reproject geometry types between coordinate reference systems.
 
-use nusamai_projection::crs::EpsgCode;
+use crate::coordinate::EpsgCode;
 
 use crate::collection::{Collection2D, Collection3D};
 use crate::error::{Error, Result};
@@ -145,8 +145,12 @@ mod tests {
     fn transform_round_trip_3d() {
         let mut cache = ReprojectionCache::new();
         let p = [139.767, 35.681, 100.0];
-        let ecef = cache.transform(4979, 4978, p).unwrap();
-        let back = cache.transform(4978, 4979, ecef).unwrap();
+        let ecef = cache
+            .transform(EpsgCode::new(4979), EpsgCode::new(4978), p)
+            .unwrap();
+        let back = cache
+            .transform(EpsgCode::new(4978), EpsgCode::new(4979), ecef)
+            .unwrap();
         assert_relative_eq!(back[0], p[0], epsilon = 1e-7);
         assert_relative_eq!(back[1], p[1], epsilon = 1e-7);
         assert_relative_eq!(back[2], p[2], epsilon = 1e-3);
@@ -155,7 +159,13 @@ mod tests {
     #[test]
     fn transform_axis_order_is_lon_lat() {
         let mut cache = ReprojectionCache::new();
-        let out = cache.transform(4326, 3857, [139.767, 35.681, 0.0]).unwrap();
+        let out = cache
+            .transform(
+                EpsgCode::new(4326),
+                EpsgCode::new(3857),
+                [139.767, 35.681, 0.0],
+            )
+            .unwrap();
         assert_relative_eq!(out[0], 1.5558e7, epsilon = 1e4);
         assert_relative_eq!(out[1], 4.2575e6, epsilon = 1e4);
     }
@@ -163,7 +173,9 @@ mod tests {
     #[test]
     fn transform_is_true_3d_z_changes() {
         let mut cache = ReprojectionCache::new();
-        let out = cache.transform(4979, 4978, [0.0, 0.0, 0.0]).unwrap();
+        let out = cache
+            .transform(EpsgCode::new(4979), EpsgCode::new(4978), [0.0, 0.0, 0.0])
+            .unwrap();
         assert_relative_eq!(out[0], 6_378_137.0, epsilon = 1.0);
         assert!(out[0].is_finite() && out[1].abs() < 1.0 && out[2].abs() < 1.0);
     }
@@ -172,21 +184,35 @@ mod tests {
     fn point3d_reproject_updates_position_and_frame() {
         let mut cache = ReprojectionCache::new();
         let start = [139.767, 35.681, 100.0];
-        let expected = cache.transform(4979, 4978, start).unwrap();
+        let expected = cache
+            .transform(EpsgCode::new(4979), EpsgCode::new(4978), start)
+            .unwrap();
 
-        let mut p = Point3D::new(Coordinate::Crs(4979), start);
-        p.reproject(4978, &mut cache).unwrap();
-        assert_eq!(p, Point3D::new(Coordinate::Crs(4978), expected));
+        let mut p = Point3D::new(Coordinate::Crs(EpsgCode::new(4979)), start);
+        p.reproject(EpsgCode::new(4978), &mut cache).unwrap();
+        assert_eq!(
+            p,
+            Point3D::new(Coordinate::Crs(EpsgCode::new(4978)), expected)
+        );
     }
 
     #[test]
     fn point2d_reproject_drops_z() {
         let mut cache = ReprojectionCache::new();
-        let [x, y, _] = cache.transform(4326, 3857, [139.767, 35.681, 0.0]).unwrap();
+        let [x, y, _] = cache
+            .transform(
+                EpsgCode::new(4326),
+                EpsgCode::new(3857),
+                [139.767, 35.681, 0.0],
+            )
+            .unwrap();
 
-        let mut p = Point2D::new(Coordinate::Crs(4326), [139.767, 35.681]);
-        p.reproject(3857, &mut cache).unwrap();
-        assert_eq!(p, Point2D::new(Coordinate::Crs(3857), [x, y]));
+        let mut p = Point2D::new(Coordinate::Crs(EpsgCode::new(4326)), [139.767, 35.681]);
+        p.reproject(EpsgCode::new(3857), &mut cache).unwrap();
+        assert_eq!(
+            p,
+            Point2D::new(Coordinate::Crs(EpsgCode::new(3857)), [x, y])
+        );
     }
 
     #[test]
@@ -195,14 +221,22 @@ mod tests {
         let raw = [[139.7, 35.6, 10.0], [139.8, 35.7, 20.0]];
         let expected: Vec<[f64; 3]> = raw
             .iter()
-            .map(|&[x, y, z]| cache.transform(4326, 3857, [x, y, z]).unwrap())
+            .map(|&[x, y, z]| {
+                cache
+                    .transform(EpsgCode::new(4326), EpsgCode::new(3857), [x, y, z])
+                    .unwrap()
+            })
             .collect();
 
-        let mut ls = LineString2D::from_coords_with_elevation(Coordinate::Crs(4326), raw);
-        ls.reproject(3857, &mut cache).unwrap();
+        let mut ls =
+            LineString2D::from_coords_with_elevation(Coordinate::Crs(EpsgCode::new(4326)), raw);
+        ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
         assert_eq!(
             ls,
-            LineString2D::from_coords_with_elevation(Coordinate::Crs(3857), expected)
+            LineString2D::from_coords_with_elevation(
+                Coordinate::Crs(EpsgCode::new(3857)),
+                expected
+            )
         );
     }
 
@@ -211,19 +245,23 @@ mod tests {
         let mut cache = ReprojectionCache::new();
         let a = [139.7, 35.6, 1.0];
         let b = [140.0, 35.9, 2.0];
-        let ea = cache.transform(4979, 4978, a).unwrap();
-        let eb = cache.transform(4979, 4978, b).unwrap();
+        let ea = cache
+            .transform(EpsgCode::new(4979), EpsgCode::new(4978), a)
+            .unwrap();
+        let eb = cache
+            .transform(EpsgCode::new(4979), EpsgCode::new(4978), b)
+            .unwrap();
 
         let mut col = Collection3D::new([
-            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(4979), a)),
-            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(4979), b)),
+            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(EpsgCode::new(4979)), a)),
+            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(EpsgCode::new(4979)), b)),
         ]);
-        col.reproject(4978, &mut cache).unwrap();
+        col.reproject(EpsgCode::new(4978), &mut cache).unwrap();
         assert_eq!(
             col,
             Collection3D::new([
-                Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(4978), ea)),
-                Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(4978), eb)),
+                Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(EpsgCode::new(4978)), ea)),
+                Euclidean3DGeometry::Point(Point3D::new(Coordinate::Crs(EpsgCode::new(4978)), eb)),
             ])
         );
     }
@@ -234,7 +272,13 @@ mod tests {
         let mut coords = [[139.7, 35.6], [139.8, 35.7]];
         let mut z = [10.0]; // one short of `coords`
         assert!(matches!(
-            transform_coords_2d(&mut cache, 4326, 3857, &mut coords, Some(&mut z)),
+            transform_coords_2d(
+                &mut cache,
+                EpsgCode::new(4326),
+                EpsgCode::new(3857),
+                &mut coords,
+                Some(&mut z)
+            ),
             Err(Error::Projection(_))
         ));
     }
@@ -242,9 +286,12 @@ mod tests {
     #[test]
     fn reproject_same_crs_is_noop() {
         let mut cache = ReprojectionCache::new();
-        let mut p = Point3D::new(Coordinate::Crs(4979), [139.7, 35.6, 50.0]);
-        p.reproject(4979, &mut cache).unwrap();
-        assert_eq!(p, Point3D::new(Coordinate::Crs(4979), [139.7, 35.6, 50.0]));
+        let mut p = Point3D::new(Coordinate::Crs(EpsgCode::new(4979)), [139.7, 35.6, 50.0]);
+        p.reproject(EpsgCode::new(4979), &mut cache).unwrap();
+        assert_eq!(
+            p,
+            Point3D::new(Coordinate::Crs(EpsgCode::new(4979)), [139.7, 35.6, 50.0])
+        );
     }
 
     #[test]
@@ -252,7 +299,7 @@ mod tests {
         let mut cache = ReprojectionCache::new();
         let mut p = Point3D::new(Coordinate::Euclidean, [1.0, 2.0, 3.0]);
         assert!(matches!(
-            p.reproject(4326, &mut cache),
+            p.reproject(EpsgCode::new(4326), &mut cache),
             Err(Error::Projection(_))
         ));
     }
@@ -260,10 +307,11 @@ mod tests {
     #[test]
     fn unsupported_leaf_is_error() {
         let mut cache = ReprojectionCache::new();
-        let pc = PointCloud::from_positions(Coordinate::Crs(4979), [[139.7, 35.6, 1.0]]);
+        let pc =
+            PointCloud::from_positions(Coordinate::Crs(EpsgCode::new(4979)), [[139.7, 35.6, 1.0]]);
         let mut geom = Euclidean3DGeometry::PointCloud(Box::new(pc));
         assert!(matches!(
-            geom.reproject(4978, &mut cache),
+            geom.reproject(EpsgCode::new(4978), &mut cache),
             Err(Error::Projection(_))
         ));
     }

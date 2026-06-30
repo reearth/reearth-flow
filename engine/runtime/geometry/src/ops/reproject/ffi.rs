@@ -4,7 +4,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
 use std::ptr;
 
-use nusamai_projection::crs::EpsgCode;
+use crate::coordinate::EpsgCode;
 use proj_sys::{
     proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
     proj_create_crs_to_crs, proj_destroy, proj_errno, proj_errno_reset,

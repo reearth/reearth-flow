@@ -8,7 +8,7 @@
 //! CityGML `Surface` name.) Solids are 3D only; their shells are coordless
 //! raw meshes and the one frame lives on the `Solid`.
 
-use nusamai_projection::crs::EpsgCode;
+use crate::coordinate::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::Coordinate;

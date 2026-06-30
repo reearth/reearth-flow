@@ -9,7 +9,7 @@
 //! recording where each interior ring starts (the exterior is the prefix up to
 //! the first hole, so it carries no offset of its own).
 
-use nusamai_projection::crs::EpsgCode;
+use crate::coordinate::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::{Appearance, UvSet};

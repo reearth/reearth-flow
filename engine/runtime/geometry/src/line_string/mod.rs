@@ -6,7 +6,7 @@
 //! form carrying optional per-vertex elevation parallel to `coords`. Lines carry
 //! no appearance.
 
-use nusamai_projection::crs::EpsgCode;
+use crate::coordinate::EpsgCode;
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::Coordinate;
