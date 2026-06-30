@@ -4,9 +4,15 @@
 
 ## pattern language
 
-Patterns should support POSIX Extended Regular Expression (ERE) syntax, excluding locale-specific bracket constructs: collating symbols (`[.ch.]`) and equivalence classes (`[=a=]`).
+Supported constructs:
 
-A capture group is a sub-expression enclosed in parentheses `(...)`.
+- Literals and escapes: `\n`, `\t`, `\\`, Unicode escapes `\u{HHHH}`
+- Dot: `.` matches any character except newline
+- Character classes: `[abc]`, `[a-z]`, `[^...]`; shorthand `\d`, `\D`, `\w`, `\W`, `\s`, `\S`
+- Anchors: `^` (start of input), `$` (end of input)
+- Quantifiers: `*`, `+`, `?`, `{n}`, `{n,}`, `{n,m}`; append `?` for non-greedy
+- Alternation: `a|b`
+- Capture group: `(...)` — a sub-expression whose matched text is extracted separately
 
 ## find
 
