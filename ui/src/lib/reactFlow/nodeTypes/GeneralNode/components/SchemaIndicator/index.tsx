@@ -13,12 +13,9 @@ import {
 } from "@flow/components";
 import { TYPE_COLOR } from "@flow/features/Editor/components/ParamsDialog/components/ValueEditorDialog/components/flowExprConstants";
 import { useT } from "@flow/lib/i18n";
-import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useCurrentProject } from "@flow/stores";
 import type { FieldReport, NodeSchemaMeta } from "@flow/types";
 
 type Props = {
-  nodeId: string;
   schema?: NodeSchemaMeta;
 };
 
@@ -36,17 +33,12 @@ const collectFields = (schema?: NodeSchemaMeta): FieldReport[] => {
   return fields;
 };
 
-const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
+const SchemaIndicator: React.FC<Props> = ({ schema }) => {
   const t = useT();
-  const [currentProject] = useCurrentProject();
-  const { value: previewSchemaState } = useIndexedDB("previewSchema");
-  const probe = previewSchemaState?.probes?.find(
-    (p) => p.nodeId === nodeId && p.projectId === currentProject?.id,
-  );
 
   const fields = useMemo(() => collectFields(schema), [schema]);
-
-  if (probe?.status === "running") {
+  console.log("SCHEMA INDICATOR RENDER", schema, fields);
+  if (schema?.status === "running") {
     return (
       <div className="flex translate-x-0.5 items-center">
         <CircleNotchIcon className="size-3 animate-spin text-muted-foreground" />
@@ -54,7 +46,7 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
     );
   }
 
-  if (probe?.status === "failed") {
+  if (schema?.status === "failed") {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -63,8 +55,15 @@ const SchemaIndicator: React.FC<Props> = ({ nodeId, schema }) => {
               <WarningCircleIcon className="size-3 text-warning" />
             </div>
           </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {t("Schema preview failed. Re-save to retry.")}
+          <TooltipContent side="bottom" className="max-w-64">
+            <div className="flex flex-col gap-1">
+              <span>{t("Schema preview failed. Re-save to retry.")}</span>
+              {schema.note && (
+                <span className="font-mono text-[10px] wrap-break-word text-muted-foreground">
+                  {schema.note}
+                </span>
+              )}
+            </div>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

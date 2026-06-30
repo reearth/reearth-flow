@@ -73,7 +73,7 @@ const Handles: React.FC<Props> = ({
     <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
         {nodeType === "reader" && (
-          <SchemaIndicator nodeId={id} schema={nodeData.nodeMetadata?.schema} />
+          <SchemaIndicator schema={nodeData.nodeMetadata?.schema} />
         )}
         {nodeType !== "reader" &&
           hasMoreThanFiveInputHandles &&

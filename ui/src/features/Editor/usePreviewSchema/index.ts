@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
-import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
-import type { ReaderSchemaProbeStatus } from "@flow/stores";
 import type { Job, Node, NodeSchemaMeta, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
@@ -11,10 +9,16 @@ import { buildReaderAttributeSuggestions } from "./readerAttributeSuggestions";
 import {
   fetchSchemaReport,
   findSchemaReportUrl,
+  getNodeReportFailure,
   toNodeSchemaMeta,
 } from "./schemaReport";
 
 const PROBE_DEBOUNCE_MS = 600;
+
+export type RunningSchemaProbe = {
+  nodeId: string;
+  jobId: string;
+};
 
 export default ({
   rawWorkflows,
@@ -30,9 +34,6 @@ export default ({
   const [currentProject] = useCurrentProject();
   const projectId = currentProject?.id;
   const { previewSchema } = useProject();
-
-  const { value: previewSchemaState, updateValue } =
-    useIndexedDB("previewSchema");
 
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables } = useGetWorkflowVariables(projectId ?? "");
@@ -61,40 +62,50 @@ export default ({
   }, []);
 
   // In-memory bookkeeping is per-project; clear it when the project changes.
-  // (Persisted probes are project-scoped, so they don't need clearing here.)
   useEffect(() => {
     debounceTimers.current.forEach((timer) => clearTimeout(timer));
     debounceTimers.current.clear();
     lastProbedParams.current.clear();
   }, [projectId]);
 
-  const writeProbe = useCallback(
-    (nodeId: string, jobId: string, status: ReaderSchemaProbeStatus) => {
-      if (!projectId) return;
-      if (status === "failed") lastProbedParams.current.delete(nodeId);
-      void updateValue((prev) => {
-        const probes = (prev.probes ?? []).filter(
-          (probe) =>
-            !(probe.projectId === projectId && probe.nodeId === nodeId),
-        );
-        probes.push({ projectId, nodeId, jobId, status });
-        return { probes };
-      });
+  const getNodeSchema = useCallback(
+    (nodeId: string): NodeSchemaMeta | undefined => {
+      for (const workflow of rawWorkflowsRef.current) {
+        const node = workflow.nodes?.find((n) => n.id === nodeId);
+        if (node) return node.data?.nodeMetadata?.schema;
+      }
+      return undefined;
     },
-    [projectId, updateValue],
+    [],
   );
 
-  const clearProbe = useCallback(
-    (nodeId: string) => {
-      if (!projectId) return;
-      void updateValue((prev) => ({
-        probes: (prev.probes ?? []).filter(
-          (probe) =>
-            !(probe.projectId === projectId && probe.nodeId === nodeId),
-        ),
-      }));
+  const persistStatus = useCallback(
+    (
+      nodeId: string,
+      status: "running" | "failed",
+      extra?: { jobId?: string; note?: string },
+    ) => {
+      const existing = getNodeSchema(nodeId);
+      onPersistSchemaRef.current(nodeId, {
+        ports: existing?.ports ?? {},
+        sampleSize: existing?.sampleSize,
+        sampledAt: existing?.sampledAt,
+        // On failure surface the engine's reason (for debugging); while running
+        // keep whatever note was previously shown.
+        note: status === "failed" ? extra?.note : existing?.note,
+        status,
+        ...(extra?.jobId ? { jobId: extra.jobId } : {}),
+      });
     },
-    [projectId, updateValue],
+    [getNodeSchema],
+  );
+
+  const markFailed = useCallback(
+    (nodeId: string, note?: string) => {
+      lastProbedParams.current.delete(nodeId);
+      persistStatus(nodeId, "failed", { note });
+    },
+    [persistStatus],
   );
 
   const runProbe = useCallback(
@@ -115,12 +126,12 @@ export default ({
       );
 
       if (!data.job?.id) {
-        writeProbe(nodeId, "", "failed");
+        markFailed(nodeId);
         return;
       }
-      writeProbe(nodeId, data.job.id, "running");
+      persistStatus(nodeId, "running", { jobId: data.job.id });
     },
-    [currentProject, previewSchema, sampleSize, writeProbe],
+    [currentProject, previewSchema, sampleSize, persistStatus, markFailed],
   );
 
   const handleNodeParamsSaved = useCallback(
@@ -151,42 +162,67 @@ export default ({
     async (nodeId: string, job: Job) => {
       const url = findSchemaReportUrl(job.outputURLs);
       if (!url) {
-        writeProbe(nodeId, job.id, "failed");
+        markFailed(nodeId);
         return;
       }
       try {
         const report = await fetchSchemaReport(url);
         const nodeReport = report.nodes[nodeId];
-        if (nodeReport) {
-          onPersistSchemaRef.current(
-            nodeId,
-            toNodeSchemaMeta(
-              nodeReport,
-              report.sampleSize,
-              new Date().toISOString(),
-            ),
-          );
+        // The job produced a report but it doesn't cover this node.
+        if (!nodeReport) {
+          markFailed(nodeId);
+          return;
         }
-        clearProbe(nodeId);
+        // The job completes even when the reader couldn't sample its data; the
+        // engine only flags that with a note + open/empty port. Treat that as a
+        // failure (surfacing the reason) rather than a hollow "complete".
+        const failureNote = getNodeReportFailure(nodeReport);
+        if (failureNote) {
+          markFailed(nodeId, failureNote);
+          return;
+        }
+        onPersistSchemaRef.current(
+          nodeId,
+          toNodeSchemaMeta(
+            nodeReport,
+            report.sampleSize,
+            new Date().toISOString(),
+          ),
+        );
       } catch {
-        writeProbe(nodeId, job.id, "failed");
+        markFailed(nodeId);
       }
     },
-    [clearProbe, writeProbe],
+    [markFailed],
   );
 
   const handleProbeError = useCallback(
-    (nodeId: string) => writeProbe(nodeId, "", "failed"),
-    [writeProbe],
+    (nodeId: string) => markFailed(nodeId),
+    [markFailed],
   );
 
-  const schemaProbes = useMemo(
-    () =>
-      (previewSchemaState?.probes ?? []).filter(
-        (probe) => probe.projectId === projectId,
-      ),
-    [previewSchemaState, projectId],
-  );
+  const schemaProbes = useMemo<RunningSchemaProbe[]>(() => {
+    const probes: RunningSchemaProbe[] = [];
+    for (const workflow of rawWorkflows) {
+      for (const node of workflow.nodes ?? []) {
+        const schema = node.data?.nodeMetadata?.schema;
+        if (schema?.status === "running" && schema.jobId) {
+          probes.push({ nodeId: node.id, jobId: schema.jobId });
+        }
+      }
+    }
+    return probes;
+  }, [rawWorkflows]);
+
+  useEffect(() => {
+    for (const workflow of rawWorkflows) {
+      for (const node of workflow.nodes ?? []) {
+        if (node.data?.nodeMetadata?.schema?.status === "failed") {
+          lastProbedParams.current.delete(node.id);
+        }
+      }
+    }
+  }, [rawWorkflows]);
 
   const readerAttributeSuggestions = useMemo(
     () => buildReaderAttributeSuggestions(rawWorkflows, openNodeId),
