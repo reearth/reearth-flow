@@ -38,6 +38,23 @@ impl ImmutableObject for RegexObject {
                 expect_arity("Regex.find_all", args, 1, 1)?;
                 Ok(Value::list(regex_find_all(&self.regex, args[0].as_str()?)))
             }
+            "split" => {
+                expect_arity("Regex.split", args, 1, 2)?;
+                let s = args[0].as_str()?;
+                let parts = if args.len() == 2 {
+                    let limit = args[1].as_int()?;
+                    self.regex
+                        .splitn(s, (limit + 1) as usize)
+                        .map(|p| Value::String(p.to_string()))
+                        .collect()
+                } else {
+                    self.regex
+                        .split(s)
+                        .map(|p| Value::String(p.to_string()))
+                        .collect()
+                };
+                Ok(Value::list(parts))
+            }
             m => Err(eval_error(format!("Regex has no method '{m}'"))),
         }
     }
@@ -156,6 +173,26 @@ mod tests {
                 Value::list(vec![Value::from("123"), Value::Null]),
                 Value::list(vec![Value::from("456"), Value::from("x")]),
             ]),
+        );
+    }
+
+    #[test]
+    fn test_regex_split() {
+        assert_val(
+            &run(r#"Regex(r"\d+").split("a1b2c")"#, &[]),
+            &Value::list(vec![Value::from("a"), Value::from("b"), Value::from("c")]),
+        );
+        assert_val(
+            &run(r#"Regex(r",").split("a,,b")"#, &[]),
+            &Value::list(vec![Value::from("a"), Value::from(""), Value::from("b")]),
+        );
+        assert_val(
+            &run(r#"Regex(r"\d+").split("no digits")"#, &[]),
+            &Value::list(vec![Value::from("no digits")]),
+        );
+        assert_val(
+            &run(r#"Regex(r"\d+").split("a1b2c3d", 2)"#, &[]),
+            &Value::list(vec![Value::from("a"), Value::from("b"), Value::from("c3d")]),
         );
     }
 
