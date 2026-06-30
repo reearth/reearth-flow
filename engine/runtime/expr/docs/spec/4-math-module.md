@@ -26,7 +26,7 @@ The mathematical constant e.
 
 `math.round(x)` returns `x` rounded to the nearest integer.
 
-> Note: round behavior (away-from-zero or banker's round) is not stabilized by this spec.
+> Note: round behavior at `n + 0.5` (away-from-zero or banker's round) is not specified by this spec.
 
 ## math.sqrt
 
