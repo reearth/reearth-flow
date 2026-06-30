@@ -168,6 +168,8 @@ impl Polygon3D {
     #[inline]
     pub fn uv_sets(&self) -> &[UvSet] {
         &self.uv_sets
+    }
+
     /// Reproject all rings to `target` (EPSG), reading the source CRS from the
     /// frame. The flat exterior+interior buffer is walked linearly (ring offsets
     /// are index-based and unaffected).

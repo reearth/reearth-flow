@@ -153,6 +153,17 @@ impl TriangularMesh3D {
     pub fn uv_sets(&self) -> &[UvSet] {
         &self.data.uv_sets
     }
+
+    /// Reproject the vertex pool to `target` (EPSG), reading the source CRS from
+    /// the frame. Indices are unaffected.
+    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
 }
 
 impl TriangularMesh3DData {
@@ -209,16 +220,5 @@ mod tests {
         assert!(m.appearance.as_ref().unwrap().themes[0].back.is_none());
         assert_eq!(m.uv_sets.len(), 1);
         assert_eq!(m.uv_sets[0].side, Side::Front);
-    }
-
-    /// Reproject the vertex pool to `target` (EPSG), reading the source CRS from
-    /// the frame. Indices are unaffected.
-    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
-        let from = self.coordinate.require_crs()?;
-        if from != target {
-            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
-            self.coordinate = Coordinate::Crs(target);
-        }
-        Ok(())
     }
 }
