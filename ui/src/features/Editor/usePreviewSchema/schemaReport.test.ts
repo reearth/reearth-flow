@@ -46,6 +46,7 @@ describe("toNodeSchemaMeta", () => {
       sampleSize: 10,
       sampledAt: "2026-06-17T00:00:00.000Z",
       note: "sampled 2",
+      status: "complete",
     });
   });
 });

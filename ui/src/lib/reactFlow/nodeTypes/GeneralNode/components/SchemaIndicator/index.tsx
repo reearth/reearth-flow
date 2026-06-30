@@ -37,7 +37,6 @@ const SchemaIndicator: React.FC<Props> = ({ schema }) => {
   const t = useT();
 
   const fields = useMemo(() => collectFields(schema), [schema]);
-  console.log("SCHEMA INDICATOR RENDER", schema, fields);
   if (schema?.status === "running") {
     return (
       <div className="flex translate-x-0.5 items-center">
@@ -59,7 +58,7 @@ const SchemaIndicator: React.FC<Props> = ({ schema }) => {
             <div className="flex flex-col gap-1">
               <span>{t("Schema preview failed. Re-save to retry.")}</span>
               {schema.note && (
-                <span className="font-mono text-[10px] wrap-break-word text-muted-foreground">
+                <span className="break-wordstext-muted-foreground font-mono text-[10px]">
                   {schema.note}
                 </span>
               )}
