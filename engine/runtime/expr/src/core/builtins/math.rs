@@ -1,14 +1,22 @@
-use crate::core::error::eval_error;
+use crate::core::error::{eval_error, Result};
 use crate::core::value::{Module, NativeFn, Value};
 use crate::expect_arity;
 
-fn float_to_int(name: &str, v: f64) -> crate::core::error::Result<Value> {
-    let i = v as i64;
-    if i as f64 == v {
-        Ok(Value::Int(i))
-    } else {
-        Err(eval_error(format!("{name}: value out of integer range")))
+fn float_to_int(name: &str, x: f64) -> Result<i64> {
+    if !x.is_finite() {
+        return Err(eval_error(format!(
+            "{name}: cannot convert non-finite value to int"
+        )));
     }
+    if x.fract() != 0.0 {
+        return Err(eval_error(format!(
+            "{name}: float value has fractional part"
+        )));
+    }
+    if x < i64::MIN as f64 || x >= i64::MAX as f64 {
+        return Err(eval_error(format!("{name}: float value out of i64 range")));
+    }
+    Ok(x as i64)
 }
 
 fn unary_float(name: &'static str, f: fn(f64) -> f64) -> Value {
@@ -39,7 +47,10 @@ pub fn builtin_math() -> Value {
         Value::Fn(NativeFn::new(|args| {
             expect_arity("math.abs", args, 1, 1)?;
             match &args[0] {
-                Value::Int(n) => Ok(Value::Int(n.abs())),
+                Value::Int(n) => n
+                    .checked_abs()
+                    .map(Value::Int)
+                    .ok_or_else(|| eval_error("math.abs: integer overflow")),
                 _ => Ok(Value::Float(args[0].as_f64()?.abs())),
             }
         })),
@@ -48,14 +59,20 @@ pub fn builtin_math() -> Value {
         "floor".into(),
         Value::Fn(NativeFn::new(|args| {
             expect_arity("math.floor", args, 1, 1)?;
-            float_to_int("math.floor", args[0].as_f64()?.floor())
+            if let Value::Int(_) = &args[0] {
+                return Ok(args[0].clone());
+            }
+            float_to_int("math.floor", args[0].as_f64()?.floor()).map(Value::Int)
         })),
     );
     m.insert(
         "ceil".into(),
         Value::Fn(NativeFn::new(|args| {
             expect_arity("math.ceil", args, 1, 1)?;
-            float_to_int("math.ceil", args[0].as_f64()?.ceil())
+            if let Value::Int(_) = &args[0] {
+                return Ok(args[0].clone());
+            }
+            float_to_int("math.ceil", args[0].as_f64()?.ceil()).map(Value::Int)
         })),
     );
     // math.round is away-from-zero which is natural in GIS context
@@ -63,7 +80,10 @@ pub fn builtin_math() -> Value {
         "round".into(),
         Value::Fn(NativeFn::new(|args| {
             expect_arity("math.round", args, 1, 1)?;
-            float_to_int("math.round", args[0].as_f64()?.round())
+            if let Value::Int(_) = &args[0] {
+                return Ok(args[0].clone());
+            }
+            float_to_int("math.round", args[0].as_f64()?.round()).map(Value::Int)
         })),
     );
     m.insert("sqrt".into(), unary_float("sqrt", f64::sqrt));
@@ -112,7 +132,7 @@ pub fn builtin_math() -> Value {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::test_utils::assert_eval;
+    use crate::core::test_utils::{assert_eval, try_run};
     use crate::core::value::Value;
 
     #[test]

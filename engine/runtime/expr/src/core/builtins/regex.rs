@@ -43,8 +43,15 @@ impl ImmutableObject for RegexObject {
                 let s = args[0].as_str()?;
                 let parts = if args.len() == 2 {
                     let limit = args[1].as_int()?;
+                    if limit < 0 {
+                        return Err(eval_error("Regex.split: limit must be non-negative"));
+                    }
+                    let n = limit
+                        .checked_add(1)
+                        .ok_or_else(|| eval_error("Regex.split: limit overflow"))?
+                        as usize;
                     self.regex
-                        .splitn(s, (limit + 1) as usize)
+                        .splitn(s, n)
                         .map(|p| Value::String(p.to_string()))
                         .collect()
                 } else {
