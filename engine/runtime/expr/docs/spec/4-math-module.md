@@ -16,11 +16,11 @@ The mathematical constant e.
 
 ## math.floor
 
-`math.floor(x)` returns the largest integer value less than or equal to `x`
+`math.floor(x)` returns the largest integer value less than or equal to `x`.
 
 ## math.ceil
 
-`math.ceil(x)` returns the smallest integer value greater than or equal to `x`
+`math.ceil(x)` returns the smallest integer value greater than or equal to `x`.
 
 ## math.round
 
