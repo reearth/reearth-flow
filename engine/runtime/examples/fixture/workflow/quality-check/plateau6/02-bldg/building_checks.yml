@@ -55,6 +55,19 @@ nodes:
     with:
       filePathAttribute: path
 
+  # Assemble the proper PLATEAU dataset layout before reading: copy the decompressed
+  # codelists/schemas next to the extracted `udx/` folder.
+  - id: c1b00030-0000-4000-8000-000000000030
+    name: PLATEAU6.UDXFolderExtractor
+    type: action
+    action: PLATEAU6.UDXFolderExtractor
+    with:
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
+      codelistsPath: "codelists"
+      schemasPath: "schemas"
+
   # --- LOD0 surface validation pipeline ---
   # Reads each building GML (CityGML 3.0), splits geometry per LOD, validates the
   # LOD0 multi-surface.
@@ -795,11 +808,11 @@ nodes:
           expr:
             type: flowExpr
             value: "0"
-        # TODO: wire to a PLATEAU6 L-bldg-04,05 usage-attribute validator
+        # Wired to the L-bldg-04,05 usage-attribute pipeline (UsageErrorCounter).
         - attribute: "L-bldg-04,05 エラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_incorrect_usage_attribute", 0)
         # TODO: wire to a PLATEAU6 L-bldg-06 check
         - attribute: "L-bldg-06 エラー"
           expr:
@@ -2021,6 +2034,128 @@ nodes:
         type: flowExpr
         value: attributes["name"]
 
+  # --- L-bldg-04,05 building usage-attribute pipeline ---
+  # Build one error message per building when a derived usage attribute is present
+  # without its required parent attribute. Mirrors plateau4
+  # PLATEAU4.BuildingUsageAttributeValidator, but implemented with generic actions
+  # over the CityGML 3.0 / i-UR 4.0 structure where uro:BuildingDetailAttribute
+  # hangs off bldg:adeOfAbstractBuilding (the i-UR 3.x uro:buildingDetailAttribute
+  # wrapper is gone). Each test building carries at most one violation, so a scalar
+  # message attribute is sufficient.
+  - id: c1b00020-0000-4000-8000-000000000020
+    name: AttributeManagerUsageError
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: usageError
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              ade = attributes.get("bldg:adeOfAbstractBuilding");
+              detail = {};
+              if type(ade) == "map" {
+                if "uro:BuildingDetailAttribute" in ade {
+                  detail = ade["uro:BuildingDetailAttribute"];
+                }
+              } else if type(ade) == "list" {
+                for item in ade {
+                  if type(item) == "map" and "uro:BuildingDetailAttribute" in item {
+                    detail = item["uro:BuildingDetailAttribute"];
+                  }
+                }
+              }
+              msg = "";
+              if type(detail) == "map" {
+                year = "";
+                survey = detail.get("uro:surveyYear", "");
+                if survey != "" {
+                  year = survey.split("-")[0];
+                }
+                pairs = [
+                  ["uro:majorUsage2", "uro:majorUsage"],
+                  ["uro:detailedUsage2", "uro:detailedUsage"],
+                  ["uro:detailedUsage3", "uro:detailedUsage2"],
+                  ["uro:secondFloorUsage", "uro:groundFloorUsage"],
+                  ["uro:thirdFloorUsage", "uro:secondFloorUsage"],
+                  ["uro:basementSecondUsage", "uro:basementFirstUsage"]
+                ];
+                for p in pairs {
+                  if p[0] in detail and p[1] not in detail {
+                    msg = year + "年建物利用現況: '" + p[0] + "' が存在しますが '" + p[1] + "' が存在しません。";
+                  }
+                }
+              }
+              msg
+
+  # Keep only buildings that produced a usage-attribute error message.
+  - id: c1b00021-0000-4000-8000-000000000021
+    name: FeatureFilterUsageError
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("usageError", "") != ""
+          outputPort: usageError
+
+  # One CSV row per building usage-attribute error.
+  - id: c1b00022-0000-4000-8000-000000000022
+    name: AttributeMapperUsageError
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: Index
+          valueAttribute: index
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: "Building Usage Attribute Error"
+          valueAttribute: usageError
+        - attribute: "Feature Type"
+          valueAttribute: __citygml_feature_type
+
+  - id: c1b00023-0000-4000-8000-000000000023
+    name: FeatureWriterUsageError
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_L-bldg-04,05エラー.csv
+
+  # Count usage-attribute errors per file for the summary column.
+  - id: c1b00024-0000-4000-8000-000000000024
+    name: UsageErrorCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_incorrect_usage_attribute
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file usage-error count onto each file feature.
+  - id: c1b00025-0000-4000-8000-000000000025
+    name: UsageErrorSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
 edges:
   - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
     from: 63341eb4-409d-4668-b338-2d1e5ab003fd
@@ -2053,8 +2188,14 @@ edges:
     to: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
     fromPort: default
     toPort: requestor
+  # File feature -> UDXFolderExtractor (arranges codelists/schemas as udx siblings) -> reader.
   - id: c6303dda-980f-458c-9751-6d5138d7b59f
     from: 06437150-b04d-4b41-83fc-e5767ea35a23
+    to: c1b00030-0000-4000-8000-000000000030
+    fromPort: default
+    toPort: default
+  - id: c1b0e040-0000-4000-8000-000000000040
+    from: c1b00030-0000-4000-8000-000000000030
     to: d9349887-1920-44a6-93c9-182c8484d1a2
     fromPort: default
     toPort: default
@@ -2598,17 +2739,17 @@ edges:
     to: c1b00014-0000-4000-8000-000000000014
     fromPort: unmerged
     toPort: requestor
-  # Invalid-format summary merger output -> building summary mapper
+  # Invalid-format summary merger output -> usage-attribute summary merger (requestor)
   - id: c1b0e020-0000-4000-8000-000000000020
     from: c1b00014-0000-4000-8000-000000000014
-    to: 428129b3-ad69-4a18-bf99-25492d41ba26
+    to: c1b00025-0000-4000-8000-000000000025
     fromPort: merged
-    toPort: default
+    toPort: requestor
   - id: c1b0e021-0000-4000-8000-000000000021
     from: c1b00014-0000-4000-8000-000000000014
-    to: 428129b3-ad69-4a18-bf99-25492d41ba26
+    to: c1b00025-0000-4000-8000-000000000025
     fromPort: unmerged
-    toPort: default
+    toPort: requestor
 
   # --- LOD2 boundary-surface validation pipeline ---
   - id: 627fdcd7-91e2-4f23-bc2f-675a400d57e7
@@ -3025,3 +3166,55 @@ edges:
     to: c1b00014-0000-4000-8000-000000000014
     fromPort: default
     toPort: supplier
+
+  # --- L-bldg-04,05 usage-attribute pipeline edges ---
+  # Reuse the flattened building features from AttributeManagerBuildingId.
+  - id: c1b0e030-0000-4000-8000-000000000030
+    from: c1b00002-0000-4000-8000-000000000002
+    to: c1b00020-0000-4000-8000-000000000020
+    fromPort: default
+    toPort: default
+  - id: c1b0e031-0000-4000-8000-000000000031
+    from: c1b00020-0000-4000-8000-000000000020
+    to: c1b00021-0000-4000-8000-000000000021
+    fromPort: default
+    toPort: default
+  # Buildings with a usage-attribute error -> CSV mapper and per-file counter.
+  - id: c1b0e032-0000-4000-8000-000000000032
+    from: c1b00021-0000-4000-8000-000000000021
+    to: c1b00022-0000-4000-8000-000000000022
+    fromPort: usageError
+    toPort: default
+  - id: c1b0e033-0000-4000-8000-000000000033
+    from: c1b00021-0000-4000-8000-000000000021
+    to: c1b00024-0000-4000-8000-000000000024
+    fromPort: usageError
+    toPort: default
+  - id: c1b0e034-0000-4000-8000-000000000034
+    from: c1b00022-0000-4000-8000-000000000022
+    to: c1b00023-0000-4000-8000-000000000023
+    fromPort: default
+    toPort: default
+  # Route the written L-bldg-04,05 CSV into the result zip.
+  - id: c1b0e035-0000-4000-8000-000000000035
+    from: c1b00023-0000-4000-8000-000000000023
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Counter.default -> usage-attribute summary merger (supplier).
+  - id: c1b0e036-0000-4000-8000-000000000036
+    from: c1b00024-0000-4000-8000-000000000024
+    to: c1b00025-0000-4000-8000-000000000025
+    fromPort: default
+    toPort: supplier
+  # Usage-attribute summary merger output -> building summary mapper.
+  - id: c1b0e037-0000-4000-8000-000000000037
+    from: c1b00025-0000-4000-8000-000000000025
+    to: 428129b3-ad69-4a18-bf99-25492d41ba26
+    fromPort: merged
+    toPort: default
+  - id: c1b0e038-0000-4000-8000-000000000038
+    from: c1b00025-0000-4000-8000-000000000025
+    to: 428129b3-ad69-4a18-bf99-25492d41ba26
+    fromPort: unmerged
+    toPort: default

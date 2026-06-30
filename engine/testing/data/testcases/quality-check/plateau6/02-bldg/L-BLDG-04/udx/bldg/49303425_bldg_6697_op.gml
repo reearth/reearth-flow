@@ -13,10 +13,6 @@
   Building 1 (16211-bldg-78): normal - has uro:detailedUsage only (no derived attr).
   Building 2 (16211-bldg-77): error - has uro:majorUsage2 without the required
   upper attribute uro:majorUsage -> 1 L-bldg-04 error.
-
-  Note: i-UR 4.0 ships a standard codelist only for detailedUsage; majorUsage(2) is
-  a city-defined codelist (not in the shared fixture). The L-bldg-04/05 check is
-  purely structural (element presence), so the codeSpace value need not resolve.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
@@ -275,9 +271,10 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<uro:buildingRoofEdgeArea uom="m2">15.5</uro:buildingRoofEdgeArea>
 					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">611</uro:buildingStructureType>
 					<uro:fireproofStructureType codeSpace="../../codelists/BuildingDetailAttribute_fireproofStructureType.xml">1011</uro:fireproofStructureType>
-					<!-- TEST: L-bldg-04 - majorUsage2 present, majorUsage absent -->
-					<uro:majorUsage2 codeSpace="../../codelists/BuildingDetailAttribute_majorUsage.xml">01002</uro:majorUsage2>
-					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">461</uro:detailedUsage>
+					<!-- TEST: L-bldg-04 - majorUsage2 present, majorUsage absent.
+					     No codeSpace: i-UR 4.0 has no standard majorUsage codelist. -->
+					<uro:majorUsage2>01002</uro:majorUsage2>
+					<uro:detailedUsage>461</uro:detailedUsage>
 					<uro:surveyYear>2020-04-01</uro:surveyYear>
 				</uro:BuildingDetailAttribute>
 			</bldg:adeOfAbstractBuilding>

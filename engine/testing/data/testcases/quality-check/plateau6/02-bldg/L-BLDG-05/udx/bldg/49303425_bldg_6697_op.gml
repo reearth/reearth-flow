@@ -21,9 +21,10 @@
   Building 3 (16211-bldg-76): error - uro:detailedUsage3 without uro:detailedUsage2.
   -> 2 L-bldg-05 errors total.
 
-  Note: i-UR 4.0 ships a standard codelist only for detailedUsage; detailedUsage2/3
-  are city-defined codelists (not in the shared fixture). The L-bldg-04/05 check is
-  purely structural (element presence), so the codeSpace value need not resolve.
+  Note: codeSpace points to ../../codelists/* and resolves because building_checks runs
+  PLATEAU6.UDXFolderExtractor, which copies codelists/schemas next to the extracted udx/
+  folder. detailedUsage/2/3 all reference BuildingDetailAttribute_detailedUsage.xml. The
+  L-bldg-04/05 check itself is structural (element presence), independent of codeSpace.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
@@ -406,7 +407,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">611</uro:buildingStructureType>
 					<uro:fireproofStructureType codeSpace="../../codelists/BuildingDetailAttribute_fireproofStructureType.xml">1011</uro:fireproofStructureType>
 					<!-- TEST: L-bldg-05 - detailedUsage3 present, detailedUsage2 absent -->
-					<uro:detailedUsage3 codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">46101</uro:detailedUsage3>
+					<uro:detailedUsage3 codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">401101</uro:detailedUsage3>
 					<uro:surveyYear>2020-04-01</uro:surveyYear>
 				</uro:BuildingDetailAttribute>
 			</bldg:adeOfAbstractBuilding>
