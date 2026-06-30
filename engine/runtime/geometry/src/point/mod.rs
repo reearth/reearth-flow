@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use super::coordinate::Coordinate;
 
+mod constructor;
+mod ops;
+
 /// A single position in 2D space.
 /// Used for CityGML `gml:Point` and 2D point features.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -21,3 +24,6 @@ pub struct Point3D {
     coordinate: Coordinate,
     position: [f64; 3],
 }
+
+crate::unsupported!(Point2D: Triangulate);
+crate::unsupported!(Point3D: Triangulate);

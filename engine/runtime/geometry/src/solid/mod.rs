@@ -14,6 +14,9 @@ use crate::coordinate::Coordinate;
 use crate::polygon_mesh::PolygonMesh3DData;
 use crate::triangular_mesh::TriangularMesh3DData;
 
+mod constructor;
+mod ops;
+
 /// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle
 /// mesh, stored as coordinate-free mesh data so the boundary cannot carry a
 /// frame of its own — its frame is the `Solid`'s.
@@ -21,6 +24,17 @@ use crate::triangular_mesh::TriangularMesh3DData;
 pub enum Shell {
     PolygonMesh(PolygonMesh3DData),
     TriangularMesh(TriangularMesh3DData),
+}
+
+impl Shell {
+    /// The shell's vertex pool, regardless of mesh kind.
+    #[inline]
+    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+        match self {
+            Shell::PolygonMesh(d) => d.vertices(),
+            Shell::TriangularMesh(d) => d.vertices(),
+        }
+    }
 }
 
 /// A volumetric solid bounded by an exterior shell and any number of interior

@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 
 import { useT } from "@flow/lib/i18n";
+import { AttrType } from "@flow/types/schemaPreview";
 
-import { type AutocompleteSuggestion } from "./constants";
-import { getFlowExprAutocompleteSuggestions } from "./flowExprConstants";
+import { isInsideAttributeAccessor } from "./flowExprAttributeContext";
+import {
+  AutocompleteSuggestion,
+  getFlowExprAutocompleteSuggestions,
+  TYPE_COLOR,
+} from "./flowExprConstants";
 
 type Props = {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -11,6 +16,9 @@ type Props = {
   onSuggestionSelect: (suggestion: AutocompleteSuggestion) => void;
   visible: boolean;
   onVisibilityChange: (visible: boolean) => void;
+  // Per-node attribute-name suggestions, shown when the cursor is inside an
+  // `attributes["…"]` accessor. Sourced from probed reader schemas.
+  attributeSuggestions?: AutocompleteSuggestion[];
 };
 
 const FlowExprAutocomplete: React.FC<Props> = ({
@@ -19,6 +27,7 @@ const FlowExprAutocomplete: React.FC<Props> = ({
   onSuggestionSelect,
   visible,
   onVisibilityChange,
+  attributeSuggestions,
 }) => {
   const t = useT();
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
@@ -111,6 +120,26 @@ const FlowExprAutocomplete: React.FC<Props> = ({
     [indexedSuggestions, functionSuggestions],
   );
 
+  const cursorInsideAttributeAccessor = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return false;
+    const before = textarea.value.substring(0, textarea.selectionStart);
+    return isInsideAttributeAccessor(before);
+  }, [textareaRef]);
+
+  const getFilteredAttributeSuggestions = useCallback(
+    (word: string): AutocompleteSuggestion[] => {
+      const candidates = attributeSuggestions ?? [];
+      if (candidates.length === 0) return [];
+      const lowerWord = word.toLowerCase();
+      if (lowerWord.length === 0) return candidates;
+      return candidates.filter((suggestion) =>
+        suggestion.label.toLowerCase().startsWith(lowerWord),
+      );
+    },
+    [attributeSuggestions],
+  );
+
   const calculatePosition = useCallback(() => {
     if (!textareaRef.current) return;
 
@@ -154,7 +183,9 @@ const FlowExprAutocomplete: React.FC<Props> = ({
     if (!visible) return;
 
     const { word } = getCurrentWordAndPosition();
-    const filtered = getFilteredSuggestions(word);
+    const filtered = cursorInsideAttributeAccessor()
+      ? getFilteredAttributeSuggestions(word)
+      : getFilteredSuggestions(word);
 
     setSuggestions(filtered);
     setSelectedIndex(0);
@@ -169,6 +200,8 @@ const FlowExprAutocomplete: React.FC<Props> = ({
     visible,
     getCurrentWordAndPosition,
     getFilteredSuggestions,
+    cursorInsideAttributeAccessor,
+    getFilteredAttributeSuggestions,
     calculatePosition,
     onVisibilityChange,
   ]);
@@ -250,6 +283,8 @@ const FlowExprAutocomplete: React.FC<Props> = ({
         return "text-green-600 dark:text-green-400";
       case "operator":
         return "text-red-600 dark:text-red-400";
+      case "attribute":
+        return "text-yellow-600 dark:text-yellow-400";
       default:
         return "text-gray-600 dark:text-gray-400";
     }
@@ -284,7 +319,8 @@ const FlowExprAutocomplete: React.FC<Props> = ({
             </div>
           )}
           {suggestion.detail && (
-            <div className="mt-1 font-mono text-xs text-muted-foreground">
+            <div
+              className={`mt-1 font-mono text-xs ${TYPE_COLOR[suggestion.detail as AttrType]}`}>
               {suggestion.detail}
             </div>
           )}

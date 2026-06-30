@@ -14,6 +14,11 @@ use serde::{Deserialize, Serialize};
 use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
 
+mod constructor;
+mod ops;
+
+pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
+
 /// A planar polygon face in 2D space, with optional per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon2D {
@@ -54,6 +59,34 @@ pub struct Polygon3D {
 }
 
 impl Polygon2D {
+    /// The coordinate frame these coords are expressed in.
+    #[inline]
+    pub fn coordinate(&self) -> &Coordinate {
+        &self.coordinate
+    }
+
+    /// The exterior ring, as stored verbatim — a well-formed ring is closed
+    /// (first == last), but an open ring is preserved as-is for later validation.
+    pub fn exterior(&self) -> &[[f64; 2]] {
+        let end = self
+            .interior_offsets
+            .first()
+            .map_or(self.coords.len(), |&o| o as usize);
+        &self.coords[..end]
+    }
+
+    /// The interior (hole) rings, each as stored verbatim (not guaranteed closed),
+    /// in order.
+    pub fn interiors(&self) -> impl Iterator<Item = &[[f64; 2]]> + '_ {
+        let coords = &self.coords;
+        let offsets = &self.interior_offsets;
+        (0..offsets.len()).map(move |j| {
+            let start = offsets[j] as usize;
+            let end = offsets.get(j + 1).map_or(coords.len(), |&o| o as usize);
+            &coords[start..end]
+        })
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -64,10 +97,45 @@ impl Polygon2D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
+    }
+
+    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
+    /// parallel to `coords` (exterior then interiors, closed).
+    #[inline]
+    pub fn uv_sets(&self) -> &[UvSet] {
+        &self.uv_sets
     }
 }
 
 impl Polygon3D {
+    /// The coordinate frame these coords are expressed in.
+    #[inline]
+    pub fn coordinate(&self) -> &Coordinate {
+        &self.coordinate
+    }
+
+    /// The exterior ring, as stored verbatim — a well-formed ring is closed
+    /// (first == last), but an open ring is preserved as-is for later validation.
+    pub fn exterior(&self) -> &[[f64; 3]] {
+        let end = self
+            .interior_offsets
+            .first()
+            .map_or(self.coords.len(), |&o| o as usize);
+        &self.coords[..end]
+    }
+
+    /// The interior (hole) rings, each as stored verbatim (not guaranteed closed),
+    /// in order.
+    pub fn interiors(&self) -> impl Iterator<Item = &[[f64; 3]]> + '_ {
+        let coords = &self.coords;
+        let offsets = &self.interior_offsets;
+        (0..offsets.len()).map(move |j| {
+            let start = offsets[j] as usize;
+            let end = offsets.get(j + 1).map_or(coords.len(), |&o| o as usize);
+            &coords[start..end]
+        })
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -78,5 +146,12 @@ impl Polygon3D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
+    }
+
+    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
+    /// parallel to `coords` (exterior then interiors, closed).
+    #[inline]
+    pub fn uv_sets(&self) -> &[UvSet] {
+        &self.uv_sets
     }
 }

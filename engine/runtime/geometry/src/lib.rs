@@ -32,6 +32,7 @@ pub mod coordinate;
 pub mod csg;
 pub mod index;
 pub mod line_string;
+pub mod ops;
 pub mod point;
 pub mod point_cloud;
 pub mod polygon;
@@ -39,8 +40,15 @@ pub mod polygon_mesh;
 pub mod solid;
 pub mod triangular_mesh;
 
+#[cfg(test)]
+mod test_support;
+
+use enum_dispatch::enum_dispatch;
 use reearth_flow_common::attribute::Attributes;
 use serde::{Deserialize, Serialize};
+
+use ops::triangulation::Cache;
+use ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
 
 use collection::{Collection2D, Collection3D};
 use csg::Csg;
@@ -75,6 +83,32 @@ pub struct GeometryCollection {
     attrs: Vec<Attributes>,
 }
 
+impl GeometryCollection {
+    /// Collect members, with no per-child attributes.
+    pub fn new(members: impl IntoIterator<Item = Geometry>) -> Self {
+        Self {
+            members: members.into_iter().collect(),
+            attrs: Vec::new(),
+        }
+    }
+
+    /// Build with per-child attributes parallel to `members`. `attrs` must be empty
+    /// or exactly one entry per member.
+    pub fn with_attributes(
+        members: Vec<Geometry>,
+        attrs: Vec<Attributes>,
+    ) -> Result<Self, error::Error> {
+        if !attrs.is_empty() && attrs.len() != members.len() {
+            return Err(error::Error::invalid_geometry(format!(
+                "attribute count {} does not match member count {}",
+                attrs.len(),
+                members.len()
+            )));
+        }
+        Ok(Self { members, attrs })
+    }
+}
+
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
 /// optional per-vertex elevation (2.5D).
 ///
@@ -82,6 +116,7 @@ pub struct GeometryCollection {
 /// common variants don't inflate the enum — and `Geometry` with them — to the
 /// size of the largest leaf. The small tier (`Point`, `LineString`,
 /// `Collection`) stays inline.
+#[enum_dispatch(BoundingBox, Triangulate)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
@@ -103,6 +138,7 @@ pub enum Euclidean2DGeometry {
 /// with them — to the size of the largest leaf. The small tier (`Point`,
 /// `LineString`, `Csg`, `Collection`) stays inline; `Csg` already boxes its own
 /// operands.
+#[enum_dispatch(BoundingBox, Triangulate)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
     Point(Point3D),
@@ -120,4 +156,298 @@ pub enum Euclidean3DGeometry {
     Csg(Csg),
     /// `Multi*` collection of 3D geometries; members may differ in coordinate frame.
     Collection(Collection3D),
+}
+
+impl BoundingBox for Geometry {
+    fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
+        match self {
+            // An absent geometry has no extent, so no box.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "bounding_box",
+            }),
+            Geometry::Euclidean2D(g) => g.bounding_box(),
+            Geometry::Euclidean3D(g) => g.bounding_box(),
+            Geometry::GeometryCollection(c) => c.bounding_box(),
+        }
+    }
+}
+
+impl BoundingBox for GeometryCollection {
+    fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
+        ops::union_results(self.members.iter().map(Geometry::bounding_box)).ok_or(
+            UnsupportedOperation {
+                geometry: "GeometryCollection",
+                operation: "bounding_box",
+            },
+        )
+    }
+}
+
+impl Triangulate for Geometry {
+    fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        match self {
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "triangulate",
+            }),
+            Geometry::Euclidean2D(g) => g.triangulate(cache),
+            Geometry::Euclidean3D(g) => g.triangulate(cache),
+            Geometry::GeometryCollection(c) => c.triangulate(cache),
+        }
+    }
+}
+
+impl Triangulate for GeometryCollection {
+    fn triangulate(&mut self, _cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
+        Err(UnsupportedOperation {
+            geometry: "GeometryCollection",
+            operation: "triangulate",
+        })
+    }
+}
+
+#[cfg(test)]
+mod bounding_box_tests {
+    use super::*;
+    use coordinate::Coordinate;
+    use point::{Point2D, Point3D};
+    use polygon::Polygon2D;
+
+    #[test]
+    fn dispatch_reaches_inline_leaf_through_dimension_enum() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            Coordinate::Euclidean,
+            [1.0, 2.0, 3.0],
+        )));
+        assert_eq!(
+            g.bounding_box().unwrap(),
+            Aabb::D3 {
+                min: [1.0, 2.0, 3.0],
+                max: [1.0, 2.0, 3.0]
+            }
+        );
+    }
+
+    #[test]
+    fn dispatch_reaches_boxed_leaf_through_dimension_enum() {
+        // The `Box<Polygon2D>` variant exercises the `Box<T>` blanket impl.
+        let p = Polygon2D::from_rings(
+            Coordinate::Euclidean,
+            [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
+        let g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(p)));
+        assert_eq!(
+            g.bounding_box().unwrap(),
+            Aabb::D2 {
+                min: [0.0, 0.0],
+                max: [4.0, 4.0]
+            }
+        );
+    }
+
+    #[test]
+    fn none_geometry_has_no_box() {
+        assert!(Geometry::None.bounding_box().is_err());
+    }
+
+    #[test]
+    fn geometry_collection_mixing_2d_and_3d_promotes_to_3d() {
+        let p2 = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            Coordinate::Euclidean,
+            [0.0, 0.0],
+        )));
+        let p3 = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            Coordinate::Euclidean,
+            [4.0, 4.0, 9.0],
+        )));
+        let gc = Geometry::GeometryCollection(GeometryCollection::new([p2, p3]));
+        // The 2D member is placed in z = 0, so the merged z-range is [0, 9].
+        assert_eq!(
+            gc.bounding_box().unwrap(),
+            Aabb::D3 {
+                min: [0.0, 0.0, 0.0],
+                max: [4.0, 4.0, 9.0]
+            }
+        );
+    }
+
+    #[test]
+    fn nested_collection_with_only_empty_members_has_no_box() {
+        let empty = Geometry::GeometryCollection(GeometryCollection::new([]));
+        let outer = Geometry::GeometryCollection(GeometryCollection::new([Geometry::None, empty]));
+        assert!(outer.bounding_box().is_err());
+    }
+}
+
+#[cfg(test)]
+mod triangulate_tests {
+    use super::*;
+    use coordinate::Coordinate;
+    use point::Point2D;
+    use polygon::{Polygon2D, Polygon3D};
+    use polygon_mesh::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
+    use solid::Solid;
+    use triangular_mesh::TriangularMesh3DData;
+
+    /// A spread of supported inputs covering both embeddings, holes, elevation,
+    /// multi-face meshes, and a degenerate face.
+    fn sample_geometries() -> Vec<Geometry> {
+        let e = Coordinate::Euclidean;
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+        let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
+
+        let poly2d = Polygon2D::from_rings(e.clone(), square, Vec::<Vec<[f64; 2]>>::new());
+        let poly2d_hole = Polygon2D::from_rings(e.clone(), square, vec![hole]);
+        let poly2d_elev = Polygon2D::from_rings_with_elevation(
+            e.clone(),
+            [
+                [0.0, 0.0, 1.0],
+                [4.0, 0.0, 2.0],
+                [4.0, 4.0, 3.0],
+                [0.0, 0.0, 1.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let poly3d = Polygon3D::from_rings(
+            e.clone(),
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [0.0, 4.0, 4.0],
+                [0.0, 0.0, 4.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let poly3d_degenerate = Polygon3D::from_rings(
+            e.clone(),
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [2.0, 2.0, 2.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let mesh2d = PolygonMesh2D::from_parts(
+            e.clone(),
+            vec![
+                [0.0, 0.0],
+                [2.0, 0.0],
+                [2.0, 2.0],
+                [0.0, 2.0],
+                [4.0, 0.0],
+                [4.0, 2.0],
+            ],
+            vec![vec![0u32, 1, 2, 3], vec![1, 4, 5, 2]],
+        )
+        .unwrap();
+        let mesh3d = PolygonMesh3D::from_parts(
+            e.clone(),
+            vec![
+                [0.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [2.0, 2.0, 0.0],
+                [0.0, 2.0, 0.0],
+            ],
+            vec![vec![0u32, 1, 2, 3]],
+        )
+        .unwrap();
+        // A solid: a quad polygon-mesh exterior shell + a triangle-mesh void.
+        let solid = Solid::new(
+            e.clone(),
+            PolygonMesh3DData::from_parts(
+                vec![
+                    [0.0, 0.0, 0.0],
+                    [2.0, 0.0, 0.0],
+                    [2.0, 2.0, 0.0],
+                    [0.0, 2.0, 0.0],
+                ],
+                vec![vec![0u32, 1, 2, 3]],
+            )
+            .unwrap(),
+            vec![TriangularMesh3DData::from_parts(
+                vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]],
+                [0u32, 1, 2],
+            )
+            .unwrap()
+            .into()],
+        );
+
+        vec![
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(poly2d))),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(poly2d_hole))),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(poly2d_elev))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(poly3d))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(poly3d_degenerate))),
+            Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh2d))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh3d))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid))),
+        ]
+    }
+
+    #[test]
+    fn cache_state_does_not_affect_output() {
+        let geoms = sample_geometries();
+        // Tessellation consumes its input, so every call works on a fresh clone.
+        for target in &geoms {
+            // The reference result, from a pristine cache.
+            let expected = target.clone().triangulate(&mut Cache::new());
+
+            // (a) A cache dirtied by every other input in turn.
+            for dirty in &geoms {
+                let mut cache = Cache::new();
+                let _ = dirty.clone().triangulate(&mut cache);
+                assert!(
+                    target.clone().triangulate(&mut cache) == expected,
+                    "result changed after dirtying the cache with {dirty:?}",
+                );
+            }
+
+            // (b) A cache dirtied by the whole sequence (buffers grown + filled).
+            let mut cache = Cache::new();
+            for g in &geoms {
+                let _ = g.clone().triangulate(&mut cache);
+            }
+            assert!(
+                target.clone().triangulate(&mut cache) == expected,
+                "result changed after running the full sequence through the cache",
+            );
+
+            // (c) The same target twice through one cache is idempotent.
+            let mut cache = Cache::new();
+            let first = target.clone().triangulate(&mut cache);
+            let second = target.clone().triangulate(&mut cache);
+            assert!(first == expected && second == expected);
+        }
+    }
+
+    #[test]
+    fn triangulate_dispatches_through_geometry_to_polygon() {
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+        let p = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(p)));
+        let out = g.triangulate(&mut Cache::new()).unwrap();
+        match out {
+            Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(m)) => {
+                assert_eq!(m.num_triangles(), 2);
+            }
+            other => panic!("expected a 2D triangular mesh, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn triangulate_is_unsupported_for_non_polygonal_types() {
+        let mut point = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            Coordinate::Euclidean,
+            [0.0, 0.0],
+        )));
+        assert!(point.triangulate(&mut Cache::new()).is_err());
+        assert!(Geometry::None.triangulate(&mut Cache::new()).is_err());
+
+        let mut collection = Geometry::GeometryCollection(GeometryCollection::new([]));
+        assert!(collection.triangulate(&mut Cache::new()).is_err());
+    }
 }

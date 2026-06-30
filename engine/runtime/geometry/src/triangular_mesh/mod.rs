@@ -14,6 +14,9 @@ use crate::appearance::{Appearance, UvSet};
 use crate::coordinate::Coordinate;
 use crate::index::IndexBuffer;
 
+mod constructor;
+mod ops;
+
 /// A triangle mesh in 2D space, with optional per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh2D {
@@ -62,7 +65,22 @@ pub struct TriangularMesh3D {
     data: TriangularMesh3DData,
 }
 
+impl TriangularMesh3DData {
+    /// The vertex pool. Crate-internal: lets a [`Solid`](crate::solid::Solid)
+    /// shell bound itself without exposing the raw layout.
+    #[inline]
+    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+        &self.vertices
+    }
+}
+
 impl TriangularMesh2D {
+    /// The number of triangles in the mesh.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.indices.len()
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -74,9 +92,22 @@ impl TriangularMesh2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
+
+    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
+    /// parallel to the corner buffer (`3 * num_triangles`).
+    #[inline]
+    pub fn uv_sets(&self) -> &[UvSet] {
+        &self.uv_sets
+    }
 }
 
 impl TriangularMesh3D {
+    /// The number of triangles in the mesh.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.data.indices.len()
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -87,5 +118,69 @@ impl TriangularMesh3D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.data.appearance
+    }
+
+    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
+    /// parallel to the corner buffer (`3 * num_triangles`).
+    #[inline]
+    pub fn uv_sets(&self) -> &[UvSet] {
+        &self.data.uv_sets
+    }
+}
+
+impl TriangularMesh3DData {
+    /// Drop all back-side appearance, keeping only the front; see
+    /// [`crate::appearance::make_front_only`].
+    pub(crate) fn make_front_only(&mut self) {
+        crate::appearance::make_front_only(&mut self.appearance, &mut self.uv_sets);
+    }
+}
+
+// Tessellation is defined only for `Polygon` / `PolygonMesh`.
+crate::unsupported!(TriangularMesh2D: Triangulate);
+crate::unsupported!(TriangularMesh3D: Triangulate);
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::appearance::{
+        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSource,
+    };
+    use crate::test_support::bare;
+
+    fn uv(side: Side) -> UvSet {
+        UvSet {
+            theme: Some(ThemeId(Arc::from("t"))),
+            side,
+            channel: ChannelId::default(),
+            uv: UvSource::Explicit(Box::new([])),
+        }
+    }
+
+    #[test]
+    fn make_front_only_drops_back_binding_and_uv() {
+        let mut m = TriangularMesh3DData::from_parts(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        m.appearance = Some(Appearance {
+            materials: vec![bare(), bare()],
+            themes: vec![ThemeBinding {
+                theme: ThemeId(Arc::from("t")),
+                front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+                back: Some(FaceBinding::Uniform(MaterialIndex::new(1).unwrap())),
+            }],
+            default_theme: ThemeId(Arc::from("t")),
+        });
+        m.uv_sets = vec![uv(Side::Front), uv(Side::Back)];
+
+        m.make_front_only();
+
+        assert!(m.appearance.as_ref().unwrap().themes[0].back.is_none());
+        assert_eq!(m.uv_sets.len(), 1);
+        assert_eq!(m.uv_sets[0].side, Side::Front);
     }
 }

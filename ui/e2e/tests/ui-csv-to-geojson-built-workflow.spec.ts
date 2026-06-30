@@ -1,12 +1,17 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
+import {
+  type EditorSession,
+  newEditorSession,
+  teardownSession,
+} from "../fixtures/session";
+import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
 import {
   DeploymentsPage,
   uniqueDeploymentDescription,
 } from "../pages/deploymentsPage";
 import { EditorPage } from "../pages/editorPage";
 import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
-import { STORAGE_STATE } from "../playwright.config";
 
 const STATIONS_CSV = [
   "name,line,daily_riders,lon,lat",
@@ -26,7 +31,7 @@ test.describe.serial(
     const projectName = uniqueProjectName("csv-geojson");
     const deploymentDescription = uniqueDeploymentDescription("csv-geojson");
 
-    let context: BrowserContext;
+    let session: EditorSession;
     let page: Page;
     let projects: ProjectsPage;
     let editor: EditorPage;
@@ -34,30 +39,12 @@ test.describe.serial(
     let geojson: any;
 
     test.beforeAll(async ({ browser }) => {
-      context = await browser.newContext({
-        storageState: STORAGE_STATE,
-        baseURL: process.env.FLOW_DASHBOARD_E2E_BASEURL,
-        viewport: { width: 1920, height: 1080 },
-        locale: "en-US",
-      });
-      page = await context.newPage();
-      projects = new ProjectsPage(page);
-      editor = new EditorPage(page);
-      deployments = new DeploymentsPage(page);
+      session = await newEditorSession(browser);
+      ({ page, projects, editor, deployments } = session);
     });
 
     test.afterAll(async () => {
-      if (!context) return;
-      try {
-        await deployments.goto();
-        await deployments
-          .deleteDeploymentIfExists(deploymentDescription)
-          .catch(() => {});
-        await projects.goto();
-        await projects.deleteProjectIfExists(projectName).catch(() => {});
-      } finally {
-        await context.close();
-      }
+      await teardownSession(session, { projectName, deploymentDescription });
     });
 
     test("creates a new project and opens the editor", async () => {
@@ -101,7 +88,7 @@ test.describe.serial(
         "File Format",
         "CSV (Comma-Separated Values)",
       );
-      await editor.setParamViaValueEditor("Inline Content", STATIONS_CSV);
+      await editor.setParamLiteralString("Inline Content", STATIONS_CSV);
       await editor.setCsvCoordinateGeometry("lon", "lat", 4326);
       await editor.submitParams();
 
@@ -111,12 +98,8 @@ test.describe.serial(
       await editor.setParamSelect("Operation to perform", "create");
       await editor.setParamFlowExpr("Value", 'int(attributes["daily_riders"])');
       await editor.submitParams();
-
       await editor.openNodeParamsForm(writerNode);
-      await editor.setParamText(
-        "root_output",
-        'file::join_path(env.get("workerArtifactPath"), "stations.geojson")',
-      );
+      await editor.setParamCodeString("output", "stations.geojson");
       await editor.submitParams();
     });
 
@@ -137,16 +120,11 @@ test.describe.serial(
         .info()
         .annotations.push({ type: "job-url", description: page.url() });
 
-      // Wait for a terminal status; engine cold start can take minutes.
-      const terminalStatus = page
-        .getByText(/^(completed|failed|cancelled)$/)
-        .first();
-      await expect(terminalStatus).toBeVisible({ timeout: 300_000 });
-      await expect(terminalStatus).toHaveText("completed");
+      await expectJobSucceeded(page);
     });
 
     test("produces stations.geojson listing all five stations", async () => {
-      const outputUrl = page.getByText(/stations\.geojson/).first();
+      const outputUrl = jobDetailsArtifact(page, "stations.geojson");
       await expect(outputUrl).toBeVisible({ timeout: 90_000 });
       const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
       test.info().annotations.push({

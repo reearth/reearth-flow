@@ -1,4 +1,18 @@
-import { type AutocompleteSuggestion } from "./constants";
+import { AttrType } from "@flow/types/schemaPreview";
+
+export type AutocompleteSuggestion = {
+  label: string;
+  insertText: string;
+  type:
+    | "keyword"
+    | "function"
+    | "namespace"
+    | "variable"
+    | "attribute"
+    | "operator";
+  description?: string;
+  detail?: string;
+};
 
 export const FLOWEXPR_KEYWORDS = [
   "if",
@@ -421,3 +435,15 @@ export const getFlowExprAutocompleteSuggestions = (
     description: t("Greater than or equal"),
   },
 ];
+
+export const TYPE_COLOR: Record<AttrType, string> = {
+  String: "text-blue-400",
+  Number: "text-green-400",
+  Bool: "text-violet-400",
+  DateTime: "text-amber-400",
+  Array: "text-teal-400",
+  Map: "text-pink-400",
+  Bytes: "text-orange-400",
+  Null: "text-muted-foreground",
+  Unknown: "text-muted-foreground",
+};

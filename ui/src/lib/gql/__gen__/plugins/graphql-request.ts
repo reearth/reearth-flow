@@ -188,6 +188,14 @@ export type ParameterUpdateItem = {
   type: ParameterType;
 };
 
+export type PreviewSchemaInput = {
+  file: any;
+  parameters?: Array<RunParameterInput> | null | undefined;
+  projectId: string | number;
+  sampleSize?: number | null | undefined;
+  workspaceId: string | number;
+};
+
 export type RemoveMemberFromWorkspaceInput = {
   userId: string | number;
   workspaceId: string | number;
@@ -634,6 +642,13 @@ export type RunProjectMutationVariables = Exact<{
 
 
 export type RunProjectMutation = { runProject: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } | null };
+
+export type PreviewSchemaMutationVariables = Exact<{
+  input: PreviewSchemaInput;
+}>;
+
+
+export type PreviewSchemaMutation = { previewSchema: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } };
 
 export type CopyProjectMutationVariables = Exact<{
   projectId: string;
@@ -1443,6 +1458,15 @@ export const RunProjectDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const PreviewSchemaDocument = gql`
+    mutation PreviewSchema($input: PreviewSchemaInput!) {
+  previewSchema(input: $input) {
+    job {
+      ...Job
+    }
+  }
+}
+    ${JobFragmentDoc}`;
 export const CopyProjectDocument = gql`
     mutation CopyProject($projectId: ID!, $source: ID!) {
   copyProject(projectId: $projectId, source: $source)
@@ -1824,6 +1848,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     RunProject(variables: RunProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RunProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<RunProjectMutation>({ document: RunProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RunProject', 'mutation', variables);
+    },
+    PreviewSchema(variables: PreviewSchemaMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<PreviewSchemaMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<PreviewSchemaMutation>({ document: PreviewSchemaDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'PreviewSchema', 'mutation', variables);
     },
     CopyProject(variables: CopyProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CopyProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CopyProjectMutation>({ document: CopyProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CopyProject', 'mutation', variables);
