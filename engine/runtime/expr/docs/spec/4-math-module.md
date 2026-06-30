@@ -4,11 +4,11 @@ The `math` module provides mathematical functions and constants.
 
 ## math.pi
 
-The mathematical constant π ≈ 3.14159265358979.
+The mathematical constant pi.
 
 ## math.e
 
-The mathematical constant e ≈ 2.71828182845905.
+The mathematical constant e.
 
 ## math.abs
 
@@ -16,15 +16,17 @@ The mathematical constant e ≈ 2.71828182845905.
 
 ## math.floor
 
-`math.floor(x)` returns the largest integer value less than or equal to `x`, as a float.
+`math.floor(x)` returns the largest integer value less than or equal to `x`
 
 ## math.ceil
 
-`math.ceil(x)` returns the smallest integer value greater than or equal to `x`, as a float.
+`math.ceil(x)` returns the smallest integer value greater than or equal to `x`
 
 ## math.round
 
 `math.round(x)` returns `x` rounded to the nearest integer, as a float.
+
+> Note: round behavior (away-from-zero or banker's round) is not stabilized by this spec.
 
 ## math.sqrt
 
@@ -60,10 +62,27 @@ The mathematical constant e ≈ 2.71828182845905.
 
 `math.tan(x)` returns the tangent of `x` in radians.
 
+## math.asin
+
+`math.asin(x)` returns the arcsine of `x` in radians.
+
+## math.acos
+
+`math.acos(x)` returns the arccosine of `x` in radians.
+
+## math.atan
+
+`math.atan(x)` returns the arctangent of `x` in radians.
+
 ## math.atan2
 
 `math.atan2(y, x)` returns the angle in radians between the positive x-axis and the point `(x, y)`.
-The return value is in the range `[-π, π]`.
+The return value is in the range `[-pi, pi]`.
+
+## math.hypot
+
+`math.hypot(x, ...)` returns the Euclidean norm of the given coordinates, `sqrt(x1*x1 + x2*x2 + ...)`.
+With no arguments, returns `0.0`.
 
 ## math.radians
 
@@ -72,3 +91,23 @@ The return value is in the range `[-π, π]`.
 ## math.degrees
 
 `math.degrees(x)` converts `x` from radians to degrees.
+
+## math.inf
+
+The floating-point positive infinity.
+
+## math.nan
+
+The floating-point not-a-number value.
+
+## math.is_inf
+
+`math.is_inf(x)` returns `true` if `x` is positive or negative infinity, `false` otherwise.
+
+## math.is_nan
+
+`math.is_nan(x)` returns `true` if `x` is not-a-number, `false` otherwise.
+
+## math.is_finite
+
+`math.is_finite(x)` returns `true` if `x` is neither infinite nor not-a-number, `false` otherwise.
