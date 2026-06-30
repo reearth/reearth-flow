@@ -127,9 +127,9 @@ fn expand_binding(binding: FaceBinding, face_tris: &[u32]) -> FaceBinding {
 ///
 /// `src_corner[j]` is the source corner-buffer position output triangle-corner
 /// `j` draws its UV from (`positions[out[j]]` for a `Polygon`, `start + l` for a
-/// `PolygonMesh` face. An `Explicit` set is re-gathered into a fresh 
-/// `3 * triangle_count`-long array; a `WorldToTexture` matrix is *positional*, 
-/// so it moves over verbatim (triangulation preserves world positions). 
+/// `PolygonMesh` face. An `Explicit` set is re-gathered into a fresh
+/// `3 * triangle_count`-long array; a `WorldToTexture` matrix is *positional*,
+/// so it moves over verbatim (triangulation preserves world positions).
 /// Only the `uv` payload changes; `theme` / `side` / `channel` carry through.
 pub(crate) fn retarget_uv(uv: UvSet, src_corner: &[u32]) -> UvSet {
     let mapped = match uv.uv {
