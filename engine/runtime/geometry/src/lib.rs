@@ -48,7 +48,9 @@ use reearth_flow_common::attribute::Attributes;
 use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
-use ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
+use ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation};
+
+use coordinate::EpsgCode;
 
 use collection::{Collection2D, Collection3D};
 use csg::Csg;
@@ -107,6 +109,11 @@ impl GeometryCollection {
         }
         Ok(Self { members, attrs })
     }
+
+    /// The members, mutable.
+    pub(crate) fn members_mut(&mut self) -> &mut [Geometry] {
+        &mut self.members
+    }
 }
 
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
@@ -116,7 +123,7 @@ impl GeometryCollection {
 /// common variants don't inflate the enum — and `Geometry` with them — to the
 /// size of the largest leaf. The small tier (`Point`, `LineString`,
 /// `Collection`) stays inline.
-#[enum_dispatch(BoundingBox, Triangulate)]
+#[enum_dispatch(BoundingBox, Triangulate, Reproject)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
@@ -138,7 +145,7 @@ pub enum Euclidean2DGeometry {
 /// with them — to the size of the largest leaf. The small tier (`Point`,
 /// `LineString`, `Csg`, `Collection`) stays inline; `Csg` already boxes its own
 /// operands.
-#[enum_dispatch(BoundingBox, Triangulate)]
+#[enum_dispatch(BoundingBox, Triangulate, Reproject)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
     Point(Point3D),
@@ -204,6 +211,34 @@ impl Triangulate for GeometryCollection {
             geometry: "GeometryCollection",
             operation: "triangulate",
         })
+    }
+}
+
+impl Reproject for Geometry {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.reproject(target, cache),
+            Geometry::Euclidean3D(g) => g.reproject(target, cache),
+            Geometry::GeometryCollection(c) => c.reproject(target, cache),
+        }
+    }
+}
+
+impl Reproject for GeometryCollection {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.reproject(target, cache)?;
+        }
+        Ok(())
     }
 }
 

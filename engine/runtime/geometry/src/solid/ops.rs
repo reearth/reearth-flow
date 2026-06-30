@@ -1,6 +1,10 @@
 use super::{Shell, Solid};
+use crate::coordinate::{Coordinate, EpsgCode};
+use crate::ops::reproject::transform_coords_3d;
 use crate::ops::triangulation::Cache;
-use crate::ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
+use crate::ops::{
+    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+};
 use crate::{Euclidean3DGeometry, Geometry};
 
 impl BoundingBox for Solid {
@@ -44,6 +48,38 @@ impl Shell {
             Shell::TriangularMesh(d) => Shell::TriangularMesh(d.clone()),
         }
     }
+}
+
+impl Reproject for Solid {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            reproject_shell(&mut self.exterior, from, target, cache)?;
+            for shell in &mut self.interiors {
+                reproject_shell(shell, from, target, cache)?;
+            }
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}
+
+/// Reproject one shell's vertices from `from` to `target` (EPSG).
+fn reproject_shell(
+    shell: &mut Shell,
+    from: EpsgCode,
+    target: EpsgCode,
+    cache: &mut ReprojectionCache,
+) -> crate::error::Result<()> {
+    let vertices = match shell {
+        Shell::PolygonMesh(data) => data.vertices_mut(),
+        Shell::TriangularMesh(data) => data.vertices_mut(),
+    };
+    transform_coords_3d(cache, from, target, vertices)
 }
 
 #[cfg(test)]

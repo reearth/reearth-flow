@@ -1,5 +1,7 @@
 use super::{TriangularMesh2D, TriangularMesh3D};
-use crate::ops::{Aabb, BoundingBox, UnsupportedOperation};
+use crate::coordinate::{Coordinate, EpsgCode};
+use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
+use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
 
 impl BoundingBox for TriangularMesh2D {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
@@ -16,6 +18,42 @@ impl BoundingBox for TriangularMesh3D {
             geometry: "TriangularMesh3D",
             operation: "bounding_box",
         })
+    }
+}
+
+impl Reproject for TriangularMesh2D {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_2d(
+                cache,
+                from,
+                target,
+                &mut self.vertices,
+                self.z.as_deref_mut(),
+            )?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}
+
+impl Reproject for TriangularMesh3D {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
     }
 }
 
