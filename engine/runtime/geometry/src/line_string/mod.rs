@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinate::Coordinate;
 use crate::error::Result;
-use crate::ops::reproject::{transform_coords_2d, transform_coords_3d, Transformer};
+use crate::ops::reproject::{transform_coords_2d, transform_coords_3d, ReprojectionCache};
 
 mod constructor;
 mod ops;
@@ -38,7 +38,11 @@ pub struct LineString3D {
 crate::unsupported!(LineString2D: Triangulate);
 crate::unsupported!(LineString3D: Triangulate);
 impl LineString2D {
-    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    pub(crate) fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
             transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_deref_mut())?;
@@ -49,7 +53,11 @@ impl LineString2D {
 }
 
 impl LineString3D {
-    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    pub(crate) fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
             transform_coords_3d(cache, from, target, &mut self.coords)?;

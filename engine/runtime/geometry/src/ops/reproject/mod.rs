@@ -6,14 +6,14 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollecti
 
 mod ffi;
 
-pub use ffi::Transformer;
+pub use ffi::ReprojectionCache;
 
 pub trait Reproject {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()>;
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()>;
 }
 
 pub(crate) fn transform_coords_3d(
-    cache: &mut Transformer,
+    cache: &mut ReprojectionCache,
     from: EpsgCode,
     target: EpsgCode,
     coords: &mut [[f64; 3]],
@@ -25,7 +25,7 @@ pub(crate) fn transform_coords_3d(
 }
 
 pub(crate) fn transform_coords_2d(
-    cache: &mut Transformer,
+    cache: &mut ReprojectionCache,
     from: EpsgCode,
     target: EpsgCode,
     coords: &mut [[f64; 2]],
@@ -54,7 +54,7 @@ pub(crate) fn transform_coords_2d(
 }
 
 impl Reproject for Geometry {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
         match self {
             Geometry::None => Ok(()),
             Geometry::Euclidean2D(g) => g.reproject(target, cache),
@@ -65,7 +65,7 @@ impl Reproject for Geometry {
 }
 
 impl Reproject for GeometryCollection {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
         for member in self.members_mut() {
             member.reproject(target, cache)?;
         }
@@ -74,7 +74,7 @@ impl Reproject for GeometryCollection {
 }
 
 impl Reproject for Euclidean2DGeometry {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
         match self {
             Euclidean2DGeometry::Point(p) => p.reproject(target, cache),
             Euclidean2DGeometry::LineString(l) => l.reproject(target, cache),
@@ -87,7 +87,7 @@ impl Reproject for Euclidean2DGeometry {
 }
 
 impl Reproject for Collection2D {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
         for member in self.members_mut() {
             member.reproject(target, cache)?;
         }
@@ -96,7 +96,7 @@ impl Reproject for Collection2D {
 }
 
 impl Reproject for Euclidean3DGeometry {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
         match self {
             Euclidean3DGeometry::Point(p) => p.reproject(target, cache),
             Euclidean3DGeometry::LineString(l) => l.reproject(target, cache),
@@ -116,7 +116,7 @@ impl Reproject for Euclidean3DGeometry {
 }
 
 impl Reproject for Collection3D {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
         for member in self.members_mut() {
             member.reproject(target, cache)?;
         }
@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn transform_round_trip_3d() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let p = [139.767, 35.681, 100.0];
         let ecef = cache.transform(4979, 4978, p).unwrap();
         let back = cache.transform(4978, 4979, ecef).unwrap();
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn transform_axis_order_is_lon_lat() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let out = cache.transform(4326, 3857, [139.767, 35.681, 0.0]).unwrap();
         assert_relative_eq!(out[0], 1.5558e7, epsilon = 1e4);
         assert_relative_eq!(out[1], 4.2575e6, epsilon = 1e4);
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn transform_is_true_3d_z_changes() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let out = cache.transform(4979, 4978, [0.0, 0.0, 0.0]).unwrap();
         assert_relative_eq!(out[0], 6_378_137.0, epsilon = 1.0);
         assert!(out[0].is_finite() && out[1].abs() < 1.0 && out[2].abs() < 1.0);
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn point3d_reproject_updates_position_and_frame() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let start = [139.767, 35.681, 100.0];
         let expected = cache.transform(4979, 4978, start).unwrap();
 
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn point2d_reproject_drops_z() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let [x, y, _] = cache.transform(4326, 3857, [139.767, 35.681, 0.0]).unwrap();
 
         let mut p = Point2D::new(Coordinate::Crs(4326), [139.767, 35.681]);
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn linestring2d_reproject_carries_elevation() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let raw = [[139.7, 35.6, 10.0], [139.8, 35.7, 20.0]];
         let expected: Vec<[f64; 3]> = raw
             .iter()
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn collection_reproject_dispatches_to_each_member() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let a = [139.7, 35.6, 1.0];
         let b = [140.0, 35.9, 2.0];
         let ea = cache.transform(4979, 4978, a).unwrap();
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn mismatched_elevation_buffer_is_error() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let mut coords = [[139.7, 35.6], [139.8, 35.7]];
         let mut z = [10.0]; // one short of `coords`
         assert!(matches!(
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn reproject_same_crs_is_noop() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let mut p = Point3D::new(Coordinate::Crs(4979), [139.7, 35.6, 50.0]);
         p.reproject(4979, &mut cache).unwrap();
         assert_eq!(p, Point3D::new(Coordinate::Crs(4979), [139.7, 35.6, 50.0]));
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn non_crs_frame_is_error() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let mut p = Point3D::new(Coordinate::Euclidean, [1.0, 2.0, 3.0]);
         assert!(matches!(
             p.reproject(4326, &mut cache),
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn unsupported_leaf_is_error() {
-        let mut cache = Transformer::new();
+        let mut cache = ReprojectionCache::new();
         let pc = PointCloud::from_positions(Coordinate::Crs(4979), [[139.7, 35.6, 1.0]]);
         let mut geom = Euclidean3DGeometry::PointCloud(Box::new(pc));
         assert!(matches!(

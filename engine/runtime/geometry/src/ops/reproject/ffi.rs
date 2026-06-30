@@ -13,7 +13,7 @@ use proj_sys::{
 use crate::error::{Error, Result};
 
 #[derive(Default)]
-pub struct Transformer {
+pub struct ReprojectionCache {
     current: Option<Entry>,
 }
 
@@ -40,7 +40,7 @@ impl Drop for Entry {
     }
 }
 
-impl Transformer {
+impl ReprojectionCache {
     pub fn new() -> Self {
         Self::default()
     }

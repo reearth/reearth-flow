@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinate::Coordinate;
 use crate::error::Result;
-use crate::ops::reproject::{transform_coords_3d, Transformer};
+use crate::ops::reproject::{transform_coords_3d, ReprojectionCache};
 use crate::polygon_mesh::PolygonMesh3DData;
 use crate::triangular_mesh::TriangularMesh3DData;
 
@@ -53,7 +53,11 @@ pub struct Solid {
 }
 
 impl Solid {
-    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    pub(crate) fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
             reproject_shell(&mut self.exterior, from, target, cache)?;
@@ -70,7 +74,7 @@ fn reproject_shell(
     shell: &mut Shell,
     from: EpsgCode,
     target: EpsgCode,
-    cache: &mut Transformer,
+    cache: &mut ReprojectionCache,
 ) -> Result<()> {
     let vertices = match shell {
         Shell::PolygonMesh(data) => data.vertices_mut(),

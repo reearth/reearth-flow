@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::coordinate::Coordinate;
 use crate::error::Result;
-use crate::ops::reproject::Transformer;
+use crate::ops::reproject::ReprojectionCache;
 
 mod constructor;
 mod ops;
@@ -31,7 +31,11 @@ pub struct Point3D {
 crate::unsupported!(Point2D: Triangulate);
 crate::unsupported!(Point3D: Triangulate);
 impl Point2D {
-    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    pub(crate) fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
             let [x, y] = self.position;
@@ -44,7 +48,11 @@ impl Point2D {
 }
 
 impl Point3D {
-    pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
+    pub(crate) fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
             self.position = cache.transform(from, target, self.position)?;
