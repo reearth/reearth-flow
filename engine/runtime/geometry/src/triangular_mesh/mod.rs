@@ -103,6 +103,7 @@ impl TriangularMesh2D {
         &self.uv_sets
     }
 
+    /// Reproject the vertex pool to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,
@@ -124,6 +125,7 @@ impl TriangularMesh2D {
 }
 
 impl TriangularMesh3DData {
+    /// The vertex pool, mutable.
     pub(crate) fn vertices_mut(&mut self) -> &mut [[f64; 3]] {
         &mut self.vertices
     }
@@ -155,6 +157,7 @@ impl TriangularMesh3D {
         &self.data.uv_sets
     }
 
+    /// Reproject the vertex pool to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,

@@ -38,6 +38,7 @@ pub struct LineString3D {
 crate::unsupported!(LineString2D: Triangulate);
 crate::unsupported!(LineString3D: Triangulate);
 impl LineString2D {
+    /// Reproject these coordinates to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,
@@ -53,6 +54,7 @@ impl LineString2D {
 }
 
 impl LineString3D {
+    /// Reproject these coordinates to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,

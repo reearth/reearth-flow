@@ -53,6 +53,7 @@ pub struct Solid {
 }
 
 impl Solid {
+    /// Reproject all shell vertices to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,
@@ -70,6 +71,7 @@ impl Solid {
     }
 }
 
+/// Reproject one shell's vertices from `from` to `target` (EPSG).
 fn reproject_shell(
     shell: &mut Shell,
     from: EpsgCode,

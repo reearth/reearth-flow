@@ -1,3 +1,5 @@
+//! Reproject geometry types between coordinate reference systems.
+
 use nusamai_projection::crs::EpsgCode;
 
 use crate::collection::{Collection2D, Collection3D};
@@ -8,10 +10,13 @@ mod ffi;
 
 pub use ffi::ReprojectionCache;
 
+/// Reproject a geometry's coordinates to a target CRS.
 pub trait Reproject {
+    /// Reproject every coordinate to `target` (an EPSG code).
     fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()>;
 }
 
+/// Reproject a 3D coordinate buffer in place from `from` to `target` (EPSG).
 pub(crate) fn transform_coords_3d(
     cache: &mut ReprojectionCache,
     from: EpsgCode,
@@ -24,6 +29,8 @@ pub(crate) fn transform_coords_3d(
     Ok(())
 }
 
+/// Reproject a 2D coordinate buffer in place from `from` to `target` (EPSG),
+/// transforming the parallel elevation buffer too when present.
 pub(crate) fn transform_coords_2d(
     cache: &mut ReprojectionCache,
     from: EpsgCode,

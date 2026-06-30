@@ -25,6 +25,7 @@ pub enum Coordinate {
 }
 
 impl Coordinate {
+    /// The EPSG code of this frame, or an error if it is not a CRS frame.
     pub(crate) fn require_crs(&self) -> Result<EpsgCode> {
         match self {
             Coordinate::Crs(epsg) => Ok(*epsg),

@@ -109,6 +109,7 @@ impl Polygon2D {
         &self.uv_sets
     }
 
+    /// Reproject all rings to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,
@@ -171,6 +172,7 @@ impl Polygon3D {
         &self.uv_sets
     }
 
+    /// Reproject all rings to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,

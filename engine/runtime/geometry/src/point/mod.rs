@@ -31,6 +31,7 @@ pub struct Point3D {
 crate::unsupported!(Point2D: Triangulate);
 crate::unsupported!(Point3D: Triangulate);
 impl Point2D {
+    /// Reproject this point to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,
@@ -48,6 +49,7 @@ impl Point2D {
 }
 
 impl Point3D {
+    /// Reproject this point to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,

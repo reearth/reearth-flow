@@ -1,3 +1,5 @@
+//! PROJ-backed coordinate transformation for the reprojection ops.
+
 use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
 use std::ptr;
@@ -12,15 +14,22 @@ use proj_sys::{
 
 use crate::error::{Error, Result};
 
+/// Caches the live PROJ transformation for one source/target EPSG pair.
 #[derive(Default)]
 pub struct ReprojectionCache {
+    /// The cached transformation, if any.
     current: Option<Entry>,
 }
 
+/// The PROJ objects for one `(from, to)` transformation.
 struct Entry {
+    /// Source EPSG code.
     from: EpsgCode,
+    /// Target EPSG code.
     to: EpsgCode,
+    /// The PROJ context.
     ctx: *mut PJ_CONTEXT,
+    /// The PROJ transformation.
     pj: *mut PJ,
 }
 
@@ -41,10 +50,12 @@ impl Drop for Entry {
 }
 
 impl ReprojectionCache {
+    /// Create an empty cache.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Transform a single 3D point from `from` to `to` (EPSG codes).
     pub(crate) fn transform(
         &mut self,
         from: EpsgCode,
@@ -88,6 +99,7 @@ impl ReprojectionCache {
 }
 
 impl Entry {
+    /// Build the PROJ transformation for the `(from, to)` EPSG pair.
     fn build(from: EpsgCode, to: EpsgCode) -> Result<Self> {
         // SAFETY: each PROJ object is null-checked before use; errno is read
         // while the context is still alive; on any failure all objects created
@@ -130,6 +142,7 @@ impl Entry {
     }
 }
 
+/// Format a PROJ `errno` into its message string.
 // SAFETY: `ctx` must be a valid, non-null PROJ context.
 unsafe fn errno_string(ctx: *mut PJ_CONTEXT, errno: c_int) -> String {
     let s = proj_context_errno_string(ctx, errno);
@@ -140,6 +153,7 @@ unsafe fn errno_string(ctx: *mut PJ_CONTEXT, errno: c_int) -> String {
     }
 }
 
+/// Read and format the current error of `ctx`.
 // SAFETY: `ctx` must be a valid, non-null PROJ context.
 unsafe fn ctx_errno_string(ctx: *mut PJ_CONTEXT) -> String {
     errno_string(ctx, proj_context_errno(ctx))

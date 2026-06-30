@@ -108,6 +108,7 @@ impl GeometryCollection {
         Ok(Self { members, attrs })
     }
 
+    /// The members, mutable.
     pub(crate) fn members_mut(&mut self) -> &mut [Geometry] {
         &mut self.members
     }

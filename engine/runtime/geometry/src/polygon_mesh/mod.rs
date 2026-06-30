@@ -113,6 +113,7 @@ impl PolygonMesh2D {
         &mut self.appearance
     }
 
+    /// Reproject the vertex pool to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,
@@ -134,6 +135,7 @@ impl PolygonMesh2D {
 }
 
 impl PolygonMesh3DData {
+    /// The vertex pool, mutable.
     pub(crate) fn vertices_mut(&mut self) -> &mut [[f64; 3]] {
         &mut self.vertices
     }
@@ -152,6 +154,7 @@ impl PolygonMesh3D {
         &mut self.data.appearance
     }
 
+    /// Reproject the vertex pool to `target` (EPSG).
     pub(crate) fn reproject(
         &mut self,
         target: EpsgCode,
