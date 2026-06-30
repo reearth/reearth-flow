@@ -25,11 +25,6 @@ pub enum Coordinate {
 }
 
 impl Coordinate {
-    /// The EPSG code of this frame, or an error if it is not a CRS frame.
-    ///
-    /// Reprojection is only defined for georeferenced (`Crs`) frames; a bare
-    /// `Euclidean` space or a local `Tangent` plane cannot be reprojected to an
-    /// EPSG CRS.
     pub(crate) fn require_crs(&self) -> Result<EpsgCode> {
         match self {
             Coordinate::Crs(epsg) => Ok(*epsg),

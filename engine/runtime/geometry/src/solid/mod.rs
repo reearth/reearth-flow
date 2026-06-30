@@ -53,8 +53,6 @@ pub struct Solid {
 }
 
 impl Solid {
-    /// Reproject all shell vertices to `target` (EPSG), reading the source CRS
-    /// from the one frame on the solid. Shells are frameless raw meshes.
     pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {

@@ -64,7 +64,6 @@ impl Collection2D {
         Ok(Self { members, attrs })
     }
 
-    /// The members, mutable.
     pub(crate) fn members_mut(&mut self) -> &mut [Euclidean2DGeometry] {
         &mut self.members
     }
@@ -89,7 +88,6 @@ impl Collection3D {
         Ok(Self { members, attrs })
     }
 
-    /// The members, mutable.
     pub(crate) fn members_mut(&mut self) -> &mut [Euclidean3DGeometry] {
         &mut self.members
     }

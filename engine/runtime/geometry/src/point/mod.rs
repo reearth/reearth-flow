@@ -31,8 +31,6 @@ pub struct Point3D {
 crate::unsupported!(Point2D: Triangulate);
 crate::unsupported!(Point3D: Triangulate);
 impl Point2D {
-    /// Reproject this point's position to `target` (EPSG), reading the source
-    /// CRS from its own frame. The optional `z` of a 2D point is fixed at 0.
     pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
@@ -46,8 +44,6 @@ impl Point2D {
 }
 
 impl Point3D {
-    /// Reproject this point's position to `target` (EPSG), reading the source
-    /// CRS from its own frame.
     pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {

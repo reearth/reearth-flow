@@ -1,18 +1,5 @@
-//! Thin safe wrapper over the PROJ C API (`proj-sys`) for true 3D point
-//! reprojection.
-//!
-//! The high-level `proj` crate only exposes 2D conversion (its `convert()`
-//! hardcodes `z = 0` and reads back only `x, y`), so we call `proj_trans`
-//! directly with a 4D `PJ_COORD` and read the transformed `z` back.
-//!
-//! [`Transformer`] is a caller-owned, single-entry cache of the live PROJ
-//! objects for one `(source, target)` EPSG pair. It is accessed `&mut`, holds
-//! raw `*mut PJ` pointers and is therefore neither `Send` nor `Sync`: create one
-//! per single-threaded unit of work (e.g. per `process()` invocation) and let it
-//! be reused across all the leaves of one geometry, which usually share a frame
-//! so the underlying `PJ` is built once.
-
 use std::ffi::{CStr, CString};
+use std::os::raw::c_int;
 use std::ptr;
 
 use nusamai_projection::crs::EpsgCode;
@@ -25,15 +12,11 @@ use proj_sys::{
 
 use crate::error::{Error, Result};
 
-/// A caller-owned cache of the live PROJ transformation for one `(from, to)`
-/// EPSG pair. See the module docs for the threading contract.
 #[derive(Default)]
 pub struct Transformer {
     current: Option<Entry>,
 }
 
-/// The live PROJ objects for one `(from, to)` pair. Owns its context and the
-/// normalized transformation; both are freed on drop.
 struct Entry {
     from: EpsgCode,
     to: EpsgCode,
@@ -58,16 +41,10 @@ impl Drop for Entry {
 }
 
 impl Transformer {
-    /// An empty cache; the first `transform` call builds the projection.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Transform a single 3D point from `from` to `to` (EPSG codes).
-    ///
-    /// Reuses the cached projection when `(from, to)` is unchanged, otherwise
-    /// (re)builds it. Coordinates are in PROJ's visualization order, i.e.
-    /// `x = longitude/easting`, `y = latitude/northing`.
     pub(crate) fn transform(
         &mut self,
         from: EpsgCode,
@@ -88,7 +65,6 @@ impl Transformer {
                     x: p[0],
                     y: p[1],
                     z: p[2],
-                    // No temporal epoch: HUGE_VAL disables any time-dependent step.
                     t: f64::INFINITY,
                 },
             };
@@ -97,7 +73,7 @@ impl Transformer {
             if errno != 0 {
                 return Err(Error::projection(format!(
                     "proj_trans EPSG:{from}->EPSG:{to} failed (errno {errno}): {}",
-                    ctx_errno_string(entry.ctx)
+                    errno_string(entry.ctx, errno)
                 )));
             }
             let o = out.xyzt;
@@ -134,8 +110,6 @@ impl Entry {
                 )));
             }
 
-            // Normalize so coordinates are always longitude/latitude (x/y),
-            // regardless of the CRS authority axis order.
             let pj_norm = proj_normalize_for_visualization(ctx, pj);
             proj_destroy(pj);
             if pj_norm.is_null() {
@@ -156,15 +130,17 @@ impl Entry {
     }
 }
 
-/// Read the current error string for `ctx`. Must be called while `ctx` is alive.
-///
-/// SAFETY: `ctx` must be a valid, non-null PROJ context.
-unsafe fn ctx_errno_string(ctx: *mut PJ_CONTEXT) -> String {
-    let errno = proj_context_errno(ctx);
+// SAFETY: `ctx` must be a valid, non-null PROJ context.
+unsafe fn errno_string(ctx: *mut PJ_CONTEXT, errno: c_int) -> String {
     let s = proj_context_errno_string(ctx, errno);
     if s.is_null() {
         format!("proj errno {errno}")
     } else {
         CStr::from_ptr(s).to_string_lossy().into_owned()
     }
+}
+
+// SAFETY: `ctx` must be a valid, non-null PROJ context.
+unsafe fn ctx_errno_string(ctx: *mut PJ_CONTEXT) -> String {
+    errno_string(ctx, proj_context_errno(ctx))
 }

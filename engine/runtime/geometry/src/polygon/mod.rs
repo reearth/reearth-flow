@@ -109,9 +109,6 @@ impl Polygon2D {
         &self.uv_sets
     }
 
-    /// Reproject all rings to `target` (EPSG), reading the source CRS from the
-    /// frame. The flat exterior+interior buffer is walked linearly (ring offsets
-    /// are index-based and unaffected); elevation, when present, is transformed.
     pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
@@ -170,9 +167,6 @@ impl Polygon3D {
         &self.uv_sets
     }
 
-    /// Reproject all rings to `target` (EPSG), reading the source CRS from the
-    /// frame. The flat exterior+interior buffer is walked linearly (ring offsets
-    /// are index-based and unaffected).
     pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {

@@ -38,8 +38,6 @@ pub struct LineString3D {
 crate::unsupported!(LineString2D: Triangulate);
 crate::unsupported!(LineString3D: Triangulate);
 impl LineString2D {
-    /// Reproject these coords to `target` (EPSG), reading the source CRS from
-    /// the frame. The per-vertex elevation, when present, is transformed too.
     pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
@@ -51,8 +49,6 @@ impl LineString2D {
 }
 
 impl LineString3D {
-    /// Reproject these coords to `target` (EPSG), reading the source CRS from
-    /// the frame.
     pub(crate) fn reproject(&mut self, target: EpsgCode, cache: &mut Transformer) -> Result<()> {
         let from = self.coordinate.require_crs()?;
         if from != target {
