@@ -100,10 +100,7 @@ pub fn builtin_math() -> Value {
     m.insert("radians".into(), unary_float("radians", f64::to_radians));
     m.insert("degrees".into(), unary_float("degrees", f64::to_degrees));
 
-    m.insert(
-        "is_inf".into(),
-        unary_bool("is_inf", |x| x.is_infinite()),
-    );
+    m.insert("is_inf".into(), unary_bool("is_inf", |x| x.is_infinite()));
     m.insert("is_nan".into(), unary_bool("is_nan", |x| x.is_nan()));
     m.insert(
         "is_finite".into(),
@@ -151,7 +148,11 @@ mod tests {
     #[test]
     fn test_atan2() {
         // verifies (y, x) argument order
-        assert_eval("math.atan2(1.0, 0.0)", &[], Value::Float(std::f64::consts::FRAC_PI_2));
+        assert_eval(
+            "math.atan2(1.0, 0.0)",
+            &[],
+            Value::Float(std::f64::consts::FRAC_PI_2),
+        );
         assert_eval("math.atan2(0.0, 1.0)", &[], Value::Float(0.0));
     }
 }
