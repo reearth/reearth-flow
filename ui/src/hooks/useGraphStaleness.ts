@@ -341,17 +341,49 @@ export default function useGraphStaleness({
     if (jobId === prevJobIdRef.current) return;
     prevJobIdRef.current = jobId;
 
-    const snapshot = captureSnapshot(yWorkflows);
+    const projectId = currentProject?.id;
+    const existingSnapshot = debugJobRef.current?.graphSnapshot;
+    const currentSnapshot = captureSnapshot(yWorkflows);
+
+    if (!existingSnapshot) {
+      updateValueRef.current((prev) => ({
+        ...prev,
+        jobs: (prev.jobs ?? []).map((j) => {
+          if (j.projectId !== projectId) return j;
+          return {
+            ...j,
+            graphSnapshot: currentSnapshot,
+            isRunStale: false,
+            staleNodeIds: [],
+          };
+        }),
+      }));
+      return;
+    }
+
+    if (!isSnapshotDifferent(existingSnapshot, currentSnapshot)) {
+      if (debugJobRef.current?.isRunStale) {
+        updateValueRef.current((prev) => ({
+          ...prev,
+          jobs: (prev.jobs ?? []).map((j) => {
+            if (j.projectId !== projectId) return j;
+            return { ...j, isRunStale: false, staleNodeIds: [] };
+          }),
+        }));
+      }
+      return;
+    }
+
+    const staleNodeIds = computeStaleNodesFromDiff(
+      existingSnapshot,
+      currentSnapshot,
+      yWorkflows,
+    );
     updateValueRef.current((prev) => ({
       ...prev,
       jobs: (prev.jobs ?? []).map((j) => {
-        if (j.projectId !== currentProject?.id) return j;
-        return {
-          ...j,
-          graphSnapshot: snapshot,
-          isRunStale: false,
-          staleNodeIds: [],
-        };
+        if (j.projectId !== projectId) return j;
+        return { ...j, isRunStale: true, staleNodeIds };
       }),
     }));
   }, [debugJob?.jobId, yWorkflows, currentProject?.id]);
