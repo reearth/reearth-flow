@@ -87,6 +87,34 @@ func TestWorkflow_Remove(t *testing.T) {
 	assert.ErrorIs(t, err, rerror.ErrNotFound)
 }
 
+func TestWorkflow_Remove_WithWorkspaceFilter(t *testing.T) {
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	base := postgres.NewWorkflow(pgxx.NewClient(pool))
+
+	wsid1 := accountsid.NewWorkspaceID()
+	wsid2 := accountsid.NewWorkspaceID()
+	wfid1 := id.NewWorkflowID()
+	wfid2 := id.NewWorkflowID()
+	pid1 := id.NewProjectID()
+	pid2 := id.NewProjectID()
+
+	require.NoError(t, base.Save(ctx, newWf(wfid1, pid1, wsid1)))
+	require.NoError(t, base.Save(ctx, newWf(wfid2, pid2, wsid2)))
+
+	r := base.Filtered(repo.WorkspaceFilter{
+		Readable: accountsid.WorkspaceIDList{wsid1},
+		Writable: accountsid.WorkspaceIDList{wsid1},
+	})
+
+	require.NoError(t, r.Remove(ctx, wfid1))
+	require.NoError(t, r.Remove(ctx, wfid2))
+
+	got, err := base.FindByID(ctx, wfid2)
+	require.NoError(t, err)
+	assert.NotNil(t, got)
+}
+
 func TestWorkflow_Filtered_CanRead(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()

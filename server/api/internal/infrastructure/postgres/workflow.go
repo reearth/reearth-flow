@@ -57,7 +57,17 @@ func (r *Workflow) Save(ctx context.Context, wf *workflow.Workflow) error {
 }
 
 func (r *Workflow) Remove(ctx context.Context, wid id.WorkflowID) error {
-	if err := r.q(ctx).DeleteWorkflow(ctx, wid.String()); err != nil {
+	exec := r.c.DB(ctx)
+	if r.f.Writable == nil {
+		if err := r.q(ctx).DeleteWorkflow(ctx, wid.String()); err != nil {
+			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+		}
+		return nil
+	}
+	if _, err := exec.Exec(ctx,
+		`DELETE FROM workflows WHERE id = $1 AND workspace_id = ANY($2::text[])`,
+		wid.String(), r.f.Writable.Strings(),
+	); err != nil {
 		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
 	return nil

@@ -163,6 +163,31 @@ func TestAsset_FindByWorkspace_Paginated(t *testing.T) {
 	assert.Equal(t, 1, info.CurrentPage)
 }
 
+func TestAsset_FindByWorkspace_Paginated_DefaultsToDescWhenOrderDirNil(t *testing.T) {
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	r := postgres.NewAsset(pgxx.NewClient(pool))
+	wid := accountsid.NewWorkspaceID()
+
+	require.NoError(t, r.Save(ctx, newAsset(t, wid, id.NewAssetID(), "alpha", 100)))
+	require.NoError(t, r.Save(ctx, newAsset(t, wid, id.NewAssetID(), "zulu", 200)))
+
+	orderBy := "name"
+	page := &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     1,
+			PageSize: 2,
+			OrderBy:  &orderBy,
+		},
+	}
+
+	got, _, err := r.FindByWorkspace(ctx, wid, repo.AssetFilter{Pagination: page})
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, "zulu", got[0].Name())
+	assert.Equal(t, "alpha", got[1].Name())
+}
+
 func TestAsset_FindByWorkspace_Keyword(t *testing.T) {
 	pool := pgtest.Connect(t)(t)
 	ctx := context.Background()

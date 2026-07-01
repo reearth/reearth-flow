@@ -110,9 +110,8 @@ func (r *Project) FindByWorkspace(
 			if c, ok := projectOrderByColumns[*p.OrderBy]; ok {
 				orderCol = c
 			}
-			dir = "ASC"
-			if p.OrderDir != nil && strings.EqualFold(*p.OrderDir, "DESC") {
-				dir = "DESC"
+			if p.OrderDir != nil && strings.EqualFold(*p.OrderDir, "ASC") {
+				dir = "ASC"
 			}
 		}
 		listSQL := fmt.Sprintf("SELECT * FROM projects %s ORDER BY %s %s", whereSQL, orderCol, dir)
