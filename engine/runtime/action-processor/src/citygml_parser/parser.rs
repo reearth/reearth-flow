@@ -11,7 +11,7 @@ use url::Url;
 
 use super::utils::{
     gml_id_attr, local_name as utils_local_name, xlink_href_attr, NamespaceRegistry, NsId, QName,
-    XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID, XLINK_NS_ID,
+    XmlChild, XmlNode, EMPTY_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -47,7 +47,7 @@ pub enum ParseError {
 
 /// First pass parser which builds gml:id and namespace lookups
 /// Call `parse()` once per file, then `finish()` to hand off the raw state for xlink resolution.
-pub(super) struct Parser {
+pub struct Parser {
     raw_registry: RawRegistry,
     pub(super) ns_registry: NamespaceRegistry,
     pending: Vec<Arc<RawNode>>,
@@ -69,7 +69,7 @@ impl std::fmt::Debug for Parser {
 }
 
 impl Parser {
-    pub(super) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             raw_registry: RawRegistry::new(),
             ns_registry: NamespaceRegistry::new(),
@@ -77,7 +77,7 @@ impl Parser {
         }
     }
 
-    pub(super) fn parse(&mut self, source: &[u8], source_url: &Url) -> Result<(), ParseError> {
+    pub fn parse(&mut self, source: &[u8], source_url: &Url) -> Result<(), ParseError> {
         let src = std::str::from_utf8(source)
             .map_err(|e| ParseError::Encoding(format!("Non-UTF-8 content: {e}")))?;
         let mut reader = NsReader::from_str(src);
@@ -144,7 +144,7 @@ impl Parser {
 
 pub fn to_feature(node: &XmlNode) -> Feature {
     let content = node_to_attribute_value(node);
-    build_feature(&node.name.0, gml_id_attr(node).as_deref(), content)
+    build_feature(&node.name.0, gml_id_attr(&node.attrs).as_deref(), content)
 }
 
 pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
@@ -188,15 +188,8 @@ pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
     AttributeValue::Map(map)
 }
 
-pub(super) fn raw_gml_id(node: &RawNode) -> Option<String> {
-    node.attrs
-        .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
-        .map(|(_, v)| v.clone())
-}
-
 fn collect_ids(node: &Arc<RawNode>, source_url: &str, registry: &mut RawRegistry) {
-    if let Some(id) = raw_gml_id(node) {
+    if let Some(id) = gml_id_attr(&node.attrs) {
         let key = (source_url.to_string(), id.clone());
         if let Entry::Vacant(entry) = registry.entry(key) {
             entry.insert(Arc::clone(node));
@@ -452,7 +445,7 @@ mod tests {
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
 
-    use crate::feature::reader::citygml3::utils::{
+    use crate::citygml_parser::utils::{
         test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID,
     };
 
@@ -520,8 +513,8 @@ mod tests {
         let (pending, _, _) = parser.finish();
 
         assert_eq!(pending.len(), 2);
-        assert_eq!(raw_gml_id(&pending[0]), Some("bldg001".to_string()));
-        assert_eq!(raw_gml_id(&pending[1]), Some("bldg002".to_string()));
+        assert_eq!(gml_id_attr(&pending[0].attrs), Some("bldg001".to_string()));
+        assert_eq!(gml_id_attr(&pending[1].attrs), Some("bldg002".to_string()));
         assert_eq!(pending[0].name.0, "bldg:Building");
     }
 
@@ -540,7 +533,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
         let (pending, raw_reg, _) = parser.finish();
-        assert_eq!(raw_gml_id(&pending[0]), Some("bldg001".to_string()));
+        assert_eq!(gml_id_attr(&pending[0].attrs), Some("bldg001".to_string()));
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
 
