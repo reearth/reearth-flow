@@ -172,20 +172,19 @@ const CesiumViewer: React.FC<Props> = ({
   );
 
   const baseImageryProvider = useMemo(() => {
-    const tileServerBaseUrl = config().tileServerBaseUrl;
-    if (tileServerBaseUrl) {
+    const { tileServerBaseUrl, tileServerToken } = config();
+    if (tileServerBaseUrl && tileServerToken) {
       return new UrlTemplateImageryProvider({
         url: `${tileServerBaseUrl.replace(/\/$/, "")}/imagery/{z}/{x}/{y}.webp`,
         minimumLevel: 0,
         maximumLevel: 19,
         credit: "© Google",
       });
-    } else {
-      return new UrlTemplateImageryProvider({
-        url: ESRI_WORLD_IMAGERY_URL,
-        maximumLevel: 19,
-      });
     }
+    return new UrlTemplateImageryProvider({
+      url: ESRI_WORLD_IMAGERY_URL,
+      maximumLevel: 19,
+    });
   }, []);
 
   // Separate features by geometry type

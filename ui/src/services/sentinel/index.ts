@@ -90,6 +90,7 @@ export async function initializeSentinel(): Promise<void> {
       console.error(
         "[Sentinel] SW did not acknowledge token — initialization aborted, tiles may return 401",
       );
+      await unregisterAssetSecurity();
       return;
     }
 

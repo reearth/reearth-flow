@@ -415,16 +415,16 @@ class re {
     try {
       await this.initDB();
       const e = await this.db.get("tokens", "current");
+      if (e && this.shouldRefresh(e))
+        return (
+          a("[TokenManager] Token needs refresh"),
+          await this.refreshToken()
+        );
       if (e && !this.isTokenExpired(e))
         return (
           a("[TokenManager] Token found in IndexedDB"),
           (this.memoryCache = e),
           e.token
-        );
-      if (e && this.shouldRefresh(e))
-        return (
-          a("[TokenManager] Token needs refresh"),
-          await this.refreshToken()
         );
     } catch (e) {
       d("[TokenManager] Error accessing IndexedDB:", e);
@@ -881,4 +881,4 @@ async function le() {
   };
 }
 a("[ServiceWorker] Script loaded, waiting for events...");
-//# sourceMappingURL=sw.js.map
+// Source map omitted (sw.js.map not shipped)
