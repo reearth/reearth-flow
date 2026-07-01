@@ -6,11 +6,12 @@ import { toJobStatus } from "@flow/lib/gql/convert";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
-import type { ReaderSchemaProbe } from "@flow/stores";
 import type { Job } from "@flow/types";
 
+import type { RunningSchemaProbe } from ".";
+
 type MonitorProps = {
-  probe: ReaderSchemaProbe;
+  probe: RunningSchemaProbe;
   accessToken?: string;
   onComplete: (nodeId: string, job: Job) => void;
   onError: (nodeId: string) => void;
@@ -72,8 +73,8 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
 
   useEffect(() => {
     if (settledRef.current) return;
-    // A resumed probe whose job no longer exists (fetched, but no job) is
-    // stale — fail it rather than spin forever.
+    // A resumed/orphaned probe whose job no longer exists (fetched, but no job)
+    // is stale — fail it rather than spin forever.
     if (isFetched && !job) {
       settledRef.current = true;
       onError(nodeId);
@@ -93,7 +94,7 @@ const PreviewSchemaJobMonitor: React.FC<MonitorProps> = ({
 };
 
 type Props = {
-  probes: ReaderSchemaProbe[];
+  probes: RunningSchemaProbe[];
   onComplete: (nodeId: string, job: Job) => void;
   onError: (nodeId: string) => void;
 };
@@ -116,17 +117,15 @@ const PreviewSchemaMonitors: React.FC<Props> = ({
 
   return (
     <>
-      {probes
-        .filter((probe) => probe.jobId && probe.status === "running")
-        .map((probe) => (
-          <PreviewSchemaJobMonitor
-            key={probe.jobId}
-            probe={probe}
-            accessToken={accessToken}
-            onComplete={onComplete}
-            onError={onError}
-          />
-        ))}
+      {probes.map((probe) => (
+        <PreviewSchemaJobMonitor
+          key={probe.jobId}
+          probe={probe}
+          accessToken={accessToken}
+          onComplete={onComplete}
+          onError={onError}
+        />
+      ))}
     </>
   );
 };
