@@ -19,7 +19,7 @@ import (
 type Parameter struct {
 	paramRepo         repo.Parameter
 	projectRepo       repo.Project
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	permissionChecker gateway.PermissionChecker
 }
 
@@ -48,61 +48,50 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	// Check if project exists
-	proj, err = i.projectRepo.FindByID(ctx, param.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if proj == nil {
-		return nil, rerror.ErrNotFound
-	}
-
-	// Get next index if not specified
-	var index int
-	if param.Index == nil {
-		params, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
+	var p *parameter.Parameter
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		// Check if project exists
+		proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if params != nil {
-			index = params.MaxIndex() + 1
+		if proj == nil {
+			return rerror.ErrNotFound
 		}
-	} else {
-		index = *param.Index
-	}
 
-	// Create parameter
-	p, err := parameter.New().
-		ProjectID(param.ProjectID).
-		Name(param.Name).
-		Type(param.Type).
-		Required(param.Required).
-		Public(param.Public).
-		DefaultValue(param.DefaultValue).
-		Config(param.Config).
-		Index(index).
-		Build()
-	if err != nil {
+		// Get next index if not specified
+		var index int
+		if param.Index == nil {
+			params, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
+			if err != nil {
+				return err
+			}
+			if params != nil {
+				index = params.MaxIndex() + 1
+			}
+		} else {
+			index = *param.Index
+		}
+
+		// Create parameter
+		p, err = parameter.New().
+			ProjectID(param.ProjectID).
+			Name(param.Name).
+			Type(param.Type).
+			Required(param.Required).
+			Public(param.Public).
+			DefaultValue(param.DefaultValue).
+			Config(param.Config).
+			Index(index).
+			Build()
+		if err != nil {
+			return err
+		}
+
+		return i.paramRepo.Save(ctx, p)
+	}); err != nil {
 		return nil, err
 	}
-
-	if err := i.paramRepo.Save(ctx, p); err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
 	return p, nil
 }
 
@@ -118,18 +107,6 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
 	proj, err = i.projectRepo.FindByID(ctx, param.ProjectID)
 	if err != nil {
 		return nil, err
@@ -139,22 +116,20 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 	}
 
 	if len(param.Deletes) > 0 {
-		_, err = i.RemoveParameters(ctx, param.Deletes)
-		if err != nil {
+		if _, err := i.RemoveParameters(ctx, param.Deletes); err != nil {
 			return nil, err
 		}
 	}
 
 	for _, createParam := range param.Creates {
 		createParam.ProjectID = param.ProjectID
-		_, err = i.DeclareParameter(ctx, createParam)
-		if err != nil {
+		if _, err := i.DeclareParameter(ctx, createParam); err != nil {
 			return nil, err
 		}
 	}
 
 	for _, updateParam := range param.Updates {
-		_, err = i.UpdateParameter(ctx, interfaces.UpdateParameterParam{
+		if _, err := i.UpdateParameter(ctx, interfaces.UpdateParameterParam{
 			DefaultValue:  updateParam.DefaultValue,
 			Config:        updateParam.Config,
 			NameValue:     updateParam.NameValue,
@@ -162,27 +137,19 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 			PublicValue:   updateParam.PublicValue,
 			TypeValue:     updateParam.TypeValue,
 			ParamID:       updateParam.ParamID,
-		})
-		if err != nil {
+		}); err != nil {
 			return nil, err
 		}
 	}
 
 	for _, reorderParam := range param.Reorders {
 		reorderParam.ProjectID = param.ProjectID
-		_, err = i.UpdateParameterOrder(ctx, reorderParam)
-		if err != nil {
+		if _, err := i.UpdateParameterOrder(ctx, reorderParam); err != nil {
 			return nil, err
 		}
 	}
 
-	finalParams, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
-	return finalParams, nil
+	return i.paramRepo.FindByProject(ctx, param.ProjectID)
 }
 
 func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*parameter.ParameterList, error) {
@@ -268,73 +235,65 @@ func (i *Parameter) RemoveParameters(ctx context.Context, pids id.ParameterIDLis
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		// Fetch all parameters to be deleted to validate they exist and get project info
+		paramsToDelete, err := i.paramRepo.FindByIDs(ctx, pids)
+		if err != nil {
+			return err
 		}
-	}()
-
-	// Fetch all parameters to be deleted to validate they exist and get project info
-	paramsToDelete, err := i.paramRepo.FindByIDs(ctx, pids)
-	if err != nil {
-		return nil, err
-	}
-	if paramsToDelete == nil || len(*paramsToDelete) == 0 {
-		return nil, rerror.ErrNotFound
-	}
-
-	// Validate all parameters belong to the same project
-	var projectID id.ProjectID
-	deleteIndexes := make(map[int]bool)
-	for i, param := range *paramsToDelete {
-		if i == 0 {
-			projectID = param.ProjectID()
-		} else if param.ProjectID() != projectID {
-			return nil, rerror.ErrNotFound
+		if paramsToDelete == nil || len(*paramsToDelete) == 0 {
+			return rerror.ErrNotFound
 		}
-		deleteIndexes[param.Index()] = true
-	}
 
-	// Remove all specified parameters
-	if err := i.paramRepo.RemoveAll(ctx, pids); err != nil {
-		return nil, err
-	}
+		// Validate all parameters belong to the same project
+		var projectID id.ProjectID
+		deleteIndexes := make(map[int]bool)
+		for i, param := range *paramsToDelete {
+			if i == 0 {
+				projectID = param.ProjectID()
+			} else if param.ProjectID() != projectID {
+				return rerror.ErrNotFound
+			}
+			deleteIndexes[param.Index()] = true
+		}
 
-	// Fetch remaining parameters for the project to recalculate indexes
-	remainingParams, err := i.paramRepo.FindByProject(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
+		// Remove all specified parameters
+		if err := i.paramRepo.RemoveAll(ctx, pids); err != nil {
+			return err
+		}
 
-	// Recalculate indexes for remaining parameters
-	if remainingParams != nil && len(*remainingParams) > 0 {
-		// Sort remaining parameters by current index
-		sortedParams := make([]*parameter.Parameter, len(*remainingParams))
-		copy(sortedParams, *remainingParams)
+		// Fetch remaining parameters for the project to recalculate indexes
+		remainingParams, err := i.paramRepo.FindByProject(ctx, projectID)
+		if err != nil {
+			return err
+		}
 
-		// Sort remaining parameters by current index using sort.Slice
-		sort.Slice(sortedParams, func(i, j int) bool {
-			return sortedParams[i].Index() < sortedParams[j].Index()
-		})
+		// Recalculate indexes for remaining parameters
+		if remainingParams != nil && len(*remainingParams) > 0 {
+			// Sort remaining parameters by current index
+			sortedParams := make([]*parameter.Parameter, len(*remainingParams))
+			copy(sortedParams, *remainingParams)
 
-		// Reassign sequential indexes starting from 0
-		for newIndex, param := range sortedParams {
-			if param.Index() != newIndex {
-				param.SetIndex(newIndex)
-				if err := i.paramRepo.Save(ctx, param); err != nil {
-					return nil, err
+			// Sort remaining parameters by current index using sort.Slice
+			sort.Slice(sortedParams, func(i, j int) bool {
+				return sortedParams[i].Index() < sortedParams[j].Index()
+			})
+
+			// Reassign sequential indexes starting from 0
+			for newIndex, param := range sortedParams {
+				if param.Index() != newIndex {
+					param.SetIndex(newIndex)
+					if err := i.paramRepo.Save(ctx, param); err != nil {
+						return err
+					}
 				}
 			}
 		}
-	}
 
-	tx.Commit()
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 	return pids, nil
 }
 
@@ -350,52 +309,46 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
+	var params *parameter.ParameterList
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		params, err = i.paramRepo.FindByProject(ctx, param.ProjectID)
+		if err != nil {
+			return err
+		}
+		if params == nil {
+			return rerror.ErrNotFound
+		}
+
+		targetParam := params.FindByID(param.ParamID)
+		if targetParam == nil {
+			return rerror.ErrNotFound
+		}
+
+		// Update indices
+		currentIndex := targetParam.Index()
+		newIndex := param.NewIndex
+
+		// Reorder parameters
+		for _, p := range *params {
+			switch {
+			case p.ID() == param.ParamID:
+				p.SetIndex(newIndex)
+			case currentIndex < newIndex && p.Index() > currentIndex && p.Index() <= newIndex:
+				p.SetIndex(p.Index() - 1)
+			case currentIndex > newIndex && p.Index() >= newIndex && p.Index() < currentIndex:
+				p.SetIndex(p.Index() + 1)
+			}
+
+			if err := i.paramRepo.Save(ctx, p); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	params, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if params == nil {
-		return nil, rerror.ErrNotFound
-	}
-
-	targetParam := params.FindByID(param.ParamID)
-	if targetParam == nil {
-		return nil, rerror.ErrNotFound
-	}
-
-	// Update indices
-	currentIndex := targetParam.Index()
-	newIndex := param.NewIndex
-
-	// Reorder parameters
-	for _, p := range *params {
-		switch {
-		case p.ID() == param.ParamID:
-			p.SetIndex(newIndex)
-		case currentIndex < newIndex && p.Index() > currentIndex && p.Index() <= newIndex:
-			p.SetIndex(p.Index() - 1)
-		case currentIndex > newIndex && p.Index() >= newIndex && p.Index() < currentIndex:
-			p.SetIndex(p.Index() + 1)
-		}
-
-		if err := i.paramRepo.Save(ctx, p); err != nil {
-			return nil, err
-		}
-	}
-
-	tx.Commit()
 	return params, nil
 }
 
@@ -418,37 +371,27 @@ func (i *Parameter) UpdateParameter(ctx context.Context, param interfaces.Update
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	var p *parameter.Parameter
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		p, err = i.paramRepo.FindByID(ctx, param.ParamID)
+		if err != nil {
+			return err
 		}
-	}()
+		if p == nil {
+			return rerror.ErrNotFound
+		}
 
-	p, err := i.paramRepo.FindByID(ctx, param.ParamID)
-	if err != nil {
+		p.SetDefaultValue(param.DefaultValue)
+		p.SetName(param.NameValue)
+		p.SetType(param.TypeValue)
+		p.SetRequired(param.RequiredValue)
+		p.SetPublic(param.PublicValue)
+		p.SetConfig(param.Config)
+
+		return i.paramRepo.Save(ctx, p)
+	}); err != nil {
 		return nil, err
 	}
-	if p == nil {
-		return nil, rerror.ErrNotFound
-	}
-
-	p.SetDefaultValue(param.DefaultValue)
-	p.SetName(param.NameValue)
-	p.SetType(param.TypeValue)
-	p.SetRequired(param.RequiredValue)
-	p.SetPublic(param.PublicValue)
-	p.SetConfig(param.Config)
-
-	if err := i.paramRepo.Save(ctx, p); err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
 	return p, nil
 }

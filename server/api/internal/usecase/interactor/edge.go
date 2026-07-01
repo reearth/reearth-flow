@@ -19,7 +19,7 @@ type EdgeExecution struct {
 	file              gateway.File
 	edgeRepo          repo.EdgeExecution
 	jobRepo           repo.Job
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	permissionChecker gateway.PermissionChecker
 }
 
@@ -83,29 +83,18 @@ func (i *EdgeExecution) checkIntermediateData(ctx context.Context, edge *graph.E
 		return nil
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
+	var newEdge *graph.EdgeExecution
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		newEdge = graph.NewEdgeExecution(
+			edge.ID(),
+			edge.EdgeID(),
+			edge.JobID(),
+			&url,
+		)
+		return i.edgeRepo.Save(ctx, newEdge)
+	}); err != nil {
 		return err
 	}
-
-	defer func() {
-		if err := tx.End(ctx); err != nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err)
-		}
-	}()
-
-	newEdge := graph.NewEdgeExecution(
-		edge.ID(),
-		edge.EdgeID(),
-		edge.JobID(),
-		&url,
-	)
-
-	if err := i.edgeRepo.Save(ctx, newEdge); err != nil {
-		return err
-	}
-
-	tx.Commit()
 
 	*edge = *newEdge
 
