@@ -224,11 +224,6 @@ graphs:
               method: create
               value: |
                  (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
-            # Derive _lod by recovering the highest LOD from the bitmask (same for all LODs). Notes:
-            # 1. FeatureLodFilter reduces metadata.lod to a single-bit mask representing the LOD,
-            #    which the __lod getter exposes via highest_lod().
-            # 2. Setting _lod before FeatureLodFilter would incorrectly capture the original highest LOD.
-            # 3. FeatureLodFilter routes best fallback. LOD0~2 features should also exist in lod4 branch with _lod=2.
             - attribute: _lod
               method: create
               value: |
