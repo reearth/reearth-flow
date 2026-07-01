@@ -54,12 +54,16 @@ func readLockName(room string) string { return "read:lock:" + room }
 // read:lock:{room}. No-op when there is no resident state.
 func (f *Flusher) FlushRoom(ctx context.Context, room string) error {
 	return f.withReadLock(ctx, room, func(ctx context.Context) error {
-		state := f.stateFor(room)
-		if len(state) == 0 {
-			return nil
+		// Write the COMPLETE state as doc_v2 (not an incremental update): the Rust
+		// reader loads doc_v2 alone and folds no tail updates, so a Go-flushed room
+		// must leave a complete doc_v2 for cross-implementation cold-loads.
+		if state := f.stateFor(room); len(state) > 0 {
+			return f.adapter.FlushSnapshot(ctx, room, state)
 		}
-		_, err := f.adapter.AppendUpdate(ctx, room, state)
-		return err
+		// ygo removes the live doc from GetDoc before firing RoomDeactivated, so
+		// StateOf is empty here. It first drained the per-update persistence worker,
+		// so the full state is already in GCS: reconstruct it and write doc_v2.
+		return f.adapter.SnapshotFromStore(ctx, room)
 	})
 }
 

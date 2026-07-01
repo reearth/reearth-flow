@@ -220,6 +220,40 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 	return persistence.Version(clock), nil
 }
 
+// FlushSnapshot persists state as the COMPLETE doc_v2 snapshot (plus the v1 doc
+// state and state vector), matching the Rust server's flush_doc_v2 contract: the
+// doc_v2 object alone must reconstruct the full document, because the Rust reader
+// (yrs load_doc_v2) folds no tail update objects. The last-instance flush uses
+// this so a Rust instance can cold-load a Go-flushed room once the Redis stream
+// is gone. state is the room's full current state as one V1 update.
+func (a *Adapter) FlushSnapshot(ctx context.Context, room string, state []byte) error {
+	if err := a.validate(room); err != nil {
+		return err
+	}
+	oid, err := a.oidFor(ctx, room)
+	if err != nil {
+		return err
+	}
+	return a.writeV2Snapshot(ctx, room, oid, state)
+}
+
+// SnapshotFromStore reconstructs the room's complete state from GCS (Load folds
+// doc_v2 + tail updates) and rewrites it as a complete doc_v2. Used by the
+// last-instance flush: ygo removes the live doc from GetDoc before firing
+// RoomDeactivated, but it first drains the per-update persistence worker, so the
+// full state is already in GCS and reconstructable without the live doc. No-op
+// when nothing is persisted yet.
+func (a *Adapter) SnapshotFromStore(ctx context.Context, room string) error {
+	lr, err := a.Load(ctx, room)
+	if err != nil {
+		return err
+	}
+	if len(lr.Update) == 0 {
+		return nil
+	}
+	return a.FlushSnapshot(ctx, room, lr.Update)
+}
+
 // lastClock returns the highest update clock present (0 if none, falling back to
 // the checkpoint when updates have been compacted away).
 func (a *Adapter) lastClock(ctx context.Context, room DocID, oid uint32) (uint32, error) {
