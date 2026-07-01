@@ -17,6 +17,7 @@ use super::{
     merger::FeatureMergerFactory,
     reader::{
         citygml::processor::FeatureCityGmlReaderFactory,
+        citygml2::processor::FeatureCityGml2ReaderFactory,
         citygml3::processor::FeatureCityGml3ReaderFactory, FeatureReaderFactory,
     },
     sorter::FeatureSorterFactory,
@@ -43,6 +44,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<FeatureDuplicateFilterFactory>::default(),
         Box::<FeatureWriterFactory>::default(),
         Box::<FeatureCityGmlReaderFactory>::default(),
+        Box::<FeatureCityGml2ReaderFactory>::default(),
         Box::<FeatureCityGml3ReaderFactory>::default(),
         Box::<JSONFragmenterFactory>::default(),
     ];

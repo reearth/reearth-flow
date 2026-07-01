@@ -81,8 +81,8 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::feature::reader::citygml3::parser::{Parser, RawNode, RawRegistry};
-    use crate::feature::reader::citygml3::utils::{local_name, XmlChild};
+    use crate::citygml_parser::parser::{Parser, RawNode, RawRegistry};
+    use crate::citygml_parser::utils::{local_name, XmlChild};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()

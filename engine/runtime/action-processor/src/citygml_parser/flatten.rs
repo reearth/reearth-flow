@@ -75,7 +75,7 @@ fn extract_inner(
         let stripped = extract_recursive(node, sets, out, parent_gml_id);
         out.push((stripped, parent_gml_id.map(str::to_string)));
     } else {
-        let my_id = gml_id_attr(node);
+        let my_id = gml_id_attr(&node.attrs);
         let next_parent = my_id.as_deref().or(parent_gml_id);
         for child in &node.children {
             if let XmlChild::Element(e) = child {
@@ -91,7 +91,7 @@ fn extract_recursive(
     out: &mut Vec<(Arc<XmlNode>, Option<String>)>,
     parent_gml_id: Option<&str>,
 ) -> Arc<XmlNode> {
-    let my_id = gml_id_attr(node);
+    let my_id = gml_id_attr(&node.attrs);
     let child_parent = my_id.as_deref().or(parent_gml_id);
 
     let mut new_children: Option<Vec<XmlChild>> = None;
@@ -140,7 +140,7 @@ fn extract_recursive(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::feature::reader::citygml3::utils::{
+    use crate::citygml_parser::utils::{
         test_url, NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID,
     };
 

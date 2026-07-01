@@ -5,7 +5,7 @@ use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::{GeometryType, GmlGeometry};
 
-use super::utils::{local_name, XmlChild, XmlNode, GML_NS_ID};
+use super::utils::{gml_id_attr, local_name, XmlChild, XmlNode};
 
 pub fn extract_geometries(node: &Arc<XmlNode>) -> (Arc<XmlNode>, Vec<GmlGeometry>) {
     let mut out: Vec<GmlGeometry> = Vec::new();
@@ -87,7 +87,7 @@ fn collect_geometry_from_property(prop: &XmlNode, lod: Option<u8>, out: &mut Vec
 
 fn parse_gml_geom(node: &XmlNode, ty: GeometryType, lod: Option<u8>) -> Option<GmlGeometry> {
     let mut geom = GmlGeometry::new(ty, lod);
-    geom.id = gml_id(node);
+    geom.id = gml_id_attr(&node.attrs);
 
     match ty {
         GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
@@ -496,13 +496,6 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
     }
 }
 
-fn gml_id(node: &XmlNode) -> Option<String> {
-    node.attrs
-        .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
-        .map(|(_, v)| v.clone())
-}
-
 fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
     element_children(node).find(|c| local_name(&c.name.0) == local)
 }
@@ -529,8 +522,8 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::feature::reader::citygml3::utils::{
-        test_url, NsId, XmlChild, EMPTY_NS_ID, GML_NS, GML_NS_ID, XLINK_NS, XLINK_NS_ID,
+    use crate::citygml_parser::utils::{
+        test_url, NsId, XmlChild, EMPTY_NS_ID, GML_NS_32, GML_NS_ID, XLINK_NS, XLINK_NS_ID,
     };
 
     fn text_node(t: &str) -> XmlChild {
@@ -539,7 +532,7 @@ mod tests {
 
     fn ns_id(ns: &str) -> NsId {
         match ns {
-            GML_NS => GML_NS_ID,
+            GML_NS_32 => GML_NS_ID,
             XLINK_NS => XLINK_NS_ID,
             _ => EMPTY_NS_ID,
         }
