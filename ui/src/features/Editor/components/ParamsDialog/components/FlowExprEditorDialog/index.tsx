@@ -173,7 +173,8 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                   </Button>
                   {workflowVariables &&
                     workflowVariables.length > 0 &&
-                    flowExprAllowed && (
+                    flowExprAllowed &&
+                    codeType === "flowExpr" && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm">
