@@ -14,6 +14,7 @@ require (
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/google/uuid v1.6.0
 	github.com/hellofresh/health-go/v5 v5.5.5
+	github.com/jackc/pgx/v5 v5.7.2
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/joho/godotenv v1.5.1
 	github.com/k0kubun/pp/v3 v3.5.0
@@ -24,7 +25,7 @@ require (
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/reearth/reearth-accounts/server v0.0.0-20260407103352-79eb5b61d841
 	github.com/reearth/reearth-proto v1.1.0
-	github.com/reearth/reearthx v0.0.0-20260617190835-b0cf3c3ce024
+	github.com/reearth/reearthx v0.0.0-20260618134917-663d9623c331
 	github.com/samber/lo v1.52.0
 	github.com/spf13/afero v1.15.0
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0
@@ -85,7 +86,6 @@ require (
 	github.com/hasura/go-graphql-client v0.15.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.7.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/labstack/echo/v5 v5.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

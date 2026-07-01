@@ -25,7 +25,7 @@ var _ interfaces.Job = &Job{}
 
 type Job struct {
 	jobRepo           repo.Job
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	file              gateway.File
 	batch             gateway.Batch
 	cloudRunWorker    gateway.CloudRunWorker
@@ -124,36 +124,26 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 		return nil, fmt.Errorf("job cannot be cancelled: current status is %s", j.Status())
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		// Cloud-Run debug jobs have an empty GCPJobID; batch-fallback jobs do not.
+		if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" && i.cloudRunWorker != nil {
+			if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
+				return err
+			}
+		} else {
+			if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
+				return err
+			}
+		}
+
+		j.SetStatus(job.StatusCancelled)
+		now := time.Now()
+		j.SetCompletedAt(&now)
+
+		return i.jobRepo.Save(ctx, j)
+	}); err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err := tx.End(ctx); err != nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err)
-		}
-	}()
-
-	// Cloud-Run debug jobs have an empty GCPJobID; batch-fallback jobs do not.
-	if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" && i.cloudRunWorker != nil {
-		if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
-			return nil, err
-		}
-	}
-
-	j.SetStatus(job.StatusCancelled)
-	now := time.Now()
-	j.SetCompletedAt(&now)
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
 
 	if err := i.handleJobCompletion(ctx, j); err != nil {
 		log.Errorfc(ctx, "job: completion handling failed: %v", err)
@@ -453,24 +443,14 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 
 	if statusChanged {
 		currentJob.SetStatus(currentJob.Status())
-		tx, err := i.transaction.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to begin transaction: %w", err)
-		}
-
-		var txErr error
-		defer func() {
-			if err2 := tx.End(ctx); err2 != nil && txErr == nil {
-				log.Errorfc(ctx, "transaction end failed: %v", err2)
+		if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+			if err := i.jobRepo.Save(ctx, currentJob); err != nil {
+				return fmt.Errorf("failed to save job: %w", err)
 			}
-		}()
-
-		if err := i.jobRepo.Save(ctx, currentJob); err != nil {
-			txErr = err
-			return fmt.Errorf("failed to save job: %w", err)
+			return nil
+		}); err != nil {
+			return err
 		}
-
-		tx.Commit()
 
 		if workerEvent != nil {
 			if err := i.redis.DeleteJobCompleteEvent(ctx, currentJob.ID()); err != nil {
@@ -568,23 +548,12 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 }
 
 func (i *Job) saveJobState(ctx context.Context, j *job.Job) error {
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err := tx.End(ctx); err != nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err)
+	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return fmt.Errorf("failed to save job: %w", err)
 		}
-	}()
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return fmt.Errorf("failed to save job: %w", err)
-	}
-
-	tx.Commit()
-	return nil
+		return nil
+	})
 }
 
 func (i *Job) sendCompletionNotification(

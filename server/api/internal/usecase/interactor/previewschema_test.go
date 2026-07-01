@@ -235,7 +235,7 @@ func TestProject_PreviewSchema_CloudRunWorker(t *testing.T) {
 		file:              ff,
 		cloudRunWorker:    crw, // non-nil => Cloud Run path
 		job:               fj,
-		transaction:       &usecasex.NopTransaction{},
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
 		permissionChecker: NewMockPermissionChecker(nil),
 	}
 
@@ -300,7 +300,7 @@ func TestProject_PreviewSchema_BatchFallback(t *testing.T) {
 		batch:             fb,
 		cloudRunWorker:    nil, // nil => Batch fallback
 		job:               fj,
-		transaction:       &usecasex.NopTransaction{},
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
 		permissionChecker: NewMockPermissionChecker(nil),
 	}
 
