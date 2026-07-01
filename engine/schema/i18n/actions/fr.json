@@ -999,7 +999,7 @@
         },
         "dataset": {
           "title": "Dataset",
-          "description": "Path expression resolving to the CityGML 2.0 file to read."
+          "description": "Expression de chemin résolvant vers le fichier CityGML 2.0 à lire."
         },
         "extractTags": {
           "title": "Extraire les Balises",
@@ -1016,7 +1016,7 @@
         },
         "dataset": {
           "title": "Dataset",
-          "description": "Path expression resolving to the CityGML 3.0 file to read."
+          "description": "Expression de chemin résolvant vers le fichier CityGML 3.0 à lire."
         },
         "extractTags": {
           "title": "Extraire les Balises",

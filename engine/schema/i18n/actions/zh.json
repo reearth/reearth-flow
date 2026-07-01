@@ -999,7 +999,7 @@
         },
         "dataset": {
           "title": "Dataset",
-          "description": "Path expression resolving to the CityGML 2.0 file to read."
+          "description": "解析为要读取的CityGML 2.0文件的路径表达式。"
         },
         "extractTags": {
           "title": "提取标签",
@@ -1016,7 +1016,7 @@
         },
         "dataset": {
           "title": "Dataset",
-          "description": "Path expression resolving to the CityGML 3.0 file to read."
+          "description": "解析为要读取的CityGML 3.0文件的路径表达式。"
         },
         "extractTags": {
           "title": "提取标签",

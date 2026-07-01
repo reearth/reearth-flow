@@ -8,7 +8,6 @@ use reearth_flow_types::{
     AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryType, GeometryValue, GmlGeometry,
     CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
 };
-use url::Url;
 
 use super::{
     codespace, flatten, geometry,
@@ -46,20 +45,6 @@ pub fn build_features(parser: Parser, extract_tags: &HashSet<String>) -> Vec<Fea
         }
     }
     out
-}
-
-/// Parses one or more CityGML sources into a single document — so cross-file `xlink:href`
-/// references resolve — and returns the extracted features.
-#[cfg(not(feature = "new-geometry"))]
-pub fn read_features<'a>(
-    sources: impl IntoIterator<Item = (&'a [u8], &'a Url)>,
-    extract_tags: &HashSet<String>,
-) -> Result<Vec<Feature>, String> {
-    let mut parser = Parser::new();
-    for (bytes, source_url) in sources {
-        parser.parse(bytes, source_url).map_err(|e| format!("{e}"))?;
-    }
-    Ok(build_features(parser, extract_tags))
 }
 
 #[cfg(not(feature = "new-geometry"))]
