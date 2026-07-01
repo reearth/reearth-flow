@@ -1,4 +1,5 @@
 use super::errors::PlateauProcessorError;
+use super::PlateauProfile;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -16,12 +17,22 @@ use std::collections::{BTreeSet, HashMap};
 static PORT_A: Lazy<Port> = Lazy::new(|| Port::new("A"));
 static PORT_B: Lazy<Port> = Lazy::new(|| Port::new("B"));
 
-#[derive(Debug, Clone, Default)]
-pub struct SolidIntersectionTestPairCreatorFactory;
+#[derive(Debug, Clone)]
+pub(crate) struct SolidIntersectionTestPairCreatorFactory {
+    name: String,
+}
+
+impl SolidIntersectionTestPairCreatorFactory {
+    pub(crate) fn new(profile: &PlateauProfile) -> Self {
+        Self {
+            name: profile.action_name("SolidIntersectionTestPairCreator"),
+        }
+    }
+}
 
 impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
     fn name(&self) -> &str {
-        "PLATEAU4.SolidIntersectionTestPairCreator"
+        &self.name
     }
 
     fn description(&self) -> &str {
@@ -79,7 +90,7 @@ impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct SolidIntersectionTestPairCreatorParam {
+pub(crate) struct SolidIntersectionTestPairCreatorParam {
     /// Attribute name to store the pair ID (default: "pair_id")
     #[serde(default = "default_pair_id_attribute")]
     pair_id_attribute: String,
@@ -130,7 +141,7 @@ impl GmlIdPair {
 }
 
 #[derive(Debug, Clone)]
-pub struct SolidIntersectionTestPairCreator {
+pub(crate) struct SolidIntersectionTestPairCreator {
     pair_id_attribute: String,
     list_attribute: String,
     gml_id_attribute: String,

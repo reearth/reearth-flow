@@ -2882,6 +2882,23 @@
       }
     },
     {
+      "name": "PLATEAU6.SolidIntersectionTestPairCreator",
+      "parameterI18n": {
+        "": {
+          "title": "SolidIntersectionTestPairCreatorParam"
+        },
+        "gmlIdAttribute": {
+          "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")"
+        },
+        "listAttribute": {
+          "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")"
+        },
+        "pairIdAttribute": {
+          "description": "Attribute name to store the pair ID (default: \"pair_id\")"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "Extrae carpetas UDX de datos PLATEAU6",
       "parameterI18n": {

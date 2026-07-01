@@ -10130,6 +10130,44 @@ Extract object list
 ### Category
 * PLATEAU
 
+## PLATEAU6.SolidIntersectionTestPairCreator
+### Type
+* processor
+### Description
+Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolidIntersectionTestPairCreatorParam",
+  "type": "object",
+  "properties": {
+    "gmlIdAttribute": {
+      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+      "default": "gmlId",
+      "type": "string"
+    },
+    "listAttribute": {
+      "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+      "default": "list",
+      "type": "string"
+    },
+    "pairIdAttribute": {
+      "description": "Attribute name to store the pair ID (default: \"pair_id\")",
+      "default": "pair_id",
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* A
+* B
+### Category
+* PLATEAU
+
 ## PLATEAU6.UDXFolderExtractor
 ### Type
 * processor

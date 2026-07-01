@@ -2886,6 +2886,24 @@
       }
     },
     {
+      "name": "PLATEAU6.SolidIntersectionTestPairCreator",
+      "description": "AreaOnAreaOverlayerの出力からソリッドの交差テスト用の地物ペアを作成する",
+      "parameterI18n": {
+        "": {
+          "title": "SolidIntersectionTestPairCreator パラメータ"
+        },
+        "gmlIdAttribute": {
+          "description": "リストアイテム内の GML ID の属性名（デフォルト: \"gmlId\"）"
+        },
+        "listAttribute": {
+          "description": "AreaOnAreaOverlayer からの重複フィーチャーのリストを含む属性名（デフォルト: \"list\"）"
+        },
+        "pairIdAttribute": {
+          "description": "ペア ID を格納する属性名（デフォルト: \"pair_id\"）"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "PLATEAU6データからUDXフォルダを抽出する",
       "parameterI18n": {

@@ -10393,6 +10393,45 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.SolidIntersectionTestPairCreator",
+      "type": "processor",
+      "description": "AreaOnAreaOverlayerの出力からソリッドの交差テスト用の地物ペアを作成する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SolidIntersectionTestPairCreator パラメータ",
+        "type": "object",
+        "properties": {
+          "gmlIdAttribute": {
+            "description": "リストアイテム内の GML ID の属性名（デフォルト: \"gmlId\"）",
+            "default": "gmlId",
+            "type": "string"
+          },
+          "listAttribute": {
+            "description": "AreaOnAreaOverlayer からの重複フィーチャーのリストを含む属性名（デフォルト: \"list\"）",
+            "default": "list",
+            "type": "string"
+          },
+          "pairIdAttribute": {
+            "description": "ペア ID を格納する属性名（デフォルト: \"pair_id\"）",
+            "default": "pair_id",
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "A",
+        "B"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "type": "processor",
       "description": "PLATEAU6データからUDXフォルダを抽出する",

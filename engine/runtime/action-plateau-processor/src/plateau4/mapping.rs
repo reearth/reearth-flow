@@ -15,7 +15,6 @@ use super::{
     flooding_area_surface_generator::FloodingAreaSurfaceGeneratorFactory,
     gml_name_code_space_validator::GmlNameCodeSpaceValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory,
-    solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory,
     tran_xlink_detector::TransportationXlinkDetectorFactory,
     unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
     unshared_edge_detector::UnsharedEdgeDetectorFactory,
@@ -24,6 +23,7 @@ use crate::common::building_usage_attribute_validator::BuildingUsageAttributeVal
 use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFactory;
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
+use crate::common::solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory;
 use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -43,7 +43,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::new(MissingAttributeDetectorFactory::new(&PLATEAU4)),
         Box::new(DomainOfDefinitionValidatorFactory::new(&PLATEAU4)),
         Box::<UnmatchedXlinkDetectorFactory>::default(),
-        Box::<SolidIntersectionTestPairCreatorFactory>::default(),
+        Box::new(SolidIntersectionTestPairCreatorFactory::new(&PLATEAU4)),
         Box::<TransportationXlinkDetectorFactory>::default(),
         Box::<FaceExtractorFactory>::default(),
         Box::<UnsharedEdgeDetectorFactory>::default(),

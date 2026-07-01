@@ -24,6 +24,10 @@ pub(crate) enum PlateauProcessorError {
     BuildingUsageAttributeValidatorFactory(String),
     #[error("BuildingUsageAttributeValidator error: {0}")]
     BuildingUsageAttributeValidator(String),
+    #[error("SolidIntersectionTestPairCreator Factory error: {0}")]
+    SolidIntersectionTestPairCreatorFactory(String),
+    #[error("SolidIntersectionTestPairCreator error: {0}")]
+    SolidIntersectionTestPairCreator(String),
 }
 
 pub(crate) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

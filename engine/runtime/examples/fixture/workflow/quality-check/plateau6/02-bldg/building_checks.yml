@@ -569,9 +569,9 @@ nodes:
           outputPort: overlapping
 
   - id: 4c033bed-d29b-48f0-9226-bef423073e18
-    name: PLATEAU4.SolidIntersectionTestPairCreator
+    name: PLATEAU6.SolidIntersectionTestPairCreator
     type: action
-    action: PLATEAU4.SolidIntersectionTestPairCreator
+    action: PLATEAU6.SolidIntersectionTestPairCreator
     with:
       listAttribute: list
       gmlIdAttribute: __citygml_gml_id
@@ -1393,9 +1393,9 @@ nodes:
           outputPort: overlapping
 
   - id: 0bce7e4d-93de-44d8-9f67-4facb9d27bc0
-    name: PLATEAU4.SolidIntersectionTestPairCreatorLod2
+    name: PLATEAU6.SolidIntersectionTestPairCreatorLod2
     type: action
-    action: PLATEAU4.SolidIntersectionTestPairCreator
+    action: PLATEAU6.SolidIntersectionTestPairCreator
     with:
       listAttribute: list
       gmlIdAttribute: __citygml_gml_id
@@ -1544,9 +1544,9 @@ nodes:
           outputPort: overlapping
 
   - id: 36292d4e-0ca3-4749-8e03-0ccb2e1df1f7
-    name: PLATEAU4.SolidIntersectionTestPairCreatorLod3
+    name: PLATEAU6.SolidIntersectionTestPairCreatorLod3
     type: action
-    action: PLATEAU4.SolidIntersectionTestPairCreator
+    action: PLATEAU6.SolidIntersectionTestPairCreator
     with:
       listAttribute: list
       gmlIdAttribute: __citygml_gml_id
