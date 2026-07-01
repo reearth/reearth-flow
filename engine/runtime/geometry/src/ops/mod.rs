@@ -8,7 +8,10 @@
 //! chains through to the concrete leaf. `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
 
+pub mod reproject;
 pub mod triangulation;
+
+pub use reproject::{Reproject, ReprojectionCache};
 
 /// Returned by an operation a given geometry type does not support. Carries the
 /// concrete type name (via [`type_name`](core::any::type_name)) and the

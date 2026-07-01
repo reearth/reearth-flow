@@ -101,6 +101,13 @@ impl TriangularMesh2D {
     }
 }
 
+impl TriangularMesh3DData {
+    /// The vertex pool, mutable.
+    pub(crate) fn vertices_mut(&mut self) -> &mut [[f64; 3]] {
+        &mut self.vertices
+    }
+}
+
 impl TriangularMesh3D {
     /// The number of triangles in the mesh.
     #[inline]

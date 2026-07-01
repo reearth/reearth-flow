@@ -10,9 +10,10 @@
 use reearth_flow_common::attribute::Attributes;
 use serde::{Deserialize, Serialize};
 
+use crate::coordinate::EpsgCode;
 use crate::error::Error;
 use crate::ops::union_results;
-use crate::ops::{Aabb, BoundingBox, UnsupportedOperation};
+use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
@@ -63,6 +64,11 @@ impl Collection2D {
         check_attrs(&members, &attrs)?;
         Ok(Self { members, attrs })
     }
+
+    /// The members, mutable.
+    pub(crate) fn members_mut(&mut self) -> &mut [Euclidean2DGeometry] {
+        &mut self.members
+    }
 }
 
 impl Collection3D {
@@ -83,6 +89,11 @@ impl Collection3D {
         check_attrs(&members, &attrs)?;
         Ok(Self { members, attrs })
     }
+
+    /// The members, mutable.
+    pub(crate) fn members_mut(&mut self) -> &mut [Euclidean3DGeometry] {
+        &mut self.members
+    }
 }
 
 impl BoundingBox for Collection2D {
@@ -100,6 +111,32 @@ impl BoundingBox for Collection3D {
             geometry: "Collection3D",
             operation: "bounding_box",
         })
+    }
+}
+
+impl Reproject for Collection2D {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.reproject(target, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl Reproject for Collection3D {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.reproject(target, cache)?;
+        }
+        Ok(())
     }
 }
 
