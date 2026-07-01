@@ -980,6 +980,22 @@
       }
     },
     {
+      "name": "FeatureCityGml2Reader",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml2Reader Parameters"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path expression resolving to the CityGML 2.0 file to read."
+        },
+        "extractTags": {
+          "title": "Extract Tags",
+          "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+        }
+      }
+    },
+    {
       "name": "FeatureCityGml3Reader",
       "parameterI18n": {
         "": {

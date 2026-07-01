@@ -991,6 +991,23 @@
       }
     },
     {
+      "name": "FeatureCityGml2Reader",
+      "description": "Lee archivos CityGML 2.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml2Reader Parameters"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path expression resolving to the CityGML 2.0 file to read."
+        },
+        "extractTags": {
+          "title": "Extraer Etiquetas",
+          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        }
+      }
+    },
+    {
       "name": "FeatureCityGml3Reader",
       "description": "Lee archivos CityGML 3.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
       "parameterI18n": {
