@@ -3,6 +3,7 @@ import type { NodeReport, SchemaReport } from "@flow/types";
 import {
   fetchSchemaReport,
   findSchemaReportUrl,
+  getNodeReportFailure,
   toNodeSchemaMeta,
 } from "./schemaReport";
 
@@ -46,7 +47,42 @@ describe("toNodeSchemaMeta", () => {
       sampleSize: 10,
       sampledAt: "2026-06-17T00:00:00.000Z",
       note: "sampled 2",
+      status: "complete",
     });
+  });
+});
+
+describe("getNodeReportFailure", () => {
+  test("returns undefined when there is no note (clean success)", () => {
+    const nodeReport: NodeReport = {
+      name: "reader",
+      ports: {
+        default: { open: false, fields: [{ name: "id", type: "String" }] },
+      },
+    };
+    expect(getNodeReportFailure(nodeReport)).toBeUndefined();
+  });
+
+  test("returns the note when the reader sampled nothing (data error)", () => {
+    const nodeReport: NodeReport = {
+      name: "reader",
+      note: "source run failed: CSV column mismatch",
+      ports: { default: { open: true, fields: [] } },
+    };
+    expect(getNodeReportFailure(nodeReport)).toBe(
+      "source run failed: CSV column mismatch",
+    );
+  });
+
+  test("ignores a note when fields were inferred (open schema, not a failure)", () => {
+    const nodeReport: NodeReport = {
+      name: "reader",
+      note: "open schema",
+      ports: {
+        default: { open: true, fields: [{ name: "id", type: "String" }] },
+      },
+    };
+    expect(getNodeReportFailure(nodeReport)).toBeUndefined();
   });
 });
 

@@ -1,8 +1,12 @@
 use super::{Polygon2D, Polygon3D};
+use crate::coordinate::{Coordinate, EpsgCode};
+use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::triangulation::{
     expand_appearance, retarget_uv, triangulate_2d, triangulate_3d, Cache,
 };
-use crate::ops::{Aabb, BoundingBox, Triangulate, UnsupportedOperation};
+use crate::ops::{
+    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+};
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -24,6 +28,36 @@ impl BoundingBox for Polygon3D {
             geometry: "Polygon3D",
             operation: "bounding_box",
         })
+    }
+}
+
+impl Reproject for Polygon2D {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_deref_mut())?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
+    }
+}
+
+impl Reproject for Polygon3D {
+    fn reproject(
+        &mut self,
+        target: EpsgCode,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        let from = self.coordinate.require_crs()?;
+        if from != target {
+            transform_coords_3d(cache, from, target, &mut self.coords)?;
+            self.coordinate = Coordinate::Crs(target);
+        }
+        Ok(())
     }
 }
 

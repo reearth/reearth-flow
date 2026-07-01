@@ -24,6 +24,16 @@ export const fetchSchemaReport = async (url: string): Promise<SchemaReport> => {
   return (await response.json()) as SchemaReport;
 };
 
+export const getNodeReportFailure = (
+  nodeReport: NodeReport,
+): string | undefined => {
+  if (!nodeReport.note) return undefined;
+  const hasFields = Object.values(nodeReport.ports ?? {}).some(
+    (port) => port.fields.length > 0,
+  );
+  return hasFields ? undefined : nodeReport.note;
+};
+
 /** Map a node's report entry into the metadata persisted on the node. */
 export const toNodeSchemaMeta = (
   nodeReport: NodeReport,
@@ -31,6 +41,7 @@ export const toNodeSchemaMeta = (
   sampledAt: string,
 ): NodeSchemaMeta => ({
   ports: nodeReport.ports,
+  status: "complete",
   sampleSize,
   sampledAt,
   note: nodeReport.note,

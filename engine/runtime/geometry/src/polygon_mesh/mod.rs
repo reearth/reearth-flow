@@ -111,6 +111,13 @@ impl PolygonMesh2D {
     }
 }
 
+impl PolygonMesh3DData {
+    /// The vertex pool, mutable.
+    pub(crate) fn vertices_mut(&mut self) -> &mut [[f64; 3]] {
+        &mut self.vertices
+    }
+}
+
 impl PolygonMesh3D {
     /// Borrow the appearance, if any.
     #[inline]

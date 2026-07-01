@@ -31,6 +31,7 @@ impl Point3D {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::coordinate::EpsgCode;
 
     #[test]
     fn new_stores_position_and_frame() {
@@ -38,8 +39,8 @@ mod tests {
         assert_eq!(p.position, [1.0, 2.0]);
         assert_eq!(p.coordinate, Coordinate::Euclidean);
 
-        let q = Point3D::new(Coordinate::Crs(4326), [1.0, 2.0, 3.0]);
+        let q = Point3D::new(Coordinate::Crs(EpsgCode::new(4326)), [1.0, 2.0, 3.0]);
         assert_eq!(q.position, [1.0, 2.0, 3.0]);
-        assert_eq!(q.coordinate, Coordinate::Crs(4326));
+        assert_eq!(q.coordinate, Coordinate::Crs(EpsgCode::new(4326)));
     }
 }

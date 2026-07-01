@@ -37,6 +37,7 @@ kiddo.workspace = true
 nalgebra.workspace = true
 num-traits.workspace = true
 parking_lot.workspace = true
+proj-sys.workspace = true
 rayon.workspace = true
 robust.workspace = true
 rstar.workspace = true

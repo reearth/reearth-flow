@@ -42,6 +42,8 @@ export type SchemaReport = {
 
 export type NodeSchemaMeta = {
   ports: Record<string, PortReport>;
+  status?: "running" | "failed" | "complete";
+  jobId?: string;
   sampleSize?: number;
   sampledAt?: string;
   note?: string;
