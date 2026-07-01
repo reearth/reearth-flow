@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.25 - 2026-07-01
+
+### engine
+
+#### 🚀 Features
+
+- Coordinate reprojection for new geometry ([#2212](https://github.com/reearth/reearth-flow/pull/2212)) [`3c7c3f`](https://github.com/reearth/reearth-flow/commit/3c7c3f)
+
+#### 📖 Documentation
+
+- FlowExpr specification for math and regex modules ([#2208](https://github.com/reearth/reearth-flow/pull/2208)) [`76150f`](https://github.com/reearth/reearth-flow/commit/76150f)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Refactor previewSchema to save status to nodeMetaData [FLOW-DEV-211] ([#2213](https://github.com/reearth/reearth-flow/pull/2213)) [`e0a839`](https://github.com/reearth/reearth-flow/commit/e0a839)
+- Enhance FlowExprEditorDialog to conditionally display workflow variables [FLOW-DEV-212] ([#2216](https://github.com/reearth/reearth-flow/pull/2216)) [`6d8461`](https://github.com/reearth/reearth-flow/commit/6d8461)
+
 ## 0.1.0-alpha.24 - 2026-06-30
 
 ### Web
