@@ -8,7 +8,6 @@ use super::{
     attribute_flattener::processor::AttributeFlattenerFactory,
     building_installation_geometry_type_checker::BuildingInstallationGeometryTypeCheckerFactory,
     building_part_connectivity_checker::BuildingPartConnectivityCheckerFactory,
-    building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory,
     city_code_extractor::CityCodeExtractorFactory, citygml_mesh_builder::CityGmlMeshBuilderFactory,
     composite_surface_continuity_filter::CompositeSurfaceContinuityFilterFactory,
     destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory,
@@ -21,6 +20,7 @@ use super::{
     unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
     unshared_edge_detector::UnsharedEdgeDetectorFactory,
 };
+use crate::common::building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory;
 use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFactory;
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
@@ -33,7 +33,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<AttributeFlattenerFactory>::default(),
         Box::<BuildingInstallationGeometryTypeCheckerFactory>::default(),
         Box::<BuildingPartConnectivityCheckerFactory>::default(),
-        Box::<BuildingUsageAttributeValidatorFactory>::default(),
+        Box::new(BuildingUsageAttributeValidatorFactory::new(&PLATEAU4)),
         Box::<CityCodeExtractorFactory>::default(),
         Box::<CityGmlMeshBuilderFactory>::default(),
         Box::<DestinationMeshCodeExtractorFactory>::default(),

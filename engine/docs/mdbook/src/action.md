@@ -8753,18 +8753,19 @@ Check connectivity between BuildingParts within the same Building using 3D bound
 ### Type
 * processor
 ### Description
-This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
+Validates building usage attributes (L-bldg-04,05 dependency violations) and the city code against the Common_localPublicAuthorities code list. Usage errors are emitted on the l0405BldgError port and city-code errors on the cityCodeError port.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BuildingUsageAttributeValidatorParam",
+  "title": "BuildingUsageAttributeValidator Parameters",
   "type": "object",
   "required": [
     "codelistsPath"
   ],
   "properties": {
     "codelistsPath": {
+      "description": "Expression evaluating to the PLATEAU codelists directory path.",
       "type": "object",
       "format": "code",
       "required": [
@@ -9957,6 +9958,54 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 * default
 ### Output Ports
 * unshared
+### Category
+* PLATEAU
+
+## PLATEAU6.BuildingUsageAttributeValidator
+### Type
+* processor
+### Description
+Validates building usage attributes (L-bldg-04,05 dependency violations) and the city code against the Common_localPublicAuthorities code list. Usage errors are emitted on the l0405BldgError port and city-code errors on the cityCodeError port.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingUsageAttributeValidator Parameters",
+  "type": "object",
+  "required": [
+    "codelistsPath"
+  ],
+  "properties": {
+    "codelistsPath": {
+      "description": "Expression evaluating to the PLATEAU codelists directory path.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* l0405BldgError
+* cityCodeError
+* default
 ### Category
 * PLATEAU
 

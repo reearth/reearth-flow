@@ -20,6 +20,10 @@ pub(crate) enum PlateauProcessorError {
     MissingAttributeDetectorFactory(String),
     #[error("MissingAttributeDetector error: {0}")]
     MissingAttributeDetector(String),
+    #[error("BuildingUsageAttributeValidator Factory error: {0}")]
+    BuildingUsageAttributeValidatorFactory(String),
+    #[error("BuildingUsageAttributeValidator error: {0}")]
+    BuildingUsageAttributeValidator(String),
 }
 
 pub(crate) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

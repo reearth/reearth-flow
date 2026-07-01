@@ -2559,7 +2559,9 @@
         "": {
           "title": "BuildingUsageAttributeValidator パラメータ"
         },
-        "codelistsPath": {}
+        "codelistsPath": {
+          "description": "Expression evaluating to the PLATEAU codelists directory path."
+        }
       }
     },
     {
@@ -2835,6 +2837,18 @@
         },
         "tolerance": {
           "description": "エッジ照合の許容誤差（メートル）（デフォルト: 0.1）。この距離内のエッジは同一エッジとみなされる。"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.BuildingUsageAttributeValidator",
+      "description": "建物利用属性の依存関係違反（L-bldg-04,05）と、市区町村コードを Common_localPublicAuthorities コードリストと照合して検証する。利用属性エラーは l0405BldgError ポート、市区町村コードエラーは cityCodeError ポートへ出力する",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingUsageAttributeValidator パラメータ"
+        },
+        "codelistsPath": {
+          "description": "PLATEAU コードリストディレクトリのパスを表す式"
         }
       }
     },

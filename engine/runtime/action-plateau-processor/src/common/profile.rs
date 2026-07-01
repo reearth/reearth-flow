@@ -28,6 +28,16 @@ impl PlateauProfile {
         format!("{}.{}", self.action_prefix, action)
     }
 
+    /// Whether this profile is built on CityGML 3.0 (i-UR 4.0).
+    ///
+    /// The common check logic branches on this to absorb the structural
+    /// differences between the CityGML 2.0 reader (which nests i-UR attributes
+    /// under a `cityGmlAttributes` map) and the CityGML 3.0 reader (which hangs
+    /// them off `bldg:adeOfAbstractBuilding`).
+    pub fn is_citygml3(&self) -> bool {
+        std::ptr::eq(self.citygml, &crate::citygml::CITYGML3)
+    }
+
     /// Returns whether the prefix belongs to a known CityGML / i-UR namespace.
     ///
     /// `urc` is the i-UR 4.0 DataQuality namespace introduced with CityGML 3.0

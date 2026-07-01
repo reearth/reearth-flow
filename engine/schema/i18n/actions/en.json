@@ -2524,7 +2524,9 @@
         "": {
           "title": "BuildingUsageAttributeValidatorParam"
         },
-        "codelistsPath": {}
+        "codelistsPath": {
+          "description": "Expression evaluating to the PLATEAU codelists directory path."
+        }
       }
     },
     {
@@ -2788,6 +2790,17 @@
         },
         "tolerance": {
           "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.BuildingUsageAttributeValidator",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingUsageAttributeValidator Parameters"
+        },
+        "codelistsPath": {
+          "description": "Expression evaluating to the PLATEAU codelists directory path."
         }
       }
     },

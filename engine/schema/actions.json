@@ -8984,16 +8984,17 @@
     {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
-      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
+      "description": "Validates building usage attributes (L-bldg-04,05 dependency violations) and the city code against the Common_localPublicAuthorities code list. Usage errors are emitted on the l0405BldgError port and city-code errors on the cityCodeError port.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BuildingUsageAttributeValidatorParam",
+        "title": "BuildingUsageAttributeValidator Parameters",
         "type": "object",
         "required": [
           "codelistsPath"
         ],
         "properties": {
           "codelistsPath": {
+            "description": "Expression evaluating to the PLATEAU codelists directory path.",
             "type": "object",
             "format": "code",
             "required": [
@@ -10209,6 +10210,55 @@
       ],
       "outputPorts": [
         "unshared"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.BuildingUsageAttributeValidator",
+      "type": "processor",
+      "description": "Validates building usage attributes (L-bldg-04,05 dependency violations) and the city code against the Common_localPublicAuthorities code list. Usage errors are emitted on the l0405BldgError port and city-code errors on the cityCodeError port.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BuildingUsageAttributeValidator Parameters",
+        "type": "object",
+        "required": [
+          "codelistsPath"
+        ],
+        "properties": {
+          "codelistsPath": {
+            "description": "Expression evaluating to the PLATEAU codelists directory path.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "l0405BldgError",
+        "cityCodeError",
+        "default"
       ],
       "categories": [
         "PLATEAU"

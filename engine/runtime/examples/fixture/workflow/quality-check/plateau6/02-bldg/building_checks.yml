@@ -788,11 +788,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes["path"].split("/")[-1]
-        # TODO: wire to a PLATEAU6 city-code validator
+        # City-code count (CityCodeErrorCounter)
         - attribute: "市区町村コードエラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_incorrect_city_code", 0)
         # C-bldg-01 duplicate building-id count (DuplicateBuildingIdCounter)
         - attribute: "C-bldg-01 エラー"
           expr:
@@ -2034,72 +2034,22 @@ nodes:
         type: flowExpr
         value: attributes["name"]
 
-  # --- L-bldg-04,05 building usage-attribute pipeline ---
-  # Build one error message per building when a derived usage attribute is present
-  # without its required parent attribute. Mirrors plateau4
-  # PLATEAU4.BuildingUsageAttributeValidator, but implemented with generic actions
-  # over the CityGML 3.0 / i-UR 4.0 structure where uro:BuildingDetailAttribute
-  # hangs off bldg:adeOfAbstractBuilding (the i-UR 3.x uro:buildingDetailAttribute
-  # wrapper is gone). Each test building carries at most one violation, so a scalar
-  # message attribute is sufficient.
+  # --- L-bldg-04,05 usage-attribute + city-code validation ---
+  # Single Rust action mirroring plateau4 PLATEAU4.BuildingUsageAttributeValidator:
+  # it checks usage-attribute dependency violations (L-bldg-04,05) and the city
+  # code against Common_localPublicAuthorities.xml, over the CityGML 3.0 / i-UR 4.0
+  # structure (uro:BuildingDetailAttribute / uro:BuildingIDAttribute hang off
+  # bldg:adeOfAbstractBuilding). Usage errors leave on l0405BldgError with a
+  # usageError attribute; city-code errors leave on cityCodeError with a
+  # cityCodeError attribute.
   - id: c1b00020-0000-4000-8000-000000000020
-    name: AttributeManagerUsageError
+    name: BuildingUsageAttributeValidator
     type: action
-    action: AttributeManager
+    action: PLATEAU6.BuildingUsageAttributeValidator
     with:
-      operations:
-        - attribute: usageError
-          method: create
-          value:
-            type: flowExpr
-            value: |
-              ade = attributes.get("bldg:adeOfAbstractBuilding");
-              detail = {};
-              if type(ade) == "map" {
-                if "uro:BuildingDetailAttribute" in ade {
-                  detail = ade["uro:BuildingDetailAttribute"];
-                }
-              } else if type(ade) == "list" {
-                for item in ade {
-                  if type(item) == "map" and "uro:BuildingDetailAttribute" in item {
-                    detail = item["uro:BuildingDetailAttribute"];
-                  }
-                }
-              }
-              msg = "";
-              if type(detail) == "map" {
-                year = "";
-                survey = detail.get("uro:surveyYear", "");
-                if survey != "" {
-                  year = survey.split("-")[0];
-                }
-                pairs = [
-                  ["uro:majorUsage2", "uro:majorUsage"],
-                  ["uro:detailedUsage2", "uro:detailedUsage"],
-                  ["uro:detailedUsage3", "uro:detailedUsage2"],
-                  ["uro:secondFloorUsage", "uro:groundFloorUsage"],
-                  ["uro:thirdFloorUsage", "uro:secondFloorUsage"],
-                  ["uro:basementSecondUsage", "uro:basementFirstUsage"]
-                ];
-                for p in pairs {
-                  if p[0] in detail and p[1] not in detail {
-                    msg = year + "年建物利用現況: '" + p[0] + "' が存在しますが '" + p[1] + "' が存在しません。";
-                  }
-                }
-              }
-              msg
-
-  # Keep only buildings that produced a usage-attribute error message.
-  - id: c1b00021-0000-4000-8000-000000000021
-    name: FeatureFilterUsageError
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: attributes.get("usageError", "") != ""
-          outputPort: usageError
+      codelistsPath:
+        type: flowExpr
+        value: attributes["dirCodelists"]
 
   # One CSV row per building usage-attribute error.
   - id: c1b00022-0000-4000-8000-000000000022
@@ -2146,6 +2096,62 @@ nodes:
   # Join the per-file usage-error count onto each file feature.
   - id: c1b00025-0000-4000-8000-000000000025
     name: UsageErrorSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
+  # --- City-code error pipeline (fed by BuildingUsageAttributeValidator) ---
+  # One CSV row per building with a city-code error.
+  - id: c1b00041-0000-4000-8000-000000000041
+    name: AttributeMapperCityCodeError
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: "Feature Type"
+          valueAttribute: __citygml_feature_type
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: Index
+          valueAttribute: index
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: "City Code Error"
+          valueAttribute: cityCodeError
+
+  - id: c1b00042-0000-4000-8000-000000000042
+    name: FeatureWriterCityCodeError
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_市区町村コードエラー.csv
+
+  # Count city-code-error buildings per file for the summary column.
+  - id: c1b00043-0000-4000-8000-000000000043
+    name: CityCodeErrorCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_incorrect_city_code
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file city-code count onto each file feature.
+  - id: c1b00044-0000-4000-8000-000000000044
+    name: CityCodeErrorSummaryMerger
     type: action
     action: FeatureMerger
     with:
@@ -3167,28 +3173,23 @@ edges:
     fromPort: default
     toPort: supplier
 
-  # --- L-bldg-04,05 usage-attribute pipeline edges ---
+  # --- L-bldg-04,05 usage-attribute + city-code validator edges ---
   # Reuse the flattened building features from AttributeManagerBuildingId.
   - id: c1b0e030-0000-4000-8000-000000000030
     from: c1b00002-0000-4000-8000-000000000002
     to: c1b00020-0000-4000-8000-000000000020
     fromPort: default
     toPort: default
-  - id: c1b0e031-0000-4000-8000-000000000031
-    from: c1b00020-0000-4000-8000-000000000020
-    to: c1b00021-0000-4000-8000-000000000021
-    fromPort: default
-    toPort: default
   # Buildings with a usage-attribute error -> CSV mapper and per-file counter.
   - id: c1b0e032-0000-4000-8000-000000000032
-    from: c1b00021-0000-4000-8000-000000000021
+    from: c1b00020-0000-4000-8000-000000000020
     to: c1b00022-0000-4000-8000-000000000022
-    fromPort: usageError
+    fromPort: l0405BldgError
     toPort: default
   - id: c1b0e033-0000-4000-8000-000000000033
-    from: c1b00021-0000-4000-8000-000000000021
+    from: c1b00020-0000-4000-8000-000000000020
     to: c1b00024-0000-4000-8000-000000000024
-    fromPort: usageError
+    fromPort: l0405BldgError
     toPort: default
   - id: c1b0e034-0000-4000-8000-000000000034
     from: c1b00022-0000-4000-8000-000000000022
@@ -3207,14 +3208,55 @@ edges:
     to: c1b00025-0000-4000-8000-000000000025
     fromPort: default
     toPort: supplier
-  # Usage-attribute summary merger output -> building summary mapper.
+  # Usage-attribute summary merger output -> city-code summary merger (requestor).
   - id: c1b0e037-0000-4000-8000-000000000037
     from: c1b00025-0000-4000-8000-000000000025
+    to: c1b00044-0000-4000-8000-000000000044
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e038-0000-4000-8000-000000000038
+    from: c1b00025-0000-4000-8000-000000000025
+    to: c1b00044-0000-4000-8000-000000000044
+    fromPort: unmerged
+    toPort: requestor
+
+  # --- City-code error pipeline edges (fed by BuildingUsageAttributeValidator) ---
+  # Buildings with a city-code error -> CSV mapper and per-file counter.
+  - id: c1b0e041-0000-4000-8000-000000000041
+    from: c1b00020-0000-4000-8000-000000000020
+    to: c1b00041-0000-4000-8000-000000000041
+    fromPort: cityCodeError
+    toPort: default
+  - id: c1b0e042-0000-4000-8000-000000000042
+    from: c1b00020-0000-4000-8000-000000000020
+    to: c1b00043-0000-4000-8000-000000000043
+    fromPort: cityCodeError
+    toPort: default
+  - id: c1b0e043-0000-4000-8000-000000000043
+    from: c1b00041-0000-4000-8000-000000000041
+    to: c1b00042-0000-4000-8000-000000000042
+    fromPort: default
+    toPort: default
+  # Route the written city-code CSV into the result zip.
+  - id: c1b0e044-0000-4000-8000-000000000044
+    from: c1b00042-0000-4000-8000-000000000042
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Counter.default -> city-code summary merger (supplier).
+  - id: c1b0e045-0000-4000-8000-000000000045
+    from: c1b00043-0000-4000-8000-000000000043
+    to: c1b00044-0000-4000-8000-000000000044
+    fromPort: default
+    toPort: supplier
+  # City-code summary merger output -> building summary mapper.
+  - id: c1b0e046-0000-4000-8000-000000000046
+    from: c1b00044-0000-4000-8000-000000000044
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: c1b0e038-0000-4000-8000-000000000038
-    from: c1b00025-0000-4000-8000-000000000025
+  - id: c1b0e047-0000-4000-8000-000000000047
+    from: c1b00044-0000-4000-8000-000000000044
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default

@@ -1,3 +1,4 @@
+pub(crate) mod building_usage_attribute_validator;
 pub(crate) mod domain_of_definition_validator;
 pub(crate) mod errors;
 pub(crate) mod missing_attribute_detector;
