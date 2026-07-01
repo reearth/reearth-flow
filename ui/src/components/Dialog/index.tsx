@@ -60,7 +60,6 @@ const DialogContent = forwardRef<
       hideCloseButton,
       onOpenAutoFocus,
       onCloseAutoFocus,
-      onInteractOutside,
       ...props
     },
     ref,
@@ -107,16 +106,6 @@ const DialogContent = forwardRef<
         onCloseAutoFocus={(e) =>
           onCloseAutoFocus ? onCloseAutoFocus(e) : e.preventDefault()
         }
-        onInteractOutside={(e) => {
-          if (onInteractOutside) {
-            onInteractOutside(e);
-            return;
-          }
-          const target = e.target as Element | null;
-          if (target?.closest?.("[data-radix-popper-content-wrapper]")) {
-            e.preventDefault();
-          }
-        }}
         {...props}>
         <div className="flex h-full flex-col overflow-hidden rounded-lg">
           {children}
