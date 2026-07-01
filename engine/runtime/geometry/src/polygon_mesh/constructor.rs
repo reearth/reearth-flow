@@ -673,6 +673,7 @@ fn merge_appearance(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::coordinate::EpsgCode;
     use crate::test_support::*;
 
     fn ones(buf: &IndexBuffer<1>) -> Vec<u32> {
@@ -727,7 +728,8 @@ mod tests {
     #[test]
     fn from_polygons_rejects_frame_mismatch() {
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
-        let err = PolygonMesh3D::from_polygons(Coordinate::Crs(4326), [&a]).unwrap_err();
+        let err =
+            PolygonMesh3D::from_polygons(Coordinate::Crs(EpsgCode::new(4326)), [&a]).unwrap_err();
         assert!(matches!(err, Error::InvalidGeometry(_)));
     }
 
