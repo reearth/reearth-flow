@@ -1,7 +1,45 @@
 //! Per-leaf coordinate frame.
 
-use nusamai_projection::crs::EpsgCode;
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
+
+use crate::error::{Error, Result};
+
+/// An EPSG code identifying a coordinate reference system.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[serde(transparent)]
+pub struct EpsgCode(u16);
+
+impl EpsgCode {
+    /// Wrap a raw EPSG code.
+    pub const fn new(code: u16) -> Self {
+        Self(code)
+    }
+
+    /// The raw EPSG code.
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+}
+
+impl fmt::Display for EpsgCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl From<u16> for EpsgCode {
+    fn from(code: u16) -> Self {
+        Self(code)
+    }
+}
+
+impl From<EpsgCode> for u16 {
+    fn from(code: EpsgCode) -> Self {
+        code.0
+    }
+}
 
 /// The coordinate frame a geometry leaf is expressed in.
 ///
@@ -20,6 +58,21 @@ pub enum Coordinate {
     /// is the rare frame, so boxing it keeps `Coordinate` — embedded in every
     /// geometry leaf — pointer-sized for the common `Crs` / `Euclidean` cases.
     Tangent(Box<TangentPlane>),
+}
+
+impl Coordinate {
+    /// The EPSG code of this frame, or an error if it is not a CRS frame.
+    pub(crate) fn require_crs(&self) -> Result<EpsgCode> {
+        match self {
+            Coordinate::Crs(epsg) => Ok(*epsg),
+            Coordinate::Euclidean => Err(Error::projection(
+                "cannot reproject a Euclidean (non-georeferenced) geometry",
+            )),
+            Coordinate::Tangent(_) => Err(Error::projection(
+                "cannot reproject a Tangent-plane geometry",
+            )),
+        }
+    }
 }
 
 /// The absolute frame a [`TangentPlane`] is anchored in: exactly the non-tangent

@@ -10,8 +10,8 @@ export type ApiDriverInput = {
 
 export type AddMemberToWorkspaceInput = {
   role: Role;
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type ArchiveExtractionStatus =
@@ -49,14 +49,14 @@ export type CmsVisibility =
   | 'PUBLIC';
 
 export type CancelJobInput = {
-  jobId: string;
+  jobId: string | number;
 };
 
 export type CreateAssetInput = {
   file?: any;
   name?: string | null | undefined;
   token?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateAssetUploadInput = {
@@ -64,31 +64,31 @@ export type CreateAssetUploadInput = {
   contentLength?: number | null | undefined;
   cursor?: string | null | undefined;
   filename?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateDeploymentInput = {
   description: string;
   file: any;
-  projectId?: string | null | undefined;
-  workspaceId: string;
+  projectId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type CreateProjectInput = {
   archived?: boolean | null | undefined;
   description?: string | null | undefined;
   name?: string | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateTriggerInput = {
   apiDriverInput?: ApiDriverInput | null | undefined;
-  deploymentId: string;
+  deploymentId: string | number;
   description: string;
   enabled: boolean;
   timeDriverInput?: TimeDriverInput | null | undefined;
   variables?: Array<VariableInput> | null | undefined;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type CreateWorkspaceInput = {
@@ -106,19 +106,19 @@ export type DeclareParameterInput = {
 };
 
 export type DeleteAssetInput = {
-  assetId: string;
+  assetId: string | number;
 };
 
 export type DeleteDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
 };
 
 export type DeleteProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type DeleteWorkspaceInput = {
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type EventSourceType =
@@ -126,12 +126,12 @@ export type EventSourceType =
   | 'TIME_DRIVEN';
 
 export type ExecuteDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
 };
 
 export type GetHeadInput = {
-  projectId?: string | null | undefined;
-  workspaceId: string;
+  projectId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type JobStatus =
@@ -161,8 +161,8 @@ export type PageBasedPagination = {
 
 export type ParameterBatchInput = {
   creates?: Array<DeclareParameterInput> | null | undefined;
-  deletes?: Array<string> | null | undefined;
-  projectId: string;
+  deletes?: Array<string | number> | null | undefined;
+  projectId: string | number;
   reorders?: Array<UpdateParameterOrderInput> | null | undefined;
   updates?: Array<ParameterUpdateItem> | null | undefined;
 };
@@ -181,23 +181,31 @@ export type ParameterUpdateItem = {
   config?: any;
   defaultValue?: any;
   name: string;
-  paramId: string;
+  paramId: string | number;
   public: boolean;
   required: boolean;
   type: ParameterType;
 };
 
+export type PreviewSchemaInput = {
+  file: any;
+  parameters?: Array<RunParameterInput> | null | undefined;
+  projectId: string | number;
+  sampleSize?: number | null | undefined;
+  workspaceId: string | number;
+};
+
 export type RemoveMemberFromWorkspaceInput = {
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type RemoveParameterInput = {
-  paramId: string;
+  paramId: string | number;
 };
 
 export type RemoveParametersInput = {
-  paramIds: Array<string>;
+  paramIds: Array<string | number>;
 };
 
 export type Role =
@@ -208,7 +216,7 @@ export type Role =
 
 export type RunParameterInput = {
   config?: any;
-  id: string;
+  id: string | number;
   index: number;
   name: string;
   public: boolean;
@@ -220,14 +228,14 @@ export type RunParameterInput = {
 export type RunProjectInput = {
   file: any;
   parameters?: Array<RunParameterInput> | null | undefined;
-  previousJobId?: string | null | undefined;
-  projectId: string;
-  startNodeId?: string | null | undefined;
-  workspaceId: string;
+  previousJobId?: string | number | null | undefined;
+  projectId: string | number;
+  startNodeId?: string | number | null | undefined;
+  workspaceId: string | number;
 };
 
 export type ShareProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type TimeDriverInput = {
@@ -241,16 +249,16 @@ export type TimeInterval =
   | 'EVERY_WEEK';
 
 export type UnshareProjectInput = {
-  projectId: string;
+  projectId: string | number;
 };
 
 export type UpdateAssetInput = {
-  assetId: string;
+  assetId: string | number;
   name?: string | null | undefined;
 };
 
 export type UpdateDeploymentInput = {
-  deploymentId: string;
+  deploymentId: string | number;
   description?: string | null | undefined;
   file?: any;
 };
@@ -265,8 +273,8 @@ export type UpdateMeInput = {
 
 export type UpdateMemberOfWorkspaceInput = {
   role: Role;
-  userId: string;
-  workspaceId: string;
+  userId: string | number;
+  workspaceId: string | number;
 };
 
 export type UpdateParameterInput = {
@@ -280,7 +288,7 @@ export type UpdateParameterInput = {
 
 export type UpdateParameterOrderInput = {
   newIndex: number;
-  paramId: string;
+  paramId: string | number;
 };
 
 export type UpdateProjectInput = {
@@ -291,16 +299,16 @@ export type UpdateProjectInput = {
   isBasicAuthActive?: boolean | null | undefined;
   isLocked?: boolean | null | undefined;
   name?: string | null | undefined;
-  projectId: string;
+  projectId: string | number;
 };
 
 export type UpdateTriggerInput = {
   apiDriverInput?: ApiDriverInput | null | undefined;
-  deploymentId?: string | null | undefined;
+  deploymentId?: string | number | null | undefined;
   description?: string | null | undefined;
   enabled?: boolean | null | undefined;
   timeDriverInput?: TimeDriverInput | null | undefined;
-  triggerId: string;
+  triggerId: string | number;
   variables?: Array<VariableInput> | null | undefined;
 };
 
@@ -319,7 +327,7 @@ export type UpdateWorkerConfigInput = {
 
 export type UpdateWorkspaceInput = {
   name: string;
-  workspaceId: string;
+  workspaceId: string | number;
 };
 
 export type UserFacingLogLevel =
@@ -637,6 +645,13 @@ export type RunProjectMutationVariables = Exact<{
 
 export type RunProjectMutation = { runProject: { job: { ' $fragmentRefs'?: { 'JobFragment': JobFragment } } } | null };
 
+export type PreviewSchemaMutationVariables = Exact<{
+  input: PreviewSchemaInput;
+}>;
+
+
+export type PreviewSchemaMutation = { previewSchema: { job: { ' $fragmentRefs'?: { 'JobFragment': JobFragment } } } };
+
 export type CopyProjectMutationVariables = Exact<{
   projectId: string;
   source: string;
@@ -936,6 +951,7 @@ export const GetProjectByIdDocument = {"kind":"Document","definitions":[{"kind":
 export const UpdateProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateProjectInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Project"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Deployment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Deployment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"workflowUrl"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Project"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Project"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"sharedToken"}},{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Deployment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"isLocked"}}]}}]} as unknown as DocumentNode<UpdateProjectMutation, UpdateProjectMutationVariables>;
 export const DeleteProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeleteProjectInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"projectId"}}]}}]}}]} as unknown as DocumentNode<DeleteProjectMutation, DeleteProjectMutationVariables>;
 export const RunProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RunProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"RunProjectInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"runProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"job"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Job"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Job"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Job"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}},{"kind":"Field","name":{"kind":"Name","value":"outputURLs"}},{"kind":"Field","name":{"kind":"Name","value":"userFacingLogsURL"}},{"kind":"Field","name":{"kind":"Name","value":"debug"}},{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]}}]} as unknown as DocumentNode<RunProjectMutation, RunProjectMutationVariables>;
+export const PreviewSchemaDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"PreviewSchema"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PreviewSchemaInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"previewSchema"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"job"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Job"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Job"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Job"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}},{"kind":"Field","name":{"kind":"Name","value":"outputURLs"}},{"kind":"Field","name":{"kind":"Name","value":"userFacingLogsURL"}},{"kind":"Field","name":{"kind":"Name","value":"debug"}},{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]}}]} as unknown as DocumentNode<PreviewSchemaMutation, PreviewSchemaMutationVariables>;
 export const CopyProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CopyProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"source"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"copyProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"source"},"value":{"kind":"Variable","name":{"kind":"Name","value":"source"}}}]}]}}]} as unknown as DocumentNode<CopyProjectMutation, CopyProjectMutationVariables>;
 export const ImportProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ImportProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"data"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Bytes"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"importProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"data"},"value":{"kind":"Variable","name":{"kind":"Name","value":"data"}}}]}]}}]} as unknown as DocumentNode<ImportProjectMutation, ImportProjectMutationVariables>;
 export const GetSharedProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSharedProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"token"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sharedProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"token"},"value":{"kind":"Variable","name":{"kind":"Name","value":"token"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Project"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Deployment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Deployment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"workflowUrl"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Project"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Project"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"sharedToken"}},{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Deployment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"isLocked"}}]}}]} as unknown as DocumentNode<GetSharedProjectQuery, GetSharedProjectQueryVariables>;

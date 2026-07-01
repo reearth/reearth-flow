@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { Algorithm, Direction } from "@flow/types";
+import type { Algorithm, Direction, YDocMetadataValue } from "@flow/types";
 
 type Props = {
   Ydoc: Doc | null;
@@ -30,8 +30,15 @@ const LayoutSubToolbar: React.FC<Props> = ({
   onClose,
 }) => {
   const t = useT();
-  const yMetadata = useMemo(() => Ydoc?.getMap<any>("metadata"), [Ydoc]);
-  const metadata = useY(yMetadata ?? new YMap()) as Record<string, any>;
+  const yMetadata = useMemo(
+    () => Ydoc?.getMap<YDocMetadataValue>("metadata"),
+    [Ydoc],
+  );
+
+  const metadata = useY(yMetadata ?? new YMap<YDocMetadataValue>()) as Record<
+    string,
+    any
+  >;
 
   const [direction, setDirection] = useState<Direction>(
     () => (metadata?.layoutDirection as Direction) || "Horizontal",

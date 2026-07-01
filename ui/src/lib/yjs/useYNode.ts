@@ -2,7 +2,13 @@ import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import * as Y from "yjs";
 
 import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";
-import type { Node, NodeChange, Workflow } from "@flow/types";
+import type {
+  Node,
+  NodeChange,
+  NodeMetadata,
+  NodeSchemaMeta,
+  Workflow,
+} from "@flow/types";
 
 import { yNodeConstructor } from "./conversions";
 import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
@@ -372,9 +378,34 @@ export default ({
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
+  const handleYNodeSchemaUpdate = useCallback(
+    (nodeId: string, patch: Partial<NodeSchemaMeta> | undefined) =>
+      undoTrackerActionWrapper(() => {
+        const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+        if (!yNodes) return;
+        const yData = yNodes.get(nodeId)?.get("data") as Y.Map<any> | undefined;
+        if (!yData) return;
+        const prevMetadata =
+          (yData.get("nodeMetadata") as NodeMetadata | undefined) ?? {};
+        if (!patch) {
+          yData.set("nodeMetadata", { ...prevMetadata, schema: undefined });
+          return;
+        }
+        const schema: NodeSchemaMeta = {
+          ports: {},
+          ...prevMetadata.schema,
+          ...patch,
+        };
+        if (!patch.jobId) delete schema.jobId;
+        yData.set("nodeMetadata", { ...prevMetadata, schema });
+      }, "schema-update"),
+    [currentYWorkflow, undoTrackerActionWrapper],
+  );
+
   return {
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodesDataUpdate,
+    handleYNodeSchemaUpdate,
   };
 };

@@ -5,8 +5,9 @@ import { Doc, Map as YMap } from "yjs";
 import { useDebouncedCallback } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
 import { Project } from "@flow/types";
+import type { YDocMetadataValue } from "@flow/types";
 
-const emptyMetadata = new YMap();
+const emptyMetadata = new YMap<YDocMetadataValue>();
 
 export default ({
   currentProject,
@@ -17,7 +18,10 @@ export default ({
 }) => {
   const { updateProject } = useProject();
 
-  const yMetadata = useMemo(() => yDoc?.getMap<any>("metadata"), [yDoc]);
+  const yMetadata = useMemo(
+    () => yDoc?.getMap<YDocMetadataValue>("metadata"),
+    [yDoc],
+  );
   const metadata = useY(yMetadata ?? emptyMetadata);
 
   const isLocked: boolean =
