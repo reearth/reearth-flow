@@ -20,3 +20,4 @@ pub(crate) mod tran_xlink_detector;
 pub(crate) mod udx_folder_extractor;
 pub(crate) mod unmatched_xlink_detector;
 pub(crate) mod unshared_edge_detector;
+pub(crate) mod water_body_tin_validator;

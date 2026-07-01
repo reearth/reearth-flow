@@ -77,6 +77,10 @@ pub(super) enum PlateauProcessorError {
     GmlNameCodeSpaceValidatorFactory(String),
     #[error("GmlNameCodeSpaceValidator error: {0}")]
     GmlNameCodeSpaceValidator(String),
+    #[error("WaterBodyTinValidator Factory error: {0}")]
+    WaterBodyTinValidatorFactory(String),
+    #[error("WaterBodyTinValidator error: {0}")]
+    WaterBodyTinValidator(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
