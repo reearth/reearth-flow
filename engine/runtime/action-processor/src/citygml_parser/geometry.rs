@@ -505,7 +505,10 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
 
 fn is_geometry_element(local: &str) -> bool {
     gml_element_geometry_type(local).is_some()
-        || matches!(local, "MultiGeometry" | "GeometricComplex" | "ImplicitGeometry")
+        || matches!(
+            local,
+            "MultiGeometry" | "GeometricComplex" | "ImplicitGeometry"
+        )
 }
 
 fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
@@ -897,7 +900,11 @@ mod tests {
 
         let (stripped, geoms) = extract_geometries(&feature);
 
-        assert_eq!(geoms.len(), 1, "the real lod1Solid geometry must be extracted");
+        assert_eq!(
+            geoms.len(),
+            1,
+            "the real lod1Solid geometry must be extracted"
+        );
         assert_eq!(geoms[0].ty, GeometryType::Solid);
 
         let retained: Vec<&str> = stripped

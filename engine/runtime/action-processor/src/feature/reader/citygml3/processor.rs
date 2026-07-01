@@ -15,10 +15,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use crate::feature::errors::FeatureProcessorError;
 use crate::citygml_parser::parser::Parser;
 #[cfg(not(feature = "new-geometry"))]
 use crate::citygml_parser::pipeline::build_features;
+use crate::feature::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGml3ReaderFactory;
