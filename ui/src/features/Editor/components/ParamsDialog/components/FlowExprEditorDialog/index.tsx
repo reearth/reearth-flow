@@ -171,32 +171,36 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                     <CmsLogo className="h-4 w-4" />
                     {t("CMS Integration")}
                   </Button>
-                  {workflowVariables && workflowVariables.length > 0 && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <CircleIcon className="h-4 w-4" />
-                          {t("Variables")}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-64">
-                        {workflowVariables.map((variable) => (
-                          <DropdownMenuItem
-                            key={variable.id}
-                            onClick={() => handleVariableSelect(variable.name)}
-                            className="flex flex-col items-start">
-                            <div className="font-mono text-sm">
-                              {variable.name}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {variable.type} •{" "}
-                              {variable.defaultValue || t("No value set")}
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  {workflowVariables &&
+                    workflowVariables.length > 0 &&
+                    flowExprAllowed && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <CircleIcon className="h-4 w-4" />
+                            {t("Variables")}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64">
+                          {workflowVariables.map((variable) => (
+                            <DropdownMenuItem
+                              key={variable.id}
+                              onClick={() =>
+                                handleVariableSelect(variable.name)
+                              }
+                              className="flex flex-col items-start">
+                              <div className="font-mono text-sm">
+                                {variable.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {variable.type} •{" "}
+                                {variable.defaultValue || t("No value set")}
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                 </div>
               </div>
               <IconButton
