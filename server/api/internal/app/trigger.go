@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -119,6 +120,14 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 
 func SetupTriggerRoutes(e *echo.Echo) {
 	h := NewTriggerHandler()
-	e.POST("/api/triggers/:triggerId/run", h.ExecuteTrigger)
-	e.POST("/api/triggers/:triggerId/execute-scheduled", h.ExecuteScheduledTrigger)
+	// Trigger endpoints are public webhooks authenticated by Bearer token, so they
+	// allow all origins — any website or CI pipeline can invoke them.
+	triggerCORS := middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{http.MethodPost, http.MethodOptions},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAuthorization},
+	})
+	g := e.Group("/api/triggers", triggerCORS)
+	g.POST("/:triggerId/run", h.ExecuteTrigger)
+	g.POST("/:triggerId/execute-scheduled", h.ExecuteScheduledTrigger)
 }
