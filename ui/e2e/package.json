@@ -13,12 +13,16 @@
     "test:debug": "playwright test --debug",
     "test:smoke": "playwright test --grep @smoke",
     "test:regression": "playwright test --grep @regression",
-    "report": "playwright show-report",
+    "allure:generate": "allure generate allure-results",
+    "allure:open": "allure open allure-report",
+    "allure:watch": "allure watch allure-results",
     "install:browsers": "playwright install"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.7.0",
+    "allure": "3.4.1",
+    "allure-playwright": "3.4.1",
     "dotenv": "^17.2.3"
   }
 }
