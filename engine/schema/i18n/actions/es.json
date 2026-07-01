@@ -999,7 +999,7 @@
         },
         "dataset": {
           "title": "Dataset",
-          "description": "Path expression resolving to the CityGML 2.0 file to read."
+          "description": "Expresión de ruta que resuelve al archivo CityGML 2.0 a leer."
         },
         "extractTags": {
           "title": "Extraer Etiquetas",
@@ -1016,7 +1016,7 @@
         },
         "dataset": {
           "title": "Dataset",
-          "description": "Path expression resolving to the CityGML 3.0 file to read."
+          "description": "Expresión de ruta que resuelve al archivo CityGML 3.0 a leer."
         },
         "extractTags": {
           "title": "Extraer Etiquetas",

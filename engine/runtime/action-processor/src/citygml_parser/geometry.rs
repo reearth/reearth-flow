@@ -9,17 +9,19 @@ use super::utils::{gml_id_attr, local_name, XmlChild, XmlNode};
 
 pub fn extract_geometries(node: &Arc<XmlNode>) -> (Arc<XmlNode>, Vec<GmlGeometry>) {
     let mut out: Vec<GmlGeometry> = Vec::new();
-    let stripped = strip_and_collect(node, &mut out);
+    let stripped = strip_geometries(node, &mut out);
     (stripped, out)
 }
 
-fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<XmlNode> {
-    let mut new_children: Option<Vec<XmlChild>> = None;
+/// Returns `node` without its LOD geometry properties, collecting those geometries into `out`.
+fn strip_geometries(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<XmlNode> {
+    // Rebuild lazily so geometry-free subtrees are returned shared rather than re-cloned.
+    let mut rebuilt: Option<Vec<XmlChild>> = None;
 
     for (i, child) in node.children.iter().enumerate() {
         let XmlChild::Element(e) = child else {
-            if let Some(ref mut nc) = new_children {
-                nc.push(child.clone());
+            if let Some(ref mut children) = rebuilt {
+                children.push(child.clone());
             }
             continue;
         };
@@ -30,30 +32,35 @@ fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<Xml
         } else {
             extract_lod(ln).map(Some)
         };
+        let geometry_lod = lod_opt.filter(|_| {
+            element_children(e)
+                .next()
+                .is_some_and(|child| is_geometry_element(local_name(&child.name.0)))
+        });
 
-        if let Some(lod) = lod_opt {
+        if let Some(lod) = geometry_lod {
             collect_geometry_from_property(e, lod, out);
-            if new_children.is_none() {
-                new_children = Some(node.children[..i].to_vec());
+            if rebuilt.is_none() {
+                rebuilt = Some(node.children[..i].to_vec());
             }
         } else {
-            let stripped_child = strip_and_collect(e, out);
-            match new_children {
+            let stripped_child = strip_geometries(e, out);
+            match rebuilt {
                 None => {
                     if !Arc::ptr_eq(&stripped_child, e) {
-                        let mut nc = node.children[..i].to_vec();
-                        nc.push(XmlChild::Element(stripped_child));
-                        new_children = Some(nc);
+                        let mut children = node.children[..i].to_vec();
+                        children.push(XmlChild::Element(stripped_child));
+                        rebuilt = Some(children);
                     }
                 }
-                Some(ref mut nc) => {
-                    nc.push(XmlChild::Element(stripped_child));
+                Some(ref mut children) => {
+                    children.push(XmlChild::Element(stripped_child));
                 }
             }
         }
     }
 
-    match new_children {
+    match rebuilt {
         None => Arc::clone(node),
         Some(children) => node.with_children(children),
     }
@@ -496,6 +503,11 @@ fn gml_element_geometry_type(local: &str) -> Option<GeometryType> {
     }
 }
 
+fn is_geometry_element(local: &str) -> bool {
+    gml_element_geometry_type(local).is_some()
+        || matches!(local, "MultiGeometry" | "GeometricComplex" | "ImplicitGeometry")
+}
+
 fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
     element_children(node).find(|c| local_name(&c.name.0) == local)
 }
@@ -845,5 +857,61 @@ mod tests {
         let (_, geoms) = extract_geometries(&feature);
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].polygons.len(), 1);
+    }
+
+    #[test]
+    fn test_lod_prefixed_non_geometry_property_retained() {
+        // `uro:lod1HeightType` matches the `lodN` prefix but holds a value, not a
+        // geometry. It must survive stripping while a real geometry sibling is extracted.
+        let height_type = elem("uro:lod1HeightType", vec![], vec![text_node("2")]);
+        let solid = elem(
+            "gml:Solid",
+            vec![("gml:id", "http://www.opengis.net/gml/3.2", "solid01")],
+            vec![elem_child(elem(
+                "gml:exterior",
+                vec![],
+                vec![elem_child(elem(
+                    "gml:CompositeSurface",
+                    vec![],
+                    vec![elem_child(elem(
+                        "gml:surfaceMember",
+                        vec![],
+                        vec![elem_child(polygon_node(&[
+                            (0.0, 0.0, 0.0),
+                            (1.0, 0.0, 0.0),
+                            (0.0, 1.0, 0.0),
+                            (0.0, 0.0, 0.0),
+                        ]))],
+                    ))],
+                ))],
+            ))],
+        );
+        let feature = Arc::new(elem(
+            "bldg:Building",
+            vec![],
+            vec![
+                elem_child(height_type),
+                elem_child(elem("bldg:lod1Solid", vec![], vec![elem_child(solid)])),
+            ],
+        ));
+
+        let (stripped, geoms) = extract_geometries(&feature);
+
+        assert_eq!(geoms.len(), 1, "the real lod1Solid geometry must be extracted");
+        assert_eq!(geoms[0].ty, GeometryType::Solid);
+
+        let retained: Vec<&str> = stripped
+            .children
+            .iter()
+            .filter_map(|c| match c {
+                XmlChild::Element(e) => Some(local_name(&e.name.0)),
+                XmlChild::Text(_) => None,
+            })
+            .collect();
+        assert_eq!(
+            retained,
+            vec!["lod1HeightType"],
+            "the lodN-prefixed value property must be retained; only the geometry property is stripped"
+        );
     }
 }
