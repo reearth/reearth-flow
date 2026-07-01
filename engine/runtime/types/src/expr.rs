@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -6,16 +7,13 @@ use nutype::nutype;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use std::rc::Rc;
-
 use reearth_flow_expr::{
     compile, env_bind, env_remove, eval_error, expect_arity, Env as ExprEnv, FromValue,
     Result as ExprResult, TypeValue as ExprTypeValue, Value as ExprValue,
 };
 
-use crate::error::{Error as TypesError, Result as TypesResult};
-
 use crate::attribute::{Attribute, AttributeValue};
+use crate::error::{Error as TypesError, Result as TypesResult};
 use crate::feature::Feature;
 
 impl From<reearth_flow_expr::Error> for TypesError {
