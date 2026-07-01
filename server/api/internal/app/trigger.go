@@ -120,14 +120,20 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 
 func SetupTriggerRoutes(e *echo.Echo) {
 	h := NewTriggerHandler()
-	// Trigger endpoints are public webhooks authenticated by Bearer token, so they
-	// allow all origins — any website or CI pipeline can invoke them.
+	// Trigger endpoints are public webhooks callable from any origin.
+	// ExecuteTrigger enforces its own Bearer token; ExecuteScheduledTrigger is
+	// intended for the internal scheduler only. OPTIONS routes must be registered
+	// explicitly so Echo's router matches preflight requests and the CORS
+	// middleware runs for them.
 	triggerCORS := middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodPost, http.MethodOptions},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAuthorization},
 	})
 	g := e.Group("/api/triggers", triggerCORS)
+	noop := func(c echo.Context) error { return c.NoContent(http.StatusNoContent) }
+	g.OPTIONS("/:triggerId/run", noop)
+	g.OPTIONS("/:triggerId/execute-scheduled", noop)
 	g.POST("/:triggerId/run", h.ExecuteTrigger)
 	g.POST("/:triggerId/execute-scheduled", h.ExecuteScheduledTrigger)
 }
