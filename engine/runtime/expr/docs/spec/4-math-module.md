@@ -13,18 +13,19 @@ The mathematical constant e.
 ## math.abs
 
 `math.abs(x)` returns the absolute value of `x`.
+The result is an `int` when `x` is an `int`, and a `float` when `x` is a `float`.
 
 ## math.floor
 
-`math.floor(x)` returns the largest integer value less than or equal to `x`.
+`math.floor(x)` returns the largest `int` less than or equal to `x`.
 
 ## math.ceil
 
-`math.ceil(x)` returns the smallest integer value greater than or equal to `x`.
+`math.ceil(x)` returns the smallest `int` greater than or equal to `x`.
 
 ## math.round
 
-`math.round(x)` returns `x` rounded to the nearest integer.
+`math.round(x)` returns the `int` nearest to `x`.
 
 > Note: round behavior at `n + 0.5` (away-from-zero or banker's round) is not specified by this spec.
 

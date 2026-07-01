@@ -201,6 +201,11 @@ mod tests {
             &run(r#"Regex(r"\d+").split("a1b2c3d", 2)"#, &[]),
             &Value::list(vec![Value::from("a"), Value::from("b"), Value::from("c3d")]),
         );
+        // limit 0 → no splits, whole string as a single part
+        assert_val(
+            &run(r#"Regex(r"\d+").split("a1b2c", 0)"#, &[]),
+            &Value::list(vec![Value::from("a1b2c")]),
+        );
     }
 
     #[test]
