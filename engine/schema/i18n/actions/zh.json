@@ -991,6 +991,23 @@
       }
     },
     {
+      "name": "FeatureCityGml2Reader",
+      "description": "读取CityGML 2.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml2Reader Parameters"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path expression resolving to the CityGML 2.0 file to read."
+        },
+        "extractTags": {
+          "title": "提取标签",
+          "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
+        }
+      }
+    },
+    {
       "name": "FeatureCityGml3Reader",
       "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
       "parameterI18n": {

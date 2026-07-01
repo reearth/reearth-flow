@@ -2994,6 +2994,62 @@ Extrude 2D Polygons into 3D Solids
 ### Category
 * Geometry
 
+## FeatureCityGml2Reader
+### Type
+* processor
+### Description
+Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureCityGml2Reader Parameters",
+  "type": "object",
+  "required": [
+    "dataset"
+  ],
+  "properties": {
+    "dataset": {
+      "title": "Dataset",
+      "description": "Path expression resolving to the CityGML 2.0 file to read.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "extractTags": {
+      "title": "Extract Tags",
+      "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+
 ## FeatureCityGml3Reader
 ### Type
 * processor

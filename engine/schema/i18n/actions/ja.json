@@ -994,6 +994,23 @@
       }
     },
     {
+      "name": "FeatureCityGml2Reader",
+      "description": "CityGML 2.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml2Reader パラメータ"
+        },
+        "dataset": {
+          "title": "データセット",
+          "description": "読み込む CityGML 2.0 ファイルへのパス式"
+        },
+        "extractTags": {
+          "title": "タグの抽出",
+          "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
+        }
+      }
+    },
+    {
       "name": "FeatureCityGml3Reader",
       "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
       "parameterI18n": {

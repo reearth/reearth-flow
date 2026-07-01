@@ -3078,6 +3078,63 @@
       ]
     },
     {
+      "name": "FeatureCityGml2Reader",
+      "type": "processor",
+      "description": "读取CityGML 2.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCityGml2Reader Parameters",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "dataset": {
+            "title": "Dataset",
+            "description": "Path expression resolving to the CityGML 2.0 file to read.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "提取标签",
+            "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ],
+      "tags": []
+    },
+    {
       "name": "FeatureCityGml3Reader",
       "type": "processor",
       "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
