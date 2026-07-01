@@ -47,8 +47,6 @@ export default ({
   rawWorkflowsRef.current = rawWorkflows;
   const workflowVariablesRef = useRef(workflowVariables);
   workflowVariablesRef.current = workflowVariables;
-  const onPersistSchemaRef = useRef(onPersistSchema);
-  onPersistSchemaRef.current = onPersistSchema;
 
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
@@ -64,11 +62,12 @@ export default ({
     };
   }, []);
 
-  const markFailed = useCallback((nodeId: string, note?: string) => {
-    // Allow an identical re-save to retry a failed probe.
-    lastProbedParams.current.delete(nodeId);
-    onPersistSchemaRef.current(nodeId, { status: "failed", note });
-  }, []);
+  const markFailed = useCallback(
+    (nodeId: string, note?: string) => {
+      onPersistSchema(nodeId, { status: "failed", note });
+    },
+    [onPersistSchema],
+  );
 
   const runProbe = useCallback(
     async (nodeId: string) => {
@@ -91,12 +90,12 @@ export default ({
         markFailed(nodeId);
         return;
       }
-      onPersistSchemaRef.current(nodeId, {
+      onPersistSchema(nodeId, {
         status: "running",
         jobId: data.job.id,
       });
     },
-    [currentProject, previewSchema, sampleSize, markFailed],
+    [currentProject, previewSchema, sampleSize, markFailed, onPersistSchema],
   );
 
   const handleNodeParamsSaved = useCallback(
@@ -107,7 +106,13 @@ export default ({
       }
 
       const signature = JSON.stringify(node.data.params);
-      if (lastProbedParams.current.get(node.id) === signature) return;
+      const failed =
+        rawWorkflowsRef.current
+          .flatMap((workflow) => workflow.nodes ?? [])
+          .find((n) => n.id === node.id)?.data?.nodeMetadata?.schema?.status ===
+        "failed";
+      if (!failed && lastProbedParams.current.get(node.id) === signature)
+        return;
       lastProbedParams.current.set(node.id, signature);
 
       const existing = debounceTimers.current.get(node.id);
@@ -146,7 +151,7 @@ export default ({
           markFailed(nodeId, failureNote);
           return;
         }
-        onPersistSchemaRef.current(
+        onPersistSchema(
           nodeId,
           toNodeSchemaMeta(
             nodeReport,
@@ -158,7 +163,7 @@ export default ({
         markFailed(nodeId);
       }
     },
-    [markFailed],
+    [markFailed, onPersistSchema],
   );
 
   const handleProbeError = useCallback(
@@ -177,16 +182,6 @@ export default ({
       }
     }
     return probes;
-  }, [rawWorkflows]);
-
-  useEffect(() => {
-    for (const workflow of rawWorkflows) {
-      for (const node of workflow.nodes ?? []) {
-        if (node.data?.nodeMetadata?.schema?.status === "failed") {
-          lastProbedParams.current.delete(node.id);
-        }
-      }
-    }
   }, [rawWorkflows]);
 
   const readerAttributeSuggestions = useMemo(
