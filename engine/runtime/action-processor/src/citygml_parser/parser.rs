@@ -445,9 +445,7 @@ mod tests {
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
 
-    use crate::citygml_parser::utils::{
-        test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID,
-    };
+    use crate::citygml_parser::utils::{test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()

@@ -86,9 +86,7 @@ pub(super) fn local_name(qname: &str) -> &str {
 pub(super) fn gml_id_attr(attrs: &[(QName, String)]) -> Option<String> {
     attrs
         .iter()
-        .find(|((q, ns), _)| {
-            local_name(q) == "id" && (*ns == GML_NS_ID || *ns == GML_NS_311_ID)
-        })
+        .find(|((q, ns), _)| local_name(q) == "id" && (*ns == GML_NS_ID || *ns == GML_NS_311_ID))
         .map(|(_, v)| v.clone())
 }
 
