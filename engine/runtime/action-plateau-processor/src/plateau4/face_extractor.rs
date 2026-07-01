@@ -10,6 +10,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
+use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -117,15 +118,15 @@ impl Default for FaceExtractorParam {
     }
 }
 
-#[derive(Debug, Clone)]
-struct ValidationResult {
-    is_incorrect_num_vertices: bool,
-    is_not_closed: bool,
-    is_wrong_orientation: bool,
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct ValidationResult {
+    pub(crate) is_incorrect_num_vertices: bool,
+    pub(crate) is_not_closed: bool,
+    pub(crate) is_wrong_orientation: bool,
 }
 
 impl ValidationResult {
-    fn has_error(&self) -> bool {
+    pub(crate) fn has_error(&self) -> bool {
         self.is_incorrect_num_vertices || self.is_not_closed || self.is_wrong_orientation
     }
 }
@@ -207,100 +208,208 @@ pub(crate) struct FaceExtractor {
     buffer: FileBuffer,
 }
 
+pub(crate) fn validate_vertex_count(coords: &[(f64, f64, f64)]) -> bool {
+    // Expected vertex count for TIN triangles: 4 (3 vertices + closing point)
+    coords.len() == 4
+}
+
+pub(crate) fn validate_closure(coords: &[(f64, f64, f64)]) -> bool {
+    if coords.is_empty() {
+        return false;
+    }
+    let first = coords.first().unwrap();
+    let last = coords.last().unwrap();
+    first.0 == last.0 && first.1 == last.1 && first.2 == last.2
+}
+
+pub(crate) fn validate_orientation(coords: &[(f64, f64, f64)]) -> bool {
+    if coords.len() < 3 {
+        return false;
+    }
+
+    // Calculate normal vector using cross product of first two edges
+    // For a triangle with vertices A, B, C:
+    // v1 = B - A
+    // v2 = C - A
+    // normal = v1 × v2
+    // Left-hand rule (FME_LEFT_HAND_RULE): normal.z > 0
+
+    let p0 = coords[0];
+    let p1 = coords[1];
+    let p2 = coords[2];
+
+    let v1_x = p1.0 - p0.0;
+    let v1_y = p1.1 - p0.1;
+
+    let v2_x = p2.0 - p0.0;
+    let v2_y = p2.1 - p0.1;
+
+    // Cross product z component: v1.x * v2.y - v1.y * v2.x
+    let normal_z = v1_x * v2_y - v1_y * v2_x;
+
+    // Left-hand rule: normal should point upward (positive z)
+    normal_z > 0.0
+}
+
+pub(crate) fn validate_pos_list(coords: &[(f64, f64, f64)]) -> ValidationResult {
+    let mut result = ValidationResult::default();
+
+    if !validate_vertex_count(coords) {
+        result.is_incorrect_num_vertices = true;
+    }
+
+    if !validate_closure(coords) {
+        result.is_not_closed = true;
+    }
+
+    // Only validate orientation for triangles (correct vertex count)
+    if !result.is_incorrect_num_vertices && !validate_orientation(coords) {
+        result.is_wrong_orientation = true;
+    }
+
+    result
+}
+
+pub(crate) fn parse_pos_list(pos_text: &str) -> Result<Vec<(f64, f64, f64)>, BoxedError> {
+    let values: Vec<f64> = pos_text
+        .split_whitespace()
+        .map(|s| s.parse::<f64>())
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            PlateauProcessorError::FaceExtractor(format!("Failed to parse coordinate: {e}"))
+        })?;
+
+    if !values.len().is_multiple_of(3) {
+        return Err(PlateauProcessorError::FaceExtractor(
+            "posList length must be multiple of 3".to_string(),
+        )
+        .into());
+    }
+
+    // Parse as (lat, lon, height) and convert to (lon, lat, height)
+    // FME code: coords = [(x, y, z) for x, y, z in zip(v[1::3], v[::3], v[2::3])]
+    // This means: x=v[1], y=v[0], z=v[2] (swap first two components)
+    let coords: Vec<(f64, f64, f64)> = values
+        .chunks(3)
+        .map(|chunk| (chunk[1], chunk[0], chunk[2]))
+        .collect();
+
+    Ok(coords)
+}
+
+/// Stream every `wtr:WaterBody` and collect its `gml:posList` texts, paired with
+/// the WaterBody's `gml:id`. Callers that don't need the id can discard it.
+pub(crate) fn collect_water_body_pos_lists(
+    xml_content: &str,
+) -> Result<Vec<(String, String)>, BoxedError> {
+    let collected: Rc<RefCell<Vec<(String, String)>>> = Rc::new(RefCell::new(Vec::new()));
+    let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
+
+    let transformer = StreamTransformer::new(xml_content)
+        .with_root_namespaces()
+        .map_err(|e| {
+            PlateauProcessorError::FaceExtractor(format!(
+                "Failed to create StreamTransformer: {e:?}"
+            ))
+        })?;
+
+    let collected_clone = Rc::clone(&collected);
+    let stream_error_clone = Rc::clone(&stream_error);
+    transformer
+        .on("//wtr:WaterBody", move |node| {
+            if stream_error_clone.borrow().is_some() {
+                return;
+            }
+
+            let doc = node.document();
+            let mut xml_ctx = match xml::create_context(doc) {
+                Ok(ctx) => ctx,
+                Err(e) => {
+                    *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                    return;
+                }
+            };
+            for (prefix, uri) in node.namespaces() {
+                let _ = xml_ctx.register_namespace(prefix, uri);
+            }
+            let root_node = match xml::get_root_readonly_node(doc) {
+                Ok(n) => n,
+                Err(e) => {
+                    *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                    return;
+                }
+            };
+
+            let gml_id = root_node
+                .get_attribute_ns("id", "http://www.opengis.net/gml")
+                .unwrap_or_else(|| "unknown".to_string());
+
+            let pos_lists =
+                match xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:posList", &root_node) {
+                    Ok(nodes) => nodes,
+                    Err(e) => {
+                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
+                        return;
+                    }
+                };
+
+            for pos_list_node in pos_lists {
+                let pos_text = pos_list_node.get_content().unwrap_or_default();
+                collected_clone
+                    .borrow_mut()
+                    .push((gml_id.clone(), pos_text));
+            }
+        })
+        .for_each()
+        .map_err(|e| {
+            PlateauProcessorError::FaceExtractor(format!("StreamTransformer error: {e:?}"))
+        })?;
+
+    if let Some(err) = Rc::try_unwrap(stream_error)
+        .expect("all callback references should be dropped after for_each()")
+        .into_inner()
+    {
+        return Err(PlateauProcessorError::FaceExtractor(err).into());
+    }
+
+    Ok(Rc::try_unwrap(collected)
+        .expect("all callback references should be dropped after for_each()")
+        .into_inner())
+}
+
+/// Derive `_json_filename` from the `udxDirs` attribute (flatten `/` to `_`) and
+/// insert it into the feature. No-op when `udxDirs` is absent or not a string.
+pub(crate) fn set_json_filename_from_udx_dirs(feature: &mut Feature) {
+    if let Some(AttributeValue::String(udx_dirs)) =
+        feature.attributes.get(&Attribute::new("udxDirs")).cloned()
+    {
+        let json_filename = format!("summary_{}.json", udx_dirs.replace('/', "_"));
+        feature.attributes_mut().insert(
+            Attribute::new("_json_filename"),
+            AttributeValue::String(json_filename),
+        );
+    }
+}
+
+/// Read a CityGML file (via the storage abstraction) into a UTF-8 string.
+pub(crate) fn read_file(
+    file_path: &str,
+    storage_resolver: &StorageResolver,
+) -> Result<String, BoxedError> {
+    let uri = Uri::from_str(file_path)
+        .map_err(|e| PlateauProcessorError::FaceExtractor(format!("Failed to parse URI: {e}")))?;
+    let storage = storage_resolver.resolve(&uri).map_err(|e| {
+        PlateauProcessorError::FaceExtractor(format!("Failed to resolve storage: {e}"))
+    })?;
+    let content = storage
+        .get_sync(uri.path().as_path())
+        .map_err(|e| PlateauProcessorError::FaceExtractor(format!("Failed to read file: {e}")))?;
+    String::from_utf8(content.to_vec()).map_err(|e| {
+        PlateauProcessorError::FaceExtractor(format!("Failed to convert to UTF-8: {e}")).into()
+    })
+}
+
 impl FaceExtractor {
-    fn validate_vertex_count(coords: &[(f64, f64, f64)]) -> bool {
-        // Expected vertex count for TIN triangles: 4 (3 vertices + closing point)
-        coords.len() == 4
-    }
-
-    fn validate_closure(coords: &[(f64, f64, f64)]) -> bool {
-        if coords.is_empty() {
-            return false;
-        }
-        let first = coords.first().unwrap();
-        let last = coords.last().unwrap();
-        first.0 == last.0 && first.1 == last.1 && first.2 == last.2
-    }
-
-    fn validate_orientation(coords: &[(f64, f64, f64)]) -> bool {
-        if coords.len() < 3 {
-            return false;
-        }
-
-        // Calculate normal vector using cross product of first two edges
-        // For a triangle with vertices A, B, C:
-        // v1 = B - A
-        // v2 = C - A
-        // normal = v1 × v2
-        // Left-hand rule (FME_LEFT_HAND_RULE): normal.z > 0
-
-        let p0 = coords[0];
-        let p1 = coords[1];
-        let p2 = coords[2];
-
-        let v1_x = p1.0 - p0.0;
-        let v1_y = p1.1 - p0.1;
-
-        let v2_x = p2.0 - p0.0;
-        let v2_y = p2.1 - p0.1;
-
-        // Cross product z component: v1.x * v2.y - v1.y * v2.x
-        let normal_z = v1_x * v2_y - v1_y * v2_x;
-
-        // Left-hand rule: normal should point upward (positive z)
-        normal_z > 0.0
-    }
-
-    fn validate_pos_list(coords: &[(f64, f64, f64)]) -> ValidationResult {
-        let mut result = ValidationResult {
-            is_incorrect_num_vertices: false,
-            is_not_closed: false,
-            is_wrong_orientation: false,
-        };
-
-        if !Self::validate_vertex_count(coords) {
-            result.is_incorrect_num_vertices = true;
-        }
-
-        if !Self::validate_closure(coords) {
-            result.is_not_closed = true;
-        }
-
-        // Only validate orientation for triangles (correct vertex count)
-        if !result.is_incorrect_num_vertices && !Self::validate_orientation(coords) {
-            result.is_wrong_orientation = true;
-        }
-
-        result
-    }
-
-    fn parse_pos_list(&self, pos_text: &str) -> Result<Vec<(f64, f64, f64)>, BoxedError> {
-        let values: Vec<f64> = pos_text
-            .split_whitespace()
-            .map(|s| s.parse::<f64>())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| {
-                PlateauProcessorError::FaceExtractor(format!("Failed to parse coordinate: {e}"))
-            })?;
-
-        if !values.len().is_multiple_of(3) {
-            return Err(PlateauProcessorError::FaceExtractor(
-                "posList length must be multiple of 3".to_string(),
-            )
-            .into());
-        }
-
-        // Parse as (lat, lon, height) and convert to (lon, lat, height)
-        // FME code: coords = [(x, y, z) for x, y, z in zip(v[1::3], v[::3], v[2::3])]
-        // This means: x=v[1], y=v[0], z=v[2] (swap first two components)
-        let coords: Vec<(f64, f64, f64)> = values
-            .chunks(3)
-            .map(|chunk| (chunk[1], chunk[0], chunk[2]))
-            .collect();
-
-        Ok(coords)
-    }
-
     fn process_xml(
         &mut self,
         ctx: &ExecutorContext,
@@ -313,87 +422,14 @@ impl FaceExtractor {
             .set_base_feature(file_path.clone(), ctx.feature.clone());
 
         // Collect (gml_id, pos_text) pairs via streaming, then process them
-        let collected: Rc<RefCell<Vec<(String, String)>>> = Rc::new(RefCell::new(Vec::new()));
-        let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
-
-        let transformer = StreamTransformer::new(&xml_content)
-            .with_root_namespaces()
-            .map_err(|e| {
-                PlateauProcessorError::FaceExtractor(format!(
-                    "Failed to create StreamTransformer: {e:?}"
-                ))
-            })?;
-
-        let collected_clone = Rc::clone(&collected);
-        let stream_error_clone = Rc::clone(&stream_error);
-        transformer
-            .on("//wtr:WaterBody", move |node| {
-                if stream_error_clone.borrow().is_some() {
-                    return;
-                }
-
-                let doc = node.document();
-                let mut xml_ctx = match xml::create_context(doc) {
-                    Ok(ctx) => ctx,
-                    Err(e) => {
-                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
-                        return;
-                    }
-                };
-                for (prefix, uri) in node.namespaces() {
-                    let _ = xml_ctx.register_namespace(prefix, uri);
-                }
-                let root_node = match xml::get_root_readonly_node(doc) {
-                    Ok(n) => n,
-                    Err(e) => {
-                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
-                        return;
-                    }
-                };
-
-                let gml_id = root_node
-                    .get_attribute_ns("id", "http://www.opengis.net/gml")
-                    .unwrap_or_else(|| "unknown".to_string());
-
-                let pos_lists =
-                    match xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:posList", &root_node)
-                    {
-                        Ok(nodes) => nodes,
-                        Err(e) => {
-                            *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
-                            return;
-                        }
-                    };
-
-                for pos_list_node in pos_lists {
-                    let pos_text = pos_list_node.get_content().unwrap_or_default();
-                    collected_clone
-                        .borrow_mut()
-                        .push((gml_id.clone(), pos_text));
-                }
-            })
-            .for_each()
-            .map_err(|e| {
-                PlateauProcessorError::FaceExtractor(format!("StreamTransformer error: {e:?}"))
-            })?;
-
-        if let Some(err) = Rc::try_unwrap(stream_error)
-            .expect("all callback references should be dropped after for_each()")
-            .into_inner()
-        {
-            return Err(PlateauProcessorError::FaceExtractor(err).into());
-        }
-
-        let collected = Rc::try_unwrap(collected)
-            .expect("all callback references should be dropped after for_each()")
-            .into_inner();
+        let collected = collect_water_body_pos_lists(&xml_content)?;
 
         for (gml_id, pos_text) in collected {
             // Parse coordinates
-            let coords = self.parse_pos_list(&pos_text)?;
+            let coords = parse_pos_list(&pos_text)?;
 
             // Validate
-            let result = Self::validate_pos_list(&coords);
+            let result = validate_pos_list(&coords);
 
             // Create feature for this surface
             let mut feature = ctx.feature.clone();
@@ -508,16 +544,7 @@ impl FaceExtractor {
             );
 
             // Add _json_filename attribute for JSON output
-            // Replace / with _ in udxDirs to create flat filename
-            if let Some(AttributeValue::String(udx_dirs)) =
-                summary_feature.attributes.get(&Attribute::new("udxDirs"))
-            {
-                let json_filename = format!("summary_{}.json", udx_dirs.replace('/', "_"));
-                summary_feature.attributes_mut().insert(
-                    Attribute::new("_json_filename"),
-                    AttributeValue::String(json_filename),
-                );
-            }
+            set_json_filename_from_udx_dirs(&mut summary_feature);
 
             fw.send(ctx.as_executor_context(summary_feature, SUMMARY_PORT.clone()));
         }
@@ -548,21 +575,7 @@ impl Processor for FaceExtractor {
         }
 
         // Parse URI and read file
-        let uri = Uri::from_str(&file_path_str).map_err(|e| {
-            PlateauProcessorError::FaceExtractor(format!("Failed to parse URI: {e}"))
-        })?;
-
-        let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
-            PlateauProcessorError::FaceExtractor(format!("Failed to resolve storage: {e}"))
-        })?;
-
-        let content = storage.get_sync(uri.path().as_path()).map_err(|e| {
-            PlateauProcessorError::FaceExtractor(format!("Failed to read file: {e}"))
-        })?;
-
-        let xml_content = String::from_utf8(content.to_vec()).map_err(|e| {
-            PlateauProcessorError::FaceExtractor(format!("Failed to convert to UTF-8: {e}"))
-        })?;
+        let xml_content = read_file(&file_path_str, &ctx.storage_resolver)?;
 
         self.process_xml(&ctx, fw, file_path_str, xml_content)?;
 
@@ -589,20 +602,11 @@ impl Processor for FaceExtractor {
 mod tests {
     use super::*;
 
-    fn create_validator() -> FaceExtractor {
-        FaceExtractor {
-            params: FaceExtractorParam::default(),
-            buffer: FileBuffer::new(),
-        }
-    }
-
     #[test]
     fn test_parse_pos_list_valid() {
-        let validator = create_validator();
-
         // Test case: 4 vertices (triangle + closing point)
         let input = "35.01 135.01 0.0 35.01 135.02 0.0 35.02 135.01 0.0 35.01 135.01 0.0";
-        let result = validator.parse_pos_list(input).unwrap();
+        let result = parse_pos_list(input).unwrap();
 
         // FME coordinate swap: (lat, lon, height) → (lon, lat, height)
         assert_eq!(result.len(), 4);
@@ -614,11 +618,9 @@ mod tests {
 
     #[test]
     fn test_parse_pos_list_invalid_length() {
-        let validator = create_validator();
-
         // Not a multiple of 3
         let input = "35.01 135.01";
-        let result = validator.parse_pos_list(input);
+        let result = parse_pos_list(input);
         assert!(result.is_err());
     }
 
@@ -631,15 +633,15 @@ mod tests {
             (0.0, 1.0, 0.0),
             (0.0, 0.0, 0.0),
         ];
-        assert!(FaceExtractor::validate_vertex_count(&coords));
+        assert!(validate_vertex_count(&coords));
 
         // Invalid: 2 vertices
         let coords = vec![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
-        assert!(!FaceExtractor::validate_vertex_count(&coords));
+        assert!(!validate_vertex_count(&coords));
 
         // Invalid: 3 vertices
         let coords = vec![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)];
-        assert!(!FaceExtractor::validate_vertex_count(&coords));
+        assert!(!validate_vertex_count(&coords));
 
         // Invalid: 5 vertices
         let coords = vec![
@@ -649,7 +651,7 @@ mod tests {
             (0.0, 1.0, 0.0),
             (0.0, 0.0, 0.0),
         ];
-        assert!(!FaceExtractor::validate_vertex_count(&coords));
+        assert!(!validate_vertex_count(&coords));
     }
 
     #[test]
@@ -661,15 +663,15 @@ mod tests {
             (0.0, 1.0, 0.0),
             (0.0, 0.0, 0.0),
         ];
-        assert!(FaceExtractor::validate_closure(&coords));
+        assert!(validate_closure(&coords));
 
         // Invalid: not closed
         let coords = vec![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)];
-        assert!(!FaceExtractor::validate_closure(&coords));
+        assert!(!validate_closure(&coords));
 
         // Invalid: empty
         let coords = vec![];
-        assert!(!FaceExtractor::validate_closure(&coords));
+        assert!(!validate_closure(&coords));
     }
 
     #[test]
@@ -682,7 +684,7 @@ mod tests {
             (0.0, 1.0, 0.0),
             (0.0, 0.0, 0.0),
         ];
-        assert!(FaceExtractor::validate_orientation(&coords));
+        assert!(validate_orientation(&coords));
 
         // Invalid: clockwise (right-hand rule, normal_z < 0)
         let coords = vec![
@@ -691,11 +693,11 @@ mod tests {
             (1.0, 0.0, 0.0),
             (0.0, 0.0, 0.0),
         ];
-        assert!(!FaceExtractor::validate_orientation(&coords));
+        assert!(!validate_orientation(&coords));
 
         // Invalid: less than 3 vertices
         let coords = vec![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
-        assert!(!FaceExtractor::validate_orientation(&coords));
+        assert!(!validate_orientation(&coords));
     }
 
     #[test]
@@ -705,7 +707,7 @@ mod tests {
         // - Not closed
         // - Orientation is not checked when vertex count is wrong
         let coords = vec![(0.0, 0.0, 0.0), (1.0, 1.0, 0.0)];
-        let result = FaceExtractor::validate_pos_list(&coords);
+        let result = validate_pos_list(&coords);
 
         assert!(result.is_incorrect_num_vertices);
         assert!(result.is_not_closed);
@@ -721,7 +723,7 @@ mod tests {
             (1.0, 0.0, 0.0),
             (0.0, 0.0, 0.0),
         ];
-        let result = FaceExtractor::validate_pos_list(&coords);
+        let result = validate_pos_list(&coords);
 
         assert!(!result.is_incorrect_num_vertices);
         assert!(!result.is_not_closed);
@@ -738,7 +740,7 @@ mod tests {
             (0.0, 1.0, 0.0),
             (0.0, 0.0, 0.0),
         ];
-        let result = FaceExtractor::validate_pos_list(&coords);
+        let result = validate_pos_list(&coords);
 
         assert!(!result.is_incorrect_num_vertices);
         assert!(!result.is_not_closed);

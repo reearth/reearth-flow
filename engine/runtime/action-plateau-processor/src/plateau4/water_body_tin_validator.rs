@@ -21,7 +21,6 @@ use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use std::sync::Arc;
 
 use once_cell::sync::Lazy;
@@ -30,9 +29,6 @@ use proj::Proj;
 use rayon::prelude::*;
 use std::cell::RefCell;
 
-use fastxml::transform::StreamTransformer;
-use reearth_flow_common::uri::Uri;
-use reearth_flow_common::xml;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::geometry::Geometry2D;
@@ -54,6 +50,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::PlateauProcessorError;
+use super::face_extractor::{
+    collect_water_body_pos_lists, parse_pos_list, read_file, set_json_filename_from_udx_dirs,
+    validate_pos_list,
+};
 
 static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
 
@@ -106,9 +106,7 @@ impl ProcessorFactory for WaterBodyTinValidatorFactory {
     fn description(&self) -> &str {
         "Validates WaterBody TIN surfaces end-to-end for the flood-family quality \
          check: extracts faces from CityGML, reprojects, detects degenerate \
-         triangles and unshared edges, and emits one summary per file. \
-         Consolidates FaceExtractor, HorizontalReprojector, GeometryValidator, \
-         TwoDimensionForcer and UnsharedEdgeDetector into a single action."
+         triangles and unshared edges, and emits one summary per file."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -225,14 +223,6 @@ pub(crate) struct WaterBodyTinValidator {
     global_params: Option<HashMap<String, Value>>,
     /// One input feature per gml file, buffered until `finish()`.
     buffer: Vec<Feature>,
-}
-
-/// Per-face validation outcome (mirrors FaceExtractor).
-#[derive(Debug, Clone, Copy, Default)]
-struct FaceValidation {
-    is_incorrect_num_vertices: bool,
-    is_not_closed: bool,
-    is_wrong_orientation: bool,
 }
 
 /// Per-file accumulated counts.
@@ -407,12 +397,12 @@ fn process_one_file(
     let file_path = file_path_attr.to_string();
 
     let xml_content = read_file(&file_path, storage_resolver)?;
-    let pos_lists = collect_pos_lists(&xml_content)?;
+    let pos_lists = collect_water_body_pos_lists(&xml_content)?;
 
     let mut counts = FileCounts::default();
     let mut edges = Vec::new();
 
-    for pos_text in pos_lists {
+    for (_, pos_text) in pos_lists {
         let coords = parse_pos_list(&pos_text)?;
         counts.num_instances += 1;
 
@@ -490,157 +480,6 @@ fn compute_group_key(feature: &Feature, group_by: &[Attribute]) -> AttributeValu
     )
 }
 
-fn read_file(
-    file_path: &str,
-    storage_resolver: &Arc<StorageResolver>,
-) -> Result<String, BoxedError> {
-    let uri = Uri::from_str(file_path).map_err(|e| {
-        PlateauProcessorError::WaterBodyTinValidator(format!("Failed to parse URI: {e}"))
-    })?;
-    let storage = storage_resolver.resolve(&uri).map_err(|e| {
-        PlateauProcessorError::WaterBodyTinValidator(format!("Failed to resolve storage: {e}"))
-    })?;
-    let content = storage.get_sync(uri.path().as_path()).map_err(|e| {
-        PlateauProcessorError::WaterBodyTinValidator(format!("Failed to read file: {e}"))
-    })?;
-    String::from_utf8(content.to_vec()).map_err(|e| {
-        PlateauProcessorError::WaterBodyTinValidator(format!("Failed to convert to UTF-8: {e}"))
-            .into()
-    })
-}
-
-/// Collect `gml:posList` text from every `wtr:WaterBody` (mirrors FaceExtractor).
-fn collect_pos_lists(xml_content: &str) -> Result<Vec<String>, BoxedError> {
-    let collected: std::rc::Rc<RefCell<Vec<String>>> = std::rc::Rc::new(RefCell::new(Vec::new()));
-    let stream_error: std::rc::Rc<RefCell<Option<String>>> = std::rc::Rc::new(RefCell::new(None));
-
-    let transformer = StreamTransformer::new(xml_content)
-        .with_root_namespaces()
-        .map_err(|e| {
-            PlateauProcessorError::WaterBodyTinValidator(format!(
-                "Failed to create StreamTransformer: {e:?}"
-            ))
-        })?;
-
-    let collected_clone = std::rc::Rc::clone(&collected);
-    let stream_error_clone = std::rc::Rc::clone(&stream_error);
-    transformer
-        .on("//wtr:WaterBody", move |node| {
-            if stream_error_clone.borrow().is_some() {
-                return;
-            }
-            let doc = node.document();
-            let mut xml_ctx = match xml::create_context(doc) {
-                Ok(ctx) => ctx,
-                Err(e) => {
-                    *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
-                    return;
-                }
-            };
-            for (prefix, uri) in node.namespaces() {
-                let _ = xml_ctx.register_namespace(prefix, uri);
-            }
-            let root_node = match xml::get_root_readonly_node(doc) {
-                Ok(n) => n,
-                Err(e) => {
-                    *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
-                    return;
-                }
-            };
-            let pos_lists =
-                match xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:posList", &root_node) {
-                    Ok(nodes) => nodes,
-                    Err(e) => {
-                        *stream_error_clone.borrow_mut() = Some(format!("{e:?}"));
-                        return;
-                    }
-                };
-            for pos_list_node in pos_lists {
-                let pos_text = pos_list_node.get_content().unwrap_or_default();
-                collected_clone.borrow_mut().push(pos_text);
-            }
-        })
-        .for_each()
-        .map_err(|e| {
-            PlateauProcessorError::WaterBodyTinValidator(format!("StreamTransformer error: {e:?}"))
-        })?;
-
-    if let Some(err) = std::rc::Rc::try_unwrap(stream_error)
-        .expect("all callback references should be dropped after for_each()")
-        .into_inner()
-    {
-        return Err(PlateauProcessorError::WaterBodyTinValidator(err).into());
-    }
-
-    Ok(std::rc::Rc::try_unwrap(collected)
-        .expect("all callback references should be dropped after for_each()")
-        .into_inner())
-}
-
-/// Parse a posList into `(lon, lat, height)` triples (swaps lat/lon, matches FME).
-fn parse_pos_list(pos_text: &str) -> Result<Vec<(f64, f64, f64)>, BoxedError> {
-    let values: Vec<f64> = pos_text
-        .split_whitespace()
-        .map(|s| s.parse::<f64>())
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            PlateauProcessorError::WaterBodyTinValidator(format!("Failed to parse coordinate: {e}"))
-        })?;
-
-    if !values.len().is_multiple_of(3) {
-        return Err(PlateauProcessorError::WaterBodyTinValidator(
-            "posList length must be multiple of 3".to_string(),
-        )
-        .into());
-    }
-
-    Ok(values
-        .chunks(3)
-        .map(|chunk| (chunk[1], chunk[0], chunk[2]))
-        .collect())
-}
-
-fn validate_pos_list(coords: &[(f64, f64, f64)]) -> FaceValidation {
-    let mut result = FaceValidation::default();
-
-    // Vertex count: TIN triangles expect 4 (3 vertices + closing point).
-    if coords.len() != 4 {
-        result.is_incorrect_num_vertices = true;
-    }
-
-    // Closure: first == last.
-    let closed = match (coords.first(), coords.last()) {
-        (Some(first), Some(last)) => first.0 == last.0 && first.1 == last.1 && first.2 == last.2,
-        _ => false,
-    };
-    if !closed {
-        result.is_not_closed = true;
-    }
-
-    // Orientation (only when vertex count is correct): left-hand rule, normal.z > 0,
-    // computed on geographic coords (x=lon, y=lat) just like FaceExtractor.
-    if !result.is_incorrect_num_vertices && !validate_orientation(coords) {
-        result.is_wrong_orientation = true;
-    }
-
-    result
-}
-
-fn validate_orientation(coords: &[(f64, f64, f64)]) -> bool {
-    if coords.len() < 3 {
-        return false;
-    }
-    let p0 = coords[0];
-    let p1 = coords[1];
-    let p2 = coords[2];
-    let v1_x = p1.0 - p0.0;
-    let v1_y = p1.1 - p0.1;
-    let v2_x = p2.0 - p0.0;
-    let v2_y = p2.1 - p0.1;
-    let normal_z = v1_x * v2_y - v1_y * v2_x;
-    normal_z > 0.0
-}
-
 fn extract_polygon_edges(polygon: &Polygon2D<f64>, file_idx: u32, edges: &mut Vec<Edge>) {
     let coords: Vec<_> = polygon.exterior().coords().collect();
     for window in coords.windows(2) {
@@ -681,15 +520,7 @@ fn build_summary(base_feature: Feature, counts: &FileCounts, num_unshared: u64) 
     attrs.insert(Attribute::new("_num_unshared_edges"), num(num_unshared));
 
     // _json_filename derived from udxDirs (flatten '/' to '_'), matching FaceExtractor.
-    if let Some(AttributeValue::String(udx_dirs)) =
-        feature.attributes.get(&Attribute::new("udxDirs")).cloned()
-    {
-        let json_filename = format!("summary_{}.json", udx_dirs.replace('/', "_"));
-        feature.attributes_mut().insert(
-            Attribute::new("_json_filename"),
-            AttributeValue::String(json_filename),
-        );
-    }
+    set_json_filename_from_udx_dirs(&mut feature);
 
     feature
 }
