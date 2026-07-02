@@ -992,6 +992,18 @@
         "extractTags": {
           "title": "Extract Tags",
           "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+        },
+        "flattenMeasureTypes": {
+          "title": "Flatten Measure Types",
+          "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Flatten Single-Child Object Nodes",
+          "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false."
+        },
+        "keepAttributes": {
+          "title": "Keep Attributes",
+          "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true."
         }
       }
     },
@@ -1008,6 +1020,18 @@
         "extractTags": {
           "title": "Extract Tags",
           "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+        },
+        "flattenMeasureTypes": {
+          "title": "Flatten Measure Types",
+          "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Flatten Single-Child Object Nodes",
+          "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false."
+        },
+        "keepAttributes": {
+          "title": "Keep Attributes",
+          "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true."
         }
       }
     },

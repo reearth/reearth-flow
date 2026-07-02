@@ -1007,6 +1007,18 @@
         "extractTags": {
           "title": "タグの抽出",
           "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
+        },
+        "flattenMeasureTypes": {
+          "title": "計測タイプのフラット化",
+          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。"
+        },
+        "flattenSingleChildObjects": {
+          "title": "単一子オブジェクトノードのフラット化",
+          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
+        },
+        "keepAttributes": {
+          "title": "属性の保持",
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
         }
       }
     },
@@ -1024,6 +1036,18 @@
         "extractTags": {
           "title": "タグの抽出",
           "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
+        },
+        "flattenMeasureTypes": {
+          "title": "計測タイプのフラット化",
+          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。"
+        },
+        "flattenSingleChildObjects": {
+          "title": "単一子オブジェクトノードのフラット化",
+          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
+        },
+        "keepAttributes": {
+          "title": "属性の保持",
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
         }
       }
     },

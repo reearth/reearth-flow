@@ -3091,7 +3091,7 @@
         "properties": {
           "dataset": {
             "title": "Dataset",
-            "description": "Path expression resolving to the CityGML 2.0 file to read.",
+            "description": "Expresión de ruta que resuelve al archivo CityGML 2.0 a leer.",
             "type": "object",
             "format": "code",
             "required": [
@@ -3119,6 +3119,24 @@
             "items": {
               "type": "string"
             }
+          },
+          "flattenMeasureTypes": {
+            "title": "Aplanar Tipos de Medida",
+            "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "Aplanar Nodos de Objeto con Hijo Único",
+            "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepAttributes": {
+            "title": "Conservar Atributos",
+            "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3148,7 +3166,7 @@
         "properties": {
           "dataset": {
             "title": "Dataset",
-            "description": "Path expression resolving to the CityGML 3.0 file to read.",
+            "description": "Expresión de ruta que resuelve al archivo CityGML 3.0 a leer.",
             "type": "object",
             "format": "code",
             "required": [
@@ -3176,6 +3194,24 @@
             "items": {
               "type": "string"
             }
+          },
+          "flattenMeasureTypes": {
+            "title": "Aplanar Tipos de Medida",
+            "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "Aplanar Nodos de Objeto con Hijo Único",
+            "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepAttributes": {
+            "title": "Conservar Atributos",
+            "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },

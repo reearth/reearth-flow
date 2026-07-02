@@ -1004,6 +1004,18 @@
         "extractTags": {
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplatir les Types de Mesure",
+          "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Aplatir les Nœuds Objet à Enfant Unique",
+          "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false."
+        },
+        "keepAttributes": {
+          "title": "Conserver les Attributs",
+          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         }
       }
     },
@@ -1021,6 +1033,18 @@
         "extractTags": {
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplatir les Types de Mesure",
+          "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Aplatir les Nœuds Objet à Enfant Unique",
+          "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false."
+        },
+        "keepAttributes": {
+          "title": "Conserver les Attributs",
+          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         }
       }
     },

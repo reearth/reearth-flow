@@ -3039,6 +3039,24 @@ Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across 
       "items": {
         "type": "string"
       }
+    },
+    "flattenMeasureTypes": {
+      "title": "Flatten Measure Types",
+      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "flattenSingleChildObjects": {
+      "title": "Flatten Single-Child Object Nodes",
+      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "keepAttributes": {
+      "title": "Keep Attributes",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }
@@ -3095,6 +3113,24 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
       "items": {
         "type": "string"
       }
+    },
+    "flattenMeasureTypes": {
+      "title": "Flatten Measure Types",
+      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "flattenSingleChildObjects": {
+      "title": "Flatten Single-Child Object Nodes",
+      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "keepAttributes": {
+      "title": "Keep Attributes",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }
