@@ -3091,7 +3091,7 @@
         "properties": {
           "dataset": {
             "title": "Dataset",
-            "description": "Path expression resolving to the CityGML 2.0 file to read.",
+            "description": "Expression de chemin résolvant vers le fichier CityGML 2.0 à lire.",
             "type": "object",
             "format": "code",
             "required": [
@@ -3119,6 +3119,24 @@
             "items": {
               "type": "string"
             }
+          },
+          "flattenMeasureTypes": {
+            "title": "Aplatir les Types de Mesure",
+            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "Aplatir les Nœuds Objet à Enfant Unique",
+            "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepAttributes": {
+            "title": "Conserver les Attributs",
+            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3148,7 +3166,7 @@
         "properties": {
           "dataset": {
             "title": "Dataset",
-            "description": "Path expression resolving to the CityGML 3.0 file to read.",
+            "description": "Expression de chemin résolvant vers le fichier CityGML 3.0 à lire.",
             "type": "object",
             "format": "code",
             "required": [
@@ -3176,6 +3194,24 @@
             "items": {
               "type": "string"
             }
+          },
+          "flattenMeasureTypes": {
+            "title": "Aplatir les Types de Mesure",
+            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "Aplatir les Nœuds Objet à Enfant Unique",
+            "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepAttributes": {
+            "title": "Conserver les Attributs",
+            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },

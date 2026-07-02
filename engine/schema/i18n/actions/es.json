@@ -1004,6 +1004,18 @@
         "extractTags": {
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplanar Tipos de Medida",
+          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Aplanar Nodos de Objeto con Hijo Único",
+          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        },
+        "keepAttributes": {
+          "title": "Conservar Atributos",
+          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
         }
       }
     },
@@ -1021,6 +1033,18 @@
         "extractTags": {
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplanar Tipos de Medida",
+          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Aplanar Nodos de Objeto con Hijo Único",
+          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        },
+        "keepAttributes": {
+          "title": "Conservar Atributos",
+          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
         }
       }
     },
