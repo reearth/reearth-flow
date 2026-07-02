@@ -233,6 +233,35 @@ func TestRollback(t *testing.T) {
 	}
 }
 
+// TestRollbackReturnsMaterializedDocument: the rollback handler must return the
+// full DocumentResponse (id, updates, version, timestamp) like the Rust server,
+// not a bare {status,version}. The API-server client decodes `updates` into the
+// rolled-back document; omitting it silently no-ops the user's rollback in the UI.
+func TestRollbackReturnsMaterializedDocument(t *testing.T) {
+	store := &fakeStore{materialized: []byte{7, 8, 9}}
+	h := newTestRouter(store)
+	rec := do(t, h, "POST", "/api/document/proj1/rollback", `{"doc_id":"proj1","version":4}`)
+	if rec.Code != 200 {
+		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var resp DocumentResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v (body=%s)", err, rec.Body.String())
+	}
+	if resp.ID != "proj1" {
+		t.Errorf("ID = %q, want proj1", resp.ID)
+	}
+	if resp.Version != 4 {
+		t.Errorf("Version = %d, want 4", resp.Version)
+	}
+	if string(resp.Updates) != "\x07\x08\x09" {
+		t.Errorf("Updates = %v, want the materialized rolled-back bytes", []byte(resp.Updates))
+	}
+	if resp.Timestamp == "" {
+		t.Errorf("Timestamp is empty; client falls back to time.Now() and loses the rolled-back timestamp")
+	}
+}
+
 func TestFlush(t *testing.T) {
 	store := &fakeStore{}
 	h := newTestRouter(store)
