@@ -8729,6 +8729,91 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 ### Category
 * PLATEAU
 
+## PLATEAU4.WaterBodyTinValidator
+### Type
+* processor
+### Description
+Validates WaterBody TIN surfaces end-to-end for the flood-family quality check: extracts faces from CityGML, reprojects, detects degenerate triangles and unshared edges, and emits one summary per file.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WaterBodyTinValidator Parameters",
+  "type": "object",
+  "required": [
+    "targetEpsgCode"
+  ],
+  "properties": {
+    "cityGmlPathAttribute": {
+      "description": "Attribute holding the CityGML file path (default: \"path\").",
+      "default": "path",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "corruptGeometryTolerance": {
+      "description": "Tolerance for corrupt-geometry degenerate check (default: 0.01).",
+      "default": 0.01,
+      "type": "number",
+      "format": "double"
+    },
+    "duplicateConsecutivePointsTolerance": {
+      "description": "Tolerance for duplicate-consecutive-points degenerate check (default: 0.009).",
+      "default": 0.009,
+      "type": "number",
+      "format": "double"
+    },
+    "sourceEpsgCode": {
+      "description": "Source EPSG code (default: 6697, JGD2011 geographic — FaceExtractor output).",
+      "default": 6697,
+      "type": "integer",
+      "format": "int64"
+    },
+    "targetEpsgCode": {
+      "description": "Target EPSG code expression for reprojection (e.g. `env.get(\"prcs\")`).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "unsharedEdgeGroupBy": {
+      "description": "Group-by attributes for unshared-edge detection (default: [_fld_scale, udxDirs]).",
+      "default": [
+        "_fld_scale",
+        "udxDirs"
+      ],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "unsharedEdgeTolerance": {
+      "description": "Tolerance for unshared-edge matching in meters (default: 0.1).",
+      "default": 0.1,
+      "type": "number",
+      "format": "double"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* summary
+### Category
+* PLATEAU
+
 ## PlanarityFilter
 ### Type
 * processor

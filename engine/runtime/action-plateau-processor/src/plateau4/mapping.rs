@@ -23,6 +23,7 @@ use super::{
     udx_folder_extractor::UDXFolderExtractorFactory,
     unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
     unshared_edge_detector::UnsharedEdgeDetectorFactory,
+    water_body_tin_validator::WaterBodyTinValidatorFactory,
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -47,6 +48,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<FaceExtractorFactory>::default(),
         Box::<UnsharedEdgeDetectorFactory>::default(),
         Box::<CompositeSurfaceContinuityFilterFactory>::default(),
+        Box::<WaterBodyTinValidatorFactory>::default(),
     ];
     factories
         .into_iter()
