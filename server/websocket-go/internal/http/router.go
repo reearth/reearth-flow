@@ -230,7 +230,15 @@ func (r *router) rollback(w http.ResponseWriter, req *http.Request) {
 		r.fail(w, "rollback prune failed", err, "doc", id, "version", body.Version)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "version": body.Version})
+	// Return the full rolled-back document, matching the Rust server's
+	// DocumentResponse. The API-server client decodes `updates` to render the
+	// rolled-back state; a bare {status,version} would silently no-op the UI.
+	writeJSON(w, http.StatusOK, DocumentResponse{
+		ID:        id,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Updates:   rolledBack,
+		Version:   body.Version,
+	})
 }
 
 // signal toggles rollbackInProgress on the live room. A nil signaler is a no-op;
