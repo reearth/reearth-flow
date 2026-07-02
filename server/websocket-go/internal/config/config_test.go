@@ -2,8 +2,21 @@ package config
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
+
+// TestDefaultOriginsHaveNoDeadGlobs guards against shipping a default origin that
+// ygo can never match: the provider compares AllowedOrigins entries by exact
+// (case-insensitive) equality or the literal "*", with no glob/suffix support, so
+// an entry like "https://*.reearth.dev" is a dead, misleading allow-list line.
+func TestDefaultOriginsHaveNoDeadGlobs(t *testing.T) {
+	for _, o := range defaultOrigins {
+		if o != "*" && strings.Contains(o, "*") {
+			t.Errorf("default origin %q contains a glob but ygo matches origins exactly; it can never match", o)
+		}
+	}
+}
 
 func TestLoadDefaults(t *testing.T) {
 	clearEnv(t)
@@ -33,7 +46,6 @@ func TestLoadDefaults(t *testing.T) {
 	wantOrigins := []string{
 		"http://localhost:3000",
 		"https://api.flow.test",
-		"https://*.reearth.dev",
 		"http://localhost:8000",
 		"http://localhost:8080",
 	}
@@ -259,6 +271,54 @@ func TestLoadLoggingOverrides(t *testing.T) {
 	}
 	if c.LogFormat != "text" {
 		t.Errorf("LogFormat = %q, want explicit text override even in production", c.LogFormat)
+	}
+}
+
+// TestWSProtectedAcceptsCommonSpellings: an operator who writes a reasonable
+// truthy value (on/yes/enabled) to enable protected mode must actually get it
+// enabled, never a silent fall-back to the insecure default.
+func TestWSProtectedAcceptsCommonSpellings(t *testing.T) {
+	for _, v := range []string{"on", "yes", "enabled", "ON", "True", "1"} {
+		t.Run(v, func(t *testing.T) {
+			clearEnv(t)
+			t.Setenv("REEARTH_FLOW_WS_PROTECTED", v)
+			if !Load().WSAuthEnabled {
+				t.Errorf("WSAuthEnabled(%q) = false, want true", v)
+			}
+		})
+	}
+	for _, v := range []string{"off", "no", "disabled", "false", "0"} {
+		t.Run(v, func(t *testing.T) {
+			clearEnv(t)
+			t.Setenv("REEARTH_FLOW_WS_PROTECTED", v)
+			if Load().WSAuthEnabled {
+				t.Errorf("WSAuthEnabled(%q) = true, want false", v)
+			}
+		})
+	}
+}
+
+// TestValidateRejectsUnparseableWSProtected: a genuinely unparseable value for a
+// security-gating toggle must fail startup rather than silently disable the
+// control (fail-open on misconfig).
+func TestValidateRejectsUnparseableWSProtected(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("REEARTH_FLOW_WS_PROTECTED", "maybe")
+	if err := Load().Validate(); err == nil {
+		t.Fatalf("Validate() = nil, want error for unparseable REEARTH_FLOW_WS_PROTECTED")
+	}
+}
+
+// TestValidateAcceptsValidAndEmpty: valid and unset values must pass validation.
+func TestValidateAcceptsValidAndEmpty(t *testing.T) {
+	for _, v := range []string{"", "true", "false", "on", "no"} {
+		clearEnv(t)
+		if v != "" {
+			t.Setenv("REEARTH_FLOW_WS_PROTECTED", v)
+		}
+		if err := Load().Validate(); err != nil {
+			t.Errorf("Validate() with WS_PROTECTED=%q = %v, want nil", v, err)
+		}
 	}
 }
 

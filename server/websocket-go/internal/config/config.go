@@ -3,6 +3,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -79,11 +80,14 @@ const (
 	defaultOTLPMaxQueueSize       = 2048
 )
 
-// defaultOrigins is the default CORS / WebSocket allow-list.
+// defaultOrigins is the default CORS / WebSocket allow-list for local
+// development. Entries are matched by the ygo provider case-insensitively and
+// EXACTLY (or the literal "*"); it has no glob/suffix support, so every entry
+// must be a concrete origin. Production must set REEARTH_FLOW_ORIGINS to the
+// exact origins it serves (e.g. https://app.reearth.dev), one per comma.
 var defaultOrigins = []string{
 	"http://localhost:3000",
 	"https://api.flow.test",
-	"https://*.reearth.dev",
 	"http://localhost:8000",
 	"http://localhost:8080",
 }
@@ -122,6 +126,19 @@ func Load() *Config {
 	}
 }
 
+// Validate reports configuration errors that must fail startup. Security-gating
+// toggles must never silently fall back to an insecure default on a typo, so an
+// explicitly-set but unparseable value is a hard error rather than a quiet
+// disable (fail-open on misconfig).
+func (c *Config) Validate() error {
+	if raw := os.Getenv("REEARTH_FLOW_WS_PROTECTED"); strings.TrimSpace(raw) != "" {
+		if _, ok := parseBool(raw); !ok {
+			return fmt.Errorf("REEARTH_FLOW_WS_PROTECTED=%q is not a valid boolean (use true/false, on/off, yes/no); refusing to start with an ambiguous WS auth setting", raw)
+		}
+	}
+	return nil
+}
+
 // defaultLogFormat chooses structured JSON for non-dev environments (so Cloud
 // Run ingests structured logs) and human-readable text for local development.
 func defaultLogFormat(appEnv string) string {
@@ -141,17 +158,31 @@ func isDevEnv(appEnv string) bool {
 	}
 }
 
+// parseBool recognizes the strconv.ParseBool set plus the common operator
+// spellings on/off, yes/no, y/n, and enabled/disabled. ok is false for a
+// non-empty value that matches none of these, so a security-gating toggle can
+// detect a typo instead of silently falling back to an insecure default.
+func parseBool(v string) (val bool, ok bool) {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "t", "true", "on", "yes", "y", "enabled":
+		return true, true
+	case "0", "f", "false", "off", "no", "n", "disabled":
+		return false, true
+	default:
+		return false, false
+	}
+}
+
 // envBool parses a boolean, falling back to def when unset/empty/unparseable.
 func envBool(key string, def bool) bool {
 	v := os.Getenv(key)
 	if v == "" {
 		return def
 	}
-	b, err := strconv.ParseBool(strings.TrimSpace(v))
-	if err != nil {
-		return def
+	if b, ok := parseBool(v); ok {
+		return b
 	}
-	return b
+	return def
 }
 
 // envFloat parses a float, falling back to def when unset/empty/unparseable.

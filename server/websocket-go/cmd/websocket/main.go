@@ -47,6 +47,12 @@ func run() error {
 	slog.SetDefault(log)
 	log.Info("logger configured", "level", cfg.LogLevel, "format", cfg.LogFormat)
 
+	// Fail fast on a misconfigured security toggle rather than silently
+	// disabling it.
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
