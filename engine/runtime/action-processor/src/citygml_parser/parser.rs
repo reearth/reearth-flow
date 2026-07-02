@@ -188,7 +188,7 @@ fn is_measure_node(node: &XmlNode) -> Option<(serde_json::Number, String)> {
     if node.attrs.len() != 1 {
         return None;
     }
-    let ((attr_qname, _), uom_val) = node.attrs.iter().next()?;
+    let ((attr_qname, _), uom_val) = node.attrs.first()?;
     if local_name(attr_qname) != "uom" {
         return None;
     }
