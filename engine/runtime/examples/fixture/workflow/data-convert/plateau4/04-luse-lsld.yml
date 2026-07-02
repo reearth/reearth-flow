@@ -1,5 +1,5 @@
-id: 3e39d990-0a80-47df-9be9-3bf7c0068b5a
-name: PLATEAU4-DataConvert-04-luse-lsld-workflow
+id: 3e39d990-0a80-47df-9be9-3bf7c0068b5b
+name: PLATEAU4-DataConvert-04-luse-lsld-workflow-citygml2
 entryGraphId: 0e500d5a-7882-4835-9285-9763ba8b5b65
 with:
   cityGmlPath: null
@@ -143,14 +143,14 @@ graphs:
   - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
     name: FeatureReaderByCityGml
     type: action
-    action: FeatureCityGmlReader
+    action: FeatureCityGml2Reader
     with:
-      codelistsPath:
-        type: flowExpr
-        value: attributes["codelists"]
       dataset:
         type: flowExpr
         value: attributes["path"]
+      keepAttributes: false
+      flattenSingleChildObjects: true
+      flattenMeasureTypes: true
   - id: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
     name: TargetPackagesFilter
     type: action
@@ -198,9 +198,9 @@ graphs:
       - attribute: city_name
         valueAttribute: cityName
       - attribute: feature_type
-        valueAttribute: featureType
+        valueAttribute: __citygml_feature_type
       - attribute: gml_id
-        valueAttribute: gmlId
+        valueAttribute: __citygml_gml_id
       - attribute: luse_class
         expr:
           type: flowExpr
@@ -278,9 +278,9 @@ graphs:
       - attribute: city_name
         valueAttribute: cityName
       - attribute: feature_type
-        valueAttribute: featureType
+        valueAttribute: __citygml_feature_type
       - attribute: gml_id
-        valueAttribute: gmlId
+        valueAttribute: __citygml_gml_id
       - attribute: core_creationDate
         expr:
           type: flowExpr
