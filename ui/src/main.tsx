@@ -6,6 +6,7 @@ import loadConfig, { config } from "@flow/config";
 import { AuthProvider } from "@flow/lib/auth";
 import { enableMocking } from "@flow/mocks";
 import { routeTree } from "@flow/routeTree.gen.ts";
+import { initializeSentinel } from "@flow/services/sentinel";
 
 import "@flow/index.css";
 import NotFound from "./features/NotFound";
@@ -26,6 +27,9 @@ loadConfig().finally(async () => {
     console.log("🚀 Starting Mock Server for Re:Earth Flow");
     await enableMocking({ disabled: false });
   }
+
+  // Register the Sentinel service worker for protected tile-server auth.
+  await initializeSentinel();
 
   const element = document.getElementById("root");
   if (!element) throw new Error("root element is not found");
