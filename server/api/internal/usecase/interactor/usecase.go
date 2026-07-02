@@ -8,8 +8,6 @@ import (
 	"github.com/reearth/reearthx/usecasex"
 )
 
-const retry = 2
-
 type uc struct {
 	readableWorkspaces accountsid.WorkspaceIDList
 	writableWorkspaces accountsid.WorkspaceIDList
@@ -66,14 +64,18 @@ func Run2[A, B any](ctx context.Context, r *repo.Container, e *uc, f func(ctx co
 }
 
 func Run3[A, B, C any](ctx context.Context, r *repo.Container, e *uc, f func(ctx context.Context) (A, B, C, error)) (a A, b B, c C, err error) {
-	var t usecasex.Transaction
+	var t usecasex.Transactor
 	if e.tx && r.Transaction != nil {
 		t = r.Transaction
 	}
-
-	err = usecasex.DoTransaction(ctx, t, retry, func(ctx context.Context) error {
+	run := func(ctx context.Context) error {
 		a, b, c, err = f(ctx)
 		return err
-	})
+	}
+	if t == nil {
+		err = run(ctx)
+		return
+	}
+	err = t.WithinTransaction(ctx, run)
 	return
 }
