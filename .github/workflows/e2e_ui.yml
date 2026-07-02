@@ -59,13 +59,22 @@ jobs:
           FLOW_DASHBOARD_E2E_BASEURL: ${{ secrets.FLOW_DASHBOARD_E2E_BASEURL }}
           FLOW_DASHBOARD_E2E_USER_EMAIL: ${{ secrets.FLOW_DASHBOARD_E2E_USER_EMAIL }}
           FLOW_DASHBOARD_E2E_USER_PASSWORD: ${{ secrets.FLOW_DASHBOARD_E2E_USER_PASSWORD }}
-      - name: Upload Playwright report
+      - name: Generate Allure report
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -d allure-results ]; then
+            npm run allure:generate
+          else
+            echo "No allure-results directory found; skipping Allure report generation."
+          fi
+      - name: Upload Allure report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-report
-          path: ui/e2e/playwright-report
+          name: allure-report
+          path: ui/e2e/allure-report
           retention-days: 14
+          if-no-files-found: ignore
       - name: Upload test results
         if: ${{ failure() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
