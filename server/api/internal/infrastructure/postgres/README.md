@@ -49,10 +49,45 @@ field mappings and is idempotent (re-runnable). Account repos stay on Mongo;
 Config (migration bookkeeping) and AuthRequest (transient) are skipped.
 
 ```sh
-# target schema must be migrated first (atlas migrate apply)
 REEARTH_FLOW_DB="mongodb+srv://…"  REEARTH_FLOW_DB_PG="postgres://…" \
-  go run ./cmd/dbmigrate -db reearth-flow
+  go run ./cmd/dbmigrate -apply-schema -db reearth-flow
 
 # read every replicated row back through the Postgres adapters (target only)
 REEARTH_FLOW_DB_PG="postgres://…" go run ./cmd/dbmigrate -verify
 ```
+
+## Seeding a new Postgres (golden path)
+
+`cmd/dbmigrate` replicates the flow-owned collections from Mongo into Postgres.
+With `-apply-schema` it first applies the embedded Atlas migrations
+(`internal/infrastructure/postgres/db/migrations`, embedded via `db.MigrationsFS`)
+to a fresh instance, so a brand-new Cloud SQL database needs no separate schema
+step. `-apply-schema` is one-shot (bare `CREATE TABLE`); reseed = drop/recreate.
+
+For a private-IP Cloud SQL instance, run `dbmigrate` from an ephemeral, in-VPC
+Cloud Run job on the flow-api image (which now ships the `dbmigrate` binary)
+so the job can reach the private instance without a bastion:
+
+```sh
+gcloud run jobs create reearth-flow-dbmigrate \
+  --project reearth-oss \
+  --region us-central1 \
+  --image us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-api:nightly \
+  --network default \
+  --subnet default \
+  --vpc-egress private-ranges-only \
+  --service-account reearth-flow-migration@reearth-oss.iam.gserviceaccount.com \
+  --set-secrets REEARTH_FLOW_DB=reearth-flow-db:latest,REEARTH_FLOW_DB_PG=reearth-flow-db-postgres:latest \
+  --command /reearth-flow/dbmigrate \
+  --args=-apply-schema,-db=reearth-flow,-verify
+
+gcloud run jobs execute reearth-flow-dbmigrate \
+  --project reearth-oss \
+  --region us-central1 \
+  --wait
+```
+
+The service account needs `roles/secretmanager.secretAccessor` on both
+`reearth-flow-db` (source Mongo) and `reearth-flow-db-postgres` (target). Clean
+up the job when the seed is done, and re-run per environment by changing the
+project, image, and service account inputs.
