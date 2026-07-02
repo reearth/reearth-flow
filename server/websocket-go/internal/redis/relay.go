@@ -22,6 +22,11 @@ const (
 	readBlock = 1000 * time.Millisecond
 )
 
+// evictTimeout bounds the last-instance durability I/O (heartbeat removal, active
+// re-check, GCS flush, stream delete). It runs on a fresh context so a cancelled
+// relay delivery context (graceful shutdown) cannot abort the flush.
+const evictTimeout = 30 * time.Second
+
 // Write-queue bounds. Publish enqueues onto a bounded per-room channel and returns
 // immediately; a per-room writer goroutine drains it and pipelines the XADDs in
 // batches. On overflow the enqueue drops + counts (recoverable via flush +
@@ -446,22 +451,35 @@ func (r *Relay) RoomDeactivated(room string) {
 	}
 	// Refuse Publish for the whole critical section so no XADD races the DEL.
 	rs.evicting = true
-	ctx := r.ctx
 	r.mu.Unlock()
 
 	rs.cancel()
 	rs.wg.Wait()
 
-	r.evict(ctx, room)
+	r.evict(room)
 
 	r.mu.Lock()
-	delete(r.rooms, room)
+	// Only delete if the map still holds THIS roomState. A client reconnecting into
+	// the eviction window makes ygo fire RoomActivated (off-lock), which installs a
+	// fresh roomState under the same key; an unconditional delete would drop that
+	// live entry, leaking its goroutines and silently no-op'ing every future
+	// Publish for the room.
+	if r.rooms[room] == rs {
+		delete(r.rooms, room)
+	}
 	r.mu.Unlock()
 }
 
 // evict removes this node's heartbeat; if no instance remains active it flushes
 // GCS then safe-deletes the stream under the doc lock's atomic re-check.
-func (r *Relay) evict(ctx context.Context, room string) {
+//
+// It runs on a fresh bounded context, NOT the relay delivery context: on graceful
+// shutdown ygo cancels the delivery context BEFORE closing peers (which triggers
+// this eviction), so reusing it would abort the last-instance flush and silently
+// lose the room's latest state for a coexisting Rust cold-load.
+func (r *Relay) evict(room string) {
+	ctx, cancel := context.WithTimeout(context.Background(), evictTimeout)
+	defer cancel()
 	last, err := removeHeartbeat(ctx, r.client, room, r.clientID)
 	if err != nil {
 		r.log.Debug("relay remove heartbeat failed", "room", room, "err", err)
@@ -520,7 +538,12 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 
 	if ok {
 		r.mu.Lock()
-		delete(r.rooms, room)
+		// Only delete if the map still holds the roomState we evicted: a concurrent
+		// re-activation may have installed a fresh one under the same key, which must
+		// not be dropped (leaked goroutines + silently dead Publish).
+		if r.rooms[room] == rs {
+			delete(r.rooms, room)
+		}
 		r.mu.Unlock()
 	}
 	return nil
