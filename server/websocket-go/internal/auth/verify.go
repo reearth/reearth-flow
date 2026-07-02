@@ -60,7 +60,10 @@ func NewAuthFunc(cfg Config) func(*http.Request) bool {
 
 	return func(r *http.Request) bool {
 		token := r.URL.Query().Get("token")
-		if token == "" {
+		// Mirror the Rust server, which rejects a token that is empty after
+		// trimming (AuthToken::new -> 400) without contacting the backend, so
+		// both servers agree during blue-green coexistence.
+		if strings.TrimSpace(token) == "" {
 			return false
 		}
 

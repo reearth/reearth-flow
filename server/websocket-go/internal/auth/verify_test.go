@@ -92,6 +92,21 @@ func TestEnabledEmptyTokenDenies(t *testing.T) {
 	}
 }
 
+// TestEnabledWhitespaceTokenDenies: a whitespace-only token must be rejected
+// without a backend round-trip, mirroring the Rust server (AuthToken::new treats
+// token.trim().is_empty() as Empty and returns 400), so the two servers agree
+// during blue-green coexistence.
+func TestEnabledWhitespaceTokenDenies(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("must not call verify for whitespace-only token")
+	}))
+	defer srv.Close()
+	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	if fn(reqWithToken("   ")) {
+		t.Fatalf("whitespace-only token must deny")
+	}
+}
+
 func TestEnabled401Denies(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
