@@ -231,6 +231,7 @@
   "Required": "",
   "Starting...": "",
   "Clear debug run and results": "",
+  "Debug Cache is Stale": "",
   "Start debug run of workflow": "",
   "Stop debug run of workflow": "",
   "Additional Debug Actions": "",

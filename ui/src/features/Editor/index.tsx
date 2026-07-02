@@ -110,6 +110,7 @@ export default function Editor({
     awarenessSelectionsMap,
     handleShowSearchPanel,
     selectedNodeIds,
+    staleNodeIds,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -133,6 +134,7 @@ export default function Editor({
         onFieldFocus: handleWorkflowVarFieldFocus,
         onEditStart: handleWorkflowVarEditStart,
       },
+      staleNodeIds,
     }),
     [
       isLocked,
@@ -146,6 +148,7 @@ export default function Editor({
       handleWorkflowVarDialogClose,
       handleWorkflowVarFieldFocus,
       handleWorkflowVarEditStart,
+      staleNodeIds,
     ],
   );
 
