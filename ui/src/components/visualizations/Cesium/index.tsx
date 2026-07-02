@@ -1,6 +1,4 @@
 import {
-  CesiumTerrainProvider,
-  EllipsoidTerrainProvider,
   UrlTemplateImageryProvider,
   BoundingSphere,
   defined,
@@ -12,7 +10,6 @@ import {
   ImageryLayer,
   ScreenSpaceEvent,
   ScreenSpaceEventHandler,
-  useCesium,
   Viewer,
   ViewerProps,
 } from "resium";
@@ -23,8 +20,8 @@ import useDoubleClick from "@flow/hooks/useDoubleClick";
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
 
-const REEARTH_TERRAIN_URL =
-  "https://terrain.reearth.land/cesium-mesh/ellipsoid";
+// const REEARTH_TERRAIN_URL =
+//   "https://terrain.reearth.land/cesium-mesh/ellipsoid";
 const ESRI_WORLD_IMAGERY_URL =
   "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
@@ -43,43 +40,43 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   baseLayer: false,
 };
 
-const TerrainController: React.FC<{ show3DTerrain: boolean }> = ({
-  show3DTerrain,
-}) => {
-  const { viewer } = useCesium();
+// const TerrainController: React.FC<{ show3DTerrain: boolean }> = ({
+//   show3DTerrain,
+// }) => {
+//   const { viewer } = useCesium();
 
-  useEffect(() => {
-    if (!viewer || viewer.isDestroyed()) return;
-    let cancelled = false;
+//   useEffect(() => {
+//     if (!viewer || viewer.isDestroyed()) return;
+//     let cancelled = false;
 
-    if (show3DTerrain) {
-      CesiumTerrainProvider.fromUrl(REEARTH_TERRAIN_URL, {
-        requestVertexNormals: true,
-        requestWaterMask: false,
-      })
-        .then((terrainProvider) => {
-          if (cancelled || viewer.isDestroyed()) return;
-          viewer.terrainProvider = terrainProvider;
-          viewer.scene.requestRender();
-        })
-        .catch((e) => {
-          console.error("Failed to load Re:Earth terrain:", e);
-          if (cancelled || viewer.isDestroyed()) return;
-          viewer.terrainProvider = new EllipsoidTerrainProvider();
-          viewer.scene.requestRender();
-        });
-    } else {
-      viewer.terrainProvider = new EllipsoidTerrainProvider();
-      viewer.scene.requestRender();
-    }
+//     if (show3DTerrain) {
+//       CesiumTerrainProvider.fromUrl(REEARTH_TERRAIN_URL, {
+//         requestVertexNormals: true,
+//         requestWaterMask: false,
+//       })
+//         .then((terrainProvider) => {
+//           if (cancelled || viewer.isDestroyed()) return;
+//           viewer.terrainProvider = terrainProvider;
+//           viewer.scene.requestRender();
+//         })
+//         .catch((e) => {
+//           console.error("Failed to load Re:Earth terrain:", e);
+//           if (cancelled || viewer.isDestroyed()) return;
+//           viewer.terrainProvider = new EllipsoidTerrainProvider();
+//           viewer.scene.requestRender();
+//         });
+//     } else {
+//       viewer.terrainProvider = new EllipsoidTerrainProvider();
+//       viewer.scene.requestRender();
+//     }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [viewer, show3DTerrain]);
+//     return () => {
+//       cancelled = true;
+//     };
+//   }, [viewer, show3DTerrain]);
 
-  return null;
-};
+//   return null;
+// };
 
 type Props = {
   fileContent: any | null;
@@ -173,6 +170,7 @@ const CesiumViewer: React.FC<Props> = ({
 
   const baseImageryProvider = useMemo(() => {
     const { tileServerBaseUrl, tileServerToken } = config();
+    console.log("Tile server config:", { tileServerBaseUrl, tileServerToken });
     if (tileServerBaseUrl && tileServerToken) {
       return new UrlTemplateImageryProvider({
         url: `${tileServerBaseUrl.replace(/\/$/, "")}/imagery/{z}/{x}/{y}.webp`,
@@ -223,9 +221,9 @@ const CesiumViewer: React.FC<Props> = ({
       full
       {...defaultCesiumProps}>
       <ImageryLayer imageryProvider={baseImageryProvider} />
-      <TerrainController
+      {/* <TerrainController
         show3DTerrain={visualizerType === "3d-map" && !cityGmlData}
-      />
+      /> */}
       {onSelectedFeature && (
         <ScreenSpaceEventHandler>
           <ScreenSpaceEvent
@@ -247,7 +245,7 @@ const CesiumViewer: React.FC<Props> = ({
               geoJsonData={geoJsonData}
               selectedFeatureId={selectedFeatureId}
               showSelectedFeatureOnly={showSelectedFeatureOnly}
-              clampToGround={visualizerType === "3d-map"}
+              clampToGround={false}
             />
           )}
 
