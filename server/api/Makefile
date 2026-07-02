@@ -26,7 +26,7 @@ gen-policies:
 swagger:
 	swag init -g cmd/reearth-flow/main.go -o internal/app/docs --parseDependency --parseInternal
 
-.PHONY: lint test e2e build run-app run-db gql gen-policies swagger all gen-thrift proto
+.PHONY: lint test e2e build run-app run-db gql gen-policies swagger all gen-thrift proto run-db-pg sqlc atlas-diff atlas-validate
 
 all: gen-thrift
 
@@ -40,4 +40,16 @@ proto:
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		pkg/cms/proto/schema.proto
 
+run-db-pg:
+	docker compose -f ./docker-compose.yml up -d reearth-flow-postgres
 
+PG_DIR=internal/infrastructure/postgres
+
+sqlc:
+	cd $(PG_DIR) && sqlc generate
+
+atlas-diff:
+	cd $(PG_DIR)/db && atlas migrate diff $(name) --env local
+
+atlas-validate:
+	cd $(PG_DIR)/db && atlas migrate validate --env local
