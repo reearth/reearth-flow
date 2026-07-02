@@ -142,47 +142,165 @@ impl Parser {
     }
 }
 
-pub fn to_feature(node: &XmlNode) -> Feature {
-    let content = node_to_attribute_value(node);
-    build_feature(&node.name.0, gml_id_attr(&node.attrs).as_deref(), content)
+pub fn to_feature(
+    node: &XmlNode,
+    citygml_attribute_key: Option<&str>,
+    keep_attributes: bool,
+    flatten_single_child_objects: bool,
+    flatten_measure_types: bool,
+) -> Feature {
+    let content =
+        node_to_attribute_value(node, keep_attributes, flatten_single_child_objects, flatten_measure_types);
+    build_feature(
+        &node.name.0,
+        gml_id_attr(&node.attrs).as_deref(),
+        content,
+        citygml_attribute_key,
+    )
 }
 
-pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
+/// Returns the sole element child of `node` when `node` has exactly one element child and no
+/// text content. Used to detect wrapper nodes that contribute no information of their own.
+fn single_object_child(node: &XmlNode) -> Option<&XmlNode> {
+    let mut sole: Option<&XmlNode> = None;
+    for child in &node.children {
+        match child {
+            XmlChild::Element(e) => {
+                if sole.is_some() {
+                    return None;
+                }
+                sole = Some(e);
+            }
+            XmlChild::Text(t) if !t.trim().is_empty() => return None,
+            XmlChild::Text(_) => {}
+        }
+    }
+    sole
+}
+
+/// Detects a CityGML measure element: exactly one `uom` attribute, no element children, and text
+/// content that parses as a finite f64. Returns the parsed number and unit-of-measure string.
+fn is_measure_node(node: &XmlNode) -> Option<(serde_json::Number, String)> {
+    if node.attrs.len() != 1 {
+        return None;
+    }
+    let ((attr_qname, _), uom_val) = node.attrs.iter().next()?;
+    if local_name(attr_qname) != "uom" {
+        return None;
+    }
+    for child in &node.children {
+        if matches!(child, XmlChild::Element(_)) {
+            return None;
+        }
+    }
+    let text: String = node
+        .children
+        .iter()
+        .filter_map(|c| {
+            if let XmlChild::Text(t) = c {
+                Some(t.as_str())
+            } else {
+                None
+            }
+        })
+        .collect();
+    let val: f64 = text.trim().parse().ok()?;
+    let n = serde_json::Number::from_f64(val)?;
+    Some((n, uom_val.clone()))
+}
+
+pub fn node_to_attribute_value(
+    node: &XmlNode,
+    keep_attributes: bool,
+    flatten_single_child_objects: bool,
+    flatten_measure_types: bool,
+) -> AttributeValue {
     let mut elem_groups: IndexMap<String, Vec<AttributeValue>> = IndexMap::new();
+    let mut uom_entries: HashMap<String, String> = HashMap::new();
     let mut text_parts: Vec<String> = Vec::new();
 
     for child in &node.children {
         match child {
             XmlChild::Element(e) => {
-                elem_groups
-                    .entry(e.name.0.clone())
-                    .or_default()
-                    .push(node_to_attribute_value(e));
+                if flatten_measure_types && !keep_attributes {
+                    if let Some((n, uom)) = is_measure_node(e) {
+                        elem_groups
+                            .entry(e.name.0.clone())
+                            .or_default()
+                            .push(AttributeValue::Number(n));
+                        uom_entries.insert(format!("{}_uom", e.name.0), uom);
+                        continue;
+                    }
+                }
+                let (key, val) =
+                    if flatten_single_child_objects && !keep_attributes && e.attrs.is_empty() {
+                        if let Some(gc) = single_object_child(e) {
+                            (
+                                gc.name.0.clone(),
+                                node_to_attribute_value(gc, false, true, flatten_measure_types),
+                            )
+                        } else {
+                            (
+                                e.name.0.clone(),
+                                node_to_attribute_value(
+                                    e,
+                                    keep_attributes,
+                                    true,
+                                    flatten_measure_types,
+                                ),
+                            )
+                        }
+                    } else {
+                        (
+                            e.name.0.clone(),
+                            node_to_attribute_value(
+                                e,
+                                keep_attributes,
+                                flatten_single_child_objects,
+                                flatten_measure_types,
+                            ),
+                        )
+                    };
+                elem_groups.entry(key).or_default().push(val);
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),
         }
     }
 
-    if node.attrs.is_empty() && elem_groups.is_empty() {
+    let has_attrs = keep_attributes && !node.attrs.is_empty();
+    if !has_attrs && elem_groups.is_empty() && uom_entries.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
 
     // currently unordered because AttributeValue::Map is unordered
     let mut map: HashMap<String, AttributeValue> = HashMap::new();
 
-    for ((qname, _), v) in &node.attrs {
-        map.insert(format!("@{qname}"), AttributeValue::String(v.clone()));
+    if keep_attributes {
+        for ((qname, _), v) in &node.attrs {
+            map.insert(format!("@{qname}"), AttributeValue::String(v.clone()));
+        }
     }
     if !text_parts.is_empty() {
         map.insert("$".into(), AttributeValue::String(text_parts.join("")));
     }
-    for (name, mut values) in elem_groups {
+    for (name, values) in elem_groups {
         let av = if values.len() == 1 {
-            values.pop().unwrap()
+            let v = values.into_iter().next().unwrap();
+            if flatten_single_child_objects {
+                match v {
+                    AttributeValue::Map(_) => AttributeValue::Array(vec![v]),
+                    other => other,
+                }
+            } else {
+                v
+            }
         } else {
             AttributeValue::Array(values)
         };
         map.insert(name, av);
+    }
+    for (key, uom) in uom_entries {
+        map.insert(key, AttributeValue::String(uom));
     }
 
     AttributeValue::Map(map)
@@ -418,12 +536,24 @@ fn decode_utf8(bytes: &[u8], context: &str) -> Result<String, ParseError> {
         .map_err(|err| ParseError::Encoding(format!("invalid UTF-8 in {context}: {err}")))
 }
 
-fn build_feature(feature_type: &str, gml_id: Option<&str>, content: AttributeValue) -> Feature {
+fn build_feature(
+    feature_type: &str,
+    gml_id: Option<&str>,
+    content: AttributeValue,
+    citygml_attribute_key: Option<&str>,
+) -> Feature {
     let mut attrs = Attributes::new();
 
-    if let AttributeValue::Map(map) = content {
-        for (k, v) in map {
-            attrs.insert(Attribute::new(k), v);
+    match citygml_attribute_key {
+        Some(key) => {
+            attrs.insert(Attribute::new(key), content);
+        }
+        None => {
+            if let AttributeValue::Map(map) = content {
+                for (k, v) in map {
+                    attrs.insert(Attribute::new(k), v);
+                }
+            }
         }
     }
 
@@ -645,7 +775,7 @@ mod tests {
     #[test]
     fn node_to_attribute_value_pure_text() {
         let node = make_node("gml:name", GML_NS_ID, vec![], vec![text("Building A")]);
-        let av = node_to_attribute_value(&node);
+        let av = node_to_attribute_value(&node, true, false, false);
         assert_eq!(av, AttributeValue::String("Building A".to_string()));
     }
 
@@ -657,7 +787,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "n1")],
             vec![text("foo")],
         );
-        let av = node_to_attribute_value(&node);
+        let av = node_to_attribute_value(&node, true, false, false);
         let AttributeValue::Map(map) = av else {
             panic!("expected Map");
         };
@@ -679,7 +809,7 @@ mod tests {
             vec![("g:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, false) else {
             panic!("expected Map");
         };
         assert_eq!(
@@ -725,7 +855,7 @@ mod tests {
                 elem(make_node("item", EMPTY_NS_ID, vec![], vec![text("b")])),
             ],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, false) else {
             panic!("expected Map");
         };
         let AttributeValue::Array(arr) = map.get("item").unwrap() else {
@@ -747,7 +877,7 @@ mod tests {
                 vec![text("only")],
             ))],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, false) else {
             panic!("expected Map");
         };
         assert!(matches!(map.get("item"), Some(AttributeValue::String(_))));
@@ -761,7 +891,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node);
+        let feature = to_feature(&node, None, true, false, false);
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
     }

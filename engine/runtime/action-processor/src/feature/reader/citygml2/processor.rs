@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Code, CompiledCode};
+use reearth_flow_types::{Attributes, Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -83,7 +83,11 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
         Ok(Box::new(FeatureCityGml2Reader {
             dataset,
             extract_tags,
+            keep_attributes: params.keep_attributes,
+            flatten_single_child_objects: params.flatten_single_child_objects,
+            flatten_measure_types: params.flatten_measure_types,
             parser: Parser::new(),
+            base_attributes: HashMap::new(),
         }))
     }
 }
@@ -101,12 +105,37 @@ pub struct FeatureCityGml2ReaderParam {
     /// top-level city objects unchanged.
     #[serde(default)]
     extract_tags: Vec<String>,
+    /// # Keep Attributes
+    /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
+    /// dropped from parsed features. Defaults to true.
+    #[serde(default = "default_keep_attributes")]
+    keep_attributes: bool,
+    /// # Flatten Single-Child Object Nodes
+    /// When true, a wrapper element whose only content is a single child element is dropped: the
+    /// child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to
+    /// false.
+    #[serde(default)]
+    flatten_single_child_objects: bool,
+    /// # Flatten Measure Types
+    /// When true, elements with a single `uom` attribute and numeric text content are converted to
+    /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
+    #[serde(default)]
+    flatten_measure_types: bool,
+}
+
+fn default_keep_attributes() -> bool {
+    true
 }
 
 pub struct FeatureCityGml2Reader {
     dataset: CompiledCode,
     extract_tags: HashSet<String>,
+    keep_attributes: bool,
+    flatten_single_child_objects: bool,
+    flatten_measure_types: bool,
     parser: Parser,
+    /// Input feature attributes keyed by resolved source file URL, merged into parsed features.
+    base_attributes: HashMap<String, Attributes>,
 }
 
 impl std::fmt::Debug for FeatureCityGml2Reader {
@@ -122,7 +151,11 @@ impl Clone for FeatureCityGml2Reader {
         Self {
             dataset: self.dataset.clone(),
             extract_tags: self.extract_tags.clone(),
+            keep_attributes: self.keep_attributes,
+            flatten_single_child_objects: self.flatten_single_child_objects,
+            flatten_measure_types: self.flatten_measure_types,
             parser: Parser::new(),
+            base_attributes: HashMap::new(),
         }
     }
 }
@@ -148,6 +181,10 @@ impl Processor for FeatureCityGml2Reader {
             FeatureProcessorError::FileCityGml2Reader(format!("Invalid URI `{path}`: {e}"))
         })?;
         let source_url: Url = uri.clone().into();
+        self.base_attributes.insert(
+            source_url.as_str().to_string(),
+            (*ctx.feature.attributes).clone(),
+        );
 
         let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
             FeatureProcessorError::FileCityGml2Reader(format!("Storage resolve error: {e}"))
@@ -168,7 +205,15 @@ impl Processor for FeatureCityGml2Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for feature in build_features(std::mem::take(&mut self.parser), &self.extract_tags) {
+        for feature in build_features(
+            std::mem::take(&mut self.parser),
+            &self.extract_tags,
+            &self.base_attributes,
+            Some("cityGmlAttributes"),
+            self.keep_attributes,
+            self.flatten_single_child_objects,
+            self.flatten_measure_types,
+        ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature,
