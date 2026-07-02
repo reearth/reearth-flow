@@ -3009,6 +3009,15 @@ Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across 
     "dataset"
   ],
   "properties": {
+    "cityGmlAttributesKey": {
+      "title": "City GML Attributes Key",
+      "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "dataset": {
       "title": "Dataset",
       "description": "Path expression resolving to the CityGML 2.0 file to read.",
@@ -3083,6 +3092,15 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
     "dataset"
   ],
   "properties": {
+    "cityGmlAttributesKey": {
+      "title": "City GML Attributes Key",
+      "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "dataset": {
       "title": "Dataset",
       "description": "Path expression resolving to the CityGML 3.0 file to read.",

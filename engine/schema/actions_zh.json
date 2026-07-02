@@ -3089,6 +3089,15 @@
           "dataset"
         ],
         "properties": {
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性键",
+            "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "Dataset",
             "description": "解析为要读取的CityGML 2.0文件的路径表达式。",
@@ -3164,6 +3173,15 @@
           "dataset"
         ],
         "properties": {
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性键",
+            "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "Dataset",
             "description": "解析为要读取的CityGML 3.0文件的路径表达式。",
