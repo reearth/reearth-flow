@@ -1,8 +1,21 @@
+use std::rc::Rc;
+
 use crate::core::error::{eval_error, Result};
-use crate::core::value::{ImmutableObject, Value};
+use crate::core::value::{ImmutableObject, NativeFn, TypeValue, Value};
 
 use crate::expect_arity;
 use regex::Regex;
+
+thread_local! {
+    static REGEX_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new(
+        "Regex",
+        Some(NativeFn::new(construct)),
+    ));
+}
+
+pub fn regex_type_value() -> Rc<TypeValue> {
+    REGEX_TYPE.with(Rc::clone)
+}
 
 #[derive(Debug, Clone)]
 pub struct RegexObject {
@@ -11,8 +24,8 @@ pub struct RegexObject {
 }
 
 impl ImmutableObject for RegexObject {
-    fn type_name(&self) -> &'static str {
-        "Regex"
+    fn type_object(&self) -> Rc<TypeValue> {
+        regex_type_value()
     }
 
     fn call_method(&self, method: &str, args: &[Value]) -> Result<Value> {
@@ -23,7 +36,31 @@ impl ImmutableObject for RegexObject {
             }
             "find_all" => {
                 expect_arity("Regex.find_all", args, 1, 1)?;
-                Ok(Value::array(regex_find_all(&self.regex, args[0].as_str()?)))
+                Ok(Value::list(regex_find_all(&self.regex, args[0].as_str()?)))
+            }
+            "split" => {
+                expect_arity("Regex.split", args, 1, 2)?;
+                let s = args[0].as_str()?;
+                let parts = if args.len() == 2 {
+                    let limit = args[1].as_int()?;
+                    if limit < 0 {
+                        return Err(eval_error("Regex.split: limit must be non-negative"));
+                    }
+                    let n = limit
+                        .checked_add(1)
+                        .ok_or_else(|| eval_error("Regex.split: limit overflow"))?
+                        as usize;
+                    self.regex
+                        .splitn(s, n)
+                        .map(|p| Value::String(p.to_string()))
+                        .collect()
+                } else {
+                    self.regex
+                        .split(s)
+                        .map(|p| Value::String(p.to_string()))
+                        .collect()
+                };
+                Ok(Value::list(parts))
             }
             m => Err(eval_error(format!("Regex has no method '{m}'"))),
         }
@@ -45,7 +82,7 @@ fn capture_to_value(cap: &regex::Captures, num_groups: usize) -> Value {
             .map(|m| Value::String(m.as_str().to_string()))
             .unwrap_or(Value::Null)
     } else {
-        Value::array(
+        Value::list(
             (1..=num_groups)
                 .map(|i| {
                     cap.get(i)
@@ -57,7 +94,6 @@ fn capture_to_value(cap: &regex::Captures, num_groups: usize) -> Value {
     }
 }
 
-// null-as-falsy is intentional — see docs/design.md#regex-find-null-falsy
 fn regex_find(regex: &Regex, s: &str) -> Value {
     let num_groups = regex.captures_len() - 1;
     if num_groups == 0 {
@@ -88,7 +124,7 @@ fn regex_find_all(regex: &Regex, s: &str) -> Vec<Value> {
     }
 }
 
-pub fn builtin_regex(args: &[Value]) -> Result<Value> {
+pub fn construct(args: &[Value]) -> Result<Value> {
     if args.len() != 1 {
         return Err(eval_error(format!(
             "Regex() expected 1 argument, got {}",
@@ -135,15 +171,40 @@ mod tests {
         // multi-group: second optional group absent → Null in that slot
         assert_val(
             &run(r#"Regex(r"(\d+)(x)?").find("123")"#, &[]),
-            &Value::array(vec![Value::from("123"), Value::Null]),
+            &Value::list(vec![Value::from("123"), Value::Null]),
         );
         // find_all: optional group absent → Null per match
         assert_val(
             &run(r#"Regex(r"(\d+)(x)?").find_all("123 456x")"#, &[]),
-            &Value::array(vec![
-                Value::array(vec![Value::from("123"), Value::Null]),
-                Value::array(vec![Value::from("456"), Value::from("x")]),
+            &Value::list(vec![
+                Value::list(vec![Value::from("123"), Value::Null]),
+                Value::list(vec![Value::from("456"), Value::from("x")]),
             ]),
+        );
+    }
+
+    #[test]
+    fn test_regex_split() {
+        assert_val(
+            &run(r#"Regex(r"\d+").split("a1b2c")"#, &[]),
+            &Value::list(vec![Value::from("a"), Value::from("b"), Value::from("c")]),
+        );
+        assert_val(
+            &run(r#"Regex(r",").split("a,,b")"#, &[]),
+            &Value::list(vec![Value::from("a"), Value::from(""), Value::from("b")]),
+        );
+        assert_val(
+            &run(r#"Regex(r"\d+").split("no digits")"#, &[]),
+            &Value::list(vec![Value::from("no digits")]),
+        );
+        assert_val(
+            &run(r#"Regex(r"\d+").split("a1b2c3d", 2)"#, &[]),
+            &Value::list(vec![Value::from("a"), Value::from("b"), Value::from("c3d")]),
+        );
+        // limit 0 → no splits, whole string as a single part
+        assert_val(
+            &run(r#"Regex(r"\d+").split("a1b2c", 0)"#, &[]),
+            &Value::list(vec![Value::from("a1b2c")]),
         );
     }
 
@@ -151,22 +212,22 @@ mod tests {
     fn test_regex_find_all() {
         assert_val(
             &run(r#"Regex(r"\d+").find_all("abc 123 def 456")"#, &[]),
-            &Value::array(vec![Value::from("123"), Value::from("456")]),
+            &Value::list(vec![Value::from("123"), Value::from("456")]),
         );
         assert_val(
             &run(r#"Regex(r"(\d+)").find_all("abc 123 def 456")"#, &[]),
-            &Value::array(vec![Value::from("123"), Value::from("456")]),
+            &Value::list(vec![Value::from("123"), Value::from("456")]),
         );
         assert_val(
             &run(r#"Regex(r"(\w+)@(\w+)").find_all("a@b x@y")"#, &[]),
-            &Value::array(vec![
-                Value::array(vec![Value::from("a"), Value::from("b")]),
-                Value::array(vec![Value::from("x"), Value::from("y")]),
+            &Value::list(vec![
+                Value::list(vec![Value::from("a"), Value::from("b")]),
+                Value::list(vec![Value::from("x"), Value::from("y")]),
             ]),
         );
         assert_val(
             &run(r#"Regex(r"\d+").find_all("no digits here")"#, &[]),
-            &Value::array(vec![]),
+            &Value::list(vec![]),
         );
     }
 }

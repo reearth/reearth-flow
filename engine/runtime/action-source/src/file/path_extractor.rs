@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
 use reearth_flow_storage::storage::Storage;
-use reearth_flow_types::{AttributeValue, Code, CompiledCode, Feature, FilePath};
+use reearth_flow_types::{AttributeValue, Code, Feature, FilePath};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -52,7 +52,7 @@ impl SourceFactory for FilePathExtractorFactory {
     }
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -75,10 +75,20 @@ impl SourceFactory for FilePathExtractorFactory {
             )
             .into());
         };
-        let compiled = FilePathExtractorCompiledParam {
-            source_dataset: processor.source_dataset.compile().map_err(|e| {
+        let source_dataset = processor
+            .source_dataset
+            .compile()
+            .map_err(|e| {
                 SourceError::FilePathExtractorFactory(format!("Failed to compile params: {e:?}"))
-            })?,
+            })?
+            .eval_string_env_only(ctx.env_vars.clone())
+            .map_err(|e| {
+                SourceError::FilePathExtractorFactory(format!(
+                    "Failed to evaluate source_dataset: {e:?}"
+                ))
+            })?;
+        let compiled = FilePathExtractorCompiledParam {
+            source_dataset,
             extract_archive: processor.extract_archive,
         };
         Ok(Box::new(FilePathExtractorSource { params: compiled }))
@@ -87,7 +97,7 @@ impl SourceFactory for FilePathExtractorFactory {
 
 #[derive(Debug, Clone)]
 struct FilePathExtractorCompiledParam {
-    source_dataset: CompiledCode,
+    source_dataset: String,
     extract_archive: bool,
 }
 
@@ -257,16 +267,8 @@ impl Source for FilePathExtractorSource {
         ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
-        let path = self
-            .params
-            .source_dataset
-            .eval_string_env_only(ctx.expr_engine.vars())
-            .map_err(|e| {
-                crate::errors::SourceError::FilePathExtractor(format!(
-                    "Failed to evaluate source_dataset: {e:?}"
-                ))
-            })?;
-        let source_dataset = Uri::from_str(path.as_str()).map_err(|e| {
+        let path = self.params.source_dataset.as_str();
+        let source_dataset = Uri::from_str(path).map_err(|e| {
             crate::errors::SourceError::FilePathExtractor(format!("Invalid path {path:?}: {e}"))
         })?;
         if self.is_extractable_archive(&source_dataset) {

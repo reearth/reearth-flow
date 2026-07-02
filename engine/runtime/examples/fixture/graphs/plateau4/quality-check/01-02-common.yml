@@ -20,8 +20,9 @@ nodes:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
 
@@ -41,8 +42,9 @@ nodes:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: "codelists"
       schemasPath: "schemas"
 
@@ -52,10 +54,12 @@ nodes:
     action: XMLFragmenter
     with:
       source: url
-      elementsToMatch: |
-        env.get("__value").featureTypes[env.get("__value")["package"]]
-      elementsToExclude: |
-        []
+      elementsToMatch:
+        type: flowExpr
+        value: attributes["featureTypes"][attributes["package"]]
+      elementsToExclude:
+        type: flowExpr
+        value: "[]"
       attribute: path
 
   - id: 5490fef1-320b-4789-9f5b-5401a9b99e41
@@ -234,9 +238,9 @@ nodes:
               data = attributes.get("dataFileData");
               if data != null {
                 for item in data {
-                  if type(item) == "map" {
+                  if type(item) == dict {
                     count = item.get("count");
-                    if count != null and type(count) == "int" {
+                    if count != null and type(count) == int {
                       total += count;
                     }
                   }

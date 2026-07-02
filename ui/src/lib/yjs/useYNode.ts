@@ -2,7 +2,13 @@ import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import * as Y from "yjs";
 
 import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";
-import type { Node, NodeChange, Workflow } from "@flow/types";
+import type {
+  Node,
+  NodeChange,
+  NodeMetadata,
+  NodeSchemaMeta,
+  Workflow,
+} from "@flow/types";
 
 import { yNodeConstructor } from "./conversions";
 import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
@@ -42,14 +48,10 @@ export default ({
         }
 
         newNodes.forEach((newNode) => {
-          // For routers without routingPort, generate unique port name
           const isRouterInput = newNode.data.officialName === "InputRouter";
           const isRouterOutput = newNode.data.officialName === "OutputRouter";
 
-          if (
-            (isRouterInput || isRouterOutput) &&
-            !newNode.data.params?.routingPort
-          ) {
+          if (isRouterInput || isRouterOutput) {
             const currentWorkflowId = currentYWorkflow
               ?.get("id")
               ?.toJSON() as string;
@@ -60,7 +62,9 @@ export default ({
               );
             });
 
-            let uniquePortName = DEFAULT_ROUTING_PORT;
+            const basePortName =
+              newNode.data.params?.routingPort || DEFAULT_ROUTING_PORT;
+            let uniquePortName = basePortName;
 
             if (parentWorkflow) {
               const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
@@ -84,7 +88,7 @@ export default ({
 
                   let counter = 1;
                   while (existingPortNames.has(uniquePortName)) {
-                    uniquePortName = `${DEFAULT_ROUTING_PORT}-${counter}`;
+                    uniquePortName = `${basePortName}-${counter}`;
                     counter++;
                   }
                 }
@@ -374,9 +378,34 @@ export default ({
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
+  const handleYNodeSchemaUpdate = useCallback(
+    (nodeId: string, patch: Partial<NodeSchemaMeta> | undefined) =>
+      undoTrackerActionWrapper(() => {
+        const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+        if (!yNodes) return;
+        const yData = yNodes.get(nodeId)?.get("data") as Y.Map<any> | undefined;
+        if (!yData) return;
+        const prevMetadata =
+          (yData.get("nodeMetadata") as NodeMetadata | undefined) ?? {};
+        if (!patch) {
+          yData.set("nodeMetadata", { ...prevMetadata, schema: undefined });
+          return;
+        }
+        const schema: NodeSchemaMeta = {
+          ports: {},
+          ...prevMetadata.schema,
+          ...patch,
+        };
+        if (!patch.jobId) delete schema.jobId;
+        yData.set("nodeMetadata", { ...prevMetadata, schema });
+      }, "schema-update"),
+    [currentYWorkflow, undoTrackerActionWrapper],
+  );
+
   return {
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodesDataUpdate,
+    handleYNodeSchemaUpdate,
   };
 };

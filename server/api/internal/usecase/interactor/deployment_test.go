@@ -49,7 +49,7 @@ func TestDeployment_Execute_NilDeployment(t *testing.T) {
 
 	d := &Deployment{
 		deploymentRepo:    &nilDeploymentRepo{},
-		transaction:       &usecasex.NopTransaction{},
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
 		permissionChecker: checker,
 	}
 

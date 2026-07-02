@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -15,7 +17,7 @@ import (
 
 type WorkerConfig struct {
 	repo              repo.WorkerConfig
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	permissionChecker gateway.PermissionChecker
 }
 
@@ -27,8 +29,8 @@ func NewWorkerConfig(r *repo.Container, permissionChecker gateway.PermissionChec
 	}
 }
 
-func (i *WorkerConfig) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceWorkspace, action)
+func (i *WorkerConfig) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceWorkspace, action, workspaceID...)
 }
 
 func (i *WorkerConfig) FindByID(ctx context.Context, wid id.WorkerConfigID) (*workerconfig.WorkerConfig, error) {
@@ -72,18 +74,6 @@ func (i *WorkerConfig) Update(
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
 	if err := validateWorkerConfig(
 		machineType,
 		computeCpuMilli,
@@ -99,51 +89,53 @@ func (i *WorkerConfig) Update(
 		return nil, err
 	}
 
-	cfg, err := i.repo.FindAll(ctx)
-	if err != nil {
+	var cfg *workerconfig.WorkerConfig
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		cfg, err = i.repo.FindAll(ctx)
+		if err != nil {
+			return err
+		}
+
+		if cfg == nil {
+			cfg = workerconfig.New()
+		}
+
+		if machineType != nil {
+			cfg.SetMachineType(machineType)
+		}
+		if computeCpuMilli != nil {
+			cfg.SetComputeCpuMilli(computeCpuMilli)
+		}
+		if computeMemoryMib != nil {
+			cfg.SetComputeMemoryMib(computeMemoryMib)
+		}
+		if bootDiskSizeGB != nil {
+			cfg.SetBootDiskSizeGB(bootDiskSizeGB)
+		}
+		if taskCount != nil {
+			cfg.SetTaskCount(taskCount)
+		}
+		if maxConcurrency != nil {
+			cfg.SetMaxConcurrency(maxConcurrency)
+		}
+		if threadPoolSize != nil {
+			cfg.SetThreadPoolSize(threadPoolSize)
+		}
+		if channelBufferSize != nil {
+			cfg.SetChannelBufferSize(channelBufferSize)
+		}
+		if featureFlushThreshold != nil {
+			cfg.SetFeatureFlushThreshold(featureFlushThreshold)
+		}
+		if nodeStatusDelayMilli != nil {
+			cfg.SetNodeStatusPropagationDelayMilli(nodeStatusDelayMilli)
+		}
+
+		return i.repo.Save(ctx, cfg)
+	}); err != nil {
 		return nil, err
 	}
-
-	if cfg == nil {
-		cfg = workerconfig.New()
-	}
-
-	if machineType != nil {
-		cfg.SetMachineType(machineType)
-	}
-	if computeCpuMilli != nil {
-		cfg.SetComputeCpuMilli(computeCpuMilli)
-	}
-	if computeMemoryMib != nil {
-		cfg.SetComputeMemoryMib(computeMemoryMib)
-	}
-	if bootDiskSizeGB != nil {
-		cfg.SetBootDiskSizeGB(bootDiskSizeGB)
-	}
-	if taskCount != nil {
-		cfg.SetTaskCount(taskCount)
-	}
-	if maxConcurrency != nil {
-		cfg.SetMaxConcurrency(maxConcurrency)
-	}
-	if threadPoolSize != nil {
-		cfg.SetThreadPoolSize(threadPoolSize)
-	}
-	if channelBufferSize != nil {
-		cfg.SetChannelBufferSize(channelBufferSize)
-	}
-	if featureFlushThreshold != nil {
-		cfg.SetFeatureFlushThreshold(featureFlushThreshold)
-	}
-	if nodeStatusDelayMilli != nil {
-		cfg.SetNodeStatusPropagationDelayMilli(nodeStatusDelayMilli)
-	}
-
-	if err := i.repo.Save(ctx, cfg); err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
 	return cfg, nil
 }
 
@@ -152,32 +144,16 @@ func (i *WorkerConfig) Delete(ctx context.Context) error {
 		return err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return err
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		cfg, err := i.repo.FindAll(ctx)
+		if err != nil {
+			return err
 		}
-	}()
-
-	cfg, err := i.repo.FindAll(ctx)
-	if err != nil {
-		return err
-	}
-	if cfg == nil {
-		return nil
-	}
-
-	if err := i.repo.Remove(ctx, cfg.ID()); err != nil {
-		return err
-	}
-
-	tx.Commit()
-	return nil
+		if cfg == nil {
+			return nil
+		}
+		return i.repo.Remove(ctx, cfg.ID())
+	})
 }
 
 type ConfigLimits struct {

@@ -89,6 +89,9 @@ func (f *previewFakeFile) CheckJobPreviewSchemaExists(context.Context, string) (
 	return true, nil
 }
 func (f *previewFakeFile) ReadAsset(context.Context, string) (io.ReadCloser, error) { panic("unused") }
+func (f *previewFakeFile) ReadActions(context.Context, string) (io.ReadCloser, error) {
+	panic("unused")
+}
 func (f *previewFakeFile) UploadAsset(context.Context, *file.File) (*url.URL, int64, error) {
 	panic("unused")
 }
@@ -232,7 +235,7 @@ func TestProject_PreviewSchema_CloudRunWorker(t *testing.T) {
 		file:              ff,
 		cloudRunWorker:    crw, // non-nil => Cloud Run path
 		job:               fj,
-		transaction:       &usecasex.NopTransaction{},
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
 		permissionChecker: NewMockPermissionChecker(nil),
 	}
 
@@ -297,7 +300,7 @@ func TestProject_PreviewSchema_BatchFallback(t *testing.T) {
 		batch:             fb,
 		cloudRunWorker:    nil, // nil => Batch fallback
 		job:               fj,
-		transaction:       &usecasex.NopTransaction{},
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
 		permissionChecker: NewMockPermissionChecker(nil),
 	}
 

@@ -15,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -25,7 +26,7 @@ type Project struct {
 	jobRepo           repo.Job
 	workerConfigRepo  repo.WorkerConfig
 	workspaceRepo     gqlworkspace.WorkspaceRepo
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	file              gateway.File
 	batch             gateway.Batch
 	cloudRunWorker    gateway.CloudRunWorker
@@ -52,20 +53,31 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 	}
 }
 
-func (i *Project) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action)
+func (i *Project) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action, workspaceID...)
 }
 
 func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Project, error) {
-	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+	projects, err := i.projectRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.projectRepo.FindByIDs(ctx, ids)
+	if len(projects) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := i.checkPermission(ctx, rbac.ActionList, projects[0].Workspace()); err != nil { // single-workspace batch assumption
+			return nil, err
+		}
+	}
+
+	return projects, nil
 }
 
 func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionList, id); err != nil {
 		return nil, nil, err
 	}
 
@@ -73,153 +85,131 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (_ *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate, p.WorkspaceID); err != nil {
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	var proj *project.Project
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		if _, err := i.workspaceRepo.FindByID(ctx, p.WorkspaceID.String()); err != nil {
+			return err
 		}
-	}()
 
-	_, err = i.workspaceRepo.FindByID(ctx, p.WorkspaceID.String())
-	if err != nil {
+		pb := project.New().
+			NewID().
+			Workspace(p.WorkspaceID)
+		if p.Name != nil {
+			pb = pb.Name(*p.Name)
+		}
+		if p.Description != nil {
+			pb = pb.Description(*p.Description)
+		}
+		if p.Archived != nil {
+			pb = pb.IsArchived(*p.Archived)
+		}
+
+		var err error
+		proj, err = pb.Build()
+		if err != nil {
+			return err
+		}
+
+		return i.projectRepo.Save(ctx, proj)
+	}); err != nil {
 		return nil, err
 	}
-
-	pb := project.New().
-		NewID().
-		Workspace(p.WorkspaceID)
-	if p.Name != nil {
-		pb = pb.Name(*p.Name)
-	}
-	if p.Description != nil {
-		pb = pb.Description(*p.Description)
-	}
-	if p.Archived != nil {
-		pb = pb.IsArchived(*p.Archived)
-	}
-
-	proj, err := pb.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	err = i.projectRepo.Save(ctx, proj)
-	if err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
 	return proj, nil
 }
 
 func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (_ *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	var prj *project.Project
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		prj, err = i.projectRepo.FindByID(ctx, p.ID)
+		if err != nil {
+			return err
 		}
-	}()
 
-	prj, err := i.projectRepo.FindByID(ctx, p.ID)
-	if err != nil {
+		if p.Name != nil {
+			prj.SetUpdateName(*p.Name)
+		}
+		if p.Description != nil {
+			prj.SetUpdateDescription(*p.Description)
+		}
+		if p.Archived != nil {
+			prj.SetArchived(*p.Archived)
+		}
+		if p.IsBasicAuthActive != nil {
+			prj.SetIsBasicAuthActive(*p.IsBasicAuthActive)
+		}
+		if p.IsLocked != nil {
+			prj.SetIsLocked(*p.IsLocked)
+		}
+		if p.BasicAuthUsername != nil {
+			prj.SetBasicAuthUsername(*p.BasicAuthUsername)
+		}
+		if p.BasicAuthPassword != nil {
+			prj.SetBasicAuthPassword(*p.BasicAuthPassword)
+		}
+
+		return i.projectRepo.Save(ctx, prj)
+	}); err != nil {
 		return nil, err
 	}
-
-	if p.Name != nil {
-		prj.SetUpdateName(*p.Name)
-	}
-
-	if p.Description != nil {
-		prj.SetUpdateDescription(*p.Description)
-	}
-
-	if p.Archived != nil {
-		prj.SetArchived(*p.Archived)
-	}
-
-	if p.IsBasicAuthActive != nil {
-		prj.SetIsBasicAuthActive(*p.IsBasicAuthActive)
-	}
-
-	if p.IsLocked != nil {
-		prj.SetIsLocked(*p.IsLocked)
-	}
-
-	if p.BasicAuthUsername != nil {
-		prj.SetBasicAuthUsername(*p.BasicAuthUsername)
-	}
-
-	if p.BasicAuthPassword != nil {
-		prj.SetBasicAuthPassword(*p.BasicAuthPassword)
-	}
-
-	if err := i.projectRepo.Save(ctx, prj); err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
 	return prj, nil
 }
 
 func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if proj == nil {
+		return rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionDelete, proj.Workspace()); err != nil {
 		return err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		prj, err := i.projectRepo.FindByID(ctx, projectID)
+		if err != nil {
+			return err
 		}
-	}()
 
-	prj, err := i.projectRepo.FindByID(ctx, projectID)
-	if err != nil {
-		return err
-	}
+		deleter := ProjectDeleter{
+			File:      i.file,
+			Project:   i.projectRepo,
+			Websocket: i.websocket,
+		}
+		if err := deleter.Delete(ctx, prj, true); err != nil {
+			return err
+		}
 
-	deleter := ProjectDeleter{
-		File:      i.file,
-		Project:   i.projectRepo,
-		Websocket: i.websocket,
-	}
-	if err := deleter.Delete(ctx, prj, true); err != nil {
-		return err
-	}
-
-	if err := i.jobRepo.RemoveByProject(ctx, projectID); err != nil {
-		return err
-	}
-
-	tx.Commit()
-	return nil
+		return i.jobRepo.RemoveByProject(ctx, projectID)
+	})
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job.Job, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+	proj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -231,71 +221,81 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
+	var j *job.Job
+	var workflowURLStr string
+	useCloudRun := i.cloudRunWorker != nil
 
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+		if err != nil {
+			return err
 		}
-	}()
 
-	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
-	if err != nil {
+		doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
+		if err != nil {
+			return fmt.Errorf("failed to get latest project snapshot: %v", err)
+		}
+		projectID := p.ProjectID
+		projectVersion := doc.Version
+
+		debug := true
+
+		j, err = job.New().
+			NewID().
+			Debug(&debug).
+			ProjectID(&projectID).
+			ProjectVersion(&projectVersion).
+			Workspace(prj.Workspace()).
+			Status(job.StatusPending).
+			StartedAt(time.Now()).
+			Build()
+		if err != nil {
+			return err
+		}
+
+		workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
+		if err != nil {
+			return err
+		}
+		workflowURLStr = workflowURL.String()
+
+		metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
+		if err != nil {
+			return fmt.Errorf("failed to upload metadata: %v", err)
+		}
+		if metadataURL != nil {
+			j.SetMetadataURL(metadataURL.String())
+		}
+
+		j.SetParameters(p.Parameters)
+
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return err
+		}
+
+		if !useCloudRun {
+			gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURLStr, j.MetadataURL(), nil, p.ProjectID, prj.Workspace(), p.PreviousJobID, p.StartNodeID)
+			if err != nil {
+				return fmt.Errorf("failed to submit job: %v", err)
+			}
+			j.SetGCPJobID(gcpJobID)
+
+			if err := i.jobRepo.Save(ctx, j); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
-	doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get latest project snapshot: %v", err)
-	}
-	projectID := p.ProjectID
-	projectVersion := doc.Version
-
-	debug := true
-
-	j, err := job.New().
-		NewID().
-		Debug(&debug).
-		ProjectID(&projectID).
-		ProjectVersion(&projectVersion).
-		Workspace(prj.Workspace()).
-		Status(job.StatusPending).
-		StartedAt(time.Now()).
-		Build()
-	if err != nil {
-		return nil, err
-	}
-
-	workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
-	if err != nil {
-		return nil, err
-	}
-
-	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload metadata: %v", err)
-	}
-	if metadataURL != nil {
-		j.SetMetadataURL(metadataURL.String())
-	}
-
-	j.SetParameters(p.Parameters)
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return nil, err
-	}
-
-	if i.cloudRunWorker != nil {
-		tx.Commit()
+	if useCloudRun {
 		if i.job != nil {
 			// Run on Cloud Run; the standard monitoring loop finalizes the job.
 			i.job.RunCloudRunWorker(j, gateway.RunJobParam{
 				JobID:         j.ID(),
-				WorkflowURL:   workflowURL.String(),
+				WorkflowURL:   workflowURLStr,
 				MetadataURL:   j.MetadataURL(),
 				Variables:     nil,
 				PreviousJobID: p.PreviousJobID,
@@ -306,18 +306,6 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 			}
 		}
 	} else {
-		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace(), p.PreviousJobID, p.StartNodeID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to submit job: %v", err)
-		}
-		j.SetGCPJobID(gcpJobID)
-
-		if err := i.jobRepo.Save(ctx, j); err != nil {
-			return nil, err
-		}
-
-		tx.Commit()
-
 		if i.job != nil {
 			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 				return j, fmt.Errorf("failed to start job monitoring: %v", err)
@@ -339,7 +327,7 @@ const previewSampleSizeCap = 1000
 // dedicated code path: it never calls Run, tags the job Mode=preview-schema, does
 // NOT upload metadata (the probe does not consume it), and dispatches through the
 // worker's dedicated probe-schema route.
-func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaParam) (_ *job.Job, err error) {
+func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaParam) (*job.Job, error) {
 	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
 		return nil, err
 	}
@@ -352,75 +340,86 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-
-	doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get latest project snapshot: %v", err)
-	}
-	projectID := p.ProjectID
-	projectVersion := doc.Version
-
-	debug := true
-	sampleSize := capSampleSize(p.SampleSize)
-
-	j, err := job.New().
-		NewID().
-		Debug(&debug).
-		Mode(job.ModePreviewSchema).
-		ProjectID(&projectID).
-		ProjectVersion(&projectVersion).
-		Workspace(prj.Workspace()).
-		Status(job.StatusPending).
-		StartedAt(time.Now()).
-		Build()
-	if err != nil {
-		return nil, err
-	}
-
-	workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
-	if err != nil {
-		return nil, err
-	}
-
-	// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
-
-	j.SetParameters(p.Parameters)
-	// The report URL is surfaced via outputURLs on completion by
-	// Job.updateJobArtifacts, not here: the artifact does not exist until the
-	// worker writes it (and never on failure), so setting it at creation time
-	// would hand clients a URL that 404s.
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return nil, err
-	}
-
+	var j *job.Job
+	var workflowURLStr string
+	var reportURL string
 	variables := parametersToVariables(p.Parameters)
-	reportURL := i.file.GetJobPreviewSchemaUploadURI(j.ID().String())
+	sampleSize := capSampleSize(p.SampleSize)
+	useCloudRun := i.cloudRunWorker != nil
 
-	if i.cloudRunWorker != nil {
-		tx.Commit()
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+		if err != nil {
+			return err
+		}
+
+		doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
+		if err != nil {
+			return fmt.Errorf("failed to get latest project snapshot: %v", err)
+		}
+		projectID := p.ProjectID
+		projectVersion := doc.Version
+
+		debug := true
+
+		j, err = job.New().
+			NewID().
+			Debug(&debug).
+			Mode(job.ModePreviewSchema).
+			ProjectID(&projectID).
+			ProjectVersion(&projectVersion).
+			Workspace(prj.Workspace()).
+			Status(job.StatusPending).
+			StartedAt(time.Now()).
+			Build()
+		if err != nil {
+			return err
+		}
+
+		workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
+		if err != nil {
+			return err
+		}
+		workflowURLStr = workflowURL.String()
+
+		// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
+
+		j.SetParameters(p.Parameters)
+		// The report URL is surfaced via outputURLs on completion by
+		// Job.updateJobArtifacts, not here: the artifact does not exist until the
+		// worker writes it (and never on failure), so setting it at creation time
+		// would hand clients a URL that 404s.
+
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return err
+		}
+
+		reportURL = i.file.GetJobPreviewSchemaUploadURI(j.ID().String())
+
+		if !useCloudRun {
+			gcpJobID, err := i.batch.SubmitProbeJob(ctx, j.ID(), workflowURLStr, variables, sampleSize, reportURL, p.ProjectID, prj.Workspace())
+			if err != nil {
+				return fmt.Errorf("failed to submit probe job: %v", err)
+			}
+			j.SetGCPJobID(gcpJobID)
+
+			if err := i.jobRepo.Save(ctx, j); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if useCloudRun {
 		if i.job != nil {
 			// Dispatch on Cloud Run via the dedicated probe-schema route; the
 			// standard monitoring loop finalizes the job.
 			i.job.PreviewSchemaCloudRunWorker(j, gateway.ProbeSchemaParam{
 				JobID:       j.ID(),
-				WorkflowURL: workflowURL.String(),
+				WorkflowURL: workflowURLStr,
 				ReportURL:   reportURL,
 				Variables:   variables,
 				SampleSize:  sampleSize,
@@ -430,18 +429,6 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 			}
 		}
 	} else {
-		gcpJobID, err := i.batch.SubmitProbeJob(ctx, j.ID(), workflowURL.String(), variables, sampleSize, reportURL, p.ProjectID, prj.Workspace())
-		if err != nil {
-			return nil, fmt.Errorf("failed to submit probe job: %v", err)
-		}
-		j.SetGCPJobID(gcpJobID)
-
-		if err := i.jobRepo.Save(ctx, j); err != nil {
-			return nil, err
-		}
-
-		tx.Commit()
-
 		if i.job != nil {
 			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 				return j, fmt.Errorf("failed to start job monitoring: %v", err)

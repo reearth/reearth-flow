@@ -1,6 +1,10 @@
 package gateway
 
-import "context"
+import (
+	"context"
+
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+)
 
 type MockPermissionChecker struct {
 	Error error
@@ -16,7 +20,7 @@ func NewMockPermissionChecker() *MockPermissionChecker {
 	}
 }
 
-func (m *MockPermissionChecker) CheckPermission(_ context.Context, _, _ string) (bool, error) {
+func (m *MockPermissionChecker) CheckPermission(_ context.Context, _, _ string, _ ...accountsid.WorkspaceID) (bool, error) {
 	if m.Error != nil {
 		return false, m.Error
 	}

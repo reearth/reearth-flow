@@ -32,8 +32,9 @@ graphs:
     type: action
     action: FeatureFilePathExtractor
     with:
-      sourceDataset: |
-        env.get("__value").cityGmlPath
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
@@ -51,8 +52,9 @@ graphs:
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
@@ -172,7 +174,7 @@ graphs:
             cga = attributes["cityGmlAttributes"];
             uro_list = cga.get("uro:BuildingIDAttribute");
             gml_city_code = null;
-            if uro_list and type(uro_list) == "list" {
+            if uro_list and type(uro_list) == list {
               gml_city_code = uro_list[0].get("uro:city_code");
             }
             gml_city_code or attributes["cityCode"]
@@ -184,7 +186,7 @@ graphs:
             cga = attributes["cityGmlAttributes"];
             uro_list = cga.get("uro:BuildingIDAttribute");
             gml_city_name = null;
-            if uro_list and type(uro_list) == "list" {
+            if uro_list and type(uro_list) == list {
               gml_city_name = uro_list[0].get("uro:city")
             }
             gml_city_name or attributes.get("cityName")

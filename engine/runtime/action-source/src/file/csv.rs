@@ -46,7 +46,7 @@ impl SourceFactory for CsvReaderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -68,7 +68,7 @@ impl SourceFactory for CsvReaderFactory {
             .into());
         };
         let compiled_params = CsvReaderCompiledParam {
-            common: params.common_property.compile().map_err(|e| {
+            common: params.common_property.compile(&ctx).map_err(|e| {
                 SourceError::CsvReaderFactory(format!("Failed to compile params: {e:?}"))
             })?,
             property: params.property,
@@ -161,7 +161,7 @@ impl Source for CsvReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let content = get_content(&ctx, &self.params.common, storage_resolver).await?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
         csv::read_csv(
             self.params.format.delimiter(),
             &content,

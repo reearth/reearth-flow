@@ -15,7 +15,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
 use reearth_flow_types::attribute::{Attribute, AttributeValue};
 use reearth_flow_types::Feature;
@@ -37,16 +36,16 @@ pub struct SampleOutcome {
 ///
 /// `sample_size == 0` means "read all features the source emits".
 ///
-/// `expr_engine` resolves the source's `dataset` expression; pass one built
-/// from the workflow's `with:` vars so `env.get("path")` resolves as it would
-/// under `run` (use `Engine::new()` when the dataset is a plain literal).
+/// `env_vars` resolves the source's `dataset` expression; pass the workflow's
+/// `with:` vars so `env.get("path")` resolves as it would under `run`
+/// (pass an empty map when the dataset is a plain literal).
 ///
 /// Never panics. On any failure returns `{ AttrSchema::open(), Some(reason) }`.
 pub fn sample_source(
     kind: &NodeKind,
     with: &Option<HashMap<String, serde_json::Value>>,
     sample_size: usize,
-    expr_engine: Arc<Engine>,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> SampleOutcome {
     let NodeKind::Source(factory) = kind else {
         return SampleOutcome {
@@ -59,7 +58,7 @@ pub fn sample_source(
     // (e.g. `env.get("path")`) resolve against the workflow's `with:` vars,
     // exactly as they do under `run`. Other fields keep their defaults.
     let ctx = NodeContext {
-        expr_engine,
+        env_vars,
         ..NodeContext::default()
     };
     let source = match factory.build(

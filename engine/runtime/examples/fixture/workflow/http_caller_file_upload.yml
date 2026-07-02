@@ -36,8 +36,9 @@ graphs:
         type: action
         action: HTTPCaller
         with:
-          url: |
-            "https://httpbin.org/post"
+          url:
+            type: string
+            value: "https://httpbin.org/post"
 
           method: POST
 
@@ -47,31 +48,36 @@ graphs:
               # Text field
               - type: text
                 name: "username"
-                value: |
-                  env.get("__value").user_name
+                value:
+                  type: flowExpr
+                  value: attributes["user_name"]
 
               # Another text field
               - type: text
                 name: "description"
-                value: |
-                  env.get("__value").description
+                value:
+                  type: flowExpr
+                  value: attributes["description"]
 
               # File from base64 data
               - type: file
                 name: "file"
                 source:
                   type: base64
-                  data: |
-                    env.get("__value").file_content_base64
+                  data:
+                    type: flowExpr
+                    value: attributes["file_content_base64"]
                 filename: "example.txt"
                 contentType: "text/plain"
 
-          responseBodyAttribute: "_upload_response"
-          statusCodeAttribute: "_status"
-          errorAttribute: "_error"
+          response:
+            responseBodyAttribute: "_upload_response"
+            statusCodeAttribute: "_status"
+            errorAttribute: "_error"
 
-          connectionTimeout: 30
-          transferTimeout: 120
+          timeouts:
+            connectionTimeout: 30
+            transferTimeout: 120
 
       # Example 2: Form URL-encoded data (traditional form submission)
       - id: 550e8400-e29b-41d4-a716-446655440050
@@ -79,8 +85,9 @@ graphs:
         type: action
         action: HTTPCaller
         with:
-          url: |
-            "https://httpbin.org/post"
+          url:
+            type: string
+            value: "https://httpbin.org/post"
 
           method: POST
 
@@ -88,14 +95,17 @@ graphs:
             type: formUrlEncoded
             fields:
               - name: "username"
-                value: |
-                  env.get("__value").user_name
+                value:
+                  type: flowExpr
+                  value: attributes["user_name"]
               - name: "description"
-                value: |
-                  env.get("__value").description
+                value:
+                  type: flowExpr
+                  value: attributes["description"]
 
-          responseBodyAttribute: "_form_response"
-          statusCodeAttribute: "_form_status"
+          response:
+            responseBodyAttribute: "_form_response"
+            statusCodeAttribute: "_form_status"
 
       # Example 3: Download response as file instead of attribute
       - id: 550e8400-e29b-41d4-a716-446655440060
@@ -103,20 +113,21 @@ graphs:
         type: action
         action: HTTPCaller
         with:
-          url: |
-            "https://httpbin.org/json"
+          url:
+            type: string
+            value: "https://httpbin.org/json"
 
           method: GET
 
-          # Save response to file instead of attribute
-          responseHandling:
-            type: file
-            path: |
-              "/tmp/downloaded_" + env.get("__value").file_name
-            storePathInAttribute: true
-            pathAttribute: "_file_path"
-
-          statusCodeAttribute: "_download_status"
+          response:
+            statusCodeAttribute: "_download_status"
+            responseHandling:
+              type: file
+              path:
+                type: flowExpr
+                value: '"/tmp/downloaded_" + attributes["file_name"]'
+              storePathInAttribute: true
+              pathAttribute: "_file_path"
 
       # Write results
       - id: 550e8400-e29b-41d4-a716-446655440070

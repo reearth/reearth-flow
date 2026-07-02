@@ -78,8 +78,9 @@ nodes:
     action: PlanarityFilter
     with:
       filterType: height
-      threshold: |
-        0.03
+      threshold:
+        type: flowExpr
+        value: "0.03"
 
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     name: Rotator3D
@@ -88,18 +89,24 @@ nodes:
     with:
       rotation:
         type: fromToVectors
-        fromX: |
-          env.get("__value").surfaceNormalX
-        fromY: |
-          env.get("__value").surfaceNormalY
-        fromZ: |
-          env.get("__value").surfaceNormalZ
-        toX: |
-          0.0
-        toY: |
-          0.0
-        toZ: |
-          1.0
+        fromX:
+          type: flowExpr
+          value: attributes["surfaceNormalX"]
+        fromY:
+          type: flowExpr
+          value: attributes["surfaceNormalY"]
+        fromZ:
+          type: flowExpr
+          value: attributes["surfaceNormalZ"]
+        toX:
+          type: flowExpr
+          value: "0.0"
+        toY:
+          type: flowExpr
+          value: "0.0"
+        toZ:
+          type: flowExpr
+          value: "1.0"
 
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter

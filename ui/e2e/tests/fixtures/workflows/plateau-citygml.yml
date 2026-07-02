@@ -14,8 +14,9 @@ graphs:
         type: action
         action: FilePathExtractor
         with:
-          sourceDataset: |
-            env.get("cityGmlPath")
+          sourceDataset:
+            type: flowExpr
+            value: env.get("cityGmlPath")
           extractArchive: true
 
       - id: 8d830d0f-8f5c-4bac-9c5a-0a4f0c68c697
@@ -34,8 +35,9 @@ graphs:
         type: action
         action: PLATEAU4.UDXFolderExtractor
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
+          cityGmlPath:
+            type: flowExpr
+            value: env.get("__value")["path"]
 
       - id: abd47145-383b-4703-8710-e5becfdc055a
         name: Keep Building Package
@@ -53,8 +55,9 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          dataset: |
-            env.get("__value")["path"]
+          dataset:
+            type: flowExpr
+            value: env.get("__value")["path"]
 
       - id: 5f5f1dbd-7891-40db-8e4d-629cd5586b0a
         name: Keep Core Attributes

@@ -76,7 +76,7 @@ impl SinkFactory for GltfWriterSinkFactory {
             .output
             .compile()
             .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?
-            .eval_string_env_only(ctx.expr_engine.vars())
+            .eval_string_env_only(ctx.env_vars.clone())
             .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
         // Store as String — Uri::from_str at build time would silently join with CWD,
         // turning a relative path into an absolute URI that SinkOutput::new would reject.

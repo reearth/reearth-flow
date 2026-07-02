@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/notification"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -24,7 +25,7 @@ var _ interfaces.Job = &Job{}
 
 type Job struct {
 	jobRepo           repo.Job
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	file              gateway.File
 	batch             gateway.Batch
 	cloudRunWorker    gateway.CloudRunWorker
@@ -94,12 +95,19 @@ func (i *Job) cleanupJobLock(jobID string) {
 	delete(i.jobLocks, jobID)
 }
 
-func (i *Job) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
+func (i *Job) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action, workspaceID...)
 }
 
 func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	target, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, target.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -116,36 +124,26 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 		return nil, fmt.Errorf("job cannot be cancelled: current status is %s", j.Status())
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		// Cloud-Run debug jobs have an empty GCPJobID; batch-fallback jobs do not.
+		if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" && i.cloudRunWorker != nil {
+			if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
+				return err
+			}
+		} else {
+			if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
+				return err
+			}
+		}
+
+		j.SetStatus(job.StatusCancelled)
+		now := time.Now()
+		j.SetCompletedAt(&now)
+
+		return i.jobRepo.Save(ctx, j)
+	}); err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err := tx.End(ctx); err != nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err)
-		}
-	}()
-
-	// Cloud-Run debug jobs have an empty GCPJobID; batch-fallback jobs do not.
-	if j.Debug() != nil && *j.Debug() && j.GCPJobID() == "" && i.cloudRunWorker != nil {
-		if err := i.cloudRunWorker.CancelJob(ctx, j.ID()); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
-			return nil, err
-		}
-	}
-
-	j.SetStatus(job.StatusCancelled)
-	now := time.Now()
-	j.SetCompletedAt(&now)
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return nil, err
-	}
-
-	tx.Commit()
 
 	if err := i.handleJobCompletion(ctx, j); err != nil {
 		log.Errorfc(ctx, "job: completion handling failed: %v", err)
@@ -246,19 +244,38 @@ func (i *Job) failCloudRunJob(ctx context.Context, jobID id.JobID) {
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := i.jobRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if j == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return nil, err
 	}
 
-	return i.jobRepo.FindByID(ctx, id)
+	return j, nil
 }
 
 func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.jobRepo.FindByIDs(ctx, ids)
+	if len(jobs) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+	} else {
+		// single-workspace batch assumption
+		if err := i.checkPermission(ctx, rbac.ActionAny, jobs[0].Workspace()); err != nil {
+			return nil, err
+		}
+	}
+
+	return jobs, nil
 }
 
 func (i *Job) FindByWorkspace(
@@ -267,7 +284,7 @@ func (i *Job) FindByWorkspace(
 	p *interfaces.PaginationParam,
 	keyword *string,
 ) ([]*job.Job, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
 		return nil, nil, err
 	}
 
@@ -275,12 +292,14 @@ func (i *Job) FindByWorkspace(
 }
 
 func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return "", err
-	}
-
 	j, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
+		return "", err
+	}
+	if j == nil {
+		return "", rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return "", err
 	}
 	return j.Status(), nil
@@ -424,24 +443,14 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 
 	if statusChanged {
 		currentJob.SetStatus(currentJob.Status())
-		tx, err := i.transaction.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to begin transaction: %w", err)
-		}
-
-		var txErr error
-		defer func() {
-			if err2 := tx.End(ctx); err2 != nil && txErr == nil {
-				log.Errorfc(ctx, "transaction end failed: %v", err2)
+		if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+			if err := i.jobRepo.Save(ctx, currentJob); err != nil {
+				return fmt.Errorf("failed to save job: %w", err)
 			}
-		}()
-
-		if err := i.jobRepo.Save(ctx, currentJob); err != nil {
-			txErr = err
-			return fmt.Errorf("failed to save job: %w", err)
+			return nil
+		}); err != nil {
+			return err
 		}
-
-		tx.Commit()
 
 		if workerEvent != nil {
 			if err := i.redis.DeleteJobCompleteEvent(ctx, currentJob.ID()); err != nil {
@@ -539,23 +548,12 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 }
 
 func (i *Job) saveJobState(ctx context.Context, j *job.Job) error {
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err := tx.End(ctx); err != nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err)
+	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return fmt.Errorf("failed to save job: %w", err)
 		}
-	}()
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return fmt.Errorf("failed to save job: %w", err)
-	}
-
-	tx.Commit()
-	return nil
+		return nil
+	})
 }
 
 func (i *Job) sendCompletionNotification(
@@ -609,7 +607,14 @@ func (i *Job) sendCompletionNotification(
 }
 
 func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if j == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, j.Workspace()); err != nil {
 		return nil, err
 	}
 

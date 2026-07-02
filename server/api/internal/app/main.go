@@ -66,7 +66,7 @@ func Start(debug bool, version string) {
 	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, authserver.NewDynamicAuthTransport())
 
 	// PermissionChecker
-	permissionChecker := permission.NewChecker(accountGQLClient.CerbosRepo, rbac.ServiceName)
+	permissionChecker := permission.NewChecker(accountGQLClient.CerbosRepo, accountGQLClient.WorkspaceRepo, rbac.ServiceName)
 
 	serverCfg := &ServerConfig{
 		Config:            conf,

@@ -44,40 +44,49 @@ graphs:
         type: action
         action: HTTPCaller
         with:
-          url: |
-            "https://jsonplaceholder.typicode.com/posts"
+          url:
+            type: string
+            value: https://jsonplaceholder.typicode.com/posts
 
           method: POST
 
           # Custom headers
           customHeaders:
             - name: "Content-Type"
-              value: |
-                "application/json"
+              value:
+                type: string
+                value: "application/json"
             - name: "X-Custom-Header"
-              value: |
-                "reearth-flow"
+              value:
+                type: string
+                value: "reearth-flow"
 
           # Query parameters
           queryParameters:
             - name: "format"
-              value: |
-                "json"
+              value:
+                type: string
+                value: "json"
 
           # Request body - send feature attributes as JSON
           requestBody:
             type: text
-            content: |
-              "{\"title\": \"" + env.get("__value").title +
-              "\", \"body\": \"" + env.get("__value").body +
-              "\", \"userId\": " + env.get("__value").userId + "}"
+            content:
+              type: flowExpr
+              value: |
+                json.dumps({
+                  "title": attributes["title"],
+                  "body": attributes["body"],
+                  "userId": attributes["userId"]
+                })
             contentType: "application/json"
 
           # Authentication - Bearer token
           authentication:
             type: bearer
-            token: |
-              "your-api-token-here"
+            token:
+              type: string
+              value: your-api-token-here
 
           # Response configuration
           responseBodyAttribute: "_api_response"

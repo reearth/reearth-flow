@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -19,7 +21,7 @@ import (
 type ProjectAccess struct {
 	projectRepo       repo.Project
 	projectAccessRepo repo.ProjectAccess
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	permissionChecker gateway.PermissionChecker
 	config            ContainerConfig
 }
@@ -34,15 +36,11 @@ func NewProjectAccess(r *repo.Container, gr *gateway.Container, config Container
 	}
 }
 
-func (i *ProjectAccess) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action)
+func (i *ProjectAccess) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action, workspaceID...)
 }
 
 func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
 	pa, err := i.projectAccessRepo.FindByToken(ctx, token)
 	if err != nil {
 		return nil, err
@@ -55,123 +53,114 @@ func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *proje
 		return nil, errors.New("project access is not public")
 	}
 
-	return i.projectRepo.FindByID(ctx, pa.Project())
+	prj, err := i.projectRepo.FindByID(ctx, pa.Project())
+	if err != nil {
+		return nil, err
+	}
+	if prj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, prj.Workspace()); err != nil {
+		return nil, err
+	}
+
+	return prj, nil
 }
 
 func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID) (sharingUrl string, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return "", err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
+	target, err := i.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
 		return "", err
 	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	prj, err := i.projectRepo.FindByID(ctx, projectID)
-	if err != nil {
+	if target == nil {
+		return "", rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, target.Workspace()); err != nil {
 		return "", err
 	}
 
-	var pa *projectAccess.ProjectAccess
-	pa, err = i.projectAccessRepo.FindByProjectID(ctx, projectID)
-	if err != nil && !errors.Is(err, rerror.ErrNotFound) {
-		return "", err
-	}
-
-	if pa == nil {
-		pa, err = projectAccess.New().
-			NewID().
-			Project(prj.ID()).
-			Build()
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		prj, err := i.projectRepo.FindByID(ctx, projectID)
 		if err != nil {
-			return "", err
+			return err
 		}
-	}
 
-	err = pa.MakePublic()
-	if err != nil {
+		pa, err := i.projectAccessRepo.FindByProjectID(ctx, projectID)
+		if err != nil && !errors.Is(err, rerror.ErrNotFound) {
+			return err
+		}
+
+		if pa == nil {
+			pa, err = projectAccess.New().
+				NewID().
+				Project(prj.ID()).
+				Build()
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := pa.MakePublic(); err != nil {
+			return err
+		}
+
+		if err := i.projectAccessRepo.Save(ctx, pa); err != nil {
+			return err
+		}
+
+		sharingToken := pa.Token()
+		prj.SetSharedToken(&sharingToken)
+		if err := i.projectRepo.Save(ctx, prj); err != nil {
+			return fmt.Errorf("failed to update project with sharing URL: %w", err)
+		}
+
+		sharingUrl, err = pa.SharingURL(i.config.Host, i.config.SharedPath)
+		return err
+	}); err != nil {
 		return "", err
 	}
-
-	err = i.projectAccessRepo.Save(ctx, pa)
-	if err != nil {
-		return "", err
-	}
-
-	sharingToken := pa.Token()
-	if err != nil {
-		return "", err
-	}
-
-	prj.SetSharedToken(&sharingToken)
-	err = i.projectRepo.Save(ctx, prj)
-	if err != nil {
-		return "", fmt.Errorf("failed to update project with sharing URL: %w", err)
-	}
-
-	sharingUrl, err = pa.SharingURL(i.config.Host, i.config.SharedPath)
-	if err != nil {
-		return "", err
-	}
-
-	tx.Commit()
 	return sharingUrl, nil
 }
 
 func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
+	target, err := i.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
 		return err
 	}
+	if target == nil {
+		return rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, target.Workspace()); err != nil {
+		return err
+	}
 
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		prj, err := i.projectRepo.FindByID(ctx, projectID)
+		if err != nil {
+			return err
 		}
-	}()
 
-	prj, err := i.projectRepo.FindByID(ctx, projectID)
-	if err != nil {
-		return err
-	}
+		pa, err := i.projectAccessRepo.FindByProjectID(ctx, projectID)
+		if err != nil {
+			return fmt.Errorf("failed to find project access: %w", err)
+		}
+		if pa == nil {
+			return errors.New("project access not found")
+		}
 
-	pa, err := i.projectAccessRepo.FindByProjectID(ctx, projectID)
-	if err != nil {
-		return fmt.Errorf("failed to find project access: %w", err)
-	}
-	if pa == nil {
-		return errors.New("project access not found")
-	}
+		if err := pa.MakePrivate(); err != nil {
+			return err
+		}
 
-	err = pa.MakePrivate()
-	if err != nil {
-		return err
-	}
+		if err := i.projectAccessRepo.Save(ctx, pa); err != nil {
+			return err
+		}
 
-	err = i.projectAccessRepo.Save(ctx, pa)
-	if err != nil {
-		return err
-	}
+		prj.SetSharedToken(nil)
+		if err := i.projectRepo.Save(ctx, prj); err != nil {
+			return fmt.Errorf("failed to update project to remove sharing URL: %w", err)
+		}
 
-	prj.SetSharedToken(nil)
-	err = i.projectRepo.Save(ctx, prj)
-	if err != nil {
-		return fmt.Errorf("failed to update project to remove sharing URL: %w", err)
-	}
-
-	tx.Commit()
-	return nil
+		return nil
+	})
 }

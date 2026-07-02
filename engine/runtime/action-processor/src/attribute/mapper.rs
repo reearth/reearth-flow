@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -184,7 +184,7 @@ struct Mapper {
     /// # Child attribute name
     child_attribute: Option<String>,
     /// # Expression to evaluate multiple attributes
-    multiple_expr: Option<Code>,
+    multiple_expr: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 #[derive(Debug, Clone)]
@@ -214,7 +214,7 @@ impl Processor for AttributeMapper {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let env_vars = ctx.expr_engine.vars();
+        let env_vars = ctx.env_vars.clone();
         let mut attributes = IndexMap::<Attribute, AttributeValue>::new();
         for mapper in &self.mapper.mappers {
             match &mapper.attribute {

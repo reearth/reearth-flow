@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/pprof"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
@@ -49,6 +50,10 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	if len(origins) > 0 {
 		e.Use(
 			middleware.CORSWithConfig(middleware.CORSConfig{
+				// Skip trigger routes — they manage their own permissive CORS policy.
+				Skipper: func(c echo.Context) bool {
+					return strings.HasPrefix(c.Path(), "/api/triggers")
+				},
 				AllowOrigins: origins,
 			}),
 		)
@@ -116,7 +121,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		apiPrivate.POST("/signup/verify/:code", SignupVerify())
 		apiPrivate.POST("/password-reset", PasswordReset())
 	}
-	if err := initActionsData(ctx); err != nil {
+	if err := initActionsData(ctx, cfg.Gateways.File); err != nil {
 		log.Errorf("Failed to initialize actions data: %v", err)
 	}
 	SetupActionRoutes(e)
@@ -131,7 +136,8 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	return e
 }
 
-func initActionsData(_ context.Context) error {
+func initActionsData(_ context.Context, repo actionsReader) error {
+	actionsRepo = repo
 	for lang := range supportedLangs {
 		if _, err := loadActionsData(lang); err != nil {
 			log.Errorf("Failed to load actions data for language %s: %v", lang, err)

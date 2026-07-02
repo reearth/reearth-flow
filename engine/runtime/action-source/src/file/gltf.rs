@@ -50,7 +50,7 @@ impl SourceFactory for GltfReaderFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -72,7 +72,7 @@ impl SourceFactory for GltfReaderFactory {
             .into());
         };
         let compiled = GltfReaderCompiledParam {
-            common: params.common.compile().map_err(|e| {
+            common: params.common.compile(&ctx).map_err(|e| {
                 SourceError::GltfReaderFactory(format!("Failed to compile params: {e:?}"))
             })?,
             _triangulate: params.triangulate,
@@ -145,7 +145,7 @@ impl Source for GltfReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let content = get_content(&ctx, &self.params.common, storage_resolver.clone()).await?;
+        let content = get_content(&self.params.common, storage_resolver.clone()).await?;
 
         read_gltf(&ctx, storage_resolver, &content, &self.params, sender)
             .await
@@ -161,7 +161,7 @@ async fn read_gltf(
     params: &GltfReaderCompiledParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), SourceError> {
-    let gltf_uri = get_input_path(ctx, &params.common)
+    let gltf_uri = get_input_path(&params.common)
         .map_err(SourceError::GltfReader)?
         .unwrap_or_else(|| Uri::from_str("file://./unknown.gltf").unwrap());
 

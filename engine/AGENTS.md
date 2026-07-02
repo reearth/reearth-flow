@@ -40,7 +40,6 @@ PROJ library is required for coordinate system transformations (HorizontalReproj
 - `runtime/types/` - Core data structures (Feature, Geometry, Workflow definitions)
 - `runtime/action-*` - Action implementations (source, processor, sink, plateau-specific)
 - `runtime/geometry/` - Comprehensive 2D/3D geometry operations
-- `runtime/eval-expr/` - Rhai-based expression evaluation system
 - `cli/` - Command-line interface
 - `worker/` - Distributed execution worker component
 - `testing/` - Workflow integration tests and tile output validation tests

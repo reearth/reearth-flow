@@ -18,7 +18,13 @@ type Props = {
 };
 
 const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
-  const { hasIntermediateData, isSelected, jobStatus, handleClick } = useHooks({
+  const {
+    hasIntermediateData,
+    isSelected,
+    jobStatus,
+    handleSingleClick,
+    handleDoubleClick,
+  } = useHooks({
     nodeId,
     nodeData,
     portName,
@@ -34,17 +40,17 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
         type="source"
         className="right-1 z-10 w-[8px] rounded-none transition-colors"
         position={Position.Right}
-        isConnectable={hasIntermediateData ? 1 : 0}
       />
       <div className="group flex w-full min-w-0 -translate-x-0.5 items-center justify-end gap-1">
         <div
           className={`flex items-center gap-1 rounded-sm  px-0.5 ${hasData ? "group-hover:cursor-pointer group-hover:bg-success/20 " : ""}${isSelected ? "bg-success/20" : ""}`}
           onDoubleClick={(e) => {
             e.stopPropagation();
+            if (hasData) handleDoubleClick();
           }}
           onClick={(e) => {
             e.stopPropagation();
-            if (hasData) handleClick();
+            if (hasData) handleSingleClick();
           }}>
           <p
             className={`min-w-0 text-end text-[10px] ${getBreakClass(portName)} italic dark:font-thin ${

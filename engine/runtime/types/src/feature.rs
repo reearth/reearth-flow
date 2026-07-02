@@ -11,7 +11,6 @@ use reearth_flow_common::{
     str,
     xml::{xpath_value_to_json, XmlXpathValue},
 };
-use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
@@ -405,60 +404,11 @@ impl Feature {
         self.attributes.iter()
     }
 
-    pub fn new_scope(
-        &self,
-        engine: Arc<Engine>,
-        with: &Option<HashMap<String, serde_json::Value>>,
-    ) -> Scope {
-        let scope = engine.new_scope();
-        let value: serde_json::Value = serde_json::Value::Object(
-            self.attributes
-                .iter()
-                .map(|(k, v)| (k.clone().into_inner(), v.clone().into()))
-                .collect::<serde_json::Map<_, _>>(),
-        );
-        scope.set("__value", value);
-        if let Some(with) = with {
-            for (k, v) in with {
-                scope.set(k, v.clone());
-            }
-        }
-        scope
-    }
-
     pub fn as_map(&self) -> HashMap<String, AttributeValue> {
         self.attributes
             .iter()
             .map(|(k, v)| (k.to_string(), v.clone()))
             .collect()
-    }
-
-    pub fn fetch_attribute_value(
-        &self,
-        engine: Arc<Engine>,
-        with: &Option<HashMap<String, serde_json::Value>>,
-        attribute: &Option<Vec<Attribute>>,
-        attribute_ast: &Option<rhai::AST>,
-    ) -> String {
-        if let Some(attribute_values) = attribute {
-            let values = attribute_values
-                .iter()
-                .flat_map(|key| self.get(key))
-                .cloned()
-                .collect::<Vec<_>>();
-            values
-                .iter()
-                .map(|value| value.to_string())
-                .collect::<Vec<_>>()
-                .join("-")
-        } else if let Some(attribute_ast) = attribute_ast {
-            let scope = self.new_scope(engine.clone(), with);
-            let value = scope.eval_ast::<String>(attribute_ast);
-
-            value.unwrap_or_else(|_| "".to_string())
-        } else {
-            "".to_string()
-        }
     }
 
     pub fn all_attribute_keys(&self) -> Vec<String> {

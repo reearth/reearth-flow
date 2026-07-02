@@ -3,6 +3,8 @@ package interactor
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -16,13 +18,15 @@ import (
 type EdgeExecution struct {
 	file              gateway.File
 	edgeRepo          repo.EdgeExecution
-	transaction       usecasex.Transaction
+	jobRepo           repo.Job
+	transaction       usecasex.Transactor
 	permissionChecker gateway.PermissionChecker
 }
 
 func NewEdgeExecution(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.EdgeExecution {
 	ee := &EdgeExecution{
 		edgeRepo:          r.EdgeExecution,
+		jobRepo:           r.Job,
 		file:              gr.File,
 		transaction:       r.Transaction,
 		permissionChecker: permissionChecker,
@@ -30,12 +34,20 @@ func NewEdgeExecution(r *repo.Container, gr *gateway.Container, permissionChecke
 	return ee
 }
 
-func (i *EdgeExecution) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
+func (i *EdgeExecution) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action, workspaceID...)
 }
 
 func (i *EdgeExecution) FindByJobEdgeID(ctx context.Context, jobID id.JobID, edgeID string) (*graph.EdgeExecution, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	var wsIDs []accountsid.WorkspaceID
+	if j != nil {
+		wsIDs = append(wsIDs, j.Workspace())
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
 		return nil, err
 	}
 
@@ -71,29 +83,18 @@ func (i *EdgeExecution) checkIntermediateData(ctx context.Context, edge *graph.E
 		return nil
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
+	var newEdge *graph.EdgeExecution
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		newEdge = graph.NewEdgeExecution(
+			edge.ID(),
+			edge.EdgeID(),
+			edge.JobID(),
+			&url,
+		)
+		return i.edgeRepo.Save(ctx, newEdge)
+	}); err != nil {
 		return err
 	}
-
-	defer func() {
-		if err := tx.End(ctx); err != nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err)
-		}
-	}()
-
-	newEdge := graph.NewEdgeExecution(
-		edge.ID(),
-		edge.EdgeID(),
-		edge.JobID(),
-		&url,
-	)
-
-	if err := i.edgeRepo.Save(ctx, newEdge); err != nil {
-		return err
-	}
-
-	tx.Commit()
 
 	*edge = *newEdge
 

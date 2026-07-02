@@ -72,8 +72,9 @@ graphs:
         type: action
         action: FeatureFilePathExtractor
         with:
-          sourceDataset: |
-            env.get("__value")["cityGmlPath"]
+          sourceDataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
           extractArchive: true
           destPrefix: udx
 
@@ -101,8 +102,9 @@ graphs:
         type: action
         action: PLATEAU4.UDXFolderExtractor
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
           codelistsPath: codelists
           schemasPath: schemas
 
@@ -134,7 +136,9 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: env.get("prcs")
+          targetEpsgCode:
+            type: flowExpr
+            value: env["prcs"]
 
       # Unreferenced XLink detection for L-TRAN-03
       - id: 6f556405-1fdb-4807-8e3b-f18da79fbe1a
@@ -142,8 +146,9 @@ graphs:
         type: action
         action: PLATEAU4.TransportationXlinkDetector
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
 
       # Map attributes for XLink CSV output
       - id: 95a3af4f-4004-422b-bf86-d64181861bd5
@@ -667,10 +672,12 @@ graphs:
         type: action
         action: FeatureMerger
         with:
-          requestorAttributeValue: |
-            env.get("__value").Filename
-          supplierAttributeValue: |
-            env.get("__value").Filename
+          requestorAttributeValue:
+            type: flowExpr
+            value: attributes["Filename"]
+          supplierAttributeValue:
+            type: flowExpr
+            value: attributes["Filename"]
 
       # Phase 4: AttributeMapper for CSV formatting
       - id: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f

@@ -56,7 +56,6 @@ pub(super) fn geometry_slicing_stage(
 ) -> crate::errors::Result<()> {
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let layer_names = Arc::new(Mutex::new(std::collections::HashSet::new()));
-
     // Convert CityObjects to sliced features
     upstream
         .iter()
