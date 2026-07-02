@@ -54,23 +54,6 @@ graphs:
       # FeatureCityGml2Reader emits the parsed CityGML content nested under
       # `cityGmlAttributes` and the identity as `__citygml_feature_type`/`__citygml_gml_id`.
       # PLATEAU4.AttributeFlattener and the downstream mappers expect `featureType`/`gmlId`.
-      - id: f1e2d3c4-b5a6-4978-8b1c-2d3e4f5a6b7c
-        name: CityGml2LegacyAttributeAdapter
-        type: action
-        action: AttributeManager
-        with:
-          operations:
-            - attribute: __citygml_feature_type
-              method: rename
-              value:
-                type: string
-                value: featureType
-            - attribute: __citygml_gml_id
-              method: rename
-              value:
-                type: string
-                value: gmlId
-
       - id: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
         name: TargetPackagesFilter
         type: action
@@ -123,9 +106,9 @@ graphs:
             - attribute: city_name
               valueAttribute: cityName
             - attribute: feature_type
-              valueAttribute: featureType
+              valueAttribute: __citygml_feature_type
             - attribute: gml_id
-              valueAttribute: gmlId
+              valueAttribute: __citygml_gml_id
             - attribute: luse_class
               expr:
                 type: flowExpr
@@ -206,9 +189,9 @@ graphs:
             - attribute: city_name
               valueAttribute: cityName
             - attribute: feature_type
-              valueAttribute: featureType
+              valueAttribute: __citygml_feature_type
             - attribute: gml_id
-              valueAttribute: gmlId
+              valueAttribute: __citygml_gml_id
             - attribute: core_creationDate
               expr:
                 type: flowExpr
@@ -315,11 +298,6 @@ graphs:
         toPort: default
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: f1e2d3c4-b5a6-4978-8b1c-2d3e4f5a6b7c
-        fromPort: default
-        toPort: default
-      - id: a2b3c4d5-e6f7-4809-9a1b-2c3d4e5f6a7b
-        from: f1e2d3c4-b5a6-4978-8b1c-2d3e4f5a6b7c
         to: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
         fromPort: default
         toPort: default
