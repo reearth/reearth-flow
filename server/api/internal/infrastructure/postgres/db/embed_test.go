@@ -8,7 +8,7 @@ import (
 )
 
 // The embed must stay in sync with the on-disk migrations dir. A missing
-// go:embed glob would silently ship an incomplete schema, so assert the
+// embed glob would silently ship an incomplete schema, so assert the
 // embedded .sql set exactly equals what Atlas wrote to disk.
 func TestMigrationsFS_MatchesDisk(t *testing.T) {
 	embedded := map[string]bool{}
