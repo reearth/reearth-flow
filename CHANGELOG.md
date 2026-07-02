@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.26 - 2026-07-02
+
+### Server
+
+#### 🚀 Features
+
+- PostgreSQL backend (Atlas + sqlc + pgxx Transactor) ([#2185](https://github.com/reearth/reearth-flow/pull/2185)) [`d10ad0`](https://github.com/reearth/reearth-flow/commit/d10ad0)
+
+### api
+
+#### 🔧 Bug Fixes
+
+- Add CORS skipper for trigger routes to manage permissive policy ([#2221](https://github.com/reearth/reearth-flow/pull/2221)) [`984969`](https://github.com/reearth/reearth-flow/commit/984969)
+- Add CORS middleware to trigger endpoints for public access ([#2218](https://github.com/reearth/reearth-flow/pull/2218)) [`8d05f1`](https://github.com/reearth/reearth-flow/commit/8d05f1)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Revert dropdown package version due to click issue ([#2220](https://github.com/reearth/reearth-flow/pull/2220)) [`d8b05d`](https://github.com/reearth/reearth-flow/commit/d8b05d)
+
 ## 0.1.0-alpha.25 - 2026-07-01
 
 ### engine
