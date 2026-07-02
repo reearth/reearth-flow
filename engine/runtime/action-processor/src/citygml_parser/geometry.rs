@@ -9,19 +9,17 @@ use super::utils::{gml_id_attr, local_name, XmlChild, XmlNode};
 
 pub fn extract_geometries(node: &Arc<XmlNode>) -> (Arc<XmlNode>, Vec<GmlGeometry>) {
     let mut out: Vec<GmlGeometry> = Vec::new();
-    let stripped = strip_geometries(node, &mut out);
+    let stripped = strip_and_collect(node, &mut out);
     (stripped, out)
 }
 
-/// Returns `node` without its LOD geometry properties, collecting those geometries into `out`.
-fn strip_geometries(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<XmlNode> {
-    // Rebuild lazily so geometry-free subtrees are returned shared rather than re-cloned.
-    let mut rebuilt: Option<Vec<XmlChild>> = None;
+fn strip_and_collect(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<XmlNode> {
+    let mut new_children: Option<Vec<XmlChild>> = None;
 
     for (i, child) in node.children.iter().enumerate() {
         let XmlChild::Element(e) = child else {
-            if let Some(ref mut children) = rebuilt {
-                children.push(child.clone());
+            if let Some(ref mut nc) = new_children {
+                nc.push(child.clone());
             }
             continue;
         };
@@ -40,27 +38,27 @@ fn strip_geometries(node: &Arc<XmlNode>, out: &mut Vec<GmlGeometry>) -> Arc<XmlN
 
         if let Some(lod) = geometry_lod {
             collect_geometry_from_property(e, lod, out);
-            if rebuilt.is_none() {
-                rebuilt = Some(node.children[..i].to_vec());
+            if new_children.is_none() {
+                new_children = Some(node.children[..i].to_vec());
             }
         } else {
-            let stripped_child = strip_geometries(e, out);
-            match rebuilt {
+            let stripped_child = strip_and_collect(e, out);
+            match new_children {
                 None => {
                     if !Arc::ptr_eq(&stripped_child, e) {
-                        let mut children = node.children[..i].to_vec();
-                        children.push(XmlChild::Element(stripped_child));
-                        rebuilt = Some(children);
+                        let mut nc = node.children[..i].to_vec();
+                        nc.push(XmlChild::Element(stripped_child));
+                        new_children = Some(nc);
                     }
                 }
-                Some(ref mut children) => {
-                    children.push(XmlChild::Element(stripped_child));
+                Some(ref mut nc) => {
+                    nc.push(XmlChild::Element(stripped_child));
                 }
             }
         }
     }
 
-    match rebuilt {
+    match new_children {
         None => Arc::clone(node),
         Some(children) => node.with_children(children),
     }
