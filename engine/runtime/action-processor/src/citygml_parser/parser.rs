@@ -149,8 +149,12 @@ pub fn to_feature(
     flatten_single_child_objects: bool,
     flatten_measure_types: bool,
 ) -> Feature {
-    let content =
-        node_to_attribute_value(node, keep_attributes, flatten_single_child_objects, flatten_measure_types);
+    let content = node_to_attribute_value(
+        node,
+        keep_attributes,
+        flatten_single_child_objects,
+        flatten_measure_types,
+    );
     build_feature(
         &node.name.0,
         gml_id_attr(&node.attrs).as_deref(),
