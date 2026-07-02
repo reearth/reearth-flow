@@ -48,6 +48,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tempfile::TempDir;
 
 use super::errors::PlateauProcessorError;
 use super::face_extractor::{
@@ -280,7 +281,8 @@ impl Processor for WaterBodyTinValidator {
 
         // Disk-backed per-group edge spills, keyed by the group-by attribute values.
         let temp_dir = self.make_temp_dir(fw)?;
-        let spills: Mutex<GroupSpills> = Mutex::new(GroupSpills::new(temp_dir.clone()));
+        let spills: Mutex<GroupSpills> =
+            Mutex::new(GroupSpills::new(temp_dir.path().to_path_buf()));
 
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let group_by = &self.params.unshared_edge_group_by;
@@ -334,7 +336,6 @@ impl Processor for WaterBodyTinValidator {
             ));
         }
 
-        let _ = std::fs::remove_dir_all(&temp_dir);
         Ok(())
     }
 
@@ -363,10 +364,12 @@ impl WaterBodyTinValidator {
         Ok(value)
     }
 
-    fn make_temp_dir(&self, fw: &ProcessorChannelForwarder) -> Result<PathBuf, BoxedError> {
-        let dir = executor_cache_subdir(fw.executor_id(), "processors")
-            .join(format!("water-body-tin-validator-{}", uuid::Uuid::new_v4()));
-        std::fs::create_dir_all(&dir)?;
+    fn make_temp_dir(&self, fw: &ProcessorChannelForwarder) -> Result<TempDir, BoxedError> {
+        let parent = executor_cache_subdir(fw.executor_id(), "processors");
+        std::fs::create_dir_all(&parent)?;
+        let dir = tempfile::Builder::new()
+            .prefix("water-body-tin-validator-")
+            .tempdir_in(&parent)?;
         Ok(dir)
     }
 }
