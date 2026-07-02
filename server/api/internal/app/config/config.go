@@ -43,6 +43,8 @@ type (
 		AssetBaseURL    string `default:"http://localhost:8080/assets"`
 		DB              string `default:"mongodb://localhost"`
 		DB_Account      string `pp:",omitempty"`
+		DB_Driver       string `default:"mongo" pp:",omitempty"`
+		DB_PG           string `pp:",omitempty"`
 		GCPProject      string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 		GCPRegion       string `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
 		Host            string `default:"http://localhost:8080"`

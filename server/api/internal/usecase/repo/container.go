@@ -27,7 +27,7 @@ type Container struct {
 	Project       Project
 	ProjectAccess ProjectAccess
 	Role          accountrepo.Role // TODO: Delete this once the permission check migration is complete.
-	Transaction   usecasex.Transaction
+	Transaction   usecasex.Transactor
 	Trigger       Trigger
 	User          accountrepo.User // TODO: Remove this once the replace user management is complete.
 	Workflow      Workflow
@@ -36,10 +36,13 @@ type Container struct {
 
 // TODO: Remove this once the replace user management is complete.
 func (c *Container) AccountRepos() *accountrepo.Container {
+	// Production builds the account container directly in app/repo.go; this shim
+	// adapts the account fields for the e2e/memory paths. Transaction is omitted
+	// deliberately — those paths drive transactions via repo.Container.Transaction,
+	// not accountrepo.Container.Transaction.
 	return &accountrepo.Container{
 		Workspace:   c.Workspace,
 		User:        c.User,
-		Transaction: c.Transaction,
 		Role:        c.Role,
 		Permittable: c.Permittable,
 	}

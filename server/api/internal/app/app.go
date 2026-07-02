@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/pprof"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
@@ -49,6 +50,10 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	if len(origins) > 0 {
 		e.Use(
 			middleware.CORSWithConfig(middleware.CORSConfig{
+				// Skip trigger routes — they manage their own permissive CORS policy.
+				Skipper: func(c echo.Context) bool {
+					return strings.HasPrefix(c.Path(), "/api/triggers")
+				},
 				AllowOrigins: origins,
 			}),
 		)

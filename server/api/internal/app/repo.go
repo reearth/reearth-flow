@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
@@ -14,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpscheduler"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
+	postgresrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -71,9 +73,22 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		log.Fatalf("Failed to init mongo: %+v\n", err)
 	}
 
-	repos, err := mongorepo.New(ctx, client.Database(databaseName), accountRepos, txAvailable)
-	if err != nil {
-		log.Fatalf("Failed to init mongo: %+v\n", err)
+	var repos *repo.Container
+	switch conf.DB_Driver {
+	case "postgres":
+		pool, perr := pgxpool.New(ctx, conf.DB_PG)
+		if perr != nil {
+			log.Fatalf("postgres error: %+v\n", perr)
+		}
+		repos, err = postgresrepo.New(ctx, pool, accountRepos)
+		if err != nil {
+			log.Fatalf("Failed to init postgres: %+v\n", err)
+		}
+	default:
+		repos, err = mongorepo.New(ctx, client.Database(databaseName), accountRepos, txAvailable)
+		if err != nil {
+			log.Fatalf("Failed to init mongo: %+v\n", err)
+		}
 	}
 	// Redis
 	gateways.Redis = initRedis(ctx, conf)
