@@ -21,7 +21,18 @@ func (a *Adapter) ceilingName(room DocID) string {
 	if a.phase2 {
 		return ProjectPrefix(room) + "prune_ceiling"
 	}
+	return legacyCeilingName(room)
+}
+
+// legacyCeilingName / legacySnapshotPrefix are the Phase-1 (legacy-root) object
+// names. They are also the fallback names swept by Delete during Phase-2
+// coexistence, so they must stay byte-identical to the non-Phase-2 branches.
+func legacyCeilingName(room DocID) string {
 	return hexb([]byte("prune_ceiling:" + hexb([]byte(room))))
+}
+
+func legacySnapshotPrefix(room DocID) string {
+	return hexb([]byte("snapshot:" + hexb([]byte(room)) + ":"))
 }
 
 // ceiling reads the rollback ceiling. ok=false means no ceiling is set.
@@ -70,7 +81,7 @@ func (a *Adapter) snapshotPrefix(room DocID) string {
 	if a.phase2 {
 		return ProjectPrefix(room) + "snapshot:"
 	}
-	return hexb([]byte("snapshot:" + hexb([]byte(room)) + ":"))
+	return legacySnapshotPrefix(room)
 }
 
 // Load returns the latest merged state for room (v2-first → v1 fallback), folding
@@ -129,16 +140,32 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 	if err != nil {
 		return persistence.LoadResult{}, err
 	}
+	ceil, hasCeil, err := a.ceiling(ctx, room)
+	if err != nil {
+		return persistence.LoadResult{}, err
+	}
 
 	clocks := sortedClocks(updates)
 	// Drop any update > ceiling a crashed prune failed to delete; the v2 base
 	// already reflects the rolled-back state.
-	clocks, err = a.filterByCeiling(ctx, room, clocks)
-	if err != nil {
-		return persistence.LoadResult{}, err
+	if hasCeil {
+		kept := clocks[:0:0]
+		for _, x := range clocks {
+			if x <= ceil {
+				kept = append(kept, x)
+			}
+		}
+		clocks = kept
 	}
 	merged := base
+	// Clamp the reported head to an active ceiling. After a crash between the
+	// ceiling write and the checkpoint lowering in PruneAfter, the checkpoint can
+	// still hold the stale pre-rollback value, but no version above the ceiling is
+	// visible — so the head must never exceed it.
 	head := cp
+	if hasCeil && head > ceil {
+		head = ceil
+	}
 	parts := [][]byte{}
 	if len(merged) > 0 {
 		parts = append(parts, merged)
@@ -167,7 +194,11 @@ func (a *Adapter) Load(ctx context.Context, room string) (res persistence.LoadRe
 }
 
 // AppendUpdate persists one incremental V1 update at clock+1 and returns the
-// assigned Version. Triggers every-10th-clock compaction.
+// assigned Version. Triggers every-10th-clock compaction. The read-modify-write
+// (and inline compaction) run under the per-doc save lock so they are mutually
+// exclusive with PruneAfter, Compact, and other AppendUpdate callers that share
+// the same lock — otherwise two concurrent appends can assign the same clock and
+// silently overwrite one update.
 func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) (persistence.Version, error) {
 	if err := a.validate(room); err != nil {
 		return 0, err
@@ -176,6 +207,22 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 	if err != nil {
 		return 0, err
 	}
+	var clock uint32
+	err = a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
+		c, e := a.appendLocked(ctx, room, oid, update)
+		clock = c
+		return e
+	})
+	if err != nil {
+		return 0, err
+	}
+	return persistence.Version(clock), nil
+}
+
+// appendLocked is AppendUpdate's body; the caller holds gcsDocLockKey, so it uses
+// the non-locking deleteUpdatesAfter (not finishInterruptedPrune, which re-takes
+// the same lock and would deadlock a non-reentrant locker).
+func (a *Adapter) appendLocked(ctx context.Context, room DocID, oid uint32, update []byte) (uint32, error) {
 	// Recovery path: if a ceiling is present, a prior PruneAfter may have crashed
 	// mid-delete. Finish the interrupted prune, then clear the ceiling BEFORE
 	// writing the new update below — so a crash after the write can never leave a
@@ -185,10 +232,10 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 		return 0, err
 	}
 	if hasCeil {
-		if err := a.finishInterruptedPrune(ctx, room, oid, ceil); err != nil {
+		if err := a.deleteUpdatesAfter(ctx, room, oid, ceil); err != nil {
 			return 0, err
 		}
-		// Safe to clear now: finishInterruptedPrune removed every orphan > ceil,
+		// Safe to clear now: deleteUpdatesAfter removed every orphan > ceil,
 		// so clearing the ceiling resurrects nothing.
 		if err := a.store.delete(ctx, a.ceilingName(room)); err != nil {
 			return 0, err
@@ -198,6 +245,20 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 	last, err := a.lastClock(ctx, room, oid)
 	if err != nil {
 		return 0, err
+	}
+	// Phase-2: on the first primary write, fold the legacy-root base into the
+	// primary prefix so the prefix is self-contained. Without this, an incremental
+	// update would be the only primary object and a later Load would drop the
+	// legacy base entirely (silent total data loss on the first edit of a
+	// not-yet-backfilled room). No-op when a primary snapshot already exists or the
+	// legacy root is empty.
+	if a.phase2 && last == 0 {
+		if err := a.Backfill(ctx, string(room)); err != nil {
+			return 0, err
+		}
+		if last, err = a.lastClock(ctx, room, oid); err != nil {
+			return 0, err
+		}
 	}
 	clock := last + 1
 	if err := a.store.put(ctx, a.layout.UpdateName(room, oid, clock), update); err != nil {
@@ -217,7 +278,7 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 			return 0, err
 		}
 	}
-	return persistence.Version(clock), nil
+	return clock, nil
 }
 
 // FlushSnapshot persists state as the COMPLETE doc_v2 snapshot (plus the v1 doc
@@ -354,22 +415,54 @@ func (a *Adapter) MaterializeAt(ctx context.Context, room string, v persistence.
 		return nil, err
 	}
 	target := uint32(v)
+
+	// Phase-2 dual-read: when the primary prefix holds nothing (no doc_v2, no v1
+	// base, no updates) the state lives in the legacy root. Reconstruct it there,
+	// mirroring Load — otherwise a legacy-only room materializes empty and a
+	// rollback overwrites its real content with an empty snapshot.
+	if a.fallback != nil {
+		_, hasPrimaryV2, err := a.loadPrimaryV2(ctx, room)
+		if err != nil {
+			return nil, err
+		}
+		primaryUpdates, err := a.listUpdates(ctx, room, oid)
+		if err != nil {
+			return nil, err
+		}
+		var primaryBase []byte
+		if !hasPrimaryV2 {
+			if b, gerr := a.store.get(ctx, a.layout.DocStateName(room, oid)); gerr == nil {
+				primaryBase = b
+			} else if gerr != errNotFound {
+				return nil, gerr
+			}
+		}
+		if !hasPrimaryV2 && len(primaryBase) == 0 && len(primaryUpdates) == 0 {
+			return a.materializeLegacy(ctx, room)
+		}
+	}
+
 	cp, err := a.checkpoint(ctx, room)
 	if err != nil {
 		return nil, err
 	}
 
 	var parts [][]byte
-	// Include the base snapshot only when the checkpoint is at or below target.
+	// Include the base snapshot when the checkpoint is at or below target. The
+	// base is folded whenever a doc_v2 (or v1 SUB_DOC) exists, NOT only when
+	// cp>0: a legacy-only/backfilled/flushed room has a real base at checkpoint 0,
+	// and gating on cp>0 dropped it — materializing empty and letting a rollback
+	// overwrite real content with an empty snapshot. CRDT merge is idempotent, so
+	// folding the full base plus replayed updates never double-applies.
 	if cp <= target {
 		if v1, ok, err := a.loadV2(ctx, room); err != nil {
 			return nil, err
-		} else if ok && cp > 0 {
+		} else if ok {
 			parts = append(parts, v1)
-		} else if !ok {
-			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil && cp > 0 {
+		} else {
+			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
 				parts = append(parts, b)
-			} else if err != nil && err != errNotFound {
+			} else if err != errNotFound {
 				return nil, err
 			}
 		}
@@ -463,7 +556,11 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 		return err
 	}
 
-	// Phase 2: everything lives under "{room}/", so one prefix sweep removes it all.
+	// Phase 2: everything lives under "{room}/", so one prefix sweep removes the
+	// primary layout. But the same doc id may still carry legacy-root objects
+	// (pre-migration data, or writes by a coexisting Rust node) that the prefix
+	// sweep cannot reach; leaving them behind resurrects the "deleted" room via
+	// dual-read on the next Load. Sweep the legacy root too.
 	if a.phase2 {
 		names, err := a.store.list(ctx, ProjectPrefix(room))
 		if err != nil {
@@ -471,6 +568,11 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 		}
 		for _, n := range names {
 			if err := a.store.delete(ctx, n); err != nil {
+				return err
+			}
+		}
+		if a.fallback != nil {
+			if err := a.deleteLegacyRoot(ctx, room); err != nil {
 				return err
 			}
 		}
@@ -516,6 +618,45 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 	a.mu.Lock()
 	delete(a.oidCache, room)
 	a.mu.Unlock()
+	return nil
+}
+
+// deleteLegacyRoot removes every legacy-root object for room (Phase-2 only),
+// mirroring the Phase-1 deletion: the fixed-name objects, the legacy prune
+// ceiling, and the update-log + named-snapshot prefixes under the legacy OID.
+func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
+	leg := a.fallback
+	oid, err := a.legacyOID(ctx, room)
+	if err != nil {
+		return err
+	}
+	names := []string{
+		leg.DocV2Name(room),
+		leg.CheckpointName(room),
+		leg.DocStateName(room, oid),
+		leg.StateVectorName(room, oid),
+		leg.OIDIndexName(room),
+		legacyCeilingName(room),
+	}
+	for _, n := range names {
+		if n == "" {
+			continue
+		}
+		if err := a.store.delete(ctx, n); err != nil {
+			return err
+		}
+	}
+	for _, prefix := range []string{leg.UpdatePrefix(room, oid), legacySnapshotPrefix(room)} {
+		objs, err := a.store.list(ctx, prefix)
+		if err != nil {
+			return err
+		}
+		for _, n := range objs {
+			if err := a.store.delete(ctx, n); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

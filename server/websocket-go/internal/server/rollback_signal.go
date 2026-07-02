@@ -15,6 +15,13 @@ const (
 	rollbackInProgressKey = "rollbackInProgress"
 )
 
+// TransientMapKeys returns the doc map keys carrying ephemeral UI state that must
+// never be persisted into a GCS snapshot (metadata.rollbackInProgress). Wire this
+// into gcs.Options.TransientMapKeys so every doc_v2 write strips them.
+func TransientMapKeys() map[string][]string {
+	return map[string][]string{metadataMapName: {rollbackInProgressKey}}
+}
+
 // SignalRollback sets or clears metadata.rollbackInProgress on the live room's
 // doc and broadcasts the change to connected peers. The flag is transient and
 // must never be persisted into a GCS snapshot.
