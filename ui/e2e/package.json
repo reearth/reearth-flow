@@ -4,6 +4,9 @@
   "private": true,
   "description": "End-to-end tests for Re:Earth Flow",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "test": "playwright test",
     "test:fast": "playwright test --project fast",
