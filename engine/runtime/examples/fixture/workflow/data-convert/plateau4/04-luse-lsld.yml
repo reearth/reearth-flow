@@ -151,6 +151,7 @@ graphs:
       keepAttributes: false
       flattenSingleChildObjects: true
       flattenMeasureTypes: true
+      cityGmlAttributesKey: cityGmlAttributes
   - id: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
     name: TargetPackagesFilter
     type: action
