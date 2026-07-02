@@ -37,7 +37,7 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 	r := &repo.Container{
 		Parameter:   paramRepo,
 		Project:     projectRepo,
-		Transaction: &usecasex.NopTransaction{},
+		Transaction: usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
 	}
 
 	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})

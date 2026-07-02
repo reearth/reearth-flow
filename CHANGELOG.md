@@ -2,6 +2,83 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.26 - 2026-07-02
+
+### Server
+
+#### 🚀 Features
+
+- PostgreSQL backend (Atlas + sqlc + pgxx Transactor) ([#2185](https://github.com/reearth/reearth-flow/pull/2185)) [`d10ad0`](https://github.com/reearth/reearth-flow/commit/d10ad0)
+
+### api
+
+#### 🔧 Bug Fixes
+
+- Add CORS skipper for trigger routes to manage permissive policy ([#2221](https://github.com/reearth/reearth-flow/pull/2221)) [`984969`](https://github.com/reearth/reearth-flow/commit/984969)
+- Add CORS middleware to trigger endpoints for public access ([#2218](https://github.com/reearth/reearth-flow/pull/2218)) [`8d05f1`](https://github.com/reearth/reearth-flow/commit/8d05f1)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Revert dropdown package version due to click issue ([#2220](https://github.com/reearth/reearth-flow/pull/2220)) [`d8b05d`](https://github.com/reearth/reearth-flow/commit/d8b05d)
+
+## 0.1.0-alpha.25 - 2026-07-01
+
+### engine
+
+#### 🚀 Features
+
+- Coordinate reprojection for new geometry ([#2212](https://github.com/reearth/reearth-flow/pull/2212)) [`3c7c3f`](https://github.com/reearth/reearth-flow/commit/3c7c3f)
+
+#### 📖 Documentation
+
+- FlowExpr specification for math and regex modules ([#2208](https://github.com/reearth/reearth-flow/pull/2208)) [`76150f`](https://github.com/reearth/reearth-flow/commit/76150f)
+
+### ui
+
+#### 🔧 Bug Fixes
+
+- Refactor previewSchema to save status to nodeMetaData [FLOW-DEV-211] ([#2213](https://github.com/reearth/reearth-flow/pull/2213)) [`e0a839`](https://github.com/reearth/reearth-flow/commit/e0a839)
+- Enhance FlowExprEditorDialog to conditionally display workflow variables [FLOW-DEV-212] ([#2216](https://github.com/reearth/reearth-flow/pull/2216)) [`6d8461`](https://github.com/reearth/reearth-flow/commit/6d8461)
+
+## 0.1.0-alpha.24 - 2026-06-30
+
+### Web
+
+#### 🧪 Testing
+
+- Add cafe e2e and fix&#x2F;harden the e2e suite ([#2203](https://github.com/reearth/reearth-flow/pull/2203)) [`0330d5`](https://github.com/reearth/reearth-flow/commit/0330d5)
+
+### engine
+
+#### 🚀 Features
+
+- Bouding box generation and triangulation ([#2210](https://github.com/reearth/reearth-flow/pull/2210)) [`2fb4e2`](https://github.com/reearth/reearth-flow/commit/2fb4e2)
+- Appearance setters for the new geometry ([#2204](https://github.com/reearth/reearth-flow/pull/2204)) [`55e2c6`](https://github.com/reearth/reearth-flow/commit/55e2c6)
+- New geometry constructors ([#2198](https://github.com/reearth/reearth-flow/pull/2198)) [`7494ed`](https://github.com/reearth/reearth-flow/commit/7494ed)
+
+#### 📖 Documentation
+
+- FlowExpr specification for builtin types ([#2207](https://github.com/reearth/reearth-flow/pull/2207)) [`4d0e50`](https://github.com/reearth/reearth-flow/commit/4d0e50)
+- FlowExpr update and base language definition ([#2194](https://github.com/reearth/reearth-flow/pull/2194)) [`1a09bb`](https://github.com/reearth/reearth-flow/commit/1a09bb)
+
+### ui
+
+#### 🚀 Features
+
+- Reader Schema Preview to Allow Feature Attributes [FLOW-DEV-53] ([#2199](https://github.com/reearth/reearth-flow/pull/2199)) [`ca1f6a`](https://github.com/reearth/reearth-flow/commit/ca1f6a)
+
+#### 🔧 Bug Fixes
+
+- Handle authentication errors and improve loading state management [FLOW-DEV-206] ([#2209](https://github.com/reearth/reearth-flow/pull/2209)) [`5ae7fa`](https://github.com/reearth/reearth-flow/commit/5ae7fa)
+- Check for duplicate port names and refresh node [FLOW-DEV-209] ([#2200](https://github.com/reearth/reearth-flow/pull/2200)) [`423ad2`](https://github.com/reearth/reearth-flow/commit/423ad2)
+
+#### Miscellaneous Tasks
+
+- June 2026 Dependency Updates [FLOW-DEV-162] ([#2128](https://github.com/reearth/reearth-flow/pull/2128)) [`f4384f`](https://github.com/reearth/reearth-flow/commit/f4384f)
+- Remove Rhai Expression support and related code [FLOW-DEV-199] ([#2201](https://github.com/reearth/reearth-flow/pull/2201)) [`725f08`](https://github.com/reearth/reearth-flow/commit/725f08)
+
 ## 0.1.0-alpha.23 - 2026-06-23
 
 ### Web

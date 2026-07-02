@@ -40,19 +40,6 @@ export type DebugRunState = {
   jobs: JobState[];
 };
 
-export type ReaderSchemaProbeStatus = "running" | "failed";
-
-export type ReaderSchemaProbe = {
-  projectId: string;
-  nodeId: string;
-  jobId: string;
-  status: ReaderSchemaProbeStatus;
-};
-
-export type PreviewSchemaState = {
-  probes: ReaderSchemaProbe[];
-};
-
 export type PreferencesState = {
   theme: string;
 };
@@ -60,7 +47,6 @@ export type PreferencesState = {
 export type AppState = {
   [GENERAL_KEY]: GeneralState;
   [DEBUG_RUN_KEY]: DebugRunState;
-  [PREVIEW_SCHEMA_KEY]: PreviewSchemaState;
   [PREFERENCES_KEY]: PreferencesState;
 };
 
@@ -71,9 +57,8 @@ export const STORE_NAME = "appState";
 
 const GENERAL_KEY = "general";
 const DEBUG_RUN_KEY = "debugRun";
-const PREVIEW_SCHEMA_KEY = "previewSchema";
 const PREFERENCES_KEY = "preferences";
-const KEYS = [GENERAL_KEY, DEBUG_RUN_KEY, PREVIEW_SCHEMA_KEY, PREFERENCES_KEY];
+const KEYS = [GENERAL_KEY, DEBUG_RUN_KEY, PREFERENCES_KEY];
 
 const initialState: AppState = {
   [GENERAL_KEY]: {
@@ -81,9 +66,6 @@ const initialState: AppState = {
   },
   [DEBUG_RUN_KEY]: {
     jobs: [],
-  },
-  [PREVIEW_SCHEMA_KEY]: {
-    probes: [],
   },
   [PREFERENCES_KEY]: {
     theme: "dark",

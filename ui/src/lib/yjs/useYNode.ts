@@ -378,11 +378,8 @@ export default ({
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
-  // Persist a node's probed attribute schema onto its metadata. This is
-  // derived data (not a user edit), so it is written with a distinct origin
-  // that the UndoManager does not track — undo/redo should not touch it.
   const handleYNodeSchemaUpdate = useCallback(
-    (nodeId: string, schema: NodeSchemaMeta | undefined) =>
+    (nodeId: string, patch: Partial<NodeSchemaMeta> | undefined) =>
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
         if (!yNodes) return;
@@ -390,8 +387,17 @@ export default ({
         if (!yData) return;
         const prevMetadata =
           (yData.get("nodeMetadata") as NodeMetadata | undefined) ?? {};
-        const nodeMetadata: NodeMetadata = { ...prevMetadata, schema };
-        yData.set("nodeMetadata", nodeMetadata);
+        if (!patch) {
+          yData.set("nodeMetadata", { ...prevMetadata, schema: undefined });
+          return;
+        }
+        const schema: NodeSchemaMeta = {
+          ports: {},
+          ...prevMetadata.schema,
+          ...patch,
+        };
+        if (!patch.jobId) delete schema.jobId;
+        yData.set("nodeMetadata", { ...prevMetadata, schema });
       }, "schema-update"),
     [currentYWorkflow, undoTrackerActionWrapper],
   );

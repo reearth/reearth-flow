@@ -1,0 +1,84 @@
+name: Reearth Flow - E2E UI Tests
+on:
+  schedule:
+    # 00:30 UTC daily (09:30 JST) — failures surface at the start of the workday.
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: "Which tests to run"
+        type: choice
+        default: all
+        options:
+          - all # fast + pipeline (same as the scheduled run)
+          - fast # @smoke/@regression UI tests only
+          - pipeline # tests that deploy and run real engine jobs
+          - smoke # @smoke-tagged sanity check only
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ui/e2e
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ui/e2e/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run e2e tests
+        # Scheduled runs have no input, so default to the full fast + pipeline suite.
+        run: |
+          case "${{ github.event.inputs.test_scope || 'all' }}" in
+            fast)     npm run test:fast ;;
+            pipeline) npm run test:pipeline ;;
+            smoke)    npm run test:smoke ;;
+            *)        npm test ;;
+          esac
+        env:
+          CI: "true"
+          FLOW_DASHBOARD_E2E_BASEURL: ${{ secrets.FLOW_DASHBOARD_E2E_BASEURL }}
+          FLOW_DASHBOARD_E2E_USER_EMAIL: ${{ secrets.FLOW_DASHBOARD_E2E_USER_EMAIL }}
+          FLOW_DASHBOARD_E2E_USER_PASSWORD: ${{ secrets.FLOW_DASHBOARD_E2E_USER_PASSWORD }}
+      - name: Generate Allure report
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -d allure-results ]; then
+            npm run allure:generate
+          else
+            echo "No allure-results directory found; skipping Allure report generation."
+          fi
+      - name: Upload Allure report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: allure-report
+          path: ui/e2e/allure-report
+          retention-days: 14
+          if-no-files-found: ignore
+      - name: Upload test results
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-results
+          path: ui/e2e/test-results
+          retention-days: 14

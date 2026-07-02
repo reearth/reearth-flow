@@ -72,6 +72,20 @@ For string `s`, `s.rfind(sub)` returns the codepoint index of the last occurrenc
 
 For string `s`, `s.join(list)` returns a string formed by concatenating string elements of `list` with `s` as separator.
 
+### `format`
+
+For string `s`, `s.format(arg0, arg1, ...)` returns a new string produced by replacing each placeholder in `s` with the corresponding formatted argument.
+
+A placeholder is written `{field}` or `{field:spec}`. `field` is either empty (automatic index, incremented for each auto-indexed placeholder in left-to-right order) or a decimal integer (explicit index into the argument list).
+
+`{{` and `}}` produce a literal `{` and `}` respectively.
+
+The format spec determines how the argument is rendered:
+
+- `f`: the argument as a float with 6 decimal places.
+- `.Nf` where N is a non-negative integer: the argument as a float with N decimal places.
+- `d`: the argument as a decimal integer.
+
 ## list methods
 
 ### `append`

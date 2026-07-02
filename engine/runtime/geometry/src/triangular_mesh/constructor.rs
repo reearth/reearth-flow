@@ -79,6 +79,18 @@ impl TriangularMesh3DData {
         }
     }
 
+    /// Install an already-built `appearance` and `uv_sets` directly, **unvalidated**
+    /// (the caller owns the invariants). Used by tessellation, whose appearance is
+    /// consistent by construction.
+    pub(crate) fn set_raw_appearance(
+        &mut self,
+        uv_sets: Vec<UvSet>,
+        appearance: Option<Appearance>,
+    ) {
+        self.uv_sets = uv_sets;
+        self.appearance = appearance;
+    }
+
     /// Build mesh data from a triangle soup: a flat stream of corner coordinates,
     /// three per triangle, deduplicated into a shared vertex pool.
     pub fn from_soup(iter: impl IntoIterator<Item = [f64; 3]>) -> Self {
@@ -175,6 +187,16 @@ impl TriangularMesh3D {
         Self::new(coordinate, TriangularMesh3DData::from_soup(iter))
     }
 
+    /// Install raw `appearance` / `uv_sets`; see
+    /// [`TriangularMesh3DData::set_raw_appearance`].
+    pub(crate) fn set_raw_appearance(
+        &mut self,
+        uv_sets: Vec<UvSet>,
+        appearance: Option<Appearance>,
+    ) {
+        self.data.set_raw_appearance(uv_sets, appearance);
+    }
+
     /// Add a single-material appearance for one theme; see
     /// [`TriangularMesh3DData::set_appearance`].
     pub fn set_appearance(
@@ -247,6 +269,38 @@ impl TriangularMesh2D {
         })
     }
 
+    /// Build a 2.5D mesh from `[x, y, z]` vertices without validating indices.
+    ///
+    /// # Safety
+    /// Same contract as [`TriangularMesh3DData::from_parts_unchecked`].
+    pub unsafe fn from_parts_with_elevation_unchecked(
+        coordinate: Coordinate,
+        vertices: Vec<[f64; 3]>,
+        triangle_count: usize,
+        indices: impl IntoIterator<Item = u32>,
+    ) -> Self {
+        let width = index_width_for(vertices.len());
+        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
+        let mut xy = Vec::with_capacity(vertices.len());
+        let mut z = Vec::with_capacity(vertices.len());
+        for [x, y, elevation] in vertices {
+            xy.push([x, y]);
+            z.push(elevation);
+        }
+        Self {
+            coordinate,
+            indices: IndexBuffer::from_exact_unchecked(
+                width,
+                triangle_count,
+                group_triples(indices),
+            ),
+            vertices: xy,
+            z: Some(z.into_boxed_slice()),
+            uv_sets: Vec::new(),
+            appearance: None,
+        }
+    }
+
     /// Build a pure-2D mesh without validating indices.
     ///
     /// # Safety
@@ -270,6 +324,17 @@ impl TriangularMesh2D {
             uv_sets: Vec::new(),
             appearance: None,
         }
+    }
+
+    /// Install raw `appearance` / `uv_sets`; see
+    /// [`TriangularMesh3DData::set_raw_appearance`].
+    pub(crate) fn set_raw_appearance(
+        &mut self,
+        uv_sets: Vec<UvSet>,
+        appearance: Option<Appearance>,
+    ) {
+        self.uv_sets = uv_sets;
+        self.appearance = appearance;
     }
 
     /// Build a pure-2D mesh from a triangle soup of `[x, y]` corners.
