@@ -1,12 +1,12 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_types::{
-    AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryType, GeometryValue, GmlGeometry,
-    CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
+    AttributeValue, Attributes, CityGmlGeometry, Feature, Geometry, GeometryType, GeometryValue,
+    GmlGeometry, CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
 };
 
 use super::{
@@ -18,8 +18,18 @@ use super::{
 
 /// Resolves the parsed document (xlink + codespace) and returns one feature per top-level city
 /// object, or — when `extract_tags` is non-empty — one feature per matching flattened node.
+/// `base_attributes` maps a source file URL to the input feature's attributes (e.g. `package`),
+/// merged into every feature parsed from that file.
 #[cfg(not(feature = "new-geometry"))]
-pub fn build_features(parser: Parser, extract_tags: &HashSet<String>) -> Vec<Feature> {
+pub fn build_features(
+    parser: Parser,
+    extract_tags: &HashSet<String>,
+    base_attributes: &HashMap<String, Attributes>,
+    citygml_attribute_key: Option<&str>,
+    keep_attributes: bool,
+    flatten_single_child_objects: bool,
+    flatten_measure_types: bool,
+) -> Vec<Feature> {
     let (pending, raw_registry, ns_registry) = parser.finish();
     let mut codelist_resolver = codespace::CodelistResolver::new();
     let mut out = Vec::new();
@@ -27,18 +37,38 @@ pub fn build_features(parser: Parser, extract_tags: &HashSet<String>) -> Vec<Fea
         xlink::resolve(pending, &raw_registry),
         &mut codelist_resolver,
     ) {
+        let base = base_attributes.get(feature_root.source_url.as_str());
         if extract_tags.is_empty() {
-            out.push(build_feature(&feature_root));
+            let mut feature = build_feature(
+                &feature_root,
+                citygml_attribute_key,
+                keep_attributes,
+                flatten_single_child_objects,
+                flatten_measure_types,
+            );
+            if let Some(base) = base {
+                feature.extend(base.clone());
+            }
+            out.push(feature);
         } else {
             let root_gml_id = gml_id_attr(&feature_root.attrs);
 
             for (node, parent_id) in flatten::extract(&feature_root, extract_tags, &ns_registry) {
-                let mut feature = build_feature(&node);
+                let mut feature = build_feature(
+                    &node,
+                    citygml_attribute_key,
+                    keep_attributes,
+                    flatten_single_child_objects,
+                    flatten_measure_types,
+                );
                 if let Some(id) = parent_id {
                     feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
                 }
                 if let Some(ref id) = root_gml_id {
                     feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
+                }
+                if let Some(base) = base {
+                    feature.extend(base.clone());
                 }
                 out.push(feature);
             }
@@ -48,9 +78,21 @@ pub fn build_features(parser: Parser, extract_tags: &HashSet<String>) -> Vec<Fea
 }
 
 #[cfg(not(feature = "new-geometry"))]
-fn build_feature(node: &Arc<XmlNode>) -> Feature {
+fn build_feature(
+    node: &Arc<XmlNode>,
+    citygml_attribute_key: Option<&str>,
+    keep_attributes: bool,
+    flatten_single_child_objects: bool,
+    flatten_measure_types: bool,
+) -> Feature {
     let (stripped, raw_geoms) = geometry::extract_geometries(node);
-    let mut feature = parser::to_feature(&stripped);
+    let mut feature = parser::to_feature(
+        &stripped,
+        citygml_attribute_key,
+        keep_attributes,
+        flatten_single_child_objects,
+        flatten_measure_types,
+    );
     if !raw_geoms.is_empty() {
         *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
             build_citygml_geometry(raw_geoms),
