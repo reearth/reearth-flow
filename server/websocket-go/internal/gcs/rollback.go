@@ -52,15 +52,6 @@ func (a *Adapter) PruneAfter(ctx context.Context, room string, target persistenc
 	})
 }
 
-// finishInterruptedPrune completes a PruneAfter that crashed before deleting the
-// future update objects, removing every orphan update > ceiling under gcs:lock so
-// the recovery path can clear the ceiling safely. Idempotent.
-func (a *Adapter) finishInterruptedPrune(ctx context.Context, room DocID, oid, ceiling uint32) error {
-	return a.locker.WithLock(ctx, gcsDocLockKey(room), func(ctx context.Context) error {
-		return a.deleteUpdatesAfter(ctx, room, oid, ceiling)
-	})
-}
-
 // deleteUpdatesAfter removes every update object whose clock > target.
 func (a *Adapter) deleteUpdatesAfter(ctx context.Context, room DocID, oid, target uint32) error {
 	updates, err := a.listUpdates(ctx, room, oid)
@@ -108,12 +99,12 @@ func (a *Adapter) Compact(ctx context.Context, room string, keep int) (int, erro
 		var parts [][]byte
 		if v1, ok, err := a.loadV2(ctx, room); err != nil {
 			return err
-		} else if ok && cp > 0 {
+		} else if ok {
 			parts = append(parts, v1)
-		} else if !ok {
-			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil && cp > 0 {
+		} else {
+			if b, err := a.store.get(ctx, a.layout.DocStateName(room, oid)); err == nil {
 				parts = append(parts, b)
-			} else if err != nil && err != errNotFound {
+			} else if err != errNotFound {
 				return err
 			}
 		}
@@ -204,13 +195,14 @@ func (a *Adapter) SetCrashAfterRecoveryWrite(fn func() bool) {
 // OIDs are re-derived from the durable index.
 func (a *Adapter) Reopen() (persistence.VersionedPersistence, error) {
 	n := &Adapter{
-		store:    a.store,
-		layout:   a.layout,
-		fallback: a.fallback,
-		locker:   a.locker,
-		log:      a.log,
-		phase2:   a.phase2,
-		oidCache: make(map[string]uint32),
+		store:         a.store,
+		layout:        a.layout,
+		fallback:      a.fallback,
+		locker:        a.locker,
+		log:           a.log,
+		phase2:        a.phase2,
+		oidCache:      make(map[string]uint32),
+		transientKeys: a.transientKeys,
 	}
 	return n, nil
 }

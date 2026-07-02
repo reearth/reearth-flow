@@ -48,6 +48,11 @@ type Adapter struct {
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32
+
+	// transientKeys are map keys stripped from every doc_v2 snapshot (mapName →
+	// keys). Used for ephemeral UI state (e.g. metadata.rollbackInProgress) that
+	// rides the CRDT for live broadcast but must never persist to storage.
+	transientKeys map[string][]string
 }
 
 // Options configure a GCS Adapter.
@@ -63,6 +68,9 @@ type Options struct {
 	// Logger receives diagnostics (sizes/clocks/room only, never payloads).
 	// Defaults to slog.Default().
 	Logger *slog.Logger
+	// TransientMapKeys are doc map keys stripped from every doc_v2 snapshot
+	// (mapName → keys), for ephemeral UI state that must never be persisted.
+	TransientMapKeys map[string][]string
 }
 
 // New builds a GCS Adapter: LegacyRootLayout in Phase 1; ProjectFolderLayout
@@ -83,11 +91,12 @@ func New(opts Options) (*Adapter, error) {
 		log = slog.Default()
 	}
 	a := &Adapter{
-		store:    kv{bucket: opts.Client.Bucket(opts.Bucket)},
-		locker:   locker,
-		log:      log,
-		phase2:   opts.Phase2,
-		oidCache: make(map[string]uint32),
+		store:         kv{bucket: opts.Client.Bucket(opts.Bucket)},
+		locker:        locker,
+		log:           log,
+		phase2:        opts.Phase2,
+		oidCache:      make(map[string]uint32),
+		transientKeys: opts.TransientMapKeys,
 	}
 	if opts.Phase2 {
 		a.layout = ProjectFolderLayout{}
@@ -280,6 +289,10 @@ func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v
 	if err != nil {
 		return err
 	}
+	// Strip ephemeral UI keys (e.g. metadata.rollbackInProgress) before persisting:
+	// they ride the CRDT for live broadcast but must never survive in doc_v2, which
+	// the Rust reader loads on its own with no tail updates to clear them.
+	a.stripTransient(doc)
 	v2 := crdt.EncodeStateAsUpdateV2(doc, nil)
 	if err := a.store.put(ctx, a.layout.DocV2Name(room), compressBrotli(v2)); err != nil {
 		return err
@@ -291,6 +304,46 @@ func (a *Adapter) writeV2Snapshot(ctx context.Context, room DocID, oid uint32, v
 		return err
 	}
 	return nil
+}
+
+// stripTransient deletes the configured ephemeral map keys from doc. No-op when
+// none are configured or the keys are absent.
+//
+// GetMap and Has acquire the doc lock, so they must run OUTSIDE Transact (which
+// already holds it) — calling them inside would deadlock a non-reentrant lock.
+// Only the actual deletion runs in the transaction, and only for present keys so
+// an all-absent doc is never perturbed.
+func (a *Adapter) stripTransient(doc *crdt.Doc) {
+	if len(a.transientKeys) == 0 {
+		return
+	}
+	type target struct {
+		m    *crdt.YMap
+		keys []string
+	}
+	var targets []target
+	for mapName, keys := range a.transientKeys {
+		m := doc.GetMap(mapName)
+		var present []string
+		for _, k := range keys {
+			if m.Has(k) {
+				present = append(present, k)
+			}
+		}
+		if len(present) > 0 {
+			targets = append(targets, target{m: m, keys: present})
+		}
+	}
+	if len(targets) == 0 {
+		return
+	}
+	doc.Transact(func(txn *crdt.Transaction) {
+		for _, t := range targets {
+			for _, k := range t.keys {
+				t.m.Delete(txn, k)
+			}
+		}
+	})
 }
 
 // loadV2 reads + brotli-decodes + V2-decodes the doc_v2 snapshot into a V1

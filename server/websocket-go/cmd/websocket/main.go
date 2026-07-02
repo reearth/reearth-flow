@@ -207,10 +207,11 @@ func buildPersistence(ctx context.Context, cfg *config.Config, log *slog.Logger)
 		return nil, nil, nil, nil, fmt.Errorf("instance owner: %w", err)
 	}
 	adapter, err := gcs.New(gcs.Options{
-		Client: stClient,
-		Bucket: cfg.GCSBucketName,
-		Locker: gcs.NewRedisLocker(rc, owner),
-		Phase2: os.Getenv("REEARTH_FLOW_GCS_PHASE2") == "true",
+		Client:           stClient,
+		Bucket:           cfg.GCSBucketName,
+		Locker:           gcs.NewRedisLocker(rc, owner),
+		Phase2:           os.Getenv("REEARTH_FLOW_GCS_PHASE2") == "true",
+		TransientMapKeys: server.TransientMapKeys(),
 	})
 	if err != nil {
 		_ = stClient.Close()
