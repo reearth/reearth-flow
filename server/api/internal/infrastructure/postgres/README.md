@@ -49,10 +49,35 @@ field mappings and is idempotent (re-runnable). Account repos stay on Mongo;
 Config (migration bookkeeping) and AuthRequest (transient) are skipped.
 
 ```sh
-# target schema must be migrated first (atlas migrate apply)
 REEARTH_FLOW_DB="mongodb+srv://…"  REEARTH_FLOW_DB_PG="postgres://…" \
-  go run ./cmd/dbmigrate -db reearth-flow
+  go run ./cmd/dbmigrate -apply-schema -db reearth-flow
 
 # read every replicated row back through the Postgres adapters (target only)
 REEARTH_FLOW_DB_PG="postgres://…" go run ./cmd/dbmigrate -verify
 ```
+
+## Seeding a new Postgres (golden path)
+
+`cmd/dbmigrate` replicates the flow-owned collections from Mongo into Postgres.
+With `-apply-schema` it first applies the embedded Atlas migrations
+(`internal/infrastructure/postgres/db/migrations`, embedded via `db.MigrationsFS`)
+to a fresh instance, so a brand-new Cloud SQL database needs no separate schema
+step. `-apply-schema` is one-shot (bare `CREATE TABLE`); reseed = drop/recreate.
+
+For a private-IP Cloud SQL instance, run it in-cluster with
+`scripts/seed-postgres.sh`, which launches an ephemeral, in-VPC Cloud Run job
+on the flow-api image (which now ships the `dbmigrate` binary), executes it,
+and deletes it with no bastion required:
+
+```sh
+./scripts/seed-postgres.sh \
+  --project reearth-oss \
+  --image us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-api:nightly \
+  --service-account reearth-flow-migration@reearth-oss.iam.gserviceaccount.com \
+  --verify
+```
+
+The service account needs `roles/secretmanager.secretAccessor` on both
+`reearth-flow-db` (source Mongo) and `reearth-flow-db-postgres` (target). Add
+`--dry-run` to print the gcloud commands without executing. Re-run per
+environment (dev, prod) by changing `--project`/`--image`/`--service-account`.
