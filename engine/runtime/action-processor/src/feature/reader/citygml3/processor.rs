@@ -86,6 +86,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             keep_attributes: params.keep_attributes,
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
+            city_gml_attributes_key: params.city_gml_attributes_key,
             parser: Parser::new(),
             base_attributes: HashMap::new(),
         }))
@@ -121,6 +122,11 @@ pub struct FeatureCityGml3ReaderParam {
     /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
     #[serde(default)]
     flatten_measure_types: bool,
+    /// # City GML Attributes Key
+    /// When set, parsed CityGML attributes are nested under this key in the output feature.
+    /// When null, attributes are emitted at the top level. Defaults to null.
+    #[serde(default)]
+    city_gml_attributes_key: Option<String>,
 }
 
 fn default_keep_attributes() -> bool {
@@ -133,6 +139,7 @@ pub struct FeatureCityGml3Reader {
     keep_attributes: bool,
     flatten_single_child_objects: bool,
     flatten_measure_types: bool,
+    city_gml_attributes_key: Option<String>,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features.
     base_attributes: HashMap<String, Attributes>,
@@ -154,6 +161,7 @@ impl Clone for FeatureCityGml3Reader {
             keep_attributes: self.keep_attributes,
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_measure_types: self.flatten_measure_types,
+            city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             parser: Parser::new(),
             base_attributes: HashMap::new(),
         }
@@ -209,7 +217,7 @@ impl Processor for FeatureCityGml3Reader {
             std::mem::take(&mut self.parser),
             &self.extract_tags,
             &self.base_attributes,
-            None,
+            self.city_gml_attributes_key.as_deref(),
             self.keep_attributes,
             self.flatten_single_child_objects,
             self.flatten_measure_types,

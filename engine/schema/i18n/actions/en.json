@@ -985,6 +985,10 @@
         "": {
           "title": "FeatureCityGml2Reader Parameters"
         },
+        "cityGmlAttributesKey": {
+          "title": "City GML Attributes Key",
+          "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null."
+        },
         "dataset": {
           "title": "Dataset",
           "description": "Path expression resolving to the CityGML 2.0 file to read."
@@ -1012,6 +1016,10 @@
       "parameterI18n": {
         "": {
           "title": "FeatureCityGml3Reader Parameters"
+        },
+        "cityGmlAttributesKey": {
+          "title": "City GML Attributes Key",
+          "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null."
         },
         "dataset": {
           "title": "Dataset",

@@ -50,6 +50,7 @@ graphs:
           keepAttributes: false
           flattenSingleChildObjects: true
           flattenMeasureTypes: true
+          cityGmlAttributesKey: cityGmlAttributes
 
       # FeatureCityGml2Reader emits the parsed CityGML content nested under
       # `cityGmlAttributes` and the identity as `__citygml_feature_type`/`__citygml_gml_id`.

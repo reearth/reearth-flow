@@ -997,6 +997,10 @@
         "": {
           "title": "FeatureCityGml2Reader Parameters"
         },
+        "cityGmlAttributesKey": {
+          "title": "Clave de Atributos CityGML",
+          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
+        },
         "dataset": {
           "title": "Dataset",
           "description": "Expresión de ruta que resuelve al archivo CityGML 2.0 a leer."
@@ -1025,6 +1029,10 @@
       "parameterI18n": {
         "": {
           "title": "FeatureCityGml3Reader Parameters"
+        },
+        "cityGmlAttributesKey": {
+          "title": "Clave de Atributos CityGML",
+          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
         },
         "dataset": {
           "title": "Dataset",

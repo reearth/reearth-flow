@@ -3092,6 +3092,15 @@
           "dataset"
         ],
         "properties": {
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性キー",
+            "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "データセット",
             "description": "読み込む CityGML 2.0 ファイルへのパス式",
@@ -3167,6 +3176,15 @@
           "dataset"
         ],
         "properties": {
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性キー",
+            "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "データセット",
             "description": "読み込む CityGML 3.0 ファイルへのパス式",

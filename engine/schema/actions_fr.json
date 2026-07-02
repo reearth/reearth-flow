@@ -3089,6 +3089,15 @@
           "dataset"
         ],
         "properties": {
+          "cityGmlAttributesKey": {
+            "title": "Clé des Attributs CityGML",
+            "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "Dataset",
             "description": "Expression de chemin résolvant vers le fichier CityGML 2.0 à lire.",
@@ -3164,6 +3173,15 @@
           "dataset"
         ],
         "properties": {
+          "cityGmlAttributesKey": {
+            "title": "Clé des Attributs CityGML",
+            "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "Dataset",
             "description": "Expression de chemin résolvant vers le fichier CityGML 3.0 à lire.",

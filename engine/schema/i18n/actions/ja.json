@@ -1000,6 +1000,10 @@
         "": {
           "title": "FeatureCityGml2Reader パラメータ"
         },
+        "cityGmlAttributesKey": {
+          "title": "CityGML属性キー",
+          "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。"
+        },
         "dataset": {
           "title": "データセット",
           "description": "読み込む CityGML 2.0 ファイルへのパス式"
@@ -1028,6 +1032,10 @@
       "parameterI18n": {
         "": {
           "title": "FeatureCityGml3Reader パラメータ"
+        },
+        "cityGmlAttributesKey": {
+          "title": "CityGML属性キー",
+          "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。"
         },
         "dataset": {
           "title": "データセット",
