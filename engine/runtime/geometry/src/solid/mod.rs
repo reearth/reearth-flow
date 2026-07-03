@@ -35,6 +35,15 @@ impl Shell {
             Shell::TriangularMesh(d) => d.vertices(),
         }
     }
+
+    /// The number of boundary faces, regardless of mesh kind.
+    #[inline]
+    pub fn num_faces(&self) -> usize {
+        match self {
+            Shell::PolygonMesh(d) => d.num_faces(),
+            Shell::TriangularMesh(d) => d.num_triangles(),
+        }
+    }
 }
 
 /// A volumetric solid bounded by an exterior shell and any number of interior
@@ -47,4 +56,18 @@ pub struct Solid {
     exterior: Shell,
     /// Hollow voids.
     interiors: Vec<Shell>,
+}
+
+impl Solid {
+    /// The exterior boundary shell.
+    #[inline]
+    pub fn exterior(&self) -> &Shell {
+        &self.exterior
+    }
+
+    /// The interior (void) boundary shells.
+    #[inline]
+    pub fn interiors(&self) -> &[Shell] {
+        &self.interiors
+    }
 }
