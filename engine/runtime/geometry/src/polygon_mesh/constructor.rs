@@ -133,48 +133,6 @@ impl PolygonMesh3DData {
             appearance: None,
         })
     }
-
-    /// Concatenate several meshes into one, offsetting each mesh's face and hole
-    /// indices onto a combined vertex pool; vertices are not deduplicated across
-    /// meshes. Rejects any input carrying appearance or UV, which this does not
-    /// merge.
-    pub fn merge(meshes: impl IntoIterator<Item = PolygonMesh3DData>) -> Result<Self, Error> {
-        let mut vertices: Vec<[f64; 3]> = Vec::new();
-        let mut face_indices: Vec<u32> = Vec::new();
-        let mut face_offsets: Vec<u32> = Vec::new();
-        let mut interior_offsets: Vec<u32> = Vec::new();
-        for mesh in meshes {
-            if !mesh.uv_sets.is_empty() || mesh.appearance.is_some() {
-                return Err(Error::invalid_geometry(
-                    "cannot merge polygon meshes that carry appearance or UV",
-                ));
-            }
-            if mesh.vertices.is_empty() {
-                continue;
-            }
-            let vertex_base = vertices.len() as u32;
-            let index_base = face_indices.len() as u32;
-            // Every face after the first overall is an internal boundary, so this
-            // mesh's first face starts a new boundary once anything precedes it.
-            if !face_indices.is_empty() {
-                face_offsets.push(index_base);
-            }
-            rebase_into(&mesh.face_offsets, index_base, &mut face_offsets);
-            rebase_into(&mesh.interior_offsets, index_base, &mut interior_offsets);
-            rebase_into(&mesh.face_indices, vertex_base, &mut face_indices);
-            vertices.extend_from_slice(&mesh.vertices);
-        }
-        Self::from_raw_parts(vertices, face_indices, face_offsets, interior_offsets)
-    }
-}
-
-/// Decode an index buffer, adding `base` to each value, appending to `out`.
-fn rebase_into(buf: &IndexBuffer<1>, base: u32, out: &mut Vec<u32>) {
-    match buf {
-        IndexBuffer::U8(v) => out.extend(v.iter().map(|&[i]| i as u32 + base)),
-        IndexBuffer::U16(v) => out.extend(v.iter().map(|&[i]| i as u32 + base)),
-        IndexBuffer::U32(v) => out.extend(v.iter().map(|&[i]| i + base)),
-    }
 }
 
 impl PolygonMesh3D {
@@ -244,28 +202,6 @@ impl PolygonMesh3D {
                 interior_offsets,
             )?,
         ))
-    }
-
-    /// Concatenate several meshes sharing `coordinate` into one; see
-    /// [`PolygonMesh3DData::merge`]. Errors if any mesh's frame differs from
-    /// `coordinate`.
-    pub fn merge(
-        coordinate: Coordinate,
-        meshes: impl IntoIterator<Item = PolygonMesh3D>,
-    ) -> Result<Self, Error> {
-        let datas = meshes
-            .into_iter()
-            .map(|mesh| {
-                if mesh.coordinate == coordinate {
-                    Ok(mesh.data)
-                } else {
-                    Err(Error::invalid_geometry(
-                        "polygon mesh coordinate frame differs from the merge frame",
-                    ))
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self::new(coordinate, PolygonMesh3DData::merge(datas)?))
     }
 }
 
@@ -787,60 +723,6 @@ mod tests {
         // Single face -> no internal boundaries; the hole starts at index 4.
         assert!(ones(&m.face_offsets).is_empty());
         assert_eq!(ones(&m.interior_offsets), vec![4]);
-    }
-
-    #[test]
-    fn merge_concatenates_two_meshes() {
-        let a = PolygonMesh3DData::from_polygons([&quad([
-            [0., 0., 0.],
-            [1., 0., 0.],
-            [1., 1., 0.],
-            [0., 1., 0.],
-        ])]);
-        let b = PolygonMesh3DData::from_polygons([&quad([
-            [2., 0., 0.],
-            [3., 0., 0.],
-            [3., 1., 0.],
-            [2., 1., 0.],
-        ])]);
-        let m = PolygonMesh3DData::merge([a, b]).unwrap();
-        // Vertices are not deduplicated across meshes: 4 + 4.
-        assert_eq!(m.vertices.len(), 8);
-        assert_eq!(m.num_faces(), 2);
-        // Face 1 begins where mesh `a`'s four corners end.
-        assert_eq!(ones(&m.face_offsets), vec![4]);
-        assert_eq!(ones(&m.face_indices), vec![0, 1, 2, 3, 4, 5, 6, 7]);
-    }
-
-    #[test]
-    fn merge_rebases_a_hole_onto_the_combined_pool() {
-        let outer = [[0., 0., 0.], [4., 0., 0.], [4., 4., 0.], [0., 4., 0.]];
-        let hole = vec![[1., 1., 0.], [2., 1., 0.], [2., 2., 0.], [1., 2., 0.]];
-        let holed = PolygonMesh3DData::from_polygons([&Polygon3D::from_rings(
-            Coordinate::Euclidean,
-            outer,
-            vec![hole],
-        )]);
-        let tri = PolygonMesh3DData::from_polygons([&Polygon3D::from_rings(
-            Coordinate::Euclidean,
-            [[5., 0., 0.], [6., 0., 0.], [5., 1., 0.]],
-            Vec::<Vec<[f64; 3]>>::new(),
-        )]);
-        let m = PolygonMesh3DData::merge([holed, tri]).unwrap();
-        assert_eq!(m.num_faces(), 2);
-        // The holed face's 8 corners come first; the triangle's face starts at 8.
-        assert_eq!(ones(&m.face_offsets), vec![8]);
-        // The hole still starts at corner 4, within the first face.
-        assert_eq!(ones(&m.interior_offsets), vec![4]);
-    }
-
-    #[test]
-    fn merge_rejects_appearance_carrying_input() {
-        let mut p = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
-        p.set_appearance(theme("rgb"), textured(), Some(unit_quad_uv()))
-            .unwrap();
-        let textured = PolygonMesh3DData::from_polygons([&p]);
-        assert!(PolygonMesh3DData::merge([textured]).is_err());
     }
 
     #[test]

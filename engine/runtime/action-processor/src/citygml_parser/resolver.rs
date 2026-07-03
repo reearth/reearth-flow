@@ -1,4 +1,4 @@
-//! Pass-2 geometry resolution for the CityGML 3.0 reader.
+//! Pass-2 geometry resolution for the CityGML reader.
 //!
 //! Pass 1 parses every geometry that is guaranteed to be fully inline directly
 //! into [`Euclidean3DGeometry`]; the remaining reference-bearing containers are
@@ -65,7 +65,7 @@ pub(super) enum Role {
 /// Registry of geometries reachable by `xlink:href`, keyed by `(file_url, gml:id)`.
 pub(super) type GeomRegistry = HashMap<RawNodeKey, GeomNode>;
 
-/// The CityGML 3.0 / GML 3.2 geometry types the reader recognizes.
+/// The CityGML / GML geometry types the reader recognizes.
 ///
 /// The types split into ones that are always fully inline, parsed whole in pass 1,
 /// and reference-bearing containers assembled in pass 2; see
@@ -172,7 +172,7 @@ fn resolve_ref(
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     if !in_progress.insert(key.clone()) {
-        tracing::warn!(id = key.1, "citygml3 geometry: cyclic xlink:href, skipped");
+        tracing::warn!(id = key.1, "citygml geometry: cyclic xlink:href, skipped");
         return None;
     }
     let resolved = match registry.get(key) {
@@ -180,7 +180,7 @@ fn resolve_ref(
         None => {
             tracing::warn!(
                 id = key.1,
-                "citygml3 geometry: unresolved xlink:href, skipped"
+                "citygml geometry: unresolved xlink:href, skipped"
             );
             None
         }
@@ -221,7 +221,7 @@ fn construct(
         GmlGeometryType::CompositeSurface | GmlGeometryType::Shell => surface_mesh(members),
         GmlGeometryType::Solid => solid(members),
         _ => {
-            tracing::warn!("citygml3 geometry: inline type deferred to pass 2, skipped");
+            tracing::warn!("citygml geometry: inline type deferred to pass 2, skipped");
             None
         }
     }
@@ -241,7 +241,7 @@ fn ring(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry
     for (_, geometry) in members {
         match into_line_string(geometry) {
             Some(line) => exterior.extend_from_slice(line.coords()),
-            None => tracing::warn!("citygml3 geometry: non-curve ring member, skipped"),
+            None => tracing::warn!("citygml geometry: non-curve ring member, skipped"),
         }
     }
     if exterior.is_empty() {
@@ -253,9 +253,8 @@ fn ring(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry
 
 /// Assemble surface members into one mesh, for a `CompositeSurface` or a solid's
 /// `Shell`. A single already-built mesh passes through as-is; otherwise bare
-/// polygon members are welded into a mesh and merged with any polygon-mesh
-/// members into one. Triangle-mesh members cannot be merged into a polygon mesh
-/// and are skipped with a warning.
+/// polygon members are welded into a single mesh. Mesh members mixed with other
+/// members are not yet supported and are skipped with a warning.
 fn surface_mesh(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry> {
     if members.len() == 1
         && matches!(
@@ -267,35 +266,21 @@ fn surface_mesh(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3D
     }
 
     let mut faces: Vec<Polygon3D> = Vec::new();
-    let mut meshes: Vec<PolygonMesh3D> = Vec::new();
     for (_, geometry) in members {
         match geometry {
             Euclidean3DGeometry::Polygon(polygon) => faces.push(*polygon),
-            Euclidean3DGeometry::PolygonMesh(mesh) => meshes.push(*mesh),
-            Euclidean3DGeometry::TriangularMesh(_) => tracing::warn!(
-                "citygml3 geometry: merging a triangle mesh into a composite surface is not supported, member skipped"
-            ),
-            _ => tracing::warn!("citygml3 geometry: expected a surface member, skipped"),
+            Euclidean3DGeometry::PolygonMesh(_) | Euclidean3DGeometry::TriangularMesh(_) => {
+                tracing::warn!(
+                    "citygml geometry: merging a mesh into a composite surface is not yet supported, member skipped"
+                )
+            }
+            _ => tracing::warn!("citygml geometry: expected a surface member, skipped"),
         }
     }
-    if !faces.is_empty() {
-        meshes.extend(build_mesh(faces));
-    }
-    if meshes.len() == 1 {
-        return Some(Euclidean3DGeometry::PolygonMesh(Box::new(
-            meshes.pop().unwrap(),
-        )));
-    }
-    if meshes.is_empty() {
+    if faces.is_empty() {
         return None;
     }
-    match PolygonMesh3D::merge(FRAME, meshes) {
-        Ok(mesh) => Some(Euclidean3DGeometry::PolygonMesh(Box::new(mesh))),
-        Err(e) => {
-            tracing::warn!("citygml3 geometry: failed to merge composite surface: {e}");
-            None
-        }
-    }
+    build_mesh(faces).map(|mesh| Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
 }
 
 /// Pair an exterior boundary with any interior void boundaries into a `Solid`.
@@ -306,11 +291,11 @@ fn solid(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometr
         match role {
             Role::Exterior if exterior.is_none() => exterior = into_shell(geometry),
             Role::Exterior => {
-                tracing::warn!("citygml3 geometry: solid with multiple exteriors, extra skipped")
+                tracing::warn!("citygml geometry: solid with multiple exteriors, extra skipped")
             }
             Role::Interior => interiors.extend(into_shell(geometry)),
             Role::Member => {
-                tracing::warn!("citygml3 geometry: unexpected solid member role, skipped")
+                tracing::warn!("citygml geometry: unexpected solid member role, skipped")
             }
         }
     }
@@ -325,7 +310,7 @@ fn build_mesh(faces: Vec<Polygon3D>) -> Option<PolygonMesh3D> {
     match PolygonMesh3D::from_polygons(FRAME, &faces) {
         Ok(mesh) => Some(mesh),
         Err(e) => {
-            tracing::warn!("citygml3 geometry: failed to weld mesh: {e}");
+            tracing::warn!("citygml geometry: failed to weld mesh: {e}");
             None
         }
     }
@@ -336,7 +321,7 @@ fn into_line_string(geometry: Euclidean3DGeometry) -> Option<LineString3D> {
     match geometry {
         Euclidean3DGeometry::LineString(line) => Some(line),
         _ => {
-            tracing::warn!("citygml3 geometry: expected a curve, skipped");
+            tracing::warn!("citygml geometry: expected a curve, skipped");
             None
         }
     }
@@ -354,7 +339,7 @@ fn into_shell(geometry: Euclidean3DGeometry) -> Option<Shell> {
             build_mesh(vec![*polygon]).map(|mesh| Shell::PolygonMesh(mesh.into_data()))
         }
         _ => {
-            tracing::warn!("citygml3 geometry: cannot use as a solid boundary, skipped");
+            tracing::warn!("citygml geometry: cannot use as a solid boundary, skipped");
             None
         }
     }
@@ -474,31 +459,17 @@ mod tests {
     }
 
     #[test]
-    fn composite_surface_merges_multiple_mesh_members() {
-        let n = node(
-            GmlGeometryType::CompositeSurface,
-            vec![
-                (Role::Member, resolved(two_face_mesh())),
-                (Role::Member, resolved(two_face_mesh())),
-            ],
-        );
-        match resolve_root(&n, &GeomRegistry::new()).unwrap() {
-            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 4),
-            other => panic!("expected PolygonMesh, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn composite_surface_merges_mesh_and_polygon_members() {
+    fn composite_surface_welds_polygons_and_skips_mesh_members() {
         let n = node(
             GmlGeometryType::CompositeSurface,
             vec![
                 (Role::Member, resolved(two_face_mesh())),
                 (Role::Member, resolved(triangle())),
+                (Role::Member, resolved(triangle())),
             ],
         );
         match resolve_root(&n, &GeomRegistry::new()).unwrap() {
-            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 3),
+            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 2),
             other => panic!("expected PolygonMesh, got {other:?}"),
         }
     }

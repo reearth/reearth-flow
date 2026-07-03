@@ -1,4 +1,4 @@
-//! Pass-1 geometry extraction for the CityGML 3.0 reader.
+//! Pass-1 geometry extraction for the CityGML reader.
 //!
 //! Splits geometry out of a feature's attribute tree while streaming: each
 //! `lod<N>…` / `tin` property is converted into a [`GeomNode`] and removed from
@@ -177,7 +177,7 @@ fn geometry_node(node: &RawNode, registry: &mut GeomRegistry) -> Option<GeomNode
     let Some(ty) = geometry_type(local_name(&node.name.0)) else {
         tracing::warn!(
             element = local_name(&node.name.0),
-            "citygml3 geometry: unrecognized element, skipped"
+            "citygml geometry: unrecognized element, skipped"
         );
         return None;
     };
@@ -242,7 +242,7 @@ fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<Euclidean3DGeometr
         // TODO: gml:Curve support is deferred. Its segments may be arcs or splines,
         // which cannot be handled by sweeping control points into a straight chain.
         GmlGeometryType::Curve => {
-            tracing::warn!("citygml3 geometry: gml:Curve is not supported yet, skipped");
+            tracing::warn!("citygml geometry: gml:Curve is not supported yet, skipped");
             None
         }
         GmlGeometryType::LinearRing => build_ring_polygon(node),
@@ -390,11 +390,11 @@ fn parse_ordinates(text: &str) -> Option<Vec<f64>> {
 /// producing misaligned coordinates.
 fn parse_pos_list(text: &str) -> Vec<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
-        tracing::warn!("citygml3 geometry: invalid gml:posList content, skipped");
+        tracing::warn!("citygml geometry: invalid gml:posList content, skipped");
         return Vec::new();
     };
     if !values.len().is_multiple_of(3) {
-        tracing::warn!("citygml3 geometry: gml:posList length not a multiple of 3, skipped");
+        tracing::warn!("citygml geometry: gml:posList length not a multiple of 3, skipped");
         return Vec::new();
     }
     values.chunks_exact(3).map(|c| [c[1], c[0], c[2]]).collect()
@@ -403,7 +403,7 @@ fn parse_pos_list(text: &str) -> Vec<[f64; 3]> {
 /// Parse a single `gml:pos` into one `[x, y, z]`, swapping latitude/longitude.
 fn parse_pos(text: &str) -> Option<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
-        tracing::warn!("citygml3 geometry: invalid gml:pos content, skipped");
+        tracing::warn!("citygml geometry: invalid gml:pos content, skipped");
         return None;
     };
     if values.len() != 3 {
@@ -604,18 +604,18 @@ mod tests {
         assert_eq!(collection_len(&geometry), 2);
     }
 
-    // ── Trimmed cases from the Takeshiba CityGML 3.0 sample (Layer A: one geometry
-    //    via resolve_root). Meshes are two faces sharing edge B–C. ──
+    // Single-geometry cases resolved via resolve_root. The two-face meshes are
+    // built from TA and TB, two triangles sharing edge B–C.
 
-    /// Two polygons sharing edge B–C.
-    const TA: &str = "<gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>35.6000 139.8000 10.0 35.6001 139.8000 10.0 35.6000 139.8001 12.0 35.6000 139.8000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>";
-    const TB: &str = "<gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>35.6001 139.8000 10.0 35.6001 139.8001 12.0 35.6000 139.8001 12.0 35.6001 139.8000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>";
+    /// Two triangles sharing edge B–C.
+    const TA: &str = "<gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>1 2 0 3 2 0 1 4 5 1 2 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>";
+    const TB: &str = "<gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>3 2 0 3 4 5 1 4 5 3 2 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>";
 
     #[test]
     fn case01_multicurve_linestring() {
         let (geoms, registry) = parse_one(
             r#"<core:lod0MultiCurve><gml:MultiCurve><gml:curveMember><gml:LineString>
-                 <gml:posList>35.6007 139.8340 0.0 35.6033 139.8321 0.0 35.6042 139.8314 0.0</gml:posList>
+                 <gml:posList>0 1 0 2 3 0 4 5 0</gml:posList>
                </gml:LineString></gml:curveMember></gml:MultiCurve></core:lod0MultiCurve>"#,
         );
         assert_eq!(geoms.len(), 1);
@@ -625,7 +625,7 @@ mod tests {
             Euclidean3DGeometry::LineString(ls) => {
                 assert_eq!(ls.coords().len(), 3);
                 // posList is lat/lon; stored x/y, so the pair is swapped.
-                assert_eq!(ls.coords()[0], [139.8340, 35.6007, 0.0]);
+                assert_eq!(ls.coords()[0], [1.0, 0.0, 0.0]);
             }
             other => panic!("expected LineString, got {other:?}"),
         }
@@ -642,7 +642,7 @@ mod tests {
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => {
                 assert_eq!(p.exterior().len(), 4);
-                assert_eq!(p.exterior()[0], [139.8000, 35.6000, 10.0]); // swapped
+                assert_eq!(p.exterior()[0], [2.0, 1.0, 0.0]); // swapped
                 assert_eq!(p.interiors().count(), 0);
             }
             other => panic!("expected Polygon, got {other:?}"),
@@ -654,8 +654,8 @@ mod tests {
         let (geoms, registry) = parse_one(
             r#"<core:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
                  <gml:Polygon>
-                   <gml:exterior><gml:LinearRing><gml:posList>35.6000 139.8000 0.0 35.6010 139.8000 0.0 35.6010 139.8010 0.0 35.6000 139.8010 0.0 35.6000 139.8000 0.0</gml:posList></gml:LinearRing></gml:exterior>
-                   <gml:interior><gml:LinearRing><gml:posList>35.6003 139.8003 0.0 35.6007 139.8003 0.0 35.6007 139.8007 0.0 35.6003 139.8003 0.0</gml:posList></gml:LinearRing></gml:interior>
+                   <gml:exterior><gml:LinearRing><gml:posList>0 0 0 4 0 0 4 4 0 0 4 0 0 0 0</gml:posList></gml:LinearRing></gml:exterior>
+                   <gml:interior><gml:LinearRing><gml:posList>1 1 0 3 1 0 3 3 0 1 1 0</gml:posList></gml:LinearRing></gml:interior>
                  </gml:Polygon>
                </gml:surfaceMember></gml:MultiSurface></core:lod2MultiSurface>"#,
         );
@@ -758,8 +758,8 @@ mod tests {
     fn case08_triangulated_surface() {
         let (geoms, registry) = parse_one(
             r#"<dem:tin><gml:TriangulatedSurface><gml:patches>
-                 <gml:Triangle><gml:exterior><gml:LinearRing><gml:posList>35.6000 139.8000 10.0 35.6001 139.8000 10.0 35.6000 139.8001 12.0 35.6000 139.8000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Triangle>
-                 <gml:Triangle><gml:exterior><gml:LinearRing><gml:posList>35.6001 139.8000 10.0 35.6001 139.8001 12.0 35.6000 139.8001 12.0 35.6001 139.8000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Triangle>
+                 <gml:Triangle><gml:exterior><gml:LinearRing><gml:posList>1 2 0 3 2 0 1 4 5 1 2 0</gml:posList></gml:LinearRing></gml:exterior></gml:Triangle>
+                 <gml:Triangle><gml:exterior><gml:LinearRing><gml:posList>3 2 0 3 4 5 1 4 5 3 2 0</gml:posList></gml:LinearRing></gml:exterior></gml:Triangle>
                </gml:patches></gml:TriangulatedSurface></dem:tin>"#,
         );
         assert_eq!(geoms.len(), 1);
@@ -777,12 +777,12 @@ mod tests {
     #[test]
     fn case09_point() {
         let (geoms, registry) = parse_one(
-            r#"<urc:lod0Geometry><gml:Point><gml:pos>35.6536 139.7632 5.0</gml:pos></gml:Point></urc:lod0Geometry>"#,
+            r#"<urc:lod0Geometry><gml:Point><gml:pos>1 2 5</gml:pos></gml:Point></urc:lod0Geometry>"#,
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(0));
         match resolve_root(&geoms[0].node, &registry).unwrap() {
-            Euclidean3DGeometry::Point(p) => assert_eq!(p.position(), [139.7632, 35.6536, 5.0]),
+            Euclidean3DGeometry::Point(p) => assert_eq!(p.position(), [2.0, 1.0, 5.0]),
             other => panic!("expected Point, got {other:?}"),
         }
     }
@@ -830,7 +830,7 @@ mod tests {
         // The bad pos yields no coordinate, so the Point is dropped at parse time
         // and no geometry is carved from the feature.
         let (geoms, _registry) = parse_one(
-            r#"<urc:lod0Geometry><gml:Point><gml:pos>35.6536 x 5.0</gml:pos></gml:Point></urc:lod0Geometry>"#,
+            r#"<urc:lod0Geometry><gml:Point><gml:pos>1 x 5</gml:pos></gml:Point></urc:lod0Geometry>"#,
         );
         assert!(geoms.is_empty());
     }

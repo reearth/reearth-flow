@@ -1,7 +1,7 @@
-# GML geometry Mapping
+# GML Geometry Mapping
 
 This document is the reference for how GML geometry types map onto Flow's geometry
-model (`reearth_flow_geometry`), and how the two passes of the reader work.
+model (`reearth_flow_geometry`).
 
 The geometry model is shared across GML 3.1 and GML 3.2. The geometry types, their
 composition, and their `gml:id` / `xlink:href` behaviour are the same for every type
