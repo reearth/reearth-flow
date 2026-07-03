@@ -3,13 +3,15 @@ use std::sync::Arc;
 
 use url::Url;
 
-pub(super) const GML_NS: &str = "http://www.opengis.net/gml/3.2";
+pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
+pub(super) const GML_NS_311: &str = "http://www.opengis.net/gml";
 pub(super) const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
 
 pub type NsId = u32;
 pub const EMPTY_NS_ID: NsId = 0;
 pub(super) const GML_NS_ID: NsId = 1;
 pub(super) const XLINK_NS_ID: NsId = 2;
+pub(super) const GML_NS_311_ID: NsId = 3;
 
 /// `(qname, ns-id)`
 pub type QName = (String, NsId);
@@ -41,7 +43,7 @@ pub enum XmlChild {
 }
 
 /// Interns namespace URIs as u32 IDs, avoiding repeated allocation of long URI strings.
-/// IDs 0–2 are always pre-assigned: 0="" (no namespace), 1=GML_NS, 2=XLINK_NS.
+/// IDs 0–3 are always pre-assigned: 0="" (no namespace), 1=GML_NS_32, 2=XLINK_NS, 3=GML_NS_311.
 pub(super) struct NamespaceRegistry {
     uris: Vec<String>,
     index: HashMap<String, NsId>,
@@ -53,7 +55,7 @@ impl NamespaceRegistry {
             uris: Vec::new(),
             index: HashMap::new(),
         };
-        for uri in ["", GML_NS, XLINK_NS] {
+        for uri in ["", GML_NS_32, XLINK_NS, GML_NS_311] {
             let id = r.uris.len() as NsId;
             r.uris.push(uri.to_string());
             r.index.insert(uri.to_string(), id);
@@ -81,10 +83,10 @@ pub(super) fn local_name(qname: &str) -> &str {
     qname.rfind(':').map(|i| &qname[i + 1..]).unwrap_or(qname)
 }
 
-pub(super) fn gml_id_attr(node: &XmlNode) -> Option<String> {
-    node.attrs
+pub(super) fn gml_id_attr(attrs: &[(QName, String)]) -> Option<String> {
+    attrs
         .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
+        .find(|((q, ns), _)| local_name(q) == "id" && (*ns == GML_NS_ID || *ns == GML_NS_311_ID))
         .map(|(_, v)| v.clone())
 }
 

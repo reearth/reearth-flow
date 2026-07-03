@@ -1,8 +1,5 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-    sync::Arc,
-};
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -12,28 +9,16 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Code, CompiledCode};
+use reearth_flow_types::{Attributes, Code, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use reearth_flow_geometry::types::line_string::LineString2D;
-use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
-use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
-use reearth_flow_types::{
-    AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryType, GeometryValue, GmlGeometry,
-    CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
-};
-
+use crate::citygml_parser::parser::Parser;
+#[cfg(not(feature = "new-geometry"))]
+use crate::citygml_parser::pipeline::build_features;
 use crate::feature::errors::FeatureProcessorError;
-
-use super::{
-    codespace, flatten, geometry,
-    parser::{self, Parser},
-    utils::{gml_id_attr, XmlNode},
-    xlink,
-};
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGml3ReaderFactory;
@@ -98,7 +83,12 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
         Ok(Box::new(FeatureCityGml3Reader {
             dataset,
             extract_tags,
+            keep_attributes: params.keep_attributes,
+            flatten_single_child_objects: params.flatten_single_child_objects,
+            flatten_measure_types: params.flatten_measure_types,
+            city_gml_attributes_key: params.city_gml_attributes_key,
             parser: Parser::new(),
+            base_attributes: HashMap::new(),
         }))
     }
 }
@@ -116,12 +106,43 @@ pub struct FeatureCityGml3ReaderParam {
     /// top-level city objects unchanged.
     #[serde(default)]
     extract_tags: Vec<String>,
+    /// # Keep Attributes
+    /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
+    /// dropped from parsed features. Defaults to true.
+    #[serde(default = "default_keep_attributes")]
+    keep_attributes: bool,
+    /// # Flatten Single-Child Object Nodes
+    /// When true, a wrapper element whose only content is a single child element is dropped: the
+    /// child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to
+    /// false.
+    #[serde(default)]
+    flatten_single_child_objects: bool,
+    /// # Flatten Measure Types
+    /// When true, elements with a single `uom` attribute and numeric text content are converted to
+    /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
+    #[serde(default)]
+    flatten_measure_types: bool,
+    /// # City GML Attributes Key
+    /// When set, parsed CityGML attributes are nested under this key in the output feature.
+    /// When null, attributes are emitted at the top level. Defaults to null.
+    #[serde(default)]
+    city_gml_attributes_key: Option<String>,
+}
+
+fn default_keep_attributes() -> bool {
+    true
 }
 
 pub struct FeatureCityGml3Reader {
     dataset: CompiledCode,
     extract_tags: HashSet<String>,
+    keep_attributes: bool,
+    flatten_single_child_objects: bool,
+    flatten_measure_types: bool,
+    city_gml_attributes_key: Option<String>,
     parser: Parser,
+    /// Input feature attributes keyed by resolved source file URL, merged into parsed features.
+    base_attributes: HashMap<String, Attributes>,
 }
 
 impl std::fmt::Debug for FeatureCityGml3Reader {
@@ -137,7 +158,12 @@ impl Clone for FeatureCityGml3Reader {
         Self {
             dataset: self.dataset.clone(),
             extract_tags: self.extract_tags.clone(),
+            keep_attributes: self.keep_attributes,
+            flatten_single_child_objects: self.flatten_single_child_objects,
+            flatten_measure_types: self.flatten_measure_types,
+            city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             parser: Parser::new(),
+            base_attributes: HashMap::new(),
         }
     }
 }
@@ -163,6 +189,10 @@ impl Processor for FeatureCityGml3Reader {
             FeatureProcessorError::FileCityGml3Reader(format!("Invalid URI `{path}`: {e}"))
         })?;
         let source_url: Url = uri.clone().into();
+        self.base_attributes.insert(
+            source_url.as_str().to_string(),
+            (*ctx.feature.attributes).clone(),
+        );
 
         let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
             FeatureProcessorError::FileCityGml3Reader(format!("Storage resolve error: {e}"))
@@ -183,39 +213,20 @@ impl Processor for FeatureCityGml3Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let (pending, raw_registry, ns_registry) = std::mem::take(&mut self.parser).finish();
-        let mut codelist_resolver = codespace::CodelistResolver::new();
-        for feature_root in codespace::resolve(
-            xlink::resolve(pending, &raw_registry),
-            &mut codelist_resolver,
+        for feature in build_features(
+            std::mem::take(&mut self.parser),
+            &self.extract_tags,
+            &self.base_attributes,
+            self.city_gml_attributes_key.as_deref(),
+            self.keep_attributes,
+            self.flatten_single_child_objects,
+            self.flatten_measure_types,
         ) {
-            if self.extract_tags.is_empty() {
-                let feature = build_feature(&feature_root);
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    DEFAULT_PORT.clone(),
-                ));
-            } else {
-                let root_gml_id = gml_id_attr(&feature_root);
-
-                for (node, parent_id) in
-                    flatten::extract(&feature_root, &self.extract_tags, &ns_registry)
-                {
-                    let mut feature = build_feature(&node);
-                    if let Some(id) = parent_id {
-                        feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
-                    }
-                    if let Some(ref id) = root_gml_id {
-                        feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
-                    }
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        &ctx,
-                        feature,
-                        DEFAULT_PORT.clone(),
-                    ));
-                }
-            }
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature,
+                DEFAULT_PORT.clone(),
+            ));
         }
         Ok(())
     }
@@ -223,60 +234,4 @@ impl Processor for FeatureCityGml3Reader {
     fn name(&self) -> &str {
         "FeatureCityGml3Reader"
     }
-}
-
-#[cfg(not(feature = "new-geometry"))]
-fn build_feature(node: &Arc<XmlNode>) -> Feature {
-    let (stripped, raw_geoms) = geometry::extract_geometries(node);
-    let mut feature = parser::to_feature(&stripped);
-    if !raw_geoms.is_empty() {
-        *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
-            build_citygml_geometry(raw_geoms),
-        ));
-    }
-    feature
-}
-
-// pos is assigned here; neutral appearance arrays prevent out-of-bounds access in downstream consumers.
-fn build_citygml_geometry(raw: Vec<GmlGeometry>) -> CityGmlGeometry {
-    let mut polygon_materials: Vec<Option<u32>> = Vec::new();
-    let mut polygon_textures: Vec<Option<u32>> = Vec::new();
-    let mut polygon_uvs: Vec<Polygon2D<f64>> = Vec::new();
-    let mut current_pos: u32 = 0;
-    let mut gml_geometries: Vec<GmlGeometry> = Vec::with_capacity(raw.len());
-
-    for mut g in raw {
-        if matches!(
-            g.ty,
-            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
-        ) {
-            g.pos = current_pos;
-            current_pos += g.len;
-            for poly in &g.polygons {
-                polygon_materials.push(None);
-                polygon_textures.push(None);
-                polygon_uvs.push(neutral_uv_polygon(poly));
-            }
-        }
-        gml_geometries.push(g);
-    }
-
-    CityGmlGeometry {
-        gml_geometries,
-        materials: Vec::new(),
-        textures: Vec::new(),
-        polygon_materials,
-        polygon_textures,
-        polygon_uvs: MultiPolygon2D::new(polygon_uvs),
-    }
-}
-
-fn neutral_uv_polygon(poly: &Polygon3D<f64>) -> Polygon2D<f64> {
-    let ext = LineString2D::new(vec![[0.0f64, 0.0f64].into(); poly.exterior().0.len()]);
-    let ints = poly
-        .interiors()
-        .iter()
-        .map(|ring| LineString2D::new(vec![[0.0f64, 0.0f64].into(); ring.0.len()]))
-        .collect();
-    Polygon2D::new(ext, ints)
 }
