@@ -10505,6 +10505,25 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.UnmatchedXlinkDetector",
+      "type": "processor",
+      "description": "PLATEAUの未一致Xlinkを検出する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "unMatchedXlinkFrom",
+        "unMatchedXlinkTo"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PlanarityFilter",
       "type": "processor",
       "description": "タイプに基づいてジオメトリをフィルタリングする",

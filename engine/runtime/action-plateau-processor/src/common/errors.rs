@@ -28,6 +28,10 @@ pub(crate) enum PlateauProcessorError {
     SolidIntersectionTestPairCreatorFactory(String),
     #[error("SolidIntersectionTestPairCreator error: {0}")]
     SolidIntersectionTestPairCreator(String),
+    #[error("Unmatched Xlink Detector Factory error: {0}")]
+    UnmatchedXlinkDetectorFactory(String),
+    #[error("Unmatched Xlink Detector error: {0}")]
+    UnmatchedXlinkDetector(String),
 }
 
 pub(crate) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

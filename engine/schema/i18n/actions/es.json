@@ -2912,6 +2912,9 @@
       }
     },
     {
+      "name": "PLATEAU6.UnmatchedXlinkDetector"
+    },
+    {
       "name": "PlanarityFilter",
       "description": "Filtra la geometría por tipo",
       "parameterI18n": {

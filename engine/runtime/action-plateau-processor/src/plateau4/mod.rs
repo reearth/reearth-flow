@@ -13,7 +13,7 @@ pub(crate) mod mapping;
 pub(crate) mod max_lod_extractor;
 mod profile;
 pub(crate) mod tran_xlink_detector;
-pub(crate) mod unmatched_xlink_detector;
+pub(crate) mod unmatched_xlink_strategy;
 pub(crate) mod unshared_edge_detector;
 
 // The PLATEAU4 profile is referenced from plateau4/mapping via `super::profile`.

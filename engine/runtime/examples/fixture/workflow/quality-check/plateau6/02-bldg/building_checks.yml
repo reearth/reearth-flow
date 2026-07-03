@@ -813,11 +813,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_incorrect_usage_attribute", 0)
-        # TODO: wire to a PLATEAU6 L-bldg-06 check
+        # Wired to the L-bldg-06 unmatched-xlink pipeline (Lbldg06ErrorCounter).
         - attribute: "L-bldg-06 エラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lbldg06_error", 0)
         # TODO: wire to a PLATEAU6 BuildingInstallation geometry-type check (T-bldg-02)
         - attribute: "T-bldg-02エラー"
           expr:
@@ -2162,6 +2162,128 @@ nodes:
         type: flowExpr
         value: attributes["name"]
 
+  # --- L-bldg-06 unmatched-xlink pipeline (reads the raw GML per file) ---
+  # Reports solid xlink:href references that do not resolve to a boundary
+  # gml:Polygon (unmatched "from") and boundary polygons that no solid references
+  # (unmatched "to"). CityGML 3.0 seam is injected via the Rust strategy.
+  - id: c1b00050-0000-4000-8000-000000000050
+    name: PLATEAU6.UnmatchedXlinkDetector
+    type: action
+    action: PLATEAU6.UnmatchedXlinkDetector
+    with:
+      attribute: path
+
+  - id: c1b00051-0000-4000-8000-000000000051
+    name: UnmatchedXlinkSummaryNoop
+    type: action
+    action: NoopSink
+
+  - id: c1b00052-0000-4000-8000-000000000052
+    name: AttributeManagerXlinkFrom
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: Attribute
+          method: create
+          value:
+            type: string
+            value: 参照元 xlink:href
+        - attribute: unmatchedXlinkFromTag
+          method: rename
+          value:
+            type: string
+            value: unmatchedXlinkTag
+        - attribute: unmatchedXlinkFromId
+          method: rename
+          value:
+            type: string
+            value: unmatchedXlinkId
+
+  - id: c1b00053-0000-4000-8000-000000000053
+    name: AttributeManagerXlinkTo
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: Attribute
+          method: create
+          value:
+            type: string
+            value: 参照先 gml:id
+        - attribute: unmatchedXlinkToTag
+          method: rename
+          value:
+            type: string
+            value: unmatchedXlinkTag
+        - attribute: unmatchedXlinkToId
+          method: rename
+          value:
+            type: string
+            value: unmatchedXlinkId
+
+  - id: c1b00054-0000-4000-8000-000000000054
+    name: AttributeMapperLbldg06
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: index
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: "Building gml:id"
+          valueAttribute: gmlId
+        - attribute: "Unmatched Xlink Tag"
+          expr:
+            type: flowExpr
+            value: |
+              ",".join(attributes.get("unmatchedXlinkTag", []))
+        - attribute: Attribute
+          valueAttribute: Attribute
+        - attribute: "Unmatched Xlink ID"
+          expr:
+            type: flowExpr
+            value: |
+              ",".join(attributes.get("unmatchedXlinkId", []))
+
+  - id: c1b00055-0000-4000-8000-000000000055
+    name: FeatureWriterLbldg06
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_L-bldg-06エラー.csv
+
+  # Count unmatched-xlink error rows (from + to) per file for the summary column.
+  - id: c1b00056-0000-4000-8000-000000000056
+    name: Lbldg06ErrorCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lbldg06_error
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file unmatched-xlink count onto each file feature.
+  - id: c1b00057-0000-4000-8000-000000000057
+    name: UnmatchedXlinkSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
 edges:
   - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
     from: 63341eb4-409d-4668-b338-2d1e5ab003fd
@@ -3249,14 +3371,90 @@ edges:
     to: c1b00044-0000-4000-8000-000000000044
     fromPort: default
     toPort: supplier
-  # City-code summary merger output -> building summary mapper.
+  # City-code summary merger output -> unmatched-xlink summary merger (requestor).
   - id: c1b0e046-0000-4000-8000-000000000046
     from: c1b00044-0000-4000-8000-000000000044
+    to: c1b00057-0000-4000-8000-000000000057
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e047-0000-4000-8000-000000000047
+    from: c1b00044-0000-4000-8000-000000000044
+    to: c1b00057-0000-4000-8000-000000000057
+    fromPort: unmerged
+    toPort: requestor
+
+  # --- L-bldg-06 unmatched-xlink pipeline edges ---
+  # File feature (with raw GML `path`) -> detector.
+  - id: c1b0e050-0000-4000-8000-000000000050
+    from: 06437150-b04d-4b41-83fc-e5767ea35a23
+    to: c1b00050-0000-4000-8000-000000000050
+    fromPort: default
+    toPort: default
+  # Per-file summary feature is unused here.
+  - id: c1b0e051-0000-4000-8000-000000000051
+    from: c1b00050-0000-4000-8000-000000000050
+    to: c1b00051-0000-4000-8000-000000000051
+    fromPort: summary
+    toPort: default
+  # Unmatched "from" / "to" error features -> label managers.
+  - id: c1b0e052-0000-4000-8000-000000000052
+    from: c1b00050-0000-4000-8000-000000000050
+    to: c1b00052-0000-4000-8000-000000000052
+    fromPort: unMatchedXlinkFrom
+    toPort: default
+  - id: c1b0e053-0000-4000-8000-000000000053
+    from: c1b00050-0000-4000-8000-000000000050
+    to: c1b00053-0000-4000-8000-000000000053
+    fromPort: unMatchedXlinkTo
+    toPort: default
+  # Both directions -> CSV mapper.
+  - id: c1b0e054-0000-4000-8000-000000000054
+    from: c1b00052-0000-4000-8000-000000000052
+    to: c1b00054-0000-4000-8000-000000000054
+    fromPort: default
+    toPort: default
+  - id: c1b0e055-0000-4000-8000-000000000055
+    from: c1b00053-0000-4000-8000-000000000053
+    to: c1b00054-0000-4000-8000-000000000054
+    fromPort: default
+    toPort: default
+  # Both directions -> per-file counter.
+  - id: c1b0e056-0000-4000-8000-000000000056
+    from: c1b00052-0000-4000-8000-000000000052
+    to: c1b00056-0000-4000-8000-000000000056
+    fromPort: default
+    toPort: default
+  - id: c1b0e057-0000-4000-8000-000000000057
+    from: c1b00053-0000-4000-8000-000000000053
+    to: c1b00056-0000-4000-8000-000000000056
+    fromPort: default
+    toPort: default
+  # Mapper -> CSV writer.
+  - id: c1b0e058-0000-4000-8000-000000000058
+    from: c1b00054-0000-4000-8000-000000000054
+    to: c1b00055-0000-4000-8000-000000000055
+    fromPort: default
+    toPort: default
+  # Route the written L-bldg-06 CSV into the result zip.
+  - id: c1b0e059-0000-4000-8000-000000000059
+    from: c1b00055-0000-4000-8000-000000000055
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Counter.default -> unmatched-xlink summary merger (supplier).
+  - id: c1b0e05a-0000-4000-8000-00000000005a
+    from: c1b00056-0000-4000-8000-000000000056
+    to: c1b00057-0000-4000-8000-000000000057
+    fromPort: default
+    toPort: supplier
+  # Unmatched-xlink summary merger output -> building summary mapper.
+  - id: c1b0e05b-0000-4000-8000-00000000005b
+    from: c1b00057-0000-4000-8000-000000000057
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: c1b0e047-0000-4000-8000-000000000047
-    from: c1b00044-0000-4000-8000-000000000044
+  - id: c1b0e05c-0000-4000-8000-00000000005c
+    from: c1b00057-0000-4000-8000-000000000057
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default

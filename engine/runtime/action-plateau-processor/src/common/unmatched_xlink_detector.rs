@@ -1,6 +1,27 @@
+//! Unmatched-xlink detector (L-bldg-06), shared across PLATEAU generations.
+//!
+//! A building solid (`bldg:lod2Solid` in CityGML 2.0, `core:lod2Solid` in 3.0)
+//! references its boundary-surface polygons by `xlink:href`. This check reads the
+//! raw GML and reports references that do not resolve:
+//!
+//! - **unmatched "from"**: an `xlink:href` in the solid that points to a
+//!   `gml:id` which is not defined among the boundary polygons.
+//! - **unmatched "to"**: a boundary `gml:Polygon[@gml:id]` that no solid
+//!   `xlink:href` references.
+//!
+//! The generation-independent orchestration (raw-GML load, per-container
+//! traversal, set difference, port emission, per-file summary) lives here as a
+//! template method. The generation-specific seam — which elements to scan, which
+//! LOD geometry tags carry the references, where boundary surfaces live and which
+//! `gml` namespace resolves `gml:id` — is injected as a [`UnmatchedXlinkStrategy`]
+//! trait object, so a generation whose extraction *logic* (not merely its
+//! constants) differs can override the behavioral methods without touching this
+//! file.
+
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
+    fmt::Debug,
     rc::Rc,
     str::FromStr,
 };
@@ -23,10 +44,108 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::{PlateauProcessorError, Result};
+use super::PlateauProfile;
+
+/// XML namespace for `xlink:href`. Identical across CityGML 2.0/3.0.
+const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
 
 pub static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
 pub static UNMATCHED_XLINK_FROM: Lazy<Port> = Lazy::new(|| Port::new("unMatchedXlinkFrom"));
 pub static UNMATCHED_XLINK_TO: Lazy<Port> = Lazy::new(|| Port::new("unMatchedXlinkTo"));
+
+/// A single feature container (`bldg:Building` etc.) with its resolved xlink sets.
+#[derive(Debug, Default, Clone)]
+pub(crate) struct XlinkGmlElement {
+    pub gml_id: String,
+    /// `xlink:href` target id -> LOD tag (local name) that carries the reference.
+    pub from: HashMap<String, String>,
+    /// boundary `gml:id` -> element tag (`gml:Polygon`).
+    pub to: HashMap<String, String>,
+}
+
+/// Generation-specific seam for the unmatched-xlink check.
+///
+/// The four accessors describe *where* the references and definitions live; the
+/// `extract_*` methods carry the default extraction built from those accessors
+/// and are the override points for a generation whose extraction logic genuinely
+/// differs (rather than only its constants).
+pub(crate) trait UnmatchedXlinkStrategy: Send + Sync + Debug {
+    /// Feature containers to scan, as `//{name}` roots (e.g. `bldg:Building`).
+    fn containers(&self) -> &[&str];
+    /// Qualified LOD geometry tags whose descendant `xlink:href` reference
+    /// boundary polygons (e.g. `core:lod2Solid`). Used for the has-geometry gate,
+    /// the "from" XPath, and the reported tag (its local name).
+    fn lod_geometry_tags(&self) -> &[&str];
+    /// Qualified container element holding boundary surfaces (e.g. `core:boundary`).
+    fn boundary_container(&self) -> &str;
+    /// XML namespace that resolves `gml:id` (differs by GML version).
+    fn gml_namespace(&self) -> &str;
+
+    /// Extract the "from" set: `xlink:href` target id -> LOD tag local name.
+    fn extract_from(
+        &self,
+        xml_ctx: &XmlContext,
+        node: &XmlRoNode,
+    ) -> Result<HashMap<String, String>, Error> {
+        let mut from = HashMap::<String, String>::new();
+        for tag in self.lod_geometry_tags() {
+            let local = tag.rsplit(':').next().unwrap_or(tag);
+            let elements = xml::find_readonly_nodes_by_xpath(
+                xml_ctx,
+                format!(
+                    "{tag}//gml:surfaceMember[@xlink:href] | {tag}//gml:baseSurface[@xlink:href]"
+                )
+                .as_str(),
+                node,
+            )
+            .map_err(|e| Error::UnmatchedXlinkDetector(format!("{e:?}")))?;
+            for element in &elements {
+                if let Some(xlink) = element.get_attribute_ns("href", XLINK_NS) {
+                    from.insert(xlink.replace('#', ""), local.to_string());
+                }
+            }
+        }
+        Ok(from)
+    }
+
+    /// Extract the "to" set: boundary `gml:id` -> element tag (`gml:Polygon`).
+    fn extract_to(
+        &self,
+        xml_ctx: &XmlContext,
+        node: &XmlRoNode,
+    ) -> Result<HashMap<String, String>, Error> {
+        let mut to = HashMap::<String, String>::new();
+        let elements = xml::find_readonly_nodes_by_xpath(
+            xml_ctx,
+            format!("{}/*//gml:Polygon[@gml:id]", self.boundary_container()).as_str(),
+            node,
+        )
+        .map_err(|e| Error::UnmatchedXlinkDetector(format!("{e:?}")))?;
+        for element in &elements {
+            let gml_id = element.get_attribute_ns("id", self.gml_namespace()).ok_or(
+                Error::UnmatchedXlinkDetector("Failed to get gml id".to_string()),
+            )?;
+            to.insert(gml_id, xml::get_readonly_node_tag(element));
+        }
+        Ok(to)
+    }
+
+    /// Build the resolved xlink element for one container node: its `gml:id`
+    /// plus the "from" / "to" sets. Composes the accessors above, so a generation
+    /// only overrides this when the assembly itself differs.
+    fn build_element(
+        &self,
+        xml_ctx: &XmlContext,
+        node: &XmlRoNode,
+    ) -> Result<XlinkGmlElement, Error> {
+        let gml_id = node.get_attribute_ns("id", self.gml_namespace()).ok_or(
+            Error::UnmatchedXlinkDetector("Failed to get gml id".to_string()),
+        )?;
+        let from = self.extract_from(xml_ctx, node)?;
+        let to = self.extract_to(xml_ctx, node)?;
+        Ok(XlinkGmlElement { gml_id, from, to })
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -100,7 +219,7 @@ impl From<XlinkGmlElement> for Response {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum Error {
+pub(crate) enum Error {
     #[error("reearth flow common error: {0}")]
     InvalidUri(#[from] reearth_flow_common::Error),
     #[error("Unmatched Xlink Detector Error: {0}")]
@@ -113,26 +232,27 @@ enum Error {
     ObjectStore(#[from] object_store::Error),
 }
 
-#[derive(Debug, Default, Clone)]
-struct XlinkGmlElement {
-    gml_id: String,
-    from: HashMap<String, String>,
-    to: HashMap<String, String>,
+#[derive(Debug, Clone)]
+pub(crate) struct UnmatchedXlinkDetectorFactory {
+    name: String,
+    strategy: &'static dyn UnmatchedXlinkStrategy,
 }
 
-const LOD_TAGS: &[&str] = &[
-    "bldg:lod2Solid",
-    "bldg:lod3Solid",
-    "bldg:lod4Solid",
-    "bldg:lod4MultiSurface",
-];
-
-#[derive(Debug, Clone, Default)]
-pub struct UnmatchedXlinkDetectorFactory;
+impl UnmatchedXlinkDetectorFactory {
+    pub(crate) fn new(
+        profile: &PlateauProfile,
+        strategy: &'static dyn UnmatchedXlinkStrategy,
+    ) -> Self {
+        Self {
+            name: profile.action_name("UnmatchedXlinkDetector"),
+            strategy,
+        }
+    }
+}
 
 impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
     fn name(&self) -> &str {
-        "PLATEAU4.UnmatchedXlinkDetector"
+        &self.name
     }
 
     fn description(&self) -> &str {
@@ -183,7 +303,10 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
             )
             .into());
         };
-        let process = UnmatchedXlinkDetector { params };
+        let process = UnmatchedXlinkDetector {
+            params,
+            strategy: self.strategy,
+        };
         Ok(Box::new(process))
     }
 }
@@ -197,6 +320,7 @@ pub struct UnmatchedXlinkDetectorParam {
 #[derive(Debug, Clone)]
 pub struct UnmatchedXlinkDetector {
     params: UnmatchedXlinkDetectorParam,
+    strategy: &'static dyn UnmatchedXlinkStrategy,
 }
 
 impl Processor for UnmatchedXlinkDetector {
@@ -251,8 +375,11 @@ impl UnmatchedXlinkDetector {
             .with_root_namespaces()
             .map_err(|e| Error::UnmatchedXlinkDetector(format!("{e:?}")))?;
 
+        let strategy = self.strategy;
+        let lod_tags = strategy.lod_geometry_tags();
+
         let mut t = transformer;
-        for target in ["bldg:Building", "bldg:BuildingPart", "bldg:Room"] {
+        for target in strategy.containers() {
             let xpath = format!("//{target}");
             let summary = Rc::clone(&summary);
             let stream_error = Rc::clone(&stream_error);
@@ -263,16 +390,15 @@ impl UnmatchedXlinkDetector {
                     return;
                 }
 
-                // Check LOD condition: element must have at least one LOD child
+                // Gate: the container must carry at least one target LOD geometry.
                 let has_lod = node
                     .children()
                     .iter()
-                    .any(|c| LOD_TAGS.contains(&c.qname().as_str()));
+                    .any(|c| lod_tags.contains(&c.qname().as_str()));
                 if !has_lod {
                     return;
                 }
 
-                // Use the EditableNode's internal document to create XmlContext
                 let doc = node.document();
                 let mut xml_ctx = match xml::create_context(doc) {
                     Ok(ctx) => ctx,
@@ -294,8 +420,8 @@ impl UnmatchedXlinkDetector {
                     }
                 };
 
-                match extract_xlink_gml_element(&xml_ctx, &root_node) {
-                    Ok(Some(xlink_gml_element)) => {
+                match strategy.build_element(&xml_ctx, &root_node) {
+                    Ok(xlink_gml_element) => {
                         let mut s = summary.borrow_mut();
                         s.xlink_from_count += xlink_gml_element.from.len() as u32;
                         s.xlink_to_count += xlink_gml_element.to.len() as u32;
@@ -320,7 +446,6 @@ impl UnmatchedXlinkDetector {
                             fw.send(ctx.new_with_feature_and_port(f, port.clone()));
                         }
                     }
-                    Ok(None) => {}
                     Err(e) => {
                         *stream_error.borrow_mut() = Some(e);
                     }
@@ -345,48 +470,4 @@ impl UnmatchedXlinkDetector {
         fw.send(ctx.new_with_feature_and_port(feature.clone(), SUMMARY_PORT.clone()));
         Ok(())
     }
-}
-
-fn extract_xlink_gml_element(
-    xml_ctx: &XmlContext,
-    node: &XmlRoNode,
-) -> Result<Option<XlinkGmlElement>, Error> {
-    let gml_id = node
-        .get_attribute_ns("id", "http://www.opengis.net/gml")
-        .ok_or(Error::UnmatchedXlinkDetector(
-            "Failed to get gml id".to_string(),
-        ))?;
-    let mut xlink_from = HashMap::<String, String>::new();
-    let mut xlink_to = HashMap::<String, String>::new();
-    for tag in ["lod2Solid", "lod3Solid", "lod4Solid", "lod4MultiSurface"] {
-        let elements = xml::find_readonly_nodes_by_xpath(
-            xml_ctx,
-            format!("bldg:{tag}//gml:surfaceMember[@xlink:href] | bldg:{tag}//gml:baseSurface[@xlink:href]").as_str(),
-            node,
-        )?;
-        let from = elements
-            .iter()
-            .flat_map(|element| {
-                let xlink = element.get_attribute_ns("href", "http://www.w3.org/1999/xlink")?;
-                Some((xlink.replace("#", ""), tag.to_string()))
-            })
-            .collect::<HashMap<String, String>>();
-        xlink_from.extend(from);
-    }
-    let elements =
-        xml::find_readonly_nodes_by_xpath(xml_ctx, "bldg:boundedBy/*//gml:Polygon[@gml:id]", node)?;
-    for element in &elements {
-        let gml_id = element
-            .get_attribute_ns("id", "http://www.opengis.net/gml")
-            .ok_or(Error::UnmatchedXlinkDetector(
-                "Failed to get gml id".to_string(),
-            ))?;
-
-        xlink_to.insert(gml_id, xml::get_readonly_node_tag(element));
-    }
-    Ok(Some(XlinkGmlElement {
-        gml_id,
-        from: xlink_from,
-        to: xlink_to,
-    }))
 }

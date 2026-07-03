@@ -10240,6 +10240,22 @@ Extracts UDX folders from cityGML path
 ### Category
 * PLATEAU
 
+## PLATEAU6.UnmatchedXlinkDetector
+### Type
+* processor
+### Description
+Detect unmatched Xlinks for PLATEAU
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* summary
+* unMatchedXlinkFrom
+* unMatchedXlinkTo
+### Category
+* PLATEAU
+
 ## PlanarityFilter
 ### Type
 * processor

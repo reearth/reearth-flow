@@ -10,6 +10,9 @@ use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
 use crate::common::solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory;
 use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
+use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
+
+use super::unmatched_xlink_strategy::Plateau6XlinkStrategy;
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
@@ -19,6 +22,10 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::new(MissingAttributeDetectorFactory::new(&PLATEAU6)),
         Box::new(BuildingUsageAttributeValidatorFactory::new(&PLATEAU6)),
         Box::new(SolidIntersectionTestPairCreatorFactory::new(&PLATEAU6)),
+        Box::new(UnmatchedXlinkDetectorFactory::new(
+            &PLATEAU6,
+            &Plateau6XlinkStrategy,
+        )),
     ];
     factories
         .into_iter()

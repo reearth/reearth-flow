@@ -2917,6 +2917,10 @@
       }
     },
     {
+      "name": "PLATEAU6.UnmatchedXlinkDetector",
+      "description": "PLATEAUの未一致Xlinkを検出する"
+    },
+    {
       "name": "PlanarityFilter",
       "description": "タイプに基づいてジオメトリをフィルタリングする",
       "parameterI18n": {

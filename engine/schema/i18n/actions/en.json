@@ -2868,6 +2868,9 @@
       }
     },
     {
+      "name": "PLATEAU6.UnmatchedXlinkDetector"
+    },
+    {
       "name": "PlanarityFilter",
       "description": "Filter geometry by type",
       "parameterI18n": {

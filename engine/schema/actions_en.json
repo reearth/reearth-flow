@@ -10502,6 +10502,25 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.UnmatchedXlinkDetector",
+      "type": "processor",
+      "description": "Detect unmatched Xlinks for PLATEAU",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "unMatchedXlinkFrom",
+        "unMatchedXlinkTo"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PlanarityFilter",
       "type": "processor",
       "description": "Filter geometry by type",
