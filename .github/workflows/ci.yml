@@ -98,6 +98,7 @@ jobs:
             server/websocket-go/**
             .github/workflows/ci.yml
             .github/workflows/ci_websocket_go.yml
+            .github/workflows/build_deploy_websocket_go.yml
 
   ci-api:
     needs: prepare
@@ -246,7 +247,21 @@ jobs:
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit 
+    secrets: inherit
+  build-and-deploy-websocket-go:
+    needs:
+      - ci
+      - ci-websocket-go
+      - ci-collect-info
+    uses: ./.github/workflows/build_deploy_websocket_go.yml
+    if: ${{ !failure() && needs.ci-websocket-go.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+    with:
+      name: ${{ needs.ci-collect-info.outputs.name }}
+      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+      sha: ${{ github.sha }}
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+    secrets: inherit
   build-docker-push-worker:
     needs:
       - ci

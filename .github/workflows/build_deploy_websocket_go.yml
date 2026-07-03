@@ -1,0 +1,195 @@
+# Builds the Go Y-WebSocket server (server/websocket-go) and deploys it to its
+# OWN Cloud Run service, reearth-flow-websocket-go, which runs in parallel with
+# the Rust reearth-flow-websocket during the blue-green migration. This workflow
+# is additive: the Rust build_deploy_websocket.yml is untouched, and both services
+# share the same GCS bucket + Redis (coexistence). User traffic reaches the Go
+# service only when the load balancer is pointed at it — a separate, human-run
+# cutover step, NOT this workflow.
+name: Build and Deploy Websocket (Go)
+
+on:
+  workflow_call:
+    inputs:
+      sha_short: { required: true, type: string }
+      new_tag: { required: true, type: string }
+      new_tag_short: { required: true, type: string }
+      name: { required: true, type: string }
+      sha: { required: true, type: string }
+
+jobs:
+  build-websocket-go:
+    name: Build Websocket (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - name: Checkout Repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: "1.25"
+          cache-dependency-path: server/websocket-go/go.sum
+
+      - name: Build Websocket (sanity, static)
+        run: |
+          cd server/websocket-go
+          CGO_ENABLED=0 GOOS=linux go build -trimpath -o dist/reearth-flow-websocket-go ./cmd/websocket
+
+      - name: Rename Artifacts
+        if: ${{ inputs.name != 'blank' }}
+        run: |
+          cd server/websocket-go/dist
+          mv reearth-flow-websocket-go reearth-flow-websocket-go_${{ inputs.name }}
+
+      - name: Upload Websocket Artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: websocket-go-artifacts
+          path: server/websocket-go/dist/*
+
+  build-docker-image:
+    name: Build and Push Docker Image
+    needs: build-websocket-go
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # Distinct image from the Rust server so the two services deploy independently.
+      IMAGE_NAME: reearth/reearth-flow-websocket-go
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - name: Checkout Repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Determine Build Options
+        id: options
+        run: |
+          TAG="${{ inputs.new_tag_short != 'blank' && inputs.new_tag_short || '' }}"
+          NAME="${{ inputs.name }}"
+          SHA="${{ inputs.sha_short }}"
+
+          if [[ -n "$TAG" ]]; then
+            PLATFORMS="linux/amd64"
+            VERSION="$TAG"
+            TAGS="$IMAGE_NAME:$TAG"
+            if [[ ! "$TAG" =~ '-' ]]; then
+              TAGS+=",${IMAGE_NAME}:${TAG%.*}"
+              TAGS+=",${IMAGE_NAME}:${TAG%%.*}"
+              TAGS+=",${IMAGE_NAME}:latest"
+            fi
+          else
+            PLATFORMS="linux/amd64"
+            VERSION="$SHA"
+            TAGS="$IMAGE_NAME:$NAME"
+          fi
+
+          echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      # The Docker build context is the Go module; the image builds against the Go
+      # Dockerfile. go.mod pins ygo from the module proxy (no local-path replace),
+      # so the build resolves ygo without any pre-step.
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: server/websocket-go
+          file: server/websocket-go/Dockerfile
+          platforms: ${{ steps.options.outputs.platforms }}
+          push: true
+          build-args: VERSION=${{ steps.options.outputs.version }}
+          tags: ${{ steps.options.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Push Docker Image to GCP Artifact Registry
+        if: ${{ inputs.name == 'nightly' }}
+        run: |
+          docker pull $IMAGE_NAME:${{ inputs.name }}
+          docker tag $IMAGE_NAME:${{ inputs.name }} ${{ secrets.WEBSOCKET_GO_IMAGE_GC }}:${{ inputs.name }}
+          docker push ${{ secrets.WEBSOCKET_GO_IMAGE_GC }}:${{ inputs.name }}
+
+  deploy-to-cloud-run:
+    name: Deploy to Cloud Run (Nightly)
+    needs: build-docker-image
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # Separate service from the Rust reearth-flow-websocket; provisioned by
+      # eukarya-inc/infrastructure. Deploys live on its OWN service (no traffic
+      # split) — it receives user traffic only once the load balancer is pointed
+      # at it, which is a separate human-run cutover step.
+      CLOUD_RUN_SERVICE: reearth-flow-websocket-go
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+      # The full runtime env + container port are codified here because a Cloud Run
+      # service does not inherit out-of-band env across image swaps. The Go binary
+      # binds REEARTH_FLOW_WS_PORT (default 8000), NOT Cloud Run $PORT, so --port
+      # 8000 is required.
+      #
+      # gcloud --set-env-vars / --set-secrets have STORE semantics: a repeated flag
+      # keeps only its last occurrence, so ALL env goes in one --set-env-vars and
+      # both secrets in one --set-secrets. Some values contain commas
+      # (REEARTH_FLOW_ORIGINS, the OTLP endpoint), so the env block uses the ^@@^
+      # custom-delimiter syntax; the secrets have no commas.
+      #
+      # Coexistence invariants: REEARTH_FLOW_API_SECRET must equal the API server's
+      # REEARTH_FLOW_WEBSOCKET_API_SECRET (else its document calls 401); protected
+      # mode ships OFF and Phase-2 layout ships OFF until Rust is drained.
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${CLOUD_RUN_SERVICE}" \
+            --image "${{ secrets.WEBSOCKET_GO_IMAGE_GC }}:nightly" \
+            --region "${{ secrets.GC_REGION }}" \
+            --platform managed \
+            --port 8000 \
+            --set-env-vars "^@@^REEARTH_FLOW_WS_PORT=8000@@REEARTH_FLOW_APP_ENV=production@@REEARTH_FLOW_GCS_BUCKET_NAME=${{ vars.WS_GCS_BUCKET_NAME }}@@REEARTH_FLOW_GCS_ENDPOINT=@@REEARTH_FLOW_THRIFT_AUTH_URL=${{ vars.WS_THRIFT_AUTH_URL }}@@REEARTH_FLOW_ORIGINS=${{ vars.WS_ORIGINS }}@@REEARTH_FLOW_WS_PROTECTED=false@@REEARTH_FLOW_GCS_PHASE2=false@@REEARTH_FLOW_MAX_CONNECTIONS=${{ vars.WS_MAX_CONNECTIONS }}@@REEARTH_FLOW_MAX_PEERS_PER_ROOM=${{ vars.WS_MAX_PEERS_PER_ROOM }}@@REEARTH_FLOW_MAX_ROOMS=${{ vars.WS_MAX_ROOMS }}@@REEARTH_FLOW_ENABLE_OTLP=${{ vars.WS_ENABLE_OTLP }}@@REEARTH_FLOW_OTLP_ENDPOINT=${{ vars.WS_OTLP_ENDPOINT }}@@REEARTH_FLOW_GCP_PROJECT_ID=${{ vars.WS_GCP_PROJECT_ID }}@@REEARTH_FLOW_SERVICE_NAME=reearth-flow-websocket-go@@REEARTH_FLOW_OTEL_EXPORTER_TYPE=${{ vars.WS_OTEL_EXPORTER_TYPE }}@@REEARTH_FLOW_OTEL_SAMPLING_RATIO=${{ vars.WS_OTEL_SAMPLING_RATIO }}@@REEARTH_FLOW_OTEL_BATCH_TIMEOUT=${{ vars.WS_OTEL_BATCH_TIMEOUT }}@@REEARTH_FLOW_OTEL_MAX_EXPORT_BATCH_SIZE=${{ vars.WS_OTEL_MAX_EXPORT_BATCH_SIZE }}@@REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE=${{ vars.WS_OTEL_MAX_QUEUE_SIZE }}" \
+            --set-secrets "REEARTH_FLOW_REDIS_URL=${{ secrets.WS_REDIS_URL_SECRET }}:latest,REEARTH_FLOW_API_SECRET=${{ secrets.WS_GO_API_SECRET }}:latest" \
+            --quiet
