@@ -118,9 +118,7 @@ impl Parser {
                             );
                             self.pending.push(feature_node);
                         } else {
-                            tracing::warn!(
-                                "empty cityObjectMember/featureMember, skipped"
-                            );
+                            tracing::warn!("empty cityObjectMember/featureMember, skipped");
                         }
                     } else {
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;

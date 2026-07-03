@@ -159,10 +159,7 @@ fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
     let path = match url.to_file_path() {
         Ok(p) => p,
         Err(_) => {
-            tracing::error!(
-                url = url.as_str(),
-                "codeSpace URL is not a file path"
-            );
+            tracing::error!(url = url.as_str(), "codeSpace URL is not a file path");
             return None;
         }
     };
@@ -231,10 +228,7 @@ fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
             },
             Ok(Event::Eof) => break,
             Err(e) => {
-                tracing::error!(
-                    url = url.as_str(),
-                    "error parsing codelist XML: {e}"
-                );
+                tracing::error!(url = url.as_str(), "error parsing codelist XML: {e}");
                 break;
             }
             _ => {}

@@ -16,8 +16,7 @@ use super::{
     lod_filter::FeatureLodFilterFactory,
     merger::FeatureMergerFactory,
     reader::{
-        citygml::processor::FeatureCityGmlReaderFactory,
-        citygml2::FeatureCityGml2ReaderFactory,
+        citygml::processor::FeatureCityGmlReaderFactory, citygml2::FeatureCityGml2ReaderFactory,
         citygml3::FeatureCityGml3ReaderFactory, FeatureReaderFactory,
     },
     sorter::FeatureSorterFactory,
