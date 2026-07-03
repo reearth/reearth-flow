@@ -5,6 +5,7 @@
 #![cfg_attr(feature = "new-geometry", allow(unused_imports, dead_code))]
 
 pub(crate) mod attribute;
+pub mod citygml_parser;
 pub(crate) mod echo;
 pub(crate) mod feature;
 pub(crate) mod file;
