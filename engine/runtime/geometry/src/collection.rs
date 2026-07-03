@@ -14,6 +14,8 @@ use crate::coordinate::EpsgCode;
 use crate::error::Error;
 use crate::ops::union_results;
 use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Validate, ValidationReport, ValidationType};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
@@ -158,6 +160,32 @@ impl Reproject for Collection3D {
 // Tessellation is defined per-primitive, not over a collection.
 crate::unsupported!(Collection2D: Triangulate);
 crate::unsupported!(Collection3D: Triangulate);
+
+#[cfg(feature = "new-geometry")]
+impl Validate for Collection2D {
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
+        let mut report = ValidationReport::default();
+        for member in &self.members {
+            if let Some(r) = member.validate(valid_type.clone()) {
+                report.extend(r);
+            }
+        }
+        report.into_option()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Validate for Collection3D {
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
+        let mut report = ValidationReport::default();
+        for member in &self.members {
+            if let Some(r) = member.validate(valid_type.clone()) {
+                report.extend(r);
+            }
+        }
+        report.into_option()
+    }
+}
 
 #[cfg(test)]
 mod tests {

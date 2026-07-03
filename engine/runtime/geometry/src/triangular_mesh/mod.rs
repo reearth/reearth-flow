@@ -16,6 +16,8 @@ use crate::index::IndexBuffer;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// A triangle mesh in 2D space, with optional per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

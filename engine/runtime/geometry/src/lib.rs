@@ -49,6 +49,8 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation};
+#[cfg(feature = "new-geometry")]
+use ops::{Validate, ValidationReport, ValidationType};
 
 use coordinate::EpsgCode;
 
@@ -138,7 +140,14 @@ impl GeometryCollection {
 /// common variants don't inflate the enum — and `Geometry` with them — to the
 /// size of the largest leaf. The small tier (`Point`, `LineString`,
 /// `Collection`) stays inline.
-#[enum_dispatch(BoundingBox, Triangulate, Reproject)]
+#[cfg_attr(
+    not(feature = "new-geometry"),
+    enum_dispatch(BoundingBox, Triangulate, Reproject)
+)]
+#[cfg_attr(
+    feature = "new-geometry",
+    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate)
+)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
@@ -160,7 +169,14 @@ pub enum Euclidean2DGeometry {
 /// with them — to the size of the largest leaf. The small tier (`Point`,
 /// `LineString`, `Csg`, `Collection`) stays inline; `Csg` already boxes its own
 /// operands.
-#[enum_dispatch(BoundingBox, Triangulate, Reproject)]
+#[cfg_attr(
+    not(feature = "new-geometry"),
+    enum_dispatch(BoundingBox, Triangulate, Reproject)
+)]
+#[cfg_attr(
+    feature = "new-geometry",
+    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate)
+)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
     Point(Point3D),
@@ -254,6 +270,32 @@ impl Reproject for GeometryCollection {
             member.reproject(target, cache)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Validate for Geometry {
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
+        match self {
+            // An absent geometry has nothing to validate.
+            Geometry::None => None,
+            Geometry::Euclidean2D(g) => g.validate(valid_type),
+            Geometry::Euclidean3D(g) => g.validate(valid_type),
+            Geometry::GeometryCollection(c) => c.validate(valid_type),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Validate for GeometryCollection {
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
+        let mut report = ValidationReport::default();
+        for member in &self.members {
+            if let Some(r) = member.validate(valid_type.clone()) {
+                report.extend(r);
+            }
+        }
+        report.into_option()
     }
 }
 

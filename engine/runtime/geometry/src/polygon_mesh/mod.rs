@@ -18,6 +18,8 @@ use crate::index::IndexBuffer;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// A connected, vertex-sharing polygon mesh in 2D space, with optional
 /// per-vertex elevation.
