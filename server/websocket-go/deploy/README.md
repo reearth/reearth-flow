@@ -16,47 +16,43 @@ cutover below.
 
 | File | What it is |
 |---|---|
-| `../Dockerfile` | Multi-stage `golang:1.25` → `gcr.io/distroless/static-debian12` (CGO off, static). Binds `REEARTH_FLOW_WS_PORT` (default **8000**), `EXPOSE 8000` — **not** Cloud Run `$PORT`. |
-| `.github/workflows/build_deploy_websocket_go.yml` | Active deploy: `go build` → `../Dockerfile` → push image `reearth/reearth-flow-websocket-go` → `gcloud run deploy reearth-flow-websocket-go`, codifying the full runtime env + `--port 8000` in the deploy step (a fresh service inherits no out-of-band env). |
+| `../Dockerfile` | Multi-stage `golang:1.25` → `gcr.io/distroless/static-debian12` (CGO off, static). Binds `REEARTH_FLOW_WS_PORT` — **not** Cloud Run `$PORT`. Binary default is 8000, but Terraform sets `REEARTH_FLOW_WS_PORT=8080` + `container_port=8080` in prod, so it runs on **8080**. |
+| `.github/workflows/build_deploy_websocket_go.yml` | Active deploy: `go build` → `../Dockerfile` → push image `reearth/reearth-flow-websocket-go` → `gcloud run deploy reearth-flow-websocket-go` **image-only** (like the Rust workflow). Env, secrets, and container port are owned by the Terraform module, not this step. |
 | `.github/workflows/ci_websocket_go.yml` | Active Go CI: gofmt, `go vet`, golangci-lint, `go test -race`, govulncheck. |
 | `../docs/build-hygiene.md` | golangci-lint-for-go1.25 resolution + govulncheck triage. |
 | `../docs/rust-test-coverage-map.md` | Rust acceptance-test → Go-test coverage map + gaps. |
 
 ## Required GitHub Actions secrets / vars
 
-The deploy workflow uses `secrets: inherit`. It **reuses** the shared infra
-secrets/vars the Rust deploy already relies on: `GC_SA_EMAIL`,
-`GC_WORKLOAD_IDENTITY_PROVIDER`, `GC_REGION`, `DOCKERHUB_USERNAME`,
-`DOCKERHUB_TOKEN`, `WS_REDIS_URL_SECRET` (shared Redis), and every `vars.WS_*`
-config value (shared bucket, origins, DoS caps, OTEL knobs — same values as Rust).
+The deploy workflow uses `secrets: inherit` and mirrors the Rust deploy's secret
+usage. It **reuses** the shared secrets the Rust build/deploy already relies on:
+`GC_SA_EMAIL`, `GC_WORKLOAD_IDENTITY_PROVIDER`, `GC_REGION`, `DOCKERHUB_USERNAME`,
+`DOCKERHUB_TOKEN`.
 
-Two **new** repo secrets must exist before the first `nightly`/`main` deploy (they
-point at the Go service's own resources, provisioned by
-`eukarya-inc/infrastructure`):
+One **new** repo secret must exist before the first `nightly`/`main` deploy — the
+exact analog of the Rust `WEBSOCKET_IMAGE_GC`:
 
 | Secret | Value |
 |---|---|
-| `WEBSOCKET_GO_IMAGE_GC` | GCP Artifact Registry path for the Go image (the `reearth-flow-websocket-go` repo), mirroring `WEBSOCKET_IMAGE_GC` for Rust. |
-| `WS_GO_API_SECRET` | Secret Manager name of the Go service's API secret (`reearth-flow-websocket-api-secret`). Its **value MUST equal** the API server's `REEARTH_FLOW_WEBSOCKET_API_SECRET`, or the API's document HTTP calls to the Go service 401. |
+| `WEBSOCKET_GO_IMAGE_GC` | GCP Artifact Registry path for the Go image (`.../reearth/reearth-flow-websocket-go`), matching the `image` the Terraform module points the service at. |
 
-Until both exist the deploy job fails loudly at the push/tag step — it never
-touches the Rust service.
+Until it exists the deploy job fails loudly at the push step — it never touches the
+Rust service.
 
-## Runtime env contract (codified in the deploy step)
+## Service config is owned by Terraform (not this workflow)
 
-A fresh Cloud Run service does not inherit out-of-band env, so the deploy step sets
-every var the Go binary reads (names match `internal/config/config.go`):
+The deploy is **image-only** (`gcloud run deploy --image …:nightly`), exactly like
+the Rust workflow. Everything else about the service — env vars, the Redis URL and
+API-secret bindings, and the container port (**8080**, with
+`REEARTH_FLOW_WS_PORT=8080`) — is set by the `reearth_flow_websocket` Terraform
+module in `eukarya-inc/infrastructure`, which `ignore_changes` the image so
+`terraform apply` never fights this deploy. `gcloud run deploy --image` rolls a new
+revision and preserves that config, so this workflow must not re-set env/port/
+secrets (doing so would diverge from Rust and flap against terraform apply).
 
-- **Secrets** (`--set-secrets`): `REEARTH_FLOW_REDIS_URL` (= `WS_REDIS_URL_SECRET`),
-  `REEARTH_FLOW_API_SECRET` (= `WS_GO_API_SECRET`; cross-service invariant above).
-- **Config** (`--set-env-vars`, `^@@^`-delimited so commas in values aren't split):
-  `REEARTH_FLOW_WS_PORT=8000`, `_APP_ENV=production`, `_GCS_BUCKET_NAME`,
-  `_GCS_ENDPOINT=` (empty ⇒ real GCS), `_THRIFT_AUTH_URL`, `_ORIGINS`,
-  `_WS_PROTECTED=false`, `_GCS_PHASE2=false`, the
-  `_MAX_CONNECTIONS`/`_MAX_PEERS_PER_ROOM`/`_MAX_ROOMS` caps, and the OTEL knobs.
-  Set `_LOG_LEVEL=debug` to surface ygo + relay detail.
-- **Container port:** `--port 8000` (the binary binds `REEARTH_FLOW_WS_PORT`, not
-  `$PORT`).
+Cross-service invariant (owned by Terraform via `api_secret_id`): the Go service's
+`REEARTH_FLOW_API_SECRET` MUST equal the API server's
+`REEARTH_FLOW_WEBSOCKET_API_SECRET`, or the API's document HTTP calls 401.
 
 ## Blue-green cutover checklist (HUMAN-RUN)
 

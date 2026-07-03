@@ -151,9 +151,8 @@ jobs:
       id-token: write
     env:
       # Separate service from the Rust reearth-flow-websocket; provisioned by
-      # eukarya-inc/infrastructure. Deploys live on its OWN service (no traffic
-      # split) — it receives user traffic only once the load balancer is pointed
-      # at it, which is a separate human-run cutover step.
+      # eukarya-inc/infrastructure. It receives user traffic only once the load
+      # balancer is pointed at it, which is a separate human-run cutover step.
       CLOUD_RUN_SERVICE: reearth-flow-websocket-go
     steps:
       - name: Harden Runner
@@ -169,27 +168,17 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
 
-      # The full runtime env + container port are codified here because a Cloud Run
-      # service does not inherit out-of-band env across image swaps. The Go binary
-      # binds REEARTH_FLOW_WS_PORT (default 8000), NOT Cloud Run $PORT, so --port
-      # 8000 is required.
-      #
-      # gcloud --set-env-vars / --set-secrets have STORE semantics: a repeated flag
-      # keeps only its last occurrence, so ALL env goes in one --set-env-vars and
-      # both secrets in one --set-secrets. Some values contain commas
-      # (REEARTH_FLOW_ORIGINS, the OTLP endpoint), so the env block uses the ^@@^
-      # custom-delimiter syntax; the secrets have no commas.
-      #
-      # Coexistence invariants: REEARTH_FLOW_API_SECRET must equal the API server's
-      # REEARTH_FLOW_WEBSOCKET_API_SECRET (else its document calls 401); protected
-      # mode ships OFF and Phase-2 layout ships OFF until Rust is drained.
+      # Image-only deploy, matching the Rust build_deploy_websocket.yml. The
+      # service's env, secrets (Redis URL, API secret), and container port (8080)
+      # are owned by the Terraform module (eukarya-inc/infrastructure), which sets
+      # them on the service and ignore_changes the image so it never fights this
+      # deploy. `gcloud run deploy --image` rolls a new revision and preserves all
+      # that config, so env/port/secrets must NOT be re-set here (doing so would
+      # diverge from Rust and flap against terraform apply).
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy "${CLOUD_RUN_SERVICE}" \
-            --image "${{ secrets.WEBSOCKET_GO_IMAGE_GC }}:nightly" \
-            --region "${{ secrets.GC_REGION }}" \
+          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
+            --image ${{ secrets.WEBSOCKET_GO_IMAGE_GC }}:nightly \
+            --region ${{ secrets.GC_REGION }} \
             --platform managed \
-            --port 8000 \
-            --set-env-vars "^@@^REEARTH_FLOW_WS_PORT=8000@@REEARTH_FLOW_APP_ENV=production@@REEARTH_FLOW_GCS_BUCKET_NAME=${{ vars.WS_GCS_BUCKET_NAME }}@@REEARTH_FLOW_GCS_ENDPOINT=@@REEARTH_FLOW_THRIFT_AUTH_URL=${{ vars.WS_THRIFT_AUTH_URL }}@@REEARTH_FLOW_ORIGINS=${{ vars.WS_ORIGINS }}@@REEARTH_FLOW_WS_PROTECTED=false@@REEARTH_FLOW_GCS_PHASE2=false@@REEARTH_FLOW_MAX_CONNECTIONS=${{ vars.WS_MAX_CONNECTIONS }}@@REEARTH_FLOW_MAX_PEERS_PER_ROOM=${{ vars.WS_MAX_PEERS_PER_ROOM }}@@REEARTH_FLOW_MAX_ROOMS=${{ vars.WS_MAX_ROOMS }}@@REEARTH_FLOW_ENABLE_OTLP=${{ vars.WS_ENABLE_OTLP }}@@REEARTH_FLOW_OTLP_ENDPOINT=${{ vars.WS_OTLP_ENDPOINT }}@@REEARTH_FLOW_GCP_PROJECT_ID=${{ vars.WS_GCP_PROJECT_ID }}@@REEARTH_FLOW_SERVICE_NAME=reearth-flow-websocket-go@@REEARTH_FLOW_OTEL_EXPORTER_TYPE=${{ vars.WS_OTEL_EXPORTER_TYPE }}@@REEARTH_FLOW_OTEL_SAMPLING_RATIO=${{ vars.WS_OTEL_SAMPLING_RATIO }}@@REEARTH_FLOW_OTEL_BATCH_TIMEOUT=${{ vars.WS_OTEL_BATCH_TIMEOUT }}@@REEARTH_FLOW_OTEL_MAX_EXPORT_BATCH_SIZE=${{ vars.WS_OTEL_MAX_EXPORT_BATCH_SIZE }}@@REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE=${{ vars.WS_OTEL_MAX_QUEUE_SIZE }}" \
-            --set-secrets "REEARTH_FLOW_REDIS_URL=${{ secrets.WS_REDIS_URL_SECRET }}:latest,REEARTH_FLOW_API_SECRET=${{ secrets.WS_GO_API_SECRET }}:latest" \
             --quiet
