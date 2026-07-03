@@ -49,17 +49,19 @@ When none of these fit, use the most descriptive phrase available.
 
 ## 2. Descriptions
 
-Verb-first, present tense — start directly with the verb, no subject.
+Verb-first, present tense, third-person singular — start directly with the verb, no subject.
 
 - 1–2 sentences — prefer one; use two only when a single sentence would be genuinely unclear
+- End every sentence with a period — required for consistent rendering across all supported languages
 - Describes what the action does to data, not how it is implemented
 - Does not mention port names or internal implementation details
 
 | ✗ | ✓ |
 |---|---|
-| "This processor calculates area" | "Calculates the planar or sloped area of polygon geometries" |
-| "Uses the GEOS library to buffer geometries" | "Expands or contracts a geometry by a fixed distance" |
-| "Routes to the `failed` port on error" | "Validates geometry against selected rules" |
+| "This processor calculates area" | "Calculates the planar or sloped area of polygon geometries." |
+| "Uses the GEOS library to buffer geometries" | "Expands or contracts a geometry by a fixed distance." |
+| "Routes to the `failed` port on error" | "Validates geometry against selected rules." |
+| "Extract geometry parts as separate features" | "Extracts geometry parts from 3D geometries, emitting each as a separate feature." |
 
 ---
 
@@ -76,20 +78,38 @@ Verb-first, present tense — start directly with the verb, no subject.
 - A parameter is **required** if the action cannot produce meaningful output without it — it must appear in the schema's `required` array
 - A parameter is **optional** if the action can run sensibly without it — whether via a schema `default` or an implementation fallback, the action must never fail at runtime when an optional parameter is absent
 
-### 3.3 Descriptions
+### 3.3 Titles and descriptions
 
-The parameter schema object itself must have a top-level `description` summarising what the parameter block configures. Every individual parameter property must also have a `description`.
+The parameter schema object itself must have a top-level `description` summarising what the parameter block configures. Every individual parameter property must have both a `title` (used as the UI field label) and a `description`.
 
-- Prefer one sentence; two sentences are acceptable when the parameter behaviour is complex enough to warrant it
+- `title`: short noun phrase in title case — "Output Attribute", "Target EPSG Code"
+- Prefer one sentence for `description`; two sentences are acceptable when the parameter behaviour is complex enough to warrant it
 - Describes what the parameter controls and what values are valid
-- Does not restate the parameter name: `"The outputAttribute"` adds nothing
-- For enums, describes what each variant does — either in the property description or per-variant
+- Does not restate the parameter name or the action name: `"The outputAttribute"` or `"GeometrySplitter Parameters"` adds nothing
+- For enums, describes what each variant does — see §3.4 for the mechanism and when each approach applies
 
 ### 3.4 Enum values
 
 - camelCase: `planeArea`, `slopedArea`, `useAttributesFromOneFeature`
 - No `SCREAMING_SNAKE_CASE`
 - Values must be self-describing: `overwrite` not `1`, `skipExisting` not `0`
+
+**Per-variant descriptions** are strongly preferred. Add them via doc comments on the Rust enum variant — schemars converts these into a `oneOf` entry with `title` and `description`:
+
+```rust
+enum AreaType {
+    /// # Planar Area
+    /// Calculates the flat projected area of the polygon.
+    PlaneArea,
+    /// # Sloped Area
+    /// Calculates the true surface area accounting for slope.
+    SlopedArea,
+}
+```
+
+A plain `enum` with no doc comments produces no per-variant descriptions and should be converted to this pattern. A comprehensive property `description` that names and explains all variants is acceptable only when the enum has two or three self-describing values and the description remains one sentence.
+
+**Single-variant enums** are a design smell — they present the user with a parameter that has no real choice. If only one variant exists and no others are planned, remove the parameter and hard-code the behavior. If additional variants are planned but not yet implemented, keep the `oneOf` and note the intent in a code comment (`// TODO: add X, Y variants`).
 
 ### 3.5 Parameter usability
 
@@ -116,6 +136,8 @@ Port names are user-facing and appear as labels on workflow nodes.
 - No camelCase, no snake_case, no PascalCase for port names
 
 ### 4.2 Standard port vocabulary
+
+`default` is never a valid port name — always use one of the names below or a descriptive custom name.
 
 Use these names when the semantics match. Only use custom names when the action has genuinely distinct semantics.
 
