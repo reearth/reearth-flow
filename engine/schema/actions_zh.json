@@ -3078,20 +3078,29 @@
       ]
     },
     {
-      "name": "FeatureCityGml3Reader",
+      "name": "FeatureCityGml2Reader",
       "type": "processor",
-      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "description": "读取CityGML 2.0文件：解析文件间的gml:id引用和xlink:href链接",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCityGml3Reader Parameters",
+        "title": "FeatureCityGml2Reader Parameters",
         "type": "object",
         "required": [
           "dataset"
         ],
         "properties": {
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性键",
+            "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "Dataset",
-            "description": "Path expression resolving to the CityGML 3.0 file to read.",
+            "description": "解析为要读取的CityGML 2.0文件的路径表达式。",
             "type": "object",
             "format": "code",
             "required": [
@@ -3119,6 +3128,108 @@
             "items": {
               "type": "string"
             }
+          },
+          "flattenMeasureTypes": {
+            "title": "展平度量类型",
+            "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "展平单子对象节点",
+            "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepAttributes": {
+            "title": "保留属性",
+            "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
+            "default": true,
+            "type": "boolean"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ],
+      "tags": []
+    },
+    {
+      "name": "FeatureCityGml3Reader",
+      "type": "processor",
+      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCityGml3Reader Parameters",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性键",
+            "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dataset": {
+            "title": "Dataset",
+            "description": "解析为要读取的CityGML 3.0文件的路径表达式。",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "提取标签",
+            "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "flattenMeasureTypes": {
+            "title": "展平度量类型",
+            "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "展平单子对象节点",
+            "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepAttributes": {
+            "title": "保留属性",
+            "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
