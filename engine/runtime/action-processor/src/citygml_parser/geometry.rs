@@ -70,7 +70,7 @@ fn collect_geometry_from_property(prop: &XmlNode, lod: Option<u8>, out: &mut Vec
     };
     let geom_ln = local_name(&geom_node.name.0);
     if geom_ln == "ImplicitGeometry" {
-        tracing::warn!("citygml3 geometry: transformationMatrix/referencePoint not supported");
+        tracing::warn!("transformationMatrix/referencePoint not supported");
         if let Some(rel_geom) = find_child(geom_node, "relativeGeometry") {
             collect_geometry_from_property(rel_geom, lod, out);
         }
@@ -85,7 +85,7 @@ fn collect_geometry_from_property(prop: &XmlNode, lod: Option<u8>, out: &mut Vec
     } else {
         tracing::warn!(
             element = geom_ln,
-            "citygml3 geometry: unrecognized geometry element inside lod property, skipped"
+            "unrecognized geometry element inside lod property, skipped"
         );
     }
 }
@@ -130,7 +130,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
                     "interior" => {
                         tracing::warn!(
                             element = local_name(&child.name.0),
-                            "citygml3 geometry: interior of Solid is not supported, skipped"
+                            "interior of Solid is not supported, skipped"
                         );
                     }
                     _ => {}
@@ -193,7 +193,7 @@ fn collect_polygons(node: &XmlNode, out: &mut Vec<Polygon3D<f64>>) {
         _ => {
             tracing::warn!(
                 element = local_name(&node.name.0),
-                "citygml3 geometry: unhandled element in polygon collection"
+                "unhandled element in polygon collection"
             );
         }
     }
@@ -246,7 +246,7 @@ fn dispatch_primitive(
         Some(GeometryType::Point) => collect_points(node, points),
         None => tracing::warn!(
             element = ln,
-            "citygml3 geometry: unrecognized primitive in aggregate geometry, skipped"
+            "unrecognized primitive in aggregate geometry, skipped"
         ),
     }
 }
@@ -315,7 +315,7 @@ fn collect_coords(node: &XmlNode) -> Result<Vec<Coordinate3D<f64>>, &'static str
                 tracing::warn!(
                     element = other,
                     parent = local_name(&node.name.0),
-                    "citygml3 geometry: unexpected element in coordinate position, skipped"
+                    "unexpected element in coordinate position, skipped"
                 );
             }
         }
@@ -333,7 +333,7 @@ fn parse_polygon_ring(node: &XmlNode, role: &'static str) -> Option<LineString3D
             tracing::error!(
                 error = %err,
                 ring_role = role,
-                "citygml3 geometry: invalid LinearRing coordinates, skipped polygon"
+                "invalid LinearRing coordinates, skipped polygon"
             );
         })
         .ok()
@@ -377,7 +377,7 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
                         } else {
                             tracing::warn!(
                                 element = seg_ln,
-                                "citygml3 geometry: unsupported curve segment type, skipped"
+                                "unsupported curve segment type, skipped"
                             );
                         }
                     }
@@ -387,7 +387,7 @@ fn collect_line_strings(node: &XmlNode, out: &mut Vec<LineString3D<f64>>) {
         _ => {
             tracing::warn!(
                 element = local_name(&node.name.0),
-                "citygml3 geometry: unhandled element in line string collection"
+                "unhandled element in line string collection"
             );
         }
     }
@@ -417,7 +417,7 @@ fn collect_points(node: &XmlNode, out: &mut Vec<Coordinate3D<f64>>) {
         _ => {
             tracing::warn!(
                 element = local_name(&node.name.0),
-                "citygml3 geometry: unhandled element in point collection"
+                "unhandled element in point collection"
             );
         }
     }
@@ -430,7 +430,7 @@ fn parse_line_string(node: &XmlNode, geometry_type: &'static str) -> Option<Line
             tracing::error!(
                 error = %err,
                 geometry_type,
-                "citygml3 geometry: invalid coordinates, skipped"
+                "invalid coordinates, skipped"
             );
         })
         .ok()
@@ -442,7 +442,7 @@ fn parse_point_pos(node: &XmlNode) -> Option<Coordinate3D<f64>> {
         .map_err(|err| {
             tracing::error!(
                 error = %err,
-                "citygml3 geometry: invalid Point coordinates, skipped"
+                "invalid Point coordinates, skipped"
             );
         })
         .ok()

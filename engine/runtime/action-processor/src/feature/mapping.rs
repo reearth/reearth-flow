@@ -17,8 +17,8 @@ use super::{
     merger::FeatureMergerFactory,
     reader::{
         citygml::processor::FeatureCityGmlReaderFactory,
-        citygml2::processor::FeatureCityGml2ReaderFactory,
-        citygml3::processor::FeatureCityGml3ReaderFactory, FeatureReaderFactory,
+        citygml2::FeatureCityGml2ReaderFactory,
+        citygml3::FeatureCityGml3ReaderFactory, FeatureReaderFactory,
     },
     sorter::FeatureSorterFactory,
     transformer::FeatureTransformerFactory,

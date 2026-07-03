@@ -19,7 +19,7 @@ pub fn resolve(
                 .or_else(|| {
                     tracing::error!(
                         name = raw.name.0.as_str(),
-                        "citygml3: failed to resolve top-level node due to cyclic xlink reference, skipped"
+                        "failed to resolve top-level node due to cyclic xlink reference, skipped"
                     );
                     None
                 })
@@ -40,7 +40,7 @@ fn convert_node(
     if !in_progress.insert(ptr) {
         tracing::warn!(
             name = raw.name.0.as_str(),
-            "citygml3: cyclic xlink reference detected, skipped at cycle boundary"
+            "cyclic xlink reference detected, skipped at cycle boundary"
         );
         return None;
     }
@@ -57,7 +57,7 @@ fn convert_node(
                 if let Some(target) = registry.get(key) {
                     convert_node(target, registry, cache, in_progress).map(XmlChild::Element)
                 } else {
-                    tracing::warn!(id = key.1, "citygml3: unresolved xlink:href, skipped");
+                    tracing::warn!(id = key.1, "unresolved xlink:href, skipped");
                     None
                 }
             }

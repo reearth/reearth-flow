@@ -119,7 +119,7 @@ impl Parser {
                             self.pending.push(feature_node);
                         } else {
                             tracing::warn!(
-                                "citygml3: empty cityObjectMember/featureMember, skipped"
+                                "empty cityObjectMember/featureMember, skipped"
                             );
                         }
                     } else {
@@ -319,7 +319,7 @@ fn collect_ids(node: &Arc<RawNode>, source_url: &str, registry: &mut RawRegistry
             tracing::error!(
                 id,
                 source_url,
-                "citygml3: duplicate gml:id encountered; keeping first definition and skipping duplicate"
+                "duplicate gml:id encountered; keeping first definition and skipping duplicate"
             );
         }
     }
@@ -338,7 +338,7 @@ fn href_to_key(href: &str, base: &Url) -> Option<RawNodeKey> {
             .ok()
             .map(|u| (u.to_string(), frag.to_string()))
     } else {
-        tracing::warn!(href, "citygml3: unsupported xlink:href format, skipped");
+        tracing::warn!(href, "unsupported xlink:href format, skipped");
         None
     }
 }
@@ -465,7 +465,7 @@ fn parse_element<R: BufRead>(
             tracing::warn!(
                 element = name.0,
                 id = key.1,
-                "citygml3: xlink:href element had inline content; inline content ignored"
+                "xlink:href element had inline content; inline content ignored"
             );
         }
         return Ok(RawNode {
