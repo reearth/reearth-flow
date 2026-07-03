@@ -43,15 +43,15 @@ graphs:
       - id: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureCityGmlReader
+        action: FeatureCityGml2Reader
         with:
-          codelistsPath:
-            type: flowExpr
-            value: attributes["codelists"]
-          flatten: true
           dataset:
             type: flowExpr
             value: attributes["path"]
+          keepAttributes: false
+          flattenSingleChildObjects: true
+          flattenMeasureTypes: true
+          cityGmlAttributesKey: cityGmlAttributes
       - id: 04b83179-6c76-446c-851d-ef0f91f62406
         name: TargetPackagesFilter
         type: action
@@ -83,7 +83,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'attributes.get("featureType") or attributes["gmlName"]'
+                value: 'attributes.get("featureType") or attributes.get("__citygml_feature_type")'
             - attribute: codelists
               method: remove
             - attribute: schemas

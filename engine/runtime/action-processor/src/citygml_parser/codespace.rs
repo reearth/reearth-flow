@@ -28,7 +28,7 @@ impl CodelistResolver {
                 tracing::error!(
                     source_url = source_url.as_str(),
                     code_space,
-                    "citygml3: failed to join codeSpace URL: {e}"
+                    "failed to join codeSpace URL: {e}"
                 );
                 return None;
             }
@@ -39,7 +39,7 @@ impl CodelistResolver {
                 None => {
                     tracing::error!(
                         dict_url = dict_url.as_str(),
-                        "citygml3: failed to load codelist dictionary"
+                        "failed to load codelist dictionary"
                     );
                     HashMap::new()
                 }
@@ -51,7 +51,7 @@ impl CodelistResolver {
             tracing::error!(
                 dict_url = dict_url.as_str(),
                 code,
-                "citygml3: code not found in codelist"
+                "code not found in codelist"
             );
         }
         dict.get(code).cloned()
@@ -159,24 +159,21 @@ fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
     let path = match url.to_file_path() {
         Ok(p) => p,
         Err(_) => {
-            tracing::error!(
-                url = url.as_str(),
-                "citygml3: codeSpace URL is not a file path"
-            );
+            tracing::error!(url = url.as_str(), "codeSpace URL is not a file path");
             return None;
         }
     };
     let bytes = match std::fs::read(&path) {
         Ok(b) => b,
         Err(e) => {
-            tracing::error!(path = %path.display(), "citygml3: failed to read codelist file: {e}");
+            tracing::error!(path = %path.display(), "failed to read codelist file: {e}");
             return None;
         }
     };
     let src = match std::str::from_utf8(&bytes) {
         Ok(s) => s,
         Err(e) => {
-            tracing::error!(path = %path.display(), "citygml3: codelist file is not valid UTF-8: {e}");
+            tracing::error!(path = %path.display(), "codelist file is not valid UTF-8: {e}");
             return None;
         }
     };
@@ -206,7 +203,7 @@ fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
                         Ok(s) => name_buf = s.trim().to_string(),
                         Err(e) => tracing::error!(
                             url = url.as_str(),
-                            "citygml3: failed to unescape codelist <name> text: {e}"
+                            "failed to unescape codelist <name> text: {e}"
                         ),
                     }
                 } else if in_desc {
@@ -214,7 +211,7 @@ fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
                         Ok(s) => desc_buf = s.trim().to_string(),
                         Err(e) => tracing::error!(
                             url = url.as_str(),
-                            "citygml3: failed to unescape codelist <description> text: {e}"
+                            "failed to unescape codelist <description> text: {e}"
                         ),
                     }
                 }
@@ -231,10 +228,7 @@ fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
             },
             Ok(Event::Eof) => break,
             Err(e) => {
-                tracing::error!(
-                    url = url.as_str(),
-                    "citygml3: error parsing codelist XML: {e}"
-                );
+                tracing::error!(url = url.as_str(), "error parsing codelist XML: {e}");
                 break;
             }
             _ => {}
