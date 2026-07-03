@@ -1,17 +1,12 @@
 # syntax=docker/dockerfile:1
 
-# Multi-stage build for the Go Y-WebSocket server. Replaces the Rust
-# server/websocket/Dockerfile.websocket. CGO is disabled so the binary is fully
-# static and runs on distroless/static (no libc needed — the Rust image used
-# cc-debian12 only because of its dynamic libssl link, finding G "deploy
-# artifacts").
+# Multi-stage build for the Go Y-WebSocket server. CGO is disabled so the binary
+# is fully static and runs on distroless/static (no libc needed).
 #
-# PORT (finding G): the Rust server binds 0.0.0.0:{REEARTH_FLOW_WS_PORT}, default
-# 8000, and EXPOSE 8000 — it does NOT read Cloud Run's $PORT (8080). The Go
-# service replicates that: it listens on REEARTH_FLOW_WS_PORT (default 8000). We
-# pin the env default here and EXPOSE 8000 so the container port matches the
-# deployed Rust contract. The Cloud Run deploy step sets --port=8000 explicitly
-# (see deploy/build_deploy_websocket.go.yml.draft).
+# PORT: the server binds 0.0.0.0:{REEARTH_FLOW_WS_PORT} and does NOT read Cloud
+# Run's $PORT. The image default is 8000, but the Terraform module
+# (eukarya-inc/infrastructure) sets REEARTH_FLOW_WS_PORT=8080 and the Cloud Run
+# container_port to 8080 in production, so the deployed service listens on 8080.
 FROM golang:1.25 AS builder
 
 WORKDIR /src
@@ -38,12 +33,14 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 
 # ── runtime ──────────────────────────────────────────────────────────────────
 # distroless/static: no shell, no package manager, nonroot by default — minimal
-# attack surface (finding I dependency-hygiene). Pinned to debian12.
+# attack surface. Pinned to debian12.
 FROM gcr.io/distroless/static-debian12:nonroot
 
 COPY --from=builder /out/websocket /websocket
 
-# Replicate the Rust deployed port contract (finding G): bind 8000, not $PORT.
+# Image default; the Terraform module overrides REEARTH_FLOW_WS_PORT (and the
+# Cloud Run container_port) to 8080 in production. The binary binds
+# REEARTH_FLOW_WS_PORT, NOT Cloud Run $PORT.
 ENV REEARTH_FLOW_WS_PORT=8000
 EXPOSE 8000
 
