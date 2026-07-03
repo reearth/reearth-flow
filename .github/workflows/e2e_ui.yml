@@ -64,17 +64,6 @@ jobs:
           FLOW_DASHBOARD_E2E_BASEURL: ${{ secrets.FLOW_DASHBOARD_E2E_BASEURL }}
           FLOW_DASHBOARD_E2E_USER_EMAIL: ${{ secrets.FLOW_DASHBOARD_E2E_USER_EMAIL }}
           FLOW_DASHBOARD_E2E_USER_PASSWORD: ${{ secrets.FLOW_DASHBOARD_E2E_USER_PASSWORD }}
-      - name: Authenticate to Google Cloud for GCS
-        if: ${{ !cancelled() }}
-        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
-        with:
-          service_account: ${{ secrets.GC_SA_EMAIL }}
-          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
-
-      - name: Setup Google Cloud SDK
-        if: ${{ !cancelled() }}
-        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
-
       - name: Check Allure Results
         if: ${{ !cancelled() }}
         id: check-results
@@ -85,6 +74,17 @@ jobs:
             echo "has_results=false" >> "$GITHUB_OUTPUT"
             echo "No allure results found, skipping report steps."
           fi
+
+      - name: Authenticate to Google Cloud for GCS
+        if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Setup Google Cloud SDK
+        if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
 
       - name: Load dashboard index and history from GCS
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
@@ -140,21 +140,15 @@ jobs:
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
         id: run-id
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            RUN_ID="pr-${{ github.event.pull_request.number }}"
-            BRANCH="PR #${{ github.event.pull_request.number }}"
-            COMMIT="${{ github.event.pull_request.head.sha }}"
-            LABEL="Pull request #${{ github.event.pull_request.number }}"
-          else
-            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-            RUN_ID="run-${SHORT_SHA}-${{ github.run_number }}"
-            BRANCH="${{ github.ref_name }}"
-            COMMIT="${{ github.sha }}"
-            LABEL="${{ github.ref_name }} #${{ github.run_number }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          RUN_ID="run-${SHORT_SHA}-${{ github.run_number }}-${{ github.run_attempt }}"
+          LABEL="${{ github.ref_name }} #${{ github.run_number }}"
+          if [ "${{ github.run_attempt }}" != "1" ]; then
+            LABEL="$LABEL (attempt ${{ github.run_attempt }})"
           fi
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+          echo "branch=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          echo "commit=${{ github.sha }}" >> "$GITHUB_OUTPUT"
           echo "label=$LABEL" >> "$GITHUB_OUTPUT"
 
       - name: Upload Allure Report to GCS
@@ -206,8 +200,17 @@ jobs:
           "
 
           OBJECT="gs://$BUCKET/index.json"
-          GEN=$(gsutil stat "$OBJECT" 2>/dev/null | awk '/Generation:/ {print $2}' || true)
-          if [ -z "$GEN" ]; then GEN=0; fi
+          if STAT_OUT=$(gsutil stat "$OBJECT" 2>/tmp/gsutil_stat_err.log); then
+            GEN=$(echo "$STAT_OUT" | awk '/Generation:/ {print $2}')
+          elif grep -qiE "No URLs matched|Matched no objects|404" /tmp/gsutil_stat_err.log; then
+            echo "No existing index.json in bucket; creating it."
+            GEN=0
+          else
+            echo "gsutil stat failed unexpectedly:" >&2
+            cat /tmp/gsutil_stat_err.log >&2
+            exit 1
+          fi
+          rm -f /tmp/gsutil_stat_err.log
 
           gsutil -h "Content-Type:application/json" -h "Cache-Control:no-cache" \
             -h "x-goog-if-generation-match:${GEN}" \
