@@ -2,6 +2,8 @@ import { KeyboardIcon, XIcon } from "@phosphor-icons/react";
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@flow/components";
+
 import { Shortcuts } from "./components";
 import useHooks from "./hooks";
 
@@ -12,7 +14,7 @@ type Props = {
 
 const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   const [isReady, setIsReady] = useState(false);
-
+  const [tabValue, setTabValue] = useState("general");
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsReady(true);
@@ -31,11 +33,10 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
 
   const { title, generalShortcuts, editorShortcuts, canvasShortcuts } =
     useHooks();
-
   return (
     <Portal isVisible={isOpen} onClose={handlePortalClose}>
       <div
-        className="h-[400px] w-full rounded-t-2xl border-t bg-secondary p-4 transition-all"
+        className="h-[350px] w-full rounded-t-2xl border-t bg-secondary p-4 transition-all"
         style={{
           transform: `translateY(${isReady ? "8px" : "100%"})`,
           transitionDuration: "300ms",
@@ -51,26 +52,32 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
             onClick={handlePortalClose}
           />
         </div>
-        <div className="flex h-[352px] flex-wrap gap-4 px-2">
-          <div className="flex h-[320px] flex-1 flex-col gap-1">
-            <p className="font-light">{generalShortcuts.title}</p>
-            <div className="overflow-auto">
+        <Tabs value={tabValue} onValueChange={setTabValue}>
+          <div className="flex w-full">
+            <TabsList className="align-center mb-4 flex w-full justify-center gap-2">
+              <TabsTrigger value="general">
+                {generalShortcuts.title}
+              </TabsTrigger>
+              <TabsTrigger value="editor">{editorShortcuts.title}</TabsTrigger>
+              <TabsTrigger value="canvas">{canvasShortcuts.title}</TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="general">
+            <div className="flex h-[200px] justify-center">
               <Shortcuts shortcuts={generalShortcuts.shortcuts} />
             </div>
-          </div>
-          <div className="flex h-[320px] flex-1 flex-col gap-1">
-            <p className="font-light">{editorShortcuts.title}</p>
-            <div className="overflow-auto">
+          </TabsContent>
+          <TabsContent value="editor">
+            <div className="flex h-[200px] justify-center">
               <Shortcuts shortcuts={editorShortcuts.shortcuts} />
             </div>
-          </div>
-          <div className="flex h-[320px] flex-1 flex-col gap-1">
-            <p className="font-light">{canvasShortcuts.title}</p>
-            <div className="overflow-auto">
+          </TabsContent>
+          <TabsContent value="canvas">
+            <div className="flex h-[200px] justify-center">
               <Shortcuts shortcuts={canvasShortcuts.shortcuts} />
             </div>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </Portal>
   );
