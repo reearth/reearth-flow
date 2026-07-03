@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -198,6 +199,28 @@ func TestDocIDNormalizationRoutesToSameRoom(t *testing.T) {
 	}
 	if !got {
 		t.Fatalf("peer A on bare id did not observe peer B's write on :main — rooms not unified")
+	}
+}
+
+// TestWSHandlerRejectsEmptyDocID: a doc_id that normalizes to empty (a bare
+// ":main", or whitespace like "/%20") must be rejected with 400 before reaching
+// ygo — otherwise distinct invalid URLs collapse into one room "" and the server
+// diverges from the Rust doc_id non-empty validation.
+func TestWSHandlerRejectsEmptyDocID(t *testing.T) {
+	srv := New(testConfig())
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	for _, p := range []string{"/:main", "/%20"} {
+		resp, err := http.Get(ts.URL + p)
+		if err != nil {
+			t.Fatalf("GET %s: %v", p, err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest || !strings.Contains(string(body), "doc_id required") {
+			t.Errorf("GET %s = %d %q, want 400 \"doc_id required\"", p, resp.StatusCode, strings.TrimSpace(string(body)))
+		}
 	}
 }
 

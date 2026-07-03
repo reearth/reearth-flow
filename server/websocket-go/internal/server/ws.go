@@ -73,6 +73,13 @@ func (s *Server) HandlerWithAPI(apiHandler http.Handler) http.Handler {
 func (s *Server) wsHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		room := docid.Normalize(r.PathValue("doc_id"))
+		// Reject a doc_id that normalizes to empty (a bare ":main", or whitespace)
+		// before it reaches ygo, matching the Rust server's non-empty validation and
+		// preventing distinct invalid URLs from collapsing into a single room "".
+		if room == "" {
+			http.Error(w, "doc_id required", http.StatusBadRequest)
+			return
+		}
 		r.SetPathValue("room", room)
 		s.ws.ServeHTTP(w, r)
 	})

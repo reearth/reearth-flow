@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -12,15 +13,17 @@ import (
 )
 
 // faultRT returns a fixed HTTP status for every request, simulating a transient
-// non-404 GCS failure (e.g. a 500/503 blip or a quota error).
+// non-404 GCS failure (e.g. a 500/503 blip or a quota error). The status line and
+// JSON error body are well-formed (numeric code) so the fake transport behaves
+// like real GCS through the client's status/error mapping.
 type faultRT struct{ status int }
 
 func (f faultRT) RoundTrip(*http.Request) (*http.Response, error) {
 	return &http.Response{
 		StatusCode: f.status,
-		Status:     http.StatusText(f.status),
-		Body:       io.NopCloser(strings.NewReader(`{"error":{"code":` + http.StatusText(f.status) + `}}`)),
-		Header:     make(http.Header),
+		Status:     fmt.Sprintf("%d %s", f.status, http.StatusText(f.status)),
+		Body:       io.NopCloser(strings.NewReader(fmt.Sprintf(`{"error":{"code":%d,"message":%q}}`, f.status, http.StatusText(f.status)))),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
 	}, nil
 }
 
