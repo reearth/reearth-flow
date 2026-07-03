@@ -15,14 +15,13 @@ pub fn resolve(
     raws.into_iter()
         .filter_map(|raw| {
             let mut in_progress: HashSet<*const RawNode> = HashSet::new();
-            convert_node(&raw, registry, &mut cache, &mut in_progress)
-                .or_else(|| {
-                    tracing::error!(
-                        name = raw.name.0.as_str(),
-                        "citygml3: failed to resolve top-level node due to cyclic xlink reference, skipped"
-                    );
-                    None
-                })
+            convert_node(&raw, registry, &mut cache, &mut in_progress).or_else(|| {
+                tracing::error!(
+                    name = raw.name.0.as_str(),
+                    "failed to resolve top-level node due to cyclic xlink reference, skipped"
+                );
+                None
+            })
         })
         .collect()
 }
@@ -40,7 +39,7 @@ fn convert_node(
     if !in_progress.insert(ptr) {
         tracing::warn!(
             name = raw.name.0.as_str(),
-            "citygml3: cyclic xlink reference detected, skipped at cycle boundary"
+            "cyclic xlink reference detected, skipped at cycle boundary"
         );
         return None;
     }
@@ -57,7 +56,7 @@ fn convert_node(
                 if let Some(target) = registry.get(key) {
                     convert_node(target, registry, cache, in_progress).map(XmlChild::Element)
                 } else {
-                    tracing::warn!(id = key.1, "citygml3: unresolved xlink:href, skipped");
+                    tracing::warn!(id = key.1, "unresolved xlink:href, skipped");
                     None
                 }
             }
@@ -81,8 +80,8 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::feature::reader::citygml3::parser::{Parser, RawNode, RawRegistry};
-    use crate::feature::reader::citygml3::utils::{local_name, XmlChild};
+    use crate::citygml_parser::parser::{Parser, RawNode, RawRegistry};
+    use crate::citygml_parser::utils::{local_name, XmlChild};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()
