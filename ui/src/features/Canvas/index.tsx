@@ -44,6 +44,7 @@ type Props = {
   onWorkflowOpen?: (workflowId: string) => void;
   onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
   onNodesAdd?: (newNode: Node[]) => void;
+  onNodesSelectAll?: () => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
@@ -79,6 +80,7 @@ const Canvas: React.FC<Props> = ({
   onWorkflowOpen,
   onWorkflowAddFromSelection,
   onNodesAdd,
+  onNodesSelectAll,
   onNodesChange,
   onBeforeDelete,
   onNodeSettings,
@@ -117,6 +119,7 @@ const Canvas: React.FC<Props> = ({
     readonly,
     onWorkflowAdd,
     onNodesAdd,
+    onNodesSelectAll,
     onNodesChange,
     onNodeSettings,
     onEdgesAdd,

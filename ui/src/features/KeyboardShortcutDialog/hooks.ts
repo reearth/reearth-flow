@@ -66,6 +66,10 @@ export default () => {
     title: t("Canvas Shortcuts"),
     shortcuts: [
       {
+        keyBinding: CanvasKeyBindings["selectAll"],
+        description: t("Select All Actions"),
+      },
+      {
         keyBinding: CanvasKeyBindings["copy"],
         description: t("Copy the Selected Actions"),
       },

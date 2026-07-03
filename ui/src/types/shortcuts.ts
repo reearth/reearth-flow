@@ -22,6 +22,7 @@ export type EditorKeys =
   | "k"; // Open Search
 
 export type CanvasKeys =
+  | "a" // select all nodes
   | "c" // w CMD = Copy, wout CMD = left panel canvas navigator
   | "x" // cut
   | "v" // paste
@@ -40,6 +41,7 @@ type PossibleActions =
   | "compressNodes"
   | "spreadNodes"
   | "fitView"
+  | "selectAll"
   | "copy"
   | "cut"
   | "paste"
@@ -101,6 +103,7 @@ export const EditorKeyBindings: Partial<
 export const CanvasKeyBindings: Partial<
   Record<PossibleActions, KeyBinding<CanvasKeys>>
 > = {
+  selectAll: { key: "a", commandKey: true },
   copy: { key: "c", commandKey: true },
   cut: { key: "x", commandKey: true },
   paste: { key: "v", commandKey: true },

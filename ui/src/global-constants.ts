@@ -24,6 +24,8 @@ export const CANVAS_HOT_KEYS = [
   "r", // reader dialog
   "t", // transformer dialog
   "w", //  writer dialog
+  "meta+a", // select all nodes mac
+  "ctrl+a", // select all nodes win
   "meta+c", // copy mac
   "ctrl+c", // copy win
   "meta+x", // cut mac

@@ -65,6 +65,7 @@ export default function Editor({
     handleWorkflowClose,
     handleWorkflowChange,
     handleNodesAdd,
+    handleNodesSelectAllNodes,
     handleNodesChange,
     handleBeforeDeleteNodes,
     handleDeleteDialogClose,
@@ -223,6 +224,7 @@ export default function Editor({
               onWorkflowAddFromSelection={handleWorkflowAddFromSelection}
               onNodesAdd={handleNodesAdd}
               onBeforeDelete={handleBeforeDeleteNodes}
+              onNodesSelectAll={handleNodesSelectAllNodes}
               onNodesChange={handleNodesChange}
               onNodeSettings={handleNodeSettings}
               onNodePickerOpen={handleNodePickerOpen}
