@@ -56,6 +56,8 @@ Each action defines input/output ports, JSON schema for validation, and paramete
 
 ### Adding New Actions
 
+Before creating or modifying any action, read and apply the [Action Standard](dev-docs/action-standard.md). It governs names, descriptions, parameters, ports, and tags — all of which are user-facing and must meet the standard before the schema is regenerated.
+
 Use the `add-action` skill for a full step-by-step guide including i18n workflow.
 
 ## Key Constraints
