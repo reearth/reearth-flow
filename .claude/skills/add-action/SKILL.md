@@ -6,6 +6,8 @@ user-invocable: true
 
 # Add a New Engine Action
 
+Before proceeding, read the [Action Standard](../../engine/dev-docs/action-standard.md). It governs names, descriptions, parameter titles and descriptions, port names, and tags — all of which are user-facing. Apply it while completing the steps below.
+
 Follow these steps when adding or modifying an action in the engine.
 
 ## Steps
