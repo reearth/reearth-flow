@@ -130,6 +130,37 @@ impl PolygonMesh3D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.data.appearance
     }
+
+    /// Consume the mesh, yielding its coordinate-free data for use as a
+    /// [`Solid`](crate::solid::Solid) shell.
+    #[inline]
+    pub fn into_data(self) -> PolygonMesh3DData {
+        self.data
+    }
+
+    /// The number of faces.
+    #[inline]
+    pub fn num_faces(&self) -> usize {
+        self.data.num_faces()
+    }
+
+    /// The shared vertex pool.
+    #[inline]
+    pub fn vertices(&self) -> &[[f64; 3]] {
+        self.data.vertices()
+    }
+}
+
+impl PolygonMesh3DData {
+    /// The number of faces.
+    #[inline]
+    pub fn num_faces(&self) -> usize {
+        if self.face_indices.len() == 0 {
+            0
+        } else {
+            self.face_offsets.len() + 1
+        }
+    }
 }
 
 impl PolygonMesh3DData {

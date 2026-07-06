@@ -32,5 +32,13 @@ pub struct LineString3D {
     coords: Box<[[f64; 3]]>,
 }
 
+impl LineString3D {
+    /// The chain's vertices in order.
+    #[inline]
+    pub fn coords(&self) -> &[[f64; 3]] {
+        &self.coords
+    }
+}
+
 crate::unsupported!(LineString2D: Triangulate);
 crate::unsupported!(LineString3D: Triangulate);
