@@ -83,6 +83,7 @@ nodes:
       # and feature_type); a matching descendant is split out from its ancestor.
       extractTags:
         - bldg:Building
+        - bldg:BuildingPart
         - con:GroundSurface
         - con:WallSurface
         - con:RoofSurface
@@ -803,11 +804,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_invalid_building_id_format", 0)
-        # TODO: wire to a PLATEAU6 L-bldg-02 check
+        # Wired to the L-bldg-02 BuildingPart-connectivity pipeline (Lbldg02ErrorCounter).
         - attribute: "L-bldg-02 エラー"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lbldg02_error", 0)
         # Wired to the L-bldg-04,05 usage-attribute pipeline (UsageErrorCounter).
         - attribute: "L-bldg-04,05 エラー"
           expr:
@@ -2284,6 +2285,116 @@ nodes:
         type: flowExpr
         value: attributes["name"]
 
+  # ========== L-bldg-02: BuildingPart connectivity (LOD2/LOD3) ==========
+  # BuildingParts are flattened by the reader (extractTags includes bldg:BuildingPart),
+  # each carrying its own gml:id (__citygml_gml_id) and its parent Building gml:id
+  # (__citygml_parent_gml_id). Keep only BuildingPart features, split them per LOD,
+  # then group by (parent Building, lod) and union parts that share a boundary surface.
+  # A part not connected to every sibling is an error ("alone" / "partial").
+  - id: c1b00060-0000-4000-8000-000000000060
+    name: FeatureFilterBuildingPartL02
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["__citygml_feature_type"] == "bldg:BuildingPart"
+          outputPort: buildingPart
+
+  # Dedicated LodSplitter instance for the BuildingPart branch (mirrors plateau4).
+  - id: c1b00061-0000-4000-8000-000000000061
+    name: PLATEAU3.LodSplitterWithDM
+    type: subGraph
+    subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+  - id: c1b00062-0000-4000-8000-000000000062
+    name: PLATEAU6.BuildingPartConnectivityChecker
+    type: action
+    action: PLATEAU6.BuildingPartConnectivityChecker
+    with:
+      buildingIdAttribute: __citygml_parent_gml_id
+      partIdAttribute: __citygml_gml_id
+      lodAttribute: lod
+      fileIndexAttribute: index
+
+  # Keep only error parts (_status != "full").
+  - id: c1b00063-0000-4000-8000-000000000063
+    name: FilterNonFullStatusL02
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["_status"] != "full"
+          outputPort: filtered
+
+  - id: c1b00064-0000-4000-8000-000000000064
+    name: DeduplicateBuildingPartsL02
+    type: action
+    action: FeatureDuplicateFilter
+
+  - id: c1b00065-0000-4000-8000-000000000065
+    name: AttributeMapperLbldg02
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: index
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: Building.gml_id
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: BuildingPart.gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: status
+          valueAttribute: _status
+        - attribute: connected_id
+          valueAttribute: _connected_id
+        - attribute: connected_parts
+          valueAttribute: _connected_parts
+
+  - id: c1b00066-0000-4000-8000-000000000066
+    name: FeatureWriterLbldg02
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_L-bldg-02エラー.csv
+
+  # Count L-bldg-02 error rows per file for the summary column.
+  - id: c1b00067-0000-4000-8000-000000000067
+    name: Lbldg02ErrorCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lbldg02_error
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file L-bldg-02 count onto each file feature.
+  - id: c1b00068-0000-4000-8000-000000000068
+    name: Lbldg02SummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
 edges:
   - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
     from: 63341eb4-409d-4668-b338-2d1e5ab003fd
@@ -3447,14 +3558,89 @@ edges:
     to: c1b00057-0000-4000-8000-000000000057
     fromPort: default
     toPort: supplier
-  # Unmatched-xlink summary merger output -> building summary mapper.
+  # Unmatched-xlink summary merger output -> L-bldg-02 summary merger (requestor).
   - id: c1b0e05b-0000-4000-8000-00000000005b
     from: c1b00057-0000-4000-8000-000000000057
+    to: c1b00068-0000-4000-8000-000000000068
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e05c-0000-4000-8000-00000000005c
+    from: c1b00057-0000-4000-8000-000000000057
+    to: c1b00068-0000-4000-8000-000000000068
+    fromPort: unmerged
+    toPort: requestor
+
+  # --- L-bldg-02 BuildingPart connectivity pipeline edges ---
+  # Tap the reprojected feature stream; keep only BuildingPart features.
+  - id: c1b0e060-0000-4000-8000-000000000060
+    from: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
+    to: c1b00060-0000-4000-8000-000000000060
+    fromPort: default
+    toPort: default
+  # BuildingParts -> dedicated LodSplitter.
+  - id: c1b0e061-0000-4000-8000-000000000061
+    from: c1b00060-0000-4000-8000-000000000060
+    to: c1b00061-0000-4000-8000-000000000061
+    fromPort: buildingPart
+    toPort: default
+  # LOD2 / LOD3 BuildingParts -> connectivity checker (LOD0/LOD1 belong to Z-bldg-04).
+  - id: c1b0e062-0000-4000-8000-000000000062
+    from: c1b00061-0000-4000-8000-000000000061
+    to: c1b00062-0000-4000-8000-000000000062
+    fromPort: lod2
+    toPort: default
+  - id: c1b0e063-0000-4000-8000-000000000063
+    from: c1b00061-0000-4000-8000-000000000061
+    to: c1b00062-0000-4000-8000-000000000062
+    fromPort: lod3
+    toPort: default
+  # Checker -> keep error parts -> deduplicate.
+  - id: c1b0e064-0000-4000-8000-000000000064
+    from: c1b00062-0000-4000-8000-000000000062
+    to: c1b00063-0000-4000-8000-000000000063
+    fromPort: default
+    toPort: default
+  - id: c1b0e065-0000-4000-8000-000000000065
+    from: c1b00063-0000-4000-8000-000000000063
+    to: c1b00064-0000-4000-8000-000000000064
+    fromPort: filtered
+    toPort: default
+  # Deduplicated error parts -> CSV mapper and per-file counter.
+  - id: c1b0e066-0000-4000-8000-000000000066
+    from: c1b00064-0000-4000-8000-000000000064
+    to: c1b00065-0000-4000-8000-000000000065
+    fromPort: default
+    toPort: default
+  - id: c1b0e067-0000-4000-8000-000000000067
+    from: c1b00064-0000-4000-8000-000000000064
+    to: c1b00067-0000-4000-8000-000000000067
+    fromPort: default
+    toPort: default
+  # Mapper -> CSV writer -> result zip.
+  - id: c1b0e068-0000-4000-8000-000000000068
+    from: c1b00065-0000-4000-8000-000000000065
+    to: c1b00066-0000-4000-8000-000000000066
+    fromPort: default
+    toPort: default
+  - id: c1b0e069-0000-4000-8000-000000000069
+    from: c1b00066-0000-4000-8000-000000000066
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Counter.default -> L-bldg-02 summary merger (supplier).
+  - id: c1b0e06a-0000-4000-8000-00000000006a
+    from: c1b00067-0000-4000-8000-000000000067
+    to: c1b00068-0000-4000-8000-000000000068
+    fromPort: default
+    toPort: supplier
+  # L-bldg-02 summary merger output -> building summary mapper.
+  - id: c1b0e06b-0000-4000-8000-00000000006b
+    from: c1b00068-0000-4000-8000-000000000068
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: c1b0e05c-0000-4000-8000-00000000005c
-    from: c1b00057-0000-4000-8000-000000000057
+  - id: c1b0e06c-0000-4000-8000-00000000006c
+    from: c1b00068-0000-4000-8000-000000000068
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default

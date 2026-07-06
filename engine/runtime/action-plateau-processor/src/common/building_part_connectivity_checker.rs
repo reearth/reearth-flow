@@ -15,13 +15,24 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::PlateauProcessorError;
+use super::PlateauProfile;
 
-#[derive(Debug, Clone, Default)]
-pub struct BuildingPartConnectivityCheckerFactory;
+#[derive(Debug, Clone)]
+pub(crate) struct BuildingPartConnectivityCheckerFactory {
+    name: String,
+}
+
+impl BuildingPartConnectivityCheckerFactory {
+    pub(crate) fn new(profile: &PlateauProfile) -> Self {
+        Self {
+            name: profile.action_name("BuildingPartConnectivityChecker"),
+        }
+    }
+}
 
 impl ProcessorFactory for BuildingPartConnectivityCheckerFactory {
     fn name(&self) -> &str {
-        "PLATEAU4.BuildingPartConnectivityChecker"
+        &self.name
     }
 
     fn description(&self) -> &str {

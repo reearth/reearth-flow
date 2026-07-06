@@ -24,6 +24,10 @@ pub(crate) enum PlateauProcessorError {
     BuildingUsageAttributeValidatorFactory(String),
     #[error("BuildingUsageAttributeValidator error: {0}")]
     BuildingUsageAttributeValidator(String),
+    #[error("BuildingPartConnectivityChecker Factory error: {0}")]
+    BuildingPartConnectivityCheckerFactory(String),
+    #[error("BuildingPartConnectivityChecker error: {0}")]
+    BuildingPartConnectivityChecker(String),
     #[error("SolidIntersectionTestPairCreator Factory error: {0}")]
     SolidIntersectionTestPairCreatorFactory(String),
     #[error("SolidIntersectionTestPairCreator error: {0}")]
