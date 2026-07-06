@@ -9961,6 +9961,75 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 ### Category
 * PLATEAU
 
+## PLATEAU6.BuildingPartConnectivityChecker
+### Type
+* processor
+### Description
+Check connectivity between BuildingParts within the same Building using 3D boundary surface matching
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingPartConnectivityChecker Parameters",
+  "description": "Configure how to check connectivity between BuildingParts",
+  "type": "object",
+  "properties": {
+    "buildingIdAttribute": {
+      "title": "Building ID Attribute",
+      "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
+      "default": "gmlId",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "fileIndexAttribute": {
+      "title": "File Index Attribute",
+      "description": "Attribute containing the file index (default: \"fileIndex\")",
+      "default": "fileIndex",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "lodAttribute": {
+      "title": "LOD Attribute",
+      "description": "Attribute containing the Level of Detail (default: \"lod\")",
+      "default": "lod",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "partIdAttribute": {
+      "title": "Part ID Attribute",
+      "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
+      "default": "featureId",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+* PLATEAU
+
 ## PLATEAU6.BuildingUsageAttributeValidator
 ### Type
 * processor

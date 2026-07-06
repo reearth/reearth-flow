@@ -2838,6 +2838,31 @@
       }
     },
     {
+      "name": "PLATEAU6.BuildingPartConnectivityChecker",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingPartConnectivityChecker Parameters",
+          "description": "Configure how to check connectivity between BuildingParts"
+        },
+        "buildingIdAttribute": {
+          "title": "Building ID Attribute",
+          "description": "Attribute containing the parent Building ID (default: \"gmlId\")"
+        },
+        "fileIndexAttribute": {
+          "title": "File Index Attribute",
+          "description": "Attribute containing the file index (default: \"fileIndex\")"
+        },
+        "lodAttribute": {
+          "title": "LOD Attribute",
+          "description": "Attribute containing the Level of Detail (default: \"lod\")"
+        },
+        "partIdAttribute": {
+          "title": "Part ID Attribute",
+          "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.BuildingUsageAttributeValidator",
       "parameterI18n": {
         "": {

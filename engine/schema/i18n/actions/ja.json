@@ -2841,6 +2841,32 @@
       }
     },
     {
+      "name": "PLATEAU6.BuildingPartConnectivityChecker",
+      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingPartConnectivityChecker パラメータ",
+          "description": "BuildingPart 間の接続性チェック方法を設定する"
+        },
+        "buildingIdAttribute": {
+          "title": "建物 ID 属性",
+          "description": "親の Building ID を含む属性（デフォルト: \"gmlId\"）"
+        },
+        "fileIndexAttribute": {
+          "title": "ファイルインデックス属性",
+          "description": "ファイルインデックスを含む属性（デフォルト: \"fileIndex\"）"
+        },
+        "lodAttribute": {
+          "title": "LOD 属性",
+          "description": "詳細レベル（LOD）を含む属性（デフォルト: \"lod\"）"
+        },
+        "partIdAttribute": {
+          "title": "パーツ ID 属性",
+          "description": "BuildingPart ID を含む属性（デフォルト: \"featureId\"）"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.BuildingUsageAttributeValidator",
       "description": "建物利用属性の依存関係違反（L-bldg-04,05）と、市区町村コードを Common_localPublicAuthorities コードリストと照合して検証する。利用属性エラーは l0405BldgError ポート、市区町村コードエラーは cityCodeError ポートへ出力する",
       "parameterI18n": {
