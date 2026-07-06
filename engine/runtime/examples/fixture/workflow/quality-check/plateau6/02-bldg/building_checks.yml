@@ -881,11 +881,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_incorrect_meshcode", 0)
-        # TODO: wire to a PLATEAU6 BuildingPart LOD0-1 check
+        # Wired to the Z-bldg-04 LOD0/LOD1 BuildingPart pipeline (Lod0Or1BuildingPartCounter).
         - attribute: "LOD0-1のBuildingPart"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_lod0_1_buildingpart", 0)
         # LOD1 solid intersection (SolidIntersectionTestPairCreator + CSG)
         - attribute: "LOD1 立体の交差"
           expr:
@@ -2480,6 +2480,65 @@ nodes:
         type: flowExpr
         value: attributes["name"]
 
+  # ========== Z-bldg-04: LOD0/LOD1 BuildingPart ==========
+  # A BuildingPart is only allowed to carry LOD2+ geometry. LOD0/LOD1 BuildingParts
+  # are an error, reported once per LOD. Reuses the dedicated BuildingPart LodSplitter
+  # from the L-bldg-02 branch (c1b00061); its lod0/lod1 ports (unused by L-bldg-02)
+  # feed this counter. Mirrors plateau4 building_part_validation.yml.
+  - id: c1b00080-0000-4000-8000-000000000080
+    name: Lod0Or1BuildingPartCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lod0_1_buildingpart
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # complete port is an identity passthrough: one row per LOD0/LOD1 BuildingPart feature.
+  - id: c1b00081-0000-4000-8000-000000000081
+    name: AttributeMapperLod0Or1BuildingPart
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: index
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: Building.gml_id
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: BuildingPart.gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: c1b00082-0000-4000-8000-000000000082
+    name: FeatureWriterLod0Or1BuildingPart
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_LOD0-1のBuildingPart.csv
+
+  # Join the per-file LOD0-1 BuildingPart count onto each file feature.
+  - id: c1b00083-0000-4000-8000-000000000083
+    name: Lod0Or1BuildingPartSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
 edges:
   - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
     from: 63341eb4-409d-4668-b338-2d1e5ab003fd
@@ -3770,14 +3829,60 @@ edges:
     to: c1b00075-0000-4000-8000-000000000075
     fromPort: default
     toPort: supplier
-  # Mesh-code summary merger output -> building summary mapper.
+  # Mesh-code summary merger output -> Z-bldg-04 summary merger (requestor).
   - id: c1b0e077-0000-4000-8000-000000000077
     from: c1b00075-0000-4000-8000-000000000075
+    to: c1b00083-0000-4000-8000-000000000083
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e078-0000-4000-8000-000000000078
+    from: c1b00075-0000-4000-8000-000000000075
+    to: c1b00083-0000-4000-8000-000000000083
+    fromPort: unmerged
+    toPort: requestor
+
+  # --- Z-bldg-04 LOD0/LOD1 BuildingPart pipeline edges ---
+  # LOD0 / LOD1 BuildingParts from the dedicated LodSplitter -> counter.
+  - id: c1b0e080-0000-4000-8000-000000000080
+    from: c1b00061-0000-4000-8000-000000000061
+    to: c1b00080-0000-4000-8000-000000000080
+    fromPort: lod0
+    toPort: default
+  - id: c1b0e081-0000-4000-8000-000000000081
+    from: c1b00061-0000-4000-8000-000000000061
+    to: c1b00080-0000-4000-8000-000000000080
+    fromPort: lod1
+    toPort: default
+  # complete (identity passthrough) -> attribute mapper -> CSV writer -> result zip.
+  - id: c1b0e082-0000-4000-8000-000000000082
+    from: c1b00080-0000-4000-8000-000000000080
+    to: c1b00081-0000-4000-8000-000000000081
+    fromPort: complete
+    toPort: default
+  - id: c1b0e083-0000-4000-8000-000000000083
+    from: c1b00081-0000-4000-8000-000000000081
+    to: c1b00082-0000-4000-8000-000000000082
+    fromPort: default
+    toPort: default
+  - id: c1b0e084-0000-4000-8000-000000000084
+    from: c1b00082-0000-4000-8000-000000000082
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Counter.default (per-file total) -> Z-bldg-04 summary merger (supplier).
+  - id: c1b0e085-0000-4000-8000-000000000085
+    from: c1b00080-0000-4000-8000-000000000080
+    to: c1b00083-0000-4000-8000-000000000083
+    fromPort: default
+    toPort: supplier
+  # Z-bldg-04 summary merger output -> building summary mapper.
+  - id: c1b0e086-0000-4000-8000-000000000086
+    from: c1b00083-0000-4000-8000-000000000083
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: c1b0e078-0000-4000-8000-000000000078
-    from: c1b00075-0000-4000-8000-000000000075
+  - id: c1b0e087-0000-4000-8000-000000000087
+    from: c1b00083-0000-4000-8000-000000000083
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default
