@@ -2879,6 +2879,28 @@
       }
     },
     {
+      "name": "PLATEAU6.DestinationMeshCodeExtractor",
+      "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
+      "parameterI18n": {
+        "": {
+          "title": "DestinationMeshCodeExtractor パラメータ",
+          "description": "日本標準地域メッシュのメッシュコード抽出を設定する"
+        },
+        "epsgCode": {
+          "title": "EPSG コード",
+          "description": "面積計算に使用する日本の平面直角座標系 EPSG コード"
+        },
+        "meshType": {
+          "title": "メッシュタイプ",
+          "description": "日本標準メッシュタイプ: 1=80km、2=10km、3=1km、4=500m、5=250m、6=125m"
+        },
+        "meshcodeAttr": {
+          "title": "メッシュコード属性名",
+          "description": "メッシュコードの出力属性名"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.DomainOfDefinitionValidator",
       "description": "PLATEAU6の定義領域を検証する",
       "parameterI18n": {

@@ -10339,6 +10339,70 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.DestinationMeshCodeExtractor",
+      "type": "processor",
+      "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DestinationMeshCodeExtractor パラメータ",
+        "description": "日本標準地域メッシュのメッシュコード抽出を設定する",
+        "type": "object",
+        "properties": {
+          "epsgCode": {
+            "title": "EPSG コード",
+            "description": "面積計算に使用する日本の平面直角座標系 EPSG コード",
+            "default": {
+              "type": "flowExpr",
+              "value": "6691"
+            },
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "meshType": {
+            "title": "メッシュタイプ",
+            "description": "日本標準メッシュタイプ: 1=80km、2=10km、3=1km、4=500m、5=250m、6=125m",
+            "default": 3,
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "meshcodeAttr": {
+            "title": "メッシュコード属性名",
+            "description": "メッシュコードの出力属性名",
+            "default": "_meshcode",
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.DomainOfDefinitionValidator",
       "type": "processor",
       "description": "PLATEAU6の定義領域を検証する",

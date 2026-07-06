@@ -2874,6 +2874,27 @@
       }
     },
     {
+      "name": "PLATEAU6.DestinationMeshCodeExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "PLATEAU Destination MeshCode Extractor Parameters",
+          "description": "Configure mesh code extraction for Japanese standard regional mesh"
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation"
+        },
+        "meshType": {
+          "title": "Mesh Type",
+          "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m"
+        },
+        "meshcodeAttr": {
+          "title": "Mesh Code Attribute Name",
+          "description": "Output attribute name for the mesh code"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.DomainOfDefinitionValidator",
       "description": "Validates domain of definition of CityGML features",
       "parameterI18n": {

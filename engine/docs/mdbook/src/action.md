@@ -10078,6 +10078,69 @@ Validates building usage attributes (L-bldg-04,05 dependency violations) and the
 ### Category
 * PLATEAU
 
+## PLATEAU6.DestinationMeshCodeExtractor
+### Type
+* processor
+### Description
+Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PLATEAU Destination MeshCode Extractor Parameters",
+  "description": "Configure mesh code extraction for Japanese standard regional mesh",
+  "type": "object",
+  "properties": {
+    "epsgCode": {
+      "title": "EPSG Code",
+      "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
+      "default": {
+        "type": "flowExpr",
+        "value": "6691"
+      },
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "meshType": {
+      "title": "Mesh Type",
+      "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
+      "default": 3,
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "meshcodeAttr": {
+      "title": "Mesh Code Attribute Name",
+      "description": "Output attribute name for the mesh code",
+      "default": "_meshcode",
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU6.DomainOfDefinitionValidator
 ### Type
 * processor
