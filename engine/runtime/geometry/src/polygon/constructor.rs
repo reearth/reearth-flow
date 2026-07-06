@@ -100,7 +100,6 @@ impl Polygon2D {
             coords: coords.into_boxed_slice(),
             interior_offsets: interior_offsets.into_boxed_slice(),
             z: None,
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
@@ -131,7 +130,6 @@ impl Polygon2D {
             coords: coords.into_boxed_slice(),
             interior_offsets: interior_offsets.into_boxed_slice(),
             z: Some(z.into_boxed_slice()),
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
@@ -164,7 +162,6 @@ impl Polygon2D {
             coords,
             interior_offsets,
             z,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -188,7 +185,6 @@ impl Polygon3D {
             frame,
             coords: coords.into_boxed_slice(),
             interior_offsets: interior_offsets.into_boxed_slice(),
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
@@ -206,7 +202,6 @@ impl Polygon3D {
             frame,
             coords,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -456,7 +451,6 @@ impl Polygon2D {
         add_polygon_theme(
             self.coords.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             PolygonFace::single(material, uv),
             None,
@@ -475,7 +469,6 @@ impl Polygon2D {
         add_polygon_theme(
             self.coords.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             front,
             Some(back),
@@ -495,7 +488,6 @@ impl Polygon3D {
         add_polygon_theme(
             self.coords.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             PolygonFace::single(material, uv),
             None,
@@ -513,7 +505,6 @@ impl Polygon3D {
         add_polygon_theme(
             self.coords.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             front,
             Some(back),
@@ -532,7 +523,6 @@ impl Polygon3D {
 fn add_polygon_theme(
     corner_count: usize,
     appearance: &mut Option<Appearance>,
-    uv_sets: &mut Vec<UvSet>,
     theme: ThemeId,
     front: PolygonFace,
     back: Option<PolygonFace>,
@@ -545,7 +535,6 @@ fn add_polygon_theme(
         &mut materials,
         &mut new_uv_sets,
         corner_count,
-        theme.clone(),
         Side::Front,
         front,
     )?;
@@ -554,7 +543,6 @@ fn add_polygon_theme(
             &mut materials,
             &mut new_uv_sets,
             corner_count,
-            theme.clone(),
             Side::Back,
             face,
         )?),
@@ -563,7 +551,6 @@ fn add_polygon_theme(
 
     append_theme(
         appearance,
-        uv_sets,
         theme,
         materials,
         front_binding,
@@ -578,19 +565,13 @@ fn push_face(
     materials: &mut Vec<Material>,
     uv_sets: &mut Vec<UvSet>,
     corner_count: usize,
-    theme: ThemeId,
     side: Side,
     face: PolygonFace,
 ) -> Result<FaceBinding, Error> {
     validate_uv_coupling(&face.material.referenced_channels(), &face.uv, corner_count)?;
 
     for (channel, uv) in face.uv {
-        uv_sets.push(UvSet {
-            theme: Some(theme.clone()),
-            side,
-            channel,
-            uv,
-        });
+        uv_sets.push(UvSet { side, channel, uv });
     }
 
     let index = u32::try_from(materials.len())
@@ -712,7 +693,6 @@ mod tests {
         assert_eq!(p.coords, coords);
         assert!(p.interior_offsets.is_empty());
         assert!(p.z.is_none());
-        assert!(p.uv_sets.is_empty());
         assert!(p.appearance.is_none());
     }
 
@@ -810,22 +790,23 @@ mod tests {
             .unwrap();
 
         let app = p.appearance().as_ref().unwrap();
-        assert_eq!(app.materials.len(), 1);
-        assert_eq!(app.themes.len(), 1);
-        assert_eq!(app.default_theme, theme("rgb"));
-        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
-        assert!(app.themes[0].back.is_none());
-        assert_eq!(p.uv_sets.len(), 1);
-        assert_eq!(p.uv_sets[0].theme.as_ref(), Some(&theme("rgb")));
-        assert_eq!(p.uv_sets[0].side, Side::Front);
+        assert_eq!(app.materials().len(), 1);
+        assert_eq!(app.themes().len(), 1);
+        assert_eq!(*app.default_theme(), theme("rgb"));
+        assert!(matches!(app.themes()[0].front, FaceBinding::Uniform(_)));
+        assert!(app.themes()[0].back.is_none());
+        assert_eq!(app.themes()[0].theme, theme("rgb"));
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].uv_sets[0].side, Side::Front);
     }
 
     #[test]
     fn bare_material_with_no_uv_is_accepted() {
         let mut p = triangle();
         p.set_appearance(theme("rgb"), bare(), None).unwrap();
-        assert_eq!(p.appearance().as_ref().unwrap().materials.len(), 1);
-        assert!(p.uv_sets.is_empty());
+        let app = p.appearance().as_ref().unwrap();
+        assert_eq!(app.materials().len(), 1);
+        assert!(app.themes()[0].uv_sets.is_empty());
     }
 
     #[test]
@@ -863,7 +844,10 @@ mod tests {
         let mut p = triangle();
         let m = UvSource::WorldToTexture(TexMatrix([[0.0; 4]; 3]));
         p.set_appearance(theme("rgb"), textured(), Some(m)).unwrap();
-        assert_eq!(p.uv_sets.len(), 1);
+        assert_eq!(
+            p.appearance().as_ref().unwrap().themes()[0].uv_sets.len(),
+            1
+        );
     }
 
     #[test]
@@ -873,8 +857,8 @@ mod tests {
         p.set_appearance(theme("rgb"), bare(), None).unwrap();
 
         let app = p.appearance().as_ref().unwrap();
-        assert_eq!(app.default_theme, theme("infrared"));
-        assert_eq!(app.themes.len(), 2);
+        assert_eq!(*app.default_theme(), theme("infrared"));
+        assert_eq!(app.themes().len(), 2);
     }
 
     #[test]
@@ -893,11 +877,12 @@ mod tests {
         p.set_appearance(theme("infrared"), bare(), None).unwrap();
 
         let app = p.appearance().as_ref().unwrap();
-        assert_eq!(app.materials.len(), 2);
-        assert_eq!(app.themes.len(), 2);
-        // Only the textured theme contributes a UV set.
-        assert_eq!(p.uv_sets.len(), 1);
-        assert_eq!(p.uv_sets[0].theme.as_ref(), Some(&theme("rgb")));
+        assert_eq!(app.materials().len(), 2);
+        assert_eq!(app.themes().len(), 2);
+        // Only the textured theme (added first, so index 0) contributes a UV set.
+        assert_eq!(app.themes()[0].theme, theme("rgb"));
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert!(app.themes()[1].uv_sets.is_empty());
     }
 
     #[test]
@@ -908,10 +893,10 @@ mod tests {
             .unwrap();
 
         let app = p.appearance().as_ref().unwrap();
-        assert_eq!(app.materials.len(), 2);
-        assert!(app.themes[0].back.is_some());
-        assert_eq!(p.uv_sets.len(), 2);
-        let sides: Vec<Side> = p.uv_sets.iter().map(|u| u.side).collect();
+        assert_eq!(app.materials().len(), 2);
+        assert!(app.themes()[0].back.is_some());
+        assert_eq!(app.themes()[0].uv_sets.len(), 2);
+        let sides: Vec<Side> = app.themes()[0].uv_sets.iter().map(|u| u.side).collect();
         assert!(sides.contains(&Side::Front) && sides.contains(&Side::Back));
     }
 }

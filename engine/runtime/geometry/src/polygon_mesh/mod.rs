@@ -12,7 +12,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::appearance::{Appearance, UvSet};
+use crate::appearance::Appearance;
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 
@@ -41,9 +41,8 @@ pub struct PolygonMesh2D {
     /// Start in `face_indices` of each hole ring, across all faces; empty when
     /// no face has holes. Width from `face_indices.len() - 1`.
     interior_offsets: IndexBuffer<1>,
-    /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    uv_sets: Vec<UvSet>,
-    /// Optional materials / themes / per-face binding; `None` = bare.
+    /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
+    /// to the corner buffers; `None` = bare.
     appearance: Option<Appearance>,
 }
 
@@ -71,9 +70,8 @@ pub struct PolygonMesh3DData {
     /// Start in `face_indices` of each hole ring, across all faces; empty when
     /// no face has holes. Width from `face_indices.len() - 1`.
     interior_offsets: IndexBuffer<1>,
-    /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    uv_sets: Vec<UvSet>,
-    /// Optional materials / themes / per-face binding; `None` = bare.
+    /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
+    /// to the corner buffers; `None` = bare.
     appearance: Option<Appearance>,
 }
 
@@ -167,7 +165,7 @@ impl PolygonMesh3DData {
     /// Drop all back-side appearance, keeping only the front; see
     /// [`crate::appearance::make_front_only`].
     pub(crate) fn make_front_only(&mut self) {
-        crate::appearance::make_front_only(&mut self.appearance, &mut self.uv_sets);
+        crate::appearance::make_front_only(&mut self.appearance);
     }
 }
 
@@ -177,13 +175,12 @@ mod tests {
 
     use super::*;
     use crate::appearance::{
-        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSource,
+        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSet, UvSource,
     };
     use crate::test_support::bare;
 
     fn uv(side: Side) -> UvSet {
         UvSet {
-            theme: Some(ThemeId(Arc::from("t"))),
             side,
             channel: ChannelId::default(),
             uv: UvSource::Explicit(Box::new([])),
@@ -197,34 +194,50 @@ mod tests {
             [[0u32, 1, 2]],
         )
         .unwrap();
-        m.appearance = Some(Appearance {
-            materials: vec![bare(), bare()],
-            themes: vec![ThemeBinding {
-                theme: ThemeId(Arc::from("t")),
+        let theme = ThemeId(Arc::from("t"));
+        m.appearance = Some(Appearance::from_parts(
+            vec![bare(), bare()],
+            vec![ThemeBinding {
+                theme: theme.clone(),
                 front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
                 back: Some(FaceBinding::Uniform(MaterialIndex::new(1).unwrap())),
+                uv_sets: vec![uv(Side::Front), uv(Side::Back)],
             }],
-            default_theme: ThemeId(Arc::from("t")),
-        });
-        m.uv_sets = vec![uv(Side::Front), uv(Side::Back)];
+            theme,
+        ));
 
         m.make_front_only();
 
-        assert!(m.appearance.as_ref().unwrap().themes[0].back.is_none());
-        assert_eq!(m.uv_sets.len(), 1);
-        assert_eq!(m.uv_sets[0].side, Side::Front);
+        let app = m.appearance.as_ref().unwrap();
+        assert!(app.themes()[0].back.is_none());
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].uv_sets[0].side, Side::Front);
     }
 
     #[test]
-    fn make_front_only_is_a_noop_when_already_front() {
+    fn make_front_only_leaves_a_front_only_appearance_intact() {
         let mut m = PolygonMesh3DData::from_parts(
             vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
             [[0u32, 1, 2]],
         )
         .unwrap();
-        m.uv_sets = vec![uv(Side::Front)];
+        let theme = ThemeId(Arc::from("t"));
+        m.appearance = Some(Appearance::from_parts(
+            vec![bare()],
+            vec![ThemeBinding {
+                theme: theme.clone(),
+                front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+                back: None,
+                uv_sets: vec![uv(Side::Front)],
+            }],
+            theme,
+        ));
+
         m.make_front_only();
-        assert_eq!(m.uv_sets.len(), 1);
-        assert!(m.appearance.is_none());
+
+        let app = m.appearance.as_ref().unwrap();
+        assert!(app.themes()[0].back.is_none());
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].uv_sets[0].side, Side::Front);
     }
 }

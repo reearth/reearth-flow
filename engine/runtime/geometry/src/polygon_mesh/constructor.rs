@@ -48,8 +48,8 @@ impl PolygonMesh3DData {
     ///
     /// Appearance and UV are merged across the faces (see [`merge_appearance`]):
     /// material palettes concatenate, themes union, each face gets a `PerFace`
-    /// binding, and every per-face UV is welded into one mesh-wide array per
-    /// `(theme, side, channel)` — dropping each ring's closing duplicate to match
+    /// binding, and every per-face UV is welded — per theme — into one mesh-wide
+    /// array per `(side, channel)` — dropping each ring's closing duplicate to match
     /// the open corner buffer, baking any `WorldToTexture` matrix to explicit
     /// corners, and zero-filling faces a theme does not cover (their binding is
     /// `None`, so the filler is never sampled). Bare input (no appearance on any
@@ -76,7 +76,7 @@ impl PolygonMesh3DData {
             .iter()
             .map(|p| std::iter::once(p.exterior()).chain(p.interiors()));
         let (vertices, face_indices, face_offsets, interior_offsets) = dedup_faces(faces);
-        let (uv_sets, appearance) = merge_appearance(&polygons, default_theme);
+        let appearance = merge_appearance(&polygons, default_theme);
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(vertices.len(), face_indices, face_offsets, interior_offsets);
         Self {
@@ -84,7 +84,6 @@ impl PolygonMesh3DData {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets,
             appearance,
         }
     }
@@ -103,7 +102,6 @@ impl PolygonMesh3DData {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -129,7 +127,6 @@ impl PolygonMesh3DData {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -222,7 +219,6 @@ impl PolygonMesh2D {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -252,7 +248,6 @@ impl PolygonMesh2D {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -280,7 +275,6 @@ impl PolygonMesh2D {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -511,7 +505,7 @@ fn has_back(polygon: &Polygon3D, theme: &ThemeId) -> bool {
     polygon
         .appearance()
         .as_ref()
-        .and_then(|app| app.themes.iter().find(|binding| &binding.theme == theme))
+        .and_then(|app| app.themes().iter().find(|binding| &binding.theme == theme))
         .is_some_and(|binding| binding.back.is_some())
 }
 
@@ -528,7 +522,7 @@ fn build_binding(
         .enumerate()
         .map(|(i, polygon)| -> Option<MaterialIndex> {
             let app = polygon.appearance().as_ref()?;
-            let binding = app.themes.iter().find(|b| &b.theme == theme)?;
+            let binding = app.themes().iter().find(|b| &b.theme == theme)?;
             let face = match side {
                 Side::Front => &binding.front,
                 Side::Back => binding.back.as_ref()?,
@@ -542,8 +536,12 @@ fn build_binding(
     FaceBinding::PerFace(per_face)
 }
 
-/// Weld the per-polygon appearance and UV of the kept faces into the mesh-wide
-/// `(uv_sets, appearance)`. Returns `(empty, None)` if no face carries appearance.
+/// Weld the per-polygon appearance and UV of the kept faces into one mesh-wide
+/// `Appearance`. Returns `None` if no face carries appearance.
+///
+/// Each theme's UV pool is rebuilt per (side, channel): one mesh-wide `Explicit`
+/// array whose corners concatenate each face's contribution (zero-filled where a
+/// face lacks that key, whose binding is then `None` so the filler is unsampled).
 ///
 /// `default_override` pins the merged mesh's active default theme; `None` keeps
 /// the auto rule (the shared default when every appearance-carrying face agrees,
@@ -551,7 +549,7 @@ fn build_binding(
 fn merge_appearance(
     polygons: &[&Polygon3D],
     default_override: Option<ThemeId>,
-) -> (Vec<UvSet>, Option<Appearance>) {
+) -> Option<Appearance> {
     let kept: Vec<&Polygon3D> = polygons
         .iter()
         .copied()
@@ -559,7 +557,7 @@ fn merge_appearance(
         .collect();
 
     if kept.iter().all(|p| p.appearance().is_none()) {
-        return (Vec::new(), None);
+        return None;
     }
 
     // Concatenate the material palettes, recording each face's offset for index
@@ -569,7 +567,7 @@ fn merge_appearance(
     for polygon in &kept {
         offset.push(materials.len());
         if let Some(app) = polygon.appearance() {
-            materials.extend(app.materials.iter().cloned());
+            materials.extend(app.materials().iter().cloned());
         }
     }
 
@@ -577,7 +575,7 @@ fn merge_appearance(
     let mut theme_order: Vec<ThemeId> = Vec::new();
     for polygon in &kept {
         if let Some(app) = polygon.appearance() {
-            for binding in &app.themes {
+            for binding in app.themes() {
                 if !theme_order.contains(&binding.theme) {
                     theme_order.push(binding.theme.clone());
                 }
@@ -589,9 +587,46 @@ fn merge_appearance(
     // is the documented fallback when they diverge (rule 2).
     let default_theme = default_override.unwrap_or_else(|| {
         kept.iter()
-            .find_map(|p| p.appearance().as_ref().map(|app| app.default_theme.clone()))
+            .find_map(|p| {
+                p.appearance()
+                    .as_ref()
+                    .map(|app| app.default_theme().clone())
+            })
             .expect("a kept face carries appearance")
     });
+
+    // Index each face's UV by (theme, side, channel) once (so the per-key build is a
+    // map lookup, not a linear scan) and precompute each face's corner count.
+    type UvKey = (ThemeId, Side, ChannelId);
+    let corner_counts: Vec<usize> = kept.iter().map(|p| corner_count(p)).collect();
+    let total_corners: usize = corner_counts.iter().sum();
+    let per_face_uv: Vec<HashMap<UvKey, &UvSource>> = kept
+        .iter()
+        .map(|polygon| {
+            let mut map = HashMap::new();
+            if let Some(app) = polygon.appearance() {
+                for binding in app.themes() {
+                    for set in &binding.uv_sets {
+                        map.insert((binding.theme.clone(), set.side, set.channel), &set.uv);
+                    }
+                }
+            }
+            map
+        })
+        .collect();
+
+    // One mesh-wide UV array for a given (theme, side, channel): each face
+    // contributes its corners, or a zero-filled run where it lacks that key.
+    let build_uv = |key: &UvKey| -> UvSource {
+        let mut data: Vec<[f64; 2]> = Vec::with_capacity(total_corners);
+        for (i, polygon) in kept.iter().enumerate() {
+            match per_face_uv[i].get(key).copied() {
+                Some(uv) => extend_polygon_uv(&mut data, polygon, uv),
+                None => data.resize(data.len() + corner_counts[i], [0.0, 0.0]),
+            }
+        }
+        UvSource::Explicit(data.into_boxed_slice())
+    };
 
     let themes: Vec<ThemeBinding> = theme_order
         .iter()
@@ -601,73 +636,42 @@ fn merge_appearance(
                 .iter()
                 .any(|p| has_back(p, theme))
                 .then(|| build_binding(&kept, &offset, theme, Side::Back));
+
+            // This theme's (side, channel) union across faces, first-seen.
+            let mut uv_keys: Vec<(Side, ChannelId)> = Vec::new();
+            let mut seen: HashSet<(Side, ChannelId)> = HashSet::new();
+            for polygon in &kept {
+                let Some(app) = polygon.appearance() else {
+                    continue;
+                };
+                let Some(binding) = app.themes().iter().find(|b| &b.theme == theme) else {
+                    continue;
+                };
+                for set in &binding.uv_sets {
+                    if seen.insert((set.side, set.channel)) {
+                        uv_keys.push((set.side, set.channel));
+                    }
+                }
+            }
+            let uv_sets = uv_keys
+                .into_iter()
+                .map(|(side, channel)| UvSet {
+                    side,
+                    channel,
+                    uv: build_uv(&(theme.clone(), side, channel)),
+                })
+                .collect();
+
             ThemeBinding {
                 theme: theme.clone(),
                 front,
                 back,
+                uv_sets,
             }
         })
         .collect();
 
-    // Index each face's UV sets by key once (so the per-key build is a map lookup,
-    // not a linear scan) and precompute each face's corner count (recomputing it
-    // per key would re-walk every ring).
-    type UvKey = (Option<ThemeId>, Side, ChannelId);
-    let corner_counts: Vec<usize> = kept.iter().map(|p| corner_count(p)).collect();
-    let total_corners: usize = corner_counts.iter().sum();
-    let per_face_uv: Vec<HashMap<UvKey, &UvSource>> = kept
-        .iter()
-        .map(|polygon| {
-            polygon
-                .uv_sets()
-                .iter()
-                .map(|set| ((set.theme.clone(), set.side, set.channel), &set.uv))
-                .collect()
-        })
-        .collect();
-
-    // UV-set key union, in first-seen order.
-    let mut keys: Vec<UvKey> = Vec::new();
-    let mut seen: HashSet<UvKey> = HashSet::new();
-    for polygon in &kept {
-        for set in polygon.uv_sets() {
-            let key = (set.theme.clone(), set.side, set.channel);
-            if seen.insert(key.clone()) {
-                keys.push(key);
-            }
-        }
-    }
-
-    // One mesh-wide UV array per key: each face contributes its corners, or a
-    // zero-filled run where it lacks that key. Reserved to the total up front.
-    let uv_sets = keys
-        .into_iter()
-        .map(|key| {
-            let mut data: Vec<[f64; 2]> = Vec::with_capacity(total_corners);
-            for (i, polygon) in kept.iter().enumerate() {
-                match per_face_uv[i].get(&key).copied() {
-                    Some(uv) => extend_polygon_uv(&mut data, polygon, uv),
-                    None => data.resize(data.len() + corner_counts[i], [0.0, 0.0]),
-                }
-            }
-            let (theme, side, channel) = key;
-            UvSet {
-                theme,
-                side,
-                channel,
-                uv: UvSource::Explicit(data.into_boxed_slice()),
-            }
-        })
-        .collect();
-
-    (
-        uv_sets,
-        Some(Appearance {
-            materials,
-            themes,
-            default_theme,
-        }),
-    )
+    Some(Appearance::from_parts(materials, themes, default_theme))
 }
 
 #[cfg(test)]
@@ -845,14 +849,15 @@ mod tests {
 
         let m = PolygonMesh3DData::from_polygons([&p]);
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.materials.len(), 1);
-        assert_eq!(app.default_theme, theme("rgb"));
-        let FaceBinding::PerFace(front) = &app.themes[0].front else {
+        assert_eq!(app.materials().len(), 1);
+        assert_eq!(*app.default_theme(), theme("rgb"));
+        let FaceBinding::PerFace(front) = &app.themes()[0].front else {
             panic!("expected PerFace");
         };
         assert_eq!(front, &[MaterialIndex::new(0)]);
-        assert!(app.themes[0].back.is_none());
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        assert!(app.themes()[0].back.is_none());
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected Explicit");
         };
         assert_eq!(uv.len(), 4);
@@ -869,12 +874,13 @@ mod tests {
 
         let m = PolygonMesh3DData::from_polygons([&a, &b]);
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.materials.len(), 2);
-        let FaceBinding::PerFace(front) = &app.themes[0].front else {
+        assert_eq!(app.materials().len(), 2);
+        let FaceBinding::PerFace(front) = &app.themes()[0].front else {
             panic!("expected PerFace");
         };
         assert_eq!(front, &[MaterialIndex::new(0), MaterialIndex::new(1)]);
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected Explicit");
         };
         assert_eq!(uv.len(), 8);
@@ -890,17 +896,23 @@ mod tests {
 
         // Auto, diverging: falls back to the first kept face's default (rule 2).
         let m = PolygonMesh3DData::from_polygons([&a, &b]);
-        assert_eq!(m.appearance.as_ref().unwrap().default_theme, theme("rgb"));
+        assert_eq!(
+            *m.appearance.as_ref().unwrap().default_theme(),
+            theme("rgb")
+        );
 
         // Auto, uniform: every face agrees, so that shared default is chosen (rule 1).
         let m = PolygonMesh3DData::from_polygons([&a, &a]);
-        assert_eq!(m.appearance.as_ref().unwrap().default_theme, theme("rgb"));
+        assert_eq!(
+            *m.appearance.as_ref().unwrap().default_theme(),
+            theme("rgb")
+        );
 
         // Explicit override pins the active theme regardless of the faces.
         let m =
             PolygonMesh3DData::from_polygons_with_default_theme([&a, &b], Some(theme("infrared")));
         assert_eq!(
-            m.appearance.as_ref().unwrap().default_theme,
+            *m.appearance.as_ref().unwrap().default_theme(),
             theme("infrared")
         );
     }
@@ -924,12 +936,17 @@ mod tests {
 
         let m = PolygonMesh3DData::from_polygons([&a, &b]);
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.materials.len(), 1, "only the textured face contributes");
-        let FaceBinding::PerFace(front) = &app.themes[0].front else {
+        assert_eq!(
+            app.materials().len(),
+            1,
+            "only the textured face contributes"
+        );
+        let FaceBinding::PerFace(front) = &app.themes()[0].front else {
             panic!("expected PerFace");
         };
         assert_eq!(front, &[MaterialIndex::new(0), None]);
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected Explicit");
         };
         assert_eq!(uv.len(), 8);
@@ -953,7 +970,8 @@ mod tests {
         .unwrap();
 
         let m = PolygonMesh3DData::from_polygons([&p]);
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected Explicit");
         };
         assert_eq!(uv.len(), 3);
@@ -973,7 +991,8 @@ mod tests {
         .unwrap();
 
         let m = PolygonMesh3DData::from_polygons([&p]);
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected baked Explicit");
         };
         assert_eq!(&uv[..], &[[0., 0.], [2., 0.], [2., 3.], [0., 3.]]);
@@ -984,6 +1003,5 @@ mod tests {
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
         let m = PolygonMesh3DData::from_polygons([&a]);
         assert!(m.appearance.is_none());
-        assert!(m.uv_sets.is_empty());
     }
 }

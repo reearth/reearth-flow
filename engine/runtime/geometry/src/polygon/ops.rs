@@ -1,9 +1,7 @@
 use super::{Polygon2D, Polygon3D};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
-use crate::ops::triangulation::{
-    expand_appearance, retarget_uv, triangulate_2d, triangulate_3d, Cache,
-};
+use crate::ops::triangulation::{expand_appearance, triangulate_2d, triangulate_3d, Cache};
 use crate::ops::{
     Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
@@ -128,15 +126,12 @@ impl Triangulate for Polygon2D {
             .iter()
             .map(|&c| buffers.positions[c as usize])
             .collect();
-        let uv_sets = std::mem::take(&mut self.uv_sets)
-            .into_iter()
-            .map(|uv| retarget_uv(uv, &src_corner))
-            .collect();
         let appearance = expand_appearance(
             std::mem::take(&mut self.appearance),
             &[(buffers.out.len() / 3) as u32],
+            &src_corner,
         );
-        mesh.set_raw_appearance(uv_sets, appearance);
+        mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -177,15 +172,12 @@ impl Triangulate for Polygon3D {
             .iter()
             .map(|&c| buffers.positions[c as usize])
             .collect();
-        let uv_sets = std::mem::take(&mut self.uv_sets)
-            .into_iter()
-            .map(|uv| retarget_uv(uv, &src_corner))
-            .collect();
         let appearance = expand_appearance(
             std::mem::take(&mut self.appearance),
             &[(buffers.out.len() / 3) as u32],
+            &src_corner,
         );
-        mesh.set_raw_appearance(uv_sets, appearance);
+        mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -421,13 +413,13 @@ mod tests {
         assert_eq!(m.num_triangles(), 2);
 
         let app = m.appearance().as_ref().expect("appearance carried over");
-        assert_eq!(app.materials.len(), 1);
-        assert_eq!(app.default_theme, theme("rgb"));
-        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
+        assert_eq!(app.materials().len(), 1);
+        assert_eq!(*app.default_theme(), theme("rgb"));
+        assert!(matches!(app.themes()[0].front, FaceBinding::Uniform(_)));
 
         // Every output UV is one of the real source-corner UVs (gathered, not
         // interpolated; the closing-duplicate slot is never referenced).
-        let UvSource::Explicit(out_uv) = &m.uv_sets()[0].uv else {
+        let UvSource::Explicit(out_uv) = &app.themes()[0].uv_sets[0].uv else {
             panic!("expected an explicit output UV set");
         };
         assert_eq!(out_uv.len(), 6);
@@ -460,8 +452,9 @@ mod tests {
 
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
+        let app = m.appearance().as_ref().unwrap();
         assert!(matches!(
-            m.uv_sets()[0].uv,
+            app.themes()[0].uv_sets[0].uv,
             UvSource::WorldToTexture(out) if out == matrix
         ));
     }

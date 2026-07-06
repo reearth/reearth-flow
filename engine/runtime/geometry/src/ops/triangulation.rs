@@ -85,24 +85,32 @@ pub(crate) fn triangulate_3d(
 }
 
 /// Expand a source geometry's appearance onto its triangulated mesh, consuming it.
-/// `face_tris[i]` is the triangle count of source face `i`. Only the per-face
-/// bindings are expanded (see [`expand_binding`]); palette and themes are unchanged.
+/// `face_tris[i]` is the triangle count of source face `i`; `src_corner[j]` is the
+/// source corner-buffer position output triangle-corner `j` draws from. Per-face
+/// bindings are expanded (see [`expand_binding`]) and each theme's UV sets
+/// re-targeted onto the triangulated corner buffer (see [`retarget_uv`]); palette
+/// and themes are otherwise unchanged.
 pub(crate) fn expand_appearance(
     appearance: Option<Appearance>,
     face_tris: &[u32],
+    src_corner: &[u32],
 ) -> Option<Appearance> {
-    appearance.map(|app| Appearance {
-        materials: app.materials,
-        default_theme: app.default_theme,
-        themes: app
-            .themes
+    appearance.map(|app| {
+        let (materials, themes, default_theme) = app.into_parts();
+        let themes = themes
             .into_iter()
             .map(|theme| ThemeBinding {
                 theme: theme.theme,
                 front: expand_binding(theme.front, face_tris),
                 back: theme.back.map(|back| expand_binding(back, face_tris)),
+                uv_sets: theme
+                    .uv_sets
+                    .into_iter()
+                    .map(|uv| retarget_uv(uv, src_corner))
+                    .collect(),
             })
-            .collect(),
+            .collect();
+        Appearance::from_parts(materials, themes, default_theme)
     })
 }
 
@@ -130,7 +138,7 @@ fn expand_binding(binding: FaceBinding, face_tris: &[u32]) -> FaceBinding {
 /// `PolygonMesh` face. An `Explicit` set is re-gathered into a fresh
 /// `3 * triangle_count`-long array; a `WorldToTexture` matrix is *positional*,
 /// so it moves over verbatim (triangulation preserves world positions).
-/// Only the `uv` payload changes; `theme` / `side` / `channel` carry through.
+/// Only the `uv` payload changes; `side` / `channel` carry through.
 pub(crate) fn retarget_uv(uv: UvSet, src_corner: &[u32]) -> UvSet {
     let mapped = match uv.uv {
         UvSource::Explicit(coords) => {

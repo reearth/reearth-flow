@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::appearance::{Appearance, UvSet};
+use crate::appearance::Appearance;
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 
@@ -28,9 +28,8 @@ pub struct TriangularMesh2D {
     z: Option<Box<[f64]>>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
     indices: IndexBuffer<3>,
-    /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    uv_sets: Vec<UvSet>,
-    /// Optional materials / themes / per-face binding; `None` = bare.
+    /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
+    /// to the corner buffers; `None` = bare.
     appearance: Option<Appearance>,
 }
 
@@ -48,9 +47,8 @@ pub struct TriangularMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
     indices: IndexBuffer<3>,
-    /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    uv_sets: Vec<UvSet>,
-    /// Optional materials / themes / per-face binding; `None` = bare.
+    /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
+    /// to the corner buffers; `None` = bare.
     appearance: Option<Appearance>,
 }
 
@@ -92,13 +90,6 @@ impl TriangularMesh2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
-
-    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
-    /// parallel to the corner buffer (`3 * num_triangles`).
-    #[inline]
-    pub fn uv_sets(&self) -> &[UvSet] {
-        &self.uv_sets
-    }
 }
 
 impl TriangularMesh3DData {
@@ -127,13 +118,6 @@ impl TriangularMesh3D {
         &mut self.data.appearance
     }
 
-    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
-    /// parallel to the corner buffer (`3 * num_triangles`).
-    #[inline]
-    pub fn uv_sets(&self) -> &[UvSet] {
-        &self.data.uv_sets
-    }
-
     /// Consume the mesh, yielding its coordinate-free data for use as a
     /// [`Solid`](crate::solid::Solid) shell.
     #[inline]
@@ -158,7 +142,7 @@ impl TriangularMesh3DData {
     /// Drop all back-side appearance, keeping only the front; see
     /// [`crate::appearance::make_front_only`].
     pub(crate) fn make_front_only(&mut self) {
-        crate::appearance::make_front_only(&mut self.appearance, &mut self.uv_sets);
+        crate::appearance::make_front_only(&mut self.appearance);
     }
 }
 
@@ -172,13 +156,12 @@ mod tests {
 
     use super::*;
     use crate::appearance::{
-        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSource,
+        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSet, UvSource,
     };
     use crate::test_support::bare;
 
     fn uv(side: Side) -> UvSet {
         UvSet {
-            theme: Some(ThemeId(Arc::from("t"))),
             side,
             channel: ChannelId::default(),
             uv: UvSource::Explicit(Box::new([])),
@@ -192,21 +175,23 @@ mod tests {
             [0u32, 1, 2],
         )
         .unwrap();
-        m.appearance = Some(Appearance {
-            materials: vec![bare(), bare()],
-            themes: vec![ThemeBinding {
-                theme: ThemeId(Arc::from("t")),
+        let theme = ThemeId(Arc::from("t"));
+        m.appearance = Some(Appearance::from_parts(
+            vec![bare(), bare()],
+            vec![ThemeBinding {
+                theme: theme.clone(),
                 front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
                 back: Some(FaceBinding::Uniform(MaterialIndex::new(1).unwrap())),
+                uv_sets: vec![uv(Side::Front), uv(Side::Back)],
             }],
-            default_theme: ThemeId(Arc::from("t")),
-        });
-        m.uv_sets = vec![uv(Side::Front), uv(Side::Back)];
+            theme,
+        ));
 
         m.make_front_only();
 
-        assert!(m.appearance.as_ref().unwrap().themes[0].back.is_none());
-        assert_eq!(m.uv_sets.len(), 1);
-        assert_eq!(m.uv_sets[0].side, Side::Front);
+        let app = m.appearance.as_ref().unwrap();
+        assert!(app.themes()[0].back.is_none());
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].uv_sets[0].side, Side::Front);
     }
 }

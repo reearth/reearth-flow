@@ -2,9 +2,7 @@ use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::index::IndexBuffer;
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
-use crate::ops::triangulation::{
-    expand_appearance, retarget_uv, triangulate_2d, triangulate_3d, Cache,
-};
+use crate::ops::triangulation::{expand_appearance, triangulate_2d, triangulate_3d, Cache};
 use crate::ops::{
     Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
@@ -111,12 +109,11 @@ impl Triangulate for PolygonMesh2D {
             }
         }
 
-        let uv_sets = std::mem::take(&mut self.uv_sets)
-            .into_iter()
-            .map(|uv| retarget_uv(uv, &buffers.corner_src))
-            .collect();
-        let appearance =
-            expand_appearance(std::mem::take(&mut self.appearance), &buffers.face_tris);
+        let appearance = expand_appearance(
+            std::mem::take(&mut self.appearance),
+            &buffers.face_tris,
+            &buffers.corner_src,
+        );
         let triangle_count = buffers.tris.len() / 3;
         // `tris` index the existing pool (each `< vertices.len()`) in triples.
         let mut mesh = match std::mem::take(&mut self.z) {
@@ -146,7 +143,7 @@ impl Triangulate for PolygonMesh2D {
                 )
             },
         };
-        mesh.set_raw_appearance(uv_sets, appearance);
+        mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -210,12 +207,11 @@ impl PolygonMesh3DData {
             }
         }
 
-        let uv_sets = std::mem::take(&mut self.uv_sets)
-            .into_iter()
-            .map(|uv| retarget_uv(uv, &buffers.corner_src))
-            .collect();
-        let appearance =
-            expand_appearance(std::mem::take(&mut self.appearance), &buffers.face_tris);
+        let appearance = expand_appearance(
+            std::mem::take(&mut self.appearance),
+            &buffers.face_tris,
+            &buffers.corner_src,
+        );
         // SAFETY: `tris` index `self.vertices` (`< len`); count is a multiple of 3.
         let mut data = unsafe {
             TriangularMesh3DData::from_parts_unchecked(
@@ -224,7 +220,7 @@ impl PolygonMesh3DData {
                 buffers.tris.iter().copied(),
             )
         };
-        data.set_raw_appearance(uv_sets, appearance);
+        data.set_raw_appearance(appearance);
         data
     }
 }
@@ -420,7 +416,7 @@ mod tests {
 
         let mut mesh = PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, [&a, &b]).unwrap();
         assert!(matches!(
-            mesh.appearance().as_ref().unwrap().themes[0].front,
+            mesh.appearance().as_ref().unwrap().themes()[0].front,
             FaceBinding::PerFace(_)
         ));
 
@@ -431,7 +427,8 @@ mod tests {
         };
         // Each quad -> 2 triangles; the per-face binding expands to one entry per triangle.
         assert_eq!(tm.num_triangles(), 4);
-        let FaceBinding::PerFace(front) = &tm.appearance().as_ref().unwrap().themes[0].front else {
+        let FaceBinding::PerFace(front) = &tm.appearance().as_ref().unwrap().themes()[0].front
+        else {
             panic!("expected PerFace");
         };
         assert_eq!(
@@ -465,33 +462,33 @@ mod tests {
         )
         .unwrap();
         let src = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
-        data.uv_sets = vec![UvSet {
-            theme: Some(theme("rgb")),
-            side: Side::Front,
-            channel: Default::default(),
-            uv: UvSource::Explicit(Box::new(src)),
-        }];
-        data.appearance = Some(Appearance {
-            materials: vec![textured()],
-            themes: vec![ThemeBinding {
+        data.appearance = Some(Appearance::from_parts(
+            vec![textured()],
+            vec![ThemeBinding {
                 theme: theme("rgb"),
                 front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
                 back: None,
+                uv_sets: vec![UvSet {
+                    side: Side::Front,
+                    channel: Default::default(),
+                    uv: UvSource::Explicit(Box::new(src)),
+                }],
             }],
-            default_theme: theme("rgb"),
-        });
+            theme("rgb"),
+        ));
 
         let out = data.triangulate(&mut Cache::new());
         let mesh = TriangularMesh3D::new(CoordinateFrame::Euclidean, out);
         assert_eq!(mesh.num_triangles(), 2);
 
-        let UvSource::Explicit(out_uv) = &mesh.uv_sets()[0].uv else {
+        let app = mesh.appearance().as_ref().unwrap();
+        let UvSource::Explicit(out_uv) = &app.themes()[0].uv_sets[0].uv else {
             panic!("expected an explicit output UV set");
         };
         assert_eq!(out_uv.len(), 6);
         assert!(out_uv.iter().all(|uv| src.contains(uv)));
         assert!(matches!(
-            mesh.appearance().as_ref().unwrap().themes[0].front,
+            mesh.appearance().as_ref().unwrap().themes()[0].front,
             FaceBinding::Uniform(_)
         ));
     }

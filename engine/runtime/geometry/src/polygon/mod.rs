@@ -11,7 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::appearance::{Appearance, UvSet};
+use crate::appearance::Appearance;
 use crate::coordinate::CoordinateFrame;
 
 mod constructor;
@@ -35,10 +35,8 @@ pub struct Polygon2D {
     /// concatenation). INVARIANT: when `Some`, `z.len() == coords.len()`.
     /// `None` = pure 2D (no allocation).
     z: Option<Box<[f64]>>,
-    /// UV parallel to `coords` (same ring concatenation); one set per
-    /// (theme, side, channel).
-    uv_sets: Vec<UvSet>,
-    /// Materials / themes / single-face binding; `None` = bare geometry.
+    /// Materials / themes / single-face binding, incl. per-theme UV parallel to
+    /// `coords`; `None` = bare geometry.
     appearance: Option<Appearance>,
 }
 
@@ -52,9 +50,8 @@ pub struct Polygon3D {
     coords: Box<[[f64; 3]]>,
     /// Start index in `coords` of each interior ring; empty when there are no holes.
     interior_offsets: Box<[u32]>,
-    /// UV parallel to `coords`; one set per (theme, side, channel).
-    uv_sets: Vec<UvSet>,
-    /// Materials / themes / single-face binding; `None` = bare geometry.
+    /// Materials / themes / single-face binding, incl. per-theme UV parallel to
+    /// `coords`; `None` = bare geometry.
     appearance: Option<Appearance>,
 }
 
@@ -98,13 +95,6 @@ impl Polygon2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
-
-    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
-    /// parallel to `coords` (exterior then interiors, closed).
-    #[inline]
-    pub fn uv_sets(&self) -> &[UvSet] {
-        &self.uv_sets
-    }
 }
 
 impl Polygon3D {
@@ -146,12 +136,5 @@ impl Polygon3D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
-    }
-
-    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
-    /// parallel to `coords` (exterior then interiors, closed).
-    #[inline]
-    pub fn uv_sets(&self) -> &[UvSet] {
-        &self.uv_sets
     }
 }
