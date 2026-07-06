@@ -6,6 +6,7 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 use super::profile::PLATEAU6;
 use crate::common::building_part_connectivity_checker::BuildingPartConnectivityCheckerFactory;
 use crate::common::building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory;
+use crate::common::destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory;
 use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFactory;
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
@@ -22,6 +23,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::new(ObjectListExtractorFactory::new(&PLATEAU6)),
         Box::new(MissingAttributeDetectorFactory::new(&PLATEAU6)),
         Box::new(BuildingUsageAttributeValidatorFactory::new(&PLATEAU6)),
+        Box::new(DestinationMeshCodeExtractorFactory::new(&PLATEAU6)),
         Box::new(BuildingPartConnectivityCheckerFactory::new(&PLATEAU6)),
         Box::new(SolidIntersectionTestPairCreatorFactory::new(&PLATEAU6)),
         Box::new(UnmatchedXlinkDetectorFactory::new(

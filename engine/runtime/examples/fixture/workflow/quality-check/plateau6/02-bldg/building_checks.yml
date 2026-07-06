@@ -876,11 +876,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod3_solid_issues", 0)
-        # TODO: wire to a PLATEAU6 mesh-code (figure boundary) check
+        # Wired to the Z-bldg-03 mesh-code (figure boundary) pipeline (IncorrectMeshCodeCounter).
         - attribute: "図郭不正"
           expr:
             type: flowExpr
-            value: "0"
+            value: attributes.get("_num_incorrect_meshcode", 0)
         # TODO: wire to a PLATEAU6 BuildingPart LOD0-1 check
         - attribute: "LOD0-1のBuildingPart"
           expr:
@@ -2395,6 +2395,91 @@ nodes:
         type: flowExpr
         value: attributes["name"]
 
+  # --- Z-bldg-03 mesh-code (figure boundary) pipeline ---
+  # Taps the reprojected LOD0 footprints (already forced to 2D by TwoDimensionForcer)
+  # and computes the Japanese standard 1km mesh code the building actually falls in.
+  # A building whose GML filename does not start with that mesh code is a figure
+  # boundary error (図郭不正). Mirrors the plateau4 surface_validation.yml wiring.
+  - id: c1b00070-0000-4000-8000-000000000070
+    name: DestinationMeshCodeExtractor
+    type: action
+    action: PLATEAU6.DestinationMeshCodeExtractor
+    with:
+      meshType: 3
+      epsgCode:
+        type: flowExpr
+        value: env.get("prcs")
+      meshcodeAttr: "meshcode"
+
+  - id: c1b00071-0000-4000-8000-000000000071
+    name: MeshCodeTester
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not attributes["name"].starts_with(attributes["meshcode"])
+          outputPort: failed
+
+  - id: c1b00072-0000-4000-8000-000000000072
+    name: AttributeMapperIncorrectMeshCode
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: feature_type
+          valueAttribute: __citygml_feature_type
+        - attribute: meshcount
+          valueAttribute: _mesh_count
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: meshcode
+          valueAttribute: meshcode
+        - attribute: filename
+          valueAttribute: name
+        - attribute: mesh2area
+          valueAttribute: _meshcode_to_area
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+
+  - id: c1b00073-0000-4000-8000-000000000073
+    name: FeatureWriterIncorrectMeshCode
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_図郭不正.csv
+
+  # Count 図郭不正 rows per file for the summary column.
+  - id: c1b00074-0000-4000-8000-000000000074
+    name: IncorrectMeshCodeCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_incorrect_meshcode
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file 図郭不正 count onto each file feature.
+  - id: c1b00075-0000-4000-8000-000000000075
+    name: IncorrectMeshCodeSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
 edges:
   - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
     from: 63341eb4-409d-4668-b338-2d1e5ab003fd
@@ -3633,14 +3718,66 @@ edges:
     to: c1b00068-0000-4000-8000-000000000068
     fromPort: default
     toPort: supplier
-  # L-bldg-02 summary merger output -> building summary mapper.
+  # L-bldg-02 summary merger output -> mesh-code summary merger (requestor).
   - id: c1b0e06b-0000-4000-8000-00000000006b
     from: c1b00068-0000-4000-8000-000000000068
+    to: c1b00075-0000-4000-8000-000000000075
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e06c-0000-4000-8000-00000000006c
+    from: c1b00068-0000-4000-8000-000000000068
+    to: c1b00075-0000-4000-8000-000000000075
+    fromPort: unmerged
+    toPort: requestor
+
+  # --- Z-bldg-03 mesh-code pipeline edges ---
+  # Tap the reprojected 2D LOD0 footprints from TwoDimensionForcer.
+  - id: c1b0e070-0000-4000-8000-000000000070
+    from: d65886fc-2d62-448c-8b2e-16841e3c4887
+    to: c1b00070-0000-4000-8000-000000000070
+    fromPort: default
+    toPort: default
+  # Extractor -> mesh-code tester.
+  - id: c1b0e071-0000-4000-8000-000000000071
+    from: c1b00070-0000-4000-8000-000000000070
+    to: c1b00071-0000-4000-8000-000000000071
+    fromPort: default
+    toPort: default
+  # Filename/mesh-code mismatch -> attribute mapper -> CSV writer.
+  - id: c1b0e072-0000-4000-8000-000000000072
+    from: c1b00071-0000-4000-8000-000000000071
+    to: c1b00072-0000-4000-8000-000000000072
+    fromPort: failed
+    toPort: default
+  - id: c1b0e073-0000-4000-8000-000000000073
+    from: c1b00072-0000-4000-8000-000000000072
+    to: c1b00073-0000-4000-8000-000000000073
+    fromPort: default
+    toPort: default
+  - id: c1b0e074-0000-4000-8000-000000000074
+    from: c1b00073-0000-4000-8000-000000000073
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: default
+    toPort: default
+  # Mismatched features -> counter -> mesh-code summary merger (supplier).
+  - id: c1b0e075-0000-4000-8000-000000000075
+    from: c1b00071-0000-4000-8000-000000000071
+    to: c1b00074-0000-4000-8000-000000000074
+    fromPort: failed
+    toPort: default
+  - id: c1b0e076-0000-4000-8000-000000000076
+    from: c1b00074-0000-4000-8000-000000000074
+    to: c1b00075-0000-4000-8000-000000000075
+    fromPort: default
+    toPort: supplier
+  # Mesh-code summary merger output -> building summary mapper.
+  - id: c1b0e077-0000-4000-8000-000000000077
+    from: c1b00075-0000-4000-8000-000000000075
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: default
-  - id: c1b0e06c-0000-4000-8000-00000000006c
-    from: c1b00068-0000-4000-8000-000000000068
+  - id: c1b0e078-0000-4000-8000-000000000078
+    from: c1b00075-0000-4000-8000-000000000075
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: default

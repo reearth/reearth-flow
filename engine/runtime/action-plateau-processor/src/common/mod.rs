@@ -1,5 +1,6 @@
 pub(crate) mod building_part_connectivity_checker;
 pub(crate) mod building_usage_attribute_validator;
+pub(crate) mod destination_mesh_code_extractor;
 pub(crate) mod domain_of_definition_validator;
 pub(crate) mod errors;
 pub(crate) mod missing_attribute_detector;

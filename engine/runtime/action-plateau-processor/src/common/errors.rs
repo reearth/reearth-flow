@@ -36,6 +36,10 @@ pub(crate) enum PlateauProcessorError {
     UnmatchedXlinkDetectorFactory(String),
     #[error("Unmatched Xlink Detector error: {0}")]
     UnmatchedXlinkDetector(String),
+    #[error("DestinationMeshCodeExtractor Factory error: {0}")]
+    DestinationMeshCodeExtractorFactory(String),
+    #[error("DestinationMeshCodeExtractor error: {0}")]
+    DestinationMeshCodeExtractor(String),
 }
 
 pub(crate) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

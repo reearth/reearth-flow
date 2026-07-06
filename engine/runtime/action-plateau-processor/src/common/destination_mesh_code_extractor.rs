@@ -23,7 +23,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Number;
 use serde_json::Value;
 
-use crate::plateau4::errors::PlateauProcessorError;
+use super::errors::PlateauProcessorError;
+use super::PlateauProfile;
 
 // Thread-local cache for PROJ transformations.
 // Stores both forward (6697 -> target) and inverse (target -> 6697) projections.
@@ -36,12 +37,22 @@ thread_local! {
     static PROJ_FROM_CACHE: RefCell<HashMap<String, proj::Proj>> = RefCell::new(HashMap::new());
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct DestinationMeshCodeExtractorFactory;
+#[derive(Debug, Clone)]
+pub(crate) struct DestinationMeshCodeExtractorFactory {
+    name: String,
+}
+
+impl DestinationMeshCodeExtractorFactory {
+    pub(crate) fn new(profile: &PlateauProfile) -> Self {
+        Self {
+            name: profile.action_name("DestinationMeshCodeExtractor"),
+        }
+    }
+}
 
 impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
     fn name(&self) -> &str {
-        "PLATEAU4.DestinationMeshCodeExtractor"
+        &self.name
     }
 
     fn description(&self) -> &str {
@@ -72,10 +83,16 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: DestinationMeshCodeExtractorParam = if let Some(with) = with {
-            let value: Value = serde_json::to_value(with)
-                .map_err(|e| format!("Failed to serialize parameters: {e}"))?;
-            serde_json::from_value(value)
-                .map_err(|e| format!("Failed to deserialize parameters: {e}"))?
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                PlateauProcessorError::DestinationMeshCodeExtractorFactory(format!(
+                    "Failed to serialize parameters: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                PlateauProcessorError::DestinationMeshCodeExtractorFactory(format!(
+                    "Failed to deserialize parameters: {e}"
+                ))
+            })?
         } else {
             DestinationMeshCodeExtractorParam::default()
         };
