@@ -25,5 +25,13 @@ pub struct Point3D {
     position: [f64; 3],
 }
 
+impl Point3D {
+    /// The `[x, y, z]` position.
+    #[inline]
+    pub fn position(&self) -> [f64; 3] {
+        self.position
+    }
+}
+
 crate::unsupported!(Point2D: Triangulate);
 crate::unsupported!(Point3D: Triangulate);

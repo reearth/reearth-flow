@@ -16,7 +16,6 @@ use serde_json::Value;
 use url::Url;
 
 use crate::citygml_parser::parser::Parser;
-#[cfg(not(feature = "new-geometry"))]
 use crate::citygml_parser::pipeline::build_features;
 use crate::feature::errors::FeatureProcessorError;
 
@@ -207,7 +206,6 @@ impl Processor for FeatureCityGml3Reader {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
