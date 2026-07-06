@@ -163,9 +163,6 @@ jobs:
 
       - name: Publish latest report to bucket root
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
-        # The report is a single self-contained HTML file (allurerc.mjs sets
-        # singleFile: true), so publishing "latest" is one object copy. Never
-        # rsync -d at the bucket root; it would delete runs/ and index.json.
         run: |
           gsutil -h "Cache-Control:no-cache" cp ./allure-report/index.html "gs://$BUCKET/index.html"
 
