@@ -16,7 +16,13 @@ version.workspace = true
 new-geometry = [
   "reearth-flow-geometry/new-geometry",
   "reearth-flow-types/new-geometry",
+  "reearth-flow-action-processor/new-geometry",
 ]
+
+[[example]]
+name = "gml_to_3dtiles"
+path = "examples/gml_to_3dtiles.rs"
+required-features = ["new-geometry"]
 
 [dependencies]
 reearth-flow-action-log.workspace = true
@@ -84,3 +90,4 @@ uuid.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+reearth-flow-action-processor.workspace = true

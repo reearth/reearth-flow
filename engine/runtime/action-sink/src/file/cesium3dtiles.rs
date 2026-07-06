@@ -1,5 +1,5 @@
 #[cfg(feature = "new-geometry")]
-mod next;
+pub mod next;
 mod pipeline;
 pub(crate) mod sink;
 mod slice;

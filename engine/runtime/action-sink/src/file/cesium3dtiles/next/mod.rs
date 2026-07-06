@@ -54,83 +54,84 @@ impl Cesium3DTilesWriter {
 
     pub(super) fn finish_new_geometry(&self, ctx: NodeContext) -> crate::errors::Result<()> {
         for ((output, _, _), features) in &self.buffer {
-            self.write_one_tileset(&ctx, output, features)?;
+            let (glb_bytes, tileset_bytes) = build(features)?;
+
+            crate::SinkOutput::new(
+                &ctx.sandbox_root,
+                &format!("{output}/tile.glb"),
+                &ctx.storage_resolver,
+            )
+            .and_then(|out| out.write(bytes::Bytes::from(glb_bytes)))
+            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+
+            crate::SinkOutput::new(
+                &ctx.sandbox_root,
+                &format!("{output}/tileset.json"),
+                &ctx.storage_resolver,
+            )
+            .and_then(|out| out.write(bytes::Bytes::from(tileset_bytes)))
+            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
         }
         Ok(())
     }
+}
 
-    fn write_one_tileset(
-        &self,
-        node_ctx: &NodeContext,
-        output: &str,
-        features: &[Feature],
-    ) -> crate::errors::Result<()> {
-        // Merge every feature's mesh into one combined buffer: pass 1 has no
-        // tiling, so a "group" (one evaluated `output` path) is one tile.
-        let mut ecef_vertices: Vec<[f64; 3]> = Vec::new();
-        let mut geographic_vertices: Vec<[f64; 3]> = Vec::new();
-        let mut indices: Vec<[u32; 3]> = Vec::new();
+/// Merge every feature's mesh into one combined tile (pass 1 has no tiling, so
+/// a group of features is one tile) and render it to a `(glb_bytes,
+/// tileset_json)` pair.
+///
+/// A free function, independent of any `Cesium3DTilesWriter` instance or
+/// `NodeContext`, so it doubles as the entry point for the `gml_to_3dtiles`
+/// example, which drives it from a real parsed CityGML file instead of the
+/// sink's buffered features.
+pub fn build(features: &[Feature]) -> crate::errors::Result<(Vec<u8>, String)> {
+    let mut ecef_vertices: Vec<[f64; 3]> = Vec::new();
+    let mut geographic_vertices: Vec<[f64; 3]> = Vec::new();
+    let mut indices: Vec<[u32; 3]> = Vec::new();
 
-        for feature in features {
-            let Some(extracted) = mesh::extract(&feature.geometry) else {
-                continue;
-            };
-            let base = ecef_vertices.len() as u32;
-            indices.extend(
-                extracted
-                    .indices
-                    .into_iter()
-                    .map(|[a, b, c]| [a + base, b + base, c + base]),
-            );
-            ecef_vertices.extend(extracted.ecef_vertices);
-            geographic_vertices.extend(extracted.geographic_vertices);
-        }
-
-        if ecef_vertices.is_empty() {
-            tracing::warn!(
-                "Cesium3DTilesWriter (new-geometry): no renderable geometry for output \
-                 `{output}`; writing an empty tileset"
-            );
-        }
-
-        // Per-tile (= the single root tile, in this pass) local origin: keeps
-        // the f32 GLB positions small relative to ECEF's ~6.378e6 m magnitude,
-        // regardless of how many tiles the eventual tiling pass introduces.
-        let origin = centroid(&ecef_vertices);
-        let local_positions: Vec<[f32; 3]> = ecef_vertices
-            .iter()
-            .map(|p| {
-                [
-                    (p[0] - origin[0]) as f32,
-                    (p[1] - origin[1]) as f32,
-                    (p[2] - origin[2]) as f32,
-                ]
-            })
-            .collect();
-
-        let glb_bytes = glb::write(&local_positions, &indices, origin);
-        let tileset_json = tileset::build(&geographic_vertices, "tile.glb");
-        let tileset_bytes = serde_json::to_string_pretty(&tileset_json)
-            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-
-        crate::SinkOutput::new(
-            &node_ctx.sandbox_root,
-            &format!("{output}/tile.glb"),
-            &node_ctx.storage_resolver,
-        )
-        .and_then(|out| out.write(bytes::Bytes::from(glb_bytes)))
-        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-
-        crate::SinkOutput::new(
-            &node_ctx.sandbox_root,
-            &format!("{output}/tileset.json"),
-            &node_ctx.storage_resolver,
-        )
-        .and_then(|out| out.write(bytes::Bytes::from(tileset_bytes)))
-        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-
-        Ok(())
+    for feature in features {
+        let Some(extracted) = mesh::extract(&feature.geometry) else {
+            continue;
+        };
+        let base = ecef_vertices.len() as u32;
+        indices.extend(
+            extracted
+                .indices
+                .into_iter()
+                .map(|[a, b, c]| [a + base, b + base, c + base]),
+        );
+        ecef_vertices.extend(extracted.ecef_vertices);
+        geographic_vertices.extend(extracted.geographic_vertices);
     }
+
+    if ecef_vertices.is_empty() {
+        tracing::warn!(
+            "Cesium3DTilesWriter (new-geometry): no renderable geometry found; writing an \
+             empty tileset"
+        );
+    }
+
+    // Per-tile (= the single root tile, in this pass) local origin: keeps
+    // the f32 GLB positions small relative to ECEF's ~6.378e6 m magnitude,
+    // regardless of how many tiles the eventual tiling pass introduces.
+    let origin = centroid(&ecef_vertices);
+    let local_positions: Vec<[f32; 3]> = ecef_vertices
+        .iter()
+        .map(|p| {
+            [
+                (p[0] - origin[0]) as f32,
+                (p[1] - origin[1]) as f32,
+                (p[2] - origin[2]) as f32,
+            ]
+        })
+        .collect();
+
+    let glb_bytes = glb::write(&local_positions, &indices, origin);
+    let tileset_json = tileset::build(&geographic_vertices, "tile.glb");
+    let tileset_bytes = serde_json::to_string_pretty(&tileset_json)
+        .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
+
+    Ok((glb_bytes, tileset_bytes))
 }
 
 fn centroid(points: &[[f64; 3]]) -> [f64; 3] {

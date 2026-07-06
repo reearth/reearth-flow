@@ -23,12 +23,24 @@ const TARGET_ELEMENT_ARRAY_BUFFER: u32 = 34963;
 ///
 /// `positions` must already be localized (small deltas from some local origin,
 /// not raw ECEF — see the module-level note in `next/mod.rs` on why) and cast
-/// to `f32`. `translation` is that local origin, in full `f64` precision — a
-/// glTF node `translation` is a plain JSON number array, so it round-trips
-/// exactly regardless of how large the ECEF magnitude is.
+/// to `f32`, expressed in the same right-handed, Z-up axes as ECEF.
+/// `translation` is that local origin, in full `f64` precision — a glTF node
+/// `translation` is a plain JSON number array, so it round-trips exactly
+/// regardless of how large the ECEF magnitude is.
+///
+/// 3D Tiles renderers apply a fixed Y-up-to-Z-up rotation — `(x, y, z) -> (x,
+/// -z, y)` — to bare-glTF tile content before placing it via the tile
+/// transform (confirmed against a known-good tile in
+/// `testing/data/results`: its GLB translation only resolves to a sane
+/// geographic position after that rotation is applied). Since the input here
+/// is already Z-up (ECEF-relative), this writes the inverse, `(x, y, z) ->
+/// (x, z, -y)`, so the renderer's rotation cancels out.
 pub(super) fn write(positions: &[[f32; 3]], indices: &[[u32; 3]], translation: [f64; 3]) -> Vec<u8> {
-    let mut bin: Vec<u8> = Vec::with_capacity(positions.len() * 12 + indices.len() * 12);
-    for p in positions {
+    let gltf_positions: Vec<[f32; 3]> = positions.iter().map(|&[x, y, z]| [x, z, -y]).collect();
+    let gltf_translation = [translation[0], translation[2], -translation[1]];
+
+    let mut bin: Vec<u8> = Vec::with_capacity(gltf_positions.len() * 12 + indices.len() * 12);
+    for p in &gltf_positions {
         for c in p {
             bin.extend_from_slice(&c.to_le_bytes());
         }
@@ -41,7 +53,7 @@ pub(super) fn write(positions: &[[f32; 3]], indices: &[[u32; 3]], translation: [
     }
     let indices_byte_length = bin.len() - positions_byte_length;
 
-    let (min, max) = position_bounds(positions);
+    let (min, max) = position_bounds(&gltf_positions);
 
     let json_doc = json!({
         "asset": {"version": "2.0"},
@@ -76,10 +88,16 @@ pub(super) fn write(positions: &[[f32; 3]], indices: &[[u32; 3]], translation: [
                 "type": "SCALAR",
             },
         ],
+        // Explicit, double-sided material: a primitive with no material uses
+        // glTF's default material, which has `doubleSided: false` (backface
+        // culling on). This writer doesn't verify triangle winding order
+        // anywhere upstream, so culling could hide a mesh whose winding ends
+        // up reversed; double-siding removes that failure mode entirely.
+        "materials": [{"doubleSided": true}],
         "meshes": [{
-            "primitives": [{"attributes": {"POSITION": 0}, "indices": 1}],
+            "primitives": [{"attributes": {"POSITION": 0}, "indices": 1, "material": 0}],
         }],
-        "nodes": [{"mesh": 0, "translation": translation}],
+        "nodes": [{"mesh": 0, "translation": gltf_translation}],
         "scenes": [{"nodes": [0]}],
         "scene": 0,
     });

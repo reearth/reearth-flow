@@ -1,25 +1,39 @@
-//! Extracts a single renderable mesh from the new `Geometry` type and
-//! reprojects it to WGS84 (for tileset placement) and ECEF (for glTF
-//! vertices).
+//! Extracts every reachable `PolygonMesh` leaf (bare, or as a `Solid`'s
+//! boundary shells) from the new `Geometry` type and reprojects it to WGS84
+//! (for tileset placement) and ECEF (for glTF vertices).
 //!
-//! Pass-1 scope: only a bare `PolygonMesh` leaf is supported — the dominant
-//! shape PLATEAU CityGML produces (`Surface`/`CompositeSurface`/`Shell` map to
-//! `PolygonMesh`). Every other leaf (`Point`, `LineString`, `Polygon`, `Solid`,
-//! `Csg`, `PointCloud`, any collection) is rejected for now; broader leaf
-//! coverage is a later pass.
+//! Pass-1 scope: only `PolygonMesh` data is read — the dominant shape PLATEAU
+//! CityGML produces (`Surface`/`CompositeSurface`/`Shell` map to
+//! `PolygonMesh`; `lod1Solid`/`lod2Solid` wrap one in a `Solid`). Every other
+//! leaf (`Point`, `LineString`, `Polygon`, `Csg`, `PointCloud`,
+//! `TriangularMesh`, and a `Solid` shell that happens to be a
+//! `TriangularMesh`) is skipped with a warning; broader leaf coverage is a
+//! later pass. The real CityGML reader always wraps a feature's geometry in a
+//! `GeometryCollection` (one member per LOD property) and may nest meshes
+//! inside further `Collection`s (e.g. `MultiSurface`), so both are unwrapped
+//! recursively to find the `PolygonMesh` data within.
 //!
-//! CRS: reprojection requires the leaf to already carry a real `Coordinate::Crs`
-//! (hand-built fixtures set this directly at construction). There is no
-//! fallback for `Coordinate::Euclidean` input yet — that only matters once a
-//! reader that produces untagged geometry is in the loop, which is out of
-//! scope for this pass.
+//! CRS: the real CityGML reader does not parse `srsName` yet and tags every
+//! leaf `Coordinate::Euclidean` (see `resolver::FRAME`), so a leaf's own frame
+//! can't be trusted. Rather than fake a `Coordinate::Crs` tag it doesn't
+//! carry, this module assumes JGD2011 (EPSG:6697, the CRS PLATEAU CityGML is
+//! published in) and reprojects each mesh's raw vertex buffer directly via
+//! `transform_coords_3d`, bypassing the `Coordinate`/`Reproject` machinery
+//! (and its `require_crs` check) entirely. The assumption is local to this
+//! writer; nothing about the geometry itself is mutated.
 
-use reearth_flow_geometry::coordinate::EpsgCode;
+use reearth_flow_geometry::coordinate::{Coordinate, EpsgCode};
+use reearth_flow_geometry::ops::reproject::transform_coords_3d;
 use reearth_flow_geometry::ops::{
-    triangulation::Cache as TriangulationCache, Reproject, ReprojectionCache, Triangulate,
+    triangulation::Cache as TriangulationCache, ReprojectionCache, Triangulate,
 };
+use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
+use reearth_flow_geometry::solid::Shell;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 
+/// Assumed source CRS for every input leaf; see the module doc for why this is
+/// assumed rather than read from each leaf's `Coordinate`.
+const ASSUMED_SOURCE_CRS: EpsgCode = EpsgCode::new(6697);
 /// WGS84, 3D geographic (lon, lat, height) — used for the tileset's bounding region.
 const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
 /// WGS84, geocentric (ECEF) — used for glTF vertex positions.
@@ -34,24 +48,100 @@ pub(super) struct ExtractedMesh {
     pub(super) indices: Vec<[u32; 3]>,
 }
 
-/// Extract and reproject the one supported leaf out of `geometry`.
+/// Extract and reproject every `PolygonMesh` reachable from `geometry`, merged
+/// into one combined mesh (index-offset concatenation).
 ///
-/// Returns `None` (after a `tracing::warn!`) for any unsupported shape or any
-/// reprojection failure (most commonly: the leaf's `Coordinate` isn't a `Crs`).
+/// Returns `None` when nothing was found, or everything found failed to
+/// triangulate/reproject (each failure is `tracing::warn!`ed individually).
 pub(super) fn extract(geometry: &Geometry) -> Option<ExtractedMesh> {
-    if !matches!(
-        geometry,
-        Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(_))
-    ) {
-        tracing::warn!(
-            "Cesium3DTilesWriter (new-geometry, pass 1): only a bare PolygonMesh is supported \
-             today; skipping feature with geometry {geometry:?}"
+    let mut meshes = Vec::new();
+    collect_geometry(geometry, &mut meshes);
+
+    let mut combined = ExtractedMesh {
+        ecef_vertices: Vec::new(),
+        geographic_vertices: Vec::new(),
+        indices: Vec::new(),
+    };
+
+    for mesh in meshes {
+        let Some(extracted) = extract_one(mesh) else {
+            continue;
+        };
+        let base = combined.ecef_vertices.len() as u32;
+        combined.indices.extend(
+            extracted
+                .indices
+                .into_iter()
+                .map(|[a, b, c]| [a + base, b + base, c + base]),
         );
-        return None;
+        combined.ecef_vertices.extend(extracted.ecef_vertices);
+        combined
+            .geographic_vertices
+            .extend(extracted.geographic_vertices);
     }
 
+    if combined.ecef_vertices.is_empty() {
+        None
+    } else {
+        Some(combined)
+    }
+}
+
+/// Recurse through `GeometryCollection` — the reader's mandatory per-LOD
+/// wrapper — into the `Euclidean3D` members it holds.
+fn collect_geometry(geometry: &Geometry, out: &mut Vec<PolygonMesh3D>) {
+    match geometry {
+        Geometry::GeometryCollection(gc) => {
+            for member in gc.members() {
+                collect_geometry(member, out);
+            }
+        }
+        Geometry::Euclidean3D(e) => collect_euclidean3d(e, out),
+        other => tracing::warn!(
+            "Cesium3DTilesWriter (new-geometry, pass 1): skipping unsupported geometry {other:?}"
+        ),
+    }
+}
+
+/// Recurse through `Collection` (e.g. a CityGML `MultiSurface`) into its
+/// members, and unpack a `Solid`'s boundary shells (e.g. `lod1Solid`/
+/// `lod2Solid`), collecting every `PolygonMesh` found. A `Solid` shell has no
+/// `Coordinate` of its own (see `solid::Shell`'s doc); it's wrapped in a
+/// placeholder frame here since this writer bypasses per-leaf `Coordinate`
+/// entirely anyway (see the module doc).
+fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh3D>) {
+    match geometry {
+        Euclidean3DGeometry::Collection(c) => {
+            for member in c.members() {
+                collect_euclidean3d(member, out);
+            }
+        }
+        Euclidean3DGeometry::PolygonMesh(mesh) => out.push((**mesh).clone()),
+        Euclidean3DGeometry::Solid(solid) => {
+            for shell in std::iter::once(solid.exterior()).chain(solid.interiors()) {
+                match shell {
+                    Shell::PolygonMesh(data) => {
+                        out.push(PolygonMesh3D::new(Coordinate::Euclidean, data.clone()))
+                    }
+                    Shell::TriangularMesh(_) => tracing::warn!(
+                        "Cesium3DTilesWriter (new-geometry, pass 1): a Solid shell is a \
+                         TriangularMesh; TriangularMesh leaves aren't supported yet, skipping"
+                    ),
+                }
+            }
+        }
+        other => tracing::warn!(
+            "Cesium3DTilesWriter (new-geometry, pass 1): only PolygonMesh/Solid are supported \
+             today; skipping {other:?}"
+        ),
+    }
+}
+
+/// Triangulate and reproject one `PolygonMesh`.
+fn extract_one(mesh: PolygonMesh3D) -> Option<ExtractedMesh> {
     let mut triangulation_cache = TriangulationCache::new();
-    let triangulated = match geometry.clone().triangulate(&mut triangulation_cache) {
+    let mut geometry = Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+    let triangulated = match geometry.triangulate(&mut triangulation_cache) {
         Ok(g) => g,
         Err(e) => {
             tracing::warn!("Cesium3DTilesWriter: failed to triangulate PolygonMesh: {e:?}");
@@ -68,21 +158,31 @@ pub(super) fn extract(geometry: &Geometry) -> Option<ExtractedMesh> {
 
     let mut reproject_cache = ReprojectionCache::new();
 
-    let mut geographic = (*mesh).clone();
-    if let Err(e) = geographic.reproject(WGS84_GEOGRAPHIC, &mut reproject_cache) {
+    let mut geographic_vertices = mesh.vertices().to_vec();
+    if let Err(e) = transform_coords_3d(
+        &mut reproject_cache,
+        ASSUMED_SOURCE_CRS,
+        WGS84_GEOGRAPHIC,
+        &mut geographic_vertices,
+    ) {
         tracing::warn!("Cesium3DTilesWriter: failed to reproject to WGS84 geographic: {e:?}");
         return None;
     }
 
-    let mut ecef = (*mesh).clone();
-    if let Err(e) = ecef.reproject(WGS84_GEOCENTRIC, &mut reproject_cache) {
+    let mut ecef_vertices = mesh.vertices().to_vec();
+    if let Err(e) = transform_coords_3d(
+        &mut reproject_cache,
+        ASSUMED_SOURCE_CRS,
+        WGS84_GEOCENTRIC,
+        &mut ecef_vertices,
+    ) {
         tracing::warn!("Cesium3DTilesWriter: failed to reproject to ECEF: {e:?}");
         return None;
     }
 
     Some(ExtractedMesh {
-        ecef_vertices: ecef.vertices().to_vec(),
-        geographic_vertices: geographic.vertices().to_vec(),
+        ecef_vertices,
+        geographic_vertices,
         indices: mesh.triangles().collect(),
     })
 }

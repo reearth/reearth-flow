@@ -14,10 +14,17 @@ use serde_json::{json, Value};
 /// degrees, height in metres — the convention the geometry crate's `Reproject`
 /// op already normalizes to).
 ///
-/// `geometricError` is `0` at both the tileset and root-tile level: this tile
-/// is simultaneously the root and the leaf (nothing more detailed exists to
-/// refine into), the same convention the eventual tiling design uses for leaf
-/// tiles.
+/// `geometricError` is a modest, non-zero placeholder at both the tileset and
+/// root-tile level. A real writer would derive this from the tile's on-screen
+/// error at some reference distance; this pass has no multi-LOD refinement to
+/// calibrate against, so a fixed placeholder stands in — but it must not be
+/// `0`, which known-good tilesets in `testing/data/results` never use even on
+/// leaf content tiles, and which risks confusing a renderer's screen-space-
+/// error-based tile selection (bounding-volume-only checks, like flying the
+/// camera to a tile, don't need this — but deciding whether to fetch and
+/// render a tile's content does).
+const PLACEHOLDER_GEOMETRIC_ERROR: f64 = 100.0;
+
 pub(super) fn build(geographic_vertices: &[[f64; 3]], content_uri: &str) -> Value {
     let (min, max) = bounds(geographic_vertices);
     let region = [
@@ -31,11 +38,11 @@ pub(super) fn build(geographic_vertices: &[[f64; 3]], content_uri: &str) -> Valu
 
     json!({
         "asset": {"version": "1.1"},
-        "geometricError": 0.0,
+        "geometricError": PLACEHOLDER_GEOMETRIC_ERROR,
         "root": {
             "boundingVolume": {"region": region},
-            "geometricError": 0.0,
-            "refine": "ADD",
+            "geometricError": PLACEHOLDER_GEOMETRIC_ERROR,
+            "refine": "REPLACE",
             "content": {"uri": content_uri},
         },
     })
