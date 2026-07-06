@@ -34,7 +34,7 @@ use crate::appearance::{
     Appearance, ChannelId, FaceBinding, Material, MaterialIndex, Side, TexMatrix, ThemeBinding,
     ThemeId, UvSet, UvSource,
 };
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
 use crate::index::{IndexBuffer, IndexWidth};
 use crate::polygon::Polygon3D;
@@ -137,37 +137,37 @@ impl PolygonMesh3DData {
 
 impl PolygonMesh3D {
     /// Pair coordinate-free mesh data with the frame it is expressed in.
-    pub fn new(coordinate: Coordinate, data: PolygonMesh3DData) -> Self {
-        Self { coordinate, data }
+    pub fn new(frame: CoordinateFrame, data: PolygonMesh3DData) -> Self {
+        Self { frame, data }
     }
 
     /// Build from independent face polygons; see [`PolygonMesh3DData::from_polygons`].
-    /// Errors if any polygon's frame differs from `coordinate`.
+    /// Errors if any polygon's frame differs from `frame`.
     pub fn from_polygons<'a>(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         polygons: impl IntoIterator<Item = &'a Polygon3D>,
     ) -> Result<Self, Error> {
-        Self::from_polygons_with_default_theme(coordinate, polygons, None)
+        Self::from_polygons_with_default_theme(frame, polygons, None)
     }
 
     /// As [`from_polygons`](Self::from_polygons), but pins the merged mesh's active
     /// default theme; see
     /// [`PolygonMesh3DData::from_polygons_with_default_theme`].
     pub fn from_polygons_with_default_theme<'a>(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         polygons: impl IntoIterator<Item = &'a Polygon3D>,
         default_theme: Option<ThemeId>,
     ) -> Result<Self, Error> {
         let polygons: Vec<&Polygon3D> = polygons.into_iter().collect();
         for p in &polygons {
-            if p.coordinate() != &coordinate {
+            if p.frame() != &frame {
                 return Err(Error::invalid_geometry(
                     "polygon coordinate frame differs from the mesh frame",
                 ));
             }
         }
         Ok(Self::new(
-            coordinate,
+            frame,
             PolygonMesh3DData::from_polygons_with_default_theme(polygons, default_theme),
         ))
     }
@@ -175,26 +175,26 @@ impl PolygonMesh3D {
     /// Build from a vertex pool and index-list faces; see
     /// [`PolygonMesh3DData::from_parts`].
     pub fn from_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 3]>,
         faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
     ) -> Result<Self, Error> {
         Ok(Self::new(
-            coordinate,
+            frame,
             PolygonMesh3DData::from_parts(vertices, faces)?,
         ))
     }
 
     /// Build from flat CSR buffers; see [`PolygonMesh3DData::from_raw_parts`].
     pub fn from_raw_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 3]>,
         face_indices: Vec<u32>,
         face_offsets: Vec<u32>,
         interior_offsets: Vec<u32>,
     ) -> Result<Self, Error> {
         Ok(Self::new(
-            coordinate,
+            frame,
             PolygonMesh3DData::from_raw_parts(
                 vertices,
                 face_indices,
@@ -208,7 +208,7 @@ impl PolygonMesh3D {
 impl PolygonMesh2D {
     /// Build a pure-2D mesh from a vertex pool and index-list faces (no holes).
     pub fn from_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 2]>,
         faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
     ) -> Result<Self, Error> {
@@ -216,7 +216,7 @@ impl PolygonMesh2D {
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(vertices.len(), face_indices, face_offsets, Vec::new());
         Ok(Self {
-            coordinate,
+            frame,
             vertices,
             z: None,
             face_indices,
@@ -230,7 +230,7 @@ impl PolygonMesh2D {
     /// Build a 2.5D mesh from `[x, y, z]` vertices (the `(x, y)` populate the pool,
     /// the `z` a parallel elevation buffer) and index-list faces (no holes).
     pub fn from_parts_with_elevation(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 3]>,
         faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
     ) -> Result<Self, Error> {
@@ -246,7 +246,7 @@ impl PolygonMesh2D {
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(xy.len(), face_indices, face_offsets, Vec::new());
         Ok(Self {
-            coordinate,
+            frame,
             vertices: xy,
             z: Some(z),
             face_indices,
@@ -259,7 +259,7 @@ impl PolygonMesh2D {
 
     /// Build a pure-2D mesh from flat CSR buffers.
     pub fn from_raw_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 2]>,
         face_indices: Vec<u32>,
         face_offsets: Vec<u32>,
@@ -274,7 +274,7 @@ impl PolygonMesh2D {
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(vertices.len(), face_indices, face_offsets, interior_offsets);
         Ok(Self {
-            coordinate,
+            frame,
             vertices,
             z: None,
             face_indices,
@@ -685,7 +685,11 @@ mod tests {
     }
 
     fn quad(corners: [[f64; 3]; 4]) -> Polygon3D {
-        Polygon3D::from_rings(Coordinate::Euclidean, corners, Vec::<Vec<[f64; 3]>>::new())
+        Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            corners,
+            Vec::<Vec<[f64; 3]>>::new(),
+        )
     }
 
     #[test]
@@ -693,7 +697,7 @@ mod tests {
         // Two unit quads sharing the edge (1,0,0)-(1,1,0): 6 unique vertices.
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
         let b = quad([[1., 0., 0.], [2., 0., 0.], [2., 1., 0.], [1., 1., 0.]]);
-        let m = PolygonMesh3D::from_polygons(Coordinate::Euclidean, [&a, &b]).unwrap();
+        let m = PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, [&a, &b]).unwrap();
         assert_eq!(
             m.data.vertices,
             vec![
@@ -716,7 +720,7 @@ mod tests {
     fn from_polygons_preserves_a_hole() {
         let outer = [[0., 0., 0.], [4., 0., 0.], [4., 4., 0.], [0., 4., 0.]];
         let hole = vec![[1., 1., 0.], [2., 1., 0.], [2., 2., 0.], [1., 2., 0.]];
-        let p = Polygon3D::from_rings(Coordinate::Euclidean, outer, vec![hole]);
+        let p = Polygon3D::from_rings(CoordinateFrame::Euclidean, outer, vec![hole]);
         let m = PolygonMesh3DData::from_polygons([&p]);
         assert_eq!(m.vertices.len(), 8);
         assert_eq!(ones(&m.face_indices), vec![0, 1, 2, 3, 4, 5, 6, 7]);
@@ -728,8 +732,8 @@ mod tests {
     #[test]
     fn from_polygons_rejects_frame_mismatch() {
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
-        let err =
-            PolygonMesh3D::from_polygons(Coordinate::Crs(EpsgCode::new(4326)), [&a]).unwrap_err();
+        let err = PolygonMesh3D::from_polygons(CoordinateFrame::Crs(EpsgCode::new(4326)), [&a])
+            .unwrap_err();
         assert!(matches!(err, Error::InvalidGeometry(_)));
     }
 
@@ -737,7 +741,7 @@ mod tests {
     fn from_parts_builds_faces() {
         let verts = vec![[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]];
         let faces = vec![vec![0u32, 1, 2], vec![0u32, 2, 3]];
-        let m = PolygonMesh3D::from_parts(Coordinate::Euclidean, verts, faces).unwrap();
+        let m = PolygonMesh3D::from_parts(CoordinateFrame::Euclidean, verts, faces).unwrap();
         assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 0, 2, 3]);
         // Two faces -> a single internal boundary at 3.
         assert_eq!(ones(&m.data.face_offsets), vec![3]);
@@ -756,7 +760,7 @@ mod tests {
     fn from_polygons_skips_empty_face() {
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
         let empty = Polygon3D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             Vec::<[f64; 3]>::new(),
             Vec::<Vec<[f64; 3]>>::new(),
         );
@@ -771,7 +775,7 @@ mod tests {
     fn from_parts_skips_empty_face() {
         let verts = vec![[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]];
         let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2], vec![], vec![0, 2, 3]];
-        let m = PolygonMesh3D::from_parts(Coordinate::Euclidean, verts, faces).unwrap();
+        let m = PolygonMesh3D::from_parts(CoordinateFrame::Euclidean, verts, faces).unwrap();
         assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 0, 2, 3]);
         assert_eq!(ones(&m.data.face_offsets), vec![3]);
     }
@@ -780,7 +784,7 @@ mod tests {
     fn from_parts_with_elevation_splits_z() {
         let verts = vec![[0., 0., 10.], [1., 0., 11.], [0., 1., 12.]];
         let m = PolygonMesh2D::from_parts_with_elevation(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             verts,
             vec![vec![0u32, 1, 2]],
         )
@@ -937,7 +941,7 @@ mod tests {
     fn from_polygons_drops_closing_uv() {
         // Closed triangle: coords [a, b, c, a] (4); the mesh keeps 3 open corners.
         let mut p = Polygon3D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 0.]],
             Vec::<Vec<[f64; 3]>>::new(),
         );

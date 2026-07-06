@@ -1,5 +1,5 @@
 use super::{Point2D, Point3D};
-use crate::coordinate::{Coordinate, EpsgCode};
+use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
 
 impl BoundingBox for Point2D {
@@ -20,12 +20,12 @@ impl Reproject for Point2D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             let [x, y] = self.position;
             let [nx, ny, _] = cache.transform(from, target, [x, y, 0.0])?;
             self.position = [nx, ny];
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -37,10 +37,10 @@ impl Reproject for Point3D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             self.position = cache.transform(from, target, self.position)?;
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -49,11 +49,11 @@ impl Reproject for Point3D {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
 
     #[test]
     fn point2d_box_is_degenerate_d2() {
-        let p = Point2D::new(Coordinate::Euclidean, [1.0, 2.0]);
+        let p = Point2D::new(CoordinateFrame::Euclidean, [1.0, 2.0]);
         assert_eq!(
             p.bounding_box().unwrap(),
             Aabb::D2 {
@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn point3d_box_is_degenerate_d3() {
-        let p = Point3D::new(Coordinate::Euclidean, [1.0, 2.0, 3.0]);
+        let p = Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]);
         assert_eq!(
             p.bounding_box().unwrap(),
             Aabb::D3 {

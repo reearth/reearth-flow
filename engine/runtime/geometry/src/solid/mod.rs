@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::polygon_mesh::PolygonMesh3DData;
 use crate::triangular_mesh::TriangularMesh3DData;
 
@@ -52,7 +52,7 @@ impl Shell {
 pub struct Solid {
     /// Coordinate frame this solid's shells are expressed in; the shells
     /// themselves are coordless raw meshes.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     exterior: Shell,
     /// Hollow voids.
     interiors: Vec<Shell>,

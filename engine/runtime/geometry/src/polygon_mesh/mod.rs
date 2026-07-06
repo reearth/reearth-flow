@@ -13,7 +13,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::{Appearance, UvSet};
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 
 mod constructor;
@@ -24,7 +24,7 @@ mod ops;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PolygonMesh2D {
     /// Coordinate frame these vertices are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     vertices: Vec<[f64; 2]>,
     /// Optional per-vertex elevation, parallel to `vertices`. INVARIANT: when
     /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
@@ -51,7 +51,7 @@ pub struct PolygonMesh2D {
 /// topology, UV and appearance, with no frame of its own.
 ///
 /// Shared by two hosts that each supply the frame: the standalone
-/// [`PolygonMesh3D`] leaf pairs this with its own [`Coordinate`], while a
+/// [`PolygonMesh3D`] leaf pairs this with its own [`CoordinateFrame`], while a
 /// [`Solid`](crate::solid::Solid) shell stores it directly and takes the one
 /// frame from the enclosing `Solid` — so a solid and its boundaries cannot
 /// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
@@ -82,8 +82,8 @@ pub struct PolygonMesh3DData {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PolygonMesh3D {
     /// Coordinate frame the mesh data is expressed in.
-    coordinate: Coordinate,
-    /// Coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid)
+    frame: CoordinateFrame,
+    /// coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid)
     /// shell stores directly.
     data: PolygonMesh3DData,
 }

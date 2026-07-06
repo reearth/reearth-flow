@@ -1,5 +1,5 @@
 use super::{Shell, Solid};
-use crate::coordinate::{Coordinate, EpsgCode};
+use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::transform_coords_3d;
 use crate::ops::triangulation::Cache;
 use crate::ops::{
@@ -31,7 +31,7 @@ impl Triangulate for Solid {
             .iter_mut()
             .map(|shell| shell.triangulated(cache))
             .collect();
-        let solid = Solid::new(self.coordinate.clone(), exterior, interiors);
+        let solid = Solid::new(self.frame.clone(), exterior, interiors);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(
             solid,
         ))))
@@ -56,13 +56,13 @@ impl Reproject for Solid {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             reproject_shell(&mut self.exterior, from, target, cache)?;
             for shell in &mut self.interiors {
                 reproject_shell(shell, from, target, cache)?;
             }
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -85,7 +85,7 @@ fn reproject_shell(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
     use crate::solid::Shell;
     use crate::triangular_mesh::TriangularMesh3DData;
 
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn solid_box_spans_exterior_shell() {
         let s = Solid::from_exterior(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             shell(vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 3.0]]),
         );
         assert_eq!(
@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn solid_box_includes_interior_shells() {
         let s = Solid::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             shell(vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]]),
             vec![Shell::from(shell(vec![
                 [5.0, 5.0, 5.0],
@@ -146,7 +146,7 @@ mod tests {
         .unwrap();
         // Interior void: already a triangle-mesh shell -> passes through unchanged.
         let void = shell(vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]]);
-        let mut solid = Solid::new(Coordinate::Euclidean, quad, vec![Shell::from(void)]);
+        let mut solid = Solid::new(CoordinateFrame::Euclidean, quad, vec![Shell::from(void)]);
 
         let out = match solid.triangulate(&mut Cache::new()).unwrap() {
             // The output is a Solid, not a bare mesh.
@@ -156,7 +156,7 @@ mod tests {
         // The polygon-mesh exterior is now a 2-triangle triangular-mesh shell.
         match &out.exterior {
             Shell::TriangularMesh(d) => {
-                let tris = TriangularMesh3D::new(Coordinate::Euclidean, d.clone());
+                let tris = TriangularMesh3D::new(CoordinateFrame::Euclidean, d.clone());
                 assert_eq!(tris.num_triangles(), 2);
             }
             Shell::PolygonMesh(_) => panic!("exterior polygon-mesh shell should be triangulated"),

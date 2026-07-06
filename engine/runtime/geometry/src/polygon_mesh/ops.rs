@@ -1,5 +1,5 @@
 use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
-use crate::coordinate::{Coordinate, EpsgCode};
+use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::index::IndexBuffer;
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::triangulation::{
@@ -35,7 +35,7 @@ impl Reproject for PolygonMesh2D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             transform_coords_2d(
                 cache,
@@ -44,7 +44,7 @@ impl Reproject for PolygonMesh2D {
                 &mut self.vertices,
                 self.z.as_deref_mut(),
             )?;
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -56,10 +56,10 @@ impl Reproject for PolygonMesh3D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -129,7 +129,7 @@ impl Triangulate for PolygonMesh2D {
                 // SAFETY: every index is `< verts3.len()`; count is a multiple of 3.
                 unsafe {
                     TriangularMesh2D::from_parts_with_elevation_unchecked(
-                        self.coordinate.clone(),
+                        self.frame.clone(),
                         verts3,
                         triangle_count,
                         buffers.tris.iter().copied(),
@@ -139,7 +139,7 @@ impl Triangulate for PolygonMesh2D {
             // SAFETY: every index is `< vertices.len()`; count is a multiple of 3.
             None => unsafe {
                 TriangularMesh2D::from_parts_unchecked(
-                    self.coordinate.clone(),
+                    self.frame.clone(),
                     std::mem::take(&mut self.vertices),
                     triangle_count,
                     buffers.tris.iter().copied(),
@@ -232,7 +232,7 @@ impl PolygonMesh3DData {
 impl Triangulate for PolygonMesh3D {
     fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
         let data = self.data.triangulate(cache);
-        let mesh = TriangularMesh3D::new(self.coordinate.clone(), data);
+        let mesh = TriangularMesh3D::new(self.frame.clone(), data);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -266,12 +266,12 @@ fn face_holes(interior_offsets: &[u32], start: usize, end: usize, out: &mut Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
 
     #[test]
     fn polygon_mesh2d_box_spans_vertex_pool() {
         let m = PolygonMesh2D::from_parts(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             vec![[0.0, 0.0], [3.0, 0.0], [3.0, 2.0]],
             vec![vec![0u32, 1, 2]],
         )
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn polygon_mesh3d_box_spans_vertex_pool() {
         let m = PolygonMesh3D::from_parts(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             vec![[0.0, 0.0, 0.0], [3.0, 0.0, 1.0], [3.0, 2.0, -1.0]],
             vec![vec![0u32, 1, 2]],
         )
@@ -314,7 +314,7 @@ mod tests {
             [4.0, 2.0],
         ];
         let mut mesh = PolygonMesh2D::from_parts(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             vertices,
             vec![vec![0u32, 1, 2, 3], vec![1, 4, 5, 2]],
         )
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn polygon_mesh3d_triangulates_quad_in_plane() {
         let mut mesh = PolygonMesh3D::from_parts(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             vec![
                 [0.0, 0.0, 0.0],
                 [2.0, 0.0, 0.0],
@@ -367,7 +367,7 @@ mod tests {
             [1.0, 3.0, 0.0],
         ];
         let mut mesh = PolygonMesh3D::from_raw_parts(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             vertices,
             vec![0, 1, 2, 3, 4, 5, 6, 7], // face_indices: exterior then hole
             vec![],                       // one face
@@ -403,16 +403,22 @@ mod tests {
             [2.0, 1.0, 0.0],
             [2.0, 0.0, 0.0],
         ];
-        let mut a =
-            Polygon3D::from_rings(Coordinate::Euclidean, ring_a, Vec::<Vec<[f64; 3]>>::new());
+        let mut a = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            ring_a,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
         a.set_appearance(theme("rgb"), textured(), Some(uv(5)))
             .unwrap();
-        let mut b =
-            Polygon3D::from_rings(Coordinate::Euclidean, ring_b, Vec::<Vec<[f64; 3]>>::new());
+        let mut b = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            ring_b,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
         b.set_appearance(theme("rgb"), textured(), Some(uv(5)))
             .unwrap();
 
-        let mut mesh = PolygonMesh3D::from_polygons(Coordinate::Euclidean, [&a, &b]).unwrap();
+        let mut mesh = PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, [&a, &b]).unwrap();
         assert!(matches!(
             mesh.appearance().as_ref().unwrap().themes[0].front,
             FaceBinding::PerFace(_)
@@ -476,7 +482,7 @@ mod tests {
         });
 
         let out = data.triangulate(&mut Cache::new());
-        let mesh = TriangularMesh3D::new(Coordinate::Euclidean, out);
+        let mesh = TriangularMesh3D::new(CoordinateFrame::Euclidean, out);
         assert_eq!(mesh.num_triangles(), 2);
 
         let UvSource::Explicit(out_uv) = &mesh.uv_sets()[0].uv else {

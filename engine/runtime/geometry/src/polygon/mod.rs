@@ -12,7 +12,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::{Appearance, UvSet};
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
@@ -23,7 +23,7 @@ pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     /// Exterior ring, then all interior rings (holes), concatenated; each ring
     /// closed (first == last).
     coords: Box<[[f64; 2]]>,
@@ -46,7 +46,7 @@ pub struct Polygon2D {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon3D {
     /// Coordinate frame these coords are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     /// Exterior ring, then all interior rings (holes), concatenated; each ring
     /// closed (first == last).
     coords: Box<[[f64; 3]]>,
@@ -61,8 +61,8 @@ pub struct Polygon3D {
 impl Polygon2D {
     /// The coordinate frame these coords are expressed in.
     #[inline]
-    pub fn coordinate(&self) -> &Coordinate {
-        &self.coordinate
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
     }
 
     /// The exterior ring, as stored verbatim — a well-formed ring is closed
@@ -110,8 +110,8 @@ impl Polygon2D {
 impl Polygon3D {
     /// The coordinate frame these coords are expressed in.
     #[inline]
-    pub fn coordinate(&self) -> &Coordinate {
-        &self.coordinate
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
     }
 
     /// The exterior ring, as stored verbatim — a well-formed ring is closed
