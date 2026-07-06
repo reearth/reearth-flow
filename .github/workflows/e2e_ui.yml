@@ -161,6 +161,11 @@ jobs:
             gsutil cp ./allure-report/widgets/summary.json "gs://$BUCKET/runs/$RUN_ID/summary.json"
           fi
 
+      - name: Publish latest report to bucket root
+        if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
+        run: |
+          gsutil -h "Cache-Control:no-cache" cp ./allure-report/index.html "gs://$BUCKET/index.html"
+
       - name: Update dashboard index.json
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
         env:
