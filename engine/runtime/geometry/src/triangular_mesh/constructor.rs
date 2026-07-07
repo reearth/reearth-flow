@@ -20,7 +20,7 @@
 //!
 //! 3D constructors build the coordinate-free [`TriangularMesh3DData`] that a
 //! [`Solid`](crate::solid::Solid) shell also stores, so the frame-carrying
-//! [`TriangularMesh3D`] is a thin wrapper. All meshes are built bare (no UV, no
+//! [`TriangularMesh3D`] is a thin wrapper. All meshes are built bare (no
 //! appearance); attach an appearance afterwards via `appearance_mut`.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};

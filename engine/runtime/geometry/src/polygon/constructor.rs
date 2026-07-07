@@ -37,7 +37,7 @@
 //! CSR buffers directly and validate the layout invariants, returning [`Error`] on
 //! violation rather than panicking.
 //!
-//! Constructed polygons are *bare*: no UV sets and no appearance. Appearance is
+//! Constructed polygons are *bare*: no appearance. Appearance is
 //! attached afterwards (CityGML binds it by `gml:id` in a later pass than the
 //! geometry) via the validated [`Polygon2D::set_appearance`] /
 //! [`Polygon2D::set_two_sided_appearance`] setters below — or the raw
@@ -512,7 +512,7 @@ impl Polygon3D {
     }
 }
 
-/// Add one theme's appearance to a single-face polygon's `appearance` / `uv_sets`.
+/// Add one theme's appearance to a single-face polygon's `appearance`.
 /// `corner_count` is the polygon's coordinate count. The `front` face is required;
 /// `back` adds a distinct back-side material/UV. Shared by the 2D and 3D setters
 /// so the invariants live in one place.

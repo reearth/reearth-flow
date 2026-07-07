@@ -34,7 +34,7 @@ pub struct TriangularMesh2D {
 }
 
 /// The coordinate-free data of a 3D triangle mesh: the vertex pool, triangle
-/// index list, UV and appearance, with no frame of its own.
+/// index list and appearance, with no frame of its own.
 ///
 /// Shared by two hosts that each supply the frame: the standalone
 /// [`TriangularMesh3D`] leaf pairs this with its own [`CoordinateFrame`], while a

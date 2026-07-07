@@ -47,7 +47,7 @@ pub struct PolygonMesh2D {
 }
 
 /// The coordinate-free data of a 3D polygon mesh: the vertex pool, CSR face
-/// topology, UV and appearance, with no frame of its own.
+/// topology and appearance, with no frame of its own.
 ///
 /// Shared by two hosts that each supply the frame: the standalone
 /// [`PolygonMesh3D`] leaf pairs this with its own [`CoordinateFrame`], while a

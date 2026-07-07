@@ -1,7 +1,7 @@
 //! UV sets and their sources.
 //!
-//! UV is geometric: it lives on the mesh leaf, parallel to the vertex / corner
-//! buffer, not on the material. One UV set feeds several maps (base-colour,
+//! UV is geometric: its coordinates run parallel to the geometry's vertex /
+//! corner buffer, not the material. One UV set feeds several maps (base-colour,
 //! normal, occlusion ... all sample it), and a material map references a UV set,
 //! never the reverse.
 //!
