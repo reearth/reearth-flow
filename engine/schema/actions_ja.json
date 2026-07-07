@@ -8997,7 +8997,7 @@
         ],
         "properties": {
           "codelistsPath": {
-            "description": "Expression evaluating to the PLATEAU codelists directory path.",
+            "description": "PLATEAU コードリストディレクトリのパスを表す式",
             "type": "object",
             "format": "code",
             "required": [

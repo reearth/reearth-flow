@@ -2560,7 +2560,7 @@
           "title": "BuildingUsageAttributeValidator パラメータ"
         },
         "codelistsPath": {
-          "description": "Expression evaluating to the PLATEAU codelists directory path."
+          "description": "PLATEAU コードリストディレクトリのパスを表す式"
         }
       }
     },

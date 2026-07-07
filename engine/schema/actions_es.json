@@ -10289,7 +10289,7 @@
     {
       "name": "PLATEAU6.BuildingUsageAttributeValidator",
       "type": "processor",
-      "description": "Validates building usage attributes (L-bldg-04,05 dependency violations) and the city code against the Common_localPublicAuthorities code list. Usage errors are emitted on the l0405BldgError port and city-code errors on the cityCodeError port.",
+      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BuildingUsageAttributeValidator Parameters",

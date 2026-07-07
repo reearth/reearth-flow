@@ -8753,12 +8753,12 @@ Check connectivity between BuildingParts within the same Building using 3D bound
 ### Type
 * processor
 ### Description
-Validates building usage attributes (L-bldg-04,05 dependency violations) and the city code against the Common_localPublicAuthorities code list. Usage errors are emitted on the l0405BldgError port and city-code errors on the cityCodeError port.
+This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BuildingUsageAttributeValidator Parameters",
+  "title": "BuildingUsageAttributeValidatorParam",
   "type": "object",
   "required": [
     "codelistsPath"
@@ -10034,12 +10034,12 @@ Check connectivity between BuildingParts within the same Building using 3D bound
 ### Type
 * processor
 ### Description
-Validates building usage attributes (L-bldg-04,05 dependency violations) and the city code against the Common_localPublicAuthorities code list. Usage errors are emitted on the l0405BldgError port and city-code errors on the cityCodeError port.
+This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BuildingUsageAttributeValidator Parameters",
+  "title": "BuildingUsageAttributeValidatorParam",
   "type": "object",
   "required": [
     "codelistsPath"

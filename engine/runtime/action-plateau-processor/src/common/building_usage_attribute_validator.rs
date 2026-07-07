@@ -125,7 +125,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Validates building usage attributes (L-bldg-04,05 dependency violations) and the city code against the Common_localPublicAuthorities code list. Usage errors are emitted on the l0405BldgError port and city-code errors on the cityCodeError port."
+        "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -189,7 +189,6 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
     }
 }
 
-/// # BuildingUsageAttributeValidator Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BuildingUsageAttributeValidatorParam {
