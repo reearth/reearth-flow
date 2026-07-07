@@ -142,11 +142,7 @@ impl Appearance {
         self.themes.iter().flat_map(|theme| theme.uv_sets.iter())
     }
 
-    /// Assemble an appearance from already-validated parts — the multi-theme weld
-    /// path (see [`crate::polygon_mesh`]) and the triangulation expander, which
-    /// build every theme (with its UV) at once rather than appending one at a
-    /// time through [`append_theme`]. The caller guarantees each `UvSet`'s length
-    /// matches the host corner buffer.
+    /// Assemble an appearance from already-validated parts.
     pub(crate) fn from_parts(
         materials: Vec<Material>,
         themes: Vec<ThemeBinding>,
@@ -159,9 +155,7 @@ impl Appearance {
         }
     }
 
-    /// Decompose into `(materials, themes, default_theme)`, the inverse of
-    /// [`from_parts`](Self::from_parts). Lets crate-internal passes that rebuild an
-    /// appearance (e.g. triangulation) move the parts out of the sealed type.
+    /// Decompose into `(materials, themes, default_theme)`.
     pub(crate) fn into_parts(self) -> (Vec<Material>, Vec<ThemeBinding>, ThemeId) {
         (self.materials, self.themes, self.default_theme)
     }
@@ -310,13 +304,7 @@ impl Appearance {
 /// Append one theme's already-validated appearance to a geometry's accumulated
 /// `appearance`. `front` / `back` index `materials` locally; they are offset into
 /// the running palette here. The theme's own `uv_sets` ride inside the appended
-/// [`ThemeBinding`]. Shared by the polygon and triangular-mesh setters so the
-/// palette bookkeeping lives in one place.
-///
-/// Additive and atomic: errors — leaving `appearance` untouched — if `theme` is
-/// already set or a local index overflows the merged palette. The first theme
-/// appended becomes the default. The caller validates the bindings and UV before
-/// calling (the two setters validate in different ways).
+/// [`ThemeBinding`]. 
 pub(crate) fn append_theme(
     appearance: &mut Option<Appearance>,
     theme: ThemeId,
@@ -408,11 +396,7 @@ pub(crate) fn validate_uv_coupling(
 
 /// Strip all back-side appearance from a mesh's `appearance`: drop each theme's
 /// back binding, remove every `Side::Back` UV set from that theme's pool, and
-/// compact the palette so now-orphaned back-only materials are dropped. Shared by
-/// the polygon-mesh and triangular-mesh `make_front_only` shells — a
-/// [`Solid`](crate::solid::Solid)'s back face is its interior (or the inside of a
-/// void), which is never rendered, so back appearance is meaningless there;
-/// `Solid` construction calls this on every shell.
+/// compact the palette so now-orphaned back-only materials are dropped.
 pub(crate) fn make_front_only(appearance: &mut Option<Appearance>) {
     if let Some(app) = appearance {
         for binding in &mut app.themes {

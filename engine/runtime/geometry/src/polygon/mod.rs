@@ -24,8 +24,8 @@ pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
-    /// Exterior ring, then all interior rings (holes), concatenated; each ring
-    /// closed (first == last).
+    /// Exterior ring, then all interior rings (holes), concatenated. A valid polygon
+    /// has each ring closed (first == last).
     coords: Box<[[f64; 2]]>,
     /// Start index in `coords` of each interior ring; empty when there are no
     /// holes. exterior = `coords[0 .. first interior start (or end)]`;
@@ -45,8 +45,8 @@ pub struct Polygon2D {
 pub struct Polygon3D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
-    /// Exterior ring, then all interior rings (holes), concatenated; each ring
-    /// closed (first == last).
+    /// Exterior ring, then all interior rings (holes), concatenated. A valid polygon
+    /// has each ring closed (first == last).
     coords: Box<[[f64; 3]]>,
     /// Start index in `coords` of each interior ring; empty when there are no holes.
     interior_offsets: Box<[u32]>,
