@@ -45,7 +45,13 @@
 //! | `Orientation`                | `Finite`, `Connected` |
 //! | `NormalDirection`            | `Orientation`, `ShellManifold` |
 
+use std::fmt;
+
 use serde::Serialize;
+
+use crate::coordinate::CoordinateFrame;
+use crate::point::{Point2D, Point3D};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Which validity check to run.
 ///
@@ -155,58 +161,48 @@ impl ValidationType {
     }
 }
 
-/// A single kind of validity problem.
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
-pub enum ValidationProblem {
-    /// A coordinate component is NaN or infinite.
-    NotFinite,
-    /// A line or ring has fewer points than its type requires. (`TODO`)
-    TooFewPoints,
-    /// A polygon ring is not closed (first vertex != last). (`TODO`)
-    UnclosedRing,
-    /// Two coordinates of a geometry coincide. (`TODO`)
-    IdenticalCoords,
-    /// Consecutive coordinates fall within the duplicate-distance threshold.
-    /// (`TODO`)
-    DuplicateConsecutivePoints,
-    /// A ring or boundary intersects itself. (`TODO`)
-    SelfIntersection,
-    /// An interior ring is not contained in its exterior ring. (`TODO`)
-    InteriorRingNotContainedInExteriorRing,
-    /// A 3D face's vertices are not coplanar. (`TODO`)
-    NonPlanar,
-    /// The geometry has zero extent or is otherwise degenerate. (`TODO`)
-    DegenerateGeometry,
-    /// A mesh or solid has more than one connected component. (`TODO`)
-    Disconnected,
-    /// A surface is not consistently oriented (adjacent normals disagree).
-    /// (`TODO`)
-    WrongOrientation,
-    /// A closed surface's normals point the wrong way (a solid exterior facing
-    /// inward, or a void facing outward). (`TODO`)
-    WrongNormalDirection,
-    /// A solid's boundary is not a closed 2-manifold. (`TODO`)
-    NonManifold,
+impl fmt::Display for ValidationType {
+    /// The check's variant name and its parameters, used as the `problem` label
+    /// on a reported [`ValidationProblemAtPosition`].
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ValidationType::Finite => f.write_str("Finite"),
+            ValidationType::TooFewPoints => f.write_str("TooFewPoints"),
+            ValidationType::DuplicatePoints { tolerance } => {
+                write!(f, "DuplicatePoints(tolerance: {tolerance:?})")
+            }
+            ValidationType::DuplicateConsecutivePoints { threshold } => {
+                write!(f, "DuplicateConsecutivePoints(threshold: {threshold})")
+            }
+            ValidationType::UnclosedRing => f.write_str("UnclosedRing"),
+            ValidationType::SelfIntersection { tolerance } => {
+                write!(f, "SelfIntersection(tolerance: {tolerance:?})")
+            }
+            ValidationType::InteriorRingContainment { tolerance } => {
+                write!(f, "InteriorRingContainment(tolerance: {tolerance:?})")
+            }
+            ValidationType::Planarity { max_deviation } => {
+                write!(f, "Planarity(max_deviation: {max_deviation})")
+            }
+            ValidationType::Degenerate { min_extent } => {
+                write!(f, "Degenerate(min_extent: {min_extent})")
+            }
+            ValidationType::Connected => f.write_str("Connected"),
+            ValidationType::Orientation => f.write_str("Orientation"),
+            ValidationType::NormalDirection => f.write_str("NormalDirection"),
+            ValidationType::ShellManifold => f.write_str("ShellManifold"),
+        }
+    }
 }
 
-/// Where in a geometry a problem occurs: the concrete leaf type plus, when a
-/// single coordinate is implicated, its index in that leaf's coordinate buffer.
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
-pub struct ValidationProblemPosition {
-    /// Concrete geometry type the problem was found in.
-    pub geometry: &'static str,
-    /// Index of the offending coordinate within the leaf's coordinate buffer,
-    /// when a single coordinate is implicated; `None` otherwise.
-    pub coordinate_index: Option<usize>,
-}
-
-/// A [`ValidationProblem`] together with where it occurred.
+/// A validity problem together with where it occurred.
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub struct ValidationProblemAtPosition {
     /// The problem encountered.
-    pub problem: ValidationProblem,
-    /// Where in the geometry it was found.
-    pub position: ValidationProblemPosition,
+    pub problem: String,
+    /// The geometry pinpointing where the problem was found — typically a point
+    /// leaf at the offending coordinate.
+    pub position: Geometry,
 }
 
 /// Every problem found while validating a geometry.
@@ -228,7 +224,7 @@ impl ValidationReport {
     }
 
     /// Record a problem at a position.
-    pub fn push(&mut self, problem: ValidationProblem, position: ValidationProblemPosition) {
+    pub fn push(&mut self, problem: String, position: Geometry) {
         self.0
             .push(ValidationProblemAtPosition { problem, position });
     }
@@ -272,10 +268,10 @@ impl<T: Validate + ?Sized> Validate for Box<T> {
 }
 
 /// Scan a 2D coordinate buffer (with an optional parallel elevation buffer) for
-/// non-finite values, pushing one [`ValidationProblem::NotFinite`] per
-/// offending coordinate into `report`.
+/// non-finite values, pushing one [`ValidationType::Finite`] problem per
+/// offending coordinate into `report`, positioned at a 2D point leaf in `frame`.
 pub(crate) fn check_finite_2d(
-    geometry: &'static str,
+    frame: &CoordinateFrame,
     coords: &[[f64; 2]],
     z: Option<&[f64]>,
     report: &mut ValidationReport,
@@ -284,31 +280,26 @@ pub(crate) fn check_finite_2d(
         let z_not_finite = z.and_then(|zs| zs.get(i)).is_some_and(|v| !v.is_finite());
         if !c[0].is_finite() || !c[1].is_finite() || z_not_finite {
             report.push(
-                ValidationProblem::NotFinite,
-                ValidationProblemPosition {
-                    geometry,
-                    coordinate_index: Some(i),
-                },
+                ValidationType::Finite.to_string(),
+                Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame.clone(), *c))),
             );
         }
     }
 }
 
 /// Scan a 3D coordinate buffer for non-finite values, pushing one
-/// [`ValidationProblem::NotFinite`] per offending coordinate into `report`.
+/// [`ValidationType::Finite`] problem per offending coordinate into `report`,
+/// positioned at a 3D point leaf in `frame`.
 pub(crate) fn check_finite_3d(
-    geometry: &'static str,
+    frame: &CoordinateFrame,
     coords: &[[f64; 3]],
     report: &mut ValidationReport,
 ) {
-    for (i, c) in coords.iter().enumerate() {
+    for c in coords {
         if !c[0].is_finite() || !c[1].is_finite() || !c[2].is_finite() {
             report.push(
-                ValidationProblem::NotFinite,
-                ValidationProblemPosition {
-                    geometry,
-                    coordinate_index: Some(i),
-                },
+                ValidationType::Finite.to_string(),
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame.clone(), *c))),
             );
         }
     }
@@ -317,14 +308,14 @@ pub(crate) fn check_finite_3d(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
     use crate::line_string::LineString3D;
     use crate::point::Point3D;
     use crate::{Euclidean3DGeometry, Geometry};
 
     #[test]
     fn finite_point_is_valid() {
-        let p = Point3D::new(Coordinate::Euclidean, [1.0, 2.0, 3.0]);
+        let p = Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]);
         assert!(p
             .validate(ValidationType::DuplicatePoints { tolerance: None })
             .is_none());
@@ -332,18 +323,22 @@ mod tests {
 
     #[test]
     fn non_finite_point_reports_not_finite() {
-        let p = Point3D::new(Coordinate::Euclidean, [1.0, f64::NAN, 3.0]);
+        let p = Point3D::new(CoordinateFrame::Euclidean, [1.0, f64::NAN, 3.0]);
         let report = p
             .validate(ValidationType::DuplicatePoints { tolerance: None })
             .unwrap();
         assert_eq!(report.error_count(), 1);
-        assert_eq!(report.0[0].problem, ValidationProblem::NotFinite);
+        assert_eq!(report.0[0].problem, "Finite");
+        assert!(matches!(
+            report.0[0].position,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(_))
+        ));
     }
 
     #[test]
     fn linestring_reports_each_non_finite_coordinate() {
         let ls = LineString3D::from_coords(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [
                 [0.0, 0.0, 0.0],
                 [f64::INFINITY, 1.0, 0.0],
@@ -352,14 +347,28 @@ mod tests {
         );
         let report = ls.validate(ValidationType::TooFewPoints).unwrap();
         assert_eq!(report.error_count(), 2);
-        assert_eq!(report.0[0].position.coordinate_index, Some(1));
-        assert_eq!(report.0[1].position.coordinate_index, Some(2));
+        // Each problem is positioned at a 3D point leaf holding the offending
+        // coordinate.
+        let first = offending_point(&report.0[0].position);
+        assert!(first[0].is_infinite());
+        assert_eq!(first[1], 1.0);
+        let second = offending_point(&report.0[1].position);
+        assert!(second[1].is_nan());
+        assert_eq!(second[0], 2.0);
+    }
+
+    /// The `[x, y, z]` of the 3D point leaf a problem is positioned at.
+    fn offending_point(position: &Geometry) -> [f64; 3] {
+        match position {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => p.position(),
+            other => panic!("expected a 3D point position, got {other:?}"),
+        }
     }
 
     #[test]
     fn dispatch_reaches_leaf_through_geometry() {
         let g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [f64::NAN, 0.0, 0.0],
         )));
         assert_eq!(

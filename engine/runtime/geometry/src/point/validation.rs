@@ -9,7 +9,7 @@ impl Validate for Point2D {
         // over multi-coordinate geometries and are no-ops here.
         let mut report = ValidationReport::default();
         check_finite_2d(
-            "Point2D",
+            &self.frame,
             std::slice::from_ref(&self.position),
             None,
             &mut report,
@@ -21,7 +21,11 @@ impl Validate for Point2D {
 impl Validate for Point3D {
     fn validate(&self, _valid_type: ValidationType) -> Option<ValidationReport> {
         let mut report = ValidationReport::default();
-        check_finite_3d("Point3D", std::slice::from_ref(&self.position), &mut report);
+        check_finite_3d(
+            &self.frame,
+            std::slice::from_ref(&self.position),
+            &mut report,
+        );
         report.into_option()
     }
 }
