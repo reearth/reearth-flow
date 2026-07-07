@@ -16,11 +16,12 @@
 //!
 //! * `from_raw_parts` — the flat CSR buffers in hand, validated for consistency.
 //!
-//! Rings are stored **open**: the closing vertex is implied by the face / hole
-//! boundary, so `from_polygons` drops the closing duplicate that a `Polygon`
-//! carries, and `from_parts` expects the open faces OBJ provides. The index widths
-//! follow the type's contract: `face_indices` from the (dedup-discovered) vertex
-//! count, `face_offsets` / `interior_offsets` from `face_indices.len()`.
+//! Polygon-sourced rings are stored closed (last index equals first):
+//! `from_polygons` keeps the closing vertex a valid `Polygon` ring carries and
+//! appends one to an open input ring. `from_parts` / `from_raw_parts` store their
+//! vertex-index faces verbatim. The index widths follow the type's contract:
+//! `face_indices` from the vertex count, `face_offsets` / `interior_offsets` from
+//! `face_indices.len()`.
 //!
 //! 3D constructors build the coordinate-free [`PolygonMesh3DData`] a
 //! [`Solid`](crate::solid::Solid) shell also stores, so the frame-carrying
@@ -44,21 +45,19 @@ use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
 impl PolygonMesh3DData {
     /// Build coordinate-free mesh data from independent face polygons, deduplicating
     /// their corners into a shared vertex pool. Each polygon becomes one face
-    /// (exterior then holes), stored open.
+    /// (exterior then holes), each ring stored closed.
     ///
     /// Appearance and UV are merged across the faces (see [`merge_appearance`]):
     /// material palettes concatenate, themes union, each face gets a `PerFace`
-    /// binding, and every per-face UV is welded — per theme — into one mesh-wide
-    /// array per `(side, channel)` — dropping each ring's closing duplicate to match
-    /// the open corner buffer, baking any `WorldToTexture` matrix to explicit
-    /// corners, and zero-filling faces a theme does not cover (their binding is
-    /// `None`, so the filler is never sampled). Bare input (no appearance on any
-    /// polygon) yields a bare mesh.
+    /// binding, and every per-face UV is welded, per theme, into one mesh-wide
+    /// array per `(side, channel)`, matching the closed corner buffer, baking any
+    /// `WorldToTexture` matrix to explicit corners, and zero-filling faces a theme
+    /// does not cover (their binding is `None`, so the filler is never sampled).
+    /// Bare input (no appearance on any polygon) yields a bare mesh.
     ///
-    /// A welded multi-face mesh's faces carry *different* `WorldToTexture` matrices
-    /// and cannot share one, so any matrix UV is baked to per-corner `Explicit` here
-    /// (a single-surface triangulation keeps its one matrix instead — see
-    /// [`UvSource`]).
+    /// A welded multi-face mesh's faces carry different `WorldToTexture` matrices
+    /// and cannot share one, so any matrix UV is baked to per-corner `Explicit`
+    /// here.
     pub fn from_polygons<'a>(polygons: impl IntoIterator<Item = &'a Polygon3D>) -> Self {
         Self::from_polygons_with_default_theme(polygons, None)
     }
@@ -280,14 +279,10 @@ impl PolygonMesh2D {
     }
 }
 
-/// Drop a ring's closing vertex when it duplicates the first, yielding the open
-/// ring (closure is implied by the face / hole boundary in the mesh).
-fn open_ring<const N: usize>(ring: &[[f64; N]]) -> &[[f64; N]] {
-    if ring.len() > 1 && ring.first() == ring.last() {
-        &ring[..ring.len() - 1]
-    } else {
-        ring
-    }
+/// Whether a ring needs its first vertex appended to be stored closed: it has at
+/// least two vertices and its last does not already equal its first.
+fn needs_closing<const N: usize>(ring: &[[f64; N]]) -> bool {
+    ring.len() >= 2 && ring.first() != ring.last()
 }
 
 /// Deduplicate the corners of a sequence of faces (each a sequence of rings,
@@ -313,9 +308,8 @@ where
                 interior_offsets.push(face_indices.len() as u32);
             }
             is_exterior = false;
-            for &coord in open_ring(ring) {
-                // Index of `coord` in the pool, inserting it on first sight; dedup
-                // is on exact `f64` bits.
+            let closing = needs_closing(ring).then(|| &ring[0]);
+            for &coord in ring.iter().chain(closing) {
                 let index = *seen.entry(coord.map(f64::to_bits)).or_insert_with(|| {
                     let next = vertices.len() as u32;
                     vertices.push(coord);
@@ -444,29 +438,35 @@ fn pack_csr(
     )
 }
 
-/// The number of mesh corners a polygon contributes — its rings with each
-/// closing duplicate dropped, matching `dedup_faces` / [`open_ring`]. A face
-/// with zero corners is skipped by `dedup_faces`, so it is dropped here too.
+/// The number of mesh corners a polygon contributes: its rings stored closed,
+/// matching `dedup_faces`.
 fn corner_count(polygon: &Polygon3D) -> usize {
     std::iter::once(polygon.exterior())
         .chain(polygon.interiors())
-        .map(|ring| open_ring(ring).len())
+        .map(|ring| ring.len() + usize::from(needs_closing(ring)))
         .sum()
 }
 
 /// Append one polygon's UV in mesh-corner order for a single `UvSource` directly
-/// onto `out`: rings concatenated (exterior then interiors), each closing
-/// duplicate dropped. `Explicit` slices the parallel array; `WorldToTexture` bakes
-/// the matrix at each corner vertex. Writes straight into the caller's reserved
-/// buffer — no per-face temporary.
+/// onto `out`: rings concatenated (exterior then interiors), each stored closed to
+/// match `dedup_faces`. `Explicit` slices the parallel array; `WorldToTexture` bakes
+/// the matrix at each corner vertex.
 fn extend_polygon_uv(out: &mut Vec<[f64; 2]>, polygon: &Polygon3D, source: &UvSource) {
     let mut pos = 0usize;
     for ring in std::iter::once(polygon.exterior()).chain(polygon.interiors()) {
-        let open = open_ring(ring);
+        let closing = needs_closing(ring);
         match source {
-            UvSource::Explicit(uv) => out.extend_from_slice(&uv[pos..pos + open.len()]),
+            UvSource::Explicit(uv) => {
+                out.extend_from_slice(&uv[pos..pos + ring.len()]);
+                if closing {
+                    out.push(uv[pos]);
+                }
+            }
             UvSource::WorldToTexture(matrix) => {
-                out.extend(open.iter().map(|&vertex| bake(matrix, vertex)));
+                out.extend(ring.iter().map(|&vertex| bake(matrix, vertex)));
+                if closing {
+                    out.push(bake(matrix, ring[0]));
+                }
             }
         }
         pos += ring.len();
@@ -713,10 +713,13 @@ mod tests {
                 [2., 1., 0.],
             ]
         );
-        // Rings stored open (the closing duplicate is dropped).
-        assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 3, 1, 4, 5, 2]);
-        // Internal boundary only: face 0 ends / face 1 begins at 4.
-        assert_eq!(ones(&m.data.face_offsets), vec![4]);
+        // Rings stored closed (each ends where it began).
+        assert_eq!(
+            ones(&m.data.face_indices),
+            vec![0, 1, 2, 3, 0, 1, 4, 5, 2, 1]
+        );
+        // Internal boundary only: face 0 ends / face 1 begins at 5.
+        assert_eq!(ones(&m.data.face_offsets), vec![5]);
         assert!(ones(&m.data.interior_offsets).is_empty());
     }
 
@@ -727,10 +730,10 @@ mod tests {
         let p = Polygon3D::from_rings(CoordinateFrame::Euclidean, outer, vec![hole]);
         let m = PolygonMesh3DData::from_polygons([&p]);
         assert_eq!(m.vertices.len(), 8);
-        assert_eq!(ones(&m.face_indices), vec![0, 1, 2, 3, 4, 5, 6, 7]);
-        // Single face -> no internal boundaries; the hole starts at index 4.
+        assert_eq!(ones(&m.face_indices), vec![0, 1, 2, 3, 0, 4, 5, 6, 7, 4]);
+        // Single face -> no internal boundaries; the hole starts at index 5.
         assert!(ones(&m.face_offsets).is_empty());
-        assert_eq!(ones(&m.interior_offsets), vec![4]);
+        assert_eq!(ones(&m.interior_offsets), vec![5]);
     }
 
     #[test]
@@ -772,7 +775,7 @@ mod tests {
         let m = PolygonMesh3DData::from_polygons([&a, &empty, &b]);
         assert_eq!(m.vertices.len(), 6);
         // Two real faces -> one internal boundary, no duplicate from the empty face.
-        assert_eq!(ones(&m.face_offsets), vec![4]);
+        assert_eq!(ones(&m.face_offsets), vec![5]);
     }
 
     #[test]
@@ -860,7 +863,7 @@ mod tests {
         else {
             panic!("expected Explicit");
         };
-        assert_eq!(uv.len(), 4);
+        assert_eq!(uv.len(), 5);
     }
 
     #[test]
@@ -883,7 +886,7 @@ mod tests {
         else {
             panic!("expected Explicit");
         };
-        assert_eq!(uv.len(), 8);
+        assert_eq!(uv.len(), 10);
     }
 
     #[test]
@@ -949,14 +952,17 @@ mod tests {
         else {
             panic!("expected Explicit");
         };
-        assert_eq!(uv.len(), 8);
-        assert_eq!(&uv[0..4], &[[0.2, 0.2], [0.4, 0.2], [0.4, 0.4], [0.2, 0.4]]);
-        assert_eq!(&uv[4..8], &[[0., 0.], [0., 0.], [0., 0.], [0., 0.]]);
+        assert_eq!(uv.len(), 10);
+        assert_eq!(
+            &uv[0..5],
+            &[[0.2, 0.2], [0.4, 0.2], [0.4, 0.4], [0.2, 0.4], [0.2, 0.2]]
+        );
+        assert_eq!(&uv[5..10], &[[0., 0.]; 5]);
     }
 
     #[test]
-    fn from_polygons_drops_closing_uv() {
-        // Closed triangle: coords [a, b, c, a] (4); the mesh keeps 3 open corners.
+    fn from_polygons_keeps_closing_uv() {
+        // Closed triangle: coords [a, b, c, a] (4); the mesh keeps all 4 corners.
         let mut p = Polygon3D::from_rings(
             CoordinateFrame::Euclidean,
             [[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 0.]],
@@ -974,8 +980,8 @@ mod tests {
         else {
             panic!("expected Explicit");
         };
-        assert_eq!(uv.len(), 3);
-        assert_eq!(&uv[..], &[[0., 0.], [1., 0.], [0., 1.]]);
+        assert_eq!(uv.len(), 4);
+        assert_eq!(&uv[..], &[[0., 0.], [1., 0.], [0., 1.], [0., 0.]]);
     }
 
     #[test]
@@ -995,7 +1001,7 @@ mod tests {
         else {
             panic!("expected baked Explicit");
         };
-        assert_eq!(&uv[..], &[[0., 0.], [2., 0.], [2., 3.], [0., 3.]]);
+        assert_eq!(&uv[..], &[[0., 0.], [2., 0.], [2., 3.], [0., 3.], [0., 0.]]);
     }
 
     #[test]

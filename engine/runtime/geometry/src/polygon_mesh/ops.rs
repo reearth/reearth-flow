@@ -81,29 +81,39 @@ impl Triangulate for PolygonMesh2D {
             let mut start = 0usize;
             for fi in 0..n_faces {
                 let end = buffers.face_offsets.get(fi).map_or(n, |&o| o as usize);
-                face_holes(&buffers.interior_offsets, start, end, &mut buffers.holes);
+                build_open_rings(
+                    &buffers.face_indices,
+                    &buffers.interior_offsets,
+                    start,
+                    end,
+                    &mut buffers.open_src,
+                    &mut buffers.holes,
+                );
                 let face = &buffers.face_indices[start..end];
                 buffers.verts2.clear();
                 // SAFETY: face indices are validated `< vertices.len()` at construction.
-                buffers.verts2.extend(
-                    face.iter()
-                        .map(|&gi| unsafe { *self.vertices.get_unchecked(gi as usize) }),
-                );
+                buffers
+                    .verts2
+                    .extend(buffers.open_src.iter().map(|&p| unsafe {
+                        *self
+                            .vertices
+                            .get_unchecked(*face.get_unchecked(p as usize) as usize)
+                    }));
                 // earcut clears `out` itself, but reset explicitly so the per-face
                 // count below stays correct without relying on that internal.
                 buffers.out.clear();
                 triangulate_2d(earcut, &buffers.verts2, &buffers.holes, &mut buffers.out);
                 // Map face-local corner indices back to the shared vertex pool.
-                // SAFETY: each earcut index is `< face.len()`.
-                buffers.tris.extend(
+                // SAFETY: each earcut index is `< open_src.len()`.
+                buffers.tris.extend(buffers.out.iter().map(|&l| unsafe {
+                    *face.get_unchecked(*buffers.open_src.get_unchecked(l as usize) as usize)
+                }));
+                buffers.corner_src.extend(
                     buffers
                         .out
                         .iter()
-                        .map(|&l| unsafe { *face.get_unchecked(l as usize) }),
+                        .map(|&l| start as u32 + buffers.open_src[l as usize]),
                 );
-                buffers
-                    .corner_src
-                    .extend(buffers.out.iter().map(|&l| start as u32 + l));
                 buffers.face_tris.push((buffers.out.len() / 3) as u32);
                 start = end;
             }
@@ -170,15 +180,28 @@ impl PolygonMesh3DData {
             let mut start = 0usize;
             for fi in 0..n_faces {
                 let end = buffers.face_offsets.get(fi).map_or(n, |&o| o as usize);
-                face_holes(&buffers.interior_offsets, start, end, &mut buffers.holes);
+                build_open_rings(
+                    &buffers.face_indices,
+                    &buffers.interior_offsets,
+                    start,
+                    end,
+                    &mut buffers.open_src,
+                    &mut buffers.holes,
+                );
                 let face = &buffers.face_indices[start..end];
-                let num_outer = buffers.holes.first().map_or(face.len(), |&h| h as usize);
+                let num_outer = buffers
+                    .holes
+                    .first()
+                    .map_or(buffers.open_src.len(), |&h| h as usize);
                 buffers.verts3.clear();
                 // SAFETY: face indices are validated `< vertices.len()` at construction.
-                buffers.verts3.extend(
-                    face.iter()
-                        .map(|&gi| unsafe { *self.vertices.get_unchecked(gi as usize) }),
-                );
+                buffers
+                    .verts3
+                    .extend(buffers.open_src.iter().map(|&p| unsafe {
+                        *self
+                            .vertices
+                            .get_unchecked(*face.get_unchecked(p as usize) as usize)
+                    }));
                 // `triangulate_3d` clears `out` on its degenerate paths and earcut
                 // clears it on success; reset explicitly so the per-face count
                 // below holds without relying on either internal.
@@ -190,16 +213,16 @@ impl PolygonMesh3DData {
                     &buffers.holes,
                     &mut buffers.out,
                 ) {
-                    // SAFETY: each earcut index is `< face.len()`.
-                    buffers.tris.extend(
+                    // SAFETY: each earcut index is `< open_src.len()`.
+                    buffers.tris.extend(buffers.out.iter().map(|&l| unsafe {
+                        *face.get_unchecked(*buffers.open_src.get_unchecked(l as usize) as usize)
+                    }));
+                    buffers.corner_src.extend(
                         buffers
                             .out
                             .iter()
-                            .map(|&l| unsafe { *face.get_unchecked(l as usize) }),
+                            .map(|&l| start as u32 + buffers.open_src[l as usize]),
                     );
-                    buffers
-                        .corner_src
-                        .extend(buffers.out.iter().map(|&l| start as u32 + l));
                 }
                 // Outside the `if`: a degenerate face records 0 (its `out` is empty).
                 buffers.face_tris.push((buffers.out.len() / 3) as u32);
@@ -246,17 +269,49 @@ fn decode_into(buf: &IndexBuffer<1>, out: &mut Vec<u32>) {
     }
 }
 
-/// Collect, into the reused `out` buffer, the face-local start offsets of the
-/// hole rings that fall strictly inside the face spanning `[start, end)` of
-/// `face_indices`.
-fn face_holes(interior_offsets: &[u32], start: usize, end: usize, out: &mut Vec<u32>) {
-    out.clear();
-    out.extend(
-        interior_offsets
-            .iter()
-            .filter(|&&o| (o as usize) > start && (o as usize) < end)
-            .map(|&o| o - start as u32),
-    );
+/// Build the open-ring layout of the face spanning `[start, end)` of
+/// `face_indices` for triangulation. Fills `open_src` with the face-local position
+/// of each corner (each ring's closing duplicate dropped) and `holes` with the
+/// start offset of each hole ring into `open_src`.
+fn build_open_rings(
+    face_indices: &[u32],
+    interior_offsets: &[u32],
+    start: usize,
+    end: usize,
+    open_src: &mut Vec<u32>,
+    holes: &mut Vec<u32>,
+) {
+    open_src.clear();
+    holes.clear();
+    let mut ring_start = start;
+    for &offset in interior_offsets {
+        let boundary = offset as usize;
+        if boundary <= start || boundary >= end {
+            continue;
+        }
+        push_open_ring(face_indices, start, ring_start, boundary, open_src);
+        holes.push(open_src.len() as u32);
+        ring_start = boundary;
+    }
+    push_open_ring(face_indices, start, ring_start, end, open_src);
+}
+
+/// Append the face-local positions of ring `[ring_start, ring_end)` to `open_src`,
+/// dropping the ring's closing vertex when it duplicates the first.
+fn push_open_ring(
+    face_indices: &[u32],
+    start: usize,
+    ring_start: usize,
+    ring_end: usize,
+    open_src: &mut Vec<u32>,
+) {
+    let open_end =
+        if ring_end - ring_start >= 2 && face_indices[ring_start] == face_indices[ring_end - 1] {
+            ring_end - 1
+        } else {
+            ring_end
+        };
+    open_src.extend((ring_start..open_end).map(|p| (p - start) as u32));
 }
 
 #[cfg(test)]
@@ -376,6 +431,36 @@ mod tests {
             _ => panic!("expected a 3D triangular mesh"),
         };
         // A square ring with a square hole tessellates into 8 triangles.
+        assert_eq!(tm.num_triangles(), 8);
+    }
+
+    #[test]
+    fn polygon_mesh3d_triangulates_holed_polygon_with_closed_rings() {
+        // Built via `from_polygons`, so the exterior and hole rings are stored
+        // closed; triangulation must drop each closing vertex before earcut.
+        use crate::polygon::Polygon3D;
+
+        let exterior = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let hole = vec![
+            [1.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [3.0, 3.0, 0.0],
+            [1.0, 3.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let p = Polygon3D::from_rings(CoordinateFrame::Euclidean, exterior, vec![hole]);
+        let mut mesh = PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, [&p]).unwrap();
+        let g = mesh.triangulate(&mut Cache::new()).unwrap();
+        let tm = match &g {
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => m,
+            _ => panic!("expected a 3D triangular mesh"),
+        };
         assert_eq!(tm.num_triangles(), 8);
     }
 

@@ -28,8 +28,11 @@ impl Cache {
 pub(crate) struct Buffers {
     /// Polygon ring vertex positions into the source `coords`.
     pub(crate) positions: Vec<u32>,
-    /// Hole-ring start offsets (polygon: into the ring list; mesh: per face).
+    /// Hole-ring start offsets (polygon: into the ring list; mesh: into `open_src`).
     pub(crate) holes: Vec<u32>,
+    /// Face-local positions of a mesh face's open-ring corners, closing duplicates
+    /// dropped; parallel to the gathered `verts2` / `verts3`.
+    pub(crate) open_src: Vec<u32>,
     /// One earcut output (one polygon, or one mesh face).
     pub(crate) out: Vec<u32>,
     /// Accumulated global triangle indices (mesh).
