@@ -79,6 +79,13 @@ impl TriangularMesh2D {
         self.indices.len()
     }
 
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.indices.iter_u32()
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -104,6 +111,13 @@ impl TriangularMesh3D {
     #[inline]
     pub fn num_triangles(&self) -> usize {
         self.data.indices.len()
+    }
+
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.data.triangles()
     }
 
     /// Borrow the appearance, if any.
@@ -139,6 +153,13 @@ impl TriangularMesh3DData {
         self.indices.len()
     }
 
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.indices.iter_u32()
+    }
+
     /// Drop all back-side appearance, keeping only the front; see
     /// [`crate::appearance::make_front_only`].
     pub(crate) fn make_front_only(&mut self) {
@@ -166,6 +187,22 @@ mod tests {
             channel: ChannelId::default(),
             uv: UvSource::Explicit(Box::new([])),
         }
+    }
+
+    #[test]
+    fn triangles_yields_widened_index_triples() {
+        let m = TriangularMesh3DData::from_parts(
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 0.0],
+            ],
+            [0u32, 1, 2, 1, 3, 2],
+        )
+        .unwrap();
+        let tris: Vec<[u32; 3]> = m.triangles().collect();
+        assert_eq!(tris, vec![[0, 1, 2], [1, 3, 2]]);
     }
 
     #[test]
