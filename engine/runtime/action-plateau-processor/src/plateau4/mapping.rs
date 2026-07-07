@@ -26,6 +26,7 @@ use crate::common::solid_intersection_test_pair_creator::SolidIntersectionTestPa
 use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
 use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
 
+use super::building_usage_attribute_strategy::Plateau4BuildingUsageStrategy;
 use super::unmatched_xlink_strategy::Plateau4XlinkStrategy;
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -35,7 +36,10 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<AttributeFlattenerFactory>::default(),
         Box::<BuildingInstallationGeometryTypeCheckerFactory>::default(),
         Box::new(BuildingPartConnectivityCheckerFactory::new(&PLATEAU4)),
-        Box::new(BuildingUsageAttributeValidatorFactory::new(&PLATEAU4)),
+        Box::new(BuildingUsageAttributeValidatorFactory::new(
+            &PLATEAU4,
+            &Plateau4BuildingUsageStrategy,
+        )),
         Box::<CityCodeExtractorFactory>::default(),
         Box::<CityGmlMeshBuilderFactory>::default(),
         Box::new(DestinationMeshCodeExtractorFactory::new(&PLATEAU4)),

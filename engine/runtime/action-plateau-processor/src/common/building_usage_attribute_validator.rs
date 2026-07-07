@@ -1,4 +1,25 @@
+//! Building usage-attribute validator (L-bldg-04,05) and city-code check,
+//! shared across PLATEAU generations.
+//!
+//! Two independent checks run per building feature:
+//!
+//! - **usage dependency (L-bldg-04,05)**: a derived usage attribute present
+//!   without its required parent attribute is a violation.
+//! - **city code**: the building's municipality code is looked up in the
+//!   `Common_localPublicAuthorities` code list; a code missing from the list, or
+//!   a designated-city code that should have been refined to a ward code, is an
+//!   error.
+//!
+//! The generation-independent orchestration (code-list load, port emission,
+//! violation/classification helpers) lives here. The generation-specific seam —
+//! how the i-UR attributes are laid out in the feature (CityGML 2.0 nests them
+//! under a `cityGmlAttributes` map; CityGML 3.0 hangs them off
+//! `bldg:adeOfAbstractBuilding`), where the survey year and city code come from,
+//! and which attribute shape carries the usage error downstream — is injected as
+//! a [`BuildingUsageAttributeStrategy`] trait object.
+
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -12,7 +33,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,17 +71,53 @@ static MAJOR_CITY_CODES: Lazy<Vec<&'static str>> = Lazy::new(|| {
     ]
 });
 
+/// Result of analyzing one building feature: the L-bldg-04,05 usage-violation
+/// messages and, when the building is in scope for the city-code check, its
+/// classification error (`None` when the code is valid).
+#[derive(Debug, Default)]
+pub(crate) struct UsageAnalysis {
+    pub usage_messages: Vec<String>,
+    pub city_code_error: Option<String>,
+}
+
+/// Generation-specific seam for the building usage-attribute validator.
+///
+/// [`analyze`](BuildingUsageAttributeStrategy::analyze) navigates the
+/// generation's feature layout to produce the usage/city-code findings, and
+/// [`set_usage_error`](BuildingUsageAttributeStrategy::set_usage_error) writes
+/// the usage error in the attribute shape that generation's downstream CSV
+/// wiring expects.
+pub(crate) trait BuildingUsageAttributeStrategy: Send + Sync + Debug {
+    /// Analyze one building feature against the resolved code list.
+    ///
+    /// Returns `Ok(None)` to drop the feature from all output entirely (CityGML
+    /// 2.0 emits nothing for a building that carries no
+    /// `uro:BuildingDetailAttribute`).
+    fn analyze(
+        &self,
+        feature: &Feature,
+        city_code_to_name: &HashMap<String, String>,
+    ) -> Result<Option<UsageAnalysis>, BoxedError>;
+
+    /// Attach the usage-violation error attribute to `attributes`. CityGML 2.0
+    /// carries it as the `errors` array; CityGML 3.0 as the `usageError` scalar.
+    fn set_usage_error(&self, attributes: &mut Attributes, messages: &[String]);
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct BuildingUsageAttributeValidatorFactory {
     name: String,
-    is_citygml3: bool,
+    strategy: &'static dyn BuildingUsageAttributeStrategy,
 }
 
 impl BuildingUsageAttributeValidatorFactory {
-    pub(crate) fn new(profile: &PlateauProfile) -> Self {
+    pub(crate) fn new(
+        profile: &PlateauProfile,
+        strategy: &'static dyn BuildingUsageAttributeStrategy,
+    ) -> Self {
         Self {
             name: profile.action_name("BuildingUsageAttributeValidator"),
-            is_citygml3: profile.is_citygml3(),
+            strategy,
         }
     }
 }
@@ -130,7 +187,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
         Ok(Box::new(BuildingUsageAttributeValidator {
             codelists_path_expr,
             city_code_to_name: None,
-            is_citygml3: self.is_citygml3,
+            strategy: self.strategy,
         }))
     }
 }
@@ -148,8 +205,8 @@ pub(crate) struct BuildingUsageAttributeValidator {
     codelists_path_expr: CompiledCode,
     /// Lazily built code -> name map from Common_localPublicAuthorities.xml.
     city_code_to_name: Option<HashMap<String, String>>,
-    /// CityGML 3.0 (i-UR 4.0) vs CityGML 2.0 (i-UR 3.x) attribute layout.
-    is_citygml3: bool,
+    /// Generation-specific attribute layout / output seam.
+    strategy: &'static dyn BuildingUsageAttributeStrategy,
 }
 
 impl Processor for BuildingUsageAttributeValidator {
@@ -167,11 +224,13 @@ impl Processor for BuildingUsageAttributeValidator {
                 &ctx.storage_resolver,
             )?);
         }
-        if self.is_citygml3 {
-            self.process_citygml3(&ctx, fw)
-        } else {
-            self.process_citygml2(&ctx, fw)
-        }
+        let city_code_to_name = self.city_code_to_name.as_ref().unwrap();
+
+        let Some(analysis) = self.strategy.analyze(&ctx.feature, city_code_to_name)? else {
+            return Ok(());
+        };
+        self.emit(&ctx, fw, analysis);
+        Ok(())
     }
 
     fn finish(
@@ -188,174 +247,19 @@ impl Processor for BuildingUsageAttributeValidator {
 }
 
 impl BuildingUsageAttributeValidator {
-    /// CityGML 2.0 / i-UR 3.x layout: i-UR attributes nest under a
-    /// `cityGmlAttributes` map, and each i-UR attribute is an array whose first
-    /// element is the attribute map. Mirrors the original plateau4 behaviour.
-    fn process_citygml2(
-        &self,
-        ctx: &ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let city_code_to_name = self.city_code_to_name.as_ref().unwrap();
-
-        let Some(AttributeValue::Map(gml_attributes)) =
-            feature.attributes.get(&Attribute::new("cityGmlAttributes"))
-        else {
-            return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                "cityGmlAttributes key empty".to_string(),
-            )
-            .into());
-        };
-
-        // A building without uro:BuildingDetailAttribute carries no usage or city
-        // checks in this layout (early return, matching plateau4).
-        let Some(detail_value) = gml_attributes.get("uro:BuildingDetailAttribute") else {
-            return Ok(());
-        };
-        let AttributeValue::Array(detail_array) = detail_value else {
-            return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                "uro:BuildingDetailAttribute must be an array, but it is not".to_string(),
-            )
-            .into());
-        };
-        let Some(AttributeValue::Map(building_detail_attr)) = detail_array.first() else {
-            return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                "uro:BuildingDetailAttribute must be an array with a map element, but it is not"
-                    .to_string(),
-            )
-            .into());
-        };
-        let survey_year =
-            match building_detail_attr.get("uro:surveyYear") {
-                Some(AttributeValue::String(year)) => year.clone(),
-                Some(_) => {
-                    return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                        "uro:surveyYear must be a string, but it is not".to_string(),
-                    )
-                    .into())
-                }
-                None => return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                    "uro:surveyYear must be specified as per cityGML specification, but it is not."
-                        .to_string(),
-                )
-                .into()),
-            };
-
-        let error_messages = usage_violation_messages(building_detail_attr, &survey_year);
-
-        let id_attr = match gml_attributes.get("uro:BuildingIDAttribute") {
-            Some(AttributeValue::Array(id_array)) => match id_array.first() {
-                Some(AttributeValue::Map(id_attr)) => id_attr,
-                _ => {
-                    return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                        "uro:BuildingIDAttribute must be an array with a map element, but it is not"
-                            .to_string(),
-                    )
-                    .into())
-                }
-            },
-            _ => {
-                return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                    "uro:BuildingIDAttribute must be specified as per cityGML specification, but it is not.".to_string(),
-                )
-                .into())
-            }
-        };
-        let city_code_error = match id_attr.get("uro:city_code") {
-            Some(AttributeValue::String(city_code)) => {
-                classify_city_code(city_code, city_code_to_name)
-            }
-            Some(_) => {
-                return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                    "uro:city must be a string, but it is not".to_string(),
-                )
-                .into())
-            }
-            None => Some("<未設定>".to_string()),
-        };
-
-        self.emit(ctx, fw, error_messages, city_code_error);
-        Ok(())
-    }
-
-    /// CityGML 3.0 / i-UR 4.0 layout: i-UR attributes hang off one or more
-    /// `bldg:adeOfAbstractBuilding` hooks (a single hook is stored as a Map,
-    /// multiple as an Array), the survey year is an ISO date, and the city code
-    /// is `uro:city`.
-    fn process_citygml3(
-        &self,
-        ctx: &ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let city_code_to_name = self.city_code_to_name.as_ref().unwrap();
-
-        let ade = feature
-            .attributes
-            .get(&Attribute::new("bldg:adeOfAbstractBuilding"));
-
-        let mut error_messages = Vec::<String>::new();
-        if let Some(building_detail_attr) = ade_child_map(ade, "uro:BuildingDetailAttribute") {
-            let survey_year = match building_detail_attr.get("uro:surveyYear") {
-                // i-UR 4.0 surveyYear is an ISO date (e.g. "2020-04-01"); take the year.
-                Some(AttributeValue::String(date)) => {
-                    date.split('-').next().unwrap_or("").to_string()
-                }
-                _ => String::new(),
-            };
-            error_messages = usage_violation_messages(building_detail_attr, &survey_year);
-        }
-
-        // Only buildings that carry a uro:BuildingIDAttribute are in scope.
-        let city_code_error = match ade_child_map(ade, "uro:BuildingIDAttribute") {
-            Some(id_attr) => match id_attr.get("uro:city") {
-                Some(AttributeValue::String(city_code)) if !city_code.is_empty() => {
-                    classify_city_code(city_code, city_code_to_name)
-                }
-                _ => Some("<未設定>".to_string()),
-            },
-            None => None,
-        };
-
-        self.emit(ctx, fw, error_messages, city_code_error);
-        Ok(())
-    }
-
     /// Sends the feature on the error ports it qualifies for (and DEFAULT if
-    /// none), attaching `errors`/`cityCodeError` attributes. The usage error is
-    /// carried as the `errors` array (CityGML 2.0) or the `usageError` scalar
-    /// (CityGML 3.0) to match each generation's downstream CSV wiring.
-    fn emit(
-        &self,
-        ctx: &ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-        error_messages: Vec<String>,
-        city_code_error: Option<String>,
-    ) {
+    /// none), attaching the usage-error attribute (via the strategy) and the
+    /// `cityCodeError` attribute.
+    fn emit(&self, ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, analysis: UsageAnalysis) {
         let feature = &ctx.feature;
         let mut attributes = (*feature.attributes).clone();
         let mut ports = Vec::<Port>::new();
-        if !error_messages.is_empty() {
-            if self.is_citygml3 {
-                attributes.insert(
-                    Attribute::new("usageError"),
-                    AttributeValue::String(error_messages.join("\n")),
-                );
-            } else {
-                attributes.insert(
-                    Attribute::new("errors"),
-                    AttributeValue::Array(
-                        error_messages
-                            .into_iter()
-                            .map(AttributeValue::String)
-                            .collect(),
-                    ),
-                );
-            }
+        if !analysis.usage_messages.is_empty() {
+            self.strategy
+                .set_usage_error(&mut attributes, &analysis.usage_messages);
             ports.push(L_04_05_BLDG_ERROR_PORT.clone());
         }
-        if let Some(city_code_error) = city_code_error {
+        if let Some(city_code_error) = analysis.city_code_error {
             attributes.insert(
                 Attribute::new("cityCodeError"),
                 AttributeValue::String(city_code_error),
@@ -381,7 +285,7 @@ impl BuildingUsageAttributeValidator {
 
 /// Builds the L-bldg-04,05 violation messages for a `uro:BuildingDetailAttribute`
 /// map: one message per derived attribute present without its parent.
-fn usage_violation_messages(
+pub(crate) fn usage_violation_messages(
     building_detail_attr: &HashMap<String, AttributeValue>,
     survey_year: &str,
 ) -> Vec<String> {
@@ -399,7 +303,7 @@ fn usage_violation_messages(
 
 /// Classifies a present city code: `None` when valid, otherwise the error message
 /// (missing from the code list, or a designated-city code that needs a ward code).
-fn classify_city_code(
+pub(crate) fn classify_city_code(
     city_code: &str,
     city_code_to_name: &HashMap<String, String>,
 ) -> Option<String> {
@@ -413,32 +317,6 @@ fn classify_city_code(
         }
     } else {
         Some(format!("{city_code}: コードリストに該当なし"))
-    }
-}
-
-/// Returns the inner map of an i-UR attribute found under
-/// `bldg:adeOfAbstractBuilding`, which may itself be a single Map or an Array of
-/// Maps depending on how many ADE hooks the building carries. When the attribute
-/// is stored as an Array, the first Map element is used.
-fn ade_child_map<'a>(
-    ade: Option<&'a AttributeValue>,
-    key: &str,
-) -> Option<&'a HashMap<String, AttributeValue>> {
-    let child = match ade? {
-        AttributeValue::Map(map) => map.get(key),
-        AttributeValue::Array(items) => items.iter().find_map(|item| match item {
-            AttributeValue::Map(map) => map.get(key),
-            _ => None,
-        }),
-        _ => None,
-    }?;
-    match child {
-        AttributeValue::Map(map) => Some(map),
-        AttributeValue::Array(items) => items.iter().find_map(|item| match item {
-            AttributeValue::Map(map) => Some(map),
-            _ => None,
-        }),
-        _ => None,
     }
 }
 

@@ -1,5 +1,6 @@
 pub(crate) mod attribute_flattener;
 pub(crate) mod building_installation_geometry_type_checker;
+pub(crate) mod building_usage_attribute_strategy;
 pub(crate) mod city_code_extractor;
 pub(crate) mod citygml_mesh_builder;
 pub(crate) mod composite_surface_continuity_filter;
