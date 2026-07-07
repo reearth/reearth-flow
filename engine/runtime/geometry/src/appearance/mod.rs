@@ -304,7 +304,7 @@ impl Appearance {
 /// Append one theme's already-validated appearance to a geometry's accumulated
 /// `appearance`. `front` / `back` index `materials` locally; they are offset into
 /// the running palette here. The theme's own `uv_sets` ride inside the appended
-/// [`ThemeBinding`]. 
+/// [`ThemeBinding`].
 pub(crate) fn append_theme(
     appearance: &mut Option<Appearance>,
     theme: ThemeId,

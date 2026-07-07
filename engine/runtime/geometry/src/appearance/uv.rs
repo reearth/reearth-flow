@@ -1,7 +1,7 @@
 //! UV sets and their sources.
 //!
 //! UV is geometric: its coordinates run parallel to the geometry's vertex /
-//! corner buffer, not the material. One UV set feeds several maps, and 
+//! corner buffer, not the material. One UV set feeds several maps, and
 //! a material map references a UV set.
 //!
 //! A map's UV is resolved by three coordinates: the theme is the
