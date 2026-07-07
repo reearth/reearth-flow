@@ -1777,11 +1777,11 @@ nodes:
             value: |
               ade = attributes.get("bldg:adeOfAbstractBuilding");
               id_attr = {};
-              if type(ade) == "map" {
+              if type(ade) == dict {
                 id_attr = ade.get("uro:BuildingIDAttribute", {});
-              } else if type(ade) == "list" {
+              } else if type(ade) == list {
                 for item in ade {
-                  if type(item) == "map" and "uro:BuildingIDAttribute" in item {
+                  if type(item) == dict and "uro:BuildingIDAttribute" in item {
                     id_attr = item["uro:BuildingIDAttribute"];
                   }
                 }
@@ -1794,11 +1794,11 @@ nodes:
             value: |
               ade = attributes.get("bldg:adeOfAbstractBuilding");
               id_attr = {};
-              if type(ade) == "map" {
+              if type(ade) == dict {
                 id_attr = ade.get("uro:BuildingIDAttribute", {});
-              } else if type(ade) == "list" {
+              } else if type(ade) == list {
                 for item in ade {
-                  if type(item) == "map" and "uro:BuildingIDAttribute" in item {
+                  if type(item) == dict and "uro:BuildingIDAttribute" in item {
                     id_attr = item["uro:BuildingIDAttribute"];
                   }
                 }
@@ -1811,11 +1811,11 @@ nodes:
             value: |
               ade = attributes.get("bldg:adeOfAbstractBuilding");
               id_attr = {};
-              if type(ade) == "map" {
+              if type(ade) == dict {
                 id_attr = ade.get("uro:BuildingIDAttribute", {});
-              } else if type(ade) == "list" {
+              } else if type(ade) == list {
                 for item in ade {
-                  if type(item) == "map" and "uro:BuildingIDAttribute" in item {
+                  if type(item) == dict and "uro:BuildingIDAttribute" in item {
                     id_attr = item["uro:BuildingIDAttribute"];
                   }
                 }
