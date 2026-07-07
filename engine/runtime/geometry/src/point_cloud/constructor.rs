@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 use indexmap::IndexMap;
 use smallvec::SmallVec;
 
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 
 use super::{PointCloud, PositionEncoding, Segment};
 
@@ -22,7 +22,7 @@ impl PointCloud {
     /// Build a point cloud from bare XYZ positions: one `f64`-encoded segment with
     /// no optional fields or attributes.
     pub fn from_positions(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         positions: impl IntoIterator<Item = [f64; 3]>,
     ) -> Self {
         let positions = positions.into_iter();
@@ -46,7 +46,7 @@ impl PointCloud {
             attributes: IndexMap::new(),
         });
         Self {
-            coordinate,
+            frame,
             segments,
             kdtree: OnceLock::new(),
         }
@@ -60,7 +60,7 @@ mod tests {
     #[test]
     fn from_positions_packs_one_f64_segment() {
         let pc = PointCloud::from_positions(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
         );
         assert_eq!(pc.segments.len(), 1);

@@ -8,7 +8,7 @@
 use std::collections::{HashMap, HashSet};
 
 use reearth_flow_geometry::collection::Collection3D;
-use reearth_flow_geometry::coordinate::Coordinate;
+use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
@@ -19,7 +19,7 @@ use super::parser::RawNodeKey;
 
 /// The coordinate frame all resolved geometry is expressed in; CityGML `srsName`
 /// / EPSG handling happens downstream.
-pub(super) const FRAME: Coordinate = Coordinate::Euclidean;
+pub(super) const FRAME: CoordinateFrame = CoordinateFrame::Euclidean;
 
 /// A node in a CityGML geometry tree during pass-2 resolution: a geometry already
 /// built in pass 1, a reference still to be looked up, or a container still to be
