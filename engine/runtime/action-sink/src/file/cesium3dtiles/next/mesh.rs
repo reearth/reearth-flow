@@ -1,26 +1,11 @@
 //! Extracts every reachable `PolygonMesh` leaf (bare, or as a `Solid`'s
-//! boundary shells) from the new `Geometry` type and reprojects it to WGS84
-//! (for tileset placement) and ECEF (for glTF vertices).
+//! boundary shell) from `Geometry`, and reprojects it to WGS84 (tileset
+//! placement) and ECEF (glTF vertices).
 //!
-//! Pass-1 scope: only `PolygonMesh` data is read — the dominant shape PLATEAU
-//! CityGML produces (`Surface`/`CompositeSurface`/`Shell` map to
-//! `PolygonMesh`; `lod1Solid`/`lod2Solid` wrap one in a `Solid`). Every other
-//! leaf (`Point`, `LineString`, `Polygon`, `Csg`, `PointCloud`,
-//! `TriangularMesh`, and a `Solid` shell that happens to be a
-//! `TriangularMesh`) is skipped with a warning; broader leaf coverage is a
-//! later pass. The real CityGML reader always wraps a feature's geometry in a
-//! `GeometryCollection` (one member per LOD property) and may nest meshes
-//! inside further `Collection`s (e.g. `MultiSurface`), so both are unwrapped
-//! recursively to find the `PolygonMesh` data within.
-//!
-//! CRS: the real CityGML reader does not parse `srsName` yet and tags every
-//! leaf `Coordinate::Euclidean` (see `resolver::FRAME`), so a leaf's own frame
-//! can't be trusted. Rather than fake a `Coordinate::Crs` tag it doesn't
-//! carry, this module assumes JGD2011 (EPSG:6697, the CRS PLATEAU CityGML is
-//! published in) and reprojects each mesh's raw vertex buffer directly via
-//! `transform_coords_3d`, bypassing the `Coordinate`/`Reproject` machinery
-//! (and its `require_crs` check) entirely. The assumption is local to this
-//! writer; nothing about the geometry itself is mutated.
+//! Reprojection assumes JGD2011 (EPSG:6697) as the source CRS for every leaf,
+//! since the CityGML reader tags every leaf `Coordinate::Euclidean`
+//! regardless of its real frame. Each mesh's vertex buffer is reprojected
+//! directly via `transform_coords_3d`.
 
 use reearth_flow_geometry::coordinate::{Coordinate, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
@@ -31,8 +16,7 @@ use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 
-/// Assumed source CRS for every input leaf; see the module doc for why this is
-/// assumed rather than read from each leaf's `Coordinate`.
+/// JGD2011.
 const ASSUMED_SOURCE_CRS: EpsgCode = EpsgCode::new(6697);
 /// WGS84, 3D geographic (lon, lat, height) — used for the tileset's bounding region.
 const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
@@ -103,12 +87,10 @@ fn collect_geometry(geometry: &Geometry, out: &mut Vec<PolygonMesh3D>) {
     }
 }
 
-/// Recurse through `Collection` (e.g. a CityGML `MultiSurface`) into its
-/// members, and unpack a `Solid`'s boundary shells (e.g. `lod1Solid`/
-/// `lod2Solid`), collecting every `PolygonMesh` found. A `Solid` shell has no
-/// `Coordinate` of its own (see `solid::Shell`'s doc); it's wrapped in a
-/// placeholder frame here since this writer bypasses per-leaf `Coordinate`
-/// entirely anyway (see the module doc).
+/// Recurse through `Collection` members and unpack a `Solid`'s boundary
+/// shells, collecting every `PolygonMesh` found. A `Solid` shell has no
+/// `Coordinate` of its own, so a placeholder frame is used — this writer
+/// reprojects raw vertex buffers directly and ignores it anyway.
 fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh3D>) {
     match geometry {
         Euclidean3DGeometry::Collection(c) => {
