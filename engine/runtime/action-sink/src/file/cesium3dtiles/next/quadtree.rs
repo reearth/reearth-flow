@@ -1,16 +1,9 @@
 //! Containment-placement quadtree: assigns each feature to the deepest cell
-//! that fully contains it, and derives every cell's region / geometric error
-//! purely from the dataset's root extent plus `level` — the property 3D
-//! Tiles 1.1 implicit tiling needs, since a client re-derives both from
-//! `level` alone rather than reading them per tile (§6.2.2/§6.2.5 of the
-//! geometry design doc).
-//!
-//! Deliberately not the legacy global scheme in
-//! `cesium3dtiles/tiling/scheme.rs`: that scheme's `x_step` polar
-//! column-merge makes cells non-congruent, which implicit tiling's fixed
-//! 4-children-per-cell rule can't express. This quadtree roots at the
-//! dataset's own extent, not the whole globe, and never merges columns.
-//! Antimeridian-crossing extents are out of scope (regional PLATEAU data).
+//! that fully contains it, deriving every cell's region / geometric error
+//! purely from the dataset's root extent plus `level` (3D Tiles 1.1 implicit
+//! tiling re-derives both from `level` alone, rather than reading them per
+//! tile). Rooted at the dataset's own extent, not the whole globe; regional
+//! extents only, no antimeridian handling.
 
 /// A quadtree cell: level 0 is the dataset root; level `l` has `4^l` cells
 /// indexed `x, y` in `0..2^l`.

@@ -1,13 +1,9 @@
 //! `.subtree` binary encoding (3D Tiles 1.1 implicit tiling): the
 //! `tileAvailability` / `contentAvailability` / `childSubtreeAvailability`
-//! bitstreams that tell a client which scheme-derived cells actually exist,
-//! without listing them in JSON (geometry design doc §6.2.5).
-//!
-//! Scoped to a dataset that fits in one subtree file end to end:
-//! `childSubtreeAvailability` is always the `{"constant": 0}` shorthand (no
-//! deeper subtree ever exists), so chaining `.subtree` files across a
-//! subtree boundary — needed once a dataset's depth exceeds `subtreeLevels`
-//! — is unimplemented.
+//! bitstreams telling a client which cells exist, without listing them in
+//! JSON. Scoped to a dataset that fits in one subtree file:
+//! `childSubtreeAvailability` is always `{"constant": 0}`, so chaining
+//! `.subtree` files across a subtree boundary is unimplemented.
 
 use std::collections::BTreeSet;
 

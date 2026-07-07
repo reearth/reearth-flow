@@ -1,9 +1,7 @@
-//! `tileset.json` for the containment-placement quadtree (§6.2.2/§6.2.5 of
-//! the geometry design doc): one explicit root tile declaring 3D Tiles 1.1
-//! implicit tiling. Every descendant tile's bounding volume and geometric
-//! error are derived by the client from `level` alone (`quadtree::
-//! cell_region` / `quadtree::geometric_error`), so nothing per-tile is
-//! written here beyond the root.
+//! `tileset.json` for the containment-placement quadtree: one explicit root
+//! tile declaring 3D Tiles 1.1 implicit tiling. Every descendant tile's
+//! bounding volume and geometric error are derived by the client from
+//! `level` alone, so nothing per-tile is written here beyond the root.
 //!
 //! Which cells actually hold content lives in the paired `.subtree` file
 //! (`subtree.rs`), not in this JSON.

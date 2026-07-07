@@ -1,27 +1,14 @@
 //! Per-tile `EXT_structural_metadata` property table: one implicit `Feature`
 //! class per glb, its properties the union of every attribute path present
 //! across that glb's features.
-//!
-//! 3D Tiles has no array/map property type (`EXT_structural_metadata`'s
-//! `array` flag only covers a fixed/variable-length list of one SCALAR/VEC/
-//! STRING element, not arbitrary nesting), so a `Map`/`Array`-valued
-//! attribute — routine in PLATEAU's `uro:`/`bldg:` extension attributes,
-//! e.g. `bldg:measuredHeight` = `{"@uom": "m", "$": "12.2"}` — is walked
-//! recursively and each scalar leaf becomes its own STRING property, named
-//! by its path (parent and child keys joined with `_`), rather than one
-//! property holding the whole structure as a JSON string.
-//!
-//! §6.2.3 of the geometry design doc plans per-feature-type classing (keyed
-//! by `schemaKey`) and a schema shared across every glb via `schema.json`;
-//! this pass has neither — one class, inlined per glb, string-typed
-//! properties only. `schemaKey` and `skipUnexposedAttributes` are still
-//! honored (reusing the writer's existing params) since both are simple
-//! exclusions, not part of the classing/hoisting this pass defers.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use reearth_flow_types::{AttributeValue, Feature};
 
+/// No per-feature-type classing yet (single inlined `Feature` class,
+/// string-typed properties only), but these two exclusions still apply,
+/// reusing the parent writer's params.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MetadataOptions<'a> {
     pub schema_key: Option<&'a str>,
@@ -82,8 +69,9 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
 }
 
 /// Walks `value`, inserting one `path -> stringified leaf` entry per scalar
-/// reached; a `Map`/`Array` contributes no entry of its own, only its
-/// descendants, with `path` extended by `_<child key>` / `_<index>`.
+/// reached. `EXT_structural_metadata` has no arbitrary-nesting property type,
+/// so a `Map`/`Array` contributes no entry of its own, only its descendants,
+/// with `path` extended by `_<child key>` / `_<index>`.
 fn flatten(path: String, value: &AttributeValue, out: &mut BTreeMap<String, String>) {
     match value {
         AttributeValue::Map(map) => {

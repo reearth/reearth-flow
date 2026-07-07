@@ -1,18 +1,6 @@
 //! Walks a Cesium 3D Tiles tileset, collecting every referenced `.glb` path
 //! and the `geometricError` of the tile it came from. Shared by
-//! `conv::cesium` and `align_cesium`, which both need this.
-//!
-//! Supports both tiling shapes the spec allows: an explicit tile tree
-//! (`content`/`contents`/`children` walked directly from `tileset.json`)
-//! and 3D Tiles 1.1 implicit tiling (availability read from a `.subtree`
-//! file, tile addresses derived from `level`/`x`/`y` alone rather than
-//! listed in JSON). Both are valid Cesium 3D Tiles output.
-//!
-//! Scope: implicit-tiling support is QUADTREE-only (the only scheme any
-//! writer in this codebase produces) and reads only the root `.subtree`
-//! file — chaining across a subtree boundary via `childSubtreeAvailability`
-//! is unimplemented, since nothing here produces more than one subtree file
-//! today. Both limits surface as an `Err`, not a silent gap.
+//! `conv::cesium` and `align_cesium`.
 
 use serde_json::Value;
 use std::fs;
@@ -24,7 +12,9 @@ pub struct TileContent {
 }
 
 /// `tile` is a tileset tile node — typically `tileset.json`'s `root`, as
-/// obtained via `TilesetInfo::content.get("root")`.
+/// obtained via `TilesetInfo::content.get("root")`. Dispatches to an
+/// explicit tile-tree walk or, when `tile` carries `implicitTiling`, a
+/// 3D Tiles 1.1 implicit-tiling read.
 pub fn collect_tile_contents(tileset_dir: &Path, tile: &Value) -> Result<Vec<TileContent>, String> {
     match tile.get("implicitTiling") {
         Some(implicit) => collect_implicit(tileset_dir, tile, implicit),
@@ -100,6 +90,9 @@ fn glb_content_uris(tile: &Value) -> Vec<String> {
     uris
 }
 
+/// QUADTREE-only, and reads only the root `.subtree` file — chaining across
+/// a subtree boundary via `childSubtreeAvailability` is unimplemented. Both
+/// limits surface as an `Err`.
 fn collect_implicit(
     tileset_dir: &Path,
     root: &Value,
@@ -121,7 +114,7 @@ fn collect_implicit(
         .ok_or_else(|| "implicitTiling missing subtreeLevels".to_string())? as u32;
 
     // `availableLevels` beyond `subtreeLevels` implies chaining into child
-    // subtree files, which this reader doesn't follow (see module doc).
+    // subtree files, which this reader doesn't follow.
     if let Some(available_levels) = implicit.get("availableLevels").and_then(|v| v.as_u64()) {
         if available_levels as u32 != subtree_levels {
             return Err(format!(

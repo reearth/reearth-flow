@@ -1,14 +1,6 @@
 //! Minimal, hand-rolled GLB (binary glTF) emission: one mesh, one untextured
-//! primitive, `POSITION` + `indices`, plus an optional per-vertex
-//! `_FEATURE_ID_0` and its `EXT_mesh_features` / `EXT_structural_metadata`
-//! property table (`metadata::PropertyTable`) when the tile's features carry
-//! any attributes. No material, no normals, no UV — the new-geometry
-//! writer's pass-1 scope is geometry (+ this minimal metadata) only.
-//!
-//! Deliberately not built on the parent `writer.rs` (or the `nusamai-gltf`
-//! types it wraps): both are shaped around a materials/metadata model this
-//! pass doesn't use. This is small enough (glTF 2.0's JSON document + the
-//! 12-byte GLB header plus two length-prefixed chunks) to write directly.
+//! primitive, `POSITION` + `indices`, plus an optional `_FEATURE_ID_0` /
+//! `EXT_mesh_features` / `EXT_structural_metadata` property table.
 
 use serde_json::json;
 
@@ -32,23 +24,10 @@ const METADATA_CLASS_NAME: &str = "Feature";
 
 /// Build a complete `.glb` byte stream for one mesh.
 ///
-/// `positions` must already be localized (small deltas from some local
-/// origin, not raw ECEF — callers keep vertex precision bounded relative to
-/// a per-tile origin rather than ECEF's ~6.378e6 m magnitude) and cast to
-/// `f32`, expressed in the same right-handed, Z-up axes as ECEF.
-/// `translation` is that local origin, in full `f64` precision — a glTF node
-/// `translation` is a plain JSON number array, so it round-trips exactly
-/// regardless of how large the ECEF magnitude is. `feature_ids[i]` is the row
-/// of `metadata` that vertex `i` belongs to; ignored when `metadata` has no
-/// properties (nothing worth tagging feature ids against).
-///
-/// 3D Tiles renderers apply a fixed Y-up-to-Z-up rotation — `(x, y, z) -> (x,
-/// -z, y)` — to bare-glTF tile content before placing it via the tile
-/// transform (confirmed against a known-good tile in
-/// `testing/data/results`: its GLB translation only resolves to a sane
-/// geographic position after that rotation is applied). Since the input here
-/// is already Z-up (ECEF-relative), this writes the inverse, `(x, y, z) ->
-/// (x, z, -y)`, so the renderer's rotation cancels out.
+/// `positions` must be localized (small deltas from `translation`, not raw
+/// ECEF) and cast to `f32`; `translation` carries the local origin at full
+/// `f64` precision. `feature_ids[i]` is the `metadata` row for vertex `i`,
+/// ignored when `metadata` has no properties.
 pub fn write(
     positions: &[[f32; 3]],
     indices: &[[u32; 3]],
@@ -56,6 +35,9 @@ pub fn write(
     feature_ids: &[u32],
     metadata: &PropertyTable,
 ) -> Vec<u8> {
+    // 3D Tiles renderers rotate bare-glTF content Y-up -> Z-up on load; our
+    // input is already Z-up (ECEF-relative), so pre-apply the inverse here
+    // and the renderer's rotation cancels out.
     let gltf_positions: Vec<[f32; 3]> = positions.iter().map(|&[x, y, z]| [x, z, -y]).collect();
     let gltf_translation = [translation[0], translation[2], -translation[1]];
 
@@ -119,10 +101,9 @@ pub fn write(
         }));
         primitive_attributes["_FEATURE_ID_0"] = json!(feature_ids_accessor);
 
-        // One STRING property per column: raw UTF-8 bytes in a `values`
-        // bufferView, `count + 1` cumulative byte offsets in a parallel
-        // `stringOffsets` one (the variable-length-array encoding
-        // `EXT_structural_metadata` uses for string columns).
+        // One STRING property per column: raw UTF-8 bytes in `values`,
+        // cumulative byte offsets in `stringOffsets` (EXT_structural_metadata's
+        // variable-length-array encoding).
         let mut schema_properties = serde_json::Map::new();
         let mut table_properties = serde_json::Map::new();
         for (col, (raw_name, id)) in metadata.properties.iter().enumerate() {
@@ -185,11 +166,8 @@ pub fn write(
         }));
     }
 
-    // Explicit, double-sided material: a primitive with no material uses
-    // glTF's default material, which has `doubleSided: false` (backface
-    // culling on). This writer doesn't verify triangle winding order
-    // anywhere upstream, so culling could hide a mesh whose winding ends up
-    // reversed; double-siding removes that failure mode entirely.
+    // Explicit double-sided material: the glTF default culls backfaces, and
+    // triangle winding isn't verified upstream.
     let mut primitive = json!({
         "attributes": primitive_attributes, "indices": 1, "material": 0,
     });

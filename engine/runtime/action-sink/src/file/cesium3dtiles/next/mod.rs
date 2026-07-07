@@ -1,20 +1,7 @@
 //! Minimal, from-scratch Cesium 3D Tiles writer for the new geometry type
-//! (`reearth_flow_geometry`). Pass-1 scope, deliberately narrow:
-//!
-//! - Only a bare `PolygonMesh` leaf is read from each feature's geometry
-//!   (see `mesh.rs`); every other shape is skipped with a warning.
-//! - No appearance / materials / textures: every mesh is emitted untextured
-//!   (see `glb.rs`).
-//! - No same-tile content splitting (`maxGlbSize`) and no texture atlasing:
-//!   both are appearance-adjacent concerns this pass has nothing to feed
-//!   them (§6.2.3/§6.2.4 of the geometry design doc).
-//!
-//! Nothing here references the old `pipeline.rs` / `slice.rs` / `tiling.rs` /
-//! `b3dm.rs` modules; this reuses only the generic sink I/O helpers
-//! (`crate::SinkOutput`, `NodeContext`) shared by every sink in this crate,
-//! plus `reearth_flow_gltf::next` for the actual glb bytes (`glb.rs`'s
-//! former home — moved there since it has nothing 3D-Tiles-specific about
-//! it and a future glTF-writing sink will want it too).
+//! (`reearth_flow_geometry`). Pass-1 scope: only a bare `PolygonMesh` leaf
+//! per feature (see `mesh.rs`), no appearance/materials/textures, no
+//! same-tile content splitting or texture atlasing.
 
 mod mesh;
 mod quadtree;
@@ -88,11 +75,9 @@ impl Cesium3DTilesWriter {
     }
 }
 
-/// Generous hard cap on quadtree depth, protecting containment placement
-/// (`quadtree::place`) against a pathological zero/near-zero-extent feature
-/// forcing it to the bottom of the loop. `maxDepth` (§6.2.1 of the geometry
-/// design doc) will make this a real, user-facing parameter; until the
-/// writer's params are wired up, this stands in.
+/// Hard cap on quadtree depth, protecting `quadtree::place` against a
+/// pathological zero/near-zero-extent feature forcing it to the bottom of
+/// the loop.
 const MAX_DEPTH: u32 = 21;
 
 /// Every file a built tileset is made of, relative to the tileset's output
@@ -105,13 +90,9 @@ pub struct BuiltTileset {
 }
 
 /// Extract and reproject every feature's mesh, place each into the deepest
-/// quadtree cell that fully contains it (§6.2.2 of the geometry design doc),
-/// and render the result to a [`BuiltTileset`].
-///
-/// A free function, independent of any `Cesium3DTilesWriter` instance or
-/// `NodeContext`, so it doubles as the entry point for the `gml_to_3dtiles`
-/// example, which drives it from a real parsed CityGML file instead of the
-/// sink's buffered features.
+/// quadtree cell that fully contains it, and render the result to a
+/// [`BuiltTileset`]. A free function so `gml_to_3dtiles` can drive it
+/// directly from parsed CityGML, without a `Cesium3DTilesWriter`.
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
@@ -199,9 +180,8 @@ fn subtree_path(cell: Cell) -> String {
 }
 
 /// Merge one occupied cell's features into a single glb, index-offset
-/// concatenated (mirrors the pre-tiling pass's whole-dataset merge, just
-/// scoped to one cell's features instead of all of them), tagging each
-/// vertex with its feature's row in the cell's property table.
+/// concatenated, tagging each vertex with its feature's row in the cell's
+/// property table.
 fn build_cell_glb(
     cell_members: &[&(&Feature, mesh::ExtractedMesh)],
     options: MetadataOptions,
