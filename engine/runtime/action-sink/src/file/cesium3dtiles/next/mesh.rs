@@ -3,11 +3,11 @@
 //! placement) and ECEF (glTF vertices).
 //!
 //! Reprojection assumes JGD2011 (EPSG:6697) as the source CRS for every leaf,
-//! since the CityGML reader tags every leaf `Coordinate::Euclidean`
+//! since the CityGML reader tags every leaf `CoordinateFrame::Euclidean`
 //! regardless of its real frame. Each mesh's vertex buffer is reprojected
 //! directly via `transform_coords_3d`.
 
-use reearth_flow_geometry::coordinate::{Coordinate, EpsgCode};
+use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
 use reearth_flow_geometry::ops::{
     triangulation::Cache as TriangulationCache, ReprojectionCache, Triangulate,
@@ -81,9 +81,7 @@ fn collect_geometry(geometry: &Geometry, out: &mut Vec<PolygonMesh3D>) {
             }
         }
         Geometry::Euclidean3D(e) => collect_euclidean3d(e, out),
-        other => tracing::warn!(
-            "Cesium3DTilesWriter (new-geometry, pass 1): skipping unsupported geometry {other:?}"
-        ),
+        other => tracing::warn!("Cesium3DTilesWriter: skipping unsupported geometry {other:?}"),
     }
 }
 
@@ -103,18 +101,17 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
             for shell in std::iter::once(solid.exterior()).chain(solid.interiors()) {
                 match shell {
                     Shell::PolygonMesh(data) => {
-                        out.push(PolygonMesh3D::new(Coordinate::Euclidean, data.clone()))
+                        out.push(PolygonMesh3D::new(CoordinateFrame::Euclidean, data.clone()))
                     }
                     Shell::TriangularMesh(_) => tracing::warn!(
-                        "Cesium3DTilesWriter (new-geometry, pass 1): a Solid shell is a \
-                         TriangularMesh; TriangularMesh leaves aren't supported yet, skipping"
+                        "Cesium3DTilesWriter: a Solid shell is a TriangularMesh; \
+                         TriangularMesh leaves aren't supported, skipping"
                     ),
                 }
             }
         }
         other => tracing::warn!(
-            "Cesium3DTilesWriter (new-geometry, pass 1): only PolygonMesh/Solid are supported \
-             today; skipping {other:?}"
+            "Cesium3DTilesWriter: only PolygonMesh/Solid are supported; skipping {other:?}"
         ),
     }
 }

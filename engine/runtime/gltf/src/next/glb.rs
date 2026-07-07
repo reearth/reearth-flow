@@ -166,8 +166,6 @@ pub fn write(
         }));
     }
 
-    // Explicit double-sided material: the glTF default culls backfaces, and
-    // triangle winding isn't verified upstream.
     let mut primitive = json!({
         "attributes": primitive_attributes, "indices": 1, "material": 0,
     });
@@ -180,7 +178,18 @@ pub fn write(
         "buffers": [{"byteLength": bin.len()}],
         "bufferViews": buffer_views,
         "accessors": accessors,
-        "materials": [{"doubleSided": true}],
+        // No appearance data is read yet, so every feature would otherwise get
+        // the glTF spec's white default, making adjacent buildings visually
+        // merge together. Flat gray (matching the old writer's X3DMaterial
+        // default) keeps features distinguishable until real appearance support
+        // lands.
+        "materials": [{
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [0.7, 0.7, 0.7, 1.0],
+                "metallicFactor": 0.0,
+                "roughnessFactor": 0.9,
+            },
+        }],
         "meshes": [{"primitives": [primitive]}],
         "nodes": [{"mesh": 0, "translation": gltf_translation}],
         "scenes": [{"nodes": [0]}],
