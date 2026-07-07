@@ -17,8 +17,10 @@ use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
 use super::parser::{raw_gml_id, RawChild, RawNode};
-use super::resolver::{GeomNode, GeomRegistry, GmlGeometryType, Role, Unresolved, FRAME};
-use super::utils::{local_name, GML_NS_ID};
+use super::resolver::{
+    FaceIds, GeomNode, GeomRegistry, GmlGeometryType, LeafIds, Role, Unresolved, FRAME,
+};
+use super::utils::{local_name, GML_NS_311_ID, GML_NS_ID};
 
 /// A geometry carved from a feature, tagged with the LOD of the property it came
 /// from (`None` for `tin`) and the `gml:id`s of its enclosing elements (nearest
@@ -139,7 +141,7 @@ fn strip(
 fn gml_id_ref(node: &RawNode) -> Option<&str> {
     node.attrs
         .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
+        .find(|((q, ns), _)| local_name(q) == "id" && (*ns == GML_NS_ID || *ns == GML_NS_311_ID))
         .map(|(_, v)| v.as_str())
 }
 
@@ -183,7 +185,8 @@ fn geometry_node(node: &RawNode, registry: &mut GeomRegistry) -> Option<GeomNode
     };
     let id = raw_gml_id(node);
     let geom = if ty.is_inline() {
-        GeomNode::Resolved(build_leaf(node, &ty)?)
+        let (geometry, ids) = build_leaf(node, &ty)?;
+        GeomNode::Resolved(geometry, ids)
     } else {
         GeomNode::Unresolved(Unresolved {
             ty,
@@ -233,9 +236,10 @@ fn collect_members(node: &RawNode, registry: &mut GeomRegistry) -> Vec<(Role, Ge
     members
 }
 
-/// Parse an inline geometry leaf into a concrete geometry, dispatching on its
-/// type. Container types and unsupported leaves yield `None`.
-fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<Euclidean3DGeometry> {
+/// Parse an inline geometry leaf into a concrete geometry and the per-face gml:ids
+/// captured alongside it, dispatching on its type. Container types and unsupported
+/// leaves yield `None`.
+fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<(Euclidean3DGeometry, LeafIds)> {
     match ty {
         GmlGeometryType::Point => build_point(node),
         GmlGeometryType::LineString => build_line_string(node),
@@ -254,50 +258,61 @@ fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<Euclidean3DGeometr
 }
 
 /// Build a `Point` from the element's first coordinate; `None` if it carries none.
-fn build_point(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// A point has no faces, so no gml:ids are captured.
+fn build_point(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
     let coords = gather_coords(node);
-    coords
-        .first()
-        .map(|&c| Euclidean3DGeometry::Point(Point3D::new(FRAME, c)))
+    coords.first().map(|&c| {
+        (
+            Euclidean3DGeometry::Point(Point3D::new(FRAME, c)),
+            Vec::new(),
+        )
+    })
 }
 
 /// Build a `LineString` from the element's coordinates; `None` if it carries none.
-fn build_line_string(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// A line has no faces, so no gml:ids are captured.
+fn build_line_string(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
     let coords = gather_coords(node);
     if coords.is_empty() {
         return None;
     }
-    Some(Euclidean3DGeometry::LineString(LineString3D::from_coords(
-        FRAME, coords,
-    )))
+    let line = Euclidean3DGeometry::LineString(LineString3D::from_coords(FRAME, coords));
+    Some((line, Vec::new()))
 }
 
 /// Build a single-ring `Polygon` from a `LinearRing`'s coordinates; `None` if it
-/// carries none.
-fn build_ring_polygon(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// carries none. The one face's sole ring id is the `LinearRing`'s own gml:id.
+fn build_ring_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
     let exterior = gather_coords(node);
     if exterior.is_empty() {
         return None;
     }
-    Some(Euclidean3DGeometry::Polygon(Box::new(
-        Polygon3D::from_rings(FRAME, exterior, Vec::<Vec<[f64; 3]>>::new()),
-    )))
+    let polygon = Polygon3D::from_rings(FRAME, exterior, Vec::<Vec<[f64; 3]>>::new());
+    let face = FaceIds {
+        surface: None,
+        rings: vec![raw_gml_id(node)],
+    };
+    Some((Euclidean3DGeometry::Polygon(Box::new(polygon)), vec![face]))
 }
 
 /// Build a `Polygon` from an element's exterior and interior ring properties.
-fn build_polygon(node: &RawNode) -> Option<Euclidean3DGeometry> {
-    polygon_from_rings(node).map(|p| Euclidean3DGeometry::Polygon(Box::new(p)))
+fn build_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
+    let (polygon, face) = polygon_from_rings(node)?;
+    Some((Euclidean3DGeometry::Polygon(Box::new(polygon)), vec![face]))
 }
 
 /// Build a `PolygonMesh` by welding a `Surface`/`PolyhedralSurface`'s polygon
-/// patches into one mesh; `None` if it has no patches.
-fn build_surface(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// patches into one mesh; `None` if it has no patches. One `FaceIds` per patch, in
+/// patch order, matching the welded mesh's face order.
+fn build_surface(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
     let mut faces: Vec<Polygon3D> = Vec::new();
+    let mut face_ids: LeafIds = Vec::new();
     for prop in element_children(node) {
         if matches!(local_name(&prop.name.0), "patches" | "polygonPatches") {
             for patch in element_children(prop) {
-                if let Some(p) = polygon_from_rings(patch) {
-                    faces.push(p);
+                if let Some((polygon, ids)) = polygon_from_rings(patch) {
+                    faces.push(polygon);
+                    face_ids.push(ids);
                 }
             }
         }
@@ -307,19 +322,26 @@ fn build_surface(node: &RawNode) -> Option<Euclidean3DGeometry> {
     }
     PolygonMesh3D::from_polygons(FRAME, &faces)
         .ok()
-        .map(|m| Euclidean3DGeometry::PolygonMesh(Box::new(m)))
+        .map(|m| (Euclidean3DGeometry::PolygonMesh(Box::new(m)), face_ids))
 }
 
 /// Build a `TriangularMesh` from a `TriangulatedSurface`/`Tin`'s triangle patches,
-/// taking the first three coordinates of each; `None` if it has no patches.
-fn build_triangulated(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// taking the first three coordinates of each; `None` if it has no patches. One
+/// `FaceIds` per triangle, in triangle order, each face's sole ring id the
+/// triangle's exterior `LinearRing` gml:id.
+fn build_triangulated(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
     let mut soup: Vec<[f64; 3]> = Vec::new();
+    let mut face_ids: LeafIds = Vec::new();
     for prop in element_children(node) {
         if matches!(local_name(&prop.name.0), "trianglePatches" | "patches") {
             for triangle in element_children(prop) {
                 let ring = gather_coords(triangle);
                 if ring.len() >= 3 {
                     soup.extend_from_slice(&ring[..3]);
+                    face_ids.push(FaceIds {
+                        surface: None,
+                        rings: vec![triangle_ring_id(triangle)],
+                    });
                 }
             }
         }
@@ -327,33 +349,76 @@ fn build_triangulated(node: &RawNode) -> Option<Euclidean3DGeometry> {
     if soup.is_empty() {
         return None;
     }
-    Some(Euclidean3DGeometry::TriangularMesh(Box::new(
-        TriangularMesh3D::from_soup(FRAME, soup),
-    )))
+    let mesh =
+        Euclidean3DGeometry::TriangularMesh(Box::new(TriangularMesh3D::from_soup(FRAME, soup)));
+    Some((mesh, face_ids))
 }
 
-/// Build a polygon from an element's `exterior` / `interior` ring properties.
-fn polygon_from_rings(node: &RawNode) -> Option<Polygon3D> {
-    let mut exterior: Option<Vec<[f64; 3]>> = None;
-    let mut interiors: Vec<Vec<[f64; 3]>> = Vec::new();
+/// The gml:id of a triangle patch's exterior `LinearRing`, if any.
+fn triangle_ring_id(triangle: &RawNode) -> Option<String> {
+    element_children(triangle)
+        .find(|e| local_name(&e.name.0) == "exterior")
+        .and_then(|ext| element_children(ext).find(|e| local_name(&e.name.0) == "LinearRing"))
+        .and_then(raw_gml_id)
+}
+
+/// Build a polygon from an element's `exterior` / `interior` ring properties,
+/// capturing the element's own gml:id as the face's surface id and each
+/// `LinearRing`'s gml:id in exterior-first, holes-next order.
+fn polygon_from_rings(node: &RawNode) -> Option<(Polygon3D, FaceIds)> {
+    let mut exterior: Option<Ring> = None;
+    let mut interiors: Vec<Ring> = Vec::new();
     for prop in element_children(node) {
         match local_name(&prop.name.0) {
             "exterior" => {
-                let ring = gather_coords(prop);
-                if !ring.is_empty() {
+                let ring = read_ring(prop);
+                if !ring.coords.is_empty() {
                     exterior = Some(ring);
                 }
             }
             "interior" => {
-                let ring = gather_coords(prop);
-                if !ring.is_empty() {
+                let ring = read_ring(prop);
+                if !ring.coords.is_empty() {
                     interiors.push(ring);
                 }
             }
             _ => {}
         }
     }
-    exterior.map(|ext| Polygon3D::from_rings(FRAME, ext, interiors))
+    let exterior = exterior?;
+    let mut rings = Vec::with_capacity(1 + interiors.len());
+    rings.push(exterior.id);
+    let interior_coords: Vec<Vec<[f64; 3]>> = interiors
+        .into_iter()
+        .map(|ring| {
+            rings.push(ring.id);
+            ring.coords
+        })
+        .collect();
+    let polygon = Polygon3D::from_rings(FRAME, exterior.coords, interior_coords);
+    let face = FaceIds {
+        surface: raw_gml_id(node),
+        rings,
+    };
+    Some((polygon, face))
+}
+
+/// A single ring's coordinates and the enclosing `LinearRing`'s gml:id.
+struct Ring {
+    id: Option<String>,
+    coords: Vec<[f64; 3]>,
+}
+
+/// Read a `exterior` / `interior` ring property: its coordinates and the enclosing
+/// `LinearRing`'s gml:id.
+fn read_ring(prop: &RawNode) -> Ring {
+    let id = element_children(prop)
+        .find(|e| local_name(&e.name.0) == "LinearRing")
+        .and_then(raw_gml_id);
+    Ring {
+        id,
+        coords: gather_coords(prop),
+    }
 }
 
 /// Collect every coordinate under `node`, descending through property and ring
@@ -508,7 +573,7 @@ mod tests {
         let url = Url::parse("file:///test.gml").unwrap();
         let mut parser = Parser::new();
         parser.parse(xml.as_bytes(), &url).unwrap();
-        let (pending, _raw, geom_registry, _ns) = parser.finish();
+        let (pending, _raw, geom_registry, _app, _ns) = parser.finish();
         let feature = pending.into_iter().next().expect("one feature");
         (feature.root, feature.geoms, geom_registry)
     }
@@ -848,6 +913,87 @@ mod tests {
             )),
             "the lod-named non-geometry element should be preserved"
         );
+    }
+
+    #[test]
+    fn linear_ring_gml_ids_are_captured() {
+        // A Polygon surface with a gml:id whose exterior and interior LinearRings
+        // each carry a gml:id: the surface id and both ring ids are captured, in
+        // exterior-first, holes-next order. The polygon is registered under its own
+        // gml:id, so its captured ids live on the registry entry.
+        let (_geoms, registry) = parse_one(
+            r#"<bldg:lod0FootPrint><gml:Polygon gml:id="surf1">
+                 <gml:exterior><gml:LinearRing gml:id="ring_ext"><gml:posList>0 0 0 4 0 0 4 4 0 0 4 0 0 0 0</gml:posList></gml:LinearRing></gml:exterior>
+                 <gml:interior><gml:LinearRing gml:id="ring_int"><gml:posList>1 1 0 3 1 0 3 3 0 1 1 0</gml:posList></gml:LinearRing></gml:interior>
+               </gml:Polygon></bldg:lod0FootPrint>"#,
+        );
+        let node = registry
+            .get(&("file:///test.gml".to_string(), "surf1".to_string()))
+            .expect("polygon registered under its gml:id");
+        let GeomNode::Resolved(_, ids) = node else {
+            panic!("expected a resolved leaf");
+        };
+        assert_eq!(ids.len(), 1);
+        assert_eq!(ids[0].surface.as_deref(), Some("surf1"));
+        assert_eq!(
+            ids[0].rings,
+            vec![Some("ring_ext".to_string()), Some("ring_int".to_string())]
+        );
+    }
+
+    #[test]
+    fn gml31_namespace_ids_are_captured() {
+        // CityGML 2.0 uses the GML 3.1 namespace (`http://www.opengis.net/gml`);
+        // gml:id capture must not be limited to GML 3.2.
+        let xml = r#"<core:CityModel
+             xmlns:core="http://www.opengis.net/citygml/2.0"
+             xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+             xmlns:gml="http://www.opengis.net/gml"
+             xmlns:xlink="http://www.w3.org/1999/xlink">
+           <core:cityObjectMember><bldg:Building gml:id="b1">
+             <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+               <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                 <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+               </gml:LinearRing></gml:exterior></gml:Polygon>
+             </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+           </bldg:Building></core:cityObjectMember>
+         </core:CityModel>"#;
+        let mut parser = Parser::new();
+        parser
+            .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
+            .unwrap();
+        let (_pending, _raw, geom_registry, _app, _ns) = parser.finish();
+        let node = geom_registry
+            .get(&("file:///test.gml".to_string(), "poly1".to_string()))
+            .expect("polygon registered under its GML 3.1 gml:id");
+        let GeomNode::Resolved(_, ids) = node else {
+            panic!("expected a resolved leaf");
+        };
+        assert_eq!(ids[0].surface.as_deref(), Some("poly1"));
+        assert_eq!(ids[0].rings, vec![Some("ring1".to_string())]);
+    }
+
+    #[test]
+    fn ring_gml_ids_captured_on_multisurface_member() {
+        // The common PLATEAU shape: a surfaceMember Polygon with no gml:id of its
+        // own, whose exterior LinearRing carries one. The member leaf keeps the ring
+        // id with no surface id.
+        let (geoms, _registry) = parse_one(
+            r#"<bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                 <gml:Polygon><gml:exterior><gml:LinearRing gml:id="ring1">
+                   <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                 </gml:LinearRing></gml:exterior></gml:Polygon>
+               </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>"#,
+        );
+        let GeomNode::Unresolved(container) = &geoms[0].node else {
+            panic!("expected an unresolved container");
+        };
+        let GeomNode::Resolved(_, ids) = &container.members[0].1 else {
+            panic!("expected a resolved member leaf");
+        };
+        assert_eq!(ids.len(), 1);
+        assert_eq!(ids[0].surface, None);
+        assert_eq!(ids[0].rings, vec![Some("ring1".to_string())]);
     }
 
     #[test]

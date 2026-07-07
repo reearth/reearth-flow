@@ -15,6 +15,7 @@ use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::{Shell, Solid};
 use reearth_flow_geometry::Euclidean3DGeometry;
 
+use super::appearance::AppearanceIndex;
 use super::parser::RawNodeKey;
 
 /// The coordinate frame all resolved geometry is expressed in; CityGML `srsName`
@@ -26,13 +27,29 @@ pub(super) const FRAME: CoordinateFrame = CoordinateFrame::Euclidean;
 /// assembled from its members.
 pub(super) enum GeomNode {
     /// A geometry fully parsed in pass 1: an inline leaf, or a container that
-    /// turned out to be reference-free and was assembled eagerly.
-    Resolved(Euclidean3DGeometry),
+    /// turned out to be reference-free and was assembled eagerly. Carries the
+    /// per-face gml:ids captured from the source, for binding appearance later.
+    Resolved(Euclidean3DGeometry, LeafIds),
     /// An `xlink:href`, resolved against the geometry registry in pass 2.
     Ref(RawNodeKey),
     /// A container awaiting assembly from its resolved members.
     Unresolved(Unresolved),
 }
+
+/// The gml:ids captured for one face of a built geometry, aligned with the face's
+/// stored ring layout, used to bind CityGML appearance by gml:id in a later pass.
+pub(super) struct FaceIds {
+    /// The enclosing surface element's gml:id (e.g. a `gml:Polygon`), if any; the
+    /// target of a material or a texture.
+    pub(super) surface: Option<String>,
+    /// Ring gml:ids, exterior first then holes, each `None` when the ring carried
+    /// no gml:id; the target of texture coordinates.
+    pub(super) rings: Vec<Option<String>>,
+}
+
+/// Per-face gml:ids for a built leaf geometry, in the leaf's face order; empty for
+/// leaves with no faces (`Point`, `LineString`).
+pub(super) type LeafIds = Vec<FaceIds>;
 
 /// A geometry container held until pass 2, when its members are resolved and
 /// folded into a single [`Euclidean3DGeometry`].
@@ -141,13 +158,25 @@ impl GmlGeometryType {
 }
 
 /// Resolve a top-level geometry node into a single [`Euclidean3DGeometry`],
-/// following `xlink:href` references through `registry`. Returns `None` when the
-/// node, or every one of its members, cannot be resolved.
+/// following `xlink:href` references through `registry`, with no appearance
+/// attached. Returns `None` when the node, or every one of its members, cannot be
+/// resolved.
 pub(super) fn resolve_root(
     node: &GeomNode,
     registry: &GeomRegistry,
 ) -> Option<Euclidean3DGeometry> {
-    resolve(node, registry, &mut HashSet::new())
+    resolve_root_with_appearance(node, registry, &AppearanceIndex::default())
+}
+
+/// Resolve a top-level geometry node, attaching the appearance targeting each
+/// surface from `appearance`. Attachment is at the polygon leaf, so mesh welding
+/// carries it into `PolygonMesh` / `Solid`.
+pub(super) fn resolve_root_with_appearance(
+    node: &GeomNode,
+    registry: &GeomRegistry,
+    appearance: &AppearanceIndex,
+) -> Option<Euclidean3DGeometry> {
+    resolve(node, registry, appearance, &mut HashSet::new())
 }
 
 /// Resolve one node. `in_progress` holds the `xlink` keys on the current
@@ -155,13 +184,36 @@ pub(super) fn resolve_root(
 fn resolve(
     node: &GeomNode,
     registry: &GeomRegistry,
+    appearance: &AppearanceIndex,
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     match node {
-        GeomNode::Resolved(geometry) => Some(geometry.clone()),
-        GeomNode::Ref(key) => resolve_ref(key, registry, in_progress),
-        GeomNode::Unresolved(unresolved) => construct(unresolved, registry, in_progress),
+        GeomNode::Resolved(geometry, ids) => {
+            Some(with_appearance(geometry.clone(), ids, appearance))
+        }
+        GeomNode::Ref(key) => resolve_ref(key, registry, appearance, in_progress),
+        GeomNode::Unresolved(unresolved) => {
+            construct(unresolved, registry, appearance, in_progress)
+        }
     }
+}
+
+/// Attach the appearance for a leaf's captured ids. Only a `Polygon` binds here;
+/// its appearance is welded into any enclosing mesh downstream.
+fn with_appearance(
+    mut geometry: Euclidean3DGeometry,
+    ids: &LeafIds,
+    appearance: &AppearanceIndex,
+) -> Euclidean3DGeometry {
+    if appearance.is_empty() {
+        return geometry;
+    }
+    if let Euclidean3DGeometry::Polygon(polygon) = &mut geometry {
+        if let Some(face) = ids.first() {
+            appearance.apply_to_polygon(polygon, face.surface.as_deref(), &face.rings);
+        }
+    }
+    geometry
 }
 
 /// Resolve an `xlink:href` target through `registry`. `in_progress` holds the keys
@@ -169,6 +221,7 @@ fn resolve(
 fn resolve_ref(
     key: &RawNodeKey,
     registry: &GeomRegistry,
+    appearance: &AppearanceIndex,
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     if !in_progress.insert(key.clone()) {
@@ -176,7 +229,7 @@ fn resolve_ref(
         return None;
     }
     let resolved = match registry.get(key) {
-        Some(target) => resolve(target, registry, in_progress),
+        Some(target) => resolve(target, registry, appearance, in_progress),
         None => {
             tracing::warn!(
                 id = key.1,
@@ -195,12 +248,15 @@ fn resolve_ref(
 fn construct(
     node: &Unresolved,
     registry: &GeomRegistry,
+    appearance: &AppearanceIndex,
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     let members: Vec<(Role, Euclidean3DGeometry)> = node
         .members
         .iter()
-        .filter_map(|(role, child)| resolve(child, registry, in_progress).map(|g| (*role, g)))
+        .filter_map(|(role, child)| {
+            resolve(child, registry, appearance, in_progress).map(|g| (*role, g))
+        })
         .collect();
 
     match node.ty {
@@ -374,7 +430,7 @@ mod tests {
     }
 
     fn resolved(geometry: Euclidean3DGeometry) -> GeomNode {
-        GeomNode::Resolved(geometry)
+        GeomNode::Resolved(geometry, Vec::new())
     }
 
     fn node(ty: GmlGeometryType, members: Vec<(Role, GeomNode)>) -> GeomNode {

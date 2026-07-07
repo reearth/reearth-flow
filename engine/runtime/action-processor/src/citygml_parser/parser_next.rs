@@ -9,11 +9,12 @@ use quick_xml::NsReader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
+use super::appearance::{self, AppearanceIndex};
 use super::geometry;
 use super::resolver::GeomRegistry;
 use super::utils::{
     gml_id_attr, local_name as utils_local_name, xlink_href_attr, NamespaceRegistry, NsId, QName,
-    XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID, XLINK_NS_ID,
+    XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -55,6 +56,7 @@ pub enum ParseError {
 pub struct Parser {
     raw_registry: RawRegistry,
     geom_registry: GeomRegistry,
+    appearance_index: AppearanceIndex,
     pub(super) ns_registry: NamespaceRegistry,
     pending: Vec<PendingFeature>,
     /// Whether to record each geometry's enclosing `gml:id`s, needed only when
@@ -89,6 +91,7 @@ impl Parser {
         Self {
             raw_registry: RawRegistry::new(),
             geom_registry: GeomRegistry::new(),
+            appearance_index: AppearanceIndex::default(),
             ns_registry: NamespaceRegistry::new(),
             pending: Vec::new(),
             track_owners,
@@ -144,6 +147,16 @@ impl Parser {
                                 "citygml: empty cityObjectMember/featureMember, skipped"
                             );
                         }
+                    } else if ln == "appearanceMember" {
+                        let member = parse_element(
+                            &mut reader,
+                            &mut buf,
+                            name,
+                            attrs,
+                            &source_url_arc,
+                            &mut self.ns_registry,
+                        )?;
+                        appearance::index_appearance_member(&member, &mut self.appearance_index);
                     } else {
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
                     }
@@ -157,20 +170,22 @@ impl Parser {
         Ok(())
     }
 
-    /// Consume the parser and return the pending features, the attribute and
-    /// geometry registries, and the namespace registry for pass-2 resolution.
+    /// Consume the parser and return the pending features, the attribute, geometry
+    /// and appearance registries, and the namespace registry for pass-2 resolution.
     pub(super) fn finish(
         self,
     ) -> (
         Vec<PendingFeature>,
         RawRegistry,
         GeomRegistry,
+        AppearanceIndex,
         NamespaceRegistry,
     ) {
         (
             self.pending,
             self.raw_registry,
             self.geom_registry,
+            self.appearance_index,
             self.ns_registry,
         )
     }
@@ -232,7 +247,7 @@ pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
 pub(super) fn raw_gml_id(node: &RawNode) -> Option<String> {
     node.attrs
         .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
+        .find(|((q, ns), _)| local_name(q) == "id" && (*ns == GML_NS_ID || *ns == GML_NS_311_ID))
         .map(|(_, v)| v.clone())
 }
 
@@ -557,7 +572,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _) = parser.finish();
+        let (pending, _, _, _, _) = parser.finish();
 
         assert_eq!(pending.len(), 2);
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
@@ -579,7 +594,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, raw_reg, _, _) = parser.finish();
+        let (pending, raw_reg, _, _, _) = parser.finish();
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
@@ -600,7 +615,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (_, raw_reg, _, _) = parser.finish();
+        let (_, raw_reg, _, _, _) = parser.finish();
 
         let url = dummy_url().to_string();
         assert!(raw_reg.contains_key(&(url.clone(), "bldg001".to_string())));
@@ -625,7 +640,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
-        let (_, raw_reg, _, _) = parser.finish();
+        let (_, raw_reg, _, _, _) = parser.finish();
 
         assert_eq!(raw_reg.len(), 2);
         assert!(raw_reg.contains_key(&(url_a.to_string(), "shared001".to_string())));
@@ -654,7 +669,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _) = parser.finish();
+        let (pending, _, _, _, _) = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -687,7 +702,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _) = parser.finish();
+        let (pending, _, _, _, _) = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -751,7 +766,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _) = parser.finish();
+        let (pending, _, _, _, _) = parser.finish();
 
         assert_eq!(
             pending[0]

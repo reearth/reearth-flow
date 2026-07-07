@@ -1,3 +1,5 @@
+#[cfg(feature = "new-geometry")]
+pub(crate) mod appearance;
 pub(crate) mod codespace;
 pub(crate) mod flatten;
 #[cfg(not(feature = "new-geometry"))]

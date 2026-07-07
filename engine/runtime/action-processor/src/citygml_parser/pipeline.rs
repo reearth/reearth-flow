@@ -162,6 +162,7 @@ mod build_next {
     };
 
     use crate::citygml_parser::{
+        appearance::AppearanceIndex,
         codespace, flatten, geometry,
         parser::{self, Parser, RawRegistry},
         resolver::{self, GeomRegistry},
@@ -183,11 +184,12 @@ mod build_next {
         _flatten_single_child_objects: bool,
         _flatten_measure_types: bool,
     ) -> Vec<Feature> {
-        let (pending, raw_registry, geom_registry, ns_registry) = parser.finish();
+        let (pending, raw_registry, geom_registry, appearance, ns_registry) = parser.finish();
         assemble_features(
             pending,
             &raw_registry,
             &geom_registry,
+            &appearance,
             &ns_registry,
             extract_tags,
         )
@@ -200,6 +202,7 @@ mod build_next {
         pending: Vec<parser::PendingFeature>,
         raw_registry: &RawRegistry,
         geom_registry: &GeomRegistry,
+        appearance: &AppearanceIndex,
         ns_registry: &NamespaceRegistry,
         extract_tags: &HashSet<String>,
     ) -> Vec<Feature> {
@@ -219,7 +222,7 @@ mod build_next {
 
             if extract_tags.is_empty() {
                 let mut feature = parser::to_feature(&feature_root);
-                attach_geometry(&mut feature, &geoms, geom_registry);
+                attach_geometry(&mut feature, &geoms, geom_registry, appearance);
                 out.push(feature);
             } else {
                 let root_gml_id = gml_id_attr(&feature_root.attrs);
@@ -253,7 +256,12 @@ mod build_next {
                     if let Some(gs) =
                         gml_id_attr(&node.attrs).and_then(|id| by_owner.get(id.as_str()))
                     {
-                        attach_geometry(&mut feature, gs.iter().copied(), geom_registry);
+                        attach_geometry(
+                            &mut feature,
+                            gs.iter().copied(),
+                            geom_registry,
+                            appearance,
+                        );
                     }
                     out.push(feature);
                 }
@@ -268,12 +276,14 @@ mod build_next {
         feature: &mut Feature,
         geoms: impl IntoIterator<Item = &'a geometry::PendingGeom>,
         registry: &GeomRegistry,
+        appearance: &AppearanceIndex,
     ) {
         // TODO: carry each geometry's LOD and gml:id in the collection's per-member attributes.
         let members: Vec<Geometry> = geoms
             .into_iter()
             .filter_map(|pending| {
-                resolver::resolve_root(&pending.node, registry).map(Geometry::Euclidean3D)
+                resolver::resolve_root_with_appearance(&pending.node, registry, appearance)
+                    .map(Geometry::Euclidean3D)
             })
             .collect();
         if !members.is_empty() {
@@ -307,9 +317,16 @@ mod build_next {
             parser
                 .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
                 .unwrap();
-            let (pending, raw_registry, geom_registry, ns_registry) = parser.finish();
+            let (pending, raw_registry, geom_registry, appearance, ns_registry) = parser.finish();
             let tags: HashSet<String> = extract_tags.iter().map(|s| s.to_string()).collect();
-            assemble_features(pending, &raw_registry, &geom_registry, &ns_registry, &tags)
+            assemble_features(
+                pending,
+                &raw_registry,
+                &geom_registry,
+                &appearance,
+                &ns_registry,
+                &tags,
+            )
         }
 
         /// The single `Euclidean3D` geometry of a feature whose `GeometryCollection`
