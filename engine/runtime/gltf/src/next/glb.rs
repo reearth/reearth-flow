@@ -5,10 +5,10 @@
 //! any attributes. No material, no normals, no UV — the new-geometry
 //! writer's pass-1 scope is geometry (+ this minimal metadata) only.
 //!
-//! Deliberately not built on `nusamai-gltf` or the existing `reearth-flow-gltf`
-//! crate: both are shaped around a materials/metadata model this pass doesn't
-//! use. This is small enough (glTF 2.0's JSON document + the 12-byte GLB
-//! header plus two length-prefixed chunks) to write directly.
+//! Deliberately not built on the parent `writer.rs` (or the `nusamai-gltf`
+//! types it wraps): both are shaped around a materials/metadata model this
+//! pass doesn't use. This is small enough (glTF 2.0's JSON document + the
+//! 12-byte GLB header plus two length-prefixed chunks) to write directly.
 
 use serde_json::json;
 
@@ -32,9 +32,10 @@ const METADATA_CLASS_NAME: &str = "Feature";
 
 /// Build a complete `.glb` byte stream for one mesh.
 ///
-/// `positions` must already be localized (small deltas from some local origin,
-/// not raw ECEF — see the module-level note in `next/mod.rs` on why) and cast
-/// to `f32`, expressed in the same right-handed, Z-up axes as ECEF.
+/// `positions` must already be localized (small deltas from some local
+/// origin, not raw ECEF — callers keep vertex precision bounded relative to
+/// a per-tile origin rather than ECEF's ~6.378e6 m magnitude) and cast to
+/// `f32`, expressed in the same right-handed, Z-up axes as ECEF.
 /// `translation` is that local origin, in full `f64` precision — a glTF node
 /// `translation` is a plain JSON number array, so it round-trips exactly
 /// regardless of how large the ECEF magnitude is. `feature_ids[i]` is the row
@@ -48,7 +49,7 @@ const METADATA_CLASS_NAME: &str = "Feature";
 /// geographic position after that rotation is applied). Since the input here
 /// is already Z-up (ECEF-relative), this writes the inverse, `(x, y, z) ->
 /// (x, z, -y)`, so the renderer's rotation cancels out.
-pub(super) fn write(
+pub fn write(
     positions: &[[f32; 3]],
     indices: &[[u32; 3]],
     translation: [f64; 3],

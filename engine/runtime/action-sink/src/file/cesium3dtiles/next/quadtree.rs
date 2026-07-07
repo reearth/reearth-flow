@@ -210,7 +210,14 @@ mod tests {
         let root = geobox(0.0, 0.0, 10.0, 10.0);
         let feature = geobox(1.0, 1.0, 2.0, 2.0);
         let cell = place(&root, &feature, 10);
-        assert_eq!(cell, Cell { level: 2, x: 0, y: 0 });
+        assert_eq!(
+            cell,
+            Cell {
+                level: 2,
+                x: 0,
+                y: 0
+            }
+        );
     }
 
     #[test]
@@ -231,7 +238,14 @@ mod tests {
     #[test]
     fn cell_region_round_trips_through_level_and_index() {
         let root = geobox(0.0, 0.0, 10.0, 10.0);
-        let region = cell_region(&root, Cell { level: 1, x: 1, y: 0 });
+        let region = cell_region(
+            &root,
+            Cell {
+                level: 1,
+                x: 1,
+                y: 0,
+            },
+        );
         assert_eq!((region.west, region.east), (5.0, 10.0));
         assert_eq!((region.south, region.north), (0.0, 5.0));
     }

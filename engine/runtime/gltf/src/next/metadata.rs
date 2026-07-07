@@ -31,12 +31,12 @@ pub struct MetadataOptions<'a> {
 /// `properties[i] = (raw attribute path, glTF-identifier-safe property id)`;
 /// `rows[feature][i]` is that feature's value for column `i` (`""` if the
 /// feature doesn't carry that path).
-pub(super) struct PropertyTable {
-    pub(super) properties: Vec<(String, String)>,
-    pub(super) rows: Vec<Vec<String>>,
+pub struct PropertyTable {
+    pub properties: Vec<(String, String)>,
+    pub rows: Vec<Vec<String>>,
 }
 
-pub(super) fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
+pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
     let flattened: Vec<BTreeMap<String, String>> = features
         .iter()
         .map(|feature| flatten_attributes(feature, options))
@@ -113,7 +113,13 @@ fn is_excluded(key: &str, options: MetadataOptions) -> bool {
 fn sanitize_identifier(raw: &str, used: &mut HashSet<String>) -> String {
     let mut id: String = raw
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     if id.is_empty() || id.chars().next().is_some_and(|c| c.is_ascii_digit()) {
         id.insert(0, '_');

@@ -10,13 +10,13 @@
 //!   them (§6.2.3/§6.2.4 of the geometry design doc).
 //!
 //! Nothing here references the old `pipeline.rs` / `slice.rs` / `tiling.rs` /
-//! `b3dm.rs` modules; this is a self-contained implementation, reusing only
-//! the generic sink I/O helpers (`crate::SinkOutput`, `NodeContext`) shared by
-//! every sink in this crate.
+//! `b3dm.rs` modules; this reuses only the generic sink I/O helpers
+//! (`crate::SinkOutput`, `NodeContext`) shared by every sink in this crate,
+//! plus `reearth_flow_gltf::next` for the actual glb bytes (`glb.rs`'s
+//! former home — moved there since it has nothing 3D-Tiles-specific about
+//! it and a future glTF-writing sink will want it too).
 
-mod glb;
 mod mesh;
-mod metadata;
 mod quadtree;
 mod subtree;
 mod tileset;
@@ -24,14 +24,15 @@ mod tileset;
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 
+use reearth_flow_gltf::next::{glb, metadata};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::DEFAULT_PORT;
 use reearth_flow_types::Feature;
 
 use super::sink::Cesium3DTilesWriter;
 use crate::errors::SinkError;
-pub use metadata::MetadataOptions;
 use quadtree::{Cell, GeoBox};
+pub use reearth_flow_gltf::next::metadata::MetadataOptions;
 
 impl Cesium3DTilesWriter {
     pub(super) fn process_new_geometry(
@@ -111,7 +112,10 @@ pub struct BuiltTileset {
 /// `NodeContext`, so it doubles as the entry point for the `gml_to_3dtiles`
 /// example, which drives it from a real parsed CityGML file instead of the
 /// sink's buffered features.
-pub fn build(features: &[Feature], options: MetadataOptions) -> crate::errors::Result<BuiltTileset> {
+pub fn build(
+    features: &[Feature],
+    options: MetadataOptions,
+) -> crate::errors::Result<BuiltTileset> {
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
         .iter()
         .filter_map(|feature| mesh::extract(&feature.geometry).map(|m| (feature, m)))
