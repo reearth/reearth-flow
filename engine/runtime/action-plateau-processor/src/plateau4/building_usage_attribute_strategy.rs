@@ -11,7 +11,7 @@
 use std::collections::HashMap;
 
 use reearth_flow_runtime::errors::BoxedError;
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
 use crate::common::building_usage_attribute_validator::{
     classify_city_code, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
@@ -109,18 +109,5 @@ impl BuildingUsageAttributeStrategy for Plateau4BuildingUsageStrategy {
             usage_messages,
             city_code_error,
         }))
-    }
-
-    fn set_usage_error(&self, attributes: &mut Attributes, messages: &[String]) {
-        attributes.insert(
-            Attribute::new("errors"),
-            AttributeValue::Array(
-                messages
-                    .iter()
-                    .cloned()
-                    .map(AttributeValue::String)
-                    .collect(),
-            ),
-        );
     }
 }

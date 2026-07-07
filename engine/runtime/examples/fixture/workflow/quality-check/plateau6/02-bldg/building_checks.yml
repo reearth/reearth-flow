@@ -2040,8 +2040,8 @@ nodes:
   # it checks usage-attribute dependency violations (L-bldg-04,05) and the city
   # code against Common_localPublicAuthorities.xml, over the CityGML 3.0 / i-UR 4.0
   # structure (uro:BuildingDetailAttribute / uro:BuildingIDAttribute hang off
-  # bldg:adeOfAbstractBuilding). Usage errors leave on l0405BldgError with a
-  # usageError attribute; city-code errors leave on cityCodeError with a
+  # bldg:adeOfAbstractBuilding). Usage errors leave on l0405BldgError with an
+  # errors attribute; city-code errors leave on cityCodeError with a
   # cityCodeError attribute.
   - id: c1b00020-0000-4000-8000-000000000020
     name: BuildingUsageAttributeValidator
@@ -2066,7 +2066,7 @@ nodes:
         - attribute: gml_id
           valueAttribute: __citygml_gml_id
         - attribute: "Building Usage Attribute Error"
-          valueAttribute: usageError
+          valueAttribute: errors
         - attribute: "Feature Type"
           valueAttribute: __citygml_feature_type
 

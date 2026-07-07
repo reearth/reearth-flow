@@ -11,12 +11,13 @@
 //!   error.
 //!
 //! The generation-independent orchestration (code-list load, port emission,
-//! violation/classification helpers) lives here. The generation-specific seam —
-//! how the i-UR attributes are laid out in the feature (CityGML 2.0 nests them
-//! under a `cityGmlAttributes` map; CityGML 3.0 hangs them off
-//! `bldg:adeOfAbstractBuilding`), where the survey year and city code come from,
-//! and which attribute shape carries the usage error downstream — is injected as
-//! a [`BuildingUsageAttributeStrategy`] trait object.
+//! violation/classification helpers) lives here, and the findings are emitted
+//! identically for every generation (usage errors as the `errors` array,
+//! city-code errors as the `cityCodeError` scalar). The only generation-specific
+//! seam — how the i-UR attributes are laid out in the feature (CityGML 2.0 nests
+//! them under a `cityGmlAttributes` map; CityGML 3.0 hangs them off
+//! `bldg:adeOfAbstractBuilding`) and where the survey year and city code come
+//! from — is injected as a [`BuildingUsageAttributeStrategy`] trait object.
 
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -33,7 +34,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -82,11 +83,11 @@ pub(crate) struct UsageAnalysis {
 
 /// Generation-specific seam for the building usage-attribute validator.
 ///
-/// [`analyze`](BuildingUsageAttributeStrategy::analyze) navigates the
-/// generation's feature layout to produce the usage/city-code findings, and
-/// [`set_usage_error`](BuildingUsageAttributeStrategy::set_usage_error) writes
-/// the usage error in the attribute shape that generation's downstream CSV
-/// wiring expects.
+/// Only the analysis differs between generations (how the i-UR attributes are
+/// laid out in the feature); the findings, once produced, are emitted
+/// identically, so this trait carries the single [`analyze`] method.
+///
+/// [`analyze`]: BuildingUsageAttributeStrategy::analyze
 pub(crate) trait BuildingUsageAttributeStrategy: Send + Sync + Debug {
     /// Analyze one building feature against the resolved code list.
     ///
@@ -98,10 +99,6 @@ pub(crate) trait BuildingUsageAttributeStrategy: Send + Sync + Debug {
         feature: &Feature,
         city_code_to_name: &HashMap<String, String>,
     ) -> Result<Option<UsageAnalysis>, BoxedError>;
-
-    /// Attach the usage-violation error attribute to `attributes`. CityGML 2.0
-    /// carries it as the `errors` array; CityGML 3.0 as the `usageError` scalar.
-    fn set_usage_error(&self, attributes: &mut Attributes, messages: &[String]);
 }
 
 #[derive(Debug, Clone)]
@@ -255,8 +252,19 @@ impl BuildingUsageAttributeValidator {
         let mut attributes = (*feature.attributes).clone();
         let mut ports = Vec::<Port>::new();
         if !analysis.usage_messages.is_empty() {
-            self.strategy
-                .set_usage_error(&mut attributes, &analysis.usage_messages);
+            // Carried as the `errors` array; the downstream CSV writer renders a
+            // multi-message array comma-joined (`msg1, msg2`).
+            attributes.insert(
+                Attribute::new("errors"),
+                AttributeValue::Array(
+                    analysis
+                        .usage_messages
+                        .iter()
+                        .cloned()
+                        .map(AttributeValue::String)
+                        .collect(),
+                ),
+            );
             ports.push(L_04_05_BLDG_ERROR_PORT.clone());
         }
         if let Some(city_code_error) = analysis.city_code_error {
