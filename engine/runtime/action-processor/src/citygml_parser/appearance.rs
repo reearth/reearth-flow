@@ -55,20 +55,25 @@ impl AppearanceIndex {
         self.surfaces.is_empty()
     }
 
-    /// Attach the appearance targeting `surface` to `polygon`, assembling per-ring
-    /// UV from `rings` (exterior-first, holes-next, matching the polygon's coords).
-    /// A textured style whose rings lack complete UV is skipped rather than
-    /// attached with a mismatched UV length.
+    /// Attach the appearance targeting `polygon` to it, assembling per-ring UV from
+    /// `rings` (exterior-first, holes-next, matching the polygon's coords).
+    ///
+    /// `candidates` are the gml:ids that may carry this polygon's style, most
+    /// specific first: the polygon's own surface id, then its enclosing container
+    /// ids (a `MultiSurface` / `Solid` may bind a material to a whole aggregate).
+    /// The first candidate that carries any style wins, so a leaf's own material
+    /// overrides an inherited container material. A textured style whose rings lack
+    /// complete UV is skipped rather than attached with a mismatched UV length.
     pub(super) fn apply_to_polygon(
         &self,
         polygon: &mut Polygon3D,
-        surface: Option<&str>,
+        candidates: &[&str],
         rings: &[Option<String>],
     ) {
-        let Some(surface) = surface else {
-            return;
-        };
-        let Some(styles) = self.surfaces.get(surface) else {
+        let Some((surface, styles)) = candidates
+            .iter()
+            .find_map(|id| self.surfaces.get(*id).map(|styles| (*id, styles)))
+        else {
             return;
         };
         for style in styles {
@@ -211,7 +216,10 @@ fn set_side(index: &mut AppearanceIndex, surface: &str, theme: &str, side: Side,
 }
 
 /// Index one `app:ParameterizedTexture`: its image as a textured material bound to
-/// each target surface's side, and each target ring's texture coordinates.
+/// each target surface's side, and each target ring's texture coordinates. Handles
+/// both the CityGML 2.0 shape (`target` with a `uri` attribute, `textureCoordinates`
+/// with a `ring` attribute) and the 3.0 shape (`textureParameterization` of
+/// `TextureAssociation`, with element-text `target` / `ring`).
 fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
     let Some(image) = child_text(texture, "imageURI") else {
         return;
@@ -221,42 +229,107 @@ fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
     };
     let side = side_of(texture);
     let raster = Arc::new(Raster::Uri(uri));
-    for target in child_elements(texture) {
-        if local_name(&target.name.0) != "target" {
+    for child in child_elements(texture) {
+        match local_name(&child.name.0) {
+            "target" => index_texture_target_v2(child, theme, side, &raster, index),
+            "textureParameterization" => {
+                for assoc in child_elements(child) {
+                    if local_name(&assoc.name.0) == "TextureAssociation" {
+                        index_texture_target_v3(assoc, theme, side, &raster, index);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// A textured material for one side backed by `raster`.
+fn textured_side(raster: &Arc<Raster>) -> SideMaterial {
+    SideMaterial {
+        material: texture_material(Arc::clone(raster)),
+        textured: true,
+    }
+}
+
+/// CityGML 2.0 texture target: `<app:target uri="#surface">` wrapping a
+/// `TexCoordList` of `<app:textureCoordinates ring="#ring">`.
+fn index_texture_target_v2(
+    target: &RawNode,
+    theme: &str,
+    side: Side,
+    raster: &Arc<Raster>,
+    index: &mut AppearanceIndex,
+) {
+    let Some(surface) = attr(target, "uri").map(strip_hash) else {
+        return;
+    };
+    set_side(index, surface, theme, side, textured_side(raster));
+    for coord_list in child_elements(target) {
+        if local_name(&coord_list.name.0) != "TexCoordList" {
             continue;
         }
-        let Some(surface) = attr(target, "uri").map(strip_hash) else {
-            continue;
-        };
-        set_side(
-            index,
-            surface,
-            theme,
-            side,
-            SideMaterial {
-                material: texture_material(Arc::clone(&raster)),
-                textured: true,
-            },
-        );
-        for coord_list in child_elements(target) {
-            if local_name(&coord_list.name.0) != "TexCoordList" {
+        for tc in child_elements(coord_list) {
+            if local_name(&tc.name.0) != "textureCoordinates" {
                 continue;
             }
-            for tc in child_elements(coord_list) {
-                if local_name(&tc.name.0) != "textureCoordinates" {
-                    continue;
-                }
-                let Some(ring) = attr(tc, "ring").map(strip_hash) else {
-                    continue;
-                };
-                if let Some(uv) = parse_uv(&text_of(tc)) {
-                    index
-                        .ring_uv
-                        .insert((theme.to_string(), side, ring.to_string()), uv);
-                }
+            let Some(ring) = attr(tc, "ring").map(strip_hash) else {
+                continue;
+            };
+            if let Some(uv) = parse_uv(&text_of(tc)) {
+                index
+                    .ring_uv
+                    .insert((theme.to_string(), side, ring.to_string()), uv);
             }
         }
     }
+}
+
+/// CityGML 3.0 texture target: an `<app:TextureAssociation>` with an element-text
+/// `<app:target>#surface` and a nested `textureParameterization` / `TexCoordList`
+/// whose `textureCoordinates` and `ring` are positional siblings.
+fn index_texture_target_v3(
+    assoc: &RawNode,
+    theme: &str,
+    side: Side,
+    raster: &Arc<Raster>,
+    index: &mut AppearanceIndex,
+) {
+    let Some(surface) = child_text(assoc, "target") else {
+        return;
+    };
+    let surface = strip_hash(&surface);
+    set_side(index, surface, theme, side, textured_side(raster));
+    for param in child_elements(assoc) {
+        if local_name(&param.name.0) != "textureParameterization" {
+            continue;
+        }
+        for coord_list in child_elements(param) {
+            if local_name(&coord_list.name.0) != "TexCoordList" {
+                continue;
+            }
+            for (ring, uv) in tex_coord_pairs(coord_list) {
+                index.ring_uv.insert((theme.to_string(), side, ring), uv);
+            }
+        }
+    }
+}
+
+/// Pair a CityGML 3.0 `TexCoordList`'s `textureCoordinates` with its `ring`s by
+/// document order: the i-th ring gets the i-th coordinate list. An unparseable
+/// coordinate list keeps its slot (empty) so later pairs stay aligned; it is
+/// dropped later when the UV length fails to match the ring.
+fn tex_coord_pairs(coord_list: &RawNode) -> Vec<(String, Vec<[f64; 2]>)> {
+    let mut coords: Vec<Vec<[f64; 2]>> = Vec::new();
+    let mut rings: Vec<String> = Vec::new();
+    for child in child_elements(coord_list) {
+        match local_name(&child.name.0) {
+            "textureCoordinates" => coords.push(parse_uv(&text_of(child)).unwrap_or_default()),
+            "ring" => rings.push(strip_hash(text_of(child).trim()).to_string()),
+            _ => {}
+        }
+    }
+    rings.into_iter().zip(coords).collect()
 }
 
 /// A white Phong material whose diffuse map is `raster` on the default UV channel.
@@ -705,5 +778,120 @@ mod tests {
             panic!("explicit");
         };
         assert_eq!(coords[0], [0.1, 0.1], "back side keeps its own UV");
+    }
+
+    #[test]
+    fn container_material_attaches_to_member_polygon() {
+        // The X3DMaterial targets the MultiSurface container (`#ms1`), not the
+        // polygon. Its member polygon, itself untargeted, inherits the material.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface gml:id="ms1"><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>0.1 0.2 0.3</app:diffuseColor>
+                  <app:target>#ms1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon
+            .appearance()
+            .as_ref()
+            .expect("member inherits container material");
+        let Material::Phong(m) = &appearance.materials[0] else {
+            panic!("expected Phong");
+        };
+        assert_eq!(m.diffuse, [0.1, 0.2, 0.3]);
+    }
+
+    #[test]
+    fn leaf_material_overrides_container_material() {
+        // The polygon is targeted directly (`#poly1`) and via its container
+        // (`#ms1`). The more specific leaf material wins.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface gml:id="ms1"><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>0.9 0.9 0.9</app:diffuseColor>
+                  <app:target>#ms1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>0.1 0.1 0.1</app:diffuseColor>
+                  <app:target>#poly1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon.appearance().as_ref().expect("polygon styled");
+        assert_eq!(
+            appearance.materials.len(),
+            1,
+            "only the leaf material attaches"
+        );
+        let Material::Phong(m) = &appearance.materials[0] else {
+            panic!("expected Phong");
+        };
+        assert_eq!(m.diffuse, [0.1, 0.1, 0.1], "leaf wins over container");
+    }
+
+    #[test]
+    fn cg3_parameterized_texture_attaches_to_polygon() {
+        // CityGML 3.0 texture shape: textureParameterization / TextureAssociation,
+        // element-text target and ring, positional textureCoordinates + ring.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:ParameterizedTexture>
+                  <app:imageURI>tex/a.jpg</app:imageURI>
+                  <app:textureParameterization><app:TextureAssociation>
+                    <app:target>#poly1</app:target>
+                    <app:textureParameterization><app:TexCoordList>
+                      <app:textureCoordinates>0 0 1 0 1 1 0 0</app:textureCoordinates>
+                      <app:ring>#ring1</app:ring>
+                    </app:TexCoordList></app:textureParameterization>
+                  </app:TextureAssociation></app:textureParameterization>
+                </app:ParameterizedTexture></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon.appearance().as_ref().expect("polygon is textured");
+        assert!(matches!(
+            &appearance.materials[0],
+            Material::Phong(m) if m.diffuse_map.is_some()
+        ));
+        let uv = polygon.uv_sets();
+        assert_eq!(uv.len(), 1);
+        let UvSource::Explicit(coords) = &uv[0].uv else {
+            panic!("expected explicit UV");
+        };
+        assert_eq!(coords.len(), 4);
+        assert_eq!(coords[1], [1.0, 0.0]);
     }
 }

@@ -176,41 +176,52 @@ pub(super) fn resolve_root_with_appearance(
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
 ) -> Option<Euclidean3DGeometry> {
-    resolve(node, registry, appearance, &mut HashSet::new())
+    resolve(node, registry, appearance, &[], &mut HashSet::new())
 }
 
-/// Resolve one node. `in_progress` holds the `xlink` keys on the current
-/// resolution path, so a reference cycle is caught instead of recursing forever.
+/// Resolve one node. `enclosing` is the chain of enclosing container gml:ids
+/// (nearest first), so a material bound to an aggregate reaches its member
+/// polygons. `in_progress` holds the `xlink` keys on the current resolution path,
+/// so a reference cycle is caught instead of recursing forever.
 fn resolve(
     node: &GeomNode,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
+    enclosing: &[&str],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     match node {
-        GeomNode::Resolved(geometry, ids) => {
-            Some(with_appearance(geometry.clone(), ids, appearance))
-        }
-        GeomNode::Ref(key) => resolve_ref(key, registry, appearance, in_progress),
+        GeomNode::Resolved(geometry, ids) => Some(with_appearance(
+            geometry.clone(),
+            ids,
+            appearance,
+            enclosing,
+        )),
+        GeomNode::Ref(key) => resolve_ref(key, registry, appearance, enclosing, in_progress),
         GeomNode::Unresolved(unresolved) => {
-            construct(unresolved, registry, appearance, in_progress)
+            construct(unresolved, registry, appearance, enclosing, in_progress)
         }
     }
 }
 
 /// Attach the appearance for a leaf's captured ids. Only a `Polygon` binds here;
-/// its appearance is welded into any enclosing mesh downstream.
+/// its appearance is welded into any enclosing mesh downstream. The polygon's own
+/// surface id takes precedence over the `enclosing` container ids.
 fn with_appearance(
     mut geometry: Euclidean3DGeometry,
     ids: &LeafIds,
     appearance: &AppearanceIndex,
+    enclosing: &[&str],
 ) -> Euclidean3DGeometry {
     if appearance.is_empty() {
         return geometry;
     }
     if let Euclidean3DGeometry::Polygon(polygon) = &mut geometry {
         if let Some(face) = ids.first() {
-            appearance.apply_to_polygon(polygon, face.surface.as_deref(), &face.rings);
+            let mut candidates: Vec<&str> = Vec::with_capacity(1 + enclosing.len());
+            candidates.extend(face.surface.as_deref());
+            candidates.extend_from_slice(enclosing);
+            appearance.apply_to_polygon(polygon, &candidates, &face.rings);
         }
     }
     geometry
@@ -222,6 +233,7 @@ fn resolve_ref(
     key: &RawNodeKey,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
+    enclosing: &[&str],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     if !in_progress.insert(key.clone()) {
@@ -229,7 +241,7 @@ fn resolve_ref(
         return None;
     }
     let resolved = match registry.get(key) {
-        Some(target) => resolve(target, registry, appearance, in_progress),
+        Some(target) => resolve(target, registry, appearance, enclosing, in_progress),
         None => {
             tracing::warn!(
                 id = key.1,
@@ -244,18 +256,25 @@ fn resolve_ref(
 
 /// Assemble a container from its resolved members, dispatching on its CityGML
 /// type. Members that fail to resolve are dropped, so a container survives with
-/// whatever members did resolve.
+/// whatever members did resolve. This container's own gml:id is prepended to
+/// `enclosing` for its members, so an appearance bound to the container reaches
+/// them.
 fn construct(
     node: &Unresolved,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
+    enclosing: &[&str],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
+    let mut member_enclosing: Vec<&str> = Vec::with_capacity(1 + enclosing.len());
+    member_enclosing.extend(node.id.as_deref());
+    member_enclosing.extend_from_slice(enclosing);
+
     let members: Vec<(Role, Euclidean3DGeometry)> = node
         .members
         .iter()
         .filter_map(|(role, child)| {
-            resolve(child, registry, appearance, in_progress).map(|g| (*role, g))
+            resolve(child, registry, appearance, &member_enclosing, in_progress).map(|g| (*role, g))
         })
         .collect();
 
