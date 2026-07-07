@@ -111,7 +111,8 @@ fn collect_implicit(
     let subtree_levels = implicit
         .get("subtreeLevels")
         .and_then(|v| v.as_u64())
-        .ok_or_else(|| "implicitTiling missing subtreeLevels".to_string())? as u32;
+        .ok_or_else(|| "implicitTiling missing subtreeLevels".to_string())?
+        as u32;
 
     // `availableLevels` beyond `subtreeLevels` implies chaining into child
     // subtree files, which this reader doesn't follow.
@@ -248,10 +249,10 @@ fn parse_availability(
         .get(bitstream_idx)
         .ok_or_else(|| format!("bufferView {bitstream_idx} not found in subtree"))?;
     let offset = view.get("byteOffset").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-    let length = view
-        .get("byteLength")
-        .and_then(|v| v.as_u64())
-        .ok_or_else(|| "subtree bufferView missing byteLength".to_string())? as usize;
+    let length =
+        view.get("byteLength")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| "subtree bufferView missing byteLength".to_string())? as usize;
     let bytes = bin
         .get(offset..offset + length)
         .ok_or_else(|| "subtree bufferView range out of bounds in binary chunk".to_string())?
