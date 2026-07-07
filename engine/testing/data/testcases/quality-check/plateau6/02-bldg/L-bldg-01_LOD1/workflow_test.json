@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L-BLDG-01 for LOD1 on plateau6 (CityGML 3.0 + i-UR 4.0). Two buildings whose lod1Solid volumes overlap, expected to be reported as one Solid Intersection under the 'LOD1 立体の交差' column (SolidIntersectionTestPairCreator path; the LOD-independent plateau4 action is reused). Each building also carries a lod0MultiSurface footprint (converted from lod0RoofEdge) for the 2D candidate-pair pre-filter. Verification is restricted to the LOD1 solid-intersection column via includeFields/includeColumns, mirroring the plateau4 source test. NOTE: objectlist Excel is a provisional plateau4-derived file (no official CityGML 3.0 version yet).",
+  "description": "Test L-BLDG-01 for LOD1 on plateau6. Two buildings whose lod1Solid volumes overlap, reported as one Solid Intersection under 'LOD1 立体の交差'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

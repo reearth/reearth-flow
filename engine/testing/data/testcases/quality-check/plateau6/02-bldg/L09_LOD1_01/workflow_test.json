@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L09 for LOD1 on plateau6 (CityGML 3.0 + i-UR 4.0). Two lod1Solid faces (ground + roof) have a self-intersecting (bow-tie) exterior ring, expected to be reported as two SelfIntersection errors under the 'LOD1 境界面のエラー' column (SurfaceValidator3D invalidSurface path). Verification is restricted to the LOD1 boundary-surface column via includeFields/includeColumns, mirroring the plateau4 source test. NOTE: objectlist Excel is a provisional plateau4-derived file (no official CityGML 3.0 version yet).",
+  "description": "Test L09 for LOD1 on plateau6. Two lod1Solid faces with self-intersecting (bow-tie) exterior rings, reported as two SelfIntersection errors under 'LOD1 境界面のエラー'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

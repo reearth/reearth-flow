@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L11 for LOD1 on plateau6 (CityGML 3.0 + i-UR 4.0). A lod1Solid face is non-planar (a vertex raised beyond the thickness tolerance), expected to be reported as one NonPlanarSurface error under the 'LOD1 境界面のエラー' column (SurfaceValidator3D invalidSurface path). This planarity check is LOD1-specific (LOD0 footprints are 2D). Verification is restricted to the LOD1 boundary-surface column via includeFields/includeColumns, mirroring the plateau4 source test. NOTE: objectlist Excel is a provisional plateau4-derived file (no official CityGML 3.0 version yet).",
+  "description": "Test L11 for LOD1 on plateau6. A non-planar lod1Solid face reported as NonPlanarSurface under 'LOD1 境界面のエラー'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

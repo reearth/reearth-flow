@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L09 for LOD0 on plateau6 (CityGML 3.0 + i-UR 4.0). A LOD0 exterior LinearRing whose vertices form a self-intersecting (bow-tie) ring is expected to be reported as a SelfIntersection error under the 'LOD0 面のエラー' column (invalidSurface path). NOTE: objectlist Excel is a provisional plateau4-derived file (no official CityGML 3.0 version yet).",
+  "description": "Test L09 for LOD0 on plateau6. A self-intersecting (bow-tie) LOD0 ring reported as SelfIntersection under 'LOD0 面のエラー'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

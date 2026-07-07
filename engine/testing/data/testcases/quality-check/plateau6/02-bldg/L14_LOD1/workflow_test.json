@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L14 for LOD1 on plateau6 (CityGML 3.0 + i-UR 4.0). Four buildings with lod1Solid: one valid, two with InvalidSolidBoundaries (wrong face orientation; two disconnected components) reported under 'LOD1 立体のエラー', and one with a missing face (not watertight) reported as 'Surface Not Closed' under 'LOD1 非水密立体' (SolidBoundaryValidator path). Verification is restricted to the two LOD1 solid columns via includeFields/includeColumns, mirroring the plateau4 source test. NOTE: objectlist Excel is a provisional plateau4-derived file (no official CityGML 3.0 version yet).",
+  "description": "Test L14 for LOD1 on plateau6. Four lod1Solid buildings: two with InvalidSolidBoundaries under 'LOD1 立体のエラー' and one non-watertight reported as 'Surface Not Closed' under 'LOD1 非水密立体'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

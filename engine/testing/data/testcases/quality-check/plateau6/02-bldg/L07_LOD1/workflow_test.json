@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L07 for LOD1 on plateau6 (CityGML 3.0 + i-UR 4.0). A lod1Solid face has two near-duplicate consecutive points (within tolerance), expected to be reported as one DuplicateConsecutivePoints error under the 'LOD1 境界面のエラー' column (SurfaceValidator3D invalidSurface path). Verification is restricted to the LOD1 boundary-surface column via includeFields/includeColumns, mirroring the plateau4 source test. NOTE: objectlist Excel is a provisional plateau4-derived file (no official CityGML 3.0 version yet).",
+  "description": "Test L07 for LOD1 on plateau6. A lod1Solid face with near-duplicate consecutive points, reported as DuplicateConsecutivePoints under 'LOD1 境界面のエラー'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

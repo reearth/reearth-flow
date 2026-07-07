@@ -1,5 +1,5 @@
 {
-  "description": "Test Z-bldg-02 LOD0 surface intersection for plateau6 (CityGML 3.0 + i-UR 4.0). Two buildings (A/B) whose lod0MultiSurface footprints overlap; reported as 'Surface Intersection' under 'LOD0 面の交差'. NOTE: the 02-bldg workflow does not yet wire the AreaOnAreaOverlayer-based LOD0 面の交差 pipeline (currently 0-filled placeholder), so this test is expected to FAIL until that wiring is added. objectlist is the provisional plateau4-derived xlsx.",
+  "description": "Test Z-bldg-02 LOD0 surface intersection for plateau6. Two buildings whose LOD0 footprints overlap, reported under 'LOD0 面の交差'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
