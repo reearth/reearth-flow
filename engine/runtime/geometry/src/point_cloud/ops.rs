@@ -15,7 +15,7 @@ impl BoundingBox for PointCloud {
 /// position occupies the first bytes of each stride; the encoding fixes the
 /// width and any scale/offset. Reads go through `from_le_bytes`, so a bad
 /// offset is a bounds panic, never UB (mirrors the field-access contract).
-fn segment_positions(seg: &Segment) -> impl Iterator<Item = [f64; 3]> + '_ {
+pub(super) fn segment_positions(seg: &Segment) -> impl Iterator<Item = [f64; 3]> + '_ {
     let stride = seg.stride as usize;
     (0..seg.count).map(move |i| {
         let base = i * stride;

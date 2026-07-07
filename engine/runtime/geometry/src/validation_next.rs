@@ -6,20 +6,20 @@
 //! [`ValidationType`]. `✓` runs, `·` does not (not applicable). Finiteness (the
 //! `Finite` column) always runs.
 //!
-//! | Leaf ╲ Check      | Finite | TooFewPoints | UnclosedRing | SelfIntersection | InteriorRingContainment | Degenerate | DuplicatePoints | DuplicateConsecutivePoints | Orientation | NormalDirection |
-//! |-------------------|:------:|:------------:|:------------:|:----------------:|:-----------------------:|:----------:|:---------------:|:--------------------------:|:-----------:|:---------------:|
-//! | Point2D / 3D      |   ✓    |      ·       |      ·       |        ·         |            ·            |     ·      |        ·        |             ·              |      ·      |        ·        |
-//! | LineString2D / 3D |   ✓    |      ✓       |      ·       |        ✓         |            ·            |     ✓      |        ✓        |             ✓              |      ·      |        ·        |
-//! | Polygon2D         |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |             ✓              |      ✓      |        ·        |
-//! | Polygon3D         |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |             ✓              |      ·      |        ·        |
-//! | PolygonMesh2D     |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |             ✓              |      ✓      |        ·        |
-//! | PolygonMesh3D     |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |             ✓              |      ✓      |        ✓        |
-//! | TriangularMesh2D  |   ✓    |      ·       |      ·       |        ·         |            ·            |     ✓      |        ✓        |             ·              |      ✓      |        ·        |
-//! | TriangularMesh3D  |   ✓    |      ·       |      ·       |        ·         |            ·            |     ✓      |        ✓        |             ·              |      ✓      |        ✓        |
-//! | Solid             |   ✓    |      ✓       |      ✓       |        ✓         |            ·            |     ✓      |        ✓        |             ·              |      ✓      |        ✓        |
-//! | Csg               |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |             ✓              |      ✓      |        ✓        |
-//! | PointCloud        |   ✓    |      ·       |      ·       |        ·         |            ·            |     ·      |        ✓        |             ·              |      ·      |        ·        |
-//! | Collection2D / 3D |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |             ✓              |      ✓      |        ✓        |
+//! | Leaf ╲ Check      | Finite | TooFewPoints | UnclosedRing | SelfIntersection | InteriorRingContainment | Degenerate | DuplicatePoints | Orientation | NormalDirection |
+//! |-------------------|:------:|:------------:|:------------:|:----------------:|:-----------------------:|:----------:|:---------------:|:-----------:|:---------------:|
+//! | Point2D / 3D      |   ✓    |      ·       |      ·       |        ·         |            ·            |     ·      |        ·        |      ·      |        ·        |
+//! | LineString2D / 3D |   ✓    |      ✓       |      ·       |        ✓         |            ·            |     ✓      |        ✓        |      ·      |        ·        |
+//! | Polygon2D         |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |      ✓      |        ·        |
+//! | Polygon3D         |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |      ·      |        ·        |
+//! | PolygonMesh2D     |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |      ✓      |        ·        |
+//! | PolygonMesh3D     |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |      ✓      |        ✓        |
+//! | TriangularMesh2D  |   ✓    |      ·       |      ·       |        ·         |            ·            |     ✓      |        ✓        |      ✓      |        ·        |
+//! | TriangularMesh3D  |   ✓    |      ·       |      ·       |        ·         |            ·            |     ✓      |        ✓        |      ✓      |        ✓        |
+//! | Solid             |   ✓    |      ✓       |      ✓       |        ✓         |            ·            |     ✓      |        ✓        |      ✓      |        ✓        |
+//! | Csg               |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |      ✓      |        ✓        |
+//! | PointCloud        |   ✓    |      ·       |      ·       |        ·         |            ·            |     ·      |        ✓        |      ·      |        ·        |
+//! | Collection2D / 3D |   ✓    |      ✓       |      ✓       |        ✓         |            ✓            |     ✓      |        ✓        |      ✓      |        ✓        |
 //!
 //! # Check dependencies
 //!
@@ -36,7 +36,6 @@
 //! | `Connected`                  | — |
 //! | `UnclosedRing`               | `Finite` |
 //! | `DuplicatePoints`            | `Finite` |
-//! | `DuplicateConsecutivePoints` | `Finite` |
 //! | `Planarity`                  | `Finite` |
 //! | `Degenerate`                 | `Finite` |
 //! | `SelfIntersection`           | `Finite`, `TooFewPoints`, `UnclosedRing` |
@@ -45,19 +44,23 @@
 //! | `Orientation`                | `Finite`, `Connected` |
 //! | `NormalDirection`            | `Orientation`, `ShellManifold` |
 
+use std::collections::HashSet;
 use std::fmt;
 
+use kiddo::{KdTree, SquaredEuclidean};
 use serde::Serialize;
 
 use crate::coordinate::CoordinateFrame;
+use crate::line_string::{LineString2D, LineString3D};
 use crate::point::{Point2D, Point3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Which validity check to run.
 ///
 /// One variant per column of the
-/// [validation matrix](self#default-validation-per-leaf-type). Only finiteness
-/// is implemented; every other variant's detection is a `TODO`.
+/// [validation matrix](self#default-validation-per-leaf-type). `Finite`,
+/// `TooFewPoints`, `UnclosedRing`, and `DuplicatePoints` are implemented; every
+/// other variant's detection is a `TODO`.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ValidationType {
     /// Every coordinate component is finite (non-NaN, non-infinite). Always run,
@@ -71,12 +74,6 @@ pub enum ValidationType {
         /// Max distance under which two coordinates are treated as coincident;
         /// `None` = exact equality.
         tolerance: Option<f64>,
-    },
-    /// Adjacent coordinates that fall within a distance threshold.
-    DuplicateConsecutivePoints {
-        /// Max distance between neighbours before they are flagged, in
-        /// coordinate units.
-        threshold: f64,
     },
     /// A ring is not closed (first vertex != last).
     UnclosedRing,
@@ -132,11 +129,9 @@ impl ValidationType {
         use ValidationType::*;
         match self {
             Finite | TooFewPoints | Connected => &[],
-            UnclosedRing
-            | DuplicatePoints { .. }
-            | DuplicateConsecutivePoints { .. }
-            | Planarity { .. }
-            | Degenerate { .. } => &[Finite],
+            UnclosedRing | DuplicatePoints { .. } | Planarity { .. } | Degenerate { .. } => {
+                &[Finite]
+            }
             SelfIntersection { .. } => &[Finite, TooFewPoints, UnclosedRing],
             InteriorRingContainment { .. } => &[Finite, SelfIntersection { tolerance: None }],
             ShellManifold => &[Connected],
@@ -152,7 +147,6 @@ impl ValidationType {
         matches!(
             self,
             ValidationType::DuplicatePoints { .. }
-                | ValidationType::DuplicateConsecutivePoints { .. }
                 | ValidationType::Planarity { .. }
                 | ValidationType::Connected
                 | ValidationType::Orientation
@@ -170,9 +164,6 @@ impl fmt::Display for ValidationType {
             ValidationType::TooFewPoints => f.write_str("TooFewPoints"),
             ValidationType::DuplicatePoints { tolerance } => {
                 write!(f, "DuplicatePoints(tolerance: {tolerance:?})")
-            }
-            ValidationType::DuplicateConsecutivePoints { threshold } => {
-                write!(f, "DuplicateConsecutivePoints(threshold: {threshold})")
             }
             ValidationType::UnclosedRing => f.write_str("UnclosedRing"),
             ValidationType::SelfIntersection { tolerance } => {
@@ -287,20 +278,202 @@ pub(crate) fn check_finite_2d(
     }
 }
 
-/// Scan a 3D coordinate buffer for non-finite values, pushing one
+/// Scan 3D coordinates for non-finite values, pushing one
 /// [`ValidationType::Finite`] problem per offending coordinate into `report`,
-/// positioned at a 3D point leaf in `frame`.
+/// positioned at a 3D point leaf in `frame`. Takes an iterator so streamed
+/// sources (e.g. a point cloud's decoded positions) need not be materialized.
 pub(crate) fn check_finite_3d(
     frame: &CoordinateFrame,
-    coords: &[[f64; 3]],
+    coords: impl IntoIterator<Item = [f64; 3]>,
     report: &mut ValidationReport,
 ) {
     for c in coords {
         if !c[0].is_finite() || !c[1].is_finite() || !c[2].is_finite() {
             report.push(
                 ValidationType::Finite.to_string(),
-                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame.clone(), *c))),
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame.clone(), c))),
             );
+        }
+    }
+}
+
+/// Report a [`ValidationType::TooFewPoints`] problem when a line (`is_ring =
+/// false`, needs ≥ 2) or closed ring (`is_ring = true`, needs ≥ 4) has too few
+/// coordinates, positioned at the offending line / ring as a 2D `LineString`.
+pub(crate) fn check_too_few_points_2d(
+    frame: &CoordinateFrame,
+    coords: &[[f64; 2]],
+    is_ring: bool,
+    report: &mut ValidationReport,
+) {
+    if coords.len() < if is_ring { 4 } else { 2 } {
+        report.push(
+            ValidationType::TooFewPoints.to_string(),
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                frame.clone(),
+                coords.iter().copied(),
+            ))),
+        );
+    }
+}
+
+/// Report a [`ValidationType::TooFewPoints`] problem when a line (`is_ring =
+/// false`, needs ≥ 2) or closed ring (`is_ring = true`, needs ≥ 4) has too few
+/// coordinates, positioned at the offending line / ring as a 3D `LineString`.
+pub(crate) fn check_too_few_points_3d(
+    frame: &CoordinateFrame,
+    coords: &[[f64; 3]],
+    is_ring: bool,
+    report: &mut ValidationReport,
+) {
+    if coords.len() < if is_ring { 4 } else { 2 } {
+        report.push(
+            ValidationType::TooFewPoints.to_string(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                frame.clone(),
+                coords.iter().copied(),
+            ))),
+        );
+    }
+}
+
+/// Report a [`ValidationType::UnclosedRing`] problem when a ring's first and last
+/// coordinates differ, positioned at the offending ring as a 2D `LineString`. An
+/// empty ring has nothing to close.
+pub(crate) fn check_unclosed_ring_2d(
+    frame: &CoordinateFrame,
+    ring: &[[f64; 2]],
+    report: &mut ValidationReport,
+) {
+    if ring.first().is_some_and(|first| Some(first) != ring.last()) {
+        report.push(
+            ValidationType::UnclosedRing.to_string(),
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                frame.clone(),
+                ring.iter().copied(),
+            ))),
+        );
+    }
+}
+
+/// Report a [`ValidationType::UnclosedRing`] problem when a ring's first and last
+/// coordinates differ, positioned at the offending ring as a 3D `LineString`. An
+/// empty ring has nothing to close.
+pub(crate) fn check_unclosed_ring_3d(
+    frame: &CoordinateFrame,
+    ring: &[[f64; 3]],
+    report: &mut ValidationReport,
+) {
+    if ring.first().is_some_and(|first| Some(first) != ring.last()) {
+        report.push(
+            ValidationType::UnclosedRing.to_string(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                frame.clone(),
+                ring.iter().copied(),
+            ))),
+        );
+    }
+}
+
+/// The bit pattern of a coordinate component, normalizing `-0.0` to `+0.0` so the
+/// two hash and compare equal in the exact duplicate scan.
+#[inline]
+fn norm_bits(x: f64) -> u64 {
+    (x + 0.0).to_bits()
+}
+
+/// Report a [`ValidationType::DuplicatePoints`] problem per coordinate that
+/// coincides with an earlier one, positioned at the offending coordinate as a 2D
+/// point. Exact bit-equality when `tolerance` is `None`; otherwise two coords are
+/// coincident when within `tolerance` distance. Non-finite coords are skipped
+/// (already covered by the finiteness check).
+pub(crate) fn check_duplicate_points_2d(
+    frame: &CoordinateFrame,
+    coords: impl IntoIterator<Item = [f64; 2]>,
+    tolerance: Option<f64>,
+    report: &mut ValidationReport,
+) {
+    let label = ValidationType::DuplicatePoints { tolerance }.to_string();
+    let mut push = |c: [f64; 2]| {
+        report.push(
+            label.clone(),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame.clone(), c))),
+        );
+    };
+    match tolerance {
+        None => {
+            let mut seen = HashSet::new();
+            for c in coords {
+                if !c[0].is_finite() || !c[1].is_finite() {
+                    continue;
+                }
+                if !seen.insert([norm_bits(c[0]), norm_bits(c[1])]) {
+                    push(c);
+                }
+            }
+        }
+        Some(t) => {
+            let radius = t * t;
+            let mut tree: KdTree<f64, 2> = KdTree::new();
+            let mut n: u64 = 0;
+            for c in coords {
+                if !c[0].is_finite() || !c[1].is_finite() {
+                    continue;
+                }
+                if n > 0 && tree.nearest_one::<SquaredEuclidean>(&c).distance <= radius {
+                    push(c);
+                } else {
+                    tree.add(&c, n);
+                    n += 1;
+                }
+            }
+        }
+    }
+}
+
+/// Report a [`ValidationType::DuplicatePoints`] problem per coordinate that
+/// coincides with an earlier one, positioned at the offending coordinate as a 3D
+/// point. Matching semantics mirror [`check_duplicate_points_2d`].
+pub(crate) fn check_duplicate_points_3d(
+    frame: &CoordinateFrame,
+    coords: impl IntoIterator<Item = [f64; 3]>,
+    tolerance: Option<f64>,
+    report: &mut ValidationReport,
+) {
+    let label = ValidationType::DuplicatePoints { tolerance }.to_string();
+    let mut push = |c: [f64; 3]| {
+        report.push(
+            label.clone(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame.clone(), c))),
+        );
+    };
+    match tolerance {
+        None => {
+            let mut seen = HashSet::new();
+            for c in coords {
+                if !c[0].is_finite() || !c[1].is_finite() || !c[2].is_finite() {
+                    continue;
+                }
+                if !seen.insert([norm_bits(c[0]), norm_bits(c[1]), norm_bits(c[2])]) {
+                    push(c);
+                }
+            }
+        }
+        Some(t) => {
+            let radius = t * t;
+            let mut tree: KdTree<f64, 3> = KdTree::new();
+            let mut n: u64 = 0;
+            for c in coords {
+                if !c[0].is_finite() || !c[1].is_finite() || !c[2].is_finite() {
+                    continue;
+                }
+                if n > 0 && tree.nearest_one::<SquaredEuclidean>(&c).distance <= radius {
+                    push(c);
+                } else {
+                    tree.add(&c, n);
+                    n += 1;
+                }
+            }
         }
     }
 }
@@ -366,6 +539,64 @@ mod tests {
     }
 
     #[test]
+    fn too_few_points_flags_single_point_line() {
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]);
+        let report = ls.validate(ValidationType::TooFewPoints).unwrap();
+        assert_eq!(report.error_count(), 1);
+        assert_eq!(report.0[0].problem, "TooFewPoints");
+        // The position is the offending line, not a single coordinate.
+        assert!(matches!(
+            report.0[0].position,
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(_))
+        ));
+    }
+
+    #[test]
+    fn two_point_line_has_enough_points() {
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+        );
+        assert!(ls.validate(ValidationType::TooFewPoints).is_none());
+    }
+
+    #[test]
+    fn duplicate_points_exact_flags_repeated_coordinate() {
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+        );
+        let report = ls
+            .validate(ValidationType::DuplicatePoints { tolerance: None })
+            .unwrap();
+        assert_eq!(report.error_count(), 1);
+        assert_eq!(report.0[0].problem, "DuplicatePoints(tolerance: None)");
+        assert_eq!(offending_point(&report.0[0].position), [0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn duplicate_points_tolerance_uses_distance() {
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [0.001, 0.0, 0.0]],
+        );
+        // The third point is within 0.01 of the first.
+        let report = ls
+            .validate(ValidationType::DuplicatePoints {
+                tolerance: Some(0.01),
+            })
+            .unwrap();
+        assert_eq!(report.error_count(), 1);
+        assert_eq!(offending_point(&report.0[0].position), [0.001, 0.0, 0.0]);
+        // Under a tighter tolerance nothing coincides.
+        assert!(ls
+            .validate(ValidationType::DuplicatePoints {
+                tolerance: Some(1e-6)
+            })
+            .is_none());
+    }
+
+    #[test]
     fn dispatch_reaches_leaf_through_geometry() {
         let g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
             CoordinateFrame::Euclidean,
@@ -391,7 +622,6 @@ mod tests {
         // The optional, advisory checks.
         for optional in [
             ValidationType::DuplicatePoints { tolerance: None },
-            ValidationType::DuplicateConsecutivePoints { threshold: 0.01 },
             ValidationType::Planarity { max_deviation: 0.1 },
             ValidationType::Connected,
             ValidationType::Orientation,
@@ -419,11 +649,10 @@ mod tests {
 
     /// Every `ValidationType` variant, so the dependency graph can be walked in
     /// full.
-    const ALL_TYPES: [ValidationType; 13] = [
+    const ALL_TYPES: [ValidationType; 12] = [
         ValidationType::Finite,
         ValidationType::TooFewPoints,
         ValidationType::DuplicatePoints { tolerance: None },
-        ValidationType::DuplicateConsecutivePoints { threshold: 0.0 },
         ValidationType::UnclosedRing,
         ValidationType::SelfIntersection { tolerance: None },
         ValidationType::InteriorRingContainment { tolerance: None },

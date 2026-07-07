@@ -1,24 +1,43 @@
 use super::{TriangularMesh2D, TriangularMesh3D};
-use crate::validation_next::ValidationType;
-use crate::validation_next::{check_finite_2d, check_finite_3d, Validate, ValidationReport};
+use crate::validation_next::{
+    check_duplicate_points_2d, check_duplicate_points_3d, check_finite_2d, check_finite_3d,
+    Validate, ValidationReport, ValidationType,
+};
 
 impl Validate for TriangularMesh2D {
-    fn validate(&self, _valid_type: ValidationType) -> Option<ValidationReport> {
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
         let mut report = ValidationReport::default();
         check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), &mut report);
-        // TODO(new-geometry validation): implement the `_valid_type` checks over
-        // the mesh's triangles (`Degenerate` / zero-area, `DuplicatePoints`,
-        // `Orientation`) plus `Connected` over the whole mesh. A triangle is
-        // always planar, so `Planarity` does not apply.
+        // A triangle always has three corners, so `TooFewPoints` cannot apply;
+        // duplicate coincident vertices in the shared pool are a defect.
+        if let ValidationType::DuplicatePoints { tolerance } = &valid_type {
+            check_duplicate_points_2d(
+                &self.frame,
+                self.vertices.iter().copied(),
+                *tolerance,
+                &mut report,
+            );
+        }
         report.into_option()
     }
 }
 
 impl Validate for TriangularMesh3D {
-    fn validate(&self, _valid_type: ValidationType) -> Option<ValidationReport> {
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
         let mut report = ValidationReport::default();
-        check_finite_3d(&self.frame, self.data.vertices(), &mut report);
-        // TODO(new-geometry validation): see `TriangularMesh2D`.
+        check_finite_3d(
+            &self.frame,
+            self.data.vertices().iter().copied(),
+            &mut report,
+        );
+        if let ValidationType::DuplicatePoints { tolerance } = &valid_type {
+            check_duplicate_points_3d(
+                &self.frame,
+                self.data.vertices().iter().copied(),
+                *tolerance,
+                &mut report,
+            );
+        }
         report.into_option()
     }
 }

@@ -21,11 +21,7 @@ impl Validate for Point2D {
 impl Validate for Point3D {
     fn validate(&self, _valid_type: ValidationType) -> Option<ValidationReport> {
         let mut report = ValidationReport::default();
-        check_finite_3d(
-            &self.frame,
-            std::slice::from_ref(&self.position),
-            &mut report,
-        );
+        check_finite_3d(&self.frame, [self.position], &mut report);
         report.into_option()
     }
 }
