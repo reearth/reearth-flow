@@ -1,6 +1,6 @@
 use super::{Csg, ThreeDimensional};
-use crate::ops::validation::{Validate, ValidationReport};
-use crate::ops::ValidationType;
+use crate::validation_next::ValidationType;
+use crate::validation_next::{Validate, ValidationReport};
 
 impl Validate for Csg {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {

@@ -10,15 +10,8 @@
 
 pub mod reproject;
 pub mod triangulation;
-#[cfg(feature = "new-geometry")]
-pub mod validation;
 
 pub use reproject::{Reproject, ReprojectionCache};
-#[cfg(feature = "new-geometry")]
-pub use validation::{
-    CheckKind, Validate, ValidationProblem, ValidationProblemAtPosition, ValidationProblemPosition,
-    ValidationReport, ValidationType,
-};
 
 /// Returned by an operation a given geometry type does not support. Carries the
 /// concrete type name (via [`type_name`](core::any::type_name)) and the

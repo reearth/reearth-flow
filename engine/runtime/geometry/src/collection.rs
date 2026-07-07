@@ -15,7 +15,7 @@ use crate::error::Error;
 use crate::ops::union_results;
 use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
 #[cfg(feature = "new-geometry")]
-use crate::ops::{Validate, ValidationReport, ValidationType};
+use crate::validation_next::{Validate, ValidationReport, ValidationType};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.

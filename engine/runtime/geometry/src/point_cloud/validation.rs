@@ -1,6 +1,6 @@
 use super::PointCloud;
-use crate::ops::validation::{Validate, ValidationReport};
-use crate::ops::ValidationType;
+use crate::validation_next::ValidationType;
+use crate::validation_next::{Validate, ValidationReport};
 
 impl Validate for PointCloud {
     fn validate(&self, _valid_type: ValidationType) -> Option<ValidationReport> {

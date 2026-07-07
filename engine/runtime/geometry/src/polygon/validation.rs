@@ -1,6 +1,6 @@
 use super::{Polygon2D, Polygon3D};
-use crate::ops::validation::{check_finite_2d, check_finite_3d, Validate, ValidationReport};
-use crate::ops::ValidationType;
+use crate::validation_next::ValidationType;
+use crate::validation_next::{check_finite_2d, check_finite_3d, Validate, ValidationReport};
 
 impl Validate for Polygon2D {
     fn validate(&self, _valid_type: ValidationType) -> Option<ValidationReport> {

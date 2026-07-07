@@ -39,6 +39,8 @@ pub mod polygon;
 pub mod polygon_mesh;
 pub mod solid;
 pub mod triangular_mesh;
+#[cfg(feature = "new-geometry")]
+pub mod validation_next;
 
 #[cfg(test)]
 mod test_support;
@@ -50,7 +52,7 @@ use serde::{Deserialize, Serialize};
 use ops::triangulation::Cache;
 use ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation};
 #[cfg(feature = "new-geometry")]
-use ops::{Validate, ValidationReport, ValidationType};
+use validation_next::{Validate, ValidationReport, ValidationType};
 
 use coordinate::EpsgCode;
 
