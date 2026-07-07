@@ -44,11 +44,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("parsed {} feature(s)", features.len());
 
-    let (glb_bytes, tileset_json) = next::build(&features)?;
+    let built = next::build(&features, next::MetadataOptions::default())?;
 
-    std::fs::write(output_dir.join("tile.glb"), glb_bytes)?;
-    std::fs::write(output_dir.join("tileset.json"), tileset_json)?;
-    println!("wrote {}/tile.glb and tileset.json", output_dir.display());
+    std::fs::write(output_dir.join("tileset.json"), &built.tileset_json)?;
+    for (relative_path, bytes) in built.tiles.iter().chain(&built.subtrees) {
+        let path = output_dir.join(relative_path);
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(&path, bytes)?;
+    }
+    println!(
+        "wrote {}/tileset.json, {} content glb(s), {} subtree file(s)",
+        output_dir.display(),
+        built.tiles.len(),
+        built.subtrees.len()
+    );
 
     Ok(())
 }
