@@ -11,9 +11,9 @@ use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::appearance::{
-    ChannelId, Material, PhongMaterial, Raster, Sampler, Texture, ThemeId, UvSource,
+    ChannelId, Material, PhongMaterial, Raster, Sampler, Side, Texture, ThemeId, UvSource,
 };
-use reearth_flow_geometry::polygon::Polygon3D;
+use reearth_flow_geometry::polygon::{Polygon3D, PolygonFace};
 use url::Url;
 
 use super::parser::{RawChild, RawNode};
@@ -24,16 +24,29 @@ use super::utils::local_name;
 pub(super) struct AppearanceIndex {
     /// Per surface gml:id: the styles bound to it, at most one per theme.
     surfaces: HashMap<String, Vec<SurfaceStyle>>,
-    /// Per `(theme, ring gml:id)`: that ring's texture coordinates.
-    ring_uv: HashMap<(String, String), Vec<[f64; 2]>>,
+    /// Per `(theme, side, ring gml:id)`: that ring's texture coordinates.
+    ring_uv: HashMap<(String, Side, String), Vec<[f64; 2]>>,
 }
 
-/// One theme's material for a surface, and whether it samples a texture (and so
-/// needs per-ring UV assembled when attached).
+/// One theme's front / back materials for a surface. CityGML `app:isFront`
+/// separates the two sides; either may be absent.
 struct SurfaceStyle {
     theme: String,
+    front: Option<SideMaterial>,
+    back: Option<SideMaterial>,
+}
+
+/// A material for one side, and whether it samples a texture (so per-ring UV must
+/// be assembled when attached).
+struct SideMaterial {
     material: Material,
     textured: bool,
+}
+
+/// One side's resolved material and UV, ready to attach.
+struct ResolvedSide {
+    material: Material,
+    uv: Option<UvSource>,
 }
 
 impl AppearanceIndex {
@@ -59,32 +72,69 @@ impl AppearanceIndex {
             return;
         };
         for style in styles {
-            let uv = if style.textured {
-                match self.ring_uv_for(&style.theme, rings) {
-                    Some(uv) => Some(UvSource::Explicit(uv.into_boxed_slice())),
-                    None => continue,
+            let theme = ThemeId(Arc::from(style.theme.as_str()));
+            let front = style
+                .front
+                .as_ref()
+                .and_then(|m| self.resolve_side(m, &style.theme, Side::Front, rings));
+            let back = style
+                .back
+                .as_ref()
+                .and_then(|m| self.resolve_side(m, &style.theme, Side::Back, rings));
+            let result = match (front, back) {
+                (Some(f), Some(b)) => polygon.set_two_sided_appearance(
+                    theme,
+                    PolygonFace::single(f.material, f.uv),
+                    PolygonFace::single(b.material, b.uv),
+                ),
+                // A lone side (usually the front) becomes a single-sided appearance.
+                (Some(s), None) | (None, Some(s)) => {
+                    polygon.set_appearance(theme, s.material, s.uv)
                 }
-            } else {
-                None
+                (None, None) => continue,
             };
-            if let Err(e) = polygon.set_appearance(
-                ThemeId(Arc::from(style.theme.as_str())),
-                style.material.clone(),
-                uv,
-            ) {
+            if let Err(e) = result {
                 tracing::warn!("citygml appearance: could not attach to surface {surface}: {e}");
             }
         }
     }
 
-    /// Concatenate the texture coordinates of every `rings` entry under `theme`, in
-    /// order. `None` if any ring lacks an id or its UV, so a partial UV never
-    /// mismatches the polygon's corner count.
-    fn ring_uv_for(&self, theme: &str, rings: &[Option<String>]) -> Option<Vec<[f64; 2]>> {
+    /// Resolve one side's material and, for a texture, its assembled per-ring UV.
+    /// `None` when a textured side lacks complete UV, so it is skipped rather than
+    /// attached with a mismatched UV length.
+    fn resolve_side(
+        &self,
+        side_material: &SideMaterial,
+        theme: &str,
+        side: Side,
+        rings: &[Option<String>],
+    ) -> Option<ResolvedSide> {
+        let uv = if side_material.textured {
+            Some(UvSource::Explicit(
+                self.ring_uv_for(theme, side, rings)?.into_boxed_slice(),
+            ))
+        } else {
+            None
+        };
+        Some(ResolvedSide {
+            material: side_material.material.clone(),
+            uv,
+        })
+    }
+
+    /// Concatenate the texture coordinates of every `rings` entry under
+    /// `(theme, side)`, in order. `None` if any ring lacks an id or its UV, so a
+    /// partial UV never mismatches the polygon's corner count.
+    fn ring_uv_for(
+        &self,
+        theme: &str,
+        side: Side,
+        rings: &[Option<String>],
+    ) -> Option<Vec<[f64; 2]>> {
         let mut out = Vec::new();
         for ring in rings {
             let ring = ring.as_ref()?;
-            let uv = self.ring_uv.get(&(theme.to_string(), ring.clone()))?;
+            let uv = self.ring_uv.get(&(theme.to_string(), side, ring.clone()))?;
             out.extend_from_slice(uv);
         }
         Some(out)
@@ -101,11 +151,15 @@ pub(super) fn index_appearance_member(member: &RawNode, index: &mut AppearanceIn
 }
 
 /// Index one `app:Appearance`: its theme's `app:ParameterizedTexture`s and
-/// `app:X3DMaterial`s.
+/// `app:X3DMaterial`s. The surface-data property is `surfaceData` in CityGML 3.0
+/// and `surfaceDataMember` in 2.0.
 fn index_appearance(appearance: &RawNode, index: &mut AppearanceIndex) {
     let theme = child_text(appearance, "theme").unwrap_or_default();
     for member in child_elements(appearance) {
-        if local_name(&member.name.0) != "surfaceDataMember" {
+        if !matches!(
+            local_name(&member.name.0),
+            "surfaceData" | "surfaceDataMember"
+        ) {
             continue;
         }
         for data in child_elements(member) {
@@ -119,22 +173,45 @@ fn index_appearance(appearance: &RawNode, index: &mut AppearanceIndex) {
     }
 }
 
-/// Record `style` for `surface`, keeping one style per theme. A textured style
-/// outranks a colour-only one under the same theme, regardless of document order.
-fn insert_style(index: &mut AppearanceIndex, surface: &str, style: SurfaceStyle) {
-    let styles = index.surfaces.entry(surface.to_string()).or_default();
-    match styles.iter().position(|s| s.theme == style.theme) {
-        Some(i) => {
-            if style.textured && !styles[i].textured {
-                styles[i] = style;
-            }
-        }
-        None => styles.push(style),
+/// The side an `app:_SurfaceData` paints, from its `app:isFront` (default front).
+fn side_of(surface_data: &RawNode) -> Side {
+    match child_text(surface_data, "isFront").as_deref() {
+        Some("false") | Some("0") => Side::Back,
+        _ => Side::Front,
     }
 }
 
-/// Index one `app:ParameterizedTexture`: its image as a textured material for each
-/// target surface, and each target ring's texture coordinates.
+/// Bind `side_material` to one side of `surface` under `theme`, keeping one
+/// material per (theme, side). A textured material outranks a colour-only one,
+/// regardless of document order.
+fn set_side(index: &mut AppearanceIndex, surface: &str, theme: &str, side: Side, sm: SideMaterial) {
+    let styles = index.surfaces.entry(surface.to_string()).or_default();
+    let i = match styles.iter().position(|s| s.theme == theme) {
+        Some(i) => i,
+        None => {
+            styles.push(SurfaceStyle {
+                theme: theme.to_string(),
+                front: None,
+                back: None,
+            });
+            styles.len() - 1
+        }
+    };
+    let slot = match side {
+        Side::Front => &mut styles[i].front,
+        Side::Back => &mut styles[i].back,
+    };
+    let replace = match slot {
+        None => true,
+        Some(existing) => sm.textured && !existing.textured,
+    };
+    if replace {
+        *slot = Some(sm);
+    }
+}
+
+/// Index one `app:ParameterizedTexture`: its image as a textured material bound to
+/// each target surface's side, and each target ring's texture coordinates.
 fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
     let Some(image) = child_text(texture, "imageURI") else {
         return;
@@ -142,6 +219,7 @@ fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
     let Some(uri) = resolve_uri(&texture.source_url, &image) else {
         return;
     };
+    let side = side_of(texture);
     let raster = Arc::new(Raster::Uri(uri));
     for target in child_elements(texture) {
         if local_name(&target.name.0) != "target" {
@@ -150,11 +228,12 @@ fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
         let Some(surface) = attr(target, "uri").map(strip_hash) else {
             continue;
         };
-        insert_style(
+        set_side(
             index,
             surface,
-            SurfaceStyle {
-                theme: theme.to_string(),
+            theme,
+            side,
+            SideMaterial {
                 material: texture_material(Arc::clone(&raster)),
                 textured: true,
             },
@@ -173,7 +252,7 @@ fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
                 if let Some(uv) = parse_uv(&text_of(tc)) {
                     index
                         .ring_uv
-                        .insert((theme.to_string(), ring.to_string()), uv);
+                        .insert((theme.to_string(), side, ring.to_string()), uv);
                 }
             }
         }
@@ -215,6 +294,7 @@ fn index_material(material_node: &RawNode, theme: &str, index: &mut AppearanceIn
         emissive_map: None,
         normal_map: None,
     });
+    let side = side_of(material_node);
     for target in child_elements(material_node) {
         if local_name(&target.name.0) != "target" {
             continue;
@@ -224,11 +304,12 @@ fn index_material(material_node: &RawNode, theme: &str, index: &mut AppearanceIn
         if surface.is_empty() {
             continue;
         }
-        insert_style(
+        set_side(
             index,
             surface,
-            SurfaceStyle {
-                theme: theme.to_string(),
+            theme,
+            side,
+            SideMaterial {
                 material: material.clone(),
                 textured: false,
             },
@@ -329,7 +410,7 @@ fn strip_hash(reference: &str) -> &str {
 mod tests {
     use crate::citygml_parser::parser::Parser;
     use crate::citygml_parser::resolver::resolve_root_with_appearance;
-    use reearth_flow_geometry::appearance::{Material, ThemeId, UvSource};
+    use reearth_flow_geometry::appearance::{Material, Side, ThemeId, UvSource};
     use reearth_flow_geometry::Euclidean3DGeometry;
     use std::sync::Arc;
     use url::Url;
@@ -500,5 +581,129 @@ mod tests {
             Material::Phong(m) if m.diffuse_map.is_some()
         ));
         assert_eq!(polygon.uv_sets().len(), 1, "the texture's UV is present");
+    }
+
+    #[test]
+    fn cg3_surface_data_element_is_recognized() {
+        // CityGML 3.0 wraps surface data in `app:surfaceData` (not the 2.0
+        // `surfaceDataMember`) under a `core:appearanceMember`.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>0.2 0.4 0.6</app:diffuseColor>
+                  <app:target>#poly1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon
+            .appearance()
+            .as_ref()
+            .expect("surfaceData recognized");
+        let Material::Phong(m) = &appearance.materials[0] else {
+            panic!("expected Phong");
+        };
+        assert_eq!(m.diffuse, [0.2, 0.4, 0.6]);
+    }
+
+    #[test]
+    fn two_sided_isfront_attaches_front_and_back() {
+        // A front (isFront=true) and back (isFront=false) X3DMaterial on one surface
+        // become a two-sided appearance: two materials, a front and a back binding.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:isFront>true</app:isFront>
+                  <app:diffuseColor>1 0 0</app:diffuseColor>
+                  <app:target>#poly1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:isFront>false</app:isFront>
+                  <app:diffuseColor>0 0 1</app:diffuseColor>
+                  <app:target>#poly1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon.appearance().as_ref().expect("polygon styled");
+        assert_eq!(appearance.materials.len(), 2, "front and back materials");
+        assert!(
+            appearance.themes[0].back.is_some(),
+            "the back side is bound"
+        );
+        let colours: Vec<[f32; 3]> = appearance
+            .materials
+            .iter()
+            .map(|m| match m {
+                Material::Phong(p) => p.diffuse,
+                _ => panic!("expected Phong"),
+            })
+            .collect();
+        assert!(colours.contains(&[1.0, 0.0, 0.0]));
+        assert!(colours.contains(&[0.0, 0.0, 1.0]));
+    }
+
+    #[test]
+    fn two_sided_texture_keeps_uv_per_side() {
+        // Front and back textures on one surface carry distinct per-ring UV; both
+        // sides' UV sets survive, keyed by side.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:ParameterizedTexture>
+                  <app:isFront>true</app:isFront>
+                  <app:imageURI>tex/front.jpg</app:imageURI>
+                  <app:target uri="#poly1"><app:TexCoordList>
+                    <app:textureCoordinates ring="#ring1">0 0 1 0 1 1 0 0</app:textureCoordinates>
+                  </app:TexCoordList></app:target>
+                </app:ParameterizedTexture></app:surfaceData>
+                <app:surfaceData><app:ParameterizedTexture>
+                  <app:isFront>false</app:isFront>
+                  <app:imageURI>tex/back.jpg</app:imageURI>
+                  <app:target uri="#poly1"><app:TexCoordList>
+                    <app:textureCoordinates ring="#ring1">0.1 0.1 0.2 0.1 0.2 0.2 0.1 0.1</app:textureCoordinates>
+                  </app:TexCoordList></app:target>
+                </app:ParameterizedTexture></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let uv = polygon.uv_sets();
+        assert_eq!(uv.len(), 2, "one UV set per side");
+        assert!(uv.iter().any(|s| s.side == Side::Front));
+        assert!(uv.iter().any(|s| s.side == Side::Back));
+        let back = uv.iter().find(|s| s.side == Side::Back).unwrap();
+        let UvSource::Explicit(coords) = &back.uv else {
+            panic!("explicit");
+        };
+        assert_eq!(coords[0], [0.1, 0.1], "back side keeps its own UV");
     }
 }
