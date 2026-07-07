@@ -1,0 +1,17 @@
+pub(crate) mod codespace;
+pub(crate) mod flatten;
+#[cfg(not(feature = "new-geometry"))]
+pub(crate) mod geometry;
+#[cfg(feature = "new-geometry")]
+#[path = "geometry_next.rs"]
+pub(crate) mod geometry;
+#[cfg(not(feature = "new-geometry"))]
+pub mod parser;
+#[cfg(feature = "new-geometry")]
+#[path = "parser_next.rs"]
+pub mod parser;
+pub mod pipeline;
+#[cfg(feature = "new-geometry")]
+pub(crate) mod resolver;
+pub(crate) mod utils;
+pub(crate) mod xlink;

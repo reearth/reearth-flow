@@ -133,9 +133,28 @@ impl TriangularMesh3D {
     pub fn uv_sets(&self) -> &[UvSet] {
         &self.data.uv_sets
     }
+
+    /// Consume the mesh, yielding its coordinate-free data for use as a
+    /// [`Solid`](crate::solid::Solid) shell.
+    #[inline]
+    pub fn into_data(self) -> TriangularMesh3DData {
+        self.data
+    }
+
+    /// The shared vertex pool.
+    #[inline]
+    pub fn vertices(&self) -> &[[f64; 3]] {
+        self.data.vertices()
+    }
 }
 
 impl TriangularMesh3DData {
+    /// The number of triangles.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.indices.len()
+    }
+
     /// Drop all back-side appearance, keeping only the front; see
     /// [`crate::appearance::make_front_only`].
     pub(crate) fn make_front_only(&mut self) {

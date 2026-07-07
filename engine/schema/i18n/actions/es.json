@@ -991,19 +991,68 @@
       }
     },
     {
+      "name": "FeatureCityGml2Reader",
+      "description": "Lee archivos CityGML 2.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml2Reader Parameters"
+        },
+        "cityGmlAttributesKey": {
+          "title": "Clave de Atributos CityGML",
+          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Expresión de ruta que resuelve al archivo CityGML 2.0 a leer."
+        },
+        "extractTags": {
+          "title": "Extraer Etiquetas",
+          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplanar Tipos de Medida",
+          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Aplanar Nodos de Objeto con Hijo Único",
+          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        },
+        "keepAttributes": {
+          "title": "Conservar Atributos",
+          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        }
+      }
+    },
+    {
       "name": "FeatureCityGml3Reader",
       "description": "Lee archivos CityGML 3.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
       "parameterI18n": {
         "": {
           "title": "FeatureCityGml3Reader Parameters"
         },
+        "cityGmlAttributesKey": {
+          "title": "Clave de Atributos CityGML",
+          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
+        },
         "dataset": {
           "title": "Dataset",
-          "description": "Path expression resolving to the CityGML 3.0 file to read."
+          "description": "Expresión de ruta que resuelve al archivo CityGML 3.0 a leer."
         },
         "extractTags": {
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplanar Tipos de Medida",
+          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Aplanar Nodos de Objeto con Hijo Único",
+          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        },
+        "keepAttributes": {
+          "title": "Conservar Atributos",
+          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
         }
       }
     },

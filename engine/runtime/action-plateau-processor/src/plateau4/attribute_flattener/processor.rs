@@ -450,7 +450,11 @@ impl AttributeFlattener {
             .unwrap_or(false);
 
         if !is_risk_package {
-            if let Some(gml_id) = feature.get("gml_id").or_else(|| feature.get("gmlId")) {
+            if let Some(gml_id) = feature
+                .get("gml_id")
+                .or_else(|| feature.get("gmlId"))
+                .or_else(|| feature.get("__citygml_gml_id"))
+            {
                 citygml_attributes.insert("gml:id".to_string(), gml_id.clone());
             }
 
@@ -468,7 +472,10 @@ impl AttributeFlattener {
         }
 
         // feature_type
-        if let Some(feature_type) = feature.get("featureType") {
+        if let Some(feature_type) = feature
+            .get("featureType")
+            .or_else(|| feature.get("__citygml_feature_type"))
+        {
             citygml_attributes.insert("feature_type".to_string(), feature_type.clone());
         }
     }
@@ -515,7 +522,10 @@ impl AttributeFlattener {
             // add common attributes AFTER swapping with parent attributes
             Self::insert_common_attributes(feature, &mut parent_attr);
             // replace feature_type with attributes["featureType"]
-            if let Some(feature_type) = feature.get("featureType") {
+            if let Some(feature_type) = feature
+                .get("featureType")
+                .or_else(|| feature.get("__citygml_feature_type"))
+            {
                 feature.update_feature_type(feature_type.to_string());
             }
             parent_attr
@@ -789,6 +799,7 @@ impl AttributeFlattener {
         // for example dmGeometricAttribute should find attributes from their parent feature type
         let lookup_key = feature
             .get("featureType")
+            .or_else(|| feature.get("__citygml_feature_type"))
             .and_then(|v| v.as_string())
             .and_then(|feature_type| {
                 if let Some(AttributeValue::String(package)) = feature.get("package") {

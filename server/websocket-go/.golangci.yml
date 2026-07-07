@@ -1,0 +1,17 @@
+version: "2"
+# Mirrors server/api/.golangci.yml (v2) for consistency across the server
+# modules, minus govet/fieldalignment (the websocket-go structs are not laid out
+# for it, and enabling it here would be a large unrelated churn). The
+# std-error-handling preset excludes the common unchecked-.Close()/print errcheck
+# noise in tests.
+linters:
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+formatters:
+  enable:
+    - gofmt
+    - goimports

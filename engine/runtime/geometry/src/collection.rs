@@ -94,6 +94,21 @@ impl Collection3D {
     pub(crate) fn members_mut(&mut self) -> &mut [Euclidean3DGeometry] {
         &mut self.members
     }
+
+    /// The number of members.
+    pub fn len(&self) -> usize {
+        self.members.len()
+    }
+
+    /// Whether the collection has no members.
+    pub fn is_empty(&self) -> bool {
+        self.members.is_empty()
+    }
+
+    /// The members, in order.
+    pub fn members(&self) -> &[Euclidean3DGeometry] {
+        &self.members
+    }
 }
 
 impl BoundingBox for Collection2D {

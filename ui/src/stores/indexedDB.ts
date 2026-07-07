@@ -17,6 +17,13 @@ export type AvailableIntermediateData = {
   portName: string;
 };
 
+export type GraphSnapshot = {
+  nodeHashes: Record<string, Record<string, string>>;
+  nodeIds: Record<string, string[]>;
+  edgeSignatures: Record<string, string[]>;
+  subworkflowBridges: [string, string][];
+};
+
 export type JobState = {
   projectId: string;
   jobId: string;
@@ -24,6 +31,9 @@ export type JobState = {
   focusedIntermediateData?: string;
   selectedIntermediateData?: SelectedIntermediateData[]; // undefined = never touched, [] = user has selected/deselected
   availableIntermediateData?: AvailableIntermediateData[];
+  graphSnapshot?: GraphSnapshot;
+  isRunStale?: boolean;
+  staleNodeIds?: string[];
 };
 
 export type DebugRunState = {

@@ -3081,6 +3081,90 @@
       ]
     },
     {
+      "name": "FeatureCityGml2Reader",
+      "type": "processor",
+      "description": "CityGML 2.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCityGml2Reader パラメータ",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性キー",
+            "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dataset": {
+            "title": "データセット",
+            "description": "読み込む CityGML 2.0 ファイルへのパス式",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "タグの抽出",
+            "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "flattenMeasureTypes": {
+            "title": "計測タイプのフラット化",
+            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "単一子オブジェクトノードのフラット化",
+            "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepAttributes": {
+            "title": "属性の保持",
+            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。",
+            "default": true,
+            "type": "boolean"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ],
+      "tags": []
+    },
+    {
       "name": "FeatureCityGml3Reader",
       "type": "processor",
       "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
@@ -3092,6 +3176,15 @@
           "dataset"
         ],
         "properties": {
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性キー",
+            "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "データセット",
             "description": "読み込む CityGML 3.0 ファイルへのパス式",
@@ -3122,6 +3215,24 @@
             "items": {
               "type": "string"
             }
+          },
+          "flattenMeasureTypes": {
+            "title": "計測タイプのフラット化",
+            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "単一子オブジェクトノードのフラット化",
+            "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepAttributes": {
+            "title": "属性の保持",
+            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
