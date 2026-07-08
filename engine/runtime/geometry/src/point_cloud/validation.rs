@@ -1,7 +1,8 @@
 use super::ops::segment_positions;
 use super::PointCloud;
 use crate::validation_next::{
-    check_duplicate_points, check_finite_3d, Validate, ValidationReport, ValidationType,
+    check_duplicate_points, check_finite_3d, Validate, ValidationParams, ValidationReport,
+    ValidationType,
 };
 
 // All segments share the cloud's frame; stream each segment's decoded positions
@@ -12,7 +13,7 @@ impl Validate for PointCloud {
         &[ValidationType::Finite, ValidationType::DuplicatePoints]
     }
 
-    fn check_finite(&self) -> ValidationReport {
+    fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_finite_3d(
                 &self.frame,
@@ -22,12 +23,12 @@ impl Validate for PointCloud {
         })
     }
 
-    fn check_duplicate_points(&self) -> ValidationReport {
+    fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_duplicate_points(
                 &self.frame,
                 self.segments.iter().flat_map(segment_positions),
-                None,
+                params.duplicate_tolerance,
                 r,
             )
         })
@@ -38,7 +39,9 @@ impl Validate for PointCloud {
 mod tests {
     use super::*;
     use crate::coordinate::CoordinateFrame;
-    use crate::validation_next::{validate_leaf, ValidationResult, ValidationResults};
+    use crate::validation_next::{
+        validate_leaf, ValidationParams, ValidationResult, ValidationResults,
+    };
     use crate::{Euclidean3DGeometry, Geometry};
 
     /// The failing positions recorded for `check`, or a panic if it did not fail.
@@ -56,7 +59,7 @@ mod tests {
             [[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]],
         );
         assert_eq!(
-            validate_leaf(&pc)[&ValidationType::Finite],
+            validate_leaf(&pc, &ValidationParams::default())[&ValidationType::Finite],
             ValidationResult::Success
         );
     }
@@ -71,7 +74,10 @@ mod tests {
                 [6.0, f64::INFINITY, 8.0],
             ],
         );
-        let positions = failures(&validate_leaf(&pc), ValidationType::Finite);
+        let positions = failures(
+            &validate_leaf(&pc, &ValidationParams::default()),
+            ValidationType::Finite,
+        );
         assert_eq!(positions.len(), 2);
         // Each problem is positioned at the offending sample as a 3D point.
         let bad = match &positions[0] {
@@ -89,7 +95,11 @@ mod tests {
             [[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [0.0, 1.0, 2.0]],
         );
         assert_eq!(
-            failures(&validate_leaf(&pc), ValidationType::DuplicatePoints).len(),
+            failures(
+                &validate_leaf(&pc, &ValidationParams::default()),
+                ValidationType::DuplicatePoints
+            )
+            .len(),
             1
         );
     }

@@ -1,8 +1,8 @@
 use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::validation_next::{
     check_duplicate_points, check_edge_orientation_3d, check_finite_2d, check_finite_3d,
-    check_ring_orientation_2d, tetra_volume_6x, FaceTopology, Validate, ValidationReport,
-    ValidationType,
+    check_ring_orientation_2d, tetra_volume_6x, FaceTopology, Validate, ValidationParams,
+    ValidationReport, ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -61,13 +61,13 @@ impl Validate for TriangularMesh2D {
         &TRIANGULAR_MESH_2D_CHECKS
     }
 
-    fn check_finite(&self) -> ValidationReport {
+    fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r)
         })
     }
 
-    fn check_orientation(&self) -> ValidationReport {
+    fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
         // Each triangle should wind counter-clockwise.
         ValidationReport::ran(|r| {
             for [a, b, c] in self.triangles() {
@@ -81,10 +81,15 @@ impl Validate for TriangularMesh2D {
         })
     }
 
-    fn check_duplicate_points(&self) -> ValidationReport {
+    fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         // Coincident vertices in the shared pool are a defect.
         ValidationReport::ran(|r| {
-            check_duplicate_points::<2>(&self.frame, self.vertices.iter().copied(), None, r)
+            check_duplicate_points::<2>(
+                &self.frame,
+                self.vertices.iter().copied(),
+                params.duplicate_tolerance,
+                r,
+            )
         })
     }
 }
@@ -94,20 +99,20 @@ impl Validate for TriangularMesh3D {
         &TRIANGULAR_MESH_3D_CHECKS
     }
 
-    fn check_finite(&self) -> ValidationReport {
+    fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_finite_3d(&self.frame, self.data.vertices().iter().copied(), r)
         })
     }
 
-    fn check_orientation(&self) -> ValidationReport {
+    fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
         // Adjacent triangles must wind coherently across each shared edge.
         ValidationReport::ran(|r| {
             check_edge_orientation_3d(&self.frame, self.data.vertices(), self.triangles(), r)
         })
     }
 
-    fn check_orientable(&self) -> ValidationReport {
+    fn check_orientable(&self, _params: &ValidationParams) -> ValidationReport {
         // A non-orientable mesh has no valid winding; report the whole mesh.
         ValidationReport::ran(|r| {
             if !self.data.is_orientable() {
@@ -118,9 +123,14 @@ impl Validate for TriangularMesh3D {
         })
     }
 
-    fn check_duplicate_points(&self) -> ValidationReport {
+    fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_duplicate_points::<3>(&self.frame, self.data.vertices().iter().copied(), None, r)
+            check_duplicate_points::<3>(
+                &self.frame,
+                self.data.vertices().iter().copied(),
+                params.duplicate_tolerance,
+                r,
+            )
         })
     }
 }
@@ -129,17 +139,17 @@ impl Validate for TriangularMesh3D {
 mod tests {
     use super::*;
     use crate::coordinate::CoordinateFrame;
-    use crate::validation_next::{validate_one, ValidationResult};
+    use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
 
     // Each helper runs just `check` (and its prerequisites) on the mesh, not the
     // leaf's other, still-unimplemented checks.
     fn is_success<T: Validate>(m: &T, check: ValidationType) -> bool {
-        validate_one(m, check) == ValidationResult::Success
+        validate_one(m, check, &ValidationParams::default()) == ValidationResult::Success
     }
 
     /// The failing positions of `check` on `m`, or a panic if it did not fail.
     fn failures<T: Validate>(m: &T, check: ValidationType) -> Vec<Geometry> {
-        match validate_one(m, check) {
+        match validate_one(m, check, &ValidationParams::default()) {
             ValidationResult::Failed(positions) => positions,
             other => panic!("expected {check} to fail, got {other:?}"),
         }

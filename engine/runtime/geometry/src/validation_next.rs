@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use kiddo::{KdTree, SquaredEuclidean};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::coordinate::CoordinateFrame;
 use crate::csg::{Csg, ThreeDimensional};
@@ -40,8 +40,11 @@ pub enum ValidationType {
     /// checked regardless of the surface's current winding.
     Orientable,
     /// Whether the surface is consistently oriented. Type-dependent: a 2D face means
-    /// ring winding (exterior CCW, holes CW). A 3D mesh or solid means coherent winding
-    /// across shared edges (each shared edge traversed in opposite directions by its two faces).
+    /// ring winding. Flow's orientation convention for 2D geometry is
+    /// counter-clockwise (CCW): an exterior ring must wind CCW (positive signed
+    /// area) and each interior ring (hole) clockwise. A 3D mesh or solid means
+    /// coherent winding across shared edges (each shared edge traversed in opposite
+    /// directions by its two faces).
     Orientation,
     /// Whether a solid's boundary is not a closed 2-manifold (watertight). Solid only.
     ShellManifold,
@@ -88,6 +91,40 @@ impl fmt::Display for ValidationType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{self:?}")
     }
+}
+
+/// Tunable thresholds for the checks that admit them. Which checks *run* is fixed
+/// per leaf type ([`applicable_checks`](Validate::applicable_checks)); these only
+/// tune *how* a check decides. [`Default`] gives the strictest sensible behavior
+/// (exact-equality duplicates, zero-tolerance planarity and degeneracy), so an
+/// omitted field means "no slack".
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ValidationParams {
+    /// [`DuplicatePoints`](ValidationType::DuplicatePoints): `None` = exact bit
+    /// equality; `Some(t)` = two coordinates coincide when within distance `t`.
+    pub duplicate_tolerance: Option<f64>,
+    /// [`Planarity`](ValidationType::Planarity): the greatest distance a ring
+    /// vertex may sit off the ring's best-fit plane before the ring is non-planar.
+    pub planarity_tolerance: f64,
+    /// [`Degenerate`](ValidationType::Degenerate): the smallest measure a geometry
+    /// may have before it counts as degenerate.
+    pub degenerate: DegenerateThresholds,
+}
+
+/// The per-dimension measures below which a geometry is
+/// [`Degenerate`](ValidationType::Degenerate). Each applies to the geometries of
+/// its dimension: `min_length` to lines, `min_area` to faces, `min_volume` to
+/// solids.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct DegenerateThresholds {
+    /// Minimum length of a 1D geometry (line / ring edge).
+    pub min_length: f64,
+    /// Minimum area of a 2D geometry (face / ring).
+    pub min_area: f64,
+    /// Minimum volume of a 3D geometry (solid).
+    pub min_volume: f64,
 }
 
 /// The outcome of one [`ValidationType`] check on a geometry.
@@ -251,10 +288,11 @@ macro_rules! validation_checks {
             }
             $(
                 $(#[$m])*
-                fn $method(&self) -> ValidationReport {
+                fn $method(&self, params: &ValidationParams) -> ValidationReport {
                     // Reached only when this check is listed in the leaf's
                     // `applicable_checks` but its detection is not yet written:
                     // a genuine `TODO`, made loud rather than silently skipped.
+                    let _ = params;
                     unimplemented!(concat!(
                         stringify!($variant),
                         " validation is not implemented for this geometry type"
@@ -270,8 +308,8 @@ macro_rules! validation_checks {
                 (**self).applicable_checks()
             }
             $(
-                fn $method(&self) -> ValidationReport {
-                    (**self).$method()
+                fn $method(&self, params: &ValidationParams) -> ValidationReport {
+                    (**self).$method(params)
                 }
             )+
         }
@@ -279,9 +317,13 @@ macro_rules! validation_checks {
         /// Run a single check by routing a runtime [`ValidationType`] to the matching
         /// [`Validate`] method. Works on the enums (via `enum_dispatch`) and on a
         /// bare leaf such as a CSG operand's `&Solid`.
-        fn dispatch<T: Validate + ?Sized>(leaf: &T, check: ValidationType) -> ValidationReport {
+        fn dispatch<T: Validate + ?Sized>(
+            leaf: &T,
+            check: ValidationType,
+            params: &ValidationParams,
+        ) -> ValidationReport {
             match check {
-                $( ValidationType::$variant => leaf.$method(), )+
+                $( ValidationType::$variant => leaf.$method(params), )+
             }
         }
     };
@@ -340,7 +382,7 @@ validation_checks! {
 /// | SelfIntersection        |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | InteriorRingContainment |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
 /// | Degenerate              |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
-/// | Planarity               |   ·   |    ·    |   ✓    |   ✓    |     ·      |     ·      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
+/// | Planarity               |   ·   |    ·    |   ·    |   ✓    |     ·      |     ·      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
 /// | DuplicatePoints         |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ✓    |  ✓   |
 /// | Orientation             |   ·   |    ·    |   ✓    |   ·    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | Orientable              |   ·   |    ·    |   ·    |   ·    |     ·      |     ✓      |     ·     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
@@ -370,20 +412,33 @@ validation_checks! {
 /// | `ShellManifold`              | (none) |
 /// | `ShellOrientation`           | `Orientation`, `ShellManifold` |
 pub fn validate(geometry: &Geometry) -> ValidationResults {
+    validate_with(geometry, &ValidationParams::default())
+}
+
+/// Like [`validate`], but with caller-supplied [`ValidationParams`] instead of the
+/// defaults.
+pub fn validate_with(geometry: &Geometry, params: &ValidationParams) -> ValidationResults {
     match geometry {
         // An absent geometry has nothing to validate.
         Geometry::None => ValidationResults::new(),
-        Geometry::Euclidean2D(g) => validate_2d(g),
-        Geometry::Euclidean3D(g) => validate_3d(g),
-        Geometry::GeometryCollection(c) => merge_members(c.members().iter().map(validate)),
+        Geometry::Euclidean2D(g) => validate_2d(g, params),
+        Geometry::Euclidean3D(g) => validate_3d(g, params),
+        Geometry::GeometryCollection(c) => {
+            merge_members(c.members().iter().map(|m| validate_with(m, params)))
+        }
     }
 }
 
 /// Run one leaf's applicable checks under dependency gating. The entry point for a
 /// concrete leaf (and the per-leaf unit tests); [`validate`] routes enum variants
 /// here after handling aggregates.
-pub(crate) fn validate_leaf<T: Validate + ?Sized>(leaf: &T) -> ValidationResults {
-    run_checks(leaf.applicable_checks(), |check| dispatch(leaf, check))
+pub(crate) fn validate_leaf<T: Validate + ?Sized>(
+    leaf: &T,
+    params: &ValidationParams,
+) -> ValidationResults {
+    run_checks(leaf.applicable_checks(), |check| {
+        dispatch(leaf, check, params)
+    })
 }
 
 /// Resolve a single check for a leaf, running only its applicable prerequisites,
@@ -394,40 +449,51 @@ pub(crate) fn validate_leaf<T: Validate + ?Sized>(leaf: &T) -> ValidationResults
 pub(crate) fn validate_one<T: Validate + ?Sized>(
     leaf: &T,
     check: ValidationType,
+    params: &ValidationParams,
 ) -> ValidationResult {
     let applicable: HashSet<ValidationType> = leaf.applicable_checks().iter().copied().collect();
     let mut results = ValidationResults::new();
-    resolve(check, &applicable, &mut results, &mut |c| dispatch(leaf, c))
+    resolve(check, &applicable, &mut results, &mut |c| {
+        dispatch(leaf, c, params)
+    })
 }
 
-fn validate_2d(g: &Euclidean2DGeometry) -> ValidationResults {
+fn validate_2d(g: &Euclidean2DGeometry, params: &ValidationParams) -> ValidationResults {
     match g {
-        Euclidean2DGeometry::Collection(c) => merge_members(c.members().iter().map(validate_2d)),
-        leaf => validate_leaf(leaf),
+        Euclidean2DGeometry::Collection(c) => {
+            merge_members(c.members().iter().map(|m| validate_2d(m, params)))
+        }
+        leaf => validate_leaf(leaf, params),
     }
 }
 
-fn validate_3d(g: &Euclidean3DGeometry) -> ValidationResults {
+fn validate_3d(g: &Euclidean3DGeometry, params: &ValidationParams) -> ValidationResults {
     match g {
-        Euclidean3DGeometry::Collection(c) => merge_members(c.members().iter().map(validate_3d)),
-        Euclidean3DGeometry::Csg(csg) => validate_csg(csg),
-        leaf => validate_leaf(leaf),
+        Euclidean3DGeometry::Collection(c) => {
+            merge_members(c.members().iter().map(|m| validate_3d(m, params)))
+        }
+        Euclidean3DGeometry::Csg(csg) => validate_csg(csg, params),
+        leaf => validate_leaf(leaf, params),
     }
 }
 
 /// Recurse into a CSG tree, merging both operands' results; a `Csg` carries no
 /// coordinates of its own.
-fn validate_csg(csg: &Csg) -> ValidationResults {
+fn validate_csg(csg: &Csg, params: &ValidationParams) -> ValidationResults {
     let (left, right) = match csg {
         Csg::Union(a, b) | Csg::Intersection(a, b) | Csg::Difference(a, b) => (a, b),
     };
-    merge_members([left, right].into_iter().map(|op| validate_operand(op)))
+    merge_members(
+        [left, right]
+            .into_iter()
+            .map(|op| validate_operand(op, params)),
+    )
 }
 
-fn validate_operand(operand: &ThreeDimensional) -> ValidationResults {
+fn validate_operand(operand: &ThreeDimensional, params: &ValidationParams) -> ValidationResults {
     match operand {
-        ThreeDimensional::Solid(solid) => validate_leaf(solid.as_ref()),
-        ThreeDimensional::Csg(csg) => validate_csg(csg),
+        ThreeDimensional::Solid(solid) => validate_leaf(solid.as_ref(), params),
+        ThreeDimensional::Csg(csg) => validate_csg(csg, params),
     }
 }
 
@@ -658,9 +724,10 @@ fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
 }
 
 /// Report a [`ValidationType::Orientation`] problem when a 2D ring winds the
-/// wrong way: an exterior ring must be counter-clockwise, a hole clockwise.
-/// A zero-area (degenerate / collinear) ring has no meaningful winding and is
-/// left to the degeneracy check. The position is the offending ring.
+/// wrong way. Flow's convention is counter-clockwise: an exterior ring must be
+/// counter-clockwise, a hole clockwise. A zero-area (degenerate / collinear) ring
+/// has no meaningful winding and is left to the degeneracy check. The position is
+/// the offending ring.
 pub(crate) fn check_ring_orientation_2d(
     frame: &CoordinateFrame,
     ring: &[[f64; 2]],
@@ -916,6 +983,11 @@ mod tests {
     use crate::point::Point3D;
     use crate::{Euclidean3DGeometry, Geometry};
 
+    /// Default thresholds for the tests that don't care about tuning.
+    fn params() -> ValidationParams {
+        ValidationParams::default()
+    }
+
     /// The `[x, y, z]` of the 3D point leaf a failing position points at.
     fn offending_point(position: &Geometry) -> [f64; 3] {
         match position {
@@ -945,7 +1017,7 @@ mod tests {
     fn finite_point_is_valid() {
         let p = Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]);
         assert_eq!(
-            validate_leaf(&p)[&ValidationType::Finite],
+            validate_leaf(&p, &params())[&ValidationType::Finite],
             ValidationResult::Success
         );
     }
@@ -953,7 +1025,7 @@ mod tests {
     #[test]
     fn non_finite_point_reports_not_finite() {
         let p = Point3D::new(CoordinateFrame::Euclidean, [1.0, f64::NAN, 3.0]);
-        let positions = failures(&validate_leaf(&p), ValidationType::Finite);
+        let positions = failures(&validate_leaf(&p, &params()), ValidationType::Finite);
         assert_eq!(positions.len(), 1);
         assert!(matches!(
             positions[0],
@@ -971,7 +1043,7 @@ mod tests {
                 [2.0, f64::NAN, 0.0],
             ],
         );
-        let positions = failures(&validate_leaf(&ls), ValidationType::Finite);
+        let positions = failures(&validate_leaf(&ls, &params()), ValidationType::Finite);
         assert_eq!(positions.len(), 2);
         // Each position is a 3D point leaf holding the offending coordinate.
         let first = offending_point(&positions[0]);
@@ -985,7 +1057,7 @@ mod tests {
     #[test]
     fn too_few_points_flags_single_point_line() {
         let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]);
-        let positions = one_failure(validate_one(&ls, ValidationType::TooFewPoints));
+        let positions = one_failure(validate_one(&ls, ValidationType::TooFewPoints, &params()));
         assert_eq!(positions.len(), 1);
         // The position is the offending line, not a single coordinate.
         assert!(matches!(
@@ -1001,7 +1073,7 @@ mod tests {
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
         );
         assert_eq!(
-            validate_one(&ls, ValidationType::TooFewPoints),
+            validate_one(&ls, ValidationType::TooFewPoints, &params()),
             ValidationResult::Success
         );
     }
@@ -1012,9 +1084,34 @@ mod tests {
             CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
         );
-        let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints));
+        let positions = one_failure(validate_one(
+            &ls,
+            ValidationType::DuplicatePoints,
+            &params(),
+        ));
         assert_eq!(positions.len(), 1);
         assert_eq!(offending_point(&positions[0]), [0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn duplicate_tolerance_flags_near_coincident_points() {
+        // Two vertices 0.001 apart. With the default (exact) params they are
+        // distinct; a `duplicate_tolerance` of 0.01 makes them coincide.
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.001, 0.0, 0.0]],
+        );
+        assert_eq!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &params()),
+            ValidationResult::Success
+        );
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            ..Default::default()
+        };
+        let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
+        assert_eq!(positions.len(), 1);
+        assert_eq!(offending_point(&positions[0]), [0.001, 0.0, 0.0]);
     }
 
     #[test]
@@ -1034,9 +1131,12 @@ mod tests {
     #[test]
     fn a_leaf_runs_exactly_its_applicable_checks() {
         // A point's only applicable check is finiteness.
-        let keys: Vec<_> = validate_leaf(&Point3D::new(CoordinateFrame::Euclidean, [0.0; 3]))
-            .into_keys()
-            .collect();
+        let keys: Vec<_> = validate_leaf(
+            &Point3D::new(CoordinateFrame::Euclidean, [0.0; 3]),
+            &params(),
+        )
+        .into_keys()
+        .collect();
         assert_eq!(keys, [ValidationType::Finite]);
     }
 
@@ -1049,7 +1149,7 @@ mod tests {
             CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
         );
-        let _ = validate_one(&ls, ValidationType::SelfIntersection);
+        let _ = validate_one(&ls, ValidationType::SelfIntersection, &params());
     }
 
     #[test]
@@ -1060,7 +1160,7 @@ mod tests {
             CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [f64::NAN, 0.0, 0.0]],
         );
-        let results = validate_leaf(&ls);
+        let results = validate_leaf(&ls, &params());
         assert!(matches!(
             results[&ValidationType::Finite],
             ValidationResult::Failed(_)

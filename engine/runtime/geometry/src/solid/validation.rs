@@ -3,8 +3,8 @@ use crate::coordinate::CoordinateFrame;
 use crate::polygon_mesh::PolygonMesh3D;
 use crate::triangular_mesh::TriangularMesh3D;
 use crate::validation_next::{
-    check_duplicate_points, check_edge_orientation_3d, check_finite_3d, Validate, ValidationReport,
-    ValidationType,
+    check_duplicate_points, check_edge_orientation_3d, check_finite_3d, Validate, ValidationParams,
+    ValidationReport, ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -92,7 +92,7 @@ impl Validate for Solid {
         &SOLID_CHECKS
     }
 
-    fn check_finite(&self) -> ValidationReport {
+    fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for shell in self.shells() {
                 check_finite_3d(&self.frame, shell.vertices().iter().copied(), r);
@@ -100,7 +100,7 @@ impl Validate for Solid {
         })
     }
 
-    fn check_too_few_points(&self) -> ValidationReport {
+    fn check_too_few_points(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for shell in self.shells() {
                 // A triangle shell's faces always have three corners; only a
@@ -112,7 +112,7 @@ impl Validate for Solid {
         })
     }
 
-    fn check_unclosed_ring(&self) -> ValidationReport {
+    fn check_unclosed_ring(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for shell in self.shells() {
                 // A triangle shell's faces are implicitly closed; only a polygon
@@ -124,15 +124,20 @@ impl Validate for Solid {
         })
     }
 
-    fn check_duplicate_points(&self) -> ValidationReport {
+    fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for shell in self.shells() {
-                check_duplicate_points(&self.frame, shell.vertices().iter().copied(), None, r);
+                check_duplicate_points(
+                    &self.frame,
+                    shell.vertices().iter().copied(),
+                    params.duplicate_tolerance,
+                    r,
+                );
             }
         })
     }
 
-    fn check_orientation(&self) -> ValidationReport {
+    fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
         // Each shell must be consistently wound across its shared edges.
         ValidationReport::ran(|r| {
             for shell in self.shells() {
@@ -141,7 +146,7 @@ impl Validate for Solid {
         })
     }
 
-    fn check_orientable(&self) -> ValidationReport {
+    fn check_orientable(&self, _params: &ValidationParams) -> ValidationReport {
         // Each shell must admit a consistent orientation.
         ValidationReport::ran(|r| {
             for shell in self.shells() {
@@ -152,7 +157,7 @@ impl Validate for Solid {
         })
     }
 
-    fn check_shell_manifold(&self) -> ValidationReport {
+    fn check_shell_manifold(&self, _params: &ValidationParams) -> ValidationReport {
         // Each shell must be a watertight closed connected 2-manifold.
         ValidationReport::ran(|r| {
             for shell in self.shells() {
@@ -163,7 +168,7 @@ impl Validate for Solid {
         })
     }
 
-    fn check_shell_orientation(&self) -> ValidationReport {
+    fn check_shell_orientation(&self, _params: &ValidationParams) -> ValidationReport {
         // The exterior shell must enclose positive volume (outward normals); each
         // void shell negative volume (normals into the void).
         ValidationReport::ran(|r| {
@@ -183,7 +188,7 @@ impl Validate for Solid {
 mod tests {
     use super::*;
     use crate::triangular_mesh::TriangularMesh3DData;
-    use crate::validation_next::{validate_one, ValidationResult};
+    use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
 
     fn tetra_verts() -> Vec<[f64; 3]> {
         vec![
@@ -210,11 +215,11 @@ mod tests {
     // Each helper runs just `check` (and its prerequisites) on the solid, not the
     // solid's other, still-unimplemented checks.
     fn is_success(s: &Solid, check: ValidationType) -> bool {
-        validate_one(s, check) == ValidationResult::Success
+        validate_one(s, check, &ValidationParams::default()) == ValidationResult::Success
     }
 
     fn failure_count(s: &Solid, check: ValidationType) -> usize {
-        match validate_one(s, check) {
+        match validate_one(s, check, &ValidationParams::default()) {
             ValidationResult::Failed(positions) => positions.len(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }

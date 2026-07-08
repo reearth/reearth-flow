@@ -5,7 +5,7 @@ use crate::validation_next::{
     check_duplicate_points, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
     check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
     check_unclosed_ring_3d, open_ring, tetra_volume_6x, EdgeOrientation, FaceTopology, Validate,
-    ValidationReport, ValidationType,
+    ValidationParams, ValidationReport, ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -233,13 +233,13 @@ impl Validate for PolygonMesh2D {
         &POLYGON_MESH_2D_CHECKS
     }
 
-    fn check_finite(&self) -> ValidationReport {
+    fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r)
         })
     }
 
-    fn check_too_few_points(&self) -> ValidationReport {
+    fn check_too_few_points(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_mesh_too_few_points(
                 &self.frame,
@@ -253,7 +253,7 @@ impl Validate for PolygonMesh2D {
         })
     }
 
-    fn check_unclosed_ring(&self) -> ValidationReport {
+    fn check_unclosed_ring(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_mesh_unclosed_rings(
                 &self.frame,
@@ -267,7 +267,7 @@ impl Validate for PolygonMesh2D {
         })
     }
 
-    fn check_orientation(&self) -> ValidationReport {
+    fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
         // Each face's exterior ring must wind counter-clockwise, its holes
         // clockwise.
         ValidationReport::ran(|r| {
@@ -283,11 +283,16 @@ impl Validate for PolygonMesh2D {
         })
     }
 
-    fn check_duplicate_points(&self) -> ValidationReport {
+    fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         // A shared vertex pool should hold no coincident vertices; elevation is
         // not considered.
         ValidationReport::ran(|r| {
-            check_duplicate_points(&self.frame, self.vertices.iter().copied(), None, r)
+            check_duplicate_points(
+                &self.frame,
+                self.vertices.iter().copied(),
+                params.duplicate_tolerance,
+                r,
+            )
         })
     }
 }
@@ -297,25 +302,25 @@ impl Validate for PolygonMesh3D {
         &POLYGON_MESH_3D_CHECKS
     }
 
-    fn check_finite(&self) -> ValidationReport {
+    fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_finite_3d(&self.frame, self.data.vertices().iter().copied(), r)
         })
     }
 
-    fn check_too_few_points(&self) -> ValidationReport {
+    fn check_too_few_points(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| self.data.check_too_few_points(&self.frame, r))
     }
 
-    fn check_unclosed_ring(&self) -> ValidationReport {
+    fn check_unclosed_ring(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| self.data.check_unclosed_rings(&self.frame, r))
     }
 
-    fn check_orientation(&self) -> ValidationReport {
+    fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| self.data.check_orientation(&self.frame, r))
     }
 
-    fn check_orientable(&self) -> ValidationReport {
+    fn check_orientable(&self, _params: &ValidationParams) -> ValidationReport {
         // A non-orientable mesh has no valid winding; report the whole mesh.
         ValidationReport::ran(|r| {
             if !self.data.is_orientable() {
@@ -326,9 +331,14 @@ impl Validate for PolygonMesh3D {
         })
     }
 
-    fn check_duplicate_points(&self) -> ValidationReport {
+    fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_duplicate_points(&self.frame, self.data.vertices().iter().copied(), None, r)
+            check_duplicate_points(
+                &self.frame,
+                self.data.vertices().iter().copied(),
+                params.duplicate_tolerance,
+                r,
+            )
         })
     }
 }
@@ -337,7 +347,7 @@ impl Validate for PolygonMesh3D {
 mod tests {
     use super::*;
     use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
-    use crate::validation_next::{validate_one, ValidationResult};
+    use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
 
     fn quad_verts() -> Vec<[f64; 3]> {
         vec![
@@ -355,11 +365,11 @@ mod tests {
     // Each helper runs just `check` (and its prerequisites) on the mesh, not the
     // leaf's other, still-unimplemented checks.
     fn is_success<T: Validate>(m: &T, check: ValidationType) -> bool {
-        validate_one(m, check) == ValidationResult::Success
+        validate_one(m, check, &ValidationParams::default()) == ValidationResult::Success
     }
 
     fn failure_count<T: Validate>(m: &T, check: ValidationType) -> usize {
-        match validate_one(m, check) {
+        match validate_one(m, check, &ValidationParams::default()) {
             ValidationResult::Failed(positions) => positions.len(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }
