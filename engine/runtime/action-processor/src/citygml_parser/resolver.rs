@@ -205,9 +205,11 @@ fn resolve(
     }
 }
 
-/// Attach the appearance for a leaf's captured ids. Only a `Polygon` binds here;
-/// its appearance is welded into any enclosing mesh downstream. The polygon's own
-/// surface id takes precedence over the `enclosing` container ids.
+/// Attach the appearance for a leaf's captured ids. A `Polygon` binds per face and
+/// a `TriangulatedSurface`'s `TriangularMesh` binds one draped texture over its
+/// triangles; a `Polygon`'s appearance is welded into any enclosing mesh
+/// downstream. The leaf's own surface id takes precedence over the `enclosing`
+/// container ids.
 fn with_appearance(
     mut geometry: Euclidean3DGeometry,
     ids: &LeafIds,
@@ -217,13 +219,20 @@ fn with_appearance(
     if appearance.is_empty() {
         return geometry;
     }
-    if let Euclidean3DGeometry::Polygon(polygon) = &mut geometry {
-        if let Some(face) = ids.first() {
-            let mut candidates: Vec<&str> = Vec::with_capacity(1 + enclosing.len());
-            candidates.extend(face.surface.as_deref());
-            candidates.extend_from_slice(enclosing);
-            appearance.apply_to_polygon(polygon, &candidates, &face.rings);
+    let Some(first) = ids.first() else {
+        return geometry;
+    };
+    let mut candidates: Vec<&str> = Vec::with_capacity(1 + enclosing.len());
+    candidates.extend(first.surface.as_deref());
+    candidates.extend_from_slice(enclosing);
+    match &mut geometry {
+        Euclidean3DGeometry::Polygon(polygon) => {
+            appearance.apply_to_polygon(polygon, &candidates, &first.rings);
         }
+        Euclidean3DGeometry::TriangularMesh(mesh) => {
+            appearance.apply_to_triangular_mesh(mesh, &candidates, ids);
+        }
+        _ => {}
     }
     geometry
 }

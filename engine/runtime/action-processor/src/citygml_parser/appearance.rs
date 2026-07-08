@@ -14,9 +14,11 @@ use reearth_flow_geometry::appearance::{
     ChannelId, Material, PhongMaterial, Raster, Sampler, Side, Texture, ThemeId, UvSource,
 };
 use reearth_flow_geometry::polygon::{Polygon3D, PolygonFace};
+use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use url::Url;
 
 use super::parser::{RawChild, RawNode};
+use super::resolver::FaceIds;
 use super::utils::local_name;
 
 /// CityGML appearance indexed by the geometry `gml:id` it targets.
@@ -156,6 +158,68 @@ impl AppearanceIndex {
             let ring = ring.as_ref()?;
             let uv = self.ring_uv.get(&(theme.to_string(), side, ring.clone()))?;
             out.extend_from_slice(uv);
+        }
+        Some(out)
+    }
+
+    /// Attach the appearance targeting `mesh` to it, draping one texture over its
+    /// triangles: `faces` gives each triangle's ring in triangle order, from which
+    /// one UV coordinate per corner (`3 * triangle_count`) is assembled.
+    ///
+    /// `candidates` are the gml:ids that may carry the mesh's style, most specific
+    /// first: the surface's own id, then its enclosing container ids. A triangular
+    /// mesh binds a single side (front preferred, else a lone back); a textured
+    /// style whose triangles lack complete UV is skipped rather than attached with
+    /// a mismatched UV length.
+    pub(super) fn apply_to_triangular_mesh(
+        &self,
+        mesh: &mut TriangularMesh3D,
+        candidates: &[&str],
+        faces: &[FaceIds],
+    ) {
+        let Some((surface, styles)) = candidates
+            .iter()
+            .find_map(|id| self.surfaces.get(*id).map(|styles| (*id, styles)))
+        else {
+            return;
+        };
+        for style in styles {
+            let (side, side_material) = match (style.front.as_ref(), style.back.as_ref()) {
+                (Some(front), _) => (Side::Front, front),
+                (None, Some(back)) => (Side::Back, back),
+                (None, None) => continue,
+            };
+            let uv = if side_material.textured {
+                match self.mesh_uv(&style.theme, side, faces) {
+                    Some(uv) => Some(UvSource::Explicit(uv.into_boxed_slice())),
+                    None => continue,
+                }
+            } else {
+                None
+            };
+            let theme = ThemeId(Arc::from(style.theme.as_str()));
+            if let Err(e) = mesh.set_appearance(theme, side_material.material.clone(), uv) {
+                tracing::warn!(
+                    "citygml appearance: could not attach to triangulated surface {surface}: {e}"
+                );
+            }
+        }
+    }
+
+    /// Concatenate the first three texture coordinates of every triangle's ring
+    /// under `(theme, side)`, in triangle order, giving `3 * triangle_count`
+    /// corners to match the welded soup (each triangle keeps its first three
+    /// vertices). `None` if any triangle lacks a ring id, its UV, or a full three
+    /// coordinates, so a partial UV never mismatches the mesh corner count.
+    fn mesh_uv(&self, theme: &str, side: Side, faces: &[FaceIds]) -> Option<Vec<[f64; 2]>> {
+        let mut out = Vec::with_capacity(faces.len() * 3);
+        for face in faces {
+            let ring = face.rings.first()?.as_ref()?;
+            let uv = self.ring_uv.get(&(theme.to_string(), side, ring.clone()))?;
+            if uv.len() < 3 {
+                return None;
+            }
+            out.extend_from_slice(&uv[..3]);
         }
         Some(out)
     }
@@ -903,5 +967,149 @@ mod tests {
         };
         assert_eq!(coords.len(), 4);
         assert_eq!(coords[1], [1.0, 0.0]);
+    }
+
+    /// The `TriangularMesh` of a feature whose sole geometry is a
+    /// `TriangulatedSurface` leaf (resolved directly, not wrapped in a collection).
+    fn resolve_only_mesh(xml: &str) -> reearth_flow_geometry::triangular_mesh::TriangularMesh3D {
+        let mut parser = Parser::new();
+        parser
+            .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
+            .unwrap();
+        let (pending, _raw, geom_registry, appearance, _ns) = parser.finish();
+        let feature = pending.into_iter().next().expect("one feature");
+        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance)
+            .expect("geometry resolves");
+        match geom {
+            Euclidean3DGeometry::TriangularMesh(m) => *m,
+            other => panic!("expected TriangularMesh, got {other:?}"),
+        }
+    }
+
+    /// A `TriangulatedSurface` whose texture targets the surface, with per-triangle
+    /// texture coordinates keyed by each triangle's `LinearRing`. Each triangle's
+    /// three corners get a UV, giving `3 * triangle_count` for the welded mesh.
+    #[test]
+    fn parameterized_texture_attaches_to_triangular_mesh() {
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:TriangulatedSurface gml:id="ts1">
+                  <gml:trianglePatches>
+                    <gml:Triangle><gml:exterior><gml:LinearRing gml:id="tri1">
+                      <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                    </gml:LinearRing></gml:exterior></gml:Triangle>
+                    <gml:Triangle><gml:exterior><gml:LinearRing gml:id="tri2">
+                      <gml:posList>1 0 0 1 1 0 0 1 0 1 0 0</gml:posList>
+                    </gml:LinearRing></gml:exterior></gml:Triangle>
+                  </gml:trianglePatches>
+                </gml:TriangulatedSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:ParameterizedTexture>
+                  <app:imageURI>tex/tin.jpg</app:imageURI>
+                  <app:textureParameterization><app:TextureAssociation>
+                    <app:target>#ts1</app:target>
+                    <app:textureParameterization><app:TexCoordList>
+                      <app:textureCoordinates>0 0 1 0 0 1 0 0</app:textureCoordinates>
+                      <app:ring>#tri1</app:ring>
+                    </app:TexCoordList></app:textureParameterization>
+                  </app:TextureAssociation></app:textureParameterization>
+                  <app:textureParameterization><app:TextureAssociation>
+                    <app:target>#ts1</app:target>
+                    <app:textureParameterization><app:TexCoordList>
+                      <app:textureCoordinates>1 0 1 1 0 1 1 0</app:textureCoordinates>
+                      <app:ring>#tri2</app:ring>
+                    </app:TexCoordList></app:textureParameterization>
+                  </app:TextureAssociation></app:textureParameterization>
+                </app:ParameterizedTexture></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let mesh = resolve_only_mesh(&xml);
+        assert_eq!(mesh.num_triangles(), 2);
+        let appearance = mesh.appearance().as_ref().expect("mesh is textured");
+        assert!(matches!(
+            &appearance.materials[0],
+            Material::Phong(m) if m.diffuse_map.is_some()
+        ));
+        let uv = mesh.uv_sets();
+        assert_eq!(uv.len(), 1);
+        assert_eq!(uv[0].side, Side::Front);
+        let UvSource::Explicit(coords) = &uv[0].uv else {
+            panic!("expected explicit UV");
+        };
+        // One UV per triangle corner: the two triangles' first three coordinates.
+        assert_eq!(coords.len(), 6);
+        assert_eq!(coords[3], [1.0, 0.0], "second triangle's first corner");
+    }
+
+    /// A texture targeting the surface but referencing a ring id no triangle carries
+    /// cannot assemble full UV, so the mesh is left bare rather than mismatched.
+    #[test]
+    fn triangular_mesh_missing_ring_uv_leaves_mesh_bare() {
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:TriangulatedSurface gml:id="ts1">
+                  <gml:trianglePatches>
+                    <gml:Triangle><gml:exterior><gml:LinearRing gml:id="tri1">
+                      <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                    </gml:LinearRing></gml:exterior></gml:Triangle>
+                  </gml:trianglePatches>
+                </gml:TriangulatedSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:ParameterizedTexture>
+                  <app:imageURI>tex/tin.jpg</app:imageURI>
+                  <app:textureParameterization><app:TextureAssociation>
+                    <app:target>#ts1</app:target>
+                    <app:textureParameterization><app:TexCoordList>
+                      <app:textureCoordinates>0 0 1 0 0 1 0 0</app:textureCoordinates>
+                      <app:ring>#other</app:ring>
+                    </app:TexCoordList></app:textureParameterization>
+                  </app:TextureAssociation></app:textureParameterization>
+                </app:ParameterizedTexture></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let mesh = resolve_only_mesh(&xml);
+        assert!(mesh.appearance().is_none());
+        assert!(mesh.uv_sets().is_empty());
+    }
+
+    /// An `X3DMaterial` colour targeting the surface attaches to the mesh with no UV.
+    #[test]
+    fn x3d_material_colour_attaches_to_triangular_mesh() {
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:TriangulatedSurface gml:id="ts1">
+                  <gml:trianglePatches>
+                    <gml:Triangle><gml:exterior><gml:LinearRing gml:id="tri1">
+                      <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                    </gml:LinearRing></gml:exterior></gml:Triangle>
+                  </gml:trianglePatches>
+                </gml:TriangulatedSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>0.2 0.4 0.6</app:diffuseColor>
+                  <app:target>#ts1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let mesh = resolve_only_mesh(&xml);
+        let appearance = mesh.appearance().as_ref().expect("mesh is coloured");
+        let Material::Phong(m) = &appearance.materials[0] else {
+            panic!("expected Phong");
+        };
+        assert_eq!(m.diffuse, [0.2, 0.4, 0.6]);
+        assert!(m.diffuse_map.is_none(), "colour-only, no texture");
+        assert!(mesh.uv_sets().is_empty(), "colour-only, no UV");
     }
 }

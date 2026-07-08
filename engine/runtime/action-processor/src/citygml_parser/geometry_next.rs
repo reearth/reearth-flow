@@ -327,9 +327,11 @@ fn build_surface(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
 
 /// Build a `TriangularMesh` from a `TriangulatedSurface`/`Tin`'s triangle patches,
 /// taking the first three coordinates of each; `None` if it has no patches. One
-/// `FaceIds` per triangle, in triangle order, each face's sole ring id the
-/// triangle's exterior `LinearRing` gml:id.
+/// `FaceIds` per triangle, in triangle order: each face's surface id the whole
+/// surface's own gml:id (a texture drapes the surface, not a single triangle) and
+/// its sole ring id the triangle's exterior `LinearRing` gml:id.
 fn build_triangulated(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
+    let surface = raw_gml_id(node);
     let mut soup: Vec<[f64; 3]> = Vec::new();
     let mut face_ids: LeafIds = Vec::new();
     for prop in element_children(node) {
@@ -339,7 +341,7 @@ fn build_triangulated(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> 
                 if ring.len() >= 3 {
                     soup.extend_from_slice(&ring[..3]);
                     face_ids.push(FaceIds {
-                        surface: None,
+                        surface: surface.clone(),
                         rings: vec![triangle_ring_id(triangle)],
                     });
                 }
