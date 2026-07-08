@@ -282,7 +282,7 @@ mod build_next {
         let members: Vec<Geometry> = geoms
             .into_iter()
             .filter_map(|pending| {
-                resolver::resolve_root_with_appearance(&pending.node, registry, appearance)
+                resolver::resolve_root(&pending.node, registry, appearance)
                     .map(Geometry::Euclidean3D)
             })
             .collect();

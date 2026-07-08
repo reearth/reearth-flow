@@ -552,7 +552,7 @@ fn text_content(node: &RawNode) -> &str {
 mod tests {
     use super::*;
     use crate::citygml_parser::parser::Parser;
-    use crate::citygml_parser::resolver::resolve_root;
+    use crate::citygml_parser::resolver::resolve_root_bare;
     use url::Url;
 
     /// Parse one CityGML feature wrapping `inner`, returning its stripped attribute
@@ -614,7 +614,7 @@ mod tests {
         ));
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(2));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert_eq!(collection_len(&geometry), 1);
     }
 
@@ -623,7 +623,7 @@ mod tests {
         let (geoms, registry) = parse_one(&format!(
             "<bldg:lod2Solid><gml:Solid><gml:exterior><gml:Shell><gml:surfaceMember>{POLYGON}</gml:surfaceMember></gml:Shell></gml:exterior></gml:Solid></bldg:lod2Solid>"
         ));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::Solid(_)));
     }
 
@@ -636,7 +636,7 @@ mod tests {
                  </gml:LinearRing></gml:exterior></gml:Triangle>
                </gml:trianglePatches></gml:TriangulatedSurface></bldg:lod1MultiSurface>"#,
         );
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::TriangularMesh(_)));
     }
 
@@ -665,7 +665,7 @@ mod tests {
                </gml:MultiSurface></bldg:lod2MultiSurface>"##
         ));
         assert!(registry.contains_key(&("file:///test.gml".to_string(), "p1".to_string())));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert_eq!(collection_len(&geometry), 2);
     }
 
@@ -685,7 +685,7 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(0));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::LineString(ls) => {
                 assert_eq!(ls.coords().len(), 3);
@@ -703,7 +703,7 @@ mod tests {
         ));
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(2));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => {
                 assert_eq!(p.exterior().len(), 4);
@@ -724,7 +724,7 @@ mod tests {
                  </gml:Polygon>
                </gml:surfaceMember></gml:MultiSurface></core:lod2MultiSurface>"#,
         );
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => {
                 assert_eq!(p.exterior().len(), 5);
@@ -755,7 +755,7 @@ mod tests {
         assert_eq!(geoms.len(), 2);
         // geoms[0] is the CompositeSurface-in-MultiSurface: the two xlinked polygons
         // resolved and welded into one two-face mesh.
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::PolygonMesh(m) => assert_eq!(m.num_faces(), 2),
             other => panic!("expected PolygonMesh, got {other:?}"),
@@ -774,7 +774,7 @@ mod tests {
             tp1 = TA.replacen("<gml:Polygon>", r#"<gml:Polygon gml:id="tp1">"#, 1),
         ));
         assert_eq!(geoms.len(), 2);
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => assert_eq!(p.exterior().len(), 4),
             other => panic!("expected Polygon (xlink resolved), got {other:?}"),
@@ -791,7 +791,7 @@ mod tests {
         ));
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(1));
-        match resolve_root(&geoms[0].node, &registry).unwrap() {
+        match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::Solid(s) => {
                 assert_eq!(s.exterior().num_faces(), 2);
                 assert!(s.interiors().is_empty());
@@ -813,7 +813,7 @@ mod tests {
         assert_eq!(geoms[0].lod, Some(2));
         // The CompositeSurface shell body welds its two polygons into the solid's
         // one exterior shell.
-        match resolve_root(&geoms[0].node, &registry).unwrap() {
+        match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::Solid(s) => assert_eq!(s.exterior().num_faces(), 2),
             other => panic!("expected Solid, got {other:?}"),
         }
@@ -829,7 +829,7 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, None);
-        match resolve_root(&geoms[0].node, &registry).unwrap() {
+        match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::TriangularMesh(m) => {
                 assert_eq!(m.num_triangles(), 2);
                 // Edge B–C is shared, so the two triangles dedup to four vertices.
@@ -846,7 +846,7 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(0));
-        match resolve_root(&geoms[0].node, &registry).unwrap() {
+        match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::Point(p) => assert_eq!(p.position(), [2.0, 1.0, 5.0]),
             other => panic!("expected Point, got {other:?}"),
         }
@@ -866,7 +866,7 @@ mod tests {
              </gml:MultiSurface></bldg:lod2MultiSurface>"
         ));
         assert_eq!(
-            collection_len(&resolve_root(&geoms[0].node, &registry).unwrap()),
+            collection_len(&resolve_root_bare(&geoms[0].node, &registry).unwrap()),
             1
         );
     }
@@ -885,7 +885,7 @@ mod tests {
              </gml:MultiSurface></bldg:lod2MultiSurface>"
         ));
         assert_eq!(
-            collection_len(&resolve_root(&geoms[0].node, &registry).unwrap()),
+            collection_len(&resolve_root_bare(&geoms[0].node, &registry).unwrap()),
             1
         );
     }
@@ -1008,7 +1008,7 @@ mod tests {
         // The MultiCurve survives but its sole Curve member is dropped, leaving an
         // empty collection.
         assert_eq!(
-            collection_len(&resolve_root(&geoms[0].node, &registry).unwrap()),
+            collection_len(&resolve_root_bare(&geoms[0].node, &registry).unwrap()),
             0
         );
     }

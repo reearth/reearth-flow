@@ -493,7 +493,7 @@ fn strip_hash(reference: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use crate::citygml_parser::parser::Parser;
-    use crate::citygml_parser::resolver::resolve_root_with_appearance;
+    use crate::citygml_parser::resolver::resolve_root;
     use reearth_flow_geometry::appearance::{Material, Side, ThemeId, UvSource};
     use reearth_flow_geometry::Euclidean3DGeometry;
     use std::sync::Arc;
@@ -515,9 +515,8 @@ mod tests {
         let (pending, _raw, geom_registry, appearance, _ns) = parser.finish();
         assert!(!appearance.is_empty(), "appearance should be indexed");
         let feature = pending.into_iter().next().expect("one feature");
-        let geom =
-            resolve_root_with_appearance(&feature.geoms[0].node, &geom_registry, &appearance)
-                .expect("geometry resolves");
+        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance)
+            .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::Collection(c) => match c.members().first().expect("one member") {
                 Euclidean3DGeometry::Polygon(p) => Polygon3DOut((**p).clone()),

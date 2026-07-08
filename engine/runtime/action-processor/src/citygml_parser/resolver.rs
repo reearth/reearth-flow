@@ -158,25 +158,26 @@ impl GmlGeometryType {
 }
 
 /// Resolve a top-level geometry node into a single [`Euclidean3DGeometry`],
-/// following `xlink:href` references through `registry`, with no appearance
-/// attached. Returns `None` when the node, or every one of its members, cannot be
-/// resolved.
+/// following `xlink:href` references through `registry` and attaching the
+/// appearance targeting each surface from `appearance` (an empty index attaches
+/// nothing). Attachment is at the polygon leaf, so mesh welding carries it into
+/// `PolygonMesh` / `Solid`. Returns `None` when the node, or every one of its
+/// members, cannot be resolved.
 pub(super) fn resolve_root(
-    node: &GeomNode,
-    registry: &GeomRegistry,
-) -> Option<Euclidean3DGeometry> {
-    resolve_root_with_appearance(node, registry, &AppearanceIndex::default())
-}
-
-/// Resolve a top-level geometry node, attaching the appearance targeting each
-/// surface from `appearance`. Attachment is at the polygon leaf, so mesh welding
-/// carries it into `PolygonMesh` / `Solid`.
-pub(super) fn resolve_root_with_appearance(
     node: &GeomNode,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
 ) -> Option<Euclidean3DGeometry> {
     resolve(node, registry, appearance, &[], &mut HashSet::new())
+}
+
+/// Resolve a top-level geometry node with no appearance attached.
+#[cfg(test)]
+pub(super) fn resolve_root_bare(
+    node: &GeomNode,
+    registry: &GeomRegistry,
+) -> Option<Euclidean3DGeometry> {
+    resolve_root(node, registry, &AppearanceIndex::default())
 }
 
 /// Resolve one node. `enclosing` is the chain of enclosing container gml:ids
@@ -476,7 +477,7 @@ mod tests {
                 (Role::Member, resolved(point())),
             ],
         );
-        let geometry = resolve_root(&n, &GeomRegistry::new()).unwrap();
+        let geometry = resolve_root_bare(&n, &GeomRegistry::new()).unwrap();
         assert_eq!(collection_len(&geometry), 2);
     }
 
@@ -489,7 +490,7 @@ mod tests {
                 (Role::Member, resolved(triangle())),
             ],
         );
-        let geometry = resolve_root(&n, &GeomRegistry::new()).unwrap();
+        let geometry = resolve_root_bare(&n, &GeomRegistry::new()).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::PolygonMesh(_)));
     }
 
@@ -500,7 +501,7 @@ mod tests {
             vec![(Role::Member, resolved(triangle()))],
         );
         let n = node(GmlGeometryType::Solid, vec![(Role::Exterior, shell)]);
-        let geometry = resolve_root(&n, &GeomRegistry::new()).unwrap();
+        let geometry = resolve_root_bare(&n, &GeomRegistry::new()).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::Solid(_)));
     }
 
@@ -513,7 +514,7 @@ mod tests {
                 (Role::Member, resolved(triangle())),
             ],
         );
-        let geometry = resolve_root(&n, &GeomRegistry::new()).unwrap();
+        let geometry = resolve_root_bare(&n, &GeomRegistry::new()).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::PolygonMesh(_)));
     }
 
@@ -543,7 +544,7 @@ mod tests {
                 (Role::Member, resolved(triangle())),
             ],
         );
-        match resolve_root(&n, &GeomRegistry::new()).unwrap() {
+        match resolve_root_bare(&n, &GeomRegistry::new()).unwrap() {
             Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 2),
             other => panic!("expected PolygonMesh, got {other:?}"),
         }
@@ -557,7 +558,7 @@ mod tests {
             vec![(Role::Member, resolved(triangle()))],
         );
         let n = node(GmlGeometryType::Solid, vec![(Role::Exterior, boundary)]);
-        let geometry = resolve_root(&n, &GeomRegistry::new()).unwrap();
+        let geometry = resolve_root_bare(&n, &GeomRegistry::new()).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::Solid(_)));
     }
 
@@ -567,7 +568,7 @@ mod tests {
             GmlGeometryType::Ring,
             vec![(Role::Member, resolved(line()))],
         );
-        let geometry = resolve_root(&n, &GeomRegistry::new()).unwrap();
+        let geometry = resolve_root_bare(&n, &GeomRegistry::new()).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::Polygon(_)));
     }
 
@@ -579,7 +580,7 @@ mod tests {
             GmlGeometryType::MultiPoint,
             vec![(Role::Member, GeomNode::Ref(key("p1")))],
         );
-        let geometry = resolve_root(&n, &registry).unwrap();
+        let geometry = resolve_root_bare(&n, &registry).unwrap();
         assert_eq!(collection_len(&geometry), 1);
     }
 
@@ -592,7 +593,7 @@ mod tests {
                 (Role::Member, resolved(point())),
             ],
         );
-        let geometry = resolve_root(&n, &GeomRegistry::new()).unwrap();
+        let geometry = resolve_root_bare(&n, &GeomRegistry::new()).unwrap();
         assert_eq!(collection_len(&geometry), 1);
     }
 
@@ -606,7 +607,7 @@ mod tests {
                 vec![(Role::Member, GeomNode::Ref(key("a")))],
             ),
         );
-        let geometry = resolve_root(&GeomNode::Ref(key("a")), &registry).unwrap();
+        let geometry = resolve_root_bare(&GeomNode::Ref(key("a")), &registry).unwrap();
         assert_eq!(collection_len(&geometry), 0);
     }
 }
