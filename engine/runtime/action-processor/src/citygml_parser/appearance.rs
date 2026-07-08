@@ -55,6 +55,21 @@ impl AppearanceIndex {
         self.surfaces.is_empty()
     }
 
+    /// Bind a textured material backed by `raster` to `target`'s surface side and
+    /// record each of its rings' texture coordinates under `(theme, side)`.
+    fn add_texture_target(
+        &mut self,
+        target: TextureTarget,
+        theme: &str,
+        side: Side,
+        raster: &Arc<Raster>,
+    ) {
+        set_side(self, &target.surface, theme, side, textured_side(raster));
+        for (ring, uv) in target.rings {
+            self.ring_uv.insert((theme.to_string(), side, ring), uv);
+        }
+    }
+
     /// Attach the appearance targeting `polygon` to it, assembling per-ring UV from
     /// `rings` (exterior-first, holes-next, matching the polygon's coords).
     ///
@@ -231,11 +246,18 @@ fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
     let raster = Arc::new(Raster::Uri(uri));
     for child in child_elements(texture) {
         match local_name(&child.name.0) {
-            "target" => index_texture_target_v2(child, theme, side, &raster, index),
+            "target" => {
+                if let Some(target) = inline_target(child) {
+                    index.add_texture_target(target, theme, side, &raster);
+                }
+            }
             "textureParameterization" => {
                 for assoc in child_elements(child) {
-                    if local_name(&assoc.name.0) == "TextureAssociation" {
-                        index_texture_target_v3(assoc, theme, side, &raster, index);
+                    if local_name(&assoc.name.0) != "TextureAssociation" {
+                        continue;
+                    }
+                    if let Some(target) = texture_association(assoc) {
+                        index.add_texture_target(target, theme, side, &raster);
                     }
                 }
             }
@@ -252,19 +274,20 @@ fn textured_side(raster: &Arc<Raster>) -> SideMaterial {
     }
 }
 
+/// A texture bound to one surface: the surface's `gml:id` and each of its rings'
+/// texture coordinates. The two CityGML encodings are normalized to this shape so
+/// binding the material and recording the UV happen through one path.
+struct TextureTarget {
+    surface: String,
+    rings: Vec<(String, Vec<[f64; 2]>)>,
+}
+
 /// CityGML 2.0 texture target: `<app:target uri="#surface">` wrapping a
-/// `TexCoordList` of `<app:textureCoordinates ring="#ring">`.
-fn index_texture_target_v2(
-    target: &RawNode,
-    theme: &str,
-    side: Side,
-    raster: &Arc<Raster>,
-    index: &mut AppearanceIndex,
-) {
-    let Some(surface) = attr(target, "uri").map(strip_hash) else {
-        return;
-    };
-    set_side(index, surface, theme, side, textured_side(raster));
+/// `TexCoordList` of `<app:textureCoordinates ring="#ring">`, where surface and
+/// ring are `xlink` attributes.
+fn inline_target(target: &RawNode) -> Option<TextureTarget> {
+    let surface = strip_hash(attr(target, "uri")?).to_string();
+    let mut rings = Vec::new();
     for coord_list in child_elements(target) {
         if local_name(&coord_list.name.0) != "TexCoordList" {
             continue;
@@ -277,42 +300,30 @@ fn index_texture_target_v2(
                 continue;
             };
             if let Some(uv) = parse_uv(&text_of(tc)) {
-                index
-                    .ring_uv
-                    .insert((theme.to_string(), side, ring.to_string()), uv);
+                rings.push((ring.to_string(), uv));
             }
         }
     }
+    Some(TextureTarget { surface, rings })
 }
 
 /// CityGML 3.0 texture target: an `<app:TextureAssociation>` with an element-text
 /// `<app:target>#surface` and a nested `textureParameterization` / `TexCoordList`
 /// whose `textureCoordinates` and `ring` are positional siblings.
-fn index_texture_target_v3(
-    assoc: &RawNode,
-    theme: &str,
-    side: Side,
-    raster: &Arc<Raster>,
-    index: &mut AppearanceIndex,
-) {
-    let Some(surface) = child_text(assoc, "target") else {
-        return;
-    };
-    let surface = strip_hash(&surface);
-    set_side(index, surface, theme, side, textured_side(raster));
+fn texture_association(assoc: &RawNode) -> Option<TextureTarget> {
+    let surface = strip_hash(&child_text(assoc, "target")?).to_string();
+    let mut rings = Vec::new();
     for param in child_elements(assoc) {
         if local_name(&param.name.0) != "textureParameterization" {
             continue;
         }
         for coord_list in child_elements(param) {
-            if local_name(&coord_list.name.0) != "TexCoordList" {
-                continue;
-            }
-            for (ring, uv) in tex_coord_pairs(coord_list) {
-                index.ring_uv.insert((theme.to_string(), side, ring), uv);
+            if local_name(&coord_list.name.0) == "TexCoordList" {
+                rings.extend(tex_coord_pairs(coord_list));
             }
         }
     }
+    Some(TextureTarget { surface, rings })
 }
 
 /// Pair a CityGML 3.0 `TexCoordList`'s `textureCoordinates` with its `ring`s by
