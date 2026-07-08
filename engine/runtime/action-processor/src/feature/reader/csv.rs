@@ -5,7 +5,7 @@ use reearth_flow_common::csv::{
 };
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::DEFAULT_PORT,
+    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::FEATURES_PORT,
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -80,7 +80,7 @@ pub(crate) fn read_csv(
             .collect::<HashMap<Attribute, AttributeValue>>();
         let mut feature = feature.clone();
         feature.extend(row);
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
     }
     Ok(())
 }

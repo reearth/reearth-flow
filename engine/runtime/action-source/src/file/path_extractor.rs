@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_storage::storage::Storage;
 use reearth_flow_types::{AttributeValue, Code, Feature, FilePath};
@@ -48,7 +48,7 @@ impl SourceFactory for FilePathExtractorFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -227,7 +227,7 @@ pub async fn extract(
     for feature in features {
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
@@ -314,7 +314,7 @@ impl Source for FilePathExtractorSource {
                 let feature = Feature::from(attribute_value);
                 sender
                     .send((
-                        DEFAULT_PORT.clone(),
+                        FEATURES_PORT.clone(),
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
@@ -325,7 +325,7 @@ impl Source for FilePathExtractorSource {
             let feature = Feature::from(attribute_value);
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await

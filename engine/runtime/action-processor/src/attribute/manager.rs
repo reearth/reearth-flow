@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 
 use reearth_flow_types::{Code, CompiledCode, Feature};
@@ -36,11 +36,11 @@ impl ProcessorFactory for AttributeManagerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -84,7 +84,7 @@ impl ProcessorFactory for AttributeManagerFactory {
         let params = parse_params(with)?;
 
         let mut out = inputs
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .cloned()
             .unwrap_or_else(AttrSchema::open);
 
@@ -128,7 +128,7 @@ impl ProcessorFactory for AttributeManagerFactory {
             }
         }
 
-        Some(HashMap::from([(DEFAULT_PORT.clone(), out)]))
+        Some(HashMap::from([(FEATURES_PORT.clone(), out)]))
     }
 }
 
@@ -203,7 +203,7 @@ impl Processor for AttributeManager {
     ) -> Result<(), BoxedError> {
         let env_vars = ctx.env_vars.clone();
         let feature = process_feature(ctx.as_context(), &ctx.feature, &self.operations, env_vars);
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -364,13 +364,13 @@ mod tests {
             AttrField::always(AttrType::String),
         );
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input);
+        inputs.insert(FEATURES_PORT.clone(), input);
 
         let out = AttributeManagerFactory
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
         let schema = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
 
         assert_eq!(
@@ -403,13 +403,13 @@ mod tests {
             AttrField::always(AttrType::Number),
         );
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input);
+        inputs.insert(FEATURES_PORT.clone(), input);
 
         let out = AttributeManagerFactory
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
         let schema = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
 
         assert!(!schema.fields.contains_key(&Attribute::new("a".to_string())));
@@ -433,13 +433,13 @@ mod tests {
             AttrField::always(AttrType::String),
         );
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input);
+        inputs.insert(FEATURES_PORT.clone(), input);
 
         let out = AttributeManagerFactory
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
         let schema = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
 
         // The runtime keeps the source key when eval fails or the destination

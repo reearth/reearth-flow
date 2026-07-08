@@ -3,7 +3,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     kvs::create_kv_store,
-    node::DEFAULT_PORT,
+    node::FEATURES_PORT,
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
@@ -12,7 +12,7 @@ use std::sync::Arc;
 pub(crate) fn create_default_execute_context(feature: Feature) -> ExecutorContext {
     ExecutorContext::new(
         feature,
-        DEFAULT_PORT.clone(),
+        FEATURES_PORT.clone(),
         Arc::new(serde_json::Map::new()),
         Arc::new(StorageResolver::new()),
         Arc::new(create_kv_store()),

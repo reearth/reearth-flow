@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::GeometryValue;
 use serde_json::Value;
@@ -37,11 +37,11 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -68,15 +68,15 @@ impl Processor for TwoDimensionForcer {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         };
         match &geometry.value {
             GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(_) => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geos) => {
                 let value: Geometry2D = geos.clone().into();
@@ -84,7 +84,7 @@ impl Processor for TwoDimensionForcer {
                 geometry.value = GeometryValue::FlowGeometry2D(value);
                 let mut feature = feature.clone();
                 feature.geometry = Arc::new(geometry);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(gml) => {
                 let value: Geometry2D = gml.clone().into();
@@ -92,7 +92,7 @@ impl Processor for TwoDimensionForcer {
                 geometry.value = GeometryValue::FlowGeometry2D(value);
                 let mut feature = feature.clone();
                 feature.geometry = Arc::new(geometry);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
         }
         Ok(())
