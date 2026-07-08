@@ -1,7 +1,7 @@
 use super::ops::segment_positions;
 use super::PointCloud;
 use crate::validation_next::{
-    check_duplicate_points_3d, check_finite_3d, CheckOutcome, Validate, ValidationType,
+    check_duplicate_points, check_finite_3d, Validate, ValidationReport, ValidationType,
 };
 
 // All segments share the cloud's frame; stream each segment's decoded positions
@@ -12,8 +12,8 @@ impl Validate for PointCloud {
         &[ValidationType::Finite, ValidationType::DuplicatePoints]
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
             check_finite_3d(
                 &self.frame,
                 self.segments.iter().flat_map(segment_positions),
@@ -22,9 +22,9 @@ impl Validate for PointCloud {
         })
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
-            check_duplicate_points_3d(
+    fn check_duplicate_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_duplicate_points(
                 &self.frame,
                 self.segments.iter().flat_map(segment_positions),
                 None,

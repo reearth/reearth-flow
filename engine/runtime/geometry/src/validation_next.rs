@@ -1,49 +1,4 @@
 //! Validations/predicates on geometry types.
-//!
-//! # Default validation per leaf type
-//!
-//! Which per-coordinate / per-ring / whole-surface checks run for each leaf type,
-//! one row per [`ValidationType`]. `✓` runs, `·` does not (not applicable).
-//! Finiteness (the `Finite` row) always runs. Leaf columns fold the 2D/3D pairs:
-//! `Point` = Point2D/3D, `LineStr` = LineString2D/3D, `Coll` = Collection2D/3D.
-//!
-//! | Check ╲ Leaf            | Point | LineStr | Poly2D | Poly3D | PolyMesh2D | PolyMesh3D | TriMesh2D | TriMesh3D | Solid | Csg | PtCloud | Coll |
-//! |-------------------------|:-----:|:-------:|:------:|:------:|:----------:|:----------:|:---------:|:---------:|:-----:|:---:|:-------:|:----:|
-//! | Finite                  |   ✓   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ✓    |  ✓   |
-//! | TooFewPoints            |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
-//! | UnclosedRing            |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
-//! | SelfIntersection        |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
-//! | InteriorRingContainment |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ·   |  ✓  |    ·    |  ✓   |
-//! | Degenerate              |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
-//! | Planarity               |   ·   |    ·    |   ✓    |   ✓    |     ·      |     ·      |     ·     |     ·     |   ·   |  ✓  |    ·    |  ✓   |
-//! | DuplicatePoints         |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ✓    |  ✓   |
-//! | Orientation             |   ·   |    ·    |   ✓    |   ·    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
-//! | Orientable              |   ·   |    ·    |   ·    |   ·    |     ·      |     ✓      |     ·     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
-//! | ShellManifold           |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
-//! | ShellOrientation        |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
-//!
-//! # Check dependencies
-//!
-//! A check is only meaningful once the checks it depends on hold, so each
-//! [`ValidationType`] lists its immediate prerequisites via
-//! [`ValidationType::dependencies`] (transitive-close for the full set). A
-//! runner should skip a check while any prerequisite fails. The relation is a
-//! DAG (checked in the unit tests):
-//!
-//! | Check                        | Immediate prerequisites                  |
-//! |------------------------------|------------------------------------------|
-//! | `Finite` (always on)         | — |
-//! | `TooFewPoints`               | — |
-//! | `UnclosedRing`               | `Finite` |
-//! | `DuplicatePoints`            | `Finite` |
-//! | `Degenerate`                 | `Finite` |
-//! | `Planarity`                  | `Finite` |
-//! | `SelfIntersection`           | `Finite`, `TooFewPoints`, `UnclosedRing` |
-//! | `InteriorRingContainment`    | `Finite`, `SelfIntersection` |
-//! | `Orientable`                 | — |
-//! | `Orientation`                | `Finite`, `Orientable` |
-//! | `ShellManifold`              | — |
-//! | `ShellOrientation`           | `Orientation`, `ShellManifold` |
 
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -57,53 +12,40 @@ use crate::line_string::{LineString2D, LineString3D};
 use crate::point::{Point2D, Point3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
-/// Which validity check to run — one variant per row of the
-/// [validation matrix](self#default-validation-per-leaf-type).
-///
-/// `Finite`, `TooFewPoints`, `UnclosedRing`, `DuplicatePoints`, `Orientation`
-/// (meshes / 2D faces), `Orientable` (3D meshes and solids), and `ShellManifold` /
-/// `ShellOrientation` (solids) are implemented; the detection for every other
-/// variant is a `TODO` that panics via `unimplemented!()` if a leaf lists it in
-/// its [applicable checks](Validate::applicable_checks) and [`validate`] reaches
-/// it. Checks carry no parameters: [`validate`] runs each with its default
-/// tolerance.
+/// Type of validity check. One variant per row of the
+/// [validation matrix](validate#default-validation-per-leaf-type).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum ValidationType {
-    /// Every coordinate component is finite (non-NaN, non-infinite). Always run.
+    /// Whether every coordinate component is finite (non-NaN, non-infinite).
     Finite,
-    /// A line or ring has fewer points than its type requires (line ≥ 2, closed
-    /// ring ≥ 4).
+    /// Whether a line or ring has fewer points than its type requires (line ≥ 2,
+    /// closed ring ≥ 4).
     TooFewPoints,
-    /// Coordinates that coincide anywhere within a geometry.
+    /// Whether coordinates coincide anywhere within a geometry.
     DuplicatePoints,
-    /// A ring is not closed (first vertex != last).
+    /// Whether a ring is closed (first vertex == last).
     UnclosedRing,
-    /// A ring or boundary crosses itself.
+    /// Whether a ring or boundary crosses itself.
     SelfIntersection,
-    /// An interior ring (hole) is not contained in its exterior ring.
+    /// Whether an interior ring (hole) is contained in its exterior ring.
     InteriorRingContainment,
-    /// The geometry has zero or near-zero extent (length, area, or volume).
+    /// Whether the geometry has zero or near-zero measure (length, area, or volume).
     Degenerate,
-    /// A polygon's ring vertices do not all lie in a common plane (within
-    /// tolerance). Meaningful for a face embedded in 3D — or a 2.5D face carrying
-    /// per-vertex elevation. Polygon only.
+    /// Whether a polygon's ring vertices do all lie in a common plane (within
+    /// tolerance).
     Planarity,
-    /// The surface admits no consistent orientation at all — a Möbius-like
-    /// contradiction or a non-manifold edge (shared by more than two faces) — so
-    /// no assignment of face flips can make every shared edge agree. This is the
-    /// topological prerequisite of [`Orientation`](ValidationType::Orientation),
+    /// Whether the surface admits a consistent orientation, so assignment of face
+    /// flips can make every shared edge agree. This is the topological prerequisite
+    /// of [`Orientation`](ValidationType::Orientation),
     /// checked regardless of the surface's current winding.
     Orientable,
-    /// The surface is not *consistently* oriented (adjacent face normals
-    /// disagree). Type-dependent: a 2D face means ring winding (exterior CCW,
-    /// holes CW); a 3D mesh or solid means coherent winding across shared edges
-    /// (each shared edge traversed in opposite directions by its two faces).
+    /// Whether the surface is consistently oriented. Type-dependent: a 2D face means
+    /// ring winding (exterior CCW, holes CW). A 3D mesh or solid means coherent winding
+    /// across shared edges (each shared edge traversed in opposite directions by its two faces).
     Orientation,
-    /// A solid's boundary is not a closed 2-manifold (watertight): some shell is
-    /// not a single connected component whose every edge is shared by exactly two
-    /// faces. Solid only.
+    /// Whether a solid's boundary is not a closed 2-manifold (watertight). Solid only.
     ShellManifold,
-    /// A solid's shell normals face the wrong way: the exterior shell must enclose
+    /// Whether a solid's shell normals face the correct way: the exterior shell must enclose
     /// positive volume (outward normals) and each void shell negative volume
     /// (normals into the void). Defined on a closed, consistently-oriented solid.
     /// Solid only.
@@ -112,9 +54,9 @@ pub enum ValidationType {
 
 impl ValidationType {
     /// Immediate prerequisite checks. [`validate`] marks a check
-    /// [`Unvalidated`](ValidationResult::Unvalidated) while any *applicable*
+    /// [`Unvalidated`](ValidationResult::Unvalidated) while any applicable
     /// prerequisite did not end in [`Success`](ValidationResult::Success).
-    /// Tabulated under [check dependencies](self#check-dependencies).
+    /// Tabulated under [check dependencies](validate#check-dependencies).
     pub fn dependencies(&self) -> &'static [ValidationType] {
         use ValidationType::*;
         match self {
@@ -142,23 +84,9 @@ impl ValidationType {
 }
 
 impl fmt::Display for ValidationType {
-    /// The check's variant name.
+    /// The check's variant name, as produced by the derived [`Debug`].
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = match self {
-            ValidationType::Finite => "Finite",
-            ValidationType::TooFewPoints => "TooFewPoints",
-            ValidationType::DuplicatePoints => "DuplicatePoints",
-            ValidationType::UnclosedRing => "UnclosedRing",
-            ValidationType::SelfIntersection => "SelfIntersection",
-            ValidationType::InteriorRingContainment => "InteriorRingContainment",
-            ValidationType::Degenerate => "Degenerate",
-            ValidationType::Planarity => "Planarity",
-            ValidationType::Orientable => "Orientable",
-            ValidationType::Orientation => "Orientation",
-            ValidationType::ShellManifold => "ShellManifold",
-            ValidationType::ShellOrientation => "ShellOrientation",
-        };
-        f.write_str(name)
+        write!(f, "{self:?}")
     }
 }
 
@@ -180,66 +108,48 @@ pub enum ValidationResult {
 /// returned by [`validate`].
 pub type ValidationResults = std::collections::HashMap<ValidationType, ValidationResult>;
 
-/// A validity problem together with where it occurred; the per-check accumulator
-/// the `check_*` helpers push into. [`CheckOutcome::ran`] keeps only the positions.
-#[derive(Serialize, Clone, Debug, PartialEq)]
-pub struct ValidationProblemAtPosition {
-    /// The problem encountered.
-    pub problem: String,
-    /// The geometry pinpointing where the problem was found — typically a point
-    /// leaf at the offending coordinate.
-    pub position: Geometry,
-}
-
-/// The problems one `check_*` helper found, before it becomes a [`CheckOutcome`].
+/// What running one check produced: the positions it flagged, empty when the
+/// geometry passed. Doubles as the mutable buffer a `check_*` helper pushes into
+/// and as the check's outcome before dependency gating. Each [`Geometry`]
+/// pinpoints where a problem was found, typically a point leaf at the offending
+/// coordinate.
+///
+/// This is a two-state value (empty / non-empty); it cannot express
+/// [`Unvalidated`](ValidationResult::Unvalidated), which is a gating decision
+/// owned by the driver ([`resolve`]), not something a leaf check can report.
 #[derive(Serialize, Clone, Debug, PartialEq, Default)]
-pub struct ValidationReport(pub Vec<ValidationProblemAtPosition>);
+pub struct ValidationReport(pub Vec<Geometry>);
 
 impl ValidationReport {
-    /// The number of problems recorded.
-    pub fn error_count(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Whether no problems were recorded.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    /// Record a problem at a position.
-    pub fn push(&mut self, problem: String, position: Geometry) {
-        self.0
-            .push(ValidationProblemAtPosition { problem, position });
-    }
-}
-
-/// What running one check produced before dependency gating: the positions it
-/// flagged, empty when the geometry passed.
-///
-/// A check that *does not run for a leaf type* never produces a `CheckOutcome` —
-/// it is simply absent from that leaf's
-/// [`applicable_checks`](Validate::applicable_checks), so the driver never calls
-/// it. A check that is applicable but *not yet implemented* panics via
-/// `unimplemented!()` rather than yielding an outcome. So a `CheckOutcome` always
-/// means "this check genuinely ran".
-pub(crate) struct CheckOutcome(Vec<Geometry>);
-
-impl CheckOutcome {
-    /// Run a `check_*` helper into a fresh report and keep only its positions.
+    /// Run a `check_*` helper into a fresh report and collect the positions it
+    /// flagged.
     pub(crate) fn ran(fill: impl FnOnce(&mut ValidationReport)) -> Self {
         let mut report = ValidationReport::default();
         fill(&mut report);
-        CheckOutcome(report.0.into_iter().map(|p| p.position).collect())
+        report
+    }
+
+    /// Whether any problems were recorded.
+    #[inline]
+    pub fn problem_recorded(&self) -> bool {
+        !self.0.is_empty()
+    }
+
+    /// Record a problem at a position.
+    #[inline]
+    pub fn push(&mut self, position: Geometry) {
+        self.0.push(position);
     }
 
     /// Reduce to a gated result: no positions →
     /// [`Success`](ValidationResult::Success), otherwise
     /// [`Failed`](ValidationResult::Failed).
+    #[inline]
     fn into_result(self) -> ValidationResult {
-        if self.0.is_empty() {
-            ValidationResult::Success
-        } else {
+        if self.problem_recorded() {
             ValidationResult::Failed(self.0)
+        } else {
+            ValidationResult::Success
         }
     }
 }
@@ -250,7 +160,7 @@ impl CheckOutcome {
 /// prerequisites passed; it is invoked at most once per check.
 pub(crate) fn run_checks(
     applicable: &[ValidationType],
-    mut run_one: impl FnMut(ValidationType) -> CheckOutcome,
+    mut run_one: impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResults {
     let applicable_set: HashSet<ValidationType> = applicable.iter().copied().collect();
     let mut results = ValidationResults::new();
@@ -262,14 +172,12 @@ pub(crate) fn run_checks(
 
 /// Resolve one check, recursing into its applicable prerequisites first. A check
 /// is [`Unvalidated`](ValidationResult::Unvalidated) when any applicable
-/// prerequisite did not end in [`Success`](ValidationResult::Success). A check
-/// that is applicable but unimplemented panics (via the `Validate` default body)
-/// rather than resolving.
+/// prerequisite did not end in [`Success`](ValidationResult::Success).
 fn resolve(
     check: ValidationType,
     applicable: &HashSet<ValidationType>,
     results: &mut ValidationResults,
-    run_one: &mut impl FnMut(ValidationType) -> CheckOutcome,
+    run_one: &mut impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResult {
     if let Some(result) = results.get(&check) {
         return result.clone();
@@ -318,17 +226,16 @@ fn combine_results(a: ValidationResult, b: ValidationResult) -> ValidationResult
 
 /// Generate the per-check [`Validate`] trait, its `Box` forwarding impl, and the
 /// [`dispatch`] bridge from one `method => ValidationType` table, so the mapping
-/// has a single source of truth. Each check method defaults to
-/// [`CheckOutcome::NotImplemented`]; a leaf overrides only the ones it supports.
+/// has a single source of truth. Each check method defaults to a
+/// `unimplemented!()` panic; a leaf overrides only the ones it supports.
 macro_rules! validation_checks {
     ($($(#[$m:meta])* $method:ident => $variant:ident),+ $(,)?) => {
         /// Per-leaf validation: one method per [`ValidationType`], plus
-        /// [`applicable_checks`](Validate::applicable_checks) — the leaf's row of the
-        /// [validation matrix](self#default-validation-per-leaf-type).
+        /// [`applicable_checks`](Validate::applicable_checks): the leaf's row of the
+        /// [validation matrix](validate#default-validation-per-leaf-type).
         ///
         /// A leaf overrides `applicable_checks` and the handful of check methods it
-        /// implements; every other method falls to the
-        /// [`NotImplemented`](CheckOutcome::NotImplemented) default. The driver
+        /// implements; every other method falls to the panicking default. The driver
         /// ([`validate`]) only ever calls a method listed in `applicable_checks`, so
         /// an inapplicable check's default body is never observed. This trait is the
         /// dispatched primitive; the free function [`validate`] owns the dependency
@@ -336,7 +243,7 @@ macro_rules! validation_checks {
         #[enum_dispatch::enum_dispatch]
         pub(crate) trait Validate {
             /// This leaf's row of the matrix: every check that applies to it.
-            /// Defaults to none — the aggregates ([`Csg`](crate::csg::Csg), the
+            /// Defaults to none: the aggregates ([`Csg`](crate::csg::Csg), the
             /// collections) validate by recursing into their members, not by direct
             /// checks.
             fn applicable_checks(&self) -> &'static [ValidationType] {
@@ -344,9 +251,9 @@ macro_rules! validation_checks {
             }
             $(
                 $(#[$m])*
-                fn $method(&self) -> CheckOutcome {
+                fn $method(&self) -> ValidationReport {
                     // Reached only when this check is listed in the leaf's
-                    // `applicable_checks` but its detection is not yet written —
+                    // `applicable_checks` but its detection is not yet written:
                     // a genuine `TODO`, made loud rather than silently skipped.
                     unimplemented!(concat!(
                         stringify!($variant),
@@ -363,7 +270,7 @@ macro_rules! validation_checks {
                 (**self).applicable_checks()
             }
             $(
-                fn $method(&self) -> CheckOutcome {
+                fn $method(&self) -> ValidationReport {
                     (**self).$method()
                 }
             )+
@@ -372,7 +279,7 @@ macro_rules! validation_checks {
         /// Run a single check by routing a runtime [`ValidationType`] to the matching
         /// [`Validate`] method. Works on the enums (via `enum_dispatch`) and on a
         /// bare leaf such as a CSG operand's `&Solid`.
-        fn dispatch<T: Validate + ?Sized>(leaf: &T, check: ValidationType) -> CheckOutcome {
+        fn dispatch<T: Validate + ?Sized>(leaf: &T, check: ValidationType) -> ValidationReport {
             match check {
                 $( ValidationType::$variant => leaf.$method(), )+
             }
@@ -408,8 +315,8 @@ validation_checks! {
 }
 
 /// Validate a geometry by running every check that
-/// [applies to its leaf type](self#default-validation-per-leaf-type), honoring
-/// [dependencies](ValidationType::dependencies).
+/// [applies to its leaf type](#default-validation-per-leaf-type), honoring
+/// [dependencies](#check-dependencies).
 ///
 /// Each applicable check maps to a [`ValidationResult`]; checks whose
 /// prerequisites failed (or whose detection is a `TODO`) are
@@ -417,6 +324,51 @@ validation_checks! {
 /// [`Csg`](crate::csg::Csg), [`GeometryCollection`](crate::GeometryCollection))
 /// recurse into their members and merge the per-check results with
 /// [`merge_results`].
+///
+/// # Default validation per leaf type
+///
+/// Which per-coordinate / per-ring / whole-surface checks run for each leaf type,
+/// one row per [`ValidationType`]. `✓` runs, `·` does not (not applicable).
+/// Finiteness (the `Finite` row) always runs. Leaf columns fold the 2D/3D pairs:
+/// `Point` = Point2D/3D, `LineStr` = LineString2D/3D, `Coll` = Collection2D/3D.
+///
+/// | Check ╲ Leaf            | Point | LineStr | Poly2D | Poly3D | PolyMesh2D | PolyMesh3D | TriMesh2D | TriMesh3D | Solid | Csg | PtCloud | Coll |
+/// |-------------------------|:-----:|:-------:|:------:|:------:|:----------:|:----------:|:---------:|:---------:|:-----:|:---:|:-------:|:----:|
+/// | Finite                  |   ✓   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ✓    |  ✓   |
+/// | TooFewPoints            |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | UnclosedRing            |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | SelfIntersection        |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | InteriorRingContainment |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
+/// | Degenerate              |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | Planarity               |   ·   |    ·    |   ✓    |   ✓    |     ·      |     ·      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
+/// | DuplicatePoints         |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ✓    |  ✓   |
+/// | Orientation             |   ·   |    ·    |   ✓    |   ·    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | Orientable              |   ·   |    ·    |   ·    |   ·    |     ·      |     ✓      |     ·     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | ShellManifold           |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | ShellOrientation        |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
+///
+/// # Check dependencies
+///
+/// A check is only meaningful once the checks it depends on hold, so each
+/// [`ValidationType`] lists its immediate prerequisites via
+/// [`ValidationType::dependencies`] (transitive-close for the full set). A
+/// runner should skip a check while any prerequisite fails. The relation is a
+/// DAG (checked in the unit tests):
+///
+/// | Check                        | Immediate prerequisites                  |
+/// |------------------------------|------------------------------------------|
+/// | `Finite` (always on)         | (none) |
+/// | `TooFewPoints`               | (none) |
+/// | `UnclosedRing`               | `Finite` |
+/// | `DuplicatePoints`            | `Finite` |
+/// | `Degenerate`                 | `Finite` |
+/// | `Planarity`                  | `Finite` |
+/// | `SelfIntersection`           | `Finite`, `TooFewPoints`, `UnclosedRing` |
+/// | `InteriorRingContainment`    | `Finite`, `SelfIntersection` |
+/// | `Orientable`                 | (none) |
+/// | `Orientation`                | `Finite`, `Orientable` |
+/// | `ShellManifold`              | (none) |
+/// | `ShellOrientation`           | `Orientation`, `ShellManifold` |
 pub fn validate(geometry: &Geometry) -> ValidationResults {
     match geometry {
         // An absent geometry has nothing to validate.
@@ -434,7 +386,7 @@ pub(crate) fn validate_leaf<T: Validate + ?Sized>(leaf: &T) -> ValidationResults
     run_checks(leaf.applicable_checks(), |check| dispatch(leaf, check))
 }
 
-/// Resolve a single check for a leaf, running only its applicable prerequisites —
+/// Resolve a single check for a leaf, running only its applicable prerequisites,
 /// not the leaf's other checks. Lets the per-check unit tests exercise one check
 /// without tripping an unrelated, still-`unimplemented!()` sibling on the same
 /// leaf.
@@ -463,7 +415,7 @@ fn validate_3d(g: &Euclidean3DGeometry) -> ValidationResults {
     }
 }
 
-/// Recurse into a CSG tree, merging both operands' results — a `Csg` carries no
+/// Recurse into a CSG tree, merging both operands' results; a `Csg` carries no
 /// coordinates of its own.
 fn validate_csg(csg: &Csg) -> ValidationResults {
     let (left, right) = match csg {
@@ -488,6 +440,17 @@ fn merge_members(members: impl IntoIterator<Item = ValidationResults>) -> Valida
     acc
 }
 
+/// A ring stored closed (first == last) with its trailing closing vertex
+/// dropped, so the mandatory closure is not treated as a real element (e.g. a
+/// duplicate point or an extra fan corner). Open rings — and anything too short
+/// to be closed — pass through unchanged.
+pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
+    match ring.split_last() {
+        Some((last, head)) if !head.is_empty() && ring.first() == Some(last) => head,
+        _ => ring,
+    }
+}
+
 /// Scan a 2D coordinate buffer (with an optional parallel elevation buffer) for
 /// non-finite values, pushing one [`ValidationType::Finite`] problem per
 /// offending coordinate into `report`, positioned at a 2D point leaf in `frame`.
@@ -498,12 +461,21 @@ pub(crate) fn check_finite_2d(
     report: &mut ValidationReport,
 ) {
     for (i, c) in coords.iter().enumerate() {
-        let z_not_finite = z.and_then(|zs| zs.get(i)).is_some_and(|v| !v.is_finite());
+        let zi = z.and_then(|zs| zs.get(i)).copied();
+        let z_not_finite = zi.is_some_and(|v| !v.is_finite());
         if !c[0].is_finite() || !c[1].is_finite() || z_not_finite {
-            report.push(
-                ValidationType::Finite.to_string(),
-                Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame.clone(), *c))),
-            );
+            // When the elevation is the offending component, report a 3D point
+            // carrying it so the non-finite value is visible in the position;
+            // otherwise the finite [x, y] alone would hide where the fault is.
+            if z_not_finite {
+                report.push(Geometry::Euclidean3D(Euclidean3DGeometry::Point(
+                    Point3D::new(frame.clone(), [c[0], c[1], zi.unwrap()]),
+                )));
+            } else {
+                report.push(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
+                    Point2D::new(frame.clone(), *c),
+                )));
+            }
         }
     }
 }
@@ -519,10 +491,9 @@ pub(crate) fn check_finite_3d(
 ) {
     for c in coords {
         if !c[0].is_finite() || !c[1].is_finite() || !c[2].is_finite() {
-            report.push(
-                ValidationType::Finite.to_string(),
-                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame.clone(), c))),
-            );
+            report.push(Geometry::Euclidean3D(Euclidean3DGeometry::Point(
+                Point3D::new(frame.clone(), c),
+            )));
         }
     }
 }
@@ -537,13 +508,9 @@ pub(crate) fn check_too_few_points_2d(
     report: &mut ValidationReport,
 ) {
     if coords.len() < if is_ring { 4 } else { 2 } {
-        report.push(
-            ValidationType::TooFewPoints.to_string(),
-            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
-                frame.clone(),
-                coords.iter().copied(),
-            ))),
-        );
+        report.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_coords(frame.clone(), coords.iter().copied()),
+        )));
     }
 }
 
@@ -557,13 +524,9 @@ pub(crate) fn check_too_few_points_3d(
     report: &mut ValidationReport,
 ) {
     if coords.len() < if is_ring { 4 } else { 2 } {
-        report.push(
-            ValidationType::TooFewPoints.to_string(),
-            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
-                frame.clone(),
-                coords.iter().copied(),
-            ))),
-        );
+        report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_coords(frame.clone(), coords.iter().copied()),
+        )));
     }
 }
 
@@ -576,13 +539,9 @@ pub(crate) fn check_unclosed_ring_2d(
     report: &mut ValidationReport,
 ) {
     if ring.first().is_some_and(|first| Some(first) != ring.last()) {
-        report.push(
-            ValidationType::UnclosedRing.to_string(),
-            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
-                frame.clone(),
-                ring.iter().copied(),
-            ))),
-        );
+        report.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_coords(frame.clone(), ring.iter().copied()),
+        )));
     }
 }
 
@@ -595,13 +554,9 @@ pub(crate) fn check_unclosed_ring_3d(
     report: &mut ValidationReport,
 ) {
     if ring.first().is_some_and(|first| Some(first) != ring.last()) {
-        report.push(
-            ValidationType::UnclosedRing.to_string(),
-            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
-                frame.clone(),
-                ring.iter().copied(),
-            ))),
-        );
+        report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_coords(frame.clone(), ring.iter().copied()),
+        )));
     }
 }
 
@@ -612,91 +567,71 @@ fn norm_bits(x: f64) -> u64 {
     (x + 0.0).to_bits()
 }
 
-/// Report a [`ValidationType::DuplicatePoints`] problem per coordinate that
-/// coincides with an earlier one, positioned at the offending coordinate as a 2D
-/// point. Exact bit-equality when `tolerance` is `None`; otherwise two coords are
-/// coincident when within `tolerance` distance. Non-finite coords are skipped
-/// (already covered by the finiteness check).
-pub(crate) fn check_duplicate_points_2d(
-    frame: &CoordinateFrame,
-    coords: impl IntoIterator<Item = [f64; 2]>,
-    tolerance: Option<f64>,
-    report: &mut ValidationReport,
-) {
-    let label = ValidationType::DuplicatePoints.to_string();
-    let mut push = |c: [f64; 2]| {
-        report.push(
-            label.clone(),
-            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame.clone(), c))),
-        );
-    };
-    match tolerance {
-        None => {
-            let mut seen = HashSet::new();
-            for c in coords {
-                if !c[0].is_finite() || !c[1].is_finite() {
-                    continue;
-                }
-                if !seen.insert([norm_bits(c[0]), norm_bits(c[1])]) {
-                    push(c);
-                }
-            }
-        }
-        Some(t) => {
-            let radius = t * t;
-            let mut tree: KdTree<f64, 2> = KdTree::new();
-            let mut n: u64 = 0;
-            for c in coords {
-                if !c[0].is_finite() || !c[1].is_finite() {
-                    continue;
-                }
-                if n > 0 && tree.nearest_one::<SquaredEuclidean>(&c).distance <= radius {
-                    push(c);
-                } else {
-                    tree.add(&c, n);
-                    n += 1;
-                }
-            }
-        }
+/// A coordinate whose dimension selects the point-leaf `Geometry` that reports
+/// it, letting [`check_duplicate_points`] stay generic over 2D/3D while still
+/// pinpointing each failure at a point of the matching dimension.
+pub(crate) trait DuplicateCoord: Copy {
+    /// This coordinate as a point-leaf `Geometry` in `frame`.
+    fn into_point(self, frame: &CoordinateFrame) -> Geometry;
+}
+
+impl DuplicateCoord for [f64; 2] {
+    fn into_point(self, frame: &CoordinateFrame) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            frame.clone(),
+            self,
+        )))
+    }
+}
+
+impl DuplicateCoord for [f64; 3] {
+    fn into_point(self, frame: &CoordinateFrame) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            frame.clone(),
+            self,
+        )))
     }
 }
 
 /// Report a [`ValidationType::DuplicatePoints`] problem per coordinate that
-/// coincides with an earlier one, positioned at the offending coordinate as a 3D
-/// point. Matching semantics mirror [`check_duplicate_points_2d`].
-pub(crate) fn check_duplicate_points_3d(
+/// coincides with an earlier one, positioned at the offending coordinate as a
+/// point. Exact bit-equality when `tolerance` is `None`; otherwise two coords are
+/// coincident when within `tolerance` distance.
+///
+/// # Precondition
+///
+/// Every coordinate must be finite. `DuplicatePoints` depends on
+/// [`Finite`](ValidationType::Finite) (see
+/// [`dependencies`](ValidationType::dependencies)), so the gated driver never
+/// reaches this check until finiteness has passed, and this routine relies on
+/// that rather than re-checking. A non-finite coordinate would corrupt
+/// detection — [`norm_bits`] collides distinct NaNs into a false duplicate, and a
+/// NaN poisons the k-d tree — so any caller outside the gated driver must uphold
+/// it.
+pub(crate) fn check_duplicate_points<const N: usize>(
     frame: &CoordinateFrame,
-    coords: impl IntoIterator<Item = [f64; 3]>,
+    coords: impl IntoIterator<Item = [f64; N]>,
     tolerance: Option<f64>,
     report: &mut ValidationReport,
-) {
-    let label = ValidationType::DuplicatePoints.to_string();
-    let mut push = |c: [f64; 3]| {
-        report.push(
-            label.clone(),
-            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame.clone(), c))),
-        );
-    };
+) where
+    [f64; N]: DuplicateCoord,
+{
+    let mut push = |c: [f64; N]| report.push(c.into_point(frame));
     match tolerance {
         None => {
             let mut seen = HashSet::new();
             for c in coords {
-                if !c[0].is_finite() || !c[1].is_finite() || !c[2].is_finite() {
-                    continue;
-                }
-                if !seen.insert([norm_bits(c[0]), norm_bits(c[1]), norm_bits(c[2])]) {
+                let key: [u64; N] = c.map(norm_bits);
+                if !seen.insert(key) {
                     push(c);
                 }
             }
         }
         Some(t) => {
             let radius = t * t;
-            let mut tree: KdTree<f64, 3> = KdTree::new();
+            let mut tree: KdTree<f64, N> = KdTree::new();
             let mut n: u64 = 0;
             for c in coords {
-                if !c[0].is_finite() || !c[1].is_finite() || !c[2].is_finite() {
-                    continue;
-                }
                 if n > 0 && tree.nearest_one::<SquaredEuclidean>(&c).distance <= radius {
                     push(c);
                 } else {
@@ -735,13 +670,9 @@ pub(crate) fn check_ring_orientation_2d(
     let area = signed_area_2d(ring);
     let wrong = if is_exterior { area < 0.0 } else { area > 0.0 };
     if wrong {
-        report.push(
-            ValidationType::Orientation.to_string(),
-            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
-                frame.clone(),
-                ring.iter().copied(),
-            ))),
-        );
+        report.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_coords(frame.clone(), ring.iter().copied()),
+        )));
     }
 }
 
@@ -757,12 +688,40 @@ pub(crate) fn check_edge_orientation_3d<R: AsRef<[u32]>>(
     rings: impl IntoIterator<Item = R>,
     report: &mut ValidationReport,
 ) {
-    let mut seen: HashSet<(u32, u32)> = HashSet::new();
+    let mut checker = EdgeOrientation::new();
     for ring in rings {
-        let ring = ring.as_ref();
+        checker.check_ring(frame, vertices, ring.as_ref(), report);
+    }
+}
+
+/// The directed edges seen so far while checking that a set of face rings winds
+/// coherently: a running accumulator so rings can be fed one at a time (e.g.
+/// streamed from a decoder into a reused buffer) without collecting them all.
+pub(crate) struct EdgeOrientation {
+    /// Directed edges `(from, to)` already traversed by an earlier ring.
+    seen: HashSet<(u32, u32)>,
+}
+
+impl EdgeOrientation {
+    pub(crate) fn new() -> Self {
+        Self {
+            seen: HashSet::new(),
+        }
+    }
+
+    /// Fold one face ring into the accumulator, reporting it when it traverses a
+    /// shared edge in the same direction as an earlier ring (an orientation
+    /// conflict). Self-loop edges (`a == b`) are ignored.
+    pub(crate) fn check_ring(
+        &mut self,
+        frame: &CoordinateFrame,
+        vertices: &[[f64; 3]],
+        ring: &[u32],
+        report: &mut ValidationReport,
+    ) {
         let n = ring.len();
         if n < 2 {
-            continue;
+            return;
         }
         let mut conflict = false;
         for i in 0..n {
@@ -770,20 +729,16 @@ pub(crate) fn check_edge_orientation_3d<R: AsRef<[u32]>>(
             if a == b {
                 continue;
             }
-            if !seen.insert((a, b)) {
+            if !self.seen.insert((a, b)) {
                 conflict = true;
                 break;
             }
         }
         if conflict {
             let coords: Vec<[f64; 3]> = ring.iter().map(|&i| vertices[i as usize]).collect();
-            report.push(
-                ValidationType::Orientation.to_string(),
-                Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
-                    frame.clone(),
-                    coords,
-                ))),
-            );
+            report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+                LineString3D::from_coords(frame.clone(), coords),
+            )));
         }
     }
 }
@@ -869,36 +824,49 @@ pub(crate) struct FaceTopology {
 }
 
 impl FaceTopology {
+    /// An empty topology, to be populated with [`add_face`](Self::add_face).
+    pub(crate) fn new() -> Self {
+        Self {
+            n_faces: 0,
+            edges: HashMap::new(),
+        }
+    }
+
+    /// Add one face from its vertex-index ring (closure optional; the last vertex
+    /// wraps to the first). Self-loop edges (`a == b`) are skipped. Lets faces be
+    /// fed one at a time (e.g. streamed from a decoder into a reused buffer).
+    pub(crate) fn add_face(&mut self, ring: &[u32]) {
+        let f = self.n_faces;
+        self.n_faces += 1;
+        let n = ring.len();
+        if n < 2 {
+            return;
+        }
+        for i in 0..n {
+            let (a, b) = (ring[i], ring[(i + 1) % n]);
+            if a == b {
+                continue;
+            }
+            let (key, forward) = if a < b {
+                ((a, b), true)
+            } else {
+                ((b, a), false)
+            };
+            self.edges.entry(key).or_default().push((f, forward));
+        }
+    }
+
     /// Build from one vertex-index ring per face (closure optional; the last
     /// vertex wraps to the first). Self-loop edges (`a == b`) are skipped.
     pub(crate) fn from_faces<R: AsRef<[u32]>>(faces: impl IntoIterator<Item = R>) -> Self {
-        let mut edges: HashMap<(u32, u32), Vec<(usize, bool)>> = HashMap::new();
-        let mut n_faces = 0usize;
+        let mut topology = Self::new();
         for ring in faces {
-            let ring = ring.as_ref();
-            let f = n_faces;
-            n_faces += 1;
-            let n = ring.len();
-            if n < 2 {
-                continue;
-            }
-            for i in 0..n {
-                let (a, b) = (ring[i], ring[(i + 1) % n]);
-                if a == b {
-                    continue;
-                }
-                let (key, forward) = if a < b {
-                    ((a, b), true)
-                } else {
-                    ((b, a), false)
-                };
-                edges.entry(key).or_default().push((f, forward));
-            }
+            topology.add_face(ring.as_ref());
         }
-        Self { n_faces, edges }
+        topology
     }
 
-    /// Whether every edge is shared by exactly two faces — a closed 2-manifold
+    /// Whether every edge is shared by exactly two faces: a closed 2-manifold
     /// boundary (watertight: no boundary edges, no non-manifold edges).
     pub(crate) fn is_closed_manifold(&self) -> bool {
         !self.edges.is_empty() && self.edges.values().all(|inc| inc.len() == 2)
@@ -930,9 +898,6 @@ impl FaceTopology {
             if inc.len() == 2 {
                 let (f1, forward1) = inc[0];
                 let (f2, forward2) = inc[1];
-                // Consistent orientation traverses a shared edge in opposite
-                // directions. If both faces traverse it the same way they must
-                // flip oppositely (parity 1); otherwise they agree (parity 0).
                 let rel = (forward1 == forward2) as u8;
                 if !uf.union(f1, f2, rel) {
                     return false;

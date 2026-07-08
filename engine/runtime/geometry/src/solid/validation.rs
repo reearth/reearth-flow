@@ -3,8 +3,8 @@ use crate::coordinate::CoordinateFrame;
 use crate::polygon_mesh::PolygonMesh3D;
 use crate::triangular_mesh::TriangularMesh3D;
 use crate::validation_next::{
-    check_duplicate_points_3d, check_edge_orientation_3d, check_finite_3d, CheckOutcome, Validate,
-    ValidationReport, ValidationType,
+    check_duplicate_points, check_edge_orientation_3d, check_finite_3d, Validate, ValidationReport,
+    ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -62,7 +62,9 @@ impl Shell {
 }
 
 /// The checks that apply to a solid. `InteriorRingContainment` does not apply: a
-/// solid's interiors are void *shells*, not interior rings.
+/// solid's interiors are void *shells*, not interior rings. `Orientable` and
+/// `Orientation` are checked per shell — they are also the prerequisites that make
+/// `ShellOrientation`'s signed-volume test meaningful.
 const SOLID_CHECKS: [ValidationType; 10] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
@@ -90,16 +92,16 @@ impl Validate for Solid {
         &SOLID_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
             for shell in self.shells() {
                 check_finite_3d(&self.frame, shell.vertices().iter().copied(), r);
             }
         })
     }
 
-    fn check_too_few_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
+    fn check_too_few_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
             for shell in self.shells() {
                 // A triangle shell's faces always have three corners; only a
                 // polygon shell can carry a degenerate ring.
@@ -110,8 +112,8 @@ impl Validate for Solid {
         })
     }
 
-    fn check_unclosed_ring(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
+    fn check_unclosed_ring(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
             for shell in self.shells() {
                 // A triangle shell's faces are implicitly closed; only a polygon
                 // shell stores an explicit closing vertex.
@@ -122,67 +124,55 @@ impl Validate for Solid {
         })
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
+    fn check_duplicate_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
             for shell in self.shells() {
-                check_duplicate_points_3d(&self.frame, shell.vertices().iter().copied(), None, r);
+                check_duplicate_points(&self.frame, shell.vertices().iter().copied(), None, r);
             }
         })
     }
 
-    fn check_orientation(&self) -> CheckOutcome {
+    fn check_orientation(&self) -> ValidationReport {
         // Each shell must be consistently wound across its shared edges.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             for shell in self.shells() {
                 shell.check_orientation(&self.frame, r);
             }
         })
     }
 
-    fn check_orientable(&self) -> CheckOutcome {
+    fn check_orientable(&self) -> ValidationReport {
         // Each shell must admit a consistent orientation.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             for shell in self.shells() {
                 if !shell.is_orientable() {
-                    r.push(
-                        ValidationType::Orientable.to_string(),
-                        shell.to_geometry(&self.frame),
-                    );
+                    r.push(shell.to_geometry(&self.frame));
                 }
             }
         })
     }
 
-    fn check_shell_manifold(&self) -> CheckOutcome {
+    fn check_shell_manifold(&self) -> ValidationReport {
         // Each shell must be a watertight closed connected 2-manifold.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             for shell in self.shells() {
                 if !shell.is_closed_connected_manifold() {
-                    r.push(
-                        ValidationType::ShellManifold.to_string(),
-                        shell.to_geometry(&self.frame),
-                    );
+                    r.push(shell.to_geometry(&self.frame));
                 }
             }
         })
     }
 
-    fn check_shell_orientation(&self) -> CheckOutcome {
+    fn check_shell_orientation(&self) -> ValidationReport {
         // The exterior shell must enclose positive volume (outward normals); each
         // void shell negative volume (normals into the void).
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             if self.exterior().signed_volume() <= 0.0 {
-                r.push(
-                    ValidationType::ShellOrientation.to_string(),
-                    self.exterior().to_geometry(&self.frame),
-                );
+                r.push(self.exterior().to_geometry(&self.frame));
             }
             for void in self.interiors() {
                 if void.signed_volume() >= 0.0 {
-                    r.push(
-                        ValidationType::ShellOrientation.to_string(),
-                        void.to_geometry(&self.frame),
-                    );
+                    r.push(void.to_geometry(&self.frame));
                 }
             }
         })

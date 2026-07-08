@@ -1,7 +1,7 @@
 use super::{LineString2D, LineString3D};
 use crate::validation_next::{
-    check_duplicate_points_2d, check_duplicate_points_3d, check_finite_2d, check_finite_3d,
-    check_too_few_points_2d, check_too_few_points_3d, CheckOutcome, Validate, ValidationType,
+    check_duplicate_points, check_finite_2d, check_finite_3d, check_too_few_points_2d,
+    check_too_few_points_3d, Validate, ValidationReport, ValidationType,
 };
 
 /// The checks that apply to a line string; 2D and 3D share the table row.
@@ -18,18 +18,18 @@ impl Validate for LineString2D {
         &LINE_STRING_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z.as_deref(), r))
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z.as_deref(), r))
     }
 
-    fn check_too_few_points(&self) -> CheckOutcome {
+    fn check_too_few_points(&self) -> ValidationReport {
         // A polyline is open: it needs at least two points.
-        CheckOutcome::ran(|r| check_too_few_points_2d(&self.frame, &self.coords, false, r))
+        ValidationReport::ran(|r| check_too_few_points_2d(&self.frame, &self.coords, false, r))
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
-            check_duplicate_points_2d(&self.frame, self.coords.iter().copied(), None, r)
+    fn check_duplicate_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_duplicate_points(&self.frame, self.coords.iter().copied(), None, r)
         })
     }
 }
@@ -39,17 +39,17 @@ impl Validate for LineString3D {
         &LINE_STRING_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| check_finite_3d(&self.frame, self.coords.iter().copied(), r))
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| check_finite_3d(&self.frame, self.coords.iter().copied(), r))
     }
 
-    fn check_too_few_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| check_too_few_points_3d(&self.frame, &self.coords, false, r))
+    fn check_too_few_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| check_too_few_points_3d(&self.frame, &self.coords, false, r))
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
-            check_duplicate_points_3d(&self.frame, self.coords.iter().copied(), None, r)
+    fn check_duplicate_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_duplicate_points(&self.frame, self.coords.iter().copied(), None, r)
         })
     }
 }

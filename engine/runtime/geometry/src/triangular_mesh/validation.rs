@@ -1,8 +1,8 @@
 use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::validation_next::{
-    check_duplicate_points_2d, check_duplicate_points_3d, check_edge_orientation_3d,
-    check_finite_2d, check_finite_3d, check_ring_orientation_2d, tetra_volume_6x, CheckOutcome,
-    FaceTopology, Validate, ValidationType,
+    check_duplicate_points, check_edge_orientation_3d, check_finite_2d, check_finite_3d,
+    check_ring_orientation_2d, tetra_volume_6x, FaceTopology, Validate, ValidationReport,
+    ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -19,7 +19,7 @@ impl TriangularMesh3DData {
     }
 
     /// Whether the mesh is a single connected component whose every edge is
-    /// shared by exactly two triangles — a watertight closed 2-manifold.
+    /// shared by exactly two triangles: a watertight closed 2-manifold.
     pub(crate) fn is_closed_connected_manifold(&self) -> bool {
         let topo = self.topology();
         topo.is_closed_manifold() && topo.is_connected()
@@ -47,7 +47,7 @@ const TRIANGULAR_MESH_2D_CHECKS: [ValidationType; 4] = [
     ValidationType::Orientation,
 ];
 
-/// The checks that apply to a 3D triangle mesh — the 2D set plus `Orientable`.
+/// The checks that apply to a 3D triangle mesh: the 2D set plus `Orientable`.
 const TRIANGULAR_MESH_3D_CHECKS: [ValidationType; 5] = [
     ValidationType::Finite,
     ValidationType::Degenerate,
@@ -61,13 +61,15 @@ impl Validate for TriangularMesh2D {
         &TRIANGULAR_MESH_2D_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r))
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r)
+        })
     }
 
-    fn check_orientation(&self) -> CheckOutcome {
+    fn check_orientation(&self) -> ValidationReport {
         // Each triangle should wind counter-clockwise.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             for [a, b, c] in self.triangles() {
                 let ring = [
                     self.vertices[a as usize],
@@ -79,10 +81,10 @@ impl Validate for TriangularMesh2D {
         })
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
+    fn check_duplicate_points(&self) -> ValidationReport {
         // Coincident vertices in the shared pool are a defect.
-        CheckOutcome::ran(|r| {
-            check_duplicate_points_2d(&self.frame, self.vertices.iter().copied(), None, r)
+        ValidationReport::ran(|r| {
+            check_duplicate_points::<2>(&self.frame, self.vertices.iter().copied(), None, r)
         })
     }
 }
@@ -92,34 +94,33 @@ impl Validate for TriangularMesh3D {
         &TRIANGULAR_MESH_3D_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| check_finite_3d(&self.frame, self.data.vertices().iter().copied(), r))
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_finite_3d(&self.frame, self.data.vertices().iter().copied(), r)
+        })
     }
 
-    fn check_orientation(&self) -> CheckOutcome {
+    fn check_orientation(&self) -> ValidationReport {
         // Adjacent triangles must wind coherently across each shared edge.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             check_edge_orientation_3d(&self.frame, self.data.vertices(), self.triangles(), r)
         })
     }
 
-    fn check_orientable(&self) -> CheckOutcome {
+    fn check_orientable(&self) -> ValidationReport {
         // A non-orientable mesh has no valid winding; report the whole mesh.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             if !self.data.is_orientable() {
-                r.push(
-                    ValidationType::Orientable.to_string(),
-                    Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
-                        self.clone(),
-                    ))),
-                );
+                r.push(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
+                    Box::new(self.clone()),
+                )));
             }
         })
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
-            check_duplicate_points_3d(&self.frame, self.data.vertices().iter().copied(), None, r)
+    fn check_duplicate_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_duplicate_points::<3>(&self.frame, self.data.vertices().iter().copied(), None, r)
         })
     }
 }
@@ -204,7 +205,7 @@ mod tests {
 
     #[test]
     fn nonmanifold_mesh_is_not_orientable() {
-        // Edge 0-1 is shared by three triangles — no consistent orientation.
+        // Edge 0-1 is shared by three triangles, so no consistent orientation.
         let verts = vec![
             [0.0, 0.0, 0.0],
             [1.0, 0.0, 0.0],

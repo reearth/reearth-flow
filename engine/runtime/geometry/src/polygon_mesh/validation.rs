@@ -2,60 +2,101 @@ use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 use crate::validation_next::{
-    check_duplicate_points_2d, check_duplicate_points_3d, check_edge_orientation_3d,
-    check_finite_2d, check_finite_3d, check_ring_orientation_2d, check_too_few_points_2d,
-    check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, tetra_volume_6x,
-    CheckOutcome, FaceTopology, Validate, ValidationReport, ValidationType,
+    check_duplicate_points, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
+    check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
+    check_unclosed_ring_3d, open_ring, tetra_volume_6x, EdgeOrientation, FaceTopology, Validate,
+    ValidationReport, ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
-/// One decoded face ring: its `(start, end)` range into the flat vertex-index
-/// buffer and whether it is a face's exterior ring (vs. a hole).
-struct Ring {
-    start: usize,
-    end: usize,
-    is_exterior: bool,
-}
-
-/// Decode the CSR face topology into the flat vertex-index buffer plus one
-/// [`Ring`] per ring — each face's exterior ring, then its hole rings.
-fn ring_ranges(
+/// Decode the CSR face topology and invoke `f` once per face ring — each face's
+/// exterior ring, then its hole rings — passing the ring's vertex indices and
+/// whether it is an exterior ring (vs. a hole).
+///
+/// The flat index buffer is streamed rather than collected, and each ring is
+/// materialized into a single buffer reused across rings, so nothing allocated
+/// here scales with the corner count. Only the small per-face offset lists (one
+/// entry per face / per hole) are collected.
+fn for_each_ring(
     face_indices: &IndexBuffer<1>,
     face_offsets: &IndexBuffer<1>,
     interior_offsets: &IndexBuffer<1>,
-) -> (Vec<u32>, Vec<Ring>) {
-    let indices: Vec<u32> = face_indices.iter_u32().map(|[i]| i).collect();
-    let n = indices.len();
-    let mut ranges = Vec::new();
+    mut f: impl FnMut(&[u32], bool),
+) {
+    let n = face_indices.len();
     if n == 0 {
-        return (indices, ranges);
+        return;
     }
     let face_ends: Vec<usize> = face_offsets.iter_u32().map(|[i]| i as usize).collect();
     let holes: Vec<usize> = interior_offsets.iter_u32().map(|[i]| i as usize).collect();
     let n_faces = face_ends.len() + 1;
+    let mut indices = face_indices.iter_u32().map(|[i]| i);
+    let mut ring: Vec<u32> = Vec::new();
     let mut start = 0usize;
-    for f in 0..n_faces {
-        let end = face_ends.get(f).copied().unwrap_or(n);
-        // Hole rings of this face begin at the interior offsets inside (start, end).
+    for face in 0..n_faces {
+        let end = face_ends.get(face).copied().unwrap_or(n);
+        // Hole rings of this face begin at the interior offsets inside (start, end);
+        // the exterior ring runs up to the first hole (or the face end).
         let mut ring_start = start;
         let mut is_exterior = true;
         for &h in holes.iter().filter(|&&h| h > start && h < end) {
-            ranges.push(Ring {
-                start: ring_start,
-                end: h,
-                is_exterior,
-            });
+            ring.clear();
+            ring.extend(indices.by_ref().take(h - ring_start));
+            f(&ring, is_exterior);
             ring_start = h;
             is_exterior = false;
         }
-        ranges.push(Ring {
-            start: ring_start,
-            end,
-            is_exterior,
-        });
+        ring.clear();
+        ring.extend(indices.by_ref().take(end - ring_start));
+        f(&ring, is_exterior);
         start = end;
     }
-    (indices, ranges)
+}
+
+/// The `[f64; N]` coordinates of one ring, gathered from the shared vertex pool.
+fn ring_coords<const N: usize>(vertices: &[[f64; N]], ring: &[u32]) -> Vec<[f64; N]> {
+    ring.iter().map(|&i| vertices[i as usize]).collect()
+}
+
+/// Report a [`ValidationType::TooFewPoints`] problem for every face ring with
+/// fewer than four (closed-ring) vertices. Shared by the 2D and 3D meshes;
+/// `push` is the dimension-specific leaf check.
+fn check_mesh_too_few_points<const N: usize>(
+    frame: &CoordinateFrame,
+    vertices: &[[f64; N]],
+    face_indices: &IndexBuffer<1>,
+    face_offsets: &IndexBuffer<1>,
+    interior_offsets: &IndexBuffer<1>,
+    push: impl Fn(&CoordinateFrame, &[[f64; N]], bool, &mut ValidationReport),
+    report: &mut ValidationReport,
+) {
+    for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
+        if ring.len() < 4 {
+            push(frame, &ring_coords(vertices, ring), true, report);
+        }
+    });
+}
+
+/// Report a [`ValidationType::UnclosedRing`] problem for every face ring whose
+/// first and last vertices differ. Shared by the 2D and 3D meshes; `push` is the
+/// dimension-specific leaf check.
+fn check_mesh_unclosed_rings<const N: usize>(
+    frame: &CoordinateFrame,
+    vertices: &[[f64; N]],
+    face_indices: &IndexBuffer<1>,
+    face_offsets: &IndexBuffer<1>,
+    interior_offsets: &IndexBuffer<1>,
+    push: impl Fn(&CoordinateFrame, &[[f64; N]], &mut ValidationReport),
+    report: &mut ValidationReport,
+) {
+    for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
+        // Only materialize the coords when the endpoints actually differ.
+        if let (Some(&first), Some(&last)) = (ring.first(), ring.last()) {
+            if vertices[first as usize] != vertices[last as usize] {
+                push(frame, &ring_coords(vertices, ring), report);
+            }
+        }
+    });
 }
 
 impl PolygonMesh3DData {
@@ -67,20 +108,15 @@ impl PolygonMesh3DData {
         frame: &CoordinateFrame,
         report: &mut ValidationReport,
     ) {
-        let (indices, ranges) = ring_ranges(
+        check_mesh_too_few_points(
+            frame,
+            &self.vertices,
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
+            check_too_few_points_3d,
+            report,
         );
-        for Ring { start, end, .. } in ranges {
-            if end - start < 4 {
-                let coords: Vec<[f64; 3]> = indices[start..end]
-                    .iter()
-                    .map(|&i| self.vertices[i as usize])
-                    .collect();
-                check_too_few_points_3d(frame, &coords, true, report);
-            }
-        }
     }
 
     /// Report a [`ValidationType::UnclosedRing`] problem for every face ring whose
@@ -91,56 +127,40 @@ impl PolygonMesh3DData {
         frame: &CoordinateFrame,
         report: &mut ValidationReport,
     ) {
-        let (indices, ranges) = ring_ranges(
+        check_mesh_unclosed_rings(
+            frame,
+            &self.vertices,
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
+            check_unclosed_ring_3d,
+            report,
         );
-        for Ring { start, end, .. } in ranges {
-            // Only materialize the ring when its endpoints actually differ.
-            if end > start
-                && self.vertices[indices[start] as usize]
-                    != self.vertices[indices[end - 1] as usize]
-            {
-                let coords: Vec<[f64; 3]> = indices[start..end]
-                    .iter()
-                    .map(|&i| self.vertices[i as usize])
-                    .collect();
-                check_unclosed_ring_3d(frame, &coords, report);
-            }
-        }
     }
 
     /// Report a [`ValidationType::Orientation`] problem for face rings that wind
     /// inconsistently with a neighbour across a shared edge. Shared by the
     /// [`PolygonMesh3D`] leaf and [`Solid`](crate::solid::Solid) shells.
     pub(crate) fn check_orientation(&self, frame: &CoordinateFrame, report: &mut ValidationReport) {
-        let (indices, ranges) = ring_ranges(
+        let mut checker = EdgeOrientation::new();
+        for_each_ring(
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-        );
-        check_edge_orientation_3d(
-            frame,
-            &self.vertices,
-            ranges.iter().map(|r| &indices[r.start..r.end]),
-            report,
+            |ring, _| checker.check_ring(frame, &self.vertices, ring, report),
         );
     }
 
     /// The face-adjacency topology of this mesh, one face per decoded ring.
     fn topology(&self) -> FaceTopology {
-        let (indices, ranges) = ring_ranges(
+        let mut topology = FaceTopology::new();
+        for_each_ring(
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
+            |ring, _| topology.add_face(ring),
         );
-        FaceTopology::from_faces(
-            ranges
-                .iter()
-                .map(|r| indices[r.start..r.end].to_vec())
-                .collect::<Vec<_>>(),
-        )
+        topology
     }
 
     /// Whether the mesh admits a consistent orientation (see
@@ -150,7 +170,7 @@ impl PolygonMesh3DData {
     }
 
     /// Whether the mesh is a single connected component whose every edge is
-    /// shared by exactly two faces — a watertight closed 2-manifold.
+    /// shared by exactly two faces: a watertight closed 2-manifold.
     pub(crate) fn is_closed_connected_manifold(&self) -> bool {
         let topo = self.topology();
         topo.is_closed_manifold() && topo.is_connected()
@@ -160,29 +180,25 @@ impl PolygonMesh3DData {
     /// face is fan-triangulated and its tetrahedra summed. Positive = outward
     /// normals. Meaningful only once the mesh is a closed, oriented shell.
     pub(crate) fn signed_volume(&self) -> f64 {
-        let (indices, ranges) = ring_ranges(
+        let mut acc = 0.0;
+        for_each_ring(
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
+            |ring, _| {
+                // Drop the closing vertex so the fan uses only distinct corners.
+                let ring = open_ring(ring);
+                if ring.len() < 3 {
+                    return;
+                }
+                let p0 = self.vertices[ring[0] as usize];
+                for k in 1..ring.len() - 1 {
+                    let p1 = self.vertices[ring[k] as usize];
+                    let p2 = self.vertices[ring[k + 1] as usize];
+                    acc += tetra_volume_6x(p0, p1, p2);
+                }
+            },
         );
-        let mut acc = 0.0;
-        for Ring { start, end, .. } in ranges {
-            let ring = &indices[start..end];
-            // Drop the closing vertex so the fan uses only distinct corners.
-            let ring = match ring.split_last() {
-                Some((last, head)) if !head.is_empty() && ring.first() == Some(last) => head,
-                _ => ring,
-            };
-            if ring.len() < 3 {
-                continue;
-            }
-            let p0 = self.vertices[ring[0] as usize];
-            for k in 1..ring.len() - 1 {
-                let p1 = self.vertices[ring[k] as usize];
-                let p2 = self.vertices[ring[k + 1] as usize];
-                acc += tetra_volume_6x(p0, p1, p2);
-            }
-        }
         acc / 6.0
     }
 }
@@ -199,7 +215,7 @@ const POLYGON_MESH_2D_CHECKS: [ValidationType; 8] = [
     ValidationType::Orientation,
 ];
 
-/// The checks that apply to a 3D polygon mesh — the 2D set plus `Orientable`.
+/// The checks that apply to a 3D polygon mesh: the 2D set plus `Orientable`.
 const POLYGON_MESH_3D_CHECKS: [ValidationType; 9] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
@@ -217,80 +233,61 @@ impl Validate for PolygonMesh2D {
         &POLYGON_MESH_2D_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r))
-    }
-
-    fn check_too_few_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
-            let (indices, ranges) = ring_ranges(
-                &self.face_indices,
-                &self.face_offsets,
-                &self.interior_offsets,
-            );
-            for Ring { start, end, .. } in ranges {
-                if end - start < 4 {
-                    let coords: Vec<[f64; 2]> = indices[start..end]
-                        .iter()
-                        .map(|&i| self.vertices[i as usize])
-                        .collect();
-                    check_too_few_points_2d(&self.frame, &coords, true, r);
-                }
-            }
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r)
         })
     }
 
-    fn check_unclosed_ring(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
-            let (indices, ranges) = ring_ranges(
+    fn check_too_few_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_mesh_too_few_points(
+                &self.frame,
+                &self.vertices,
                 &self.face_indices,
                 &self.face_offsets,
                 &self.interior_offsets,
+                check_too_few_points_2d,
+                r,
             );
-            for Ring { start, end, .. } in ranges {
-                if end > start
-                    && self.vertices[indices[start] as usize]
-                        != self.vertices[indices[end - 1] as usize]
-                {
-                    let coords: Vec<[f64; 2]> = indices[start..end]
-                        .iter()
-                        .map(|&i| self.vertices[i as usize])
-                        .collect();
-                    check_unclosed_ring_2d(&self.frame, &coords, r);
-                }
-            }
         })
     }
 
-    fn check_orientation(&self) -> CheckOutcome {
+    fn check_unclosed_ring(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_mesh_unclosed_rings(
+                &self.frame,
+                &self.vertices,
+                &self.face_indices,
+                &self.face_offsets,
+                &self.interior_offsets,
+                check_unclosed_ring_2d,
+                r,
+            );
+        })
+    }
+
+    fn check_orientation(&self) -> ValidationReport {
         // Each face's exterior ring must wind counter-clockwise, its holes
         // clockwise.
-        CheckOutcome::ran(|r| {
-            let (indices, ranges) = ring_ranges(
+        ValidationReport::ran(|r| {
+            for_each_ring(
                 &self.face_indices,
                 &self.face_offsets,
                 &self.interior_offsets,
+                |ring, is_exterior| {
+                    let coords = ring_coords(&self.vertices, ring);
+                    check_ring_orientation_2d(&self.frame, &coords, is_exterior, r);
+                },
             );
-            for Ring {
-                start,
-                end,
-                is_exterior,
-            } in ranges
-            {
-                let coords: Vec<[f64; 2]> = indices[start..end]
-                    .iter()
-                    .map(|&i| self.vertices[i as usize])
-                    .collect();
-                check_ring_orientation_2d(&self.frame, &coords, is_exterior, r);
-            }
         })
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
+    fn check_duplicate_points(&self) -> ValidationReport {
         // A shared vertex pool should hold no coincident vertices; elevation is
         // not considered.
-        CheckOutcome::ran(|r| {
-            check_duplicate_points_2d(&self.frame, self.vertices.iter().copied(), None, r)
+        ValidationReport::ran(|r| {
+            check_duplicate_points(&self.frame, self.vertices.iter().copied(), None, r)
         })
     }
 }
@@ -300,37 +297,38 @@ impl Validate for PolygonMesh3D {
         &POLYGON_MESH_3D_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| check_finite_3d(&self.frame, self.data.vertices().iter().copied(), r))
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_finite_3d(&self.frame, self.data.vertices().iter().copied(), r)
+        })
     }
 
-    fn check_too_few_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| self.data.check_too_few_points(&self.frame, r))
+    fn check_too_few_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| self.data.check_too_few_points(&self.frame, r))
     }
 
-    fn check_unclosed_ring(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| self.data.check_unclosed_rings(&self.frame, r))
+    fn check_unclosed_ring(&self) -> ValidationReport {
+        ValidationReport::ran(|r| self.data.check_unclosed_rings(&self.frame, r))
     }
 
-    fn check_orientation(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| self.data.check_orientation(&self.frame, r))
+    fn check_orientation(&self) -> ValidationReport {
+        ValidationReport::ran(|r| self.data.check_orientation(&self.frame, r))
     }
 
-    fn check_orientable(&self) -> CheckOutcome {
+    fn check_orientable(&self) -> ValidationReport {
         // A non-orientable mesh has no valid winding; report the whole mesh.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             if !self.data.is_orientable() {
-                r.push(
-                    ValidationType::Orientable.to_string(),
-                    Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(self.clone()))),
-                );
+                r.push(Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(
+                    Box::new(self.clone()),
+                )));
             }
         })
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
-            check_duplicate_points_3d(&self.frame, self.data.vertices().iter().copied(), None, r)
+    fn check_duplicate_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            check_duplicate_points(&self.frame, self.data.vertices().iter().copied(), None, r)
         })
     }
 }

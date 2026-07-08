@@ -1,22 +1,9 @@
 use super::{Polygon2D, Polygon3D};
 use crate::validation_next::{
-    check_duplicate_points_2d, check_duplicate_points_3d, check_finite_2d, check_finite_3d,
-    check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
-    check_unclosed_ring_3d, CheckOutcome, Validate, ValidationType,
+    check_duplicate_points, check_finite_2d, check_finite_3d, check_too_few_points_2d,
+    check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring, Validate,
+    ValidationReport, ValidationType,
 };
-
-/// A ring stored closed (first == last) with its closing vertex dropped, so the
-/// mandatory closure is not itself reported as a duplicate. Open rings pass
-/// through unchanged.
-macro_rules! open_ring {
-    ($ring:expr) => {{
-        let r = $ring;
-        match r.split_last() {
-            Some((last, head)) if !head.is_empty() && r.first() == Some(last) => head,
-            _ => r,
-        }
-    }};
-}
 
 /// The checks that apply to a 2D polygon face.
 const POLYGON_2D_CHECKS: [ValidationType; 9] = [
@@ -31,7 +18,7 @@ const POLYGON_2D_CHECKS: [ValidationType; 9] = [
     ValidationType::Orientation,
 ];
 
-/// The checks that apply to a 3D polygon face — the 2D set without `Orientation`
+/// The checks that apply to a 3D polygon face: the 2D set without `Orientation`
 /// (a face embedded in 3D has no signed winding).
 const POLYGON_3D_CHECKS: [ValidationType; 8] = [
     ValidationType::Finite,
@@ -49,16 +36,16 @@ impl Validate for Polygon2D {
         &POLYGON_2D_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
+    fn check_finite(&self) -> ValidationReport {
         // `coords` holds the exterior ring then all interior rings concatenated;
         // finiteness is a per-coordinate property, so scanning the whole buffer
         // covers every ring at once.
-        CheckOutcome::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z.as_deref(), r))
+        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z.as_deref(), r))
     }
 
-    fn check_too_few_points(&self) -> CheckOutcome {
+    fn check_too_few_points(&self) -> ValidationReport {
         // Each ring is closed, so it needs at least four coordinates.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             check_too_few_points_2d(&self.frame, self.exterior(), true, r);
             for hole in self.interiors() {
                 check_too_few_points_2d(&self.frame, hole, true, r);
@@ -66,9 +53,9 @@ impl Validate for Polygon2D {
         })
     }
 
-    fn check_unclosed_ring(&self) -> CheckOutcome {
+    fn check_unclosed_ring(&self) -> ValidationReport {
         // Every ring must close (first == last).
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             check_unclosed_ring_2d(&self.frame, self.exterior(), r);
             for hole in self.interiors() {
                 check_unclosed_ring_2d(&self.frame, hole, r);
@@ -76,12 +63,12 @@ impl Validate for Polygon2D {
         })
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
+    fn check_duplicate_points(&self) -> ValidationReport {
         // Coincidences are per ring, excluding the closing vertex; elevation is
         // not considered.
-        CheckOutcome::ran(|r| {
+        ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
-                check_duplicate_points_2d(&self.frame, open_ring!(ring).iter().copied(), None, r);
+                check_duplicate_points(&self.frame, open_ring(ring).iter().copied(), None, r);
             }
         })
     }
@@ -92,12 +79,12 @@ impl Validate for Polygon3D {
         &POLYGON_3D_CHECKS
     }
 
-    fn check_finite(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| check_finite_3d(&self.frame, self.coords.iter().copied(), r))
+    fn check_finite(&self) -> ValidationReport {
+        ValidationReport::ran(|r| check_finite_3d(&self.frame, self.coords.iter().copied(), r))
     }
 
-    fn check_too_few_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
+    fn check_too_few_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
             check_too_few_points_3d(&self.frame, self.exterior(), true, r);
             for hole in self.interiors() {
                 check_too_few_points_3d(&self.frame, hole, true, r);
@@ -105,8 +92,8 @@ impl Validate for Polygon3D {
         })
     }
 
-    fn check_unclosed_ring(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
+    fn check_unclosed_ring(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
             check_unclosed_ring_3d(&self.frame, self.exterior(), r);
             for hole in self.interiors() {
                 check_unclosed_ring_3d(&self.frame, hole, r);
@@ -114,10 +101,10 @@ impl Validate for Polygon3D {
         })
     }
 
-    fn check_duplicate_points(&self) -> CheckOutcome {
-        CheckOutcome::ran(|r| {
+    fn check_duplicate_points(&self) -> ValidationReport {
+        ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
-                check_duplicate_points_3d(&self.frame, open_ring!(ring).iter().copied(), None, r);
+                check_duplicate_points(&self.frame, open_ring(ring).iter().copied(), None, r);
             }
         })
     }

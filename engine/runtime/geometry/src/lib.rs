@@ -51,10 +51,10 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation};
-// `ValidationType` / `CheckOutcome` are named by the `enum_dispatch`-generated
+// `ValidationType` / `ValidationReport` are named by the `enum_dispatch`-generated
 // `Validate` impls on the geometry enums, so they must be in scope here.
 #[cfg(feature = "new-geometry")]
-use validation_next::{CheckOutcome, Validate, ValidationType};
+use validation_next::{Validate, ValidationReport, ValidationType};
 
 use coordinate::EpsgCode;
 
