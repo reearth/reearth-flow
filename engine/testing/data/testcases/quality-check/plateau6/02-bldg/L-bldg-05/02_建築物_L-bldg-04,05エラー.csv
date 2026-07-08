@@ -1,0 +1,3 @@
+"Building Usage Attribute Error","Filename","gml_id","Feature Type","Index"
+"2020年建物利用現況: 'uro:detailedUsage2' が存在しますが 'uro:detailedUsage' が存在しません。","49303425_bldg_6697_op.gml","bldg_lbu05-0002-4a01-8001-bbbbbbbbbbbb","bldg:Building",1
+"2020年建物利用現況: 'uro:detailedUsage3' が存在しますが 'uro:detailedUsage2' が存在しません。","49303425_bldg_6697_op.gml","bldg_lbu05-0003-4a01-8001-cccccccccccc","bldg:Building",2

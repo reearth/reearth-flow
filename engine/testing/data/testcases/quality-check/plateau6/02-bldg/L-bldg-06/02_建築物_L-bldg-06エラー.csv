@@ -1,0 +1,4 @@
+"Index","Building gml:id","Attribute","Unmatched Xlink Tag","Unmatched Xlink ID","Filename"
+1,"bldg_l06lod2-0001","参照元 xlink:href","lod2Solid","poly_l06b1_missing","49303425_bldg_6697_op.gml"
+1,"bldg_l06lod2-0002","参照元 xlink:href","lod2Solid","poly_l06b2_missing","49303425_bldg_6697_op.gml"
+1,"bldg_l06lod2-0001","参照先 gml:id","gml:Polygon","poly_l06b1_wall4","49303425_bldg_6697_op.gml"

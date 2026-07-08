@@ -1,0 +1,172 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+# PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 02-bldg workflow.
+id: a2066efe-f484-461f-af06-5b50daba978e
+name: "PLATEAU6-quality-check-02-bldg-workflow"
+entryGraphId: 028be94c-4528-4349-908c-ecf2b319a67a
+with:
+  cityGmlPath:
+  codelistsPath:
+  codelists:
+  schemasPath:
+  schemas:
+  objectListsPath:
+  objectLists:
+  prcs:
+graphs:
+  - !include ../../../../graphs/plateau6/xml_validator.yml
+  - !include ../../../../graphs/plateau6/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
+  - !include building_checks.yml
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/surface_validator.yml
+  - id: 028be94c-4528-4349-908c-ecf2b319a67a
+    name: entry_point
+    nodes:
+      - id: 9d39970f-e631-4440-893d-9770abdad26f
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": env["cityGmlPath"],
+                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                },
+              ]
+
+      - id: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
+        name: DirectoryDecompressor
+        type: action
+        action: DirectoryDecompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: 9c3286ea-0e02-4bd0-bc21-0c5abd7e13d5
+        name: PLATEAU6.CommonQualityCheck-01-01-common
+        type: subGraph
+        subGraphId: e7503542-d250-46d1-9646-4321b4fedbd3
+
+      - id: d539b2c4-0538-40c0-bf2f-fd06e8488c3e
+        name: PLATEAU6.CommonQualityCheck-01-02-common
+        type: subGraph
+        subGraphId: 0c1ed91a-7e69-4196-b6b7-d628060c2590
+
+      - id: bd5c8270-4ca6-4dd4-a604-6b5fe7db517a
+        name: PLATEAU6.BuildingQualityCheck-02-bldg
+        type: subGraph
+        subGraphId: a7a69028-b9d9-4ef1-916a-db453fca2638
+
+      - id: d658ccbd-8f8c-4776-a2ea-425fb3dea282
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
+
+      - id: 47639a83-eb27-47d6-93a7-7393542aca1a
+        name: StatisticsCalculatorTotalErrors
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: totalErrorCount
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
+
+      - id: 4ae87699-571e-4cc8-bb13-4a977edbcac3
+        name: FeatureFilterNoErrors
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["totalErrorCount"] == 0
+              outputPort: default
+
+      - id: df1c774c-a239-4d00-b7d8-01bb3af80c8d
+        name: FileWriterQcResultOk
+        type: action
+        action: JsonWriter
+        with:
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
+
+    edges:
+      - id: ca53a8b9-377c-460e-9076-368cdb2a8911
+        from: 9d39970f-e631-4440-893d-9770abdad26f
+        to: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
+        fromPort: default
+        toPort: default
+      - id: b0a98fba-ff5e-4c96-93f7-cbcbb1166a07
+        from: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
+        to: 9c3286ea-0e02-4bd0-bc21-0c5abd7e13d5
+        fromPort: default
+        toPort: default
+      - id: 33167a41-af01-4679-9f74-667b39ae1625
+        from: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
+        to: d539b2c4-0538-40c0-bf2f-fd06e8488c3e
+        fromPort: default
+        toPort: default
+      - id: 814d25b0-d072-4ca8-b6e4-d1cccd742220
+        from: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
+        to: bd5c8270-4ca6-4dd4-a604-6b5fe7db517a
+        fromPort: default
+        toPort: default
+      - id: 4640e7a9-ae76-4a81-9687-7273c56b02eb
+        from: 9c3286ea-0e02-4bd0-bc21-0c5abd7e13d5
+        to: d658ccbd-8f8c-4776-a2ea-425fb3dea282
+        fromPort: default
+        toPort: default
+      - id: 21d944e8-c3af-41cb-8aed-8899dc78ec93
+        from: d539b2c4-0538-40c0-bf2f-fd06e8488c3e
+        to: d658ccbd-8f8c-4776-a2ea-425fb3dea282
+        fromPort: default
+        toPort: default
+      - id: f15832f5-3e5c-4a44-aa87-417f5a53a42d
+        from: bd5c8270-4ca6-4dd4-a604-6b5fe7db517a
+        to: d658ccbd-8f8c-4776-a2ea-425fb3dea282
+        fromPort: default
+        toPort: default
+      - id: a8382723-da1a-4afd-b763-b4a7ea4b7da6
+        from: 9c3286ea-0e02-4bd0-bc21-0c5abd7e13d5
+        to: 47639a83-eb27-47d6-93a7-7393542aca1a
+        fromPort: summaryOutput
+        toPort: default
+      - id: 689c4f2e-e3f5-4146-a993-26ed84960cb4
+        from: d539b2c4-0538-40c0-bf2f-fd06e8488c3e
+        to: 47639a83-eb27-47d6-93a7-7393542aca1a
+        fromPort: summaryOutput
+        toPort: default
+      - id: 6f181136-e476-47bf-ad2b-525a7c159499
+        from: bd5c8270-4ca6-4dd4-a604-6b5fe7db517a
+        to: 47639a83-eb27-47d6-93a7-7393542aca1a
+        fromPort: summaryOutput
+        toPort: default
+      - id: f0c86e3d-1927-4528-82a6-6ac700d9cc8b
+        from: 47639a83-eb27-47d6-93a7-7393542aca1a
+        to: 4ae87699-571e-4cc8-bb13-4a977edbcac3
+        fromPort: default
+        toPort: default
+      - id: 98b65b7d-8c23-45e5-91eb-a21bf416c033
+        from: 4ae87699-571e-4cc8-bb13-4a977edbcac3
+        to: df1c774c-a239-4d00-b7d8-01bb3af80c8d
+        fromPort: default
+        toPort: default
