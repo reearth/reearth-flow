@@ -214,10 +214,32 @@ fn build_cell_glb(
         })
         .collect();
 
+    // 3D Tiles renderers rotate bare-glTF content Y-up -> Z-up on load; our
+    // input is already Z-up (ECEF-relative), so pre-apply the inverse here
+    // and the renderer's rotation cancels out.
+    let gltf_positions: Vec<[f32; 3]> = local_positions
+        .iter()
+        .map(|&[x, y, z]| [x, z, -y])
+        .collect();
+    let gltf_origin = [origin[0], origin[2], -origin[1]];
+
     let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
     let table = metadata::build_table(&cell_features, options);
 
-    glb::write(&local_positions, &indices, origin, &feature_ids, &table)
+    let mut builder = glb::Builder::new();
+    let material = glb::MaterialDesc {
+        // No appearance data is read yet, so every feature would otherwise get
+        // the glTF spec's white default, making adjacent buildings visually
+        // merge together. Flat gray (matching the old writer's X3DMaterial
+        // default) keeps features distinguishable until real appearance
+        // support lands.
+        base_color_factor: [0.7, 0.7, 0.7, 1.0],
+        metallic_factor: 0.0,
+        roughness_factor: 0.9,
+    };
+    let primitive = builder.push_primitive(&gltf_positions, &indices, material);
+    metadata::encode(&table, &mut builder, primitive, &feature_ids);
+    builder.build(gltf_origin)
 }
 
 fn centroid(points: &[[f64; 3]]) -> [f64; 3] {

@@ -1,44 +1,91 @@
-//! GLB (binary glTF) emission: one mesh, one untextured primitive,
-//! `POSITION` + `NORMAL` + `indices`, plus an optional `_FEATURE_ID_0` /
-//! `EXT_mesh_features` / `EXT_structural_metadata` property table.
-//!
-//! Built on `gltf_json` (the real, upstream `gltf-rs/gltf` crate, already a
-//! workspace dependency via the reader half of this crate) for the base glTF
-//! document and `gltf::binary::Glb` for the container. The two Cesium 3D
-//! Tiles extensions aren't part of that crate's typed vocabulary, so they're
-//! modeled locally in `extensions` and attached through the base crate's
-//! generic per-object `extensions` bag.
-
-mod extensions;
+//! Schema-agnostic GLB (binary glTF) assembly: a thin wrapper over the real
+//! `gltf-rs/gltf` crate's `gltf_json` (the base document schema, already a
+//! workspace dependency via the reader half of this crate) and
+//! `gltf::binary::Glb` (the container). Knows nothing about CityGML,
+//! PLATEAU, feature IDs, or any specific glTF extension: a caller pushes one
+//! or more primitives, optionally attaches extra per-vertex attributes and
+//! already-built extension payloads to whatever it got back, then calls
+//! [`Builder::build`]. See `crate::next::metadata` for the feature-processing
+//! layer that builds Cesium's metadata extensions on top of this.
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 
 use gltf::json;
 use gltf::json::validation::{Checked, USize64};
-use indexmap::IndexMap;
 
-use self::extensions::{
-    ClassProperty, ExtMeshFeatures, ExtStructuralMetadata, FeatureId, MetadataClass,
-    MetadataPropertyTable, MetadataPropertyTableProperty, MetadataSchema,
-};
-use super::metadata::PropertyTable;
-
-const METADATA_SCHEMA_ID: &str = "flow_pass1";
-const METADATA_CLASS_NAME: &str = "Feature";
-
-/// Accumulates the GLB binary payload alongside the glTF document it
-/// describes, so each attribute is appended in one call instead of the
-/// caller hand-tracking byte offsets and accessor indices at each site.
-#[derive(Default)]
-struct GltfBuffer {
-    bin: Vec<u8>,
-    root: json::Root,
+/// A material's PBR metallic-roughness factors; each primitive is untextured
+/// and single-material.
+pub struct MaterialDesc {
+    pub base_color_factor: [f32; 4],
+    pub metallic_factor: f32,
+    pub roughness_factor: f32,
 }
 
-impl GltfBuffer {
+/// Opaque handle to a primitive pushed via [`Builder::push_primitive`], for
+/// attaching further attributes/extensions to it before [`Builder::build`].
+#[derive(Clone, Copy)]
+pub struct PrimitiveHandle(usize);
+
+/// Target for [`Builder::extend`]: the document root, or a specific
+/// primitive. `Builder::ROOT` is the only way to name the root; primitive
+/// handles come from [`Builder::push_primitive`].
+#[derive(Clone, Copy)]
+pub enum Handle {
+    Root,
+    Primitive(PrimitiveHandle),
+}
+
+impl From<PrimitiveHandle> for Handle {
+    fn from(handle: PrimitiveHandle) -> Self {
+        Handle::Primitive(handle)
+    }
+}
+
+struct Extension {
+    name: &'static str,
+    value: serde_json::Value,
+}
+
+struct PrimitiveBuilder {
+    positions: Vec<[f32; 3]>,
+    normals: Vec<[f32; 3]>,
+    indices: Vec<u32>,
+    /// `representative[out_vertex]` is the original (pre-dedup) vertex index
+    /// it was first produced from, so [`Builder::set_attribute`] can map a
+    /// caller-supplied per-original-vertex array onto the deduped layout
+    /// after the fact.
+    representative: Vec<u32>,
+    material: json::Index<json::Material>,
+    extra_attributes: Vec<(json::mesh::Semantic, Vec<u32>)>,
+    extensions: Vec<Extension>,
+}
+
+/// Accumulates the GLB binary payload alongside the glTF document it
+/// describes. `push_buffer_view` is public so a caller can place its own
+/// domain-specific bytes (e.g. a property table's string values) in the same
+/// shared buffer before referencing them from extension JSON.
+#[derive(Default)]
+pub struct Builder {
+    bin: Vec<u8>,
+    root: json::Root,
+    primitives: Vec<PrimitiveBuilder>,
+    root_extensions: Vec<Extension>,
+}
+
+impl Builder {
+    pub const ROOT: Handle = Handle::Root;
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Append `bytes` as a new, 4-byte-padded bufferView; returns its index.
-    fn push_buffer_view(
+    pub fn push_buffer_view(&mut self, bytes: &[u8]) -> usize {
+        self.push_buffer_view_targeted(bytes, None).value()
+    }
+
+    fn push_buffer_view_targeted(
         &mut self,
         bytes: &[u8],
         target: Option<json::buffer::Target>,
@@ -60,14 +107,19 @@ impl GltfBuffer {
 
     /// Append a `VEC3` f32 accessor (positions or normals); `with_bounds`
     /// also records `min`/`max` (glTF requires this on `POSITION`).
-    fn push_vec3_f32(&mut self, data: &[[f32; 3]], with_bounds: bool) -> json::Index<json::Accessor> {
+    fn push_vec3_f32(
+        &mut self,
+        data: &[[f32; 3]],
+        with_bounds: bool,
+    ) -> json::Index<json::Accessor> {
         let mut bytes = Vec::with_capacity(data.len() * 12);
         for p in data {
             for c in p {
                 bytes.extend_from_slice(&c.to_le_bytes());
             }
         }
-        let buffer_view = self.push_buffer_view(&bytes, Some(json::buffer::Target::ArrayBuffer));
+        let buffer_view =
+            self.push_buffer_view_targeted(&bytes, Some(json::buffer::Target::ArrayBuffer));
         let (min, max) = if with_bounds {
             let (min, max) = position_bounds(data);
             (Some(serde_json::json!(min)), Some(serde_json::json!(max)))
@@ -92,7 +144,7 @@ impl GltfBuffer {
         })
     }
 
-    /// Append a `SCALAR` u32 accessor (triangle indices or feature IDs).
+    /// Append a `SCALAR` u32 accessor (triangle indices or an extra attribute).
     fn push_scalar_u32(
         &mut self,
         data: &[u32],
@@ -102,7 +154,7 @@ impl GltfBuffer {
         for &v in data {
             bytes.extend_from_slice(&v.to_le_bytes());
         }
-        let buffer_view = self.push_buffer_view(&bytes, Some(target));
+        let buffer_view = self.push_buffer_view_targeted(&bytes, Some(target));
         self.root.push(json::Accessor {
             buffer_view: Some(buffer_view),
             byte_offset: None,
@@ -120,232 +172,204 @@ impl GltfBuffer {
             sparse: None,
         })
     }
-}
 
-/// Build a complete `.glb` byte stream for one mesh.
-///
-/// `positions` must be localized (small deltas from `translation`, not raw
-/// ECEF) and cast to `f32`; `translation` carries the local origin at full
-/// `f64` precision. `feature_ids[i]` is the `metadata` row for vertex `i`,
-/// ignored when `metadata` has no properties.
-pub fn write(
-    positions: &[[f32; 3]],
-    indices: &[[u32; 3]],
-    translation: [f64; 3],
-    feature_ids: &[u32],
-    metadata: &PropertyTable,
-) -> Vec<u8> {
-    // 3D Tiles renderers rotate bare-glTF content Y-up -> Z-up on load; our
-    // input is already Z-up (ECEF-relative), so pre-apply the inverse here
-    // and the renderer's rotation cancels out.
-    let gltf_positions: Vec<[f32; 3]> = positions.iter().map(|&[x, y, z]| [x, z, -y]).collect();
-    let gltf_translation = [translation[0], translation[2], -translation[1]];
-
-    // No source normals and no cross-face winding guarantee, so derive one flat
-    // normal per triangle and split any vertex shared by triangles that disagree
-    // on it (Cesium doesn't compute this itself).
-    let has_feature_ids = !metadata.properties.is_empty();
-    let mut dedup: HashMap<(u32, u32, u32, u32, u32, u32), u32> = HashMap::new();
-    let mut out_positions: Vec<[f32; 3]> = Vec::with_capacity(gltf_positions.len());
-    let mut out_normals: Vec<[f32; 3]> = Vec::with_capacity(gltf_positions.len());
-    let mut out_feature_ids: Vec<u32> = Vec::with_capacity(feature_ids.len());
-    let mut out_indices: Vec<u32> = Vec::with_capacity(indices.len() * 3);
-    for &[i0, i1, i2] in indices {
-        let corners = [i0, i1, i2].map(|i| gltf_positions[i as usize]);
-        let normal = triangle_normal(corners);
-        for &orig in &[i0, i1, i2] {
-            let p = gltf_positions[orig as usize];
-            let key = (
-                p[0].to_bits(),
-                p[1].to_bits(),
-                p[2].to_bits(),
-                normal[0].to_bits(),
-                normal[1].to_bits(),
-                normal[2].to_bits(),
-            );
-            let idx = *dedup.entry(key).or_insert_with(|| {
-                out_positions.push(p);
-                out_normals.push(normal);
-                if has_feature_ids {
-                    out_feature_ids.push(feature_ids[orig as usize]);
-                }
-                (out_positions.len() - 1) as u32
-            });
-            out_indices.push(idx);
-        }
-    }
-
-    let mut buf = GltfBuffer::default();
-    let position_accessor = buf.push_vec3_f32(&out_positions, true);
-    let normal_accessor = buf.push_vec3_f32(&out_normals, false);
-    let indices_accessor =
-        buf.push_scalar_u32(&out_indices, json::buffer::Target::ElementArrayBuffer);
-
-    let mut attributes = BTreeMap::new();
-    attributes.insert(
-        Checked::Valid(json::mesh::Semantic::Positions),
-        position_accessor,
-    );
-    attributes.insert(
-        Checked::Valid(json::mesh::Semantic::Normals),
-        normal_accessor,
-    );
-
-    let mut primitive_extensions: Option<json::extensions::mesh::Primitive> = None;
-
-    if !metadata.properties.is_empty() {
-        // `_FEATURE_ID_0`: one row index per vertex, parallel to POSITION.
-        let feature_ids_accessor =
-            buf.push_scalar_u32(&out_feature_ids, json::buffer::Target::ArrayBuffer);
-        attributes.insert(
-            Checked::Valid(json::mesh::Semantic::Extras("FEATURE_ID_0".to_string())),
-            feature_ids_accessor,
-        );
-
-        // One STRING property per column: raw UTF-8 bytes in `values`,
-        // cumulative byte offsets in `stringOffsets` (EXT_structural_metadata's
-        // variable-length-array encoding). These are raw bufferViews, not
-        // accessors: the extension references them by bufferView index directly.
-        let mut class_properties = IndexMap::new();
-        let mut table_properties = IndexMap::new();
-        for (col, (raw_name, id)) in metadata.properties.iter().enumerate() {
-            class_properties.insert(
-                id.clone(),
-                ClassProperty {
-                    name: raw_name.clone(),
-                    type_: "STRING",
-                },
-            );
-
-            let mut value_bytes = Vec::new();
-            let mut offsets: Vec<u32> = vec![0];
-            for row in &metadata.rows {
-                value_bytes.extend_from_slice(row[col].as_bytes());
-                offsets.push(value_bytes.len() as u32);
+    /// Add a triangle-mesh primitive: derives one flat normal per triangle (a
+    /// cross product of its own three corners) and splits any vertex shared
+    /// by triangles that disagree on it, since no geometry in this pipeline
+    /// ever carries source normals and nothing upstream verifies cross-face
+    /// winding.
+    ///
+    /// `positions` must already be in the target coordinate convention and
+    /// localized (small deltas from the translation given to
+    /// [`Builder::build`], not raw ECEF).
+    pub fn push_primitive(
+        &mut self,
+        positions: &[[f32; 3]],
+        indices: &[[u32; 3]],
+        material: MaterialDesc,
+    ) -> PrimitiveHandle {
+        let mut dedup: HashMap<(u32, u32, u32, u32, u32, u32), u32> = HashMap::new();
+        let mut out_positions: Vec<[f32; 3]> = Vec::with_capacity(positions.len());
+        let mut out_normals: Vec<[f32; 3]> = Vec::with_capacity(positions.len());
+        let mut representative: Vec<u32> = Vec::with_capacity(positions.len());
+        let mut out_indices: Vec<u32> = Vec::with_capacity(indices.len() * 3);
+        for &[i0, i1, i2] in indices {
+            let corners = [i0, i1, i2].map(|i| positions[i as usize]);
+            let normal = triangle_normal(corners);
+            for &orig in &[i0, i1, i2] {
+                let p = positions[orig as usize];
+                let key = (
+                    p[0].to_bits(),
+                    p[1].to_bits(),
+                    p[2].to_bits(),
+                    normal[0].to_bits(),
+                    normal[1].to_bits(),
+                    normal[2].to_bits(),
+                );
+                let idx = *dedup.entry(key).or_insert_with(|| {
+                    out_positions.push(p);
+                    out_normals.push(normal);
+                    representative.push(orig);
+                    (out_positions.len() - 1) as u32
+                });
+                out_indices.push(idx);
             }
-            let values_bufferview = buf.push_buffer_view(&value_bytes, None);
-            let offset_bytes: Vec<u8> = offsets.iter().flat_map(|o| o.to_le_bytes()).collect();
-            let offsets_bufferview = buf.push_buffer_view(&offset_bytes, None);
-
-            table_properties.insert(
-                id.clone(),
-                MetadataPropertyTableProperty {
-                    values: values_bufferview.value(),
-                    string_offset_type: "UINT32",
-                    string_offsets: offsets_bufferview.value(),
-                },
-            );
         }
 
-        let mut classes = IndexMap::new();
-        classes.insert(
-            METADATA_CLASS_NAME,
-            MetadataClass {
-                properties: class_properties,
+        let material_index = self.root.push(json::Material {
+            pbr_metallic_roughness: json::material::PbrMetallicRoughness {
+                base_color_factor: json::material::PbrBaseColorFactor(material.base_color_factor),
+                metallic_factor: json::material::StrengthFactor(material.metallic_factor),
+                roughness_factor: json::material::StrengthFactor(material.roughness_factor),
+                ..Default::default()
             },
-        );
-        let ext_structural_metadata = ExtStructuralMetadata {
-            schema: MetadataSchema {
-                id: METADATA_SCHEMA_ID,
-                classes,
-            },
-            property_tables: vec![MetadataPropertyTable {
-                class: METADATA_CLASS_NAME,
-                count: metadata.rows.len(),
-                properties: table_properties,
-            }],
-        };
-        let mut root_ext = json::extensions::root::Root::default();
-        root_ext.others.insert(
-            "EXT_structural_metadata".to_string(),
-            serde_json::to_value(&ext_structural_metadata)
-                .expect("EXT_structural_metadata is always serializable"),
-        );
-        buf.root.extensions = Some(root_ext);
-        buf.root
-            .extensions_used
-            .push("EXT_structural_metadata".to_string());
+            ..Default::default()
+        });
 
-        let mut prim_ext = json::extensions::mesh::Primitive::default();
-        prim_ext.others.insert(
-            "EXT_mesh_features".to_string(),
-            serde_json::to_value(&ExtMeshFeatures {
-                feature_ids: vec![FeatureId {
-                    feature_count: metadata.rows.len(),
-                    attribute: 0,
-                    property_table: 0,
-                }],
-            })
-            .expect("EXT_mesh_features is always serializable"),
-        );
-        primitive_extensions = Some(prim_ext);
-        buf.root
-            .extensions_used
-            .push("EXT_mesh_features".to_string());
+        self.primitives.push(PrimitiveBuilder {
+            positions: out_positions,
+            normals: out_normals,
+            indices: out_indices,
+            representative,
+            material: material_index,
+            extra_attributes: Vec::new(),
+            extensions: Vec::new(),
+        });
+        PrimitiveHandle(self.primitives.len() - 1)
     }
 
-    let material_index = buf.root.push(json::Material {
-        pbr_metallic_roughness: json::material::PbrMetallicRoughness {
-            // No appearance data is read yet, so every feature would otherwise
-            // get the glTF spec's white default, making adjacent buildings
-            // visually merge together. Flat gray (matching the old writer's
-            // X3DMaterial default) keeps features distinguishable until real
-            // appearance support lands.
-            base_color_factor: json::material::PbrBaseColorFactor([0.7, 0.7, 0.7, 1.0]),
-            metallic_factor: json::material::StrengthFactor(0.0),
-            roughness_factor: json::material::StrengthFactor(0.9),
+    /// Attach an extra per-vertex scalar attribute (e.g. a feature ID) to a
+    /// primitive pushed earlier. `data` is indexed by *original* vertex index
+    /// (as given to [`Builder::push_primitive`]), not the deduped layout.
+    pub fn set_attribute(
+        &mut self,
+        primitive: PrimitiveHandle,
+        semantic: json::mesh::Semantic,
+        data: &[u32],
+    ) {
+        let primitive = &mut self.primitives[primitive.0];
+        let out_data: Vec<u32> = primitive
+            .representative
+            .iter()
+            .map(|&orig| data[orig as usize])
+            .collect();
+        primitive.extra_attributes.push((semantic, out_data));
+    }
+
+    /// Attach an already-built extension payload to the document root or a
+    /// primitive, and register `name` in `extensionsUsed`. This module has
+    /// no opinion on what the extension is.
+    pub fn extend(
+        &mut self,
+        handle: impl Into<Handle>,
+        name: &'static str,
+        value: serde_json::Value,
+    ) {
+        match handle.into() {
+            Handle::Root => self.root_extensions.push(Extension { name, value }),
+            Handle::Primitive(handle) => {
+                self.primitives[handle.0].extensions.push(Extension { name, value })
+            }
+        }
+    }
+
+    /// Finish assembling the `.glb`: builds accessors for every pushed
+    /// primitive, attaches accumulated extensions, and serializes to bytes.
+    ///
+    /// `translation` carries the document's single node's origin, at full
+    /// `f64` precision.
+    pub fn build(mut self, translation: [f64; 3]) -> Vec<u8> {
+        let primitives = std::mem::take(&mut self.primitives);
+        let root_extensions = std::mem::take(&mut self.root_extensions);
+
+        let mut json_primitives = Vec::with_capacity(primitives.len());
+        for p in primitives {
+            let position_accessor = self.push_vec3_f32(&p.positions, true);
+            let normal_accessor = self.push_vec3_f32(&p.normals, false);
+            let indices_accessor =
+                self.push_scalar_u32(&p.indices, json::buffer::Target::ElementArrayBuffer);
+
+            let mut attributes = BTreeMap::new();
+            attributes.insert(
+                Checked::Valid(json::mesh::Semantic::Positions),
+                position_accessor,
+            );
+            attributes.insert(
+                Checked::Valid(json::mesh::Semantic::Normals),
+                normal_accessor,
+            );
+            for (semantic, data) in p.extra_attributes {
+                let accessor = self.push_scalar_u32(&data, json::buffer::Target::ArrayBuffer);
+                attributes.insert(Checked::Valid(semantic), accessor);
+            }
+
+            let mut prim_ext = json::extensions::mesh::Primitive::default();
+            for ext in p.extensions {
+                prim_ext.others.insert(ext.name.to_string(), ext.value);
+                self.root.extensions_used.push(ext.name.to_string());
+            }
+            let extensions = (!prim_ext.others.is_empty()).then_some(prim_ext);
+
+            json_primitives.push(json::mesh::Primitive {
+                attributes,
+                extensions,
+                extras: Default::default(),
+                indices: Some(indices_accessor),
+                material: Some(p.material),
+                mode: Checked::Valid(json::mesh::Mode::Triangles),
+                targets: None,
+            });
+        }
+
+        let mut root_ext = json::extensions::root::Root::default();
+        for ext in root_extensions {
+            root_ext.others.insert(ext.name.to_string(), ext.value);
+            self.root.extensions_used.push(ext.name.to_string());
+        }
+        if !root_ext.others.is_empty() {
+            self.root.extensions = Some(root_ext);
+        }
+
+        let mesh_index = self.root.push(json::Mesh {
+            extensions: Default::default(),
+            extras: Default::default(),
+            name: None,
+            primitives: json_primitives,
+            weights: None,
+        });
+        let node_index = self.root.push(json::Node {
+            mesh: Some(mesh_index),
             ..Default::default()
-        },
-        ..Default::default()
-    });
+        });
+        let scene_index = self.root.push(json::Scene {
+            extensions: Default::default(),
+            extras: Default::default(),
+            name: None,
+            nodes: vec![node_index],
+        });
+        self.root.scene = Some(scene_index);
 
-    let primitive = json::mesh::Primitive {
-        attributes,
-        extensions: primitive_extensions,
-        extras: Default::default(),
-        indices: Some(indices_accessor),
-        material: Some(material_index),
-        mode: Checked::Valid(json::mesh::Mode::Triangles),
-        targets: None,
-    };
-    let mesh_index = buf.root.push(json::Mesh {
-        extensions: Default::default(),
-        extras: Default::default(),
-        name: None,
-        primitives: vec![primitive],
-        weights: None,
-    });
-    let node_index = buf.root.push(json::Node {
-        mesh: Some(mesh_index),
-        ..Default::default()
-    });
-    let scene_index = buf.root.push(json::Scene {
-        extensions: Default::default(),
-        extras: Default::default(),
-        name: None,
-        nodes: vec![node_index],
-    });
-    buf.root.scene = Some(scene_index);
+        let mut json_value =
+            serde_json::to_value(&self.root).expect("glTF JSON is always serializable");
+        // `gltf_json::Node::translation` is `[f32; 3]`, too coarse for ECEF-scale
+        // offsets (~6.4e6 m, where f32 error is already ~0.5-1 m) — the glTF spec
+        // itself has no such precision limit on this field, so patch the real
+        // `f64` value back in after serialization rather than truncate it.
+        json_value["nodes"][0]["translation"] = serde_json::json!(translation);
+        let json_bytes =
+            serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
 
-    let mut json_value =
-        serde_json::to_value(&buf.root).expect("glTF JSON is always serializable");
-    // `gltf_json::Node::translation` is `[f32; 3]`, too coarse for ECEF-scale
-    // offsets (~6.4e6 m, where f32 error is already ~0.5-1 m) — the glTF spec
-    // itself has no such precision limit on this field, so patch the real
-    // `f64` value back in after serialization rather than truncate it.
-    json_value["nodes"][0]["translation"] = serde_json::json!(gltf_translation);
-    let json_bytes = serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
-
-    let glb = gltf::binary::Glb {
-        header: gltf::binary::Header {
-            magic: *b"glTF",
-            version: 2,
-            length: 0, // recomputed by `to_vec`
-        },
-        json: Cow::Owned(json_bytes),
-        bin: Some(Cow::Owned(buf.bin)),
-    };
-    glb.to_vec().expect("GLB binary output is always writable")
+        let glb = gltf::binary::Glb {
+            header: gltf::binary::Header {
+                magic: *b"glTF",
+                version: 2,
+                length: 0, // recomputed by `to_vec`
+            },
+            json: Cow::Owned(json_bytes),
+            bin: Some(Cow::Owned(self.bin)),
+        };
+        glb.to_vec().expect("GLB binary output is always writable")
+    }
 }
 
 /// Unit normal of the plane through three points, via cross product; `[0, 0, 1]`

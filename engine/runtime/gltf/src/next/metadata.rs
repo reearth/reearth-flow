@@ -1,10 +1,20 @@
 //! Per-tile `EXT_structural_metadata` property table: one implicit `Feature`
 //! class per glb, its properties the union of every attribute path present
-//! across that glb's features.
+//! across that glb's features. Also the only place that knows the
+//! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
+//! which attaches them to a `glb::Builder` directly.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
+use gltf::json;
+use indexmap::IndexMap;
 use reearth_flow_types::{AttributeValue, Feature};
+use serde::Serialize;
+
+use super::glb::{Builder, PrimitiveHandle};
+
+const METADATA_SCHEMA_ID: &str = "Schema";
+const METADATA_CLASS_NAME: &str = "Feature";
 
 /// No per-feature-type classing yet (single inlined `Feature` class,
 /// string-typed properties only), but these two exclusions still apply,
@@ -54,6 +64,155 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         .collect();
 
     PropertyTable { properties, rows }
+}
+
+/// Attach `table` to `builder` as an `EXT_structural_metadata` property table
+/// plus an `EXT_mesh_features` feature-ID attribute on `primitive`, tagging
+/// each of its vertices with `feature_ids[original_vertex]`. No-op if `table`
+/// has no properties.
+pub fn encode(
+    table: &PropertyTable,
+    builder: &mut Builder,
+    primitive: PrimitiveHandle,
+    feature_ids: &[u32],
+) {
+    if table.properties.is_empty() {
+        return;
+    }
+
+    // One STRING property per column: raw UTF-8 bytes in `values`,
+    // cumulative byte offsets in `stringOffsets` (EXT_structural_metadata's
+    // variable-length-array encoding).
+    let mut class_properties = IndexMap::new();
+    let mut table_properties = IndexMap::new();
+    for (col, (raw_name, id)) in table.properties.iter().enumerate() {
+        class_properties.insert(
+            id.clone(),
+            ClassProperty {
+                name: raw_name.clone(),
+                type_: "STRING",
+            },
+        );
+
+        let mut value_bytes = Vec::new();
+        let mut offsets: Vec<u32> = vec![0];
+        for row in &table.rows {
+            value_bytes.extend_from_slice(row[col].as_bytes());
+            offsets.push(value_bytes.len() as u32);
+        }
+        let values_bufferview = builder.push_buffer_view(&value_bytes);
+        let offset_bytes: Vec<u8> = offsets.iter().flat_map(|o| o.to_le_bytes()).collect();
+        let offsets_bufferview = builder.push_buffer_view(&offset_bytes);
+
+        table_properties.insert(
+            id.clone(),
+            MetadataPropertyTableProperty {
+                values: values_bufferview,
+                string_offset_type: "UINT32",
+                string_offsets: offsets_bufferview,
+            },
+        );
+    }
+
+    let mut classes = IndexMap::new();
+    classes.insert(
+        METADATA_CLASS_NAME,
+        MetadataClass {
+            properties: class_properties,
+        },
+    );
+    let ext_structural_metadata = ExtStructuralMetadata {
+        schema: MetadataSchema {
+            id: METADATA_SCHEMA_ID,
+            classes,
+        },
+        property_tables: vec![MetadataPropertyTable {
+            class: METADATA_CLASS_NAME,
+            count: table.rows.len(),
+            properties: table_properties,
+        }],
+    };
+    builder.extend(
+        Builder::ROOT,
+        "EXT_structural_metadata",
+        serde_json::to_value(&ext_structural_metadata)
+            .expect("EXT_structural_metadata is always serializable"),
+    );
+
+    builder.extend(
+        primitive,
+        "EXT_mesh_features",
+        serde_json::to_value(&ExtMeshFeatures {
+            feature_ids: vec![FeatureId {
+                feature_count: table.rows.len(),
+                attribute: 0,
+                property_table: 0,
+            }],
+        })
+        .expect("EXT_mesh_features is always serializable"),
+    );
+
+    builder.set_attribute(
+        primitive,
+        json::mesh::Semantic::Extras("FEATURE_ID_0".to_string()),
+        feature_ids,
+    );
+}
+
+#[derive(Serialize)]
+struct ExtMeshFeatures {
+    #[serde(rename = "featureIds")]
+    feature_ids: Vec<FeatureId>,
+}
+
+#[derive(Serialize)]
+struct FeatureId {
+    #[serde(rename = "featureCount")]
+    feature_count: usize,
+    attribute: u32,
+    #[serde(rename = "propertyTable")]
+    property_table: u32,
+}
+
+#[derive(Serialize)]
+struct ExtStructuralMetadata {
+    schema: MetadataSchema,
+    #[serde(rename = "propertyTables")]
+    property_tables: Vec<MetadataPropertyTable>,
+}
+
+#[derive(Serialize)]
+struct MetadataSchema {
+    id: &'static str,
+    classes: IndexMap<&'static str, MetadataClass>,
+}
+
+#[derive(Serialize)]
+struct MetadataClass {
+    properties: IndexMap<String, ClassProperty>,
+}
+
+#[derive(Serialize)]
+struct ClassProperty {
+    name: String,
+    #[serde(rename = "type")]
+    type_: &'static str,
+}
+
+#[derive(Serialize)]
+struct MetadataPropertyTable {
+    class: &'static str,
+    count: usize,
+    properties: IndexMap<String, MetadataPropertyTableProperty>,
+}
+
+#[derive(Serialize)]
+struct MetadataPropertyTableProperty {
+    values: usize,
+    #[serde(rename = "stringOffsetType")]
+    string_offset_type: &'static str,
+    #[serde(rename = "stringOffsets")]
+    string_offsets: usize,
 }
 
 fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<String, String> {
