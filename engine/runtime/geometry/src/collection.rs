@@ -15,7 +15,7 @@ use crate::error::Error;
 use crate::ops::union_results;
 use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
 #[cfg(feature = "new-geometry")]
-use crate::validation_next::{Validate, ValidationReport, ValidationType};
+use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
@@ -70,6 +70,11 @@ impl Collection2D {
     /// The members, mutable.
     pub(crate) fn members_mut(&mut self) -> &mut [Euclidean2DGeometry] {
         &mut self.members
+    }
+
+    /// The members, in order.
+    pub fn members(&self) -> &[Euclidean2DGeometry] {
+        &self.members
     }
 }
 
@@ -161,31 +166,14 @@ impl Reproject for Collection3D {
 crate::unsupported!(Collection2D: Triangulate);
 crate::unsupported!(Collection3D: Triangulate);
 
+// A collection validates by recursing into its members (see
+// `validation_next::validate`), so it declares no direct checks and inherits
+// every `Validate` default.
 #[cfg(feature = "new-geometry")]
-impl Validate for Collection2D {
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
-        let mut report = ValidationReport::default();
-        for member in &self.members {
-            if let Some(r) = member.validate(valid_type.clone()) {
-                report.extend(r);
-            }
-        }
-        report.into_option()
-    }
-}
+impl Validate for Collection2D {}
 
 #[cfg(feature = "new-geometry")]
-impl Validate for Collection3D {
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
-        let mut report = ValidationReport::default();
-        for member in &self.members {
-            if let Some(r) = member.validate(valid_type.clone()) {
-                report.extend(r);
-            }
-        }
-        report.into_option()
-    }
-}
+impl Validate for Collection3D {}
 
 #[cfg(test)]
 mod tests {

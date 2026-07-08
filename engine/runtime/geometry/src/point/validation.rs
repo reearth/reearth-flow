@@ -1,27 +1,27 @@
 use super::{Point2D, Point3D};
-use crate::validation_next::ValidationType;
-use crate::validation_next::{check_finite_2d, check_finite_3d, Validate, ValidationReport};
+use crate::validation_next::{
+    check_finite_2d, check_finite_3d, CheckOutcome, Validate, ValidationType,
+};
 
 impl Validate for Point2D {
-    fn validate(&self, _valid_type: ValidationType) -> Option<ValidationReport> {
-        // A point carries a single coordinate: only finiteness applies. The
-        // duplicate / structural checks selected by `_valid_type` are defined
-        // over multi-coordinate geometries and are no-ops here.
-        let mut report = ValidationReport::default();
-        check_finite_2d(
-            &self.frame,
-            std::slice::from_ref(&self.position),
-            None,
-            &mut report,
-        );
-        report.into_option()
+    fn applicable_checks(&self) -> &'static [ValidationType] {
+        // A point carries a single coordinate: only finiteness applies.
+        &[ValidationType::Finite]
+    }
+
+    fn check_finite(&self) -> CheckOutcome {
+        CheckOutcome::ran(|r| {
+            check_finite_2d(&self.frame, std::slice::from_ref(&self.position), None, r)
+        })
     }
 }
 
 impl Validate for Point3D {
-    fn validate(&self, _valid_type: ValidationType) -> Option<ValidationReport> {
-        let mut report = ValidationReport::default();
-        check_finite_3d(&self.frame, [self.position], &mut report);
-        report.into_option()
+    fn applicable_checks(&self) -> &'static [ValidationType] {
+        &[ValidationType::Finite]
+    }
+
+    fn check_finite(&self) -> CheckOutcome {
+        CheckOutcome::ran(|r| check_finite_3d(&self.frame, [self.position], r))
     }
 }

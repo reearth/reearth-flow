@@ -51,8 +51,10 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation};
+// `ValidationType` / `CheckOutcome` are named by the `enum_dispatch`-generated
+// `Validate` impls on the geometry enums, so they must be in scope here.
 #[cfg(feature = "new-geometry")]
-use validation_next::{Validate, ValidationReport, ValidationType};
+use validation_next::{CheckOutcome, Validate, ValidationType};
 
 use coordinate::EpsgCode;
 
@@ -272,32 +274,6 @@ impl Reproject for GeometryCollection {
             member.reproject(target, cache)?;
         }
         Ok(())
-    }
-}
-
-#[cfg(feature = "new-geometry")]
-impl Validate for Geometry {
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
-        match self {
-            // An absent geometry has nothing to validate.
-            Geometry::None => None,
-            Geometry::Euclidean2D(g) => g.validate(valid_type),
-            Geometry::Euclidean3D(g) => g.validate(valid_type),
-            Geometry::GeometryCollection(c) => c.validate(valid_type),
-        }
-    }
-}
-
-#[cfg(feature = "new-geometry")]
-impl Validate for GeometryCollection {
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationReport> {
-        let mut report = ValidationReport::default();
-        for member in &self.members {
-            if let Some(r) = member.validate(valid_type.clone()) {
-                report.extend(r);
-            }
-        }
-        report.into_option()
     }
 }
 
