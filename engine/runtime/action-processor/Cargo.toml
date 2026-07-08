@@ -77,3 +77,7 @@ zstd.workspace = true
 [dev-dependencies]
 bytes.workspace = true
 tracing-subscriber.workspace = true
+
+[[example]]
+name = "bench_citygml"
+required-features = ["new-geometry"]

@@ -1,25 +1,28 @@
 //! CityGML appearance parsing for the new-geometry reader.
 //!
 //! CityGML appearances reference geometry by `gml:id`, the reverse of Flow's
-//! geometry-owns-appearance model. This module parses `app:appearanceMember`s into
-//! an [`AppearanceIndex`] keyed by the target `gml:id`, so pass-2 resolution can
-//! look a face's appearance up from the ids captured with its geometry and attach
-//! it at the surface, letting mesh welding carry it across.
+//! geometry-owns-appearance model. In pass 2, once every `gml:id` is known,
+//! [`build_index`] resolves each retained `app:appearanceMember` (following any
+//! `xlink:href` to shared surface data or a shared `app:Appearance`) into an
+//! [`AppearanceIndex`] keyed by the target `gml:id`, so resolution can look a
+//! face's appearance up from the ids captured with its geometry and attach it at
+//! the surface, letting mesh welding carry it across.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::appearance::{
-    ChannelId, Material, PhongMaterial, Raster, Sampler, Side, Texture, ThemeId, UvSource,
+    ChannelId, Material, PhongMaterial, Raster, Sampler, Side, Texture, ThemeId, UvSource, WrapMode,
 };
 use reearth_flow_geometry::polygon::{Polygon3D, PolygonFace};
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use url::Url;
 
-use super::parser::{RawChild, RawNode};
+use super::parser::{RawNode, RawRegistry};
 use super::resolver::FaceIds;
-use super::utils::local_name;
+use super::utils::{local_name, XmlChild, XmlNode};
+use super::xlink;
 
 /// CityGML appearance indexed by the geometry `gml:id` it targets.
 #[derive(Default)]
@@ -28,6 +31,9 @@ pub(super) struct AppearanceIndex {
     surfaces: HashMap<String, Vec<SurfaceStyle>>,
     /// Per `(theme, side, ring gml:id)`: that ring's texture coordinates.
     ring_uv: HashMap<(String, Side, String), Vec<[f64; 2]>>,
+    /// Unsupported appearance sub-elements already warned about, so each is
+    /// reported once per parser run rather than once per occurrence.
+    warned: HashSet<&'static str>,
 }
 
 /// One theme's front / back materials for a surface. CityGML `app:isFront`
@@ -38,11 +44,45 @@ struct SurfaceStyle {
     back: Option<SideMaterial>,
 }
 
-/// A material for one side, and whether it samples a texture (so per-ring UV must
-/// be assembled when attached).
+/// A material for one side, accumulated from the surface data targeting it. The
+/// X3DMaterial colour and the ParameterizedTexture (image plus sampler) are kept
+/// separately and merged at attach time, so a surface carrying both keeps its
+/// colour and its texture. At least one field is set.
+#[derive(Default)]
 struct SideMaterial {
-    material: Material,
-    textured: bool,
+    /// The X3DMaterial's colour Phong (no diffuse map), if a colour was bound.
+    color: Option<PhongMaterial>,
+    /// The texture's image and sampler, if a texture was bound.
+    texture: Option<(Arc<Raster>, Sampler)>,
+}
+
+impl SideMaterial {
+    /// Whether a texture was bound, so per-ring UV must be assembled when attached.
+    fn is_textured(&self) -> bool {
+        self.texture.is_some()
+    }
+
+    /// The merged material: the X3DMaterial colour (or white when only a texture
+    /// was bound) carrying the bound texture as its diffuse map. When both a colour
+    /// and a texture are bound, the texture is modulated by the colour.
+    fn resolve(&self) -> Material {
+        let mut phong = self.color.clone().unwrap_or_else(white_phong);
+        if let Some((raster, sampler)) = &self.texture {
+            phong.diffuse_map = Some(Texture {
+                raster: Arc::clone(raster),
+                sampler: *sampler,
+                transform: None,
+                uv_channel: ChannelId::default(),
+            });
+        }
+        Material::Phong(phong)
+    }
+}
+
+/// One surface-data contribution to a side: an X3DMaterial colour or a texture.
+enum Contribution {
+    Color(PhongMaterial),
+    Texture(Arc<Raster>, Sampler),
 }
 
 /// One side's resolved material and UV, ready to attach.
@@ -57,16 +97,24 @@ impl AppearanceIndex {
         self.surfaces.is_empty()
     }
 
-    /// Bind a textured material backed by `raster` to `target`'s surface side and
-    /// record each of its rings' texture coordinates under `(theme, side)`.
+    /// Bind a textured material backed by `raster` and sampled per `sampler` to
+    /// `target`'s surface side and record each of its rings' texture coordinates
+    /// under `(theme, side)`.
     fn add_texture_target(
         &mut self,
         target: TextureTarget,
         theme: &str,
         side: Side,
         raster: &Arc<Raster>,
+        sampler: Sampler,
     ) {
-        set_side(self, &target.surface, theme, side, textured_side(raster));
+        set_side(
+            self,
+            &target.surface,
+            theme,
+            side,
+            Contribution::Texture(Arc::clone(raster), sampler),
+        );
         for (ring, uv) in target.rings {
             self.ring_uv.insert((theme.to_string(), side, ring), uv);
         }
@@ -131,7 +179,7 @@ impl AppearanceIndex {
         side: Side,
         rings: &[Option<String>],
     ) -> Option<ResolvedSide> {
-        let uv = if side_material.textured {
+        let uv = if side_material.is_textured() {
             Some(UvSource::Explicit(
                 self.ring_uv_for(theme, side, rings)?.into_boxed_slice(),
             ))
@@ -139,7 +187,7 @@ impl AppearanceIndex {
             None
         };
         Some(ResolvedSide {
-            material: side_material.material.clone(),
+            material: side_material.resolve(),
             uv,
         })
     }
@@ -189,7 +237,7 @@ impl AppearanceIndex {
                 (None, Some(back)) => (Side::Back, back),
                 (None, None) => continue,
             };
-            let uv = if side_material.textured {
+            let uv = if side_material.is_textured() {
                 match self.mesh_uv(&style.theme, side, faces) {
                     Some(uv) => Some(UvSource::Explicit(uv.into_boxed_slice())),
                     None => continue,
@@ -198,7 +246,7 @@ impl AppearanceIndex {
                 None
             };
             let theme = ThemeId(Arc::from(style.theme.as_str()));
-            if let Err(e) = mesh.set_appearance(theme, side_material.material.clone(), uv) {
+            if let Err(e) = mesh.set_appearance(theme, side_material.resolve(), uv) {
                 tracing::warn!(
                     "citygml appearance: could not attach to triangulated surface {surface}: {e}"
                 );
@@ -225,8 +273,22 @@ impl AppearanceIndex {
     }
 }
 
+/// Build the appearance index from the retained `app:appearanceMember` roots,
+/// resolving each `xlink:href` (to shared surface data or a shared `app:Appearance`)
+/// against `registry` before indexing.
+pub(super) fn build_index(members: &[Arc<RawNode>], registry: &RawRegistry) -> AppearanceIndex {
+    let mut index = AppearanceIndex::default();
+    let mut cache = xlink::ResolveCache::new();
+    for member in members {
+        if let Some(resolved) = xlink::resolve_one(member, registry, &mut cache) {
+            index_appearance_member(&resolved, &mut index);
+        }
+    }
+    index
+}
+
 /// Index every `app:Appearance` under an `app:appearanceMember` element.
-pub(super) fn index_appearance_member(member: &RawNode, index: &mut AppearanceIndex) {
+fn index_appearance_member(member: &XmlNode, index: &mut AppearanceIndex) {
     for appearance in child_elements(member) {
         if local_name(&appearance.name.0) == "Appearance" {
             index_appearance(appearance, index);
@@ -237,7 +299,7 @@ pub(super) fn index_appearance_member(member: &RawNode, index: &mut AppearanceIn
 /// Index one `app:Appearance`: its theme's `app:ParameterizedTexture`s and
 /// `app:X3DMaterial`s. The surface-data property is `surfaceData` in CityGML 3.0
 /// and `surfaceDataMember` in 2.0.
-fn index_appearance(appearance: &RawNode, index: &mut AppearanceIndex) {
+fn index_appearance(appearance: &XmlNode, index: &mut AppearanceIndex) {
     let theme = child_text(appearance, "theme").unwrap_or_default();
     for member in child_elements(appearance) {
         if !matches!(
@@ -250,7 +312,9 @@ fn index_appearance(appearance: &RawNode, index: &mut AppearanceIndex) {
             match local_name(&data.name.0) {
                 "ParameterizedTexture" => index_texture(data, &theme, index),
                 "X3DMaterial" => index_material(data, &theme, index),
-                // TODO: GeoreferencedTexture / TexCoordGen (worldToTexture).
+                "GeoreferencedTexture" => warn_unsupported(index, "GeoreferencedTexture"),
+                // TODO: TexCoordGen (worldToTexture) as an alternative to explicit
+                // textureCoordinates.
                 _ => {}
             }
         }
@@ -258,17 +322,24 @@ fn index_appearance(appearance: &RawNode, index: &mut AppearanceIndex) {
 }
 
 /// The side an `app:_SurfaceData` paints, from its `app:isFront` (default front).
-fn side_of(surface_data: &RawNode) -> Side {
+fn side_of(surface_data: &XmlNode) -> Side {
     match child_text(surface_data, "isFront").as_deref() {
         Some("false") | Some("0") => Side::Back,
         _ => Side::Front,
     }
 }
 
-/// Bind `side_material` to one side of `surface` under `theme`, keeping one
-/// material per (theme, side). A textured material outranks a colour-only one,
-/// regardless of document order.
-fn set_side(index: &mut AppearanceIndex, surface: &str, theme: &str, side: Side, sm: SideMaterial) {
+/// Merge `contribution` into one side of `surface` under `theme`, keeping one
+/// material per (theme, side) that accumulates the colour and the texture bound to
+/// it. The first colour and the first texture win, independent of document order;
+/// a surface carrying both keeps both, so its texture is modulated by its colour.
+fn set_side(
+    index: &mut AppearanceIndex,
+    surface: &str,
+    theme: &str,
+    side: Side,
+    contribution: Contribution,
+) {
     let styles = index.surfaces.entry(surface.to_string()).or_default();
     let i = match styles.iter().position(|s| s.theme == theme) {
         Some(i) => i,
@@ -285,12 +356,18 @@ fn set_side(index: &mut AppearanceIndex, surface: &str, theme: &str, side: Side,
         Side::Front => &mut styles[i].front,
         Side::Back => &mut styles[i].back,
     };
-    let replace = match slot {
-        None => true,
-        Some(existing) => sm.textured && !existing.textured,
-    };
-    if replace {
-        *slot = Some(sm);
+    let sm = slot.get_or_insert_with(SideMaterial::default);
+    match contribution {
+        Contribution::Color(phong) => {
+            if sm.color.is_none() {
+                sm.color = Some(phong);
+            }
+        }
+        Contribution::Texture(raster, sampler) => {
+            if sm.texture.is_none() {
+                sm.texture = Some((raster, sampler));
+            }
+        }
     }
 }
 
@@ -299,20 +376,22 @@ fn set_side(index: &mut AppearanceIndex, surface: &str, theme: &str, side: Side,
 /// both the CityGML 2.0 shape (`target` with a `uri` attribute, `textureCoordinates`
 /// with a `ring` attribute) and the 3.0 shape (`textureParameterization` of
 /// `TextureAssociation`, with element-text `target` / `ring`).
-fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
+fn index_texture(texture: &XmlNode, theme: &str, index: &mut AppearanceIndex) {
     let Some(image) = child_text(texture, "imageURI") else {
         return;
     };
     let Some(uri) = resolve_uri(&texture.source_url, &image) else {
         return;
     };
+    warn_unsupported_texture_fields(texture, index);
     let side = side_of(texture);
+    let sampler = sampler_of(texture);
     let raster = Arc::new(Raster::Uri(uri));
     for child in child_elements(texture) {
         match local_name(&child.name.0) {
             "target" => {
                 if let Some(target) = inline_target(child) {
-                    index.add_texture_target(target, theme, side, &raster);
+                    index.add_texture_target(target, theme, side, &raster, sampler);
                 }
             }
             "textureParameterization" => {
@@ -321,7 +400,7 @@ fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
                         continue;
                     }
                     if let Some(target) = texture_association(assoc) {
-                        index.add_texture_target(target, theme, side, &raster);
+                        index.add_texture_target(target, theme, side, &raster, sampler);
                     }
                 }
             }
@@ -330,11 +409,62 @@ fn index_texture(texture: &RawNode, theme: &str, index: &mut AppearanceIndex) {
     }
 }
 
-/// A textured material for one side backed by `raster`.
-fn textured_side(raster: &Arc<Raster>) -> SideMaterial {
-    SideMaterial {
-        material: texture_material(Arc::clone(raster)),
-        textured: true,
+/// The [`Sampler`] for an `app:ParameterizedTexture`, from its `app:wrapMode`
+/// mapped onto [`WrapMode`] for both axes. An absent or unrecognized mode keeps the
+/// default repeat wrapping. CityGML has no per-axis wrap, so both axes share it.
+fn sampler_of(texture: &XmlNode) -> Sampler {
+    let Some(mode) = child_text(texture, "wrapMode") else {
+        return Sampler::default();
+    };
+    let wrap = match mode.as_str() {
+        "none" => WrapMode::None,
+        "wrap" => WrapMode::Repeat,
+        "mirror" => WrapMode::MirroredRepeat,
+        "clamp" => WrapMode::ClampToEdge,
+        "border" => WrapMode::ClampToBorder,
+        other => {
+            tracing::warn!("citygml appearance: unknown wrapMode {other:?}, using repeat");
+            return Sampler::default();
+        }
+    };
+    Sampler {
+        wrap_s: wrap,
+        wrap_t: wrap,
+        ..Sampler::default()
+    }
+}
+
+/// Warn once for each `app:ParameterizedTexture` sub-element this reader does not
+/// model (`mimeType`, `borderColor`, `textureType`), so nothing is dropped silently.
+fn warn_unsupported_texture_fields(texture: &XmlNode, index: &mut AppearanceIndex) {
+    for field in ["mimeType", "borderColor", "textureType"] {
+        if child_elements(texture).any(|e| local_name(&e.name.0) == field) {
+            warn_unsupported(index, field);
+        }
+    }
+}
+
+/// Warn once per parser run that `feature`, an appearance sub-element this reader
+/// does not model, was found and ignored.
+fn warn_unsupported(index: &mut AppearanceIndex, feature: &'static str) {
+    if index.warned.insert(feature) {
+        tracing::warn!("citygml appearance: {feature} is not supported and was ignored");
+    }
+}
+
+/// A white Phong material with no maps, the base for a texture bound to a surface
+/// that carries no X3DMaterial colour.
+fn white_phong() -> PhongMaterial {
+    PhongMaterial {
+        diffuse: [1.0, 1.0, 1.0],
+        specular: [0.0; 3],
+        emissive: [0.0; 3],
+        ambient_intensity: 0.0,
+        shininess: 0.0,
+        transparency: 0.0,
+        diffuse_map: None,
+        emissive_map: None,
+        normal_map: None,
     }
 }
 
@@ -349,7 +479,7 @@ struct TextureTarget {
 /// CityGML 2.0 texture target: `<app:target uri="#surface">` wrapping a
 /// `TexCoordList` of `<app:textureCoordinates ring="#ring">`, where surface and
 /// ring are `xlink` attributes.
-fn inline_target(target: &RawNode) -> Option<TextureTarget> {
+fn inline_target(target: &XmlNode) -> Option<TextureTarget> {
     let surface = strip_hash(attr(target, "uri")?).to_string();
     let mut rings = Vec::new();
     for coord_list in child_elements(target) {
@@ -374,7 +504,7 @@ fn inline_target(target: &RawNode) -> Option<TextureTarget> {
 /// CityGML 3.0 texture target: an `<app:TextureAssociation>` with an element-text
 /// `<app:target>#surface` and a nested `textureParameterization` / `TexCoordList`
 /// whose `textureCoordinates` and `ring` are positional siblings.
-fn texture_association(assoc: &RawNode) -> Option<TextureTarget> {
+fn texture_association(assoc: &XmlNode) -> Option<TextureTarget> {
     let surface = strip_hash(&child_text(assoc, "target")?).to_string();
     let mut rings = Vec::new();
     for param in child_elements(assoc) {
@@ -394,7 +524,7 @@ fn texture_association(assoc: &RawNode) -> Option<TextureTarget> {
 /// document order: the i-th ring gets the i-th coordinate list. An unparseable
 /// coordinate list keeps its slot (empty) so later pairs stay aligned; it is
 /// dropped later when the UV length fails to match the ring.
-fn tex_coord_pairs(coord_list: &RawNode) -> Vec<(String, Vec<[f64; 2]>)> {
+fn tex_coord_pairs(coord_list: &XmlNode) -> Vec<(String, Vec<[f64; 2]>)> {
     let mut coords: Vec<Vec<[f64; 2]>> = Vec::new();
     let mut rings: Vec<String> = Vec::new();
     for child in child_elements(coord_list) {
@@ -407,31 +537,14 @@ fn tex_coord_pairs(coord_list: &RawNode) -> Vec<(String, Vec<[f64; 2]>)> {
     rings.into_iter().zip(coords).collect()
 }
 
-/// A white Phong material whose diffuse map is `raster` on the default UV channel.
-fn texture_material(raster: Arc<Raster>) -> Material {
-    Material::Phong(PhongMaterial {
-        diffuse: [1.0, 1.0, 1.0],
-        specular: [0.0; 3],
-        emissive: [0.0; 3],
-        ambient_intensity: 0.0,
-        shininess: 0.0,
-        transparency: 0.0,
-        diffuse_map: Some(Texture {
-            raster,
-            sampler: Sampler::default(),
-            transform: None,
-            uv_channel: ChannelId::default(),
-        }),
-        emissive_map: None,
-        normal_map: None,
-    })
-}
-
 /// Index one `app:X3DMaterial`: a colour-only Phong material bound to each target
 /// surface. Its `app:target`s are element text (`#surface-id`), not the `uri`
 /// attribute a `ParameterizedTexture` uses.
-fn index_material(material_node: &RawNode, theme: &str, index: &mut AppearanceIndex) {
-    let material = Material::Phong(PhongMaterial {
+fn index_material(material_node: &XmlNode, theme: &str, index: &mut AppearanceIndex) {
+    if child_elements(material_node).any(|e| local_name(&e.name.0) == "isSmooth") {
+        warn_unsupported(index, "X3DMaterial isSmooth");
+    }
+    let phong = PhongMaterial {
         diffuse: child_color(material_node, "diffuseColor", [0.8, 0.8, 0.8]),
         specular: child_color(material_node, "specularColor", [1.0, 1.0, 1.0]),
         emissive: child_color(material_node, "emissiveColor", [0.0, 0.0, 0.0]),
@@ -441,7 +554,7 @@ fn index_material(material_node: &RawNode, theme: &str, index: &mut AppearanceIn
         diffuse_map: None,
         emissive_map: None,
         normal_map: None,
-    });
+    };
     let side = side_of(material_node);
     for target in child_elements(material_node) {
         if local_name(&target.name.0) != "target" {
@@ -457,16 +570,13 @@ fn index_material(material_node: &RawNode, theme: &str, index: &mut AppearanceIn
             surface,
             theme,
             side,
-            SideMaterial {
-                material: material.clone(),
-                textured: false,
-            },
+            Contribution::Color(phong.clone()),
         );
     }
 }
 
 /// A material colour element (three floats), or `default` when absent or malformed.
-fn child_color(node: &RawNode, name: &str, default: [f32; 3]) -> [f32; 3] {
+fn child_color(node: &XmlNode, name: &str, default: [f32; 3]) -> [f32; 3] {
     let Some(text) = child_text(node, name) else {
         return default;
     };
@@ -481,7 +591,7 @@ fn child_color(node: &RawNode, name: &str, default: [f32; 3]) -> [f32; 3] {
 }
 
 /// A single-float material element, or `default` when absent or malformed.
-fn child_f32(node: &RawNode, name: &str, default: f32) -> f32 {
+fn child_f32(node: &XmlNode, name: &str, default: f32) -> f32 {
     child_text(node, name)
         .and_then(|t| t.parse().ok())
         .unwrap_or(default)
@@ -515,15 +625,15 @@ fn parse_uv(text: &str) -> Option<Vec<[f64; 2]>> {
 }
 
 /// Iterate a node's element children.
-fn child_elements(node: &RawNode) -> impl Iterator<Item = &RawNode> {
+fn child_elements(node: &XmlNode) -> impl Iterator<Item = &XmlNode> {
     node.children.iter().filter_map(|c| match c {
-        RawChild::Element(e) => Some(e.as_ref()),
+        XmlChild::Element(e) => Some(e.as_ref()),
         _ => None,
     })
 }
 
 /// The trimmed text of the first child element named `name`, if non-empty.
-fn child_text(node: &RawNode, name: &str) -> Option<String> {
+fn child_text(node: &XmlNode, name: &str) -> Option<String> {
     child_elements(node)
         .find(|e| local_name(&e.name.0) == name)
         .map(|e| text_of(e).trim().to_string())
@@ -531,18 +641,18 @@ fn child_text(node: &RawNode, name: &str) -> Option<String> {
 }
 
 /// A node's concatenated text content.
-fn text_of(node: &RawNode) -> String {
+fn text_of(node: &XmlNode) -> String {
     node.children
         .iter()
         .filter_map(|c| match c {
-            RawChild::Text(t) => Some(t.as_str()),
+            XmlChild::Text(t) => Some(t.as_str()),
             _ => None,
         })
         .collect()
 }
 
 /// The value of the attribute named `name`, ignoring namespace.
-fn attr<'a>(node: &'a RawNode, name: &str) -> Option<&'a str> {
+fn attr<'a>(node: &'a XmlNode, name: &str) -> Option<&'a str> {
     node.attrs
         .iter()
         .find(|((q, _), _)| local_name(q) == name)
@@ -558,7 +668,9 @@ fn strip_hash(reference: &str) -> &str {
 mod tests {
     use crate::citygml_parser::parser::Parser;
     use crate::citygml_parser::resolver::resolve_root;
-    use reearth_flow_geometry::appearance::{Appearance, Material, Side, ThemeId, UvSet, UvSource};
+    use reearth_flow_geometry::appearance::{
+        Appearance, Material, Sampler, Side, ThemeId, UvSet, UvSource, WrapMode,
+    };
     use reearth_flow_geometry::Euclidean3DGeometry;
     use std::sync::Arc;
     use url::Url;
@@ -585,7 +697,8 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
-        let (pending, _raw, geom_registry, appearance, _ns) = parser.finish();
+        let (pending, raw_registry, geom_registry, appearance_members, _ns) = parser.finish();
+        let appearance = super::build_index(&appearance_members, &raw_registry);
         assert!(!appearance.is_empty(), "appearance should be indexed");
         let feature = pending.into_iter().next().expect("one feature");
         let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance)
@@ -641,6 +754,84 @@ mod tests {
         // The ring's four (closed) vertices each carry a UV pair.
         assert_eq!(coords.len(), 4);
         assert_eq!(coords[1], [1.0, 0.0]);
+    }
+
+    /// The sampler of the polygon's diffuse texture when its `ParameterizedTexture`
+    /// declares the given `app:wrapMode`.
+    fn sampler_for_wrap_mode(mode: &str) -> Sampler {
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <app:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceDataMember><app:ParameterizedTexture>
+                  <app:imageURI>tex/a.jpg</app:imageURI>
+                  <app:wrapMode>{mode}</app:wrapMode>
+                  <app:target uri="#poly1"><app:TexCoordList>
+                    <app:textureCoordinates ring="#ring1">0 0 1 0 1 1 0 0</app:textureCoordinates>
+                  </app:TexCoordList></app:target>
+                </app:ParameterizedTexture></app:surfaceDataMember>
+              </app:Appearance></app:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let Material::Phong(m) = &polygon.appearance().as_ref().expect("textured").materials()[0]
+        else {
+            panic!("expected Phong");
+        };
+        m.diffuse_map.as_ref().expect("has diffuse map").sampler
+    }
+
+    #[test]
+    fn wrap_mode_maps_onto_sampler() {
+        // Each CityGML wrapMode maps to the matching WrapMode on both axes.
+        assert_eq!(sampler_for_wrap_mode("none").wrap_s, WrapMode::None);
+        assert_eq!(sampler_for_wrap_mode("wrap").wrap_s, WrapMode::Repeat);
+        assert_eq!(
+            sampler_for_wrap_mode("mirror").wrap_s,
+            WrapMode::MirroredRepeat
+        );
+        assert_eq!(sampler_for_wrap_mode("clamp").wrap_s, WrapMode::ClampToEdge);
+        let border = sampler_for_wrap_mode("border");
+        assert_eq!(border.wrap_s, WrapMode::ClampToBorder);
+        assert_eq!(border.wrap_t, WrapMode::ClampToBorder, "both axes share it");
+    }
+
+    #[test]
+    fn absent_wrap_mode_keeps_default_sampler() {
+        // A texture with no wrapMode keeps the default (repeat) sampler.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <app:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceDataMember><app:ParameterizedTexture>
+                  <app:imageURI>tex/a.jpg</app:imageURI>
+                  <app:target uri="#poly1"><app:TexCoordList>
+                    <app:textureCoordinates ring="#ring1">0 0 1 0 1 1 0 0</app:textureCoordinates>
+                  </app:TexCoordList></app:target>
+                </app:ParameterizedTexture></app:surfaceDataMember>
+              </app:Appearance></app:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let Material::Phong(m) = &polygon.appearance().as_ref().expect("textured").materials()[0]
+        else {
+            panic!("expected Phong");
+        };
+        assert_eq!(m.diffuse_map.as_ref().unwrap().sampler, Sampler::default());
     }
 
     #[test]
@@ -708,9 +899,10 @@ mod tests {
     }
 
     #[test]
-    fn texture_outranks_colour_on_same_surface() {
-        // The X3DMaterial is listed first, but the ParameterizedTexture for the same
-        // surface + theme must win regardless of document order.
+    fn texture_and_colour_merge_on_same_surface() {
+        // An X3DMaterial and a ParameterizedTexture on the same surface + theme merge
+        // into one material: the colour is the base and the texture its diffuse map,
+        // independent of document order (here the colour is listed first).
         let xml = format!(
             r##"<core:CityModel {NS}>
               <core:cityObjectMember><bldg:Building gml:id="b1">
@@ -737,16 +929,90 @@ mod tests {
         );
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
         let appearance = polygon.appearance().as_ref().expect("polygon styled");
-        assert_eq!(appearance.materials().len(), 1, "one style wins, not both");
-        assert!(matches!(
-            &appearance.materials()[0],
-            Material::Phong(m) if m.diffuse_map.is_some()
-        ));
+        assert_eq!(appearance.materials().len(), 1, "one merged material");
+        let Material::Phong(m) = &appearance.materials()[0] else {
+            panic!("expected Phong");
+        };
+        assert!(m.diffuse_map.is_some(), "the texture is the diffuse map");
+        assert_eq!(
+            m.diffuse,
+            [0.1, 0.2, 0.3],
+            "the X3DMaterial colour is the base"
+        );
         assert_eq!(
             uv_sets(polygon.appearance()).len(),
             1,
             "the texture's UV is present"
         );
+    }
+
+    #[test]
+    fn xlink_surface_data_is_resolved() {
+        // themeB's surface data is an `xlink:href` to the X3DMaterial defined inline
+        // under themeA. Resolving the reference binds poly1 under themeB too; without
+        // it, themeB would carry no style.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>themeA</app:theme>
+                <app:surfaceData><app:X3DMaterial gml:id="mat1">
+                  <app:diffuseColor>0.2 0.4 0.6</app:diffuseColor>
+                  <app:target>#poly1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>themeB</app:theme>
+                <app:surfaceData xlink:href="#mat1"/>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon.appearance().as_ref().expect("polygon styled");
+        let themes: Vec<&str> = appearance.themes().iter().map(|t| &*t.theme.0).collect();
+        assert!(themes.contains(&"themeA"), "inline surface data bound");
+        assert!(
+            themes.contains(&"themeB"),
+            "xlink-referenced surface data bound under its own theme"
+        );
+    }
+
+    #[test]
+    fn xlink_appearance_member_is_resolved() {
+        // A self-closing `app:appearanceMember` references a whole `app:Appearance`
+        // by `xlink:href`; the shared appearance's material reaches poly1.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance gml:id="appA">
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>0.7 0.7 0.7</app:diffuseColor>
+                  <app:target>#poly1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+              <core:appearanceMember xlink:href="#appA"/>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon.appearance().as_ref().expect("polygon styled");
+        assert_eq!(appearance.themes().len(), 1, "one theme, not duplicated");
+        let Material::Phong(m) = &appearance.materials()[0] else {
+            panic!("expected Phong");
+        };
+        assert_eq!(m.diffuse, [0.7, 0.7, 0.7]);
     }
 
     #[test]
@@ -995,7 +1261,8 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
-        let (pending, _raw, geom_registry, appearance, _ns) = parser.finish();
+        let (pending, raw_registry, geom_registry, appearance_members, _ns) = parser.finish();
+        let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
         let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance)
             .expect("geometry resolves");

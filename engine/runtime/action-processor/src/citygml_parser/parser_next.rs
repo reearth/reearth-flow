@@ -9,7 +9,6 @@ use quick_xml::NsReader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
-use super::appearance::{self, AppearanceIndex};
 use super::geometry;
 use super::resolver::GeomRegistry;
 use super::utils::{
@@ -56,7 +55,10 @@ pub enum ParseError {
 pub struct Parser {
     raw_registry: RawRegistry,
     geom_registry: GeomRegistry,
-    appearance_index: AppearanceIndex,
+    /// The `app:appearanceMember` roots, retained for pass-2 indexing once every
+    /// `gml:id` is known, so a surface data or appearance reached by `xlink:href`
+    /// resolves.
+    appearance_members: Vec<Arc<RawNode>>,
     pub(super) ns_registry: NamespaceRegistry,
     pending: Vec<PendingFeature>,
     /// Whether to record each geometry's enclosing `gml:id`s, needed only when
@@ -91,7 +93,7 @@ impl Parser {
         Self {
             raw_registry: RawRegistry::new(),
             geom_registry: GeomRegistry::new(),
-            appearance_index: AppearanceIndex::default(),
+            appearance_members: Vec::new(),
             ns_registry: NamespaceRegistry::new(),
             pending: Vec::new(),
             track_owners,
@@ -148,17 +150,38 @@ impl Parser {
                             );
                         }
                     } else if ln == "appearanceMember" {
-                        let member = parse_element(
+                        let member = Arc::new(parse_element(
                             &mut reader,
                             &mut buf,
                             name,
                             attrs,
                             &source_url_arc,
                             &mut self.ns_registry,
-                        )?;
-                        appearance::index_appearance_member(&member, &mut self.appearance_index);
+                        )?);
+                        collect_ids(&member, source_url_arc.as_str(), &mut self.raw_registry);
+                        self.appearance_members.push(member);
                     } else {
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
+                    }
+                }
+                OwnedEvent::Empty { name, attrs } if local_name(&name.0) == "appearanceMember" => {
+                    // A self-closing appearanceMember carries a whole shared
+                    // `app:Appearance` by `xlink:href`; retain it as a reference to
+                    // resolve in pass 2.
+                    if let Some(key) = xlink_href_attr(&attrs)
+                        .and_then(|href| href_to_key(href, source_url_arc.as_ref()))
+                    {
+                        self.appearance_members.push(Arc::new(RawNode {
+                            name,
+                            attrs: attrs
+                                .into_iter()
+                                .filter(|((q, ns), _)| {
+                                    !(local_name(q) == "href" && *ns == XLINK_NS_ID)
+                                })
+                                .collect(),
+                            children: vec![RawChild::Ref(key)],
+                            source_url: Arc::clone(&source_url_arc),
+                        }));
                     }
                 }
                 OwnedEvent::End => break,
@@ -170,22 +193,23 @@ impl Parser {
         Ok(())
     }
 
-    /// Consume the parser and return the pending features, the attribute, geometry
-    /// and appearance registries, and the namespace registry for pass-2 resolution.
+    /// Consume the parser and return the pending features, the attribute and
+    /// geometry registries, the retained appearance member roots, and the namespace
+    /// registry for pass-2 resolution.
     pub(super) fn finish(
         self,
     ) -> (
         Vec<PendingFeature>,
         RawRegistry,
         GeomRegistry,
-        AppearanceIndex,
+        Vec<Arc<RawNode>>,
         NamespaceRegistry,
     ) {
         (
             self.pending,
             self.raw_registry,
             self.geom_registry,
-            self.appearance_index,
+            self.appearance_members,
             self.ns_registry,
         )
     }

@@ -162,7 +162,7 @@ mod build_next {
     };
 
     use crate::citygml_parser::{
-        appearance::AppearanceIndex,
+        appearance::{self, AppearanceIndex},
         codespace, flatten, geometry,
         parser::{self, Parser, RawRegistry},
         resolver::{self, GeomRegistry},
@@ -184,7 +184,9 @@ mod build_next {
         _flatten_single_child_objects: bool,
         _flatten_measure_types: bool,
     ) -> Vec<Feature> {
-        let (pending, raw_registry, geom_registry, appearance, ns_registry) = parser.finish();
+        let (pending, raw_registry, geom_registry, appearance_members, ns_registry) =
+            parser.finish();
+        let appearance = appearance::build_index(&appearance_members, &raw_registry);
         assemble_features(
             pending,
             &raw_registry,
@@ -317,7 +319,9 @@ mod build_next {
             parser
                 .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
                 .unwrap();
-            let (pending, raw_registry, geom_registry, appearance, ns_registry) = parser.finish();
+            let (pending, raw_registry, geom_registry, appearance_members, ns_registry) =
+                parser.finish();
+            let appearance = appearance::build_index(&appearance_members, &raw_registry);
             let tags: HashSet<String> = extract_tags.iter().map(|s| s.to_string()).collect();
             assemble_features(
                 pending,
