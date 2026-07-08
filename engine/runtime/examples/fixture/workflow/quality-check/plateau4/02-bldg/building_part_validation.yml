@@ -6,7 +6,7 @@ nodes:
     type: action
     action: InputRouter
     with:
-      routingPort: default
+      routingPort: features
 
   - id: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     name: PLATEAU3.LodSplitterWithDM
@@ -157,104 +157,104 @@ edges:
   - id: ed4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b
     from: c223c809-eba3-4d73-8f1b-34d27515bb17
     to: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # LOD0/LOD1 BuildingPart -> Counter (before AttributeMapper)
   - id: f8a9b0c1-2d3e-4f5a-9b6c-7d8e9f0a1b2c
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
     fromPort: lod0
-    toPort: default
+    toPort: features
   - id: a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
     fromPort: lod1
-    toPort: default
+    toPort: features
 
   # Counter -> AttributeMapper (for CSV output)
   - id: 66c6d7e8-9f0a-1b2c-3d4e-5f6a7b8c9d0e
     from: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
     to: 7b9c8d4e-6f5a-4c8b-9d3e-2a5f7b8c9d4e
     fromPort: complete
-    toPort: default
+    toPort: features
 
   # AttributeMapper -> CSV Writer
   - id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
     from: 7b9c8d4e-6f5a-4c8b-9d3e-2a5f7b8c9d4e
     to: 9e8f7a6b-5c4d-3e2f-1a0b-9c8d7e6f5a4b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 77d7e8f9-0a1b-2c3d-4e5f-6a7b8c9d0e1f
     from: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
     to: 88d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b
     from: 9e8f7a6b-5c4d-3e2f-1a0b-9c8d7e6f5a4b
     to: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     from: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     to: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     from: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     to: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     fromPort: filtered
-    toPort: default
+    toPort: features
   # Split: error details to CSV, error count to parent workflow
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     from: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c  # DeduplicateBuildingIds
     to: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d  # CountLbldg02Errors
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
     from: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c  # DeduplicateBuildingIds
     to: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e  # AttributeMapperLbldg02Output (for CSV)
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: f3a4b5c6-7d8e-9f0a-1b2c-3d4e5f6a7b8c
     from: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     to: e2f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
     from: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e
     to: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: d2e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     from: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     to: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e1f2a3b4-5c6d-7e8f-9a0b-1c2d3e4f5a6b
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: lod2
-    toPort: default
+    toPort: features
   - id: f2a3b4c5-6d7e-8f9a-0b1c-2d3e4f5a6b7c
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: lod3
-    toPort: default
+    toPort: features
   - id: a3b4c5d6-7e8f-9a0b-1c2d-3e4f5a6b7c8d
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: lod4
-    toPort: default
+    toPort: features
 
 # Export error count ports for aggregation in parent workflow
 ports:
   outputs:
     - id: errorCountLbldg02
       nodeId: e2f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
-      port: default
+      port: features
     - id: errorCountLod01BuildingPart
       nodeId: 88d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f
-      port: default
+      port: features
     - id: fileOutput
       nodeId: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
-      port: default
+      port: features

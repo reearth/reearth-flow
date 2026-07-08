@@ -6,12 +6,12 @@
   },
   "intermediateAssertions": [
     {
-      "outputPort": "30000000-0000-0000-0000-000000000011.default",
+      "outputPort": "30000000-0000-0000-0000-000000000011.features",
       "expectedFile": "../expected_all.jsonl",
       "jsonFilter": "{attributes}"
     },
     {
-      "outputPort": "30000000-0000-0000-0000-000000000012.30000000-0000-0000-0000-000000000021.default",
+      "outputPort": "30000000-0000-0000-0000-000000000012.30000000-0000-0000-0000-000000000021.features",
       "expectedFile": "../expected_all.jsonl",
       "jsonFilter": "{attributes}"
     },
@@ -41,7 +41,7 @@
       "jsonFilter": "{attributes}"
     },
     {
-      "outputPort": "30000000-0000-0000-0000-000000000013.30000000-0000-0000-0000-000000000021.default",
+      "outputPort": "30000000-0000-0000-0000-000000000013.30000000-0000-0000-0000-000000000021.features",
       "expectedFile": "../expected_all.jsonl",
       "jsonFilter": "{attributes}"
     },

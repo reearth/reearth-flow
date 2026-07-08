@@ -4,7 +4,7 @@
   "workflowVariables": [],
   "intermediateAssertions": [
     {
-      "outputPort": "550e8400-e29b-41d4-a716-446655440203.default",
+      "outputPort": "550e8400-e29b-41d4-a716-446655440203.features",
       "expectedFile": "expected_output.jsonl",
       "jsonFilter": "{attributes}"
     },

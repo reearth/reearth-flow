@@ -69,25 +69,25 @@ graphs:
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
         from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: year2024
-        toPort: default
+        toPort: features
       - id: d6d821e2-2fb0-4ae3-8cee-6a51717ad6ba
         from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         to: 3ec90e43-968e-4bcd-863c-f7c80e37f118
         fromPort: year2025
-        toPort: default
+        toPort: features
       - id: c60f7369-5df5-4854-883e-fd3b2bd97744
         from: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         to: 5aa001b2-94d4-41c0-8552-58adf04ef66a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 2e3a37c0-d7d6-4abf-8e4e-f0714357302f
         from: 3ec90e43-968e-4bcd-863c-f7c80e37f118
         to: 5aa001b2-94d4-41c0-8552-58adf04ef66a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
