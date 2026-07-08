@@ -40,6 +40,8 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   baseLayer: false,
 };
 
+// Currently disabled as some rendering issues and data accuracy have been observed with clampToGround and terrain enabled
+
 // const TerrainController: React.FC<{ show3DTerrain: boolean }> = ({
 //   show3DTerrain,
 // }) => {
@@ -181,7 +183,9 @@ const CesiumViewer: React.FC<Props> = ({
     }
     return new UrlTemplateImageryProvider({
       url: ESRI_WORLD_IMAGERY_URL,
+      minimumLevel: 0,
       maximumLevel: 19,
+      credit: "© Esri",
     });
   }, []);
 
