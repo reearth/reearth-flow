@@ -125,7 +125,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
     }
 
     fn description(&self) -> &str {
-        "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found."
+        "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the l0405BldgError and cityCodeError ports if any issues are found."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

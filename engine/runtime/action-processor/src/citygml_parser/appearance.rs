@@ -126,22 +126,18 @@ impl AppearanceIndex {
     /// `candidates` are the gml:ids that may carry this polygon's style, most
     /// specific first: the polygon's own surface id, then its enclosing container
     /// ids (a `MultiSurface` / `Solid` may bind a material to a whole aggregate).
-    /// The first candidate that carries any style wins, so a leaf's own material
-    /// overrides an inherited container material. A textured style whose rings lack
-    /// complete UV is skipped rather than attached with a mismatched UV length.
+    /// Styles are merged per theme with the most specific candidate winning, so a
+    /// leaf's own material overrides an inherited container material for that theme
+    /// while a container theme the leaf does not carry is still inherited. A
+    /// textured style whose rings lack complete UV is skipped rather than attached
+    /// with a mismatched UV length.
     pub(super) fn apply_to_polygon(
         &self,
         polygon: &mut Polygon3D,
         candidates: &[&str],
         rings: &[Option<String>],
     ) {
-        let Some((surface, styles)) = candidates
-            .iter()
-            .find_map(|id| self.surfaces.get(*id).map(|styles| (*id, styles)))
-        else {
-            return;
-        };
-        for style in styles {
+        for (surface, style) in self.merged_styles(candidates) {
             let theme = ThemeId(Arc::from(style.theme.as_str()));
             let front = style
                 .front
@@ -167,6 +163,28 @@ impl AppearanceIndex {
                 tracing::warn!("citygml appearance: could not attach to surface {surface}: {e}");
             }
         }
+    }
+
+    /// The styles bound to `candidates`, deduplicated by theme with the most
+    /// specific candidate winning: candidates are tried in order (leaf first, then
+    /// enclosing containers), and the first style seen for a theme is kept, so a
+    /// leaf's own material overrides an inherited container material per theme while
+    /// a container theme absent from the leaf is still inherited. Each entry pairs
+    /// the winning candidate's id (for diagnostics) with its style.
+    fn merged_styles(&self, candidates: &[&str]) -> Vec<(&str, &SurfaceStyle)> {
+        let mut seen: HashSet<&str> = HashSet::new();
+        let mut out = Vec::new();
+        for id in candidates {
+            let Some((surface, styles)) = self.surfaces.get_key_value(*id) else {
+                continue;
+            };
+            for style in styles {
+                if seen.insert(style.theme.as_str()) {
+                    out.push((surface.as_str(), style));
+                }
+            }
+        }
+        out
     }
 
     /// Resolve one side's material and, for a texture, its assembled per-ring UV.
@@ -215,23 +233,18 @@ impl AppearanceIndex {
     /// one UV coordinate per corner (`3 * triangle_count`) is assembled.
     ///
     /// `candidates` are the gml:ids that may carry the mesh's style, most specific
-    /// first: the surface's own id, then its enclosing container ids. A triangular
-    /// mesh binds a single side (front preferred, else a lone back); a textured
-    /// style whose triangles lack complete UV is skipped rather than attached with
-    /// a mismatched UV length.
+    /// first: the surface's own id, then its enclosing container ids. Styles are
+    /// merged per theme with the most specific candidate winning. A triangular mesh
+    /// binds a single side (front preferred, else a lone back); a textured style
+    /// whose triangles lack complete UV is skipped rather than attached with a
+    /// mismatched UV length.
     pub(super) fn apply_to_triangular_mesh(
         &self,
         mesh: &mut TriangularMesh3D,
         candidates: &[&str],
         faces: &[FaceIds],
     ) {
-        let Some((surface, styles)) = candidates
-            .iter()
-            .find_map(|id| self.surfaces.get(*id).map(|styles| (*id, styles)))
-        else {
-            return;
-        };
-        for style in styles {
+        for (surface, style) in self.merged_styles(candidates) {
             let (side, side_material) = match (style.front.as_ref(), style.back.as_ref()) {
                 (Some(front), _) => (Side::Front, front),
                 (None, Some(back)) => (Side::Back, back),
@@ -523,7 +536,8 @@ fn texture_association(assoc: &XmlNode) -> Option<TextureTarget> {
 /// Pair a CityGML 3.0 `TexCoordList`'s `textureCoordinates` with its `ring`s by
 /// document order: the i-th ring gets the i-th coordinate list. An unparseable
 /// coordinate list keeps its slot (empty) so later pairs stay aligned; it is
-/// dropped later when the UV length fails to match the ring.
+/// dropped later when the UV length fails to match the ring. A list whose ring and
+/// coordinate counts differ cannot be aligned positionally, so it is skipped whole.
 fn tex_coord_pairs(coord_list: &XmlNode) -> Vec<(String, Vec<[f64; 2]>)> {
     let mut coords: Vec<Vec<[f64; 2]>> = Vec::new();
     let mut rings: Vec<String> = Vec::new();
@@ -533,6 +547,14 @@ fn tex_coord_pairs(coord_list: &XmlNode) -> Vec<(String, Vec<[f64; 2]>)> {
             "ring" => rings.push(strip_hash(text_of(child).trim()).to_string()),
             _ => {}
         }
+    }
+    if rings.len() != coords.len() {
+        tracing::warn!(
+            rings = rings.len(),
+            coords = coords.len(),
+            "citygml appearance: TexCoordList ring / textureCoordinates counts differ, skipped"
+        );
+        return Vec::new();
     }
     rings.into_iter().zip(coords).collect()
 }
@@ -1397,5 +1419,96 @@ mod tests {
         assert_eq!(m.diffuse, [0.2, 0.4, 0.6]);
         assert!(m.diffuse_map.is_none(), "colour-only, no texture");
         assert!(uv_sets(mesh.appearance()).is_empty(), "colour-only, no UV");
+    }
+
+    #[test]
+    fn container_theme_inherited_alongside_leaf_theme() {
+        // The leaf polygon carries a style under `shared` (red) and the enclosing
+        // MultiSurface carries one under `shared` (green) and one under `only`
+        // (blue). The leaf wins for `shared`, and `only` is inherited from the
+        // container: the polygon ends up with both themes, `shared` red.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface gml:id="ms1"><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>shared</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>1 0 0</app:diffuseColor><app:target>#poly1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>shared</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>0 1 0</app:diffuseColor><app:target>#ms1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+              <core:appearanceMember><app:Appearance>
+                <app:theme>only</app:theme>
+                <app:surfaceData><app:X3DMaterial>
+                  <app:diffuseColor>0 0 1</app:diffuseColor><app:target>#ms1</app:target>
+                </app:X3DMaterial></app:surfaceData>
+              </app:Appearance></core:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon.appearance().as_ref().expect("polygon styled");
+        let themes: Vec<&str> = appearance.themes().iter().map(|t| &*t.theme.0).collect();
+        assert!(themes.contains(&"shared"), "leaf theme present");
+        assert!(themes.contains(&"only"), "container-only theme inherited");
+        // The leaf's `shared` (red) wins over the container's `shared` (green).
+        let reds = appearance
+            .materials()
+            .iter()
+            .filter(|m| matches!(m, Material::Phong(p) if p.diffuse == [1.0, 0.0, 0.0]))
+            .count();
+        let greens = appearance
+            .materials()
+            .iter()
+            .filter(|m| matches!(m, Material::Phong(p) if p.diffuse == [0.0, 1.0, 0.0]))
+            .count();
+        assert_eq!(reds, 1, "leaf red kept");
+        assert_eq!(
+            greens, 0,
+            "container green suppressed by leaf for the same theme"
+        );
+    }
+
+    #[test]
+    fn nested_appearance_property_is_indexed() {
+        // An appearance declared as an `app:appearance` property on the Building
+        // (not a top-level `appearanceMember`) still reaches its target surface.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+                <app:appearance><app:Appearance>
+                  <app:theme>rgbTexture</app:theme>
+                  <app:surfaceData><app:X3DMaterial>
+                    <app:diffuseColor>0.3 0.5 0.7</app:diffuseColor>
+                    <app:target>#poly1</app:target>
+                  </app:X3DMaterial></app:surfaceData>
+                </app:Appearance></app:appearance>
+              </bldg:Building></core:cityObjectMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon
+            .appearance()
+            .as_ref()
+            .expect("nested appearance reaches the surface");
+        let Material::Phong(m) = &appearance.materials()[0] else {
+            panic!("expected Phong");
+        };
+        assert_eq!(m.diffuse, [0.3, 0.5, 0.7]);
     }
 }

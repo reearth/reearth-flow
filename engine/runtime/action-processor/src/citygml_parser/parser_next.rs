@@ -140,6 +140,7 @@ impl Parser {
                                 self.track_owners,
                             );
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
+                            collect_nested_appearances(&stripped, &mut self.appearance_members);
                             self.pending.push(PendingFeature {
                                 root: stripped,
                                 geoms,
@@ -291,6 +292,23 @@ fn collect_ids(node: &Arc<RawNode>, source_url: &str, registry: &mut RawRegistry
     for child in &node.children {
         if let RawChild::Element(e) = child {
             collect_ids(e, source_url, registry);
+        }
+    }
+}
+
+/// Collect every nested `app:appearance` property under a city object subtree,
+/// retaining each for pass-2 indexing alongside the top-level `appearanceMember`s.
+/// CityGML also allows appearances on individual city objects, not only at the
+/// `CityModel` root; an appearance property never nests another, so a match is not
+/// descended into.
+fn collect_nested_appearances(node: &Arc<RawNode>, out: &mut Vec<Arc<RawNode>>) {
+    for child in &node.children {
+        if let RawChild::Element(e) = child {
+            if local_name(&e.name.0) == "appearance" {
+                out.push(Arc::clone(e));
+            } else {
+                collect_nested_appearances(e, out);
+            }
         }
     }
 }
