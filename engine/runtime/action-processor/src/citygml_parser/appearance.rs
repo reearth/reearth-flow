@@ -558,10 +558,19 @@ fn strip_hash(reference: &str) -> &str {
 mod tests {
     use crate::citygml_parser::parser::Parser;
     use crate::citygml_parser::resolver::resolve_root;
-    use reearth_flow_geometry::appearance::{Material, Side, ThemeId, UvSource};
+    use reearth_flow_geometry::appearance::{Appearance, Material, Side, ThemeId, UvSet, UvSource};
     use reearth_flow_geometry::Euclidean3DGeometry;
     use std::sync::Arc;
     use url::Url;
+
+    /// The UV sets carried by a geometry leaf's appearance (they now live inside the
+    /// appearance, per theme), or empty when the leaf carries no appearance.
+    fn uv_sets(appearance: &Option<Appearance>) -> Vec<&UvSet> {
+        appearance
+            .as_ref()
+            .map(|a| a.uv_iter().collect())
+            .unwrap_or_default()
+    }
 
     const NS: &str = r#"xmlns:core="http://www.opengis.net/citygml/3.0"
         xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
@@ -616,12 +625,15 @@ mod tests {
         );
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
         let appearance = polygon.appearance().as_ref().expect("polygon is textured");
-        assert_eq!(appearance.default_theme, ThemeId(Arc::from("rgbTexture")));
+        assert_eq!(
+            appearance.default_theme(),
+            &ThemeId(Arc::from("rgbTexture"))
+        );
         assert!(matches!(
-            &appearance.materials[0],
+            &appearance.materials()[0],
             Material::Phong(m) if m.diffuse_map.is_some()
         ));
-        let uv = polygon.uv_sets();
+        let uv = uv_sets(polygon.appearance());
         assert_eq!(uv.len(), 1);
         let UvSource::Explicit(coords) = &uv[0].uv else {
             panic!("expected explicit UV");
@@ -657,7 +669,7 @@ mod tests {
         );
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
         assert!(polygon.appearance().is_none());
-        assert!(polygon.uv_sets().is_empty());
+        assert!(uv_sets(polygon.appearance()).is_empty());
     }
 
     #[test]
@@ -684,12 +696,15 @@ mod tests {
         );
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
         let appearance = polygon.appearance().as_ref().expect("polygon is coloured");
-        let Material::Phong(m) = &appearance.materials[0] else {
+        let Material::Phong(m) = &appearance.materials()[0] else {
             panic!("expected Phong");
         };
         assert_eq!(m.diffuse, [0.588235, 0.588235, 0.588235]);
         assert!(m.diffuse_map.is_none(), "colour-only, no texture");
-        assert!(polygon.uv_sets().is_empty(), "colour-only, no UV");
+        assert!(
+            uv_sets(polygon.appearance()).is_empty(),
+            "colour-only, no UV"
+        );
     }
 
     #[test]
@@ -722,12 +737,16 @@ mod tests {
         );
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
         let appearance = polygon.appearance().as_ref().expect("polygon styled");
-        assert_eq!(appearance.materials.len(), 1, "one style wins, not both");
+        assert_eq!(appearance.materials().len(), 1, "one style wins, not both");
         assert!(matches!(
-            &appearance.materials[0],
+            &appearance.materials()[0],
             Material::Phong(m) if m.diffuse_map.is_some()
         ));
-        assert_eq!(polygon.uv_sets().len(), 1, "the texture's UV is present");
+        assert_eq!(
+            uv_sets(polygon.appearance()).len(),
+            1,
+            "the texture's UV is present"
+        );
     }
 
     #[test]
@@ -757,7 +776,7 @@ mod tests {
             .appearance()
             .as_ref()
             .expect("surfaceData recognized");
-        let Material::Phong(m) = &appearance.materials[0] else {
+        let Material::Phong(m) = &appearance.materials()[0] else {
             panic!("expected Phong");
         };
         assert_eq!(m.diffuse, [0.2, 0.4, 0.6]);
@@ -793,13 +812,13 @@ mod tests {
         );
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
         let appearance = polygon.appearance().as_ref().expect("polygon styled");
-        assert_eq!(appearance.materials.len(), 2, "front and back materials");
+        assert_eq!(appearance.materials().len(), 2, "front and back materials");
         assert!(
-            appearance.themes[0].back.is_some(),
+            appearance.themes()[0].back.is_some(),
             "the back side is bound"
         );
         let colours: Vec<[f32; 3]> = appearance
-            .materials
+            .materials()
             .iter()
             .map(|m| match m {
                 Material::Phong(p) => p.diffuse,
@@ -843,7 +862,7 @@ mod tests {
             </core:CityModel>"##
         );
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
-        let uv = polygon.uv_sets();
+        let uv = uv_sets(polygon.appearance());
         assert_eq!(uv.len(), 2, "one UV set per side");
         assert!(uv.iter().any(|s| s.side == Side::Front));
         assert!(uv.iter().any(|s| s.side == Side::Back));
@@ -881,7 +900,7 @@ mod tests {
             .appearance()
             .as_ref()
             .expect("member inherits container material");
-        let Material::Phong(m) = &appearance.materials[0] else {
+        let Material::Phong(m) = &appearance.materials()[0] else {
             panic!("expected Phong");
         };
         assert_eq!(m.diffuse, [0.1, 0.2, 0.3]);
@@ -916,11 +935,11 @@ mod tests {
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
         let appearance = polygon.appearance().as_ref().expect("polygon styled");
         assert_eq!(
-            appearance.materials.len(),
+            appearance.materials().len(),
             1,
             "only the leaf material attaches"
         );
-        let Material::Phong(m) = &appearance.materials[0] else {
+        let Material::Phong(m) = &appearance.materials()[0] else {
             panic!("expected Phong");
         };
         assert_eq!(m.diffuse, [0.1, 0.1, 0.1], "leaf wins over container");
@@ -957,10 +976,10 @@ mod tests {
         let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
         let appearance = polygon.appearance().as_ref().expect("polygon is textured");
         assert!(matches!(
-            &appearance.materials[0],
+            &appearance.materials()[0],
             Material::Phong(m) if m.diffuse_map.is_some()
         ));
-        let uv = polygon.uv_sets();
+        let uv = uv_sets(polygon.appearance());
         assert_eq!(uv.len(), 1);
         let UvSource::Explicit(coords) = &uv[0].uv else {
             panic!("expected explicit UV");
@@ -1031,10 +1050,10 @@ mod tests {
         assert_eq!(mesh.num_triangles(), 2);
         let appearance = mesh.appearance().as_ref().expect("mesh is textured");
         assert!(matches!(
-            &appearance.materials[0],
+            &appearance.materials()[0],
             Material::Phong(m) if m.diffuse_map.is_some()
         ));
-        let uv = mesh.uv_sets();
+        let uv = uv_sets(mesh.appearance());
         assert_eq!(uv.len(), 1);
         assert_eq!(uv[0].side, Side::Front);
         let UvSource::Explicit(coords) = &uv[0].uv else {
@@ -1077,7 +1096,7 @@ mod tests {
         );
         let mesh = resolve_only_mesh(&xml);
         assert!(mesh.appearance().is_none());
-        assert!(mesh.uv_sets().is_empty());
+        assert!(uv_sets(mesh.appearance()).is_empty());
     }
 
     /// An `X3DMaterial` colour targeting the surface attaches to the mesh with no UV.
@@ -1105,11 +1124,11 @@ mod tests {
         );
         let mesh = resolve_only_mesh(&xml);
         let appearance = mesh.appearance().as_ref().expect("mesh is coloured");
-        let Material::Phong(m) = &appearance.materials[0] else {
+        let Material::Phong(m) = &appearance.materials()[0] else {
             panic!("expected Phong");
         };
         assert_eq!(m.diffuse, [0.2, 0.4, 0.6]);
         assert!(m.diffuse_map.is_none(), "colour-only, no texture");
-        assert!(mesh.uv_sets().is_empty(), "colour-only, no UV");
+        assert!(uv_sets(mesh.appearance()).is_empty(), "colour-only, no UV");
     }
 }
