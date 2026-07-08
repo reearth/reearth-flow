@@ -114,6 +114,21 @@ impl GeometryCollection {
     pub(crate) fn members_mut(&mut self) -> &mut [Geometry] {
         &mut self.members
     }
+
+    /// The number of members.
+    pub fn len(&self) -> usize {
+        self.members.len()
+    }
+
+    /// Whether the collection has no members.
+    pub fn is_empty(&self) -> bool {
+        self.members.is_empty()
+    }
+
+    /// The members, in order.
+    pub fn members(&self) -> &[Geometry] {
+        &self.members
+    }
 }
 
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
@@ -245,14 +260,14 @@ impl Reproject for GeometryCollection {
 #[cfg(test)]
 mod bounding_box_tests {
     use super::*;
-    use coordinate::Coordinate;
+    use coordinate::CoordinateFrame;
     use point::{Point2D, Point3D};
     use polygon::Polygon2D;
 
     #[test]
     fn dispatch_reaches_inline_leaf_through_dimension_enum() {
         let g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [1.0, 2.0, 3.0],
         )));
         assert_eq!(
@@ -268,7 +283,7 @@ mod bounding_box_tests {
     fn dispatch_reaches_boxed_leaf_through_dimension_enum() {
         // The `Box<Polygon2D>` variant exercises the `Box<T>` blanket impl.
         let p = Polygon2D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
             Vec::<Vec<[f64; 2]>>::new(),
         );
@@ -290,11 +305,11 @@ mod bounding_box_tests {
     #[test]
     fn geometry_collection_mixing_2d_and_3d_promotes_to_3d() {
         let p2 = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [0.0, 0.0],
         )));
         let p3 = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [4.0, 4.0, 9.0],
         )));
         let gc = Geometry::GeometryCollection(GeometryCollection::new([p2, p3]));
@@ -319,7 +334,7 @@ mod bounding_box_tests {
 #[cfg(test)]
 mod triangulate_tests {
     use super::*;
-    use coordinate::Coordinate;
+    use coordinate::CoordinateFrame;
     use point::Point2D;
     use polygon::{Polygon2D, Polygon3D};
     use polygon_mesh::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
@@ -329,7 +344,7 @@ mod triangulate_tests {
     /// A spread of supported inputs covering both embeddings, holes, elevation,
     /// multi-face meshes, and a degenerate face.
     fn sample_geometries() -> Vec<Geometry> {
-        let e = Coordinate::Euclidean;
+        let e = CoordinateFrame::Euclidean;
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
 
@@ -462,7 +477,11 @@ mod triangulate_tests {
     #[test]
     fn triangulate_dispatches_through_geometry_to_polygon() {
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let p = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let p = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
         let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(p)));
         let out = g.triangulate(&mut Cache::new()).unwrap();
         match out {
@@ -476,7 +495,7 @@ mod triangulate_tests {
     #[test]
     fn triangulate_is_unsupported_for_non_polygonal_types() {
         let mut point = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [0.0, 0.0],
         )));
         assert!(point.triangulate(&mut Cache::new()).is_err());

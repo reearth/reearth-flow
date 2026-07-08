@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::coordinate::Coordinate;
+use super::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
@@ -12,7 +12,7 @@ mod ops;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Point2D {
     /// Coordinate frame this position is expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     position: [f64; 2],
 }
 
@@ -21,8 +21,16 @@ pub struct Point2D {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Point3D {
     /// Coordinate frame this position is expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     position: [f64; 3],
+}
+
+impl Point3D {
+    /// The `[x, y, z]` position.
+    #[inline]
+    pub fn position(&self) -> [f64; 3] {
+        self.position
+    }
 }
 
 crate::unsupported!(Point2D: Triangulate);

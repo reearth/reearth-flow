@@ -2994,6 +2994,89 @@ Extrude 2D Polygons into 3D Solids
 ### Category
 * Geometry
 
+## FeatureCityGml2Reader
+### Type
+* processor
+### Description
+Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureCityGml2Reader Parameters",
+  "type": "object",
+  "required": [
+    "dataset"
+  ],
+  "properties": {
+    "cityGmlAttributesKey": {
+      "title": "City GML Attributes Key",
+      "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dataset": {
+      "title": "Dataset",
+      "description": "Path expression resolving to the CityGML 2.0 file to read.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "extractTags": {
+      "title": "Extract Tags",
+      "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "flattenMeasureTypes": {
+      "title": "Flatten Measure Types",
+      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "flattenSingleChildObjects": {
+      "title": "Flatten Single-Child Object Nodes",
+      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "keepAttributes": {
+      "title": "Keep Attributes",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+
 ## FeatureCityGml3Reader
 ### Type
 * processor
@@ -3009,6 +3092,15 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
     "dataset"
   ],
   "properties": {
+    "cityGmlAttributesKey": {
+      "title": "City GML Attributes Key",
+      "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "dataset": {
       "title": "Dataset",
       "description": "Path expression resolving to the CityGML 3.0 file to read.",
@@ -3039,6 +3131,24 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
       "items": {
         "type": "string"
       }
+    },
+    "flattenMeasureTypes": {
+      "title": "Flatten Measure Types",
+      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "flattenSingleChildObjects": {
+      "title": "Flatten Single-Child Object Nodes",
+      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "keepAttributes": {
+      "title": "Keep Attributes",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }

@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
@@ -17,7 +17,7 @@ mod ops;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString2D {
     /// Coordinate frame these coords are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     coords: Box<[[f64; 2]]>,
     /// Optional per-vertex elevation, parallel to `coords`.
     /// INVARIANT: when `Some`, `z.len() == coords.len()`. `None` = pure 2D.
@@ -28,8 +28,16 @@ pub struct LineString2D {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString3D {
     /// Coordinate frame these coords are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     coords: Box<[[f64; 3]]>,
+}
+
+impl LineString3D {
+    /// The chain's vertices in order.
+    #[inline]
+    pub fn coords(&self) -> &[[f64; 3]] {
+        &self.coords
+    }
 }
 
 crate::unsupported!(LineString2D: Triangulate);

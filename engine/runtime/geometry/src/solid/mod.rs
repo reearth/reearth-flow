@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::polygon_mesh::PolygonMesh3DData;
 use crate::triangular_mesh::TriangularMesh3DData;
 
@@ -35,6 +35,15 @@ impl Shell {
             Shell::TriangularMesh(d) => d.vertices(),
         }
     }
+
+    /// The number of boundary faces, regardless of mesh kind.
+    #[inline]
+    pub fn num_faces(&self) -> usize {
+        match self {
+            Shell::PolygonMesh(d) => d.num_faces(),
+            Shell::TriangularMesh(d) => d.num_triangles(),
+        }
+    }
 }
 
 /// A volumetric solid bounded by an exterior shell and any number of interior
@@ -43,8 +52,22 @@ impl Shell {
 pub struct Solid {
     /// Coordinate frame this solid's shells are expressed in; the shells
     /// themselves are coordless raw meshes.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     exterior: Shell,
     /// Hollow voids.
     interiors: Vec<Shell>,
+}
+
+impl Solid {
+    /// The exterior boundary shell.
+    #[inline]
+    pub fn exterior(&self) -> &Shell {
+        &self.exterior
+    }
+
+    /// The interior (void) boundary shells.
+    #[inline]
+    pub fn interiors(&self) -> &[Shell] {
+        &self.interiors
+    }
 }

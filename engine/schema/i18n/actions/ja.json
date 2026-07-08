@@ -994,11 +994,48 @@
       }
     },
     {
+      "name": "FeatureCityGml2Reader",
+      "description": "CityGML 2.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGml2Reader パラメータ"
+        },
+        "cityGmlAttributesKey": {
+          "title": "CityGML属性キー",
+          "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。"
+        },
+        "dataset": {
+          "title": "データセット",
+          "description": "読み込む CityGML 2.0 ファイルへのパス式"
+        },
+        "extractTags": {
+          "title": "タグの抽出",
+          "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
+        },
+        "flattenMeasureTypes": {
+          "title": "計測タイプのフラット化",
+          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。"
+        },
+        "flattenSingleChildObjects": {
+          "title": "単一子オブジェクトノードのフラット化",
+          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
+        },
+        "keepAttributes": {
+          "title": "属性の保持",
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
+        }
+      }
+    },
+    {
       "name": "FeatureCityGml3Reader",
       "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
       "parameterI18n": {
         "": {
           "title": "FeatureCityGml3Reader パラメータ"
+        },
+        "cityGmlAttributesKey": {
+          "title": "CityGML属性キー",
+          "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。"
         },
         "dataset": {
           "title": "データセット",
@@ -1007,6 +1044,18 @@
         "extractTags": {
           "title": "タグの抽出",
           "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
+        },
+        "flattenMeasureTypes": {
+          "title": "計測タイプのフラット化",
+          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。"
+        },
+        "flattenSingleChildObjects": {
+          "title": "単一子オブジェクトノードのフラット化",
+          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
+        },
+        "keepAttributes": {
+          "title": "属性の保持",
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
         }
       }
     },

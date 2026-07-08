@@ -17,6 +17,7 @@ import {
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
 import {
+  useGraphStaleness,
   useProjectExport,
   useProjectLock,
   useProjectSave,
@@ -243,6 +244,7 @@ export default ({
     yAwareness,
   });
 
+  const { staleNodeIds } = useGraphStaleness({ yWorkflows, undoManager });
   const {
     schemaProbes,
     readerAttributeSuggestions,
@@ -520,6 +522,7 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    staleNodeIds,
     handleProjectLockChange,
     isLocked,
     handleSpotlightUserSelect,
