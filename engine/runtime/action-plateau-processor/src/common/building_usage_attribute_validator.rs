@@ -14,10 +14,10 @@
 //! violation/classification helpers) lives here, and the findings are emitted
 //! identically for every generation (usage errors as the `errors` array,
 //! city-code errors as the `cityCodeError` scalar). The only generation-specific
-//! seam — how the i-UR attributes are laid out in the feature (CityGML 2.0 nests
-//! them under a `cityGmlAttributes` map; CityGML 3.0 hangs them off
-//! `bldg:adeOfAbstractBuilding`) and where the survey year and city code come
-//! from — is injected as a [`BuildingUsageAttributeStrategy`] trait object.
+//! seam is injected as a [`BuildingUsageAttributeStrategy`] trait object: how the
+//! i-UR attributes are laid out in the feature (CityGML 2.0 nests them under a
+//! `cityGmlAttributes` map; CityGML 3.0 hangs them off `bldg:adeOfAbstractBuilding`)
+//! and where the survey year and city code come from.
 
 use std::collections::HashMap;
 use std::fmt::Debug;
