@@ -8765,6 +8765,7 @@ This processor validates building usage attributes by checking for the presence 
   ],
   "properties": {
     "codelistsPath": {
+      "description": "Expression evaluating to the PLATEAU codelists directory path.",
       "type": "object",
       "format": "code",
       "required": [
@@ -9960,6 +9961,186 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 ### Category
 * PLATEAU
 
+## PLATEAU6.BuildingPartConnectivityChecker
+### Type
+* processor
+### Description
+Check connectivity between BuildingParts within the same Building using 3D boundary surface matching
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingPartConnectivityChecker Parameters",
+  "description": "Configure how to check connectivity between BuildingParts",
+  "type": "object",
+  "properties": {
+    "buildingIdAttribute": {
+      "title": "Building ID Attribute",
+      "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
+      "default": "gmlId",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "fileIndexAttribute": {
+      "title": "File Index Attribute",
+      "description": "Attribute containing the file index (default: \"fileIndex\")",
+      "default": "fileIndex",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "lodAttribute": {
+      "title": "LOD Attribute",
+      "description": "Attribute containing the Level of Detail (default: \"lod\")",
+      "default": "lod",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "partIdAttribute": {
+      "title": "Part ID Attribute",
+      "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
+      "default": "featureId",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+* PLATEAU
+
+## PLATEAU6.BuildingUsageAttributeValidator
+### Type
+* processor
+### Description
+This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingUsageAttributeValidatorParam",
+  "type": "object",
+  "required": [
+    "codelistsPath"
+  ],
+  "properties": {
+    "codelistsPath": {
+      "description": "Expression evaluating to the PLATEAU codelists directory path.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* l0405BldgError
+* cityCodeError
+* default
+### Category
+* PLATEAU
+
+## PLATEAU6.DestinationMeshCodeExtractor
+### Type
+* processor
+### Description
+Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PLATEAU Destination MeshCode Extractor Parameters",
+  "description": "Configure mesh code extraction for Japanese standard regional mesh",
+  "type": "object",
+  "properties": {
+    "epsgCode": {
+      "title": "EPSG Code",
+      "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
+      "default": {
+        "type": "flowExpr",
+        "value": "6691"
+      },
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "meshType": {
+      "title": "Mesh Type",
+      "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
+      "default": 3,
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "meshcodeAttr": {
+      "title": "Mesh Code Attribute Name",
+      "description": "Output attribute name for the mesh code",
+      "default": "_meshcode",
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU6.DomainOfDefinitionValidator
 ### Type
 * processor
@@ -10081,6 +10262,44 @@ Extract object list
 ### Category
 * PLATEAU
 
+## PLATEAU6.SolidIntersectionTestPairCreator
+### Type
+* processor
+### Description
+Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolidIntersectionTestPairCreatorParam",
+  "type": "object",
+  "properties": {
+    "gmlIdAttribute": {
+      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+      "default": "gmlId",
+      "type": "string"
+    },
+    "listAttribute": {
+      "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+      "default": "list",
+      "type": "string"
+    },
+    "pairIdAttribute": {
+      "description": "Attribute name to store the pair ID (default: \"pair_id\")",
+      "default": "pair_id",
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* A
+* B
+### Category
+* PLATEAU
+
 ## PLATEAU6.UDXFolderExtractor
 ### Type
 * processor
@@ -10150,6 +10369,22 @@ Extracts UDX folders from cityGML path
 ### Output Ports
 * default
 * rejected
+### Category
+* PLATEAU
+
+## PLATEAU6.UnmatchedXlinkDetector
+### Type
+* processor
+### Description
+Detect unmatched Xlinks for PLATEAU
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* summary
+* unMatchedXlinkFrom
+* unMatchedXlinkTo
 ### Category
 * PLATEAU
 

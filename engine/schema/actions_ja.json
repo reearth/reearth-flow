@@ -8997,6 +8997,7 @@
         ],
         "properties": {
           "codelistsPath": {
+            "description": "PLATEAU コードリストディレクトリのパスを表す式",
             "type": "object",
             "format": "code",
             "required": [
@@ -10219,6 +10220,189 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.BuildingPartConnectivityChecker",
+      "type": "processor",
+      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BuildingPartConnectivityChecker パラメータ",
+        "description": "BuildingPart 間の接続性チェック方法を設定する",
+        "type": "object",
+        "properties": {
+          "buildingIdAttribute": {
+            "title": "建物 ID 属性",
+            "description": "親の Building ID を含む属性（デフォルト: \"gmlId\"）",
+            "default": "gmlId",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "fileIndexAttribute": {
+            "title": "ファイルインデックス属性",
+            "description": "ファイルインデックスを含む属性（デフォルト: \"fileIndex\"）",
+            "default": "fileIndex",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "lodAttribute": {
+            "title": "LOD 属性",
+            "description": "詳細レベル（LOD）を含む属性（デフォルト: \"lod\"）",
+            "default": "lod",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "partIdAttribute": {
+            "title": "パーツ ID 属性",
+            "description": "BuildingPart ID を含む属性（デフォルト: \"featureId\"）",
+            "default": "featureId",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature",
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.BuildingUsageAttributeValidator",
+      "type": "processor",
+      "description": "建物利用属性の依存関係違反（L-bldg-04,05）と、市区町村コードを Common_localPublicAuthorities コードリストと照合して検証する。利用属性エラーは l0405BldgError ポート、市区町村コードエラーは cityCodeError ポートへ出力する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BuildingUsageAttributeValidator パラメータ",
+        "type": "object",
+        "required": [
+          "codelistsPath"
+        ],
+        "properties": {
+          "codelistsPath": {
+            "description": "PLATEAU コードリストディレクトリのパスを表す式",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "l0405BldgError",
+        "cityCodeError",
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.DestinationMeshCodeExtractor",
+      "type": "processor",
+      "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DestinationMeshCodeExtractor パラメータ",
+        "description": "日本標準地域メッシュのメッシュコード抽出を設定する",
+        "type": "object",
+        "properties": {
+          "epsgCode": {
+            "title": "EPSG コード",
+            "description": "面積計算に使用する日本の平面直角座標系 EPSG コード",
+            "default": {
+              "type": "flowExpr",
+              "value": "6691"
+            },
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "meshType": {
+            "title": "メッシュタイプ",
+            "description": "日本標準メッシュタイプ: 1=80km、2=10km、3=1km、4=500m、5=250m、6=125m",
+            "default": 3,
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "meshcodeAttr": {
+            "title": "メッシュコード属性名",
+            "description": "メッシュコードの出力属性名",
+            "default": "_meshcode",
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.DomainOfDefinitionValidator",
       "type": "processor",
       "description": "PLATEAU6の定義領域を検証する",
@@ -10343,6 +10527,45 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.SolidIntersectionTestPairCreator",
+      "type": "processor",
+      "description": "AreaOnAreaOverlayerの出力からソリッドの交差テスト用の地物ペアを作成する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SolidIntersectionTestPairCreator パラメータ",
+        "type": "object",
+        "properties": {
+          "gmlIdAttribute": {
+            "description": "リストアイテム内の GML ID の属性名（デフォルト: \"gmlId\"）",
+            "default": "gmlId",
+            "type": "string"
+          },
+          "listAttribute": {
+            "description": "AreaOnAreaOverlayer からの重複フィーチャーのリストを含む属性名（デフォルト: \"list\"）",
+            "default": "list",
+            "type": "string"
+          },
+          "pairIdAttribute": {
+            "description": "ペア ID を格納する属性名（デフォルト: \"pair_id\"）",
+            "default": "pair_id",
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "A",
+        "B"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "type": "processor",
       "description": "PLATEAU6データからUDXフォルダを抽出する",
@@ -10409,6 +10632,25 @@
       "outputPorts": [
         "default",
         "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.UnmatchedXlinkDetector",
+      "type": "processor",
+      "description": "PLATEAUの未一致Xlinkを検出する",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "unMatchedXlinkFrom",
+        "unMatchedXlinkTo"
       ],
       "categories": [
         "PLATEAU"

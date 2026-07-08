@@ -1,0 +1,4 @@
+"BuildingPart.gml_id","Building.gml_id","connected_id","connected_parts","Index","Filename","lod","status"
+"bpart_l02partial-B","bldg_l02partial-0001",0,2,1,"49303425_bldg_6697_op.gml",2,"partial"
+"bpart_l02partial-A","bldg_l02partial-0001",0,2,1,"49303425_bldg_6697_op.gml",2,"partial"
+"bpart_l02partial-C","bldg_l02partial-0001",1,1,1,"49303425_bldg_6697_op.gml",2,"alone"
