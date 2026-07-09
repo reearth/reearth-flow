@@ -342,3 +342,24 @@ fn position_bounds(positions: &[[f32; 3]]) -> ([f32; 3], [f32; 3]) {
     }
     (min, max)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `push_buffer_view` is the only place arbitrary-length bytes enter
+    /// `bin` — e.g. `next::metadata`'s raw UTF-8 property values, which have
+    /// no inherent alignment (unlike positions/indices, always 4-byte
+    /// multiples by construction). A non-4-aligned view must still leave the
+    /// *next* view's byte_offset correct.
+    #[test]
+    fn test_push_buffer_view_pads_between_unaligned_views() {
+        let mut builder = Builder::new();
+        builder.push_buffer_view(&[1, 2, 3]);
+        assert_eq!(builder.bin, vec![1, 2, 3, 0]);
+
+        builder.push_buffer_view(&[4, 5, 6, 7, 8]);
+        assert_eq!(&builder.bin[4..], &[4, 5, 6, 7, 8, 0, 0, 0]);
+        assert_eq!(builder.bin.len(), 12);
+    }
+}

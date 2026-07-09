@@ -225,3 +225,61 @@ impl Builder {
         primitive.extra_attributes.push((semantic, out_data));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn material() -> MaterialDesc {
+        MaterialDesc {
+            base_color_factor: [1.0, 1.0, 1.0, 1.0],
+            metallic_factor: 0.0,
+            roughness_factor: 1.0,
+        }
+    }
+
+    /// Two triangles sharing an edge (original vertices 1 and 2), each in its
+    /// own polygon with its own per-polygon normal.
+    fn two_triangles_sharing_an_edge() -> (Vec<[f32; 3]>, Vec<[u32; 3]>) {
+        let positions = vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let indices = vec![[0, 1, 2], [2, 1, 3]];
+        (positions, indices)
+    }
+
+    #[test]
+    fn test_vertex_dedup_with_sharp_edge() {
+        let (positions, indices) = two_triangles_sharing_an_edge();
+        let dedup = vec![normal(
+            Granularity::PerPolygon,
+            vec![[0.0, 0.0, 1.0], [0.0, 0.0, -1.0]],
+        )];
+
+        let mut builder = Builder::new();
+        let handle = builder.push_primitive(positions, indices, material(), &[1, 1], &[], dedup);
+
+        // Vertices 1 and 2 are shared by position, but each triangle's flat
+        // normal disagrees on them, so none of the 6 corners may collapse.
+        assert_eq!(builder.primitives[handle.0].positions.len(), 6);
+    }
+
+    #[test]
+    fn test_vertex_dedup_with_smooth_edge() {
+        let (positions, indices) = two_triangles_sharing_an_edge();
+        let dedup = vec![normal(
+            Granularity::PerPolygon,
+            vec![[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]],
+        )];
+
+        let mut builder = Builder::new();
+        let handle = builder.push_primitive(positions, indices, material(), &[1, 1], &[], dedup);
+
+        // Same shared vertices, but both polygons agree on the normal now, so
+        // the shared corners collapse back to the 4 original positions.
+        assert_eq!(builder.primitives[handle.0].positions.len(), 4);
+    }
+}
