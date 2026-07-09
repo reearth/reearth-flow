@@ -70,7 +70,7 @@ const DialogContent = forwardRef<
         initialFocus={false}
         finalFocus={false}
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-accent bg-card/50 shadow-lg backdrop-blur duration-200 transition-all data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 sm:rounded-lg dark:border-primary dark:bg-card/50",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-accent bg-card/50 shadow-lg backdrop-blur transition-all duration-200 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 sm:rounded-lg dark:border-primary dark:bg-card/50",
           size === "xs"
             ? "max-w-[300px]"
             : size === "sm"

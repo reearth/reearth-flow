@@ -1,5 +1,5 @@
-import { CaretRightIcon, CheckIcon, CircleIcon } from "@phosphor-icons/react";
 import { Menu as DropdownMenuPrimitive } from "@base-ui/react/menu";
+import { CaretRightIcon, CheckIcon, CircleIcon } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { cn } from "@flow/lib/utils";
@@ -221,7 +221,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-[inset]:pl-8 data-popup-open:bg-accent data-popup-open:text-accent-foreground",
+        "flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-popup-open:bg-accent data-popup-open:text-accent-foreground data-[inset]:pl-8",
         className,
       )}
       {...props}>

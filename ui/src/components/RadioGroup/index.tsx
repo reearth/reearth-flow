@@ -1,6 +1,6 @@
-import { CheckIcon } from "@phosphor-icons/react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
+import { CheckIcon } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { cn } from "@flow/lib/utils";
