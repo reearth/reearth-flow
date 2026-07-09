@@ -225,7 +225,10 @@ mod tests {
             .nodes
             .get(node_id)
             .unwrap_or_else(|| panic!("node {node_id} present in report"));
-        let port = node.ports.get("default").expect("node has a default port");
+        let port = node
+            .ports
+            .get("features")
+            .expect("node has a features port");
         port.fields.iter().map(|f| f.name.clone()).collect()
     }
 
@@ -277,8 +280,8 @@ graphs:
       - id: {EDGE_ID}
         from: {READER_ID}
         to: {MANAGER_ID}
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 "#
         );
 
@@ -322,7 +325,7 @@ graphs:
             .expect("reader node present in report");
         let reader_default_port = reader_node
             .ports
-            .get("default")
+            .get("features")
             .expect("reader has a default port");
         assert!(
             !reader_default_port.open,
@@ -421,7 +424,7 @@ graphs:
         );
         let reader_default_port = reader_node
             .ports
-            .get("default")
+            .get("features")
             .expect("reader has a default port");
         assert!(
             !reader_default_port.open,

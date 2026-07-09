@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -128,12 +128,12 @@ impl ProcessorFactory for NullAttributeMapperFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            DEFAULT_PORT.clone(),     // mapped
+            FEATURES_PORT.clone(),    // mapped
             Port::new(HAS_NULL_PORT), // hasNull
             Port::new(REJECTED_PORT), // rejected
         ]
@@ -196,7 +196,7 @@ impl Processor for NullAttributeMapper {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         // If the feature arrives on a non-default port, reject it
-        if ctx.port != *DEFAULT_PORT {
+        if ctx.port != *FEATURES_PORT {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), Port::new(REJECTED_PORT)));
             return Ok(());
         }
@@ -288,7 +288,7 @@ impl Processor for NullAttributeMapper {
         }
 
         // Emit modified feature to mapped (default) port
-        fw.send(ctx.new_with_feature_and_port(modified_feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(modified_feature, FEATURES_PORT.clone()));
 
         Ok(())
     }
@@ -377,7 +377,7 @@ mod tests {
 
         for (i, feature) in features.iter().enumerate() {
             if i < ports.len() {
-                if ports[i] == DEFAULT_PORT.clone() {
+                if ports[i] == FEATURES_PORT.clone() {
                     mapped.push(feature.clone());
                 } else if ports[i] == Port::new(HAS_NULL_PORT) {
                     has_null.push(feature.clone());

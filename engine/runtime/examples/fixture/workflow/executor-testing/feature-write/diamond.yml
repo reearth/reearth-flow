@@ -12,7 +12,7 @@ graphs:
         type: action
         action: InputRouter
         with:
-          routingPort: default
+          routingPort: features
 
       - id: 40000000-0000-0000-0000-000000000032
         name: FeatureFilter
@@ -47,18 +47,18 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000081
         from: 40000000-0000-0000-0000-000000000031
         to: 40000000-0000-0000-0000-000000000032
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 40000000-0000-0000-0000-000000000082
         from: 40000000-0000-0000-0000-000000000032
         to: 40000000-0000-0000-0000-000000000033
         fromPort: portA
-        toPort: default
+        toPort: features
       - id: 40000000-0000-0000-0000-000000000083
         from: 40000000-0000-0000-0000-000000000032
         to: 40000000-0000-0000-0000-000000000034
         fromPort: unfiltered
-        toPort: default
+        toPort: features
 
   - id: 40000000-0000-0000-0000-000000000020
     name: subgraph_a
@@ -68,7 +68,7 @@ graphs:
         type: action
         action: InputRouter
         with:
-          routingPort: default
+          routingPort: features
 
       - id: 40000000-0000-0000-0000-000000000022
         name: SharedSubGraph
@@ -86,13 +86,13 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000061
         from: 40000000-0000-0000-0000-000000000021
         to: 40000000-0000-0000-0000-000000000022
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 40000000-0000-0000-0000-000000000062
         from: 40000000-0000-0000-0000-000000000022
         to: 40000000-0000-0000-0000-000000000023
         fromPort: out1
-        toPort: default
+        toPort: features
 
   - id: 40000000-0000-0000-0000-000000000040
     name: subgraph_b
@@ -102,7 +102,7 @@ graphs:
         type: action
         action: InputRouter
         with:
-          routingPort: default
+          routingPort: features
 
       - id: 40000000-0000-0000-0000-000000000042
         name: SharedSubGraph
@@ -120,13 +120,13 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000071
         from: 40000000-0000-0000-0000-000000000041
         to: 40000000-0000-0000-0000-000000000042
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 40000000-0000-0000-0000-000000000072
         from: 40000000-0000-0000-0000-000000000042
         to: 40000000-0000-0000-0000-000000000043
         fromPort: out2
-        toPort: default
+        toPort: features
 
   - id: 40000000-0000-0000-0000-000000000010
     name: entry_point
@@ -169,20 +169,20 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000051
         from: 40000000-0000-0000-0000-000000000011
         to: 40000000-0000-0000-0000-000000000012
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 40000000-0000-0000-0000-000000000052
         from: 40000000-0000-0000-0000-000000000011
         to: 40000000-0000-0000-0000-000000000013
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 40000000-0000-0000-0000-000000000053
         from: 40000000-0000-0000-0000-000000000012
         to: 40000000-0000-0000-0000-000000000014
         fromPort: out1
-        toPort: default
+        toPort: features
       - id: 40000000-0000-0000-0000-000000000054
         from: 40000000-0000-0000-0000-000000000013
         to: 40000000-0000-0000-0000-000000000014
         fromPort: out1
-        toPort: default
+        toPort: features

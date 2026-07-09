@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{CityGmlGeometry, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -41,11 +41,11 @@ impl ProcessorFactory for GeometryCoercerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -103,12 +103,12 @@ impl Processor for GeometryCoercer {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         };
         match &geometry.value {
             GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(geos) => {
                 self.handle_2d_geometry(geos, feature, geometry, &ctx, fw)?;
@@ -173,7 +173,7 @@ impl GeometryCoercer {
                     }
                     CoerceTarget::TriangularMesh => Err("Not supported".to_string())?,
                 }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             Geometry2D::Polygon(polygon) => {
                 let mut feature = feature.clone();
@@ -199,7 +199,7 @@ impl GeometryCoercer {
                     }
                     CoerceTarget::TriangularMesh => Err("Not supported".to_string())?,
                 }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             Geometry2D::MultiPolygon(polygons) => {
                 let mut feature = feature.clone();
@@ -238,7 +238,7 @@ impl GeometryCoercer {
                     }
                     CoerceTarget::TriangularMesh => Err("Not supported".to_string())?,
                 }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             _ => return Err("Not supported".to_string()), // Not supported
         }
@@ -282,7 +282,7 @@ impl GeometryCoercer {
                         return Err("not supported".to_string())?;
                     }
                 }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             Geometry3D::Polygon(polygon) => {
                 let mut feature = feature.clone();
@@ -316,7 +316,7 @@ impl GeometryCoercer {
                         feature.geometry = Arc::new(geometry);
                     }
                 }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             Geometry3D::MultiPolygon(polygons) => {
                 let mut feature = feature.clone();
@@ -362,7 +362,7 @@ impl GeometryCoercer {
                         feature.geometry = Arc::new(geometry);
                     }
                 }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             _ => return Err("Not supported".to_string()), // Not supported
         };
@@ -407,7 +407,7 @@ impl GeometryCoercer {
                     let mut feature = feature.clone();
                     feature.refresh_id();
                     feature.geometry = Arc::new(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
                 CoerceTarget::Polygon => {
                     // For CityGML, we already have polygons, so we just pass them through
@@ -428,7 +428,7 @@ impl GeometryCoercer {
                     let mut feature = feature.clone();
                     feature.refresh_id();
                     feature.geometry = Arc::new(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
                 CoerceTarget::TriangularMesh => {
                     for polygon in geo_feature.polygons.iter() {
@@ -452,7 +452,7 @@ impl GeometryCoercer {
                     let mut feature = feature.clone();
                     feature.refresh_id();
                     feature.geometry = Arc::new(geometry);
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
             }
         }

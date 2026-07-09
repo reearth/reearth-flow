@@ -9,7 +9,7 @@ use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::event::{Event, EventHub};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::{Code, CompiledCode, Feature};
@@ -47,7 +47,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
+        vec![FEATURES_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -171,7 +171,7 @@ impl Sink for Cesium3DTilesWriter {
     #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         match &ctx.port {
-            port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
+            port if *port == *FEATURES_PORT => self.process_default(&ctx)?,
             port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx),
             port => {
                 return Err(

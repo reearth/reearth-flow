@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::datetime::DateTime;
 use reearth_flow_types::AttributeValue;
@@ -38,11 +38,11 @@ impl ProcessorFactory for DateTimeConverterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), Port::new(FAILED_PORT)]
+        vec![FEATURES_PORT.clone(), Port::new(FAILED_PORT)]
     }
 
     fn build(
@@ -85,7 +85,7 @@ impl ProcessorFactory for DateTimeConverterFactory {
         let params = parse_params(with)?;
 
         let input = inputs
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .cloned()
             .unwrap_or_else(AttrSchema::open);
 
@@ -109,7 +109,7 @@ impl ProcessorFactory for DateTimeConverterFactory {
 
         // `failed` port: the feature passes through untouched.
         Some(HashMap::from([
-            (DEFAULT_PORT.clone(), default_schema),
+            (FEATURES_PORT.clone(), default_schema),
             (Port::new(FAILED_PORT), input),
         ]))
     }
@@ -231,7 +231,7 @@ impl Processor for DateTimeConverter {
         feature.insert(output_attr, output_value);
 
         // Send to output port
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
 
         Ok(())
     }
@@ -397,7 +397,7 @@ mod tests {
 
     fn inputs_with(schema: AttrSchema) -> HashMap<Port, AttrSchema> {
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), schema);
+        inputs.insert(FEATURES_PORT.clone(), schema);
         inputs
     }
 
@@ -416,7 +416,7 @@ mod tests {
             .expect("inference should succeed");
 
         let default = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
         assert_eq!(
             default.fields.get(&Attribute::new("ts".to_string())),
@@ -449,7 +449,7 @@ mod tests {
             .expect("inference should succeed");
 
         let default = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
         assert_eq!(
             default.fields.get(&Attribute::new("ts".to_string())),
@@ -481,7 +481,7 @@ mod tests {
             .expect("inference should succeed");
 
         let default = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
         assert_eq!(
             default.fields.get(&Attribute::new("ts".to_string())),

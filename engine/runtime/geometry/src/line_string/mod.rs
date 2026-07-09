@@ -12,6 +12,8 @@ use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// A polyline in 2D space, with optional per-vertex elevation (2.5D).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

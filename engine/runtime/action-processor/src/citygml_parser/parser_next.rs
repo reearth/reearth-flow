@@ -13,7 +13,7 @@ use super::geometry;
 use super::resolver::GeomRegistry;
 use super::utils::{
     gml_id_attr, local_name as utils_local_name, xlink_href_attr, NamespaceRegistry, NsId, QName,
-    XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID, XLINK_NS_ID,
+    XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -55,6 +55,10 @@ pub enum ParseError {
 pub struct Parser {
     raw_registry: RawRegistry,
     geom_registry: GeomRegistry,
+    /// The `app:appearanceMember` roots, retained for pass-2 indexing once every
+    /// `gml:id` is known, so a surface data or appearance reached by `xlink:href`
+    /// resolves.
+    appearance_members: Vec<Arc<RawNode>>,
     pub(super) ns_registry: NamespaceRegistry,
     pending: Vec<PendingFeature>,
     /// Whether to record each geometry's enclosing `gml:id`s, needed only when
@@ -89,6 +93,7 @@ impl Parser {
         Self {
             raw_registry: RawRegistry::new(),
             geom_registry: GeomRegistry::new(),
+            appearance_members: Vec::new(),
             ns_registry: NamespaceRegistry::new(),
             pending: Vec::new(),
             track_owners,
@@ -135,6 +140,7 @@ impl Parser {
                                 self.track_owners,
                             );
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
+                            collect_nested_appearances(&stripped, &mut self.appearance_members);
                             self.pending.push(PendingFeature {
                                 root: stripped,
                                 geoms,
@@ -144,8 +150,39 @@ impl Parser {
                                 "citygml: empty cityObjectMember/featureMember, skipped"
                             );
                         }
+                    } else if ln == "appearanceMember" {
+                        let member = Arc::new(parse_element(
+                            &mut reader,
+                            &mut buf,
+                            name,
+                            attrs,
+                            &source_url_arc,
+                            &mut self.ns_registry,
+                        )?);
+                        collect_ids(&member, source_url_arc.as_str(), &mut self.raw_registry);
+                        self.appearance_members.push(member);
                     } else {
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
+                    }
+                }
+                OwnedEvent::Empty { name, attrs } if local_name(&name.0) == "appearanceMember" => {
+                    // A self-closing appearanceMember carries a whole shared
+                    // `app:Appearance` by `xlink:href`; retain it as a reference to
+                    // resolve in pass 2.
+                    if let Some(key) = xlink_href_attr(&attrs)
+                        .and_then(|href| href_to_key(href, source_url_arc.as_ref()))
+                    {
+                        self.appearance_members.push(Arc::new(RawNode {
+                            name,
+                            attrs: attrs
+                                .into_iter()
+                                .filter(|((q, ns), _)| {
+                                    !(local_name(q) == "href" && *ns == XLINK_NS_ID)
+                                })
+                                .collect(),
+                            children: vec![RawChild::Ref(key)],
+                            source_url: Arc::clone(&source_url_arc),
+                        }));
                     }
                 }
                 OwnedEvent::End => break,
@@ -158,19 +195,22 @@ impl Parser {
     }
 
     /// Consume the parser and return the pending features, the attribute and
-    /// geometry registries, and the namespace registry for pass-2 resolution.
+    /// geometry registries, the retained appearance member roots, and the namespace
+    /// registry for pass-2 resolution.
     pub(super) fn finish(
         self,
     ) -> (
         Vec<PendingFeature>,
         RawRegistry,
         GeomRegistry,
+        Vec<Arc<RawNode>>,
         NamespaceRegistry,
     ) {
         (
             self.pending,
             self.raw_registry,
             self.geom_registry,
+            self.appearance_members,
             self.ns_registry,
         )
     }
@@ -232,7 +272,7 @@ pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
 pub(super) fn raw_gml_id(node: &RawNode) -> Option<String> {
     node.attrs
         .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
+        .find(|((q, ns), _)| local_name(q) == "id" && (*ns == GML_NS_ID || *ns == GML_NS_311_ID))
         .map(|(_, v)| v.clone())
 }
 
@@ -252,6 +292,23 @@ fn collect_ids(node: &Arc<RawNode>, source_url: &str, registry: &mut RawRegistry
     for child in &node.children {
         if let RawChild::Element(e) = child {
             collect_ids(e, source_url, registry);
+        }
+    }
+}
+
+/// Collect every nested `app:appearance` property under a city object subtree,
+/// retaining each for pass-2 indexing alongside the top-level `appearanceMember`s.
+/// CityGML also allows appearances on individual city objects, not only at the
+/// `CityModel` root; an appearance property never nests another, so a match is not
+/// descended into.
+fn collect_nested_appearances(node: &Arc<RawNode>, out: &mut Vec<Arc<RawNode>>) {
+    for child in &node.children {
+        if let RawChild::Element(e) = child {
+            if local_name(&e.name.0) == "appearance" {
+                out.push(Arc::clone(e));
+            } else {
+                collect_nested_appearances(e, out);
+            }
         }
     }
 }
@@ -557,7 +614,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _) = parser.finish();
+        let (pending, _, _, _, _) = parser.finish();
 
         assert_eq!(pending.len(), 2);
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
@@ -579,7 +636,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, raw_reg, _, _) = parser.finish();
+        let (pending, raw_reg, _, _, _) = parser.finish();
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
@@ -600,7 +657,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (_, raw_reg, _, _) = parser.finish();
+        let (_, raw_reg, _, _, _) = parser.finish();
 
         let url = dummy_url().to_string();
         assert!(raw_reg.contains_key(&(url.clone(), "bldg001".to_string())));
@@ -625,7 +682,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
-        let (_, raw_reg, _, _) = parser.finish();
+        let (_, raw_reg, _, _, _) = parser.finish();
 
         assert_eq!(raw_reg.len(), 2);
         assert!(raw_reg.contains_key(&(url_a.to_string(), "shared001".to_string())));
@@ -654,7 +711,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _) = parser.finish();
+        let (pending, _, _, _, _) = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -687,7 +744,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _) = parser.finish();
+        let (pending, _, _, _, _) = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -751,7 +808,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _) = parser.finish();
+        let (pending, _, _, _, _) = parser.finish();
 
         assert_eq!(
             pending[0]

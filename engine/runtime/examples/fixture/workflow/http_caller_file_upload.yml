@@ -143,26 +143,26 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440080
         from: 550e8400-e29b-41d4-a716-446655440030
         to: 550e8400-e29b-41d4-a716-446655440040
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 550e8400-e29b-41d4-a716-446655440090
         from: 550e8400-e29b-41d4-a716-446655440040
         to: 550e8400-e29b-41d4-a716-446655440050
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 550e8400-e29b-41d4-a716-446655440100
         from: 550e8400-e29b-41d4-a716-446655440050
         to: 550e8400-e29b-41d4-a716-446655440060
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 550e8400-e29b-41d4-a716-446655440110
         from: 550e8400-e29b-41d4-a716-446655440060
         to: 550e8400-e29b-41d4-a716-446655440070
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
 # To run this workflow:
 # cargo run --package reearth-flow-cli -- run \

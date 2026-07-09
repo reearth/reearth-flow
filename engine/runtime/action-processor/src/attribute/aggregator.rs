@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
@@ -42,11 +42,11 @@ impl ProcessorFactory for AttributeAggregatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -277,7 +277,7 @@ impl AttributeAggregator {
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
                 feature,
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         });
     }
@@ -320,7 +320,7 @@ mod tests {
         let features = noop.send_features.lock().unwrap();
         let ports = noop.send_ports.lock().unwrap();
         assert!(
-            ports.iter().all(|p| *p == *DEFAULT_PORT),
+            ports.iter().all(|p| *p == *FEATURES_PORT),
             "all emissions should go to DEFAULT port"
         );
         features

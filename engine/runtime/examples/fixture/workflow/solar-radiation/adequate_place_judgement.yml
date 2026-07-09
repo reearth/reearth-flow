@@ -1030,84 +1030,84 @@ edges:
   - id: ea000000-0000-0000-0000-000000000001
     from: a0000000-0000-0000-0000-000000000001
     to: 00000005-0000-0000-0000-000000000032
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # BuildingRadiationInput → BuildingTotalCounter (branch 1: count total)
   - id: ea000000-0000-0000-0000-000000000002
     from: a0000000-0000-0000-0000-000000000001
     to: 00000005-0000-0000-0000-000000000030
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # BuildingAttrInput → BuildingAttrMerger.supplier
   - id: ea000000-0000-0000-0000-000000000003
     from: a0000000-0000-0000-0000-000000000002
     to: 00000005-0000-0000-0000-000000000036
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # BuildingAttrInput → RestrictZone1SpatialFilter.candidate
   - id: ea000000-0000-0000-0000-000000000004
     from: a0000000-0000-0000-0000-000000000002
     to: 00000007-0000-0000-0000-000000000004
-    fromPort: default
+    fromPort: features
     toPort: candidate
 
   # BuildingAttrInput → RestrictZone2SpatialFilter.candidate
   - id: ea000000-0000-0000-0000-000000000005
     from: a0000000-0000-0000-0000-000000000002
     to: 00000007-0000-0000-0000-000000000014
-    fromPort: default
+    fromPort: features
     toPort: candidate
 
   # BuildingAttrInput → RestrictZone3SpatialFilter.candidate
   - id: ea000000-0000-0000-0000-000000000006
     from: a0000000-0000-0000-0000-000000000002
     to: 00000007-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: candidate
 
   # BuildingAttrInput → SnowSpatialFilter.candidate
   - id: ea000000-0000-0000-0000-000000000007
     from: a0000000-0000-0000-0000-000000000002
     to: 00000007-0000-0000-0000-000000000033
-    fromPort: default
+    fromPort: features
     toPort: candidate
 
   # LandRadiationInput → LandRadiationAggregator
   - id: ea000000-0000-0000-0000-000000000008
     from: a0000000-0000-0000-0000-000000000003
     to: 00000006-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # DemTriangleInput → LandZone1SpatialFilter.candidate
   - id: ea000000-0000-0000-0000-000000000009
     from: a0000000-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000021
-    fromPort: default
+    fromPort: features
     toPort: candidate
 
   # DemTriangleInput → LandZone2SpatialFilter.candidate
   - id: ea000000-0000-0000-0000-000000000010
     from: a0000000-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000031
-    fromPort: default
+    fromPort: features
     toPort: candidate
 
   # DemTriangleInput → LandZone3SpatialFilter.candidate
   - id: ea000000-0000-0000-0000-000000000011
     from: a0000000-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000041
-    fromPort: default
+    fromPort: features
     toPort: candidate
 
   # DemTriangleInput → LandSnowSpatialFilter.candidate
   - id: ea000000-0000-0000-0000-000000000012
     from: a0000000-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000010
-    fromPort: default
+    fromPort: features
     toPort: candidate
 
   # ========================================
@@ -1118,35 +1118,35 @@ edges:
   - id: e0000005-0000-0000-0000-000000000042
     from: 00000005-0000-0000-0000-000000000030
     to: 00000005-0000-0000-0000-000000000031
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # AddBroadcastKey → TotalCountMerger.supplier
   - id: e0000005-0000-0000-0000-000000000043
     from: 00000005-0000-0000-0000-000000000031
     to: 00000005-0000-0000-0000-000000000035
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # BuildingRadiationSorter → BuildingRankCounter
   - id: e0000005-0000-0000-0000-000000000044
     from: 00000005-0000-0000-0000-000000000032
     to: 00000005-0000-0000-0000-000000000033
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # BuildingRankCounter → AddBroadcastKeyToRanked
   - id: e0000005-0000-0000-0000-000000000045
     from: 00000005-0000-0000-0000-000000000033
     to: 00000005-0000-0000-0000-000000000034
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # AddBroadcastKeyToRanked → TotalCountMerger.requestor
   - id: e0000005-0000-0000-0000-000000000046
     from: 00000005-0000-0000-0000-000000000034
     to: 00000005-0000-0000-0000-000000000035
-    fromPort: default
+    fromPort: features
     toPort: requestor
 
   # TotalCountMerger.merged → BuildingAttrMerger.requestor
@@ -1189,28 +1189,28 @@ edges:
     from: 00000007-0000-0000-0000-000000000034
     to: 00000005-0000-0000-0000-000000000060
     fromPort: merged
-    toPort: default
+    toPort: features
 
   # BuildingJudgmentComputer → BuildingPriorityComputer
   - id: e0000005-0000-0000-0000-000000000055
     from: 00000005-0000-0000-0000-000000000060
     to: 00000005-0000-0000-0000-000000000063
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # BuildingPriorityComputer → BuildingJudgmentMapper
   - id: e0000005-0000-0000-0000-000000000053
     from: 00000005-0000-0000-0000-000000000063
     to: 00000005-0000-0000-0000-000000000061
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # BuildingJudgmentMapper → BuildingJudgmentWriter
   - id: e0000005-0000-0000-0000-000000000054
     from: 00000005-0000-0000-0000-000000000061
     to: 00000005-0000-0000-0000-000000000062
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # ========================================
   # Section 2f: Restriction Zone Edges
@@ -1221,15 +1221,15 @@ edges:
   - id: e0000007-0000-0000-0000-000000000001
     from: 00000007-0000-0000-0000-000000000001
     to: 00000007-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # RestrictZone1ShapefileReader → RestrictZone1SpatialFilter.filter
   # Use un-reprojected geographic CRS to match buildings (EPSG:6697).
   - id: e0000007-0000-0000-0000-000000000002
     from: 00000007-0000-0000-0000-000000000001
     to: 00000007-0000-0000-0000-000000000004
-    fromPort: default
+    fromPort: features
     toPort: filter
 
   # RestrictZone1SpatialFilter.passed → InZone1FlagPassed
@@ -1237,27 +1237,27 @@ edges:
     from: 00000007-0000-0000-0000-000000000004
     to: 00000007-0000-0000-0000-000000000005
     fromPort: passed
-    toPort: default
+    toPort: features
 
   # RestrictZone1SpatialFilter.failed → InZone1FlagFailed
   - id: e0000007-0000-0000-0000-000000000005
     from: 00000007-0000-0000-0000-000000000004
     to: 00000007-0000-0000-0000-000000000006
     fromPort: failed
-    toPort: default
+    toPort: features
 
   # InZone1FlagPassed → Zone1Merger.supplier
   - id: e0000007-0000-0000-0000-000000000006
     from: 00000007-0000-0000-0000-000000000005
     to: 00000007-0000-0000-0000-000000000007
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # InZone1FlagFailed → Zone1Merger.supplier
   - id: e0000007-0000-0000-0000-000000000007
     from: 00000007-0000-0000-0000-000000000006
     to: 00000007-0000-0000-0000-000000000007
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- Zone 2 ---
@@ -1265,15 +1265,15 @@ edges:
   - id: e0000007-0000-0000-0000-000000000011
     from: 00000007-0000-0000-0000-000000000011
     to: 00000007-0000-0000-0000-000000000012
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # RestrictZone2ShapefileReader → RestrictZone2SpatialFilter.filter
   # Use un-reprojected geographic CRS to match buildings (EPSG:6697).
   - id: e0000007-0000-0000-0000-000000000012
     from: 00000007-0000-0000-0000-000000000011
     to: 00000007-0000-0000-0000-000000000014
-    fromPort: default
+    fromPort: features
     toPort: filter
 
   # RestrictZone2SpatialFilter.passed → InZone2FlagPassed
@@ -1281,27 +1281,27 @@ edges:
     from: 00000007-0000-0000-0000-000000000014
     to: 00000007-0000-0000-0000-000000000015
     fromPort: passed
-    toPort: default
+    toPort: features
 
   # RestrictZone2SpatialFilter.failed → InZone2FlagFailed
   - id: e0000007-0000-0000-0000-000000000015
     from: 00000007-0000-0000-0000-000000000014
     to: 00000007-0000-0000-0000-000000000016
     fromPort: failed
-    toPort: default
+    toPort: features
 
   # InZone2FlagPassed → Zone2Merger.supplier
   - id: e0000007-0000-0000-0000-000000000016
     from: 00000007-0000-0000-0000-000000000015
     to: 00000007-0000-0000-0000-000000000017
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # InZone2FlagFailed → Zone2Merger.supplier
   - id: e0000007-0000-0000-0000-000000000017
     from: 00000007-0000-0000-0000-000000000016
     to: 00000007-0000-0000-0000-000000000017
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- Zone 3 ---
@@ -1309,15 +1309,15 @@ edges:
   - id: e0000007-0000-0000-0000-000000000021
     from: 00000007-0000-0000-0000-000000000021
     to: 00000007-0000-0000-0000-000000000022
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # RestrictZone3ShapefileReader → RestrictZone3SpatialFilter.filter
   # Use un-reprojected geographic CRS to match buildings (EPSG:6697).
   - id: e0000007-0000-0000-0000-000000000022
     from: 00000007-0000-0000-0000-000000000021
     to: 00000007-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: filter
 
   # RestrictZone3SpatialFilter.passed → InZone3FlagPassed
@@ -1325,27 +1325,27 @@ edges:
     from: 00000007-0000-0000-0000-000000000024
     to: 00000007-0000-0000-0000-000000000025
     fromPort: passed
-    toPort: default
+    toPort: features
 
   # RestrictZone3SpatialFilter.failed → InZone3FlagFailed
   - id: e0000007-0000-0000-0000-000000000025
     from: 00000007-0000-0000-0000-000000000024
     to: 00000007-0000-0000-0000-000000000026
     fromPort: failed
-    toPort: default
+    toPort: features
 
   # InZone3FlagPassed → Zone3Merger.supplier
   - id: e0000007-0000-0000-0000-000000000026
     from: 00000007-0000-0000-0000-000000000025
     to: 00000007-0000-0000-0000-000000000027
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # InZone3FlagFailed → Zone3Merger.supplier
   - id: e0000007-0000-0000-0000-000000000027
     from: 00000007-0000-0000-0000-000000000026
     to: 00000007-0000-0000-0000-000000000027
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- Snow Depth ---
@@ -1353,8 +1353,8 @@ edges:
   - id: e0000007-0000-0000-0000-000000000030
     from: 00000007-0000-0000-0000-000000000030
     to: 00000007-0000-0000-0000-000000000031
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # SnowShapefileReader → SnowSpatialFilter.filter
   # Use un-reprojected geographic CRS (EPSG:4612) to match buildings (EPSG:6697).
@@ -1362,7 +1362,7 @@ edges:
   - id: e0000007-0000-0000-0000-000000000031
     from: 00000007-0000-0000-0000-000000000030
     to: 00000007-0000-0000-0000-000000000033
-    fromPort: default
+    fromPort: features
     toPort: filter
 
   # SnowSpatialFilter.passed → SnowMerger.supplier
@@ -1387,7 +1387,7 @@ edges:
   - id: e0000006-0000-0000-0000-00000000006a
     from: 00000006-0000-0000-0000-000000000002
     to: 00000006-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: requestor
 
   # Zone 1 for land:
@@ -1395,7 +1395,7 @@ edges:
   - id: e0000006-0000-0000-0000-000000000061
     from: 00000007-0000-0000-0000-000000000002
     to: 00000006-0000-0000-0000-000000000021
-    fromPort: default
+    fromPort: features
     toPort: filter
 
   # LandZone1SpatialFilter.passed → LandInZone1FlagPassed
@@ -1403,27 +1403,27 @@ edges:
     from: 00000006-0000-0000-0000-000000000021
     to: 00000006-0000-0000-0000-000000000022
     fromPort: passed
-    toPort: default
+    toPort: features
 
   # LandZone1SpatialFilter.failed → LandInZone1FlagFailed
   - id: e0000006-0000-0000-0000-000000000064
     from: 00000006-0000-0000-0000-000000000021
     to: 00000006-0000-0000-0000-000000000023
     fromPort: failed
-    toPort: default
+    toPort: features
 
   # LandInZone1FlagPassed → LandZone1Merger.supplier
   - id: e0000006-0000-0000-0000-000000000065
     from: 00000006-0000-0000-0000-000000000022
     to: 00000006-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # LandInZone1FlagFailed → LandZone1Merger.supplier
   - id: e0000006-0000-0000-0000-000000000066
     from: 00000006-0000-0000-0000-000000000023
     to: 00000006-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # Zone 2 for land:
@@ -1431,7 +1431,7 @@ edges:
   - id: e0000006-0000-0000-0000-000000000068
     from: 00000007-0000-0000-0000-000000000012
     to: 00000006-0000-0000-0000-000000000031
-    fromPort: default
+    fromPort: features
     toPort: filter
 
   # LandZone2SpatialFilter.passed → LandInZone2FlagPassed
@@ -1439,27 +1439,27 @@ edges:
     from: 00000006-0000-0000-0000-000000000031
     to: 00000006-0000-0000-0000-000000000032
     fromPort: passed
-    toPort: default
+    toPort: features
 
   # LandZone2SpatialFilter.failed → LandInZone2FlagFailed
   - id: e0000006-0000-0000-0000-000000000071
     from: 00000006-0000-0000-0000-000000000031
     to: 00000006-0000-0000-0000-000000000033
     fromPort: failed
-    toPort: default
+    toPort: features
 
   # LandInZone2FlagPassed → LandZone2Merger.supplier
   - id: e0000006-0000-0000-0000-000000000072
     from: 00000006-0000-0000-0000-000000000032
     to: 00000006-0000-0000-0000-000000000034
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # LandInZone2FlagFailed → LandZone2Merger.supplier
   - id: e0000006-0000-0000-0000-000000000073
     from: 00000006-0000-0000-0000-000000000033
     to: 00000006-0000-0000-0000-000000000034
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # LandZone1Merger.merged (land data with inZone1) → LandZone2Merger.requestor
@@ -1474,7 +1474,7 @@ edges:
   - id: e0000006-0000-0000-0000-000000000076
     from: 00000007-0000-0000-0000-000000000022
     to: 00000006-0000-0000-0000-000000000041
-    fromPort: default
+    fromPort: features
     toPort: filter
 
   # LandZone3SpatialFilter.passed → LandInZone3FlagPassed
@@ -1482,27 +1482,27 @@ edges:
     from: 00000006-0000-0000-0000-000000000041
     to: 00000006-0000-0000-0000-000000000042
     fromPort: passed
-    toPort: default
+    toPort: features
 
   # LandZone3SpatialFilter.failed → LandInZone3FlagFailed
   - id: e0000006-0000-0000-0000-000000000079
     from: 00000006-0000-0000-0000-000000000041
     to: 00000006-0000-0000-0000-000000000043
     fromPort: failed
-    toPort: default
+    toPort: features
 
   # LandInZone3FlagPassed → LandZone3Merger.supplier
   - id: e0000006-0000-0000-0000-000000000080
     from: 00000006-0000-0000-0000-000000000042
     to: 00000006-0000-0000-0000-000000000044
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # LandInZone3FlagFailed → LandZone3Merger.supplier
   - id: e0000006-0000-0000-0000-000000000081
     from: 00000006-0000-0000-0000-000000000043
     to: 00000006-0000-0000-0000-000000000044
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # LandZone2Merger.merged → LandZone3Merger.requestor
@@ -1517,7 +1517,7 @@ edges:
   - id: e0000006-0000-0000-0000-000000000083
     from: 00000007-0000-0000-0000-000000000031
     to: 00000006-0000-0000-0000-000000000010
-    fromPort: default
+    fromPort: features
     toPort: filter
 
   # LandSnowSpatialFilter.passed → LandSnowMerger.supplier
@@ -1546,25 +1546,25 @@ edges:
     from: 00000006-0000-0000-0000-000000000011
     to: 00000006-0000-0000-0000-000000000003
     fromPort: merged
-    toPort: default
+    toPort: features
 
   # LandJudgmentComputer → LandPriorityComputer
   - id: e0000006-0000-0000-0000-000000000091
     from: 00000006-0000-0000-0000-000000000003
     to: 00000006-0000-0000-0000-000000000006
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # LandPriorityComputer → LandJudgmentMapper
   - id: e0000006-0000-0000-0000-000000000089
     from: 00000006-0000-0000-0000-000000000006
     to: 00000006-0000-0000-0000-000000000004
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # LandJudgmentMapper → LandJudgmentWriter
   - id: e0000006-0000-0000-0000-000000000090
     from: 00000006-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000005
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features

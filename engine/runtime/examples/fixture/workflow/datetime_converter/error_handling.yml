@@ -50,15 +50,15 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440206
         from: 550e8400-e29b-41d4-a716-446655440202
         to: 550e8400-e29b-41d4-a716-446655440203
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 550e8400-e29b-41d4-a716-446655440207
         from: 550e8400-e29b-41d4-a716-446655440203
         to: 550e8400-e29b-41d4-a716-446655440204
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 550e8400-e29b-41d4-a716-446655440208
         from: 550e8400-e29b-41d4-a716-446655440203
         to: 550e8400-e29b-41d4-a716-446655440205
         fromPort: failed
-        toPort: default
+        toPort: features
