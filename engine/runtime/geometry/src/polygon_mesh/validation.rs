@@ -155,7 +155,12 @@ impl PolygonMesh3DData {
             |ring, is_exterior| {
                 edges.check_ring(frame, &self.vertices, ring, report);
                 if has_holes {
-                    faces.check_ring(frame, &ring_coords(&self.vertices, ring), is_exterior, report);
+                    faces.check_ring(
+                        frame,
+                        &ring_coords(&self.vertices, ring),
+                        is_exterior,
+                        report,
+                    );
                 }
             },
         );
