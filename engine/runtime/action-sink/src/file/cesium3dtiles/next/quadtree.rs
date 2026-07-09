@@ -34,6 +34,19 @@ impl Cell {
             })
         }
     }
+
+    /// This cell's ancestor at `level`, or `None` if `level` is deeper than `self`.
+    pub(super) fn ancestor_at(self, level: u32) -> Option<Self> {
+        if level > self.level {
+            return None;
+        }
+        let shift = self.level - level;
+        Some(Cell {
+            level,
+            x: self.x >> shift,
+            y: self.y >> shift,
+        })
+    }
 }
 
 /// A geographic extent: lon/lat in degrees, height in metres.
@@ -226,6 +239,19 @@ mod tests {
         let root = geobox(0.0, 0.0, 10.0, 10.0);
         let point = geobox(1.0, 1.0, 1.0, 1.0);
         assert_eq!(place(&root, &point, 3).level, 3);
+    }
+
+    #[test]
+    fn ancestor_at_matches_repeated_parent_calls() {
+        let cell = Cell {
+            level: 3,
+            x: 5,
+            y: 2,
+        };
+        assert_eq!(cell.ancestor_at(3), Some(cell));
+        assert_eq!(cell.ancestor_at(2), cell.parent());
+        assert_eq!(cell.ancestor_at(1), cell.parent().unwrap().parent());
+        assert_eq!(cell.ancestor_at(4), None);
     }
 
     #[test]

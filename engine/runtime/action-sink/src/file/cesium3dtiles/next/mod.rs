@@ -50,7 +50,7 @@ impl Cesium3DTilesWriter {
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
         };
         for ((output, _, _), features) in &self.buffer {
-            let built = build(features, options)?;
+            let built = build(features, options, self.params.max_zoom)?;
 
             for (relative_path, bytes) in built.tiles.into_iter().chain(built.subtrees) {
                 crate::SinkOutput::new(
@@ -74,11 +74,6 @@ impl Cesium3DTilesWriter {
     }
 }
 
-/// Hard cap on quadtree depth, protecting `quadtree::place` against a
-/// pathological zero/near-zero-extent feature forcing it to the bottom of
-/// the loop.
-const MAX_DEPTH: u32 = 21;
-
 /// Every file a built tileset is made of, relative to the tileset's output
 /// directory: one content glb per occupied cell, one or more `.subtree`
 /// files, and the `tileset.json` text itself.
@@ -89,12 +84,13 @@ pub struct BuiltTileset {
 }
 
 /// Extract and reproject every feature's mesh, place each into the deepest
-/// quadtree cell that fully contains it, and render the result to a
-/// [`BuiltTileset`]. A free function so `gml_to_3dtiles` can drive it
-/// directly from parsed CityGML, without a `Cesium3DTilesWriter`.
+/// quadtree cell (bounded by `max_zoom`) that fully contains it, and render
+/// the result to a [`BuiltTileset`]. A free function so `gml_to_3dtiles` can
+/// drive it directly from parsed CityGML, without a `Cesium3DTilesWriter`.
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
+    max_zoom: u8,
 ) -> crate::errors::Result<BuiltTileset> {
     let mut reproject_caches = mesh::ReprojectCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
@@ -123,12 +119,12 @@ pub fn build(
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
-        let cell = quadtree::place(&root, &feature_box, MAX_DEPTH);
+        let cell = quadtree::place(&root, &feature_box, max_zoom as u32);
         by_cell.entry(cell).or_default().push(i);
     }
 
     let occupied: BTreeSet<Cell> = by_cell.keys().copied().collect();
-    let subtree_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
+    let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
 
     let tiles = by_cell
         .into_iter()
@@ -139,13 +135,16 @@ pub fn build(
         })
         .collect();
 
-    let tileset_bytes = render_tileset_json(&root, subtree_levels)?;
-    let subtree_bytes = subtree::build(&occupied, subtree_levels);
+    let tileset_bytes = render_tileset_json(&root, available_levels)?;
+    let subtrees = subtree::build_all(&occupied)
+        .into_iter()
+        .map(|(cell, bytes)| (subtree_path(cell), bytes))
+        .collect();
 
     Ok(BuiltTileset {
         tileset_json: tileset_bytes,
         tiles,
-        subtrees: vec![(subtree_path(Cell::root()), subtree_bytes)],
+        subtrees,
     })
 }
 
@@ -159,16 +158,19 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         max_height: 0.0,
     };
     let tileset_bytes = render_tileset_json(&root, 1)?;
-    let subtree_bytes = subtree::build(&BTreeSet::new(), 1);
+    let subtrees = subtree::build_all(&BTreeSet::new())
+        .into_iter()
+        .map(|(cell, bytes)| (subtree_path(cell), bytes))
+        .collect();
     Ok(BuiltTileset {
         tileset_json: tileset_bytes,
         tiles: Vec::new(),
-        subtrees: vec![(subtree_path(Cell::root()), subtree_bytes)],
+        subtrees,
     })
 }
 
-fn render_tileset_json(root: &GeoBox, subtree_levels: u32) -> crate::errors::Result<String> {
-    let tileset_json = tileset::build(root, subtree_levels);
+fn render_tileset_json(root: &GeoBox, available_levels: u32) -> crate::errors::Result<String> {
+    let tileset_json = tileset::build(root, available_levels);
     serde_json::to_string_pretty(&tileset_json)
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }

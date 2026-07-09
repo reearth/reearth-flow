@@ -8,8 +8,8 @@ const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
 /// One explicit root tile declaring 3D Tiles 1.1 implicit tiling;
 /// descendants' bounding volume/geometric error are client-derived from
 /// `level` alone. Which cells hold content lives in the paired `.subtree`
-/// file (`subtree.rs`), not here.
-pub(super) fn build(root: &GeoBox, subtree_levels: u32) -> Value {
+/// file(s) (`subtree.rs`), not here.
+pub(super) fn build(root: &GeoBox, available_levels: u32) -> Value {
     let region = [
         root.west.to_radians(),
         root.south.to_radians(),
@@ -30,8 +30,8 @@ pub(super) fn build(root: &GeoBox, subtree_levels: u32) -> Value {
             "content": {"uri": CONTENT_URI_TEMPLATE},
             "implicitTiling": {
                 "subdivisionScheme": "QUADTREE",
-                "subtreeLevels": subtree_levels,
-                "availableLevels": subtree_levels,
+                "subtreeLevels": super::subtree::SUBTREE_LEVELS,
+                "availableLevels": available_levels,
                 "subtrees": {"uri": SUBTREES_URI_TEMPLATE},
             },
         },
