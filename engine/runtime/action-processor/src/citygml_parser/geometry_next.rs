@@ -12,7 +12,6 @@ use std::sync::Arc;
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::point::Point3D;
 use reearth_flow_geometry::polygon::Polygon3D;
-use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
@@ -251,7 +250,6 @@ fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<(Euclidean3DGeomet
         }
         GmlGeometryType::LinearRing => build_ring_polygon(node),
         GmlGeometryType::Polygon => build_polygon(node),
-        GmlGeometryType::Surface | GmlGeometryType::PolyhedralSurface => build_surface(node),
         GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => build_triangulated(node),
         _ => None,
     }
@@ -299,30 +297,6 @@ fn build_ring_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> 
 fn build_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
     let (polygon, face) = polygon_from_rings(node)?;
     Some((Euclidean3DGeometry::Polygon(Box::new(polygon)), vec![face]))
-}
-
-/// Build a `PolygonMesh` by welding a `Surface`/`PolyhedralSurface`'s polygon
-/// patches into one mesh; `None` if it has no patches. One `FaceIds` per patch, in
-/// patch order, matching the welded mesh's face order.
-fn build_surface(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
-    let mut faces: Vec<Polygon3D> = Vec::new();
-    let mut face_ids: LeafIds = Vec::new();
-    for prop in element_children(node) {
-        if matches!(local_name(&prop.name.0), "patches" | "polygonPatches") {
-            for patch in element_children(prop) {
-                if let Some((polygon, ids)) = polygon_from_rings(patch) {
-                    faces.push(polygon);
-                    face_ids.push(ids);
-                }
-            }
-        }
-    }
-    if faces.is_empty() {
-        return None;
-    }
-    PolygonMesh3D::from_polygons(FRAME, &faces)
-        .ok()
-        .map(|m| (Euclidean3DGeometry::PolygonMesh(Box::new(m)), face_ids))
 }
 
 /// Build a `TriangularMesh` from a `TriangulatedSurface`/`Tin`'s triangle patches,
@@ -504,7 +478,8 @@ fn geometry_type(local: &str) -> Option<GmlGeometryType> {
         "LineString" => GmlGeometryType::LineString,
         "Curve" => GmlGeometryType::Curve,
         "LinearRing" => GmlGeometryType::LinearRing,
-        "Polygon" => GmlGeometryType::Polygon,
+        // A surface patch is a polygon: welded into its enclosing surface mesh.
+        "Polygon" | "PolygonPatch" | "Rectangle" | "Triangle" => GmlGeometryType::Polygon,
         "Surface" => GmlGeometryType::Surface,
         "PolyhedralSurface" => GmlGeometryType::PolyhedralSurface,
         "TriangulatedSurface" => GmlGeometryType::TriangulatedSurface,

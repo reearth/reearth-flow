@@ -149,8 +149,6 @@ impl GmlGeometryType {
                 | GmlGeometryType::Curve
                 | GmlGeometryType::LinearRing
                 | GmlGeometryType::Polygon
-                | GmlGeometryType::Surface
-                | GmlGeometryType::PolyhedralSurface
                 | GmlGeometryType::TriangulatedSurface
                 | GmlGeometryType::Tin
         )
@@ -303,7 +301,10 @@ fn construct(
             members.into_iter().next().map(|(_, geometry)| geometry)
         }
         GmlGeometryType::Ring => ring(members),
-        GmlGeometryType::CompositeSurface | GmlGeometryType::Shell => surface_mesh(members),
+        GmlGeometryType::CompositeSurface
+        | GmlGeometryType::Shell
+        | GmlGeometryType::Surface
+        | GmlGeometryType::PolyhedralSurface => surface_mesh(members),
         GmlGeometryType::Solid => solid(members),
         _ => {
             tracing::warn!("citygml geometry: inline type deferred to pass 2, skipped");
@@ -336,10 +337,12 @@ fn ring(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry
     Some(Euclidean3DGeometry::Polygon(Box::new(polygon)))
 }
 
-/// Assemble surface members into one mesh, for a `CompositeSurface` or a solid's
-/// `Shell`. A single already-built mesh passes through as-is; otherwise bare
-/// polygon members are welded into a single mesh. Mesh members mixed with other
-/// members are not yet supported and are skipped with a warning.
+/// Assemble surface members into one mesh, for an inline `Surface` /
+/// `PolyhedralSurface`, a `CompositeSurface`, or a solid's `Shell`. A single
+/// already-built mesh passes through as-is; otherwise bare polygon members are
+/// welded into a single mesh, carrying each member polygon's appearance across.
+/// Mesh members mixed with other members are not yet supported and are skipped
+/// with a warning.
 fn surface_mesh(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry> {
     if members.len() == 1
         && matches!(

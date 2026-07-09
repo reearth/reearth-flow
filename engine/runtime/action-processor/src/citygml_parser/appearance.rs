@@ -1511,4 +1511,61 @@ mod tests {
         };
         assert_eq!(m.diffuse, [0.3, 0.5, 0.7]);
     }
+
+    /// The welded `PolygonMesh` of a feature whose sole geometry is an inline
+    /// `Surface` of polygon patches.
+    fn resolve_only_polygon_mesh(xml: &str) -> reearth_flow_geometry::polygon_mesh::PolygonMesh3D {
+        let mut parser = Parser::new();
+        parser
+            .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
+            .unwrap();
+        let (pending, raw_registry, geom_registry, appearance_members, _ns) = parser.finish();
+        let appearance = super::build_index(&appearance_members, &raw_registry);
+        let feature = pending.into_iter().next().expect("one feature");
+        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance)
+            .expect("geometry resolves");
+        match geom {
+            Euclidean3DGeometry::PolygonMesh(m) => *m,
+            other => panic!("expected PolygonMesh, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parameterized_texture_attaches_to_inline_surface() {
+        // An inline gml:Surface of two PolygonPatches welds into a PolygonMesh; a
+        // texture targeting the surface, with per-ring UV, binds each patch by its
+        // ring and is carried across the weld into the mesh.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2Surface><gml:Surface gml:id="surf1"><gml:patches>
+                  <gml:PolygonPatch><gml:exterior><gml:LinearRing gml:id="ringA">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:PolygonPatch>
+                  <gml:PolygonPatch><gml:exterior><gml:LinearRing gml:id="ringB">
+                    <gml:posList>1 0 0 2 0 0 1 1 0 1 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:PolygonPatch>
+                </gml:patches></gml:Surface></bldg:lod2Surface>
+              </bldg:Building></core:cityObjectMember>
+              <app:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceDataMember><app:ParameterizedTexture>
+                  <app:imageURI>tex/a.jpg</app:imageURI>
+                  <app:target uri="#surf1"><app:TexCoordList>
+                    <app:textureCoordinates ring="#ringA">0 0 1 0 1 1 0 0</app:textureCoordinates>
+                    <app:textureCoordinates ring="#ringB">0 0 1 0 1 1 0 0</app:textureCoordinates>
+                  </app:TexCoordList></app:target>
+                </app:ParameterizedTexture></app:surfaceDataMember>
+              </app:Appearance></app:appearanceMember>
+            </core:CityModel>"##
+        );
+        let mesh = resolve_only_polygon_mesh(&xml);
+        assert_eq!(mesh.num_faces(), 2);
+        let appearance = mesh.appearance().as_ref().expect("mesh is textured");
+        assert!(matches!(
+            &appearance.materials()[0],
+            Material::Phong(m) if m.diffuse_map.is_some()
+        ));
+        assert_eq!(uv_sets(mesh.appearance()).len(), 1, "one welded UV set");
+    }
 }
