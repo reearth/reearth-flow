@@ -33,18 +33,26 @@ fn for_each_ring(
     let mut indices = face_indices.iter_u32().map(|[i]| i);
     let mut ring: Vec<u32> = Vec::new();
     let mut start = 0usize;
+    // `interior_offsets` are strictly increasing, and faces are visited in order,
+    // so a single moving cursor walks the holes once across the whole mesh.
+    let mut hole = 0usize;
     for face in 0..n_faces {
         let end = face_ends.get(face).copied().unwrap_or(n);
         // Hole rings of this face begin at the interior offsets inside (start, end);
         // the exterior ring runs up to the first hole (or the face end).
         let mut ring_start = start;
         let mut is_exterior = true;
-        for &h in holes.iter().filter(|&&h| h > start && h < end) {
+        while hole < holes.len() && holes[hole] <= start {
+            hole += 1;
+        }
+        while hole < holes.len() && holes[hole] < end {
+            let h = holes[hole];
             ring.clear();
             ring.extend(indices.by_ref().take(h - ring_start));
             f(&ring, is_exterior);
             ring_start = h;
             is_exterior = false;
+            hole += 1;
         }
         ring.clear();
         ring.extend(indices.by_ref().take(end - ring_start));

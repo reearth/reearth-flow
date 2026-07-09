@@ -362,7 +362,7 @@ validation_checks! {
 /// [dependencies](#check-dependencies).
 ///
 /// Each applicable check maps to a [`ValidationResult`]; checks whose
-/// prerequisites failed (or whose detection is a `TODO`) are
+/// prerequisites failed are
 /// [`Unvalidated`](ValidationResult::Unvalidated). Aggregates (the collections,
 /// [`Csg`](crate::csg::Csg), [`GeometryCollection`](crate::GeometryCollection))
 /// recurse into their members and merge the per-check results with
